@@ -1,0 +1,102 @@
+from pathlib import Path
+import sys
+
+import pytest
+
+from novel_flywheel.db import Database
+from novel_flywheel.skills import SkillGate, SkillScanner
+
+
+def write_skill(root: Path, name: str, body: str, script: str | None = None) -> Path:
+    folder = root / name
+    folder.mkdir(parents=True)
+    (folder / "SKILL.md").write_text(
+        f"---\nname: {name}\ndescription: test skill\n---\n\n{body}\n",
+        encoding="utf-8",
+    )
+    if script is not None:
+        scripts = folder / "scripts"
+        scripts.mkdir()
+        (scripts / "run.py").write_text(script, encoding="utf-8")
+    return folder
+
+
+def test_scanner_discovers_prompt_and_executable_skills(tmp_path) -> None:
+    root = tmp_path / "skills"
+    write_skill(root, "humanizer", "Remove AI patterns.")
+    write_skill(root, "maintenance", "Run maintenance.", "print('checked')")
+
+    skills = {skill.name: skill for skill in SkillScanner([root]).scan()}
+
+    assert skills["humanizer"].executable is False
+    assert skills["maintenance"].executable is True
+    assert len(skills["maintenance"].content_hash) == 64
+
+
+def test_prompt_skill_executes_automatically_and_records_receipt(tmp_path) -> None:
+    root = tmp_path / "skills"
+    write_skill(root, "humanizer", "Remove AI patterns.")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    gate = SkillGate(db, SkillScanner([root]))
+
+    result = gate.run_required("polish", ["humanizer"])
+
+    assert "Remove AI patterns." in result.prompt
+    assert result.receipts[0].status == "succeeded"
+    assert db.list_skill_receipts()[0]["skill_name"] == "humanizer"
+
+
+def test_executable_skill_requires_approval_for_current_hash(tmp_path) -> None:
+    root = tmp_path / "skills"
+    folder = write_skill(root, "maintenance", "Run it.", "print('checked')")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    gate = SkillGate(db, SkillScanner([root]))
+
+    with pytest.raises(PermissionError, match="maintenance"):
+        gate.run_required("archive", ["maintenance"], {"maintenance": ["scripts/run.py"]})
+
+    skill = gate.skills()["maintenance"]
+    db.approve_skill(skill.name, skill.content_hash)
+    result = gate.run_required("archive", ["maintenance"], {"maintenance": ["scripts/run.py"]})
+    assert result.receipts[0].status == "succeeded"
+    assert result.receipts[0].output == "checked"
+
+    (folder / "SKILL.md").write_text("---\nname: maintenance\n---\nchanged", encoding="utf-8")
+    with pytest.raises(PermissionError, match="maintenance"):
+        gate.run_required("archive", ["maintenance"], {"maintenance": ["scripts/run.py"]})
+
+
+def test_missing_or_failed_required_skill_blocks_stage(tmp_path) -> None:
+    root = tmp_path / "skills"
+    write_skill(root, "broken", "Run it.", "raise SystemExit(2)")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    gate = SkillGate(db, SkillScanner([root]))
+
+    with pytest.raises(LookupError, match="missing"):
+        gate.run_required("review", ["missing"])
+
+    skill = gate.skills()["broken"]
+    db.approve_skill(skill.name, skill.content_hash)
+    with pytest.raises(RuntimeError, match="broken"):
+        gate.run_required("review", ["broken"], {"broken": ["scripts/run.py"]})
+    assert db.list_skill_receipts()[-1]["status"] == "failed"
+
+
+def test_javascript_skill_uses_configured_bundled_runtime(tmp_path) -> None:
+    root = tmp_path / "skills"
+    folder = write_skill(root, "maintenance", "Run it.")
+    scripts = folder / "scripts"
+    scripts.mkdir()
+    (scripts / "run.js").write_text("print('bundled')", encoding="utf-8")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    gate = SkillGate(db, SkillScanner([root]), node_executable=Path(sys.executable))
+    skill = gate.skills()["maintenance"]
+    db.approve_skill(skill.name, skill.content_hash)
+
+    result = gate.run_required("archive", ["maintenance"], {"maintenance": ["scripts/run.js"]})
+
+    assert result.receipts[0].output == "bundled"
