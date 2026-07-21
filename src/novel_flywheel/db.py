@@ -67,6 +67,34 @@ CREATE TABLE IF NOT EXISTS runs(
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE VIRTUAL TABLE IF NOT EXISTS chapter_search USING fts5(
+  project_id UNINDEXED, chapter_id UNINDEXED, chapter_number UNINDEXED, content, summary
+);
+CREATE TABLE IF NOT EXISTS canon_facts(
+  project_id TEXT NOT NULL,
+  fact_key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  source TEXT NOT NULL,
+  confirmed INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(project_id, fact_key, confirmed)
+);
+CREATE TABLE IF NOT EXISTS chapter_states(
+  project_id TEXT NOT NULL,
+  chapter_id TEXT NOT NULL,
+  state_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(project_id, chapter_id)
+);
+CREATE TABLE IF NOT EXISTS drift_findings(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL,
+  category TEXT NOT NULL,
+  score INTEGER NOT NULL,
+  message TEXT NOT NULL,
+  resolved INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL
+);
 """
 
 

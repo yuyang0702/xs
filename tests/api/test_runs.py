@@ -9,6 +9,12 @@ class FakeWorkflows:
     async def run_short(self, project_id):
         return {"id": "run-1", "project_id": project_id, "status": "completed", "workflow": "short-story"}
 
+    async def run_long_setup(self, project_id):
+        return {"id": "run-2", "project_id": project_id, "status": "completed", "workflow": "long-setup"}
+
+    async def run_chapter(self, project_id, chapter_goal):
+        return {"id": "run-3", "project_id": project_id, "status": "completed", "workflow": "long-chapter"}
+
 
 def test_start_short_run_and_list_history(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -23,3 +29,19 @@ def test_start_short_run_and_list_history(tmp_path) -> None:
     response = client.post(f"/api/projects/{project['id']}/runs/short")
     assert response.status_code == 201
     assert response.json()["status"] == "completed"
+
+
+def test_start_long_setup_and_chapter(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", workflow_service=FakeWorkflows(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Long", "mode": "long", "genre": "fantasy",
+        "premise": "An oath survives.", "target_words": 500000,
+    }).json()
+    assert client.post(f"/api/projects/{project['id']}/runs/setup").json()["workflow"] == "long-setup"
+    response = client.post(
+        f"/api/projects/{project['id']}/runs/chapter", json={"chapter_goal": "Reveal the old oath"},
+    )
+    assert response.json()["workflow"] == "long-chapter"

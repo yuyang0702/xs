@@ -34,6 +34,16 @@ class FakeGateway:
         return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
 
+class SetupGateway(FakeGateway):
+    def __init__(self) -> None:
+        self.roles = []
+        self.responses = iter([
+            "# Book Bible\nEnding, volumes, characters, world rules and chapter map.",
+            json.dumps({"score": 90, "hard_fail": False, "issues": []}),
+            json.dumps({"facts": [{"fact_key": "ending", "value": "the oath is fulfilled"}]}),
+        ])
+
+
 def make_prompt_skills(root) -> None:
     for name in REQUIRED_SKILLS:
         folder = root / name
@@ -81,3 +91,41 @@ async def test_short_flywheel_rejects_long_project(tmp_path) -> None:
         await WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([]))).run_short(
             project.id, use_crewai=False,
         )
+
+
+@pytest.mark.asyncio
+async def test_long_chapter_uses_memory_and_writes_next_number(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = FakeGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    result = await service.run_chapter(project.id, "The hero reaches the observatory", use_crewai=False)
+
+    assert result["status"] == "completed"
+    assert (project.path / "chapters" / "chapter-01.md").is_file()
+    assert db.get_run(result["id"])["workflow"] == "long-chapter"
+
+
+@pytest.mark.asyncio
+async def test_long_setup_writes_book_bible_and_canon(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(db, store, SetupGateway(), SkillGate(db, SkillScanner([skill_root])))
+
+    result = await service.run_long_setup(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    assert "Book Bible" in (project.path / "outline.md").read_text(encoding="utf-8")

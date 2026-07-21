@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 
 router = APIRouter(prefix="/api", tags=["runs"])
@@ -15,6 +16,26 @@ async def start_short_run(project_id: str, request: Request) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": "invalid_workflow", "message": str(exc)}) from exc
     except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail={"code": "workflow_failed", "message": str(exc)}) from exc
+
+
+@router.post("/projects/{project_id}/runs/setup", status_code=status.HTTP_201_CREATED)
+async def start_long_setup(project_id: str, request: Request) -> dict:
+    try:
+        return await request.app.state.workflows.run_long_setup(project_id)
+    except (LookupError, ValueError, PermissionError, RuntimeError) as exc:
+        raise HTTPException(status_code=422, detail={"code": "workflow_failed", "message": str(exc)}) from exc
+
+
+class ChapterRun(BaseModel):
+    chapter_goal: str = Field(min_length=1)
+
+
+@router.post("/projects/{project_id}/runs/chapter", status_code=status.HTTP_201_CREATED)
+async def start_long_chapter(project_id: str, payload: ChapterRun, request: Request) -> dict:
+    try:
+        return await request.app.state.workflows.run_chapter(project_id, payload.chapter_goal)
+    except (LookupError, ValueError, PermissionError, RuntimeError) as exc:
         raise HTTPException(status_code=422, detail={"code": "workflow_failed", "message": str(exc)}) from exc
 
 
