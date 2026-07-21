@@ -50,6 +50,23 @@ CREATE TABLE IF NOT EXISTS skill_receipts(
   output TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS projects(
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  path TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS runs(
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id),
+  workflow TEXT NOT NULL,
+  status TEXT NOT NULL,
+  current_stage TEXT,
+  error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 """
 
 
@@ -220,3 +237,21 @@ class Database:
             return [dict(row) for row in connection.execute(
                 "SELECT * FROM skill_receipts ORDER BY created_at, rowid"
             )]
+
+    def save_project(self, project_id: str, title: str, mode: str, path: Path) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO projects VALUES (?, ?, ?, ?, datetime('now'))",
+                (project_id, title, mode, str(path)),
+            )
+
+    def list_projects(self) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM projects ORDER BY created_at DESC, rowid DESC"
+            )]
+
+    def get_project(self, project_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+        return dict(row) if row else None
