@@ -26,6 +26,9 @@ def test_create_short_project_writes_durable_structure(tmp_path) -> None:
     assert (project.path / "constraints.md").is_file()
     assert json.loads((project.path / "memory" / "canon.json").read_text(encoding="utf-8")) == {"facts": []}
     assert (project.path / "manuscript").is_dir()
+    assert (project.path / "story.md").is_file()
+    assert (project.path / "chapters" / "_index.md").is_file()
+    assert (project.path / "continuity" / "state.md").is_file()
     assert store.load_constraints(project.id).startswith("Never use canned AI prose.")
 
 

@@ -47,10 +47,14 @@ class ProjectStore:
         if not path.is_relative_to(self.workspace_root):
             raise ValueError("Invalid project path")
         path.mkdir(parents=True, exist_ok=False)
-        for folder in ("memory", "manuscript", "runs", "snapshots"):
-            (path / folder).mkdir()
+        for folder in (
+            "memory", "manuscript", "runs", "snapshots", "chapters", "characters",
+            "continuity/promises", "continuity/questions", "glossary/terms", "plot/arcs",
+            "scenes", "worldbuilding/artifacts", "worldbuilding/factions",
+            "worldbuilding/locations", "worldbuilding/systems",
+        ):
+            (path / folder).mkdir(parents=True, exist_ok=True)
         if payload.mode == "long":
-            (path / "chapters").mkdir()
             (path / "volumes").mkdir()
         metadata = {
             "id": project_id,
@@ -64,6 +68,7 @@ class ProjectStore:
             f"## Must Avoid\n{payload.must_avoid or 'None'}\n",
             encoding="utf-8",
         )
+        self._scaffold_story_files(path, payload)
         self.db.save_project(project_id, payload.title, payload.mode, path)
         return Project(project_id, payload.title, payload.mode, path, metadata)
 
@@ -91,3 +96,35 @@ class ProjectStore:
     @staticmethod
     def _write_json(path: Path, value: dict) -> None:
         path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    @staticmethod
+    def _scaffold_story_files(path: Path, payload: ProjectCreate) -> None:
+        (path / "story.md").write_text(
+            f"---\ntitle: {payload.title}\nschema-version: 2\ngenre: {payload.genre}\n"
+            f"sub-genre: general\nsetting-era: unspecified\nstatus: planning\n"
+            f"themes:\n  - change\npov: {payload.pov}\ntense: past\n---\n\n"
+            f"# {payload.title}\n\n## Synopsis\n\n{payload.premise}\n\n"
+            f"## Tone & Style\n\n{payload.tone}\n\n## Notes\n",
+            encoding="utf-8",
+        )
+        registry_files = {
+            "chapters/_index.md": "chapter-registry",
+            "characters/_index.md": "character-registry",
+            "continuity/promises/_index.md": "promise-registry",
+            "continuity/questions/_index.md": "question-registry",
+            "glossary/_index.md": "glossary-registry",
+            "plot/_index.md": "plot-registry",
+            "scenes/_index.md": "scene-registry",
+            "worldbuilding/_index.md": "worldbuilding-registry",
+        }
+        for relative, kind in registry_files.items():
+            (path / relative).write_text(
+                f"---\ntype: {kind}\nstory: {path.name}\n---\n\n# Index\n",
+                encoding="utf-8",
+            )
+        (path / "continuity" / "state.md").write_text(
+            "---\ntype: continuity-state\n---\n\n# Current State\n", encoding="utf-8",
+        )
+        (path / "plot" / "timeline.md").write_text(
+            "---\ntype: timeline\n---\n\n# Timeline\n", encoding="utf-8",
+        )

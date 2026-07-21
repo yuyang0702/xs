@@ -9,6 +9,7 @@ dependencies = [
   "httpx>=0.28,<1",
   "pydantic>=2.10,<3",
   "keyring>=25,<26",
+  "crewai>=1.15,<2",
 ]
 
 [project.optional-dependencies]
@@ -29,4 +30,3 @@ packages = ["src/novel_flywheel"]
 pythonpath = ["src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-

@@ -260,3 +260,30 @@ class Database:
         with self.connect() as connection:
             row = connection.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
         return dict(row) if row else None
+
+    def create_run(self, run_id: str, project_id: str, workflow: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO runs VALUES (?, ?, ?, 'running', NULL, NULL, datetime('now'), datetime('now'))",
+                (run_id, project_id, workflow),
+            )
+
+    def update_run(self, run_id: str, status: str, current_stage: str | None = None,
+                   error: str | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE runs SET status = ?, current_stage = ?, error = ?, updated_at = datetime('now') WHERE id = ?",
+                (status, current_stage, error, run_id),
+            )
+
+    def get_run(self, run_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
+        return dict(row) if row else None
+
+    def list_runs(self, project_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM runs WHERE project_id = ? ORDER BY created_at DESC, rowid DESC",
+                (project_id,),
+            )]
