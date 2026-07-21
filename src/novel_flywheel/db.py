@@ -209,6 +209,11 @@ class Database:
         with self.connect() as connection:
             return [dict(row) for row in connection.execute("SELECT * FROM role_bindings ORDER BY role")]
 
+    def get_role_binding(self, role: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM role_bindings WHERE role = ?", (role,)).fetchone()
+        return dict(row) if row else None
+
     def approve_skill(self, skill_name: str, content_hash: str) -> None:
         with self.connect() as connection:
             connection.execute(
