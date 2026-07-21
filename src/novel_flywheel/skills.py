@@ -38,9 +38,9 @@ class SkillScanner:
     def __init__(self, roots: list[Path]) -> None:
         self.roots = roots
 
-    def scan(self) -> list[Skill]:
+    def scan(self, extra_roots: list[Path] | None = None) -> list[Skill]:
         found: dict[str, Skill] = {}
-        for root in self.roots:
+        for root in [*self.roots, *(extra_roots or [])]:
             if not root.exists():
                 continue
             for manifest in sorted(root.glob("*/SKILL.md")):
@@ -64,13 +64,14 @@ class SkillGate:
         self.scanner = scanner
         self.node_executable = node_executable or self._find_node()
 
-    def skills(self) -> dict[str, Skill]:
-        return {skill.name: skill for skill in self.scanner.scan()}
+    def skills(self, project_root: Path | None = None) -> dict[str, Skill]:
+        extra = [project_root / ".agents" / "skills"] if project_root else []
+        return {skill.name: skill for skill in self.scanner.scan(extra)}
 
     def run_required(self, stage: str, required: list[str],
                      commands: dict[str, list[str]] | None = None,
-                     cwd: Path | None = None) -> SkillRun:
-        available = self.skills()
+                     cwd: Path | None = None, project_root: Path | None = None) -> SkillRun:
+        available = self.skills(project_root)
         missing = [name for name in required if name not in available]
         if missing:
             raise LookupError(f"Required Skills missing: {', '.join(missing)}")

@@ -68,7 +68,8 @@ class StoryMemory:
             if terms:
                 match = " OR ".join(f'"{term}"' for term in terms)
                 relevant = [dict(row) for row in connection.execute(
-                    "SELECT chapter_id, CAST(chapter_number AS INTEGER) AS chapter_number, summary "
+                    "SELECT chapter_id, CAST(chapter_number AS INTEGER) AS chapter_number, summary, "
+                    "snippet(chapter_search, 3, '', '', ' ... ', 32) AS excerpt "
                     "FROM chapter_search WHERE project_id = ? AND chapter_search MATCH ? "
                     "ORDER BY bm25(chapter_search) LIMIT ?",
                     (project_id, match, limit),
@@ -79,3 +80,6 @@ class StoryMemory:
             "relevant_chapters": relevant,
             "drift": drift,
         }
+
+    def search_chapters(self, project_id: str, query: str, limit: int = 6) -> list[dict]:
+        return self.context(project_id, query, min(max(limit, 1), 10))["relevant_chapters"]

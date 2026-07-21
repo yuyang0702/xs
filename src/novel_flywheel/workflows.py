@@ -11,6 +11,7 @@ from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
+from novel_flywheel.tools import StoryToolbox
 
 
 class WorkflowService:
@@ -54,8 +55,9 @@ class WorkflowService:
         self.db.create_run(run_id, project.id, "long-setup")
         outline_path = project.path / "outline.md"
         canon_path = project.path / "memory" / "canon.json"
+        volumes_path = project.path / "memory" / "volumes.json"
         snapshot = ProjectSnapshot.create(
-            project.path, project.path / "snapshots" / run_id, [outline_path, canon_path],
+            project.path, project.path / "snapshots" / run_id, [outline_path, canon_path, volumes_path],
         )
         try:
             constraints = self.projects.load_constraints(project.id)
@@ -78,6 +80,8 @@ class WorkflowService:
                 raise ValueError("Maintenance output must contain a facts array")
             atomic_write(outline_path, outline)
             atomic_write(canon_path, json.dumps(canon, ensure_ascii=False, indent=2))
+            if isinstance(canon.get("volumes"), list):
+                atomic_write(volumes_path, json.dumps({"volumes": canon["volumes"]}, ensure_ascii=False, indent=2))
             for index, fact in enumerate(canon["facts"]):
                 if isinstance(fact, dict):
                     key = str(fact.get("fact_key") or f"setup.{index}")
@@ -105,9 +109,11 @@ class WorkflowService:
         (run_path / "outputs").mkdir(parents=True)
         (run_path / "receipts").mkdir()
         self.db.create_run(run_id, project.id, "long-chapter")
+        self._ensure_previous_volume_passed(project, chapter_number)
         snapshot = ProjectSnapshot.create(
             project.path, project.path / "snapshots" / run_id, [chapter_path, canon_path],
         )
+        committed = False
         try:
             constraints = self.projects.load_constraints(project.id)
             context = self.memory.context(project.id, chapter_goal)
@@ -155,10 +161,13 @@ class WorkflowService:
             self.memory.index_chapter(project.id, chapter_id, chapter_number, polished, chapter_goal)
             if isinstance(canon.get("state"), dict):
                 self.memory.save_state(project.id, chapter_id, canon["state"])
+            committed = True
+            await self._audit_volume_boundary(run_id, run_path, project, chapter_number, constraints)
             self.db.update_run(run_id, "completed", "archive")
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except Exception as exc:
-            snapshot.restore()
+            if not committed:
+                snapshot.restore()
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
@@ -224,13 +233,23 @@ class WorkflowService:
         required = REQUIRED_SKILLS[stage]
         commands = None
         cwd = None
-        skill = self.skills.skills().get("story-maintenance") if stage == "maintenance" else None
+        skill = self.skills.skills(project.path).get("story-maintenance") if stage == "maintenance" else None
         if skill and skill.executable:
             commands = {"story-maintenance": ["scripts/story.js", "validate", "."]}
             cwd = project.path
-        skill_run = self.skills.run_required(stage, required, commands, cwd)
+        skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
         system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{skill_run.prompt}"
-        result = await self.gateway.complete(stage, system, user)
+        if hasattr(self.gateway, "complete_with_tools"):
+            toolbox = StoryToolbox(project, self.memory)
+            result = await self.gateway.complete_with_tools(
+                stage, system, user, toolbox,
+                fallback_context=lambda: json.dumps(
+                    self.memory.context(project.id, user[:500]), ensure_ascii=False,
+                ),
+                run_id=run_id,
+            )
+        else:
+            result = await self.gateway.complete(stage, system, user)
         name = f"{stage}{suffix}"
         atomic_write(run_path / "outputs" / f"{name}.md", result.text)
         receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
@@ -238,7 +257,7 @@ class WorkflowService:
         return result.text
 
     def _post_write_maintenance(self, run_id: str, project: Project) -> None:
-        skill = self.skills.skills().get("story-maintenance")
+        skill = self.skills.skills(project.path).get("story-maintenance")
         if not skill or not skill.executable:
             return
         for command in (
@@ -246,7 +265,47 @@ class WorkflowService:
             ["scripts/story.js", "reindex", "."],
             ["scripts/story.js", "validate", "."],
         ):
-            self.skills.run_required("archive", ["story-maintenance"], {"story-maintenance": command}, project.path)
+            self.skills.run_required("archive", ["story-maintenance"], {"story-maintenance": command}, project.path, project.path)
+
+    def _volume_for_chapter(self, project: Project, chapter_number: int) -> dict | None:
+        path = project.path / "memory" / "volumes.json"
+        if not path.is_file():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return next((volume for volume in data.get("volumes", [])
+                     if int(volume.get("start_chapter", 0)) <= chapter_number <= int(volume.get("end_chapter", -1))), None)
+
+    def _ensure_previous_volume_passed(self, project: Project, chapter_number: int) -> None:
+        volume = self._volume_for_chapter(project, chapter_number)
+        if not volume or chapter_number != int(volume.get("start_chapter", 0)) or chapter_number == 1:
+            return
+        previous = int(volume["number"]) - 1
+        audit = project.path / "memory" / "audits" / f"volume-{previous:02d}.json"
+        if not audit.is_file() or json.loads(audit.read_text(encoding="utf-8")).get("status") != "passed":
+            raise RuntimeError(f"Previous volume audit is not passed: volume {previous}")
+
+    async def _audit_volume_boundary(self, run_id: str, run_path: Path, project: Project,
+                                     chapter_number: int, constraints: str) -> None:
+        volume = self._volume_for_chapter(project, chapter_number)
+        if not volume or chapter_number != int(volume.get("end_chapter", -1)):
+            return
+        parts = []
+        for number in range(int(volume["start_chapter"]), chapter_number + 1):
+            path = project.path / "chapters" / f"chapter-{number:02d}.md"
+            if path.is_file():
+                parts.append(f"CHAPTER {number}:\n{path.read_text(encoding='utf-8')[:4000]}")
+        evidence = json.dumps(volume, ensure_ascii=False) + "\n\n" + "\n\n".join(parts)
+        text = await self._stage(run_id, run_path, project, "final_review", constraints, evidence,
+                                 suffix=f"-volume-{int(volume['number']):02d}")
+        review = self._review(text)
+        report = {**review, "volume": int(volume["number"]),
+                  "status": "passed" if review["score"] >= 80 and not review["hard_fail"] else "blocked"}
+        audit = project.path / "memory" / "audits" / f"volume-{int(volume['number']):02d}.json"
+        atomic_write(audit, json.dumps(report, ensure_ascii=False, indent=2))
+        for issue in review.get("issues", []):
+            self.memory.record_drift(project.id, "volume-audit", int(100 - review["score"]), str(issue))
+        if report["status"] == "blocked":
+            raise RuntimeError(f"Volume audit blocked volume {volume['number']}")
 
     async def _run_in_crewai(self, pipeline):
         self.crewai_data_dir.mkdir(parents=True, exist_ok=True)

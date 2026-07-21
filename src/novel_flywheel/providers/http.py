@@ -3,6 +3,10 @@ from typing import Any
 import httpx
 
 
+class ToolCapabilityError(RuntimeError):
+    pass
+
+
 class HttpProvider:
     def __init__(
         self,
@@ -22,6 +26,9 @@ class HttpProvider:
             json=payload,
             headers={**headers, **self.headers},
         )
+        if response.status_code in {400, 404, 422} and "tools" in payload:
+            detail = response.text.lower()
+            if any(term in detail for term in ("tool", "function calling", "function_call")):
+                raise ToolCapabilityError(response.text[:500])
         response.raise_for_status()
         return response.json()
-

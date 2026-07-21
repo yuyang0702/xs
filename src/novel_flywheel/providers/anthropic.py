@@ -1,4 +1,4 @@
-from novel_flywheel.domain.models import ModelRequest, ModelResponse
+from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.providers.http import HttpProvider
 
 
@@ -14,15 +14,24 @@ class AnthropicAdapter(HttpProvider):
             payload["system"] = system
         if request.temperature is not None:
             payload["temperature"] = request.temperature
+        if request.tools:
+            payload["tools"] = [{
+                "name": tool.name, "description": tool.description, "input_schema": tool.input_schema,
+            } for tool in request.tools]
         body = await self.post("messages", payload=payload, headers={
             "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
         })
         usage = body.get("usage", {})
+        content = body.get("content", [])
         return ModelResponse(
-            text="".join(part.get("text", "") for part in body.get("content", []) if part.get("type") == "text"),
+            text="".join(part.get("text", "") for part in content if part.get("type") == "text"),
+            tool_calls=[ToolCall(
+                id=part["id"], name=part["name"], arguments=part.get("input") or {},
+            ) for part in content if part.get("type") == "tool_use"],
             finish_reason=body.get("stop_reason"),
             input_tokens=usage.get("input_tokens", 0),
             output_tokens=usage.get("output_tokens", 0),
             raw_request_id=body.get("id"),
+            provider_state={"content": content},
         )

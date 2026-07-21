@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 from uuid import uuid4
 
@@ -23,6 +23,7 @@ class ResolvedModel:
     model_id: str
     model_name: str
     adapter: ProviderAdapter
+    capabilities: dict = field(default_factory=dict)
 
 
 class ProviderRegistry:
@@ -53,14 +54,16 @@ class ProviderRegistry:
         self.secrets.set(provider_id, api_key)
         return provider_id
 
-    def add_model(self, provider_id: str, display_name: str, model_name: str) -> str:
+    def add_model(self, provider_id: str, display_name: str, model_name: str,
+                  capabilities: dict | None = None) -> str:
         if self.db.get_provider(provider_id) is None:
             raise ValueError("provider_not_found")
         if not display_name.strip() or not model_name.strip():
             raise ValueError("invalid_model")
         model_id = str(uuid4())
         self.db.save_model(model_id=model_id, provider_id=provider_id,
-                           display_name=display_name.strip(), model_name=model_name.strip())
+                           display_name=display_name.strip(), model_name=model_name.strip(),
+                           capabilities=capabilities)
         return model_id
 
     def resolve(self, provider_id: str, model_id: str) -> ResolvedModel:
@@ -75,9 +78,8 @@ class ProviderRegistry:
             raise ValueError("missing_api_key")
         adapter = ADAPTERS[provider["protocol"]](provider["base_url"], secret,
                                                   provider["extra_headers"], provider["timeout_seconds"])
-        return ResolvedModel(provider_id, model_id, model["model_name"], adapter)
+        return ResolvedModel(provider_id, model_id, model["model_name"], adapter, model["capabilities"])
 
     def delete_provider(self, provider_id: str) -> None:
         self.db.delete_provider(provider_id)
         self.secrets.delete(provider_id)
-

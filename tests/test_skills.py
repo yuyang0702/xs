@@ -100,3 +100,17 @@ def test_javascript_skill_uses_configured_bundled_runtime(tmp_path) -> None:
     result = gate.run_required("archive", ["maintenance"], {"maintenance": ["scripts/run.js"]})
 
     assert result.receipts[0].output == "bundled"
+
+
+def test_project_skill_is_discovered_per_run_and_overrides_global(tmp_path) -> None:
+    global_root = tmp_path / "global"
+    write_skill(global_root, "dialogue", "Global voice")
+    project = tmp_path / "project"
+    gate = SkillGate(Database(tmp_path / "app.db"), SkillScanner([global_root]))
+    gate.db.migrate()
+
+    write_skill(project / ".agents" / "skills", "dialogue", "Project voice")
+    result = gate.run_required("draft", ["dialogue"], project_root=project)
+
+    assert "Project voice" in result.prompt
+    assert "Global voice" not in result.prompt

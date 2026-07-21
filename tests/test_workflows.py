@@ -44,6 +44,20 @@ class SetupGateway(FakeGateway):
         ])
 
 
+class VolumeGateway(FakeGateway):
+    def __init__(self) -> None:
+        self.roles = []
+        self.responses = iter([
+            "# Chapter Plan",
+            "# Draft",
+            json.dumps({"score": 90, "hard_fail": False, "issues": []}),
+            "# Polished",
+            json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+            json.dumps({"facts": [], "state": {"hero": {"location": "gate"}}}),
+            json.dumps({"score": 88, "hard_fail": False, "issues": []}),
+        ])
+
+
 def make_prompt_skills(root) -> None:
     for name in REQUIRED_SKILLS:
         folder = root / name
@@ -129,3 +143,24 @@ async def test_long_setup_writes_book_bible_and_canon(tmp_path) -> None:
 
     assert result["status"] == "completed"
     assert "Book Bible" in (project.path / "outline.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.asyncio
+async def test_volume_boundary_runs_audit_and_persists_result(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
+    ))
+    (project.path / "memory" / "volumes.json").write_text(json.dumps({"volumes": [{
+        "number": 1, "start_chapter": 1, "end_chapter": 1, "goal": "Reach the gate",
+    }]}), encoding="utf-8")
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(db, store, VolumeGateway(), SkillGate(db, SkillScanner([skill_root])))
+
+    await service.run_chapter(project.id, "Reach the gate", use_crewai=False)
+
+    audit = json.loads((project.path / "memory" / "audits" / "volume-01.json").read_text(encoding="utf-8"))
+    assert audit["status"] == "passed"

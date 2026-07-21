@@ -95,6 +95,20 @@ CREATE TABLE IF NOT EXISTS drift_findings(
   resolved INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS tool_receipts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id TEXT,
+  stage TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  execution_mode TEXT NOT NULL,
+  tool_name TEXT,
+  arguments_json TEXT NOT NULL DEFAULT '{}',
+  result_size INTEGER NOT NULL DEFAULT 0,
+  duration_ms INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL,
+  fallback_reason TEXT,
+  created_at TEXT NOT NULL
+);
 """
 
 
@@ -314,4 +328,25 @@ class Database:
             return [dict(row) for row in connection.execute(
                 "SELECT * FROM runs WHERE project_id = ? ORDER BY created_at DESC, rowid DESC",
                 (project_id,),
+            )]
+
+    def save_tool_receipt(self, *, run_id: str | None, stage: str, model_id: str,
+                          execution_mode: str, tool_name: str | None = None,
+                          arguments: dict | None = None, result_size: int = 0,
+                          duration_ms: int = 0, status: str = "succeeded",
+                          fallback_reason: str | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO tool_receipts(run_id, stage, model_id, execution_mode, tool_name, "
+                "arguments_json, result_size, duration_ms, status, fallback_reason, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                (run_id, stage, model_id, execution_mode, tool_name,
+                 json.dumps(arguments or {}, ensure_ascii=False), result_size, duration_ms,
+                 status, fallback_reason),
+            )
+
+    def list_tool_receipts(self, run_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM tool_receipts WHERE run_id = ? ORDER BY id", (run_id,),
             )]

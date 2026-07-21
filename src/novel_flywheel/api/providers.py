@@ -23,6 +23,7 @@ class ProviderCreate(BaseModel):
 class ModelCreate(BaseModel):
     display_name: str = Field(min_length=1)
     model_name: str = Field(min_length=1)
+    tool_support: Literal["auto", "enabled", "disabled"] = "auto"
 
 
 def get_registry(request: Request) -> ProviderRegistry:
@@ -62,7 +63,10 @@ def delete_provider(provider_id: str, registry: ProviderRegistry = Depends(get_r
 def create_model(provider_id: str, payload: ModelCreate,
                  registry: ProviderRegistry = Depends(get_registry)) -> dict:
     try:
-        model_id = registry.add_model(provider_id, payload.display_name, payload.model_name)
+        model_id = registry.add_model(
+            provider_id, payload.display_name, payload.model_name,
+            {"tool_support": payload.tool_support},
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
     model = registry.db.get_model(model_id)
@@ -100,4 +104,3 @@ def update_role_binding(role: str, payload: RoleBindingUpdate,
         registry.resolve(payload.fallback_provider_id, payload.fallback_model_id)
     registry.db.save_role_binding(role, **payload.model_dump())
     return {"role": role, **payload.model_dump()}
-

@@ -1,4 +1,6 @@
-from novel_flywheel.domain.models import ModelRequest, ModelResponse
+import json
+
+from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.providers.http import HttpProvider
 
 
@@ -25,14 +27,24 @@ class OpenAIResponsesAdapter(HttpProvider):
             payload["max_output_tokens"] = request.max_output_tokens
         if request.response_schema is not None:
             payload["text"] = {"format": {"type": "json_schema", **request.response_schema}}
+        if request.tools:
+            payload["tools"] = [{
+                "type": "function", "name": tool.name, "description": tool.description,
+                "parameters": tool.input_schema,
+            } for tool in request.tools]
         body = await self.post("responses", payload=payload,
                                headers={"Authorization": f"Bearer {self.api_key}"})
         usage = body.get("usage", {})
+        output = body.get("output", [])
         return ModelResponse(
             text=_output_text(body),
+            tool_calls=[ToolCall(
+                id=item.get("call_id") or item.get("id"), name=item["name"],
+                arguments=json.loads(item.get("arguments") or "{}"),
+            ) for item in output if item.get("type") == "function_call"],
             finish_reason=body.get("status"),
             input_tokens=usage.get("input_tokens", 0),
             output_tokens=usage.get("output_tokens", 0),
             raw_request_id=body.get("id"),
+            provider_state={"output": output},
         )
-

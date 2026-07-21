@@ -1,9 +1,10 @@
 import pytest
 
 from novel_flywheel.db import Database
-from novel_flywheel.domain.models import ModelResponse
+from novel_flywheel.domain.models import ModelResponse, ToolCall
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.providers.registry import ResolvedModel
+from novel_flywheel.providers.http import ToolCapabilityError
 
 
 class FakeAdapter:
@@ -38,3 +39,60 @@ async def test_gateway_rejects_unbound_role_before_model_call(tmp_path) -> None:
     db.migrate()
     with pytest.raises(LookupError, match="review"):
         await ModelGateway(db, FakeRegistry()).complete("review", "rules", "review")
+
+
+class ToolAdapter:
+    def __init__(self, unsupported=False):
+        self.calls = 0
+        self.unsupported = unsupported
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.unsupported and request.tools:
+            raise ToolCapabilityError("tools unsupported")
+        if request.tools and self.calls == 1:
+            return ModelResponse(tool_calls=[ToolCall(id="1", name="search_chapters", arguments={"query": "key"})])
+        return ModelResponse(text="approved", input_tokens=3, output_tokens=2)
+
+
+class ToolRegistry:
+    def __init__(self, adapter, tool_support="auto"):
+        self.adapter = adapter
+        self.tool_support = tool_support
+
+    def resolve(self, provider_id, model_id):
+        return ResolvedModel(provider_id, model_id, "actual-model", self.adapter, {"tool_support": self.tool_support})
+
+
+class Toolbox:
+    def definitions(self):
+        from novel_flywheel.domain.models import ToolDefinition
+        return [ToolDefinition(name="search_chapters", description="Search", input_schema={"type": "object"})]
+
+    def execute(self, name, arguments):
+        return {"items": [{"excerpt": "key evidence"}]}
+
+
+@pytest.mark.asyncio
+async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("review", "provider", "model", None, None)
+    result = await ModelGateway(db, ToolRegistry(ToolAdapter())).complete_with_tools(
+        "review", "rules", "review", Toolbox(), fallback_context=lambda: "fallback", run_id="run-1",
+    )
+    assert result.text == "approved"
+    assert result.receipt["execution_mode"] == "native_tools"
+    assert result.receipt["tool_call_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_gateway_falls_back_only_for_tool_capability_error(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("review", "provider", "model", None, None)
+    result = await ModelGateway(db, ToolRegistry(ToolAdapter(unsupported=True))).complete_with_tools(
+        "review", "rules", "review", Toolbox(), fallback_context=lambda: "EVIDENCE", run_id="run-1",
+    )
+    assert result.receipt["execution_mode"] == "degraded_prompt_mode"
+    assert result.receipt["fallback_reason"] == "tools unsupported"

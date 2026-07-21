@@ -53,7 +53,7 @@ $("#project-form").addEventListener("submit", async event => {
 async function run(path, body) {
   if (!state.activeProject) return toast("请先创建作品");
   const box = $("#run-state"); box.className = "run-state busy"; box.textContent = "飞轮运行中，请保持此页面打开...";
-  try { const result = await api(path, {method:"POST", body:body ? JSON.stringify(body) : undefined}); box.className = "run-state"; box.textContent = `已完成：${result.id}`; await renderActiveProject(); toast("飞轮执行完成"); }
+  try { const result = await api(path, {method:"POST", body:body ? JSON.stringify(body) : undefined}); const detail = await api(`/api/runs/${result.id}`); const receipts = detail.tool_receipts || []; const nativeCount = receipts.filter(r => r.execution_mode === "native_tools" && r.tool_name).length; const fallback = receipts.find(r => r.execution_mode === "degraded_prompt_mode"); const mode = fallback ? `提示降级：${fallback.fallback_reason || "模型不支持工具"}` : `原生工具 ${nativeCount} 次`; box.className = "run-state"; box.textContent = `已完成：${result.id} · ${mode}`; await renderActiveProject(); toast("飞轮执行完成"); }
   catch (error) { box.className = "run-state error"; box.textContent = error.message; }
 }
 $("#run-short").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/short`));

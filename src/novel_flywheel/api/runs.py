@@ -49,4 +49,5 @@ def get_run(run_id: str, request: Request) -> dict:
     run = request.app.state.registry.db.get_run(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"})
+    run["tool_receipts"] = request.app.state.registry.db.list_tool_receipts(run_id)
     return run

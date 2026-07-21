@@ -32,10 +32,11 @@ def test_add_model_mapping_to_custom_provider(tmp_path) -> None:
         "api_key": "secret",
     }).json()
     response = client.post(f"/api/providers/{provider['id']}/models", json={
-        "display_name": "Claude Sonnet", "model_name": "claude-sonnet-5",
+        "display_name": "Claude Sonnet", "model_name": "claude-sonnet-5", "tool_support": "disabled",
     })
     assert response.status_code == 201
     assert response.json()["model_name"] == "claude-sonnet-5"
+    assert response.json()["capabilities"]["tool_support"] == "disabled"
 
 
 def test_reject_unsupported_protocol_without_storing_key(tmp_path) -> None:

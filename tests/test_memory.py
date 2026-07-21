@@ -12,6 +12,8 @@ def test_memory_retrieves_relevant_chapters_without_loading_whole_book(tmp_path)
     context = memory.context("book", "brass key", limit=1)
 
     assert [item["chapter_id"] for item in context["relevant_chapters"]] == ["ch-1"]
+    assert "brass key" in context["relevant_chapters"][0]["excerpt"].lower()
+    assert len(context["relevant_chapters"][0]["excerpt"]) <= 1200
     assert "storm" not in str(context)
 
 
