@@ -1,0 +1,2 @@
+"""Local novel flywheel application."""
+
