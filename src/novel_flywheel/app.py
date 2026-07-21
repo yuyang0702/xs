@@ -1,6 +1,8 @@
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from novel_flywheel.api.providers import router as providers_router
 from novel_flywheel.api.projects import router as projects_router
@@ -39,6 +41,12 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.include_router(projects_router)
     app.include_router(runs_router)
     app.include_router(skills_router)
+    static_root = Path(__file__).parent / "static"
+    app.mount("/static", StaticFiles(directory=static_root), name="static")
+
+    @app.get("/", include_in_schema=False)
+    def console() -> FileResponse:
+        return FileResponse(static_root / "index.html")
 
     @app.get("/api/health")
     def health() -> dict[str, str]:

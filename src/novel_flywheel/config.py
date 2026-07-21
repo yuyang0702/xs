@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import os
 from pathlib import Path
 
 
@@ -20,5 +21,5 @@ class Settings:
 
 
 def default_settings() -> Settings:
-    return Settings(Path.home() / ".novel-flywheel")
-
+    configured = os.getenv("NOVEL_FLYWHEEL_DATA_DIR")
+    return Settings(Path(configured) if configured else Path.home() / ".novel-flywheel")

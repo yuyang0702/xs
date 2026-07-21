@@ -19,6 +19,9 @@ dev = [
   "respx>=0.22,<1",
 ]
 
+[project.scripts]
+novel-flywheel = "novel_flywheel.launcher:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

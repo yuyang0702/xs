@@ -1,0 +1,52 @@
+:root { color-scheme: light; --ink:#202421; --muted:#687069; --line:#d9ddd8; --paper:#f6f7f4; --white:#fff; --green:#176b50; --green-dark:#0f503b; --amber:#b36b16; --red:#a63d35; }
+* { box-sizing:border-box; }
+body { margin:0; color:var(--ink); background:var(--paper); font-family:"Segoe UI","Microsoft YaHei",sans-serif; letter-spacing:0; }
+button,input,select,textarea { font:inherit; letter-spacing:0; }
+button { cursor:pointer; }
+.sidebar { position:fixed; inset:0 auto 0 0; width:220px; padding:22px 14px; background:#202522; color:#eef2ed; display:flex; flex-direction:column; }
+.brand { display:flex; align-items:center; gap:10px; padding:0 8px 24px; font-size:17px; }
+.brand-mark { width:30px; height:30px; display:grid; place-items:center; background:#d9eadf; color:#173e30; font:700 18px Georgia,serif; }
+nav { display:grid; gap:4px; }
+.nav-item { width:100%; padding:11px 12px; border:0; background:transparent; color:#bfc7c1; text-align:left; border-left:3px solid transparent; }
+.nav-item:hover,.nav-item.active { color:#fff; background:#2d3430; border-left-color:#63b58d; }
+.local-state { margin-top:auto; padding:12px 9px; color:#aeb8b1; font-size:12px; border-top:1px solid #39413c; }
+.local-state span { display:inline-block; width:8px; height:8px; margin-right:7px; border-radius:50%; background:#5dc38c; }
+main { margin-left:220px; min-height:100vh; }
+.topbar { min-height:92px; padding:18px 32px; border-bottom:1px solid var(--line); background:var(--white); display:flex; align-items:center; justify-content:space-between; }
+h1,h2,h3,p { margin-top:0; }
+h1 { margin-bottom:0; font-size:25px; font-weight:650; }
+h2 { font-size:19px; }
+h3 { font-size:15px; }
+.eyebrow { margin-bottom:4px; color:var(--green); font-size:11px; font-weight:700; }
+.view { display:none; padding:28px 32px 48px; max-width:1400px; }
+.view.active { display:block; }
+.toolbar,.section-heading { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:20px; }
+.toolbar { align-items:center; }
+label { display:grid; gap:7px; color:#4f5751; font-size:13px; font-weight:600; }
+input,select,textarea { width:100%; border:1px solid #cbd1cc; background:#fff; color:var(--ink); padding:10px 11px; border-radius:4px; outline:none; }
+input:focus,select:focus,textarea:focus { border-color:var(--green); box-shadow:0 0 0 2px #dcece4; }
+textarea { resize:vertical; }
+button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font-weight:650; }
+.primary { background:var(--green); color:white; }
+.primary:hover { background:var(--green-dark); }
+.secondary { background:white; border-color:#c7cdc8; color:#303632; }
+.icon-button { width:38px; height:38px; padding:0; display:grid; place-items:center; background:#fff; border-color:#cbd1cc; font-size:22px; }
+.summary-band { min-height:76px; margin:0 -32px 24px; padding:18px 32px; background:#e8eee9; border-block:1px solid #d3ddd5; display:flex; gap:32px; align-items:center; flex-wrap:wrap; }
+.metric strong { display:block; font-size:17px; }.metric span { color:var(--muted); font-size:12px; }
+.workspace-grid { display:grid; grid-template-columns:minmax(300px,0.85fr) minmax(420px,1.4fr); gap:32px; }
+.action-panel { padding-right:30px; border-right:1px solid var(--line); }.action-panel button { margin:6px 0 16px; }
+.run-state { min-height:42px; padding:11px; background:#eef1ee; border-left:3px solid #9da79f; color:var(--muted); font-size:13px; }
+.run-state.busy { border-left-color:var(--amber); color:#765016; }.run-state.error { border-left-color:var(--red); color:var(--red); }
+.run-list,.data-list { display:grid; gap:8px; }
+.run-row,.data-row { background:#fff; border:1px solid var(--line); border-radius:6px; padding:13px 15px; display:flex; justify-content:space-between; gap:16px; align-items:center; }
+.status { font-size:12px; font-weight:700; color:var(--green); }.status.failed { color:var(--red); }
+.manuscript-panel { margin-top:32px; padding-top:26px; border-top:1px solid var(--line); }
+pre { white-space:pre-wrap; font:16px/1.9 "Microsoft YaHei",sans-serif; background:white; border:1px solid var(--line); padding:28px; max-height:65vh; overflow:auto; }
+.form-layout { max-width:980px; display:grid; gap:22px; }.field-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }.field-grid.two { grid-template-columns:1fr 1fr; }
+.segmented { border:0; padding:0; display:flex; gap:0; }.segmented legend { margin-bottom:8px; color:#4f5751; font-size:13px; font-weight:600; }.segmented label { display:block; }.segmented input { position:absolute; opacity:0; }.segmented span { display:block; padding:9px 18px; background:#fff; border:1px solid #cbd1cc; }.segmented label:first-of-type span { border-radius:4px 0 0 4px; }.segmented label:last-child span { border-radius:0 4px 4px 0; }.segmented input:checked + span { color:#fff; background:var(--green); border-color:var(--green); }
+.config-columns { display:grid; grid-template-columns:1fr 1fr; gap:40px; margin-bottom:34px; }.plain-panel { display:grid; gap:14px; }.plain-panel + .plain-panel { border-left:1px solid var(--line); padding-left:40px; }
+.routing { margin-bottom:32px; padding-block:24px; border-block:1px solid var(--line); }.binding-row { display:grid; grid-template-columns:180px minmax(260px,1fr) auto; gap:12px; align-items:center; margin:8px 0; }.binding-row strong { font-size:13px; }
+.skill-meta { color:var(--muted); font-size:12px; overflow-wrap:anywhere; }.badge { padding:3px 7px; background:#edf0ed; color:#555e57; font-size:11px; border-radius:3px; }
+#toast { position:fixed; right:24px; bottom:24px; max-width:420px; padding:12px 16px; background:#202522; color:#fff; border-radius:4px; opacity:0; transform:translateY(8px); pointer-events:none; transition:.2s; }
+#toast.show { opacity:1; transform:none; }
+@media (max-width:800px) { .sidebar { position:static; width:auto; height:auto; padding:12px; }.brand { padding-bottom:12px; } nav { grid-template-columns:repeat(4,minmax(120px,1fr)); overflow-x:auto; }.nav-item { white-space:nowrap; }.local-state { display:none; } main { margin-left:0; }.topbar,.view { padding-inline:18px; }.summary-band { margin-inline:-18px; padding-inline:18px; }.workspace-grid,.config-columns,.field-grid,.field-grid.two { grid-template-columns:1fr; }.action-panel { padding-right:0; padding-bottom:22px; border-right:0; border-bottom:1px solid var(--line); }.plain-panel + .plain-panel { border-left:0; border-top:1px solid var(--line); padding:24px 0 0; }.binding-row { grid-template-columns:1fr; }.toolbar { align-items:stretch; flex-direction:column; } }
