@@ -84,6 +84,36 @@ def test_runtime_applies_allowed_proposals_and_story_validation(tmp_path) -> Non
     assert not any(item["path"].startswith("snapshots/") for item in manifest)
 
 
+def test_runtime_applies_latest_duplicate_proposal_without_shifting_other_files(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "plot-structure", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("plot-structure"),
+        StoryCli(project, lambda command: "ok"),
+    )
+    toolbox.execute("create_file_proposal", {
+        "relative_path": "plot/arcs/main.md",
+        "content": "---\nname: First\ntype: main\n---\n# First\n",
+    })
+    toolbox.execute("update_file_proposal", {
+        "relative_path": "plot/arcs/main.md",
+        "content": "---\nname: Final\ntype: main\n---\n# Final\n",
+    })
+    toolbox.execute("update_file_proposal", {
+        "relative_path": "plot/timeline.md",
+        "content": "---\ntype: wrong\nstory: wrong\n---\n# Final Timeline\n",
+    })
+
+    toolbox.apply()
+
+    assert "# Final\n" in (project.path / "plot" / "arcs" / "main.md").read_text(encoding="utf-8")
+    timeline = (project.path / "plot" / "timeline.md").read_text(encoding="utf-8")
+    assert "type: timeline" in timeline
+    assert "# Final Timeline\n" in timeline
+    proposals = db.list_file_proposals("run")
+    assert [item["status"] for item in proposals] == ["superseded", "applied", "applied"]
+
+
 def test_runtime_canonicalizes_story_id_in_proposals(tmp_path) -> None:
     db, project = make_project(tmp_path)
     db.create_skill_execution("run", project.id, "story-init", "hash")

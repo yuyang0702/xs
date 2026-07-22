@@ -165,10 +165,13 @@ class SkillRuntimeToolbox:
         return {"proposal_id": proposal_id, "relative_path": relative, "status": "pending"}
 
     def apply(self) -> None:
-        proposals = [item for item in self.db.list_file_proposals(self.execution_id) if item["status"] == "pending"]
-        if not proposals:
+        pending = [item for item in self.db.list_file_proposals(self.execution_id) if item["status"] == "pending"]
+        if not pending:
             self.db.update_skill_execution(self.execution_id, "completed")
             return
+        latest_by_path = {item["relative_path"]: item for item in pending}
+        proposals = list(latest_by_path.values())
+        superseded = [item for item in pending if item["id"] not in {proposal["id"] for proposal in proposals}]
         files = list(dict.fromkeys([
             *(self.project.path / item["relative_path"] for item in proposals),
             *(path for path in self.project.path.rglob("_index.md")
@@ -178,16 +181,18 @@ class SkillRuntimeToolbox:
             self.project.path, self.project.path / "snapshots" / f"skill-{self.execution_id}", files,
         )
         try:
-            for proposal, path in zip(proposals, files):
-                atomic_write(path, proposal["content"])
+            for proposal in proposals:
+                atomic_write(self.project.path / proposal["relative_path"], proposal["content"])
             for command in ("reindex", "links", "validate"):
                 self.story_cli.run(command)
+            for proposal in superseded:
+                self.db.update_file_proposal(proposal["id"], "superseded")
             for proposal in proposals:
                 self.db.update_file_proposal(proposal["id"], "applied")
             self.db.update_skill_execution(self.execution_id, "completed")
         except Exception as exc:
             snapshot.restore()
-            for proposal in proposals:
+            for proposal in pending:
                 self.db.update_file_proposal(proposal["id"], "failed", str(exc))
             self.db.update_skill_execution(self.execution_id, "failed", str(exc))
             raise
