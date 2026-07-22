@@ -24,6 +24,7 @@ class FakeGateway:
             "# Story Plan\nA complete causal plan.",
             "# Draft\nRough story.",
             json.dumps({"score": 86, "hard_fail": False, "issues": ["tighten prose"]}),
+            json.dumps({"score": 84, "hard_fail": False, "issues": ["strengthen paid hook"]}),
             "# Final Story\nHuman, polished prose.",
             json.dumps({"score": 92, "hard_fail": False, "issues": []}),
             json.dumps({"facts": [{"subject": "hero", "fact": "survived"}]}),
@@ -52,6 +53,7 @@ class VolumeGateway(FakeGateway):
             "# Chapter Plan",
             "# Draft",
             json.dumps({"score": 90, "hard_fail": False, "issues": []}),
+            json.dumps({"score": 88, "hard_fail": False, "issues": []}),
             "# Polished",
             json.dumps({"score": 92, "hard_fail": False, "issues": []}),
             json.dumps({"facts": [], "state": {"hero": {"location": "gate"}}}),
@@ -85,13 +87,19 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     result = await service.run_short(project.id, use_crewai=False)
 
     assert result["status"] == "completed"
-    assert gateway.roles == ["planning", "draft", "review", "polish", "final_review", "maintenance"]
+    assert gateway.roles == [
+        "planning", "draft", "review", "review", "polish", "final_review", "maintenance",
+    ]
     assert (project.path / "manuscript" / "story.md").read_text(encoding="utf-8") == "# Final Story\nHuman, polished prose."
     assert (project.path / "chapters" / "chapter-01.md").is_file()
     assert json.loads((project.path / "memory" / "canon.json").read_text(encoding="utf-8"))["facts"]
     run_path = project.path / "runs" / result["id"]
     assert (run_path / "outputs" / "planning.md").is_file()
     assert (run_path / "outputs" / "final_review.md").is_file()
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(encoding="utf-8"))
+    assert report["route"]["enhanced"] is True
+    assert report["reader_review"] is not None
+    assert report["status"] == "passed"
     events = db.list_run_events(result["id"])
     assert any(item["event_type"] == "stage_started" and item["stage"] == "planning" for item in events)
     completed = next(item for item in events if item["event_type"] == "stage_completed")
@@ -206,3 +214,76 @@ async def test_volume_boundary_runs_audit_and_persists_result(tmp_path) -> None:
 
     audit = json.loads((project.path / "memory" / "audits" / "volume-01.json").read_text(encoding="utf-8"))
     assert audit["status"] == "passed"
+
+
+class RecordingGateway:
+    def __init__(self, responses) -> None:
+        self.roles = []
+        self.responses = iter(responses)
+
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.roles.append(role)
+        return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
+
+
+def quality_review(commercial=85, story=85, prose=85, *, hard_fail=False,
+                   decision="pass", issues=None) -> str:
+    return json.dumps({
+        "dimensions": {"commercial": commercial, "story": story, "prose": prose},
+        "hard_fail": hard_fail,
+        "decision": decision,
+        "issues": issues or [],
+    })
+
+
+@pytest.mark.asyncio
+async def test_ordinary_chapter_allows_one_corrective_cycle(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
+    ))
+    for number in range(1, 8):
+        (project.path / "chapters" / f"chapter-{number:02d}.md").write_text(
+            f"# Chapter {number}", encoding="utf-8",
+        )
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), "# Polish 1",
+        quality_review(commercial=70), "# Polish 2", quality_review(),
+        json.dumps({"facts": [], "state": {}}),
+    ])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    await service.run_chapter(project.id, "An ordinary transition", use_crewai=False)
+
+    assert gateway.roles.count("review") == 1
+    assert gateway.roles.count("polish") == 2
+    assert gateway.roles.count("final_review") == 2
+
+
+@pytest.mark.asyncio
+async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), quality_review(), "# Polish 1",
+        quality_review(commercial=70), "# Polish 2",
+        quality_review(story=65), "# Polish 3", quality_review(),
+        json.dumps({"facts": [], "state": {}}),
+    ])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    await service.run_chapter(project.id, "Introduce the hero", use_crewai=False)
+
+    assert gateway.roles.count("review") == 2
+    assert gateway.roles.count("polish") == 3
+    assert gateway.roles.count("final_review") == 3

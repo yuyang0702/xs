@@ -10,6 +10,7 @@ from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
+from novel_flywheel.quality import normalize_review, quality_gate, reader_sample, select_route
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.tools import StoryToolbox
@@ -129,27 +130,12 @@ class WorkflowService:
                 run_id, run_path, project, "review", constraints,
                 f"MEMORY:\n{json.dumps(context, ensure_ascii=False)}\n\nDRAFT:\n{draft}",
             ))
-            polished = await self._stage(
-                run_id, run_path, project, "polish", constraints,
-                f"DRAFT:\n{draft}\n\nREVIEW:\n{json.dumps(review, ensure_ascii=False)}",
+            polished, _ = await self._quality_polish(
+                run_id, run_path, project, constraints, draft, review,
+                chapter_number=chapter_number,
+                chapter_goal=chapter_goal,
+                volume_end=self._is_volume_end(project, chapter_number),
             )
-            final_review = None
-            for attempt in range(3):
-                final_review = self._review(await self._stage(
-                    run_id, run_path, project, "final_review", constraints, polished,
-                    suffix=f"-{attempt + 1}" if attempt else "",
-                ))
-                if final_review["score"] >= 80 and not final_review["hard_fail"]:
-                    break
-                if attempt < 2:
-                    polished = await self._stage(
-                        run_id, run_path, project, "polish", constraints,
-                        f"MANUSCRIPT:\n{polished}\n\nFINAL REVIEW:\n"
-                        f"{json.dumps(final_review, ensure_ascii=False)}",
-                        suffix=f"-{attempt + 2}",
-                    )
-            if final_review is None or final_review["score"] < 80 or final_review["hard_fail"]:
-                raise RuntimeError("Final review did not pass after three rounds")
             canon = self._json_object(await self._stage(
                 run_id, run_path, project, "maintenance", constraints, polished,
             ))
@@ -191,28 +177,9 @@ class WorkflowService:
             draft = await self._stage(run_id, run_path, project, "draft", constraints, plan)
             review_text = await self._stage(run_id, run_path, project, "review", constraints, draft)
             review = self._review(review_text)
-            polished = await self._stage(
-                run_id, run_path, project, "polish", constraints,
-                f"DRAFT:\n{draft}\n\nREVIEW:\n{json.dumps(review, ensure_ascii=False)}",
+            polished, _ = await self._quality_polish(
+                run_id, run_path, project, constraints, draft, review,
             )
-            final_review = None
-            for attempt in range(3):
-                final_review_text = await self._stage(
-                    run_id, run_path, project, "final_review", constraints, polished,
-                    suffix=f"-{attempt + 1}" if attempt else "",
-                )
-                final_review = self._review(final_review_text)
-                if final_review["score"] >= 80 and not final_review["hard_fail"]:
-                    break
-                if attempt < 2:
-                    polished = await self._stage(
-                        run_id, run_path, project, "polish", constraints,
-                        f"MANUSCRIPT:\n{polished}\n\nFINAL REVIEW:\n"
-                        f"{json.dumps(final_review, ensure_ascii=False)}",
-                        suffix=f"-{attempt + 2}",
-                    )
-            if final_review is None or final_review["score"] < 80 or final_review["hard_fail"]:
-                raise RuntimeError("Final review did not pass after three rounds")
             canon_text = await self._stage(run_id, run_path, project, "maintenance", constraints, polished)
             canon = self._json_object(canon_text)
             if not isinstance(canon.get("facts"), list):
@@ -231,6 +198,146 @@ class WorkflowService:
             snapshot.restore()
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
+
+    async def _quality_polish(self, run_id: str, run_path: Path, project: Project,
+                              constraints: str, draft: str, review: dict,
+                              chapter_number: int | None = None,
+                              chapter_goal: str = "", volume_end: bool = False) -> tuple[str, dict]:
+        route = select_route(
+            project.mode, chapter_number, chapter_goal, volume_end, review,
+        )
+        report = {
+            "route": route,
+            "initial_review": review,
+            "reader_review": None,
+            "final_attempts": [],
+            "status": "running",
+            "failure_reasons": [],
+        }
+        self._write_quality_report(run_path, report)
+        self.db.add_run_event(
+            run_id, "info", "quality_route",
+            "已选择重点质量流程" if route["enhanced"] else "已选择标准质量流程",
+            stage="quality", metadata=route,
+        )
+        self._quality_assessed_event(run_id, "editorial", review)
+
+        reader_review = None
+        if route["enhanced"]:
+            self.db.add_run_event(
+                run_id, "info", "quality_escalated", "正在执行目标读者模拟",
+                stage="review", metadata={"reasons": route["reasons"]},
+            )
+            reader_review = await self._reader_review(
+                run_id, run_path, project, constraints, draft,
+            )
+            report["reader_review"] = reader_review
+            self._quality_assessed_event(run_id, "target_reader", reader_review)
+            self._write_quality_report(run_path, report)
+
+        findings = {"editorial": review, "target_reader": reader_review}
+        polished = await self._stage(
+            run_id, run_path, project, "polish", constraints,
+            f"DRAFT:\n{draft}\n\nSTRUCTURED FINDINGS:\n"
+            f"{json.dumps(findings, ensure_ascii=False)}",
+        )
+
+        reasons: list[str] = []
+        for attempt in range(route["max_corrections"] + 1):
+            final_review = self._review(await self._stage(
+                run_id, run_path, project, "final_review", constraints, polished,
+                suffix=f"-{attempt + 1}" if attempt else "",
+            ))
+            passed, reasons = quality_gate(final_review)
+            report["final_attempts"].append({
+                "attempt": attempt + 1,
+                "review": final_review,
+                "passed": passed,
+                "reasons": reasons,
+            })
+            self._quality_assessed_event(run_id, "chief_editor", final_review, attempt + 1)
+            self._write_quality_report(run_path, report)
+            if passed:
+                report["status"] = "passed"
+                report["failure_reasons"] = []
+                self._write_quality_report(run_path, report)
+                self.db.add_run_event(
+                    run_id, "success", "quality_gate", "质量门槛已通过",
+                    stage="quality", metadata={
+                        "attempt": attempt + 1,
+                        "score": final_review["score"],
+                        "dimensions": final_review["dimensions"],
+                    },
+                )
+                return polished, report
+            if attempt < route["max_corrections"]:
+                self.db.add_run_event(
+                    run_id, "warning", "quality_revision",
+                    f"质量未达标，开始第 {attempt + 1} 次定向返工",
+                    stage="polish", metadata={
+                        "attempt": attempt + 1, "reasons": reasons,
+                    },
+                )
+                polished = await self._stage(
+                    run_id, run_path, project, "polish", constraints,
+                    f"MANUSCRIPT:\n{polished}\n\nCHIEF EDITOR FINDINGS:\n"
+                    f"{json.dumps(final_review, ensure_ascii=False)}",
+                    suffix=f"-{attempt + 2}",
+                )
+
+        report["status"] = "failed"
+        report["failure_reasons"] = reasons
+        self._write_quality_report(run_path, report)
+        self.db.add_run_event(
+            run_id, "error", "quality_gate", "达到返工上限后仍未通过质量门槛",
+            stage="quality", metadata={"reasons": reasons},
+        )
+        raise RuntimeError("Editorial quality gate did not pass within the correction limit")
+
+    async def _reader_review(self, run_id: str, run_path: Path, project: Project,
+                             constraints: str, text: str, suffix: str = "") -> dict:
+        profile = {
+            "platform": project.metadata.get("platform") or "unspecified",
+            "genre": project.metadata.get("genre") or "unspecified",
+            "audience": project.metadata.get("audience") or "target genre readers",
+            "mode": project.mode,
+        }
+        prompt = (
+            "TARGET READER SIMULATION. Do not rewrite the story. Read only the labeled excerpts and "
+            "judge whether this target reader would continue, pay, and feel the promised payoff. "
+            "Identify abandonment points, weak hooks, fake suspense, unearned emotion,套路化表达, and "
+            "AI-like prose. Return the same strict quality-review JSON schema.\n\n"
+            f"READER PROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
+            f"LABELED EXCERPTS:\n{reader_sample(text, project.mode)}"
+        )
+        return self._review(await self._stage(
+            run_id, run_path, project, "review", constraints, prompt,
+            suffix=f"-reader{suffix}",
+        ))
+
+    @staticmethod
+    def _write_quality_report(run_path: Path, report: dict) -> None:
+        atomic_write(
+            run_path / "outputs" / "quality-report.json",
+            json.dumps(report, ensure_ascii=False, indent=2),
+        )
+
+    def _quality_assessed_event(self, run_id: str, source: str, review: dict,
+                                attempt: int | None = None) -> None:
+        metadata = {
+            "source": source,
+            "score": review["score"],
+            "dimensions": review["dimensions"],
+            "hard_fail": review["hard_fail"],
+            "decision": review["decision"],
+        }
+        if attempt is not None:
+            metadata["attempt"] = attempt
+        self.db.add_run_event(
+            run_id, "info", "quality_assessed",
+            f"{source} 质量评分：{review['score']}",
+            stage="quality", metadata=metadata,
+        )
 
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "") -> str:
@@ -259,9 +366,13 @@ class WorkflowService:
                         self.memory.context(project.id, user[:500]), ensure_ascii=False,
                     ),
                     run_id=run_id,
+                    max_output_tokens=self._stage_output_budget(stage),
                 )
             else:
-                result = await self.gateway.complete(stage, system, user)
+                result = await self.gateway.complete(
+                    stage, system, user,
+                    max_output_tokens=self._stage_output_budget(stage),
+                )
             name = f"{stage}{suffix}"
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
@@ -316,6 +427,10 @@ class WorkflowService:
         return next((volume for volume in data.get("volumes", [])
                      if int(volume.get("start_chapter", 0)) <= chapter_number <= int(volume.get("end_chapter", -1))), None)
 
+    def _is_volume_end(self, project: Project, chapter_number: int) -> bool:
+        volume = self._volume_for_chapter(project, chapter_number)
+        return bool(volume and chapter_number == int(volume.get("end_chapter", -1)))
+
     def _ensure_previous_volume_passed(self, project: Project, chapter_number: int) -> None:
         volume = self._volume_for_chapter(project, chapter_number)
         if not volume or chapter_number != int(volume.get("start_chapter", 0)) or chapter_number == 1:
@@ -339,8 +454,9 @@ class WorkflowService:
         text = await self._stage(run_id, run_path, project, "final_review", constraints, evidence,
                                  suffix=f"-volume-{int(volume['number']):02d}")
         review = self._review(text)
+        passed, _ = quality_gate(review)
         report = {**review, "volume": int(volume["number"]),
-                  "status": "passed" if review["score"] >= 80 and not review["hard_fail"] else "blocked"}
+                  "status": "passed" if passed else "blocked"}
         audit = project.path / "memory" / "audits" / f"volume-{int(volume['number']):02d}.json"
         atomic_write(audit, json.dumps(report, ensure_ascii=False, indent=2))
         for issue in review.get("issues", []):
@@ -372,13 +488,13 @@ class WorkflowService:
 
     @classmethod
     def _review(cls, text: str) -> dict:
-        review = cls._json_object(text)
-        score = review.get("score")
-        if not isinstance(score, (int, float)) or not 0 <= score <= 100:
-            raise ValueError("Review score must be between 0 and 100")
-        review.setdefault("hard_fail", False)
-        review.setdefault("issues", [])
-        return review
+        return normalize_review(cls._json_object(text))
+
+    @staticmethod
+    def _stage_output_budget(stage: str) -> int | None:
+        if stage in {"planning", "review", "final_review", "maintenance"}:
+            return 4096
+        return None
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:

@@ -1,9 +1,21 @@
 STAGE_SYSTEM = {
     "planning": "Design a complete causal story plan. Preserve the requested ending and hard constraints.",
     "draft": "Write the complete fiction draft from the approved plan. Prioritize scenes, causality, and voice.",
-    "review": "Audit compliance, causality, character knowledge, OOC, pacing, and length. Return strict JSON.",
+    "review": (
+        "Act as a commercial fiction editor. Audit paid-reading motivation, hook and payoff density, "
+        "causality, emotion, character knowledge, OOC, continuity, prose, and compliance. Return only "
+        "strict JSON with dimensions commercial/story/prose (0-100), hard_fail, decision "
+        "pass/revise/rewrite, and issues containing category, severity, evidence, and action. "
+        "Compliance or canon violations set hard_fail=true; compliance never increases quality scores."
+    ),
     "polish": "Revise only from the supplied draft and findings. Preserve plot facts while removing AI-like prose.",
-    "final_review": "Independently audit the revised manuscript. Return strict JSON and do not rewrite prose.",
+    "final_review": (
+        "Act as the independent chief editor. Audit the revised manuscript without rewriting it. "
+        "Return only strict JSON with dimensions commercial/story/prose (0-100), hard_fail, decision "
+        "pass/revise/rewrite, and issues containing category, severity, evidence, and action. "
+        "Measure actual reading quality, emotional payoff, and paid-reading pull. Compliance or canon "
+        "violations set hard_fail=true and never add quality points."
+    ),
     "maintenance": "Extract durable canonical facts from the final text. Return strict JSON with a facts array.",
 }
 
