@@ -264,6 +264,8 @@ class WorkflowService:
             "final_attempts": [],
             "status": "running",
             "failure_reasons": [],
+            "best_attempt": None,
+            "best_score": None,
         }
         self._write_quality_report(run_path, report)
         self.db.add_run_event(
@@ -322,7 +324,11 @@ class WorkflowService:
         )
 
         reasons: list[str] = []
+        best_polished = polished
+        best_review: dict | None = None
+        best_attempt: int | None = None
         for attempt in range(route["max_corrections"] + 1):
+            reviewed_polished = polished
             final_input = (reader_sample(polished, project.mode, limit=6000)
                            if project.mode == "short" else polished)
             final_review = self._review(await self._stage_with_role_fallback(
@@ -337,6 +343,23 @@ class WorkflowService:
                 "passed": passed,
                 "reasons": reasons,
             })
+            if best_review is None or final_review["score"] > best_review["score"]:
+                best_review = final_review
+                best_polished = reviewed_polished
+                best_attempt = attempt + 1
+                report["best_attempt"] = best_attempt
+                report["best_score"] = final_review["score"]
+            elif final_review["score"] < best_review["score"]:
+                self.db.add_run_event(
+                    run_id, "warning", "quality_regression",
+                    "本轮评分下降，下一轮将恢复当前最高分版本",
+                    stage="quality", metadata={
+                        "attempt": attempt + 1,
+                        "score": final_review["score"],
+                        "best_attempt": best_attempt,
+                        "best_score": best_review["score"],
+                    },
+                )
             self._quality_assessed_event(run_id, "chief_editor", final_review, attempt + 1)
             self._write_quality_report(run_path, report)
             if passed:
@@ -361,13 +384,14 @@ class WorkflowService:
                     },
                 )
                 polished = await self._polish_short_segments(
-                    run_id, run_path, project, constraints, polished,
+                    run_id, run_path, project, constraints, best_polished,
                     json.dumps(final_review, ensure_ascii=False),
-                    suffix=f"-{attempt + 2}",
+                    suffix=f"-{attempt + 2}", structural=True,
                 )
 
         report["status"] = "failed"
         report["failure_reasons"] = reasons
+        atomic_write(run_path / "outputs" / "best-candidate.md", best_polished)
         self._write_quality_report(run_path, report)
         self.db.add_run_event(
             run_id, "error", "quality_gate", "达到返工上限后仍未通过质量门槛",
@@ -477,13 +501,21 @@ class WorkflowService:
 
     async def _polish_short_segments(self, run_id: str, run_path: Path, project: Project,
                                      constraints: str, text: str, findings: str,
-                                     suffix: str = "") -> str:
+                                     suffix: str = "", structural: bool = False) -> str:
         parts = self._split_segments(text)
         findings = findings[:4000]
+        revision_rule = (
+            "You may replace or remove implausible events and reorder material inside this segment "
+            "to resolve the findings. Preserve the core premise, required ending, established facts, "
+            "and approximate length."
+            if structural else
+            "Preserve events and length; remove AI-like phrasing and apply the findings."
+        )
         if len(parts) == 1:
             return await self._stage(
                 run_id, run_path, project, "polish", constraints,
-                f"MANUSCRIPT:\n{text}\n\nSTRUCTURED FINDINGS:\n{findings}", suffix=suffix,
+                f"REVISION RULE:\n{revision_rule}\n\nMANUSCRIPT:\n{text}\n\n"
+                f"STRUCTURED FINDINGS:\n{findings}", suffix=suffix,
             )
         polished_parts: list[str] = []
         fallback_only = False
@@ -491,7 +523,7 @@ class WorkflowService:
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             prompt = (
                 f"POLISH SEGMENT {index} OF {len(parts)}. Return only the revised prose for this segment. "
-                "Preserve events and length; remove AI-like phrasing and apply the findings.\n\n"
+                f"{revision_rule}\n\n"
                 f"PREVIOUS POLISHED END:\n{previous_tail}\n\nMANUSCRIPT SEGMENT:\n{part}\n\n"
                 f"STRUCTURED FINDINGS:\n{findings}"
             )

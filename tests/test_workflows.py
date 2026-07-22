@@ -436,7 +436,9 @@ async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_pat
     failed = quality_review(commercial=60, story=60, prose=60, decision="revise")
     gateway = RecordingGateway([
         "# Plan", "# Draft", quality_review(), quality_review(), "# Polish 1",
-        failed, "# Polish 2", failed, "# Polish 3", failed,
+        quality_review(commercial=70, story=70, prose=70, decision="revise"),
+        "# Polish 2", failed, "# Polish 3",
+        quality_review(commercial=65, story=65, prose=65, decision="revise"),
     ])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
 
@@ -450,7 +452,14 @@ async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_pat
     assert report["status"] == "failed"
     assert len(report["final_attempts"]) == 3
     assert report["failure_reasons"]
+    assert report["best_attempt"] == 1
+    assert report["best_score"] == 70
+    assert (project.path / "runs" / run["id"] / "outputs" / "best-candidate.md").read_text(
+        encoding="utf-8",
+    ) == "# Polish 1"
     assert not (project.path / "manuscript" / "story.md").exists()
     events = db.list_run_events(run["id"])
     assert any(item["event_type"] == "quality_gate" and item["severity"] == "error"
                for item in events)
+    corrective_calls = [call for call in gateway.calls if call["role"] == "polish"][1:]
+    assert all("replace or remove implausible events" in call["user"] for call in corrective_calls)
