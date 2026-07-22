@@ -479,6 +479,7 @@ class WorkflowService:
                                      constraints: str, text: str, findings: str,
                                      suffix: str = "") -> str:
         parts = self._split_segments(text)
+        findings = findings[:4000]
         if len(parts) == 1:
             return await self._stage(
                 run_id, run_path, project, "polish", constraints,
@@ -684,7 +685,7 @@ class WorkflowService:
     def _stage_output_budget(stage: str) -> int | None:
         if stage == "planning":
             return 8192
-        if stage in {"review", "final_review", "maintenance"}:
+        if stage in {"review", "polish", "final_review", "maintenance"}:
             return 4096
         return None
 
