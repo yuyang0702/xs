@@ -57,3 +57,30 @@ def run_stage(stage: str, payload: StageRun, request: Request) -> dict:
     except RuntimeError as exc:
         raise HTTPException(status_code=424, detail={"code": "required_skill_failed", "message": str(exc)}) from exc
     return {"prompt": result.prompt, "receipts": [asdict(receipt) for receipt in result.receipts]}
+
+
+class RuntimeRun(BaseModel):
+    answers: dict = {}
+
+
+@router.post("/projects/{project_id}/skill-runtime/{skill_name}")
+async def run_skill_runtime(project_id: str, skill_name: str, payload: RuntimeRun,
+                            request: Request) -> dict:
+    try:
+        return await request.app.state.skill_runtime.run(project_id, skill_name, payload.answers)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "skill_not_found", "message": str(exc)}) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=409, detail={"code": "skill_contract_required", "message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=422, detail={"code": "skill_runtime_failed", "message": str(exc)}) from exc
+
+
+@router.get("/projects/{project_id}/locks")
+def list_project_locks(project_id: str, request: Request) -> list[dict]:
+    return get_gate(request).db.list_locks(project_id)
+
+
+@router.get("/projects/{project_id}/change-requests")
+def list_change_requests(project_id: str, request: Request) -> list[dict]:
+    return get_gate(request).db.list_change_requests(project_id)

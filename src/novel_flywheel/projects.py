@@ -91,6 +91,14 @@ class ProjectStore:
             if path.is_file():
                 parts.append(path.read_text(encoding="utf-8"))
         parts.append((project.path / "constraints.md").read_text(encoding="utf-8"))
+        locks_path = project.path / "continuity" / "locks.json"
+        if locks_path.is_file():
+            locks = json.loads(locks_path.read_text(encoding="utf-8")).get("locks", [])
+            if locks:
+                parts.append("# Program-enforced locked story facts\n\n" + "\n".join(
+                    f"- {item['key']}: {json.dumps(item.get('value'), ensure_ascii=False)}"
+                    for item in locks
+                ))
         return "\n\n".join(parts)
 
     @staticmethod
@@ -108,23 +116,24 @@ class ProjectStore:
             encoding="utf-8",
         )
         registry_files = {
-            "chapters/_index.md": "chapter-registry",
-            "characters/_index.md": "character-registry",
-            "continuity/promises/_index.md": "promise-registry",
-            "continuity/questions/_index.md": "question-registry",
-            "glossary/_index.md": "glossary-registry",
-            "plot/_index.md": "plot-registry",
-            "scenes/_index.md": "scene-registry",
-            "worldbuilding/_index.md": "worldbuilding-registry",
+            "chapters/_index.md": ("chapter-registry", "# Chapters\n\n| # | Title | POV | Status | Word Count | File |\n|---|---|---|---|---|---|\n\n## Total Word Count: 0"),
+            "characters/_index.md": ("character-registry", "# Characters\n\n| Name | Role | Status | File |\n|---|---|---|---|\n\n## Relationship Map\n\n## Family Trees"),
+            "continuity/promises/_index.md": ("promise-registry", "# Story Promises\n\n| Promise | Status | Planted | Payoff | File |\n|---|---|---|---|---|"),
+            "continuity/questions/_index.md": ("question-registry", "# Open Questions\n\n| Question | Status | Opened | Answered | File |\n|---|---|---|---|---|"),
+            "glossary/_index.md": ("glossary-registry", "# Glossary\n\n| Term | Meaning | File |\n|---|---|---|"),
+            "plot/_index.md": ("plot-registry", "# Plot Structure\n\n## Story Structure\n\n**Model:** Three-Act Structure\n\n## Arcs\n\n| Name | Type | Status | File |\n|---|---|---|---|\n\n## Theme Tracking"),
+            "scenes/_index.md": ("scene-registry", "# Scenes\n\n| Scene | Chapter | POV | Location | Status |\n|---|---|---|---|---|"),
+            "worldbuilding/_index.md": ("world-registry", "# Worldbuilding\n\n## World Overview\n\n## Locations\n\n| Name | Type | Region | File |\n|---|---|---|---|\n\n## Systems\n\n| Name | Type | File |\n|---|---|---|\n\n## Factions\n\n| Name | Type | Status | File |\n|---|---|---|---|\n\n## Artifacts\n\n| Name | Type | Status | File |\n|---|---|---|---|"),
         }
-        for relative, kind in registry_files.items():
+        for relative, (kind, body) in registry_files.items():
             (path / relative).write_text(
-                f"---\ntype: {kind}\nstory: {path.name}\n---\n\n# Index\n",
+                f"---\ntype: {kind}\nstory: {path.name}\n---\n\n{body}\n",
                 encoding="utf-8",
             )
         (path / "continuity" / "state.md").write_text(
-            "---\ntype: continuity-state\n---\n\n# Current State\n", encoding="utf-8",
+            "---\ntype: continuity-state\ncurrent-chapter: 0\ncharacter-state: []\nobject-state: []\nknowledge-state: []\n---\n\n# Current State\n", encoding="utf-8",
         )
+        (path / "continuity" / "locks.json").write_text("{\n  \"locks\": []\n}\n", encoding="utf-8")
         (path / "plot" / "timeline.md").write_text(
             "---\ntype: timeline\n---\n\n# Timeline\n", encoding="utf-8",
         )

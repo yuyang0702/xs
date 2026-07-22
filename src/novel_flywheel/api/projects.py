@@ -47,3 +47,21 @@ def create_project(payload: ProjectCreate, request: Request) -> dict:
         return _public(get_store(request).create(payload))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": "invalid_project", "message": str(exc)}) from exc
+
+
+@router.get("/projects/{project_id}/migration")
+def migration_preview(project_id: str, request: Request) -> dict:
+    try:
+        return request.app.state.migrator.dry_run(get_store(request).get(project_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.post("/projects/{project_id}/migration")
+def migrate_project(project_id: str, request: Request) -> dict:
+    try:
+        return request.app.state.migrator.migrate(get_store(request).get(project_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except (ValueError, RuntimeError, PermissionError) as exc:
+        raise HTTPException(status_code=422, detail={"code": "migration_failed", "message": str(exc)}) from exc

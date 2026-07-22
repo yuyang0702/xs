@@ -8,6 +8,7 @@ from novel_flywheel.api.providers import router as providers_router
 from novel_flywheel.api.projects import router as projects_router
 from novel_flywheel.api.runs import router as runs_router
 from novel_flywheel.api.skills import router as skills_router
+from novel_flywheel.api.wizards import router as wizards_router
 from novel_flywheel.config import default_settings
 from novel_flywheel.db import Database
 from novel_flywheel.providers.registry import ProviderRegistry
@@ -16,6 +17,9 @@ from novel_flywheel.projects import ProjectStore
 from novel_flywheel.secrets import KeyringSecretStore, SecretStore
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.workflows import WorkflowService
+from novel_flywheel.wizard import SkillFormCatalog, WizardService
+from novel_flywheel.skill_runtime import SkillRuntimeService
+from novel_flywheel.migration import ProjectMigrator
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -33,14 +37,26 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     )
     roots = skill_roots or [Path.home() / ".codex" / "skills", Path.cwd() / ".agents" / "skills"]
     app.state.skill_gate = SkillGate(db, SkillScanner(roots))
+    app.state.wizards = WizardService(
+        db, app.state.projects,
+        SkillFormCatalog(app.state.skill_gate, settings.data_dir / "skill-forms"),
+    )
+    gateway = ModelGateway(db, app.state.registry)
     app.state.workflows = workflow_service or WorkflowService(
-        db, app.state.projects, ModelGateway(db, app.state.registry), app.state.skill_gate,
+        db, app.state.projects, gateway, app.state.skill_gate,
         settings.data_dir / "crewai",
+    )
+    app.state.skill_runtime = SkillRuntimeService(
+        db, app.state.projects, gateway, app.state.skill_gate,
+    )
+    app.state.migrator = ProjectMigrator(
+        lambda project, command: app.state.skill_runtime._run_story_cli(project, [command, "."]),
     )
     app.include_router(providers_router)
     app.include_router(projects_router)
     app.include_router(runs_router)
     app.include_router(skills_router)
+    app.include_router(wizards_router)
     static_root = Path(__file__).parent / "static"
     app.mount("/static", StaticFiles(directory=static_root), name="static")
 

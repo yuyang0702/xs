@@ -27,7 +27,7 @@
     <section id="workbench" class="view active">
       <div class="toolbar">
         <label>当前作品<select id="active-project"></select></label>
-        <button id="open-manuscript" class="secondary">查看正文</button>
+        <div><button id="migrate-project" class="secondary">迁移标准结构</button> <button id="open-manuscript" class="secondary">查看正文</button></div>
       </div>
       <div id="project-summary" class="summary-band"></div>
       <div class="workspace-grid">
@@ -50,25 +50,24 @@
     </section>
 
     <section id="projects" class="view">
-      <form id="project-form" class="form-layout">
-        <div class="section-heading"><div><p class="eyebrow">PROJECT SETUP</p><h2>创建作品</h2></div><button class="primary" type="submit">创建</button></div>
+      <div class="section-heading"><div><p class="eyebrow">SKILL-DRIVEN SETUP</p><h2>建书向导</h2></div></div>
+      <div id="wizard-launcher" class="wizard-launcher">
         <fieldset class="segmented"><legend>作品模式</legend>
-          <label><input type="radio" name="mode" value="short" checked><span>短篇小说</span></label>
-          <label><input type="radio" name="mode" value="long"><span>长篇连载</span></label>
+          <label><input type="radio" name="wizard-mode" value="short" checked><span>短篇小说</span></label>
+          <label><input type="radio" name="wizard-mode" value="long"><span>长篇连载</span></label>
         </fieldset>
-        <div class="field-grid">
-          <label>作品名<input name="title" required maxlength="120"></label>
-          <label>题材<input name="genre" required placeholder="悬疑、都市、玄幻"></label>
-          <label>目标字数<input name="target_words" type="number" min="500" max="5000000" value="8000" required></label>
-          <label>叙事视角<select name="pov"><option value="third-limited">第三人称限知</option><option value="first">第一人称</option><option value="omniscient">全知视角</option></select></label>
-          <label>基调<input name="tone" value="自然、克制"></label>
-        </div>
-        <label>核心创意或已有梗概<textarea name="premise" rows="5" required></textarea></label>
-        <div class="field-grid two">
-          <label>必须保留<textarea name="must_include" rows="4"></textarea></label>
-          <label>禁止出现<textarea name="must_avoid" rows="4"></textarea></label>
-        </div>
-      </form>
+        <button id="start-wizard" class="primary">开始新向导</button>
+        <label>继续草稿<select id="wizard-drafts"><option value="">暂无草稿</option></select></label>
+      </div>
+      <div id="wizard-shell" class="wizard-layout" hidden>
+        <aside id="wizard-steps" class="wizard-steps" aria-label="建书步骤"></aside>
+        <section class="wizard-main">
+          <div class="section-heading"><div><p id="wizard-source" class="eyebrow"></p><h3 id="wizard-title"></h3></div><span id="wizard-save-state" class="skill-meta">已保存</span></div>
+          <div id="wizard-fields" class="wizard-fields"></div>
+          <div class="wizard-actions"><button id="wizard-back" class="secondary">上一步</button><button id="wizard-next" class="primary">下一步</button><button id="wizard-analyze" class="secondary" hidden>检查关键缺口</button><button id="wizard-confirm" class="primary" hidden>确认并创建项目</button></div>
+        </section>
+        <aside class="wizard-summary"><h3>已固定内容</h3><div id="wizard-summary"></div></aside>
+      </div>
     </section>
 
     <section id="models" class="view">

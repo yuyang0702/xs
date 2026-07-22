@@ -1,4 +1,4 @@
-const state = { projects: [], providers: [], skills: [], activeProject: null };
+const state = { projects: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0 };
 const roles = {
   planning: "开书与章节规划", draft: "正文粗稿", review: "逻辑与合规审核",
   polish: "精修与去 AI 味", final_review: "独立终审", maintenance: "项目资料更新"
@@ -24,8 +24,8 @@ document.querySelectorAll(".nav-item").forEach(button => button.addEventListener
 }));
 
 async function loadAll() {
-  [state.projects, state.providers, state.skills] = await Promise.all([api("/api/projects"), api("/api/providers"), api("/api/skills")]);
-  renderProjects(); renderProviders(); renderSkills(); renderBindings();
+  [state.projects, state.providers, state.skills, state.wizards] = await Promise.all([api("/api/projects"), api("/api/providers"), api("/api/skills"), api("/api/wizards")]);
+  renderProjects(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts();
 }
 function renderProjects() {
   const select = $("#active-project");
@@ -44,11 +44,47 @@ async function renderActiveProject() {
 }
 $("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); renderActiveProject(); });
 
-$("#project-form").addEventListener("submit", async event => {
-  event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); data.target_words = Number(data.target_words);
-  try { const project = await api("/api/projects", {method:"POST", body:JSON.stringify(data)}); state.projects.unshift(project); state.activeProject = project; renderProjects(); toast("作品已创建"); document.querySelector('[data-view="workbench"]').click(); }
-  catch (error) { toast(error.message); }
-});
+function renderWizardDrafts() {
+  const drafts = state.wizards.filter(item => item.status === "draft");
+  $("#wizard-drafts").innerHTML = '<option value="">选择草稿</option>' + drafts.map(item => `<option value="${item.id}">${escapeHtml(item.answers?.title?.value || (item.mode === "long" ? "未命名长篇" : "未命名短篇"))}</option>`).join("");
+}
+function fieldControl(field, answer) {
+  const value = answer?.value ?? field.default ?? "";
+  if (field.type === "textarea") return `<textarea class="field-value" rows="4">${escapeHtml(value)}</textarea>`;
+  if (field.type === "select") return `<select class="field-value">${(field.options || []).map(option => `<option value="${escapeHtml(option)}" ${String(option) === String(value) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+  if (field.type === "boolean") return `<input class="field-value" type="checkbox" ${value ? "checked" : ""}>`;
+  return `<input class="field-value" type="${field.type === "number" ? "number" : "text"}" value="${escapeHtml(value)}">`;
+}
+function renderWizard() {
+  const wizard = state.activeWizard; if (!wizard) return;
+  $("#wizard-shell").hidden = false; $("#wizard-launcher").hidden = true;
+  const steps = wizard.schema.steps; state.wizardStep = Math.max(0, Math.min(state.wizardStep, steps.length - 1));
+  $("#wizard-steps").innerHTML = steps.map((step,index) => `<button class="wizard-step ${index === state.wizardStep ? "active" : ""}" data-wizard-step="${index}"><span>${index + 1}</span>${escapeHtml(step.title)}</button>`).join("");
+  const step = steps[state.wizardStep]; $("#wizard-title").textContent = step.title;
+  $("#wizard-source").textContent = step.skill_name ? `${step.skill_name} · ${step.skill_hash.slice(0,12)}` : "CORE REQUIREMENTS";
+  $("#wizard-fields").innerHTML = step.fields.map(field => { const answer = wizard.answers[field.id] || {}; return `<div class="wizard-field" data-field="${escapeHtml(field.id)}" data-type="${field.type}"><label><span>${escapeHtml(field.label)}${field.required ? " *" : ""}</span>${fieldControl(field,answer)}</label>${field.lockable ? `<label class="policy-label">处理方式<select class="field-policy"><option value="locked" ${answer.policy === "locked" ? "selected" : ""}>严格锁定</option><option value="suggestible" ${!answer.policy || answer.policy === "suggestible" ? "selected" : ""}>可建议</option><option value="generated" ${answer.policy === "generated" ? "selected" : ""}>模型生成</option></select></label>` : ""}</div>`; }).join("");
+  $("#wizard-back").disabled = state.wizardStep === 0; $("#wizard-next").hidden = state.wizardStep === steps.length - 1; $("#wizard-analyze").hidden = state.wizardStep !== steps.length - 1; $("#wizard-confirm").hidden = state.wizardStep !== steps.length - 1;
+  document.querySelectorAll("[data-wizard-step]").forEach(button => button.addEventListener("click", async () => { await saveWizardStep(); state.wizardStep = Number(button.dataset.wizardStep); renderWizard(); }));
+  let timer; document.querySelectorAll(".field-value,.field-policy").forEach(control => control.addEventListener("input", () => { $("#wizard-save-state").textContent = "保存中"; clearTimeout(timer); timer=setTimeout(() => saveWizardStep().catch(error => toast(error.message)),500); }));
+  renderWizardSummary();
+}
+function collectWizardStep() {
+  const answers = {};
+  document.querySelectorAll(".wizard-field").forEach(row => { const control=row.querySelector(".field-value"), type=row.dataset.type; let value=type === "boolean" ? control.checked : control.value; if (type === "number" && value !== "") value=Number(value); answers[row.dataset.field]={value,policy:row.querySelector(".field-policy")?.value || "suggestible"}; });
+  return answers;
+}
+async function saveWizardStep() {
+  if (!state.activeWizard) return; const answers=collectWizardStep(); const updated=await api(`/api/wizards/${state.activeWizard.id}/answers`,{method:"PUT",body:JSON.stringify({answers})}); state.activeWizard=updated; $("#wizard-save-state").textContent="已保存"; renderWizardSummary();
+}
+function renderWizardSummary() {
+  const answers={...state.activeWizard.answers,...collectWizardStep()}; const locked=Object.entries(answers).filter(([,item]) => item.policy === "locked" && item.value !== ""); $("#wizard-summary").innerHTML=locked.length ? locked.map(([key,item]) => `<div class="summary-item"><strong>${escapeHtml(key)}</strong><span>${escapeHtml(item.value)}</span></div>`).join("") : '<span class="skill-meta">尚未锁定内容</span>';
+}
+$("#start-wizard").addEventListener("click", async () => { const mode=document.querySelector('input[name="wizard-mode"]:checked').value; try { state.activeWizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode})}); state.wizardStep=0; state.wizards.unshift(state.activeWizard); renderWizard(); } catch(error) { toast(error.message); } });
+$("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0; renderWizard(); });
+$("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });
+$("#wizard-next").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep++; renderWizard(); });
+$("#wizard-analyze").addEventListener("click", async () => { try { await saveWizardStep(); state.activeWizard=await api(`/api/wizards/${state.activeWizard.id}/analyze`,{method:"POST"}); state.wizardStep=state.activeWizard.schema.steps.length-1; renderWizard(); toast(state.activeWizard.status === "ready" ? "关键资料完整" : "已生成必要追问"); } catch(error) { toast(error.message); } });
+$("#wizard-confirm").addEventListener("click", async () => { try { await saveWizardStep(); const project=await api(`/api/wizards/${state.activeWizard.id}/confirm`,{method:"POST"}); state.projects.unshift(project); state.activeProject=project; state.activeWizard=null; $("#wizard-shell").hidden=true; $("#wizard-launcher").hidden=false; renderProjects(); document.querySelector('[data-view="workbench"]').click(); $("#run-state").className="run-state busy"; $("#run-state").textContent="正在执行建书 Skills..."; try { const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"}); $("#run-state").className="run-state"; $("#run-state").textContent=`建书完成：${initialized.skills.length} 个 Skill`; toast("标准故事项目和建书资料已创建"); } catch(runtimeError) { $("#run-state").className="run-state error"; $("#run-state").textContent=`项目已创建，Skill Runtime 待处理：${runtimeError.message}`; } } catch(error) { toast(error.message); } });
 
 async function run(path, body) {
   if (!state.activeProject) return toast("请先创建作品");
@@ -61,6 +97,7 @@ $("#run-setup").addEventListener("click", () => run(`/api/projects/${state.activ
 $("#run-chapter").addEventListener("click", () => { const chapter_goal = $("#chapter-goal").value.trim(); if (!chapter_goal) return toast("请填写本章目标"); run(`/api/projects/${state.activeProject.id}/runs/chapter`, {chapter_goal}); });
 $("#open-manuscript").addEventListener("click", async () => { if (!state.activeProject) return; const result = await api(`/api/projects/${state.activeProject.id}/manuscript`); $("#manuscript").textContent = result.content || "尚未生成正文"; $("#manuscript-panel").hidden = false; });
 $("#close-manuscript").addEventListener("click", () => $("#manuscript-panel").hidden = true);
+$("#migrate-project").addEventListener("click", async () => { if (!state.activeProject) return toast("请先选择作品"); try { const preview=await api(`/api/projects/${state.activeProject.id}/migration`); if (!confirm(`将映射 ${preview.mapped_facts.length} 条设定，${preview.ambiguous_facts.length} 条需要复核。继续？`)) return; await api(`/api/projects/${state.activeProject.id}/migration`,{method:"POST"}); toast("项目迁移和校验完成"); } catch(error) { toast(error.message); } });
 
 $("#provider-form").addEventListener("submit", async event => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); try { await api("/api/providers", {method:"POST", body:JSON.stringify(data)}); event.target.reset(); await loadAll(); toast("供应商已保存，API Key 已进入系统凭据库"); } catch(error) { toast(error.message); } });
 $("#model-form").addEventListener("submit", async event => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); const provider = data.provider_id; delete data.provider_id; try { await api(`/api/providers/${provider}/models`, {method:"POST", body:JSON.stringify(data)}); event.target.reset(); await loadAll(); toast("模型映射已保存"); } catch(error) { toast(error.message); } });

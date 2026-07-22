@@ -1,4 +1,5 @@
 import json
+import hashlib
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
@@ -108,6 +109,56 @@ CREATE TABLE IF NOT EXISTS tool_receipts(
   status TEXT NOT NULL,
   fallback_reason TEXT,
   created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS wizard_sessions(
+  id TEXT PRIMARY KEY,
+  status TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  schema_json TEXT NOT NULL,
+  answers_json TEXT NOT NULL,
+  project_id TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS story_locks(
+  project_id TEXT NOT NULL,
+  lock_key TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  value_json TEXT NOT NULL,
+  source TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(project_id, lock_key, revision)
+);
+CREATE TABLE IF NOT EXISTS skill_executions(
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  skill_name TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  status TEXT NOT NULL,
+  error TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS file_proposals(
+  id TEXT PRIMARY KEY,
+  execution_id TEXT NOT NULL,
+  relative_path TEXT NOT NULL,
+  content TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  status TEXT NOT NULL,
+  error TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS change_requests(
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  lock_key TEXT NOT NULL,
+  current_json TEXT NOT NULL,
+  proposed_json TEXT NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  resolved_at TEXT
 );
 """
 
@@ -350,3 +401,132 @@ class Database:
             return [dict(row) for row in connection.execute(
                 "SELECT * FROM tool_receipts WHERE run_id = ? ORDER BY id", (run_id,),
             )]
+
+    def save_wizard(self, wizard_id: str, status: str, mode: str,
+                    schema: dict, answers: dict, project_id: str | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO wizard_sessions VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                ON CONFLICT(id) DO UPDATE SET status=excluded.status, mode=excluded.mode,
+                schema_json=excluded.schema_json, answers_json=excluded.answers_json,
+                project_id=COALESCE(excluded.project_id, wizard_sessions.project_id),
+                updated_at=datetime('now')""",
+                (wizard_id, status, mode, json.dumps(schema, ensure_ascii=False),
+                 json.dumps(answers, ensure_ascii=False), project_id),
+            )
+
+    def get_wizard(self, wizard_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute("SELECT * FROM wizard_sessions WHERE id = ?", (wizard_id,)).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["schema"] = json.loads(result.pop("schema_json"))
+        result["answers"] = json.loads(result.pop("answers_json"))
+        return result
+
+    def list_wizards(self, status: str | None = None) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            if status:
+                ids = [row[0] for row in connection.execute(
+                    "SELECT id FROM wizard_sessions WHERE status = ? ORDER BY updated_at DESC", (status,),
+                )]
+            else:
+                ids = [row[0] for row in connection.execute(
+                    "SELECT id FROM wizard_sessions ORDER BY updated_at DESC",
+                )]
+        return [wizard for item in ids if (wizard := self.get_wizard(item))]
+
+    def save_lock(self, project_id: str, lock_key: str, value: Any, source: str) -> None:
+        with self.connect() as connection:
+            revision = connection.execute(
+                "SELECT COALESCE(MAX(revision), 0) + 1 FROM story_locks WHERE project_id = ? AND lock_key = ?",
+                (project_id, lock_key),
+            ).fetchone()[0]
+            connection.execute(
+                "INSERT INTO story_locks VALUES (?, ?, ?, ?, ?, datetime('now'))",
+                (project_id, lock_key, revision, json.dumps(value, ensure_ascii=False), source),
+            )
+
+    def list_locks(self, project_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                """SELECT item.* FROM story_locks item JOIN (
+                SELECT lock_key, MAX(revision) revision FROM story_locks
+                WHERE project_id = ? GROUP BY lock_key) latest
+                ON item.lock_key=latest.lock_key AND item.revision=latest.revision
+                WHERE item.project_id = ? ORDER BY item.lock_key""",
+                (project_id, project_id),
+            ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["key"] = item.pop("lock_key")
+            item["value"] = json.loads(item.pop("value_json"))
+            result.append(item)
+        return result
+
+    def create_skill_execution(self, execution_id: str, project_id: str,
+                               skill_name: str, content_hash: str,
+                               status: str = "pending") -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO skill_executions VALUES (?, ?, ?, ?, ?, NULL, datetime('now'), datetime('now'))",
+                (execution_id, project_id, skill_name, content_hash, status),
+            )
+
+    def update_skill_execution(self, execution_id: str, status: str,
+                               error: str | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE skill_executions SET status=?, error=?, updated_at=datetime('now') WHERE id=?",
+                (status, error, execution_id),
+            )
+
+    def save_file_proposal(self, proposal_id: str, execution_id: str,
+                           relative_path: str, content: str, status: str,
+                           error: str | None = None) -> None:
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO file_proposals VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                (proposal_id, execution_id, relative_path, content, digest, status, error),
+            )
+
+    def list_file_proposals(self, execution_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM file_proposals WHERE execution_id=? ORDER BY created_at, rowid",
+                (execution_id,),
+            )]
+
+    def update_file_proposal(self, proposal_id: str, status: str,
+                             error: str | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE file_proposals SET status=?, error=? WHERE id=?",
+                (status, error, proposal_id),
+            )
+
+    def save_change_request(self, request_id: str, project_id: str, lock_key: str,
+                            current: Any, proposed: Any, reason: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO change_requests VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'), NULL)",
+                (request_id, project_id, lock_key, json.dumps(current, ensure_ascii=False),
+                 json.dumps(proposed, ensure_ascii=False), reason),
+            )
+
+    def list_change_requests(self, project_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM change_requests WHERE project_id=? ORDER BY created_at, rowid",
+                (project_id,),
+            ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["current"] = json.loads(item.pop("current_json"))
+            item["proposed"] = json.loads(item.pop("proposed_json"))
+            result.append(item)
+        return result

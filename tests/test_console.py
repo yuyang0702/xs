@@ -15,3 +15,13 @@ def test_console_and_assets_are_served_locally(tmp_path) -> None:
     assert "小说飞轮" in page.text
     assert "/static/app.js" in page.text
     assert client.get("/static/app.css").status_code == 200
+
+
+def test_console_contains_skill_wizard_controls(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    assert 'id="start-wizard"' in html
+    assert 'id="wizard-steps"' in html
+    assert 'id="wizard-fields"' in html
+    assert 'id="wizard-confirm"' in html
+    assert 'id="migrate-project"' in html

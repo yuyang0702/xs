@@ -40,3 +40,27 @@ Long setup may produce `memory/volumes.json` with machine-readable boundaries. W
 A failed audit keeps the completed volume-ending chapter but blocks entry into the next volume. Resolve the audit findings and mark the audit passed before continuing.
 
 Relevant chapter retrieval uses SQLite FTS and returns bounded matching prose excerpts rather than loading the whole novel into model context.
+
+## Skill-driven project wizard
+
+New projects use a resumable wizard. The wizard combines a stable core form with questions from `story-init`, `character-management`, `worldbuilding`, `plot-structure`, and compatible project-form sidecars under `forms/project.json`.
+
+Unknown initialization Skills receive a validated generated form cached by Skill content hash under `data/skill-forms`. Updating a Skill selects a new cache entry automatically. Every answer is stored as one of:
+
+- `locked`: program-enforced and included in every later model stage;
+- `suggestible`: models may recommend changes;
+- `generated`: the planning model may supply the value.
+
+Before confirmation, **检查关键缺口** adds required follow-ups for missing endings, character arcs, world rules, and long-form main arcs. Confirmation creates the Story Skills schema-v2 project layout and saves locks in SQLite and `continuity/locks.json`.
+
+## Controlled Skill Runtime
+
+After project creation, the console runs the selected initialization Skills through a controlled runtime. External models may read story files, list entities, request missing input, and submit file or registry proposals. They cannot write directly.
+
+Each Skill has a path allowlist. Proposed Markdown requires YAML frontmatter, locked facts are checked before acceptance, and conflicts create change requests. Accepted proposals are applied as one snapshot-protected transaction followed by Story CLI `reindex`, `links`, and `validate`.
+
+The runtime exposes no general shell, arbitrary path, browser, MCP, or Codex tool access. Write-capable Skill execution requires native Tool Calling; prompt fallback is rejected rather than treated as successful execution.
+
+## Existing project migration
+
+The workbench can preview and run migration for an older project. Migration preserves legacy files, maps the old outline and canon into the canonical structure, sends ambiguous facts to `migration-report.json`, rebuilds registries, and restores the snapshot if Story CLI validation fails.
