@@ -108,6 +108,9 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert "quality_escalated" in event_types
     assert any(item["event_type"] == "quality_gate" and item["severity"] == "success"
                for item in events)
+    escalation = next(item for item in events if item["event_type"] == "quality_escalated")
+    assert escalation["metadata"]["model_role"] == "review"
+    assert escalation["metadata"]["fallback_used"] is True
     completed = next(item for item in events if item["event_type"] == "stage_completed")
     assert completed["metadata"]["model_name"].startswith("fake-")
     assert completed["metadata"]["skills"]
@@ -286,6 +289,7 @@ async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
     (project.path / "project.json").write_text(
         json.dumps(project.metadata, ensure_ascii=False), encoding="utf-8",
     )
+    db.save_role_binding("reader_review", "provider", "model", None, None)
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = RecordingGateway([
@@ -298,10 +302,12 @@ async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
 
     await service.run_chapter(project.id, "Introduce the hero", use_crewai=False)
 
-    assert gateway.roles.count("review") == 2
+    assert gateway.roles.count("review") == 1
+    assert gateway.roles.count("reader_review") == 1
     assert gateway.roles.count("polish") == 3
     assert gateway.roles.count("final_review") == 3
     reader_call = next(call for call in gateway.calls if "TARGET READER SIMULATION" in call["user"])
+    assert reader_call["role"] == "reader_review"
     assert "知乎盐选" in reader_call["user"]
     assert "女性情感读者" in reader_call["user"]
     assert "reader_signals" in reader_call["user"]

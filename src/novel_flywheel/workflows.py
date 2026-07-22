@@ -224,12 +224,22 @@ class WorkflowService:
 
         reader_review = None
         if route["enhanced"]:
+            reader_role = ("reader_review"
+                           if self.db.get_role_binding("reader_review") else "review")
+            fallback_used = reader_role == "review"
             self.db.add_run_event(
-                run_id, "info", "quality_escalated", "正在执行目标读者模拟",
-                stage="review", metadata={"reasons": route["reasons"]},
+                run_id, "info", "quality_escalated",
+                "正在使用审核模型回退执行目标读者模拟" if fallback_used
+                else "正在使用独立读者模型执行目标读者模拟",
+                stage="review", metadata={
+                    "reasons": route["reasons"],
+                    "model_role": reader_role,
+                    "fallback_used": fallback_used,
+                },
             )
             reader_review = await self._reader_review(
                 run_id, run_path, project, constraints, draft,
+                model_role=reader_role,
             )
             report["reader_review"] = reader_review
             self._quality_assessed_event(run_id, "target_reader", reader_review)
@@ -295,7 +305,8 @@ class WorkflowService:
         raise RuntimeError("Editorial quality gate did not pass within the correction limit")
 
     async def _reader_review(self, run_id: str, run_path: Path, project: Project,
-                             constraints: str, text: str, suffix: str = "") -> dict:
+                             constraints: str, text: str, suffix: str = "",
+                             model_role: str | None = None) -> dict:
         requirements = project.metadata.get("story_requirements") or {}
         profile = {
             "platform": requirements.get("platform") or project.metadata.get("platform") or "unspecified",
@@ -316,7 +327,7 @@ class WorkflowService:
         )
         return self._review(await self._stage(
             run_id, run_path, project, "review", constraints, prompt,
-            suffix=f"-reader{suffix}",
+            suffix=f"-reader{suffix}", model_role=model_role or "review",
         ))
 
     @staticmethod
@@ -344,7 +355,8 @@ class WorkflowService:
         )
 
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
-                     constraints: str, user: str, suffix: str = "") -> str:
+                     constraints: str, user: str, suffix: str = "",
+                     model_role: str | None = None) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -362,10 +374,11 @@ class WorkflowService:
                 stage=stage, metadata={"skills": skills},
             )
             system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{skill_run.prompt}"
+            gateway_role = model_role or stage
             if hasattr(self.gateway, "complete_with_tools"):
                 toolbox = StoryToolbox(project, self.memory)
                 result = await self.gateway.complete_with_tools(
-                    stage, system, user, toolbox,
+                    gateway_role, system, user, toolbox,
                     fallback_context=lambda: json.dumps(
                         self.memory.context(project.id, user[:500]), ensure_ascii=False,
                     ),
@@ -374,7 +387,7 @@ class WorkflowService:
                 )
             else:
                 result = await self.gateway.complete(
-                    stage, system, user,
+                    gateway_role, system, user,
                     max_output_tokens=self._stage_output_budget(stage),
                 )
             name = f"{stage}{suffix}"
