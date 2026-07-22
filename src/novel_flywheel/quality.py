@@ -118,17 +118,36 @@ def select_route(mode: str, chapter_number: int | None, chapter_goal: str,
 
 def reader_sample(text: str, mode: str, limit: int = 9000) -> str:
     text = text.replace("<!-- NOVEL_FLYWHEEL_SEGMENT -->", "")
-    labels = (["OPENING", "PAID CUTOFF", "CLIMAX", "ENDING"] if mode == "short"
+    notice = (
+        "NOTE: These are non-contiguous review excerpts. Excerpt and label boundaries are not "
+        "manuscript or paywall boundaries; never report them as truncation.\n\n"
+    )
+    labels = (["OPENING", "PAID REGION", "CLIMAX", "ENDING"] if mode == "short"
               else ["OPENING", "MIDDLE", "ENDING"])
     headers = [f"--- {label} ---\n" for label in labels]
     separators_size = 2 * (len(labels) - 1)
-    content_budget = max(len(labels), limit - sum(map(len, headers)) - separators_size)
+    content_budget = max(
+        len(labels), limit - len(notice) - sum(map(len, headers)) - separators_size,
+    )
     width = max(1, content_budget // len(labels))
-    last = max(0, len(text) - width)
-    points = ([0, int(len(text) * 0.35), int(len(text) * 0.75), last] if mode == "short"
-              else [0, int(len(text) * 0.5), last])
+    points = ([0, int(len(text) * 0.35), int(len(text) * 0.75), len(text)] if mode == "short"
+              else [0, int(len(text) * 0.5), len(text)])
     parts = []
-    for header, point in zip(headers, points):
-        start = min(point, last)
-        parts.append(header + text[start:start + width])
-    return "\n\n".join(parts)[:limit]
+    for index, (header, point) in enumerate(zip(headers, points)):
+        if index == 0:
+            start = 0
+        elif index == len(points) - 1:
+            target = max(0, len(text) - width)
+            boundary = text.find("\n\n", target)
+            start = boundary + 2 if boundary >= 0 else target
+        else:
+            boundary = text.rfind("\n\n", 0, point + 1)
+            start = boundary + 2 if boundary >= 0 else min(point, max(0, len(text) - width))
+        if index == len(points) - 1:
+            end = len(text)
+        else:
+            target = min(len(text), start + width)
+            boundary = text.rfind("\n\n", start, target + 1)
+            end = boundary if boundary > start else target
+        parts.append(header + text[start:end].strip())
+    return (notice + "\n\n".join(parts))[:limit]

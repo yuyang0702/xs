@@ -111,10 +111,23 @@ def test_reader_sample_is_bounded_and_labels_short_checkpoints() -> None:
     sample = reader_sample(text, "short", limit=9000)
 
     assert len(sample) <= 9000
-    assert all(label in sample for label in ("OPENING", "PAID CUTOFF", "CLIMAX", "ENDING"))
+    assert all(label in sample for label in ("OPENING", "PAID REGION", "CLIMAX", "ENDING"))
     assert text[:100] in sample
     assert text[-100:] in sample
     assert "NOVEL_FLYWHEEL_SEGMENT" not in sample
+    assert "boundaries are not manuscript or paywall boundaries" in sample
+
+
+def test_reader_sample_aligns_excerpt_edges_to_paragraphs() -> None:
+    text = "\n\n".join(f"第{index}段开头。" + "内容" * 300 + "本段结束。" for index in range(30))
+
+    sample = reader_sample(text, "short", limit=6000)
+
+    excerpts = sample.split("--- ")[1:]
+    for excerpt in excerpts:
+        body = excerpt.split(" ---\n", 1)[1].strip()
+        assert body.startswith("第")
+        assert body.endswith("本段结束。")
 
 
 def test_reader_sample_labels_long_chapter_checkpoints() -> None:
