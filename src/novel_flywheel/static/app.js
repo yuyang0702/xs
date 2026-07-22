@@ -15,7 +15,8 @@ const genres = {
 };
 const roles = {
   planning: "开书与章节规划", draft: "正文粗稿", review: "逻辑与合规审核",
-  polish: "精修与去 AI 味", final_review: "独立终审", maintenance: "项目资料更新"
+  reader_review: "目标读者模拟", polish: "精修与去 AI 味",
+  final_review: "独立终审", maintenance: "项目资料更新"
 };
 const $ = (selector) => document.querySelector(selector);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));

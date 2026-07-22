@@ -41,3 +41,4 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     script = client.get("/static/app.js").text
     assert "loadInterview" in script
     assert "applyInterviewSuggestions" in script
+    assert 'reader_review: "目标读者模拟"' in script
