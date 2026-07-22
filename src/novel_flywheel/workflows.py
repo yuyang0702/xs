@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 import os
 import re
 import uuid
@@ -17,6 +18,8 @@ from novel_flywheel.tools import StoryToolbox
 
 
 class WorkflowService:
+    SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
+
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
                  skills: SkillGate, crewai_data_dir: Path | None = None) -> None:
         self.db = db
@@ -172,9 +175,20 @@ class WorkflowService:
         snapshot = ProjectSnapshot.create(project.path, project.path / "snapshots" / run_id, formal)
         try:
             constraints = self.projects.load_constraints(project.id)
-            brief = json.dumps(project.metadata, ensure_ascii=False, indent=2)
+            target_words = int(project.metadata["target_words"])
+            segment_count = self._short_segment_count(target_words)
+            brief = json.dumps({
+                **project.metadata,
+                "generation_contract": {
+                    "target_total_words": target_words,
+                    "segment_count": segment_count,
+                    "require_segment_map": segment_count > 1,
+                },
+            }, ensure_ascii=False, indent=2)
             plan = await self._stage(run_id, run_path, project, "planning", constraints, brief)
-            draft = await self._stage(run_id, run_path, project, "draft", constraints, plan)
+            draft = await self._draft_short_in_segments(
+                run_id, run_path, project, constraints, plan,
+            )
             review_text = await self._stage(run_id, run_path, project, "review", constraints, draft)
             review = self._review(review_text)
             polished, _ = await self._quality_polish(
@@ -184,6 +198,7 @@ class WorkflowService:
             canon = self._json_object(canon_text)
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
+            polished = "\n\n".join(self._split_segments(polished))
             atomic_write(formal[0], polished)
             atomic_write(formal[1], self._chapter_file(project, polished))
             atomic_write(formal[2], json.dumps(canon, ensure_ascii=False, indent=2))
@@ -237,19 +252,37 @@ class WorkflowService:
                     "fallback_used": fallback_used,
                 },
             )
-            reader_review = await self._reader_review(
-                run_id, run_path, project, constraints, draft,
-                model_role=reader_role,
-            )
+            try:
+                reader_review = await self._reader_review(
+                    run_id, run_path, project, constraints, draft,
+                    model_role=reader_role,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if reader_role == "review":
+                    raise
+                self.db.add_run_event(
+                    run_id, "warning", "reader_fallback",
+                    "独立读者模型调用失败，已回退到审核模型",
+                    stage="review", metadata={
+                        "failed_role": reader_role,
+                        "fallback_role": "review",
+                        "error": str(exc),
+                    },
+                )
+                reader_review = await self._reader_review(
+                    run_id, run_path, project, constraints, draft,
+                    suffix="-fallback", model_role="review",
+                )
             report["reader_review"] = reader_review
             self._quality_assessed_event(run_id, "target_reader", reader_review)
             self._write_quality_report(run_path, report)
 
         findings = {"editorial": review, "target_reader": reader_review}
-        polished = await self._stage(
-            run_id, run_path, project, "polish", constraints,
-            f"DRAFT:\n{draft}\n\nSTRUCTURED FINDINGS:\n"
-            f"{json.dumps(findings, ensure_ascii=False)}",
+        polished = await self._polish_short_segments(
+            run_id, run_path, project, constraints, draft,
+            json.dumps(findings, ensure_ascii=False),
         )
 
         reasons: list[str] = []
@@ -288,10 +321,9 @@ class WorkflowService:
                         "attempt": attempt + 1, "reasons": reasons,
                     },
                 )
-                polished = await self._stage(
-                    run_id, run_path, project, "polish", constraints,
-                    f"MANUSCRIPT:\n{polished}\n\nCHIEF EDITOR FINDINGS:\n"
-                    f"{json.dumps(final_review, ensure_ascii=False)}",
+                polished = await self._polish_short_segments(
+                    run_id, run_path, project, constraints, polished,
+                    json.dumps(final_review, ensure_ascii=False),
                     suffix=f"-{attempt + 2}",
                 )
 
@@ -331,6 +363,80 @@ class WorkflowService:
         ))
 
     @staticmethod
+    def _short_segment_count(target_words: int) -> int:
+        if target_words <= 8000:
+            return 1
+        return min(12, max(2, math.ceil(target_words / 2500)))
+
+    @classmethod
+    def _split_segments(cls, text: str) -> list[str]:
+        return [part.strip() for part in text.split(cls.SHORT_SEGMENT_SEPARATOR) if part.strip()]
+
+    async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
+                                       constraints: str, plan: str) -> str:
+        target_words = int(project.metadata["target_words"])
+        count = self._short_segment_count(target_words)
+        if count == 1:
+            return await self._stage(
+                run_id, run_path, project, "draft", constraints,
+                f"APPROVED PLAN:\n{plan}\n\nWrite the complete story now. Do not ask questions.",
+            )
+        target = math.ceil(target_words / count)
+        parts: list[str] = []
+        for index in range(1, count + 1):
+            self.db.add_run_event(
+                run_id, "info", "segment_started", f"开始生成正文第 {index}/{count} 段",
+                stage="draft", metadata={"segment": index, "total": count, "target_words": target},
+            )
+            previous_tail = parts[-1][-1200:] if parts else "这是开篇，无上一段。"
+            prompt = (
+                f"APPROVED COMPLETE PLAN:\n{plan}\n\n"
+                f"WRITE SEGMENT {index} OF {count}. Target about {target} Chinese characters. "
+                "Return only publishable fiction prose. Continue the approved causal sequence, preserve "
+                "character voices and commercial hooks, and do not summarize, explain, or ask questions. "
+                "All project decisions are final; infer minor details from the plan.\n\n"
+                f"上一段结尾：\n{previous_tail}\n\n不要提问，直接写本段正文。"
+            )
+            part = await self._stage(
+                run_id, run_path, project, "draft", constraints, prompt,
+                suffix=f"-part-{index:02d}", allow_tools=False,
+            )
+            parts.append(part.strip())
+            self.db.add_run_event(
+                run_id, "success", "segment_completed", f"正文第 {index}/{count} 段生成完成",
+                stage="draft", metadata={"segment": index, "total": count, "characters": len(part)},
+            )
+        draft = self.SHORT_SEGMENT_SEPARATOR.join(parts)
+        atomic_write(run_path / "outputs" / "draft.md", draft)
+        return draft
+
+    async def _polish_short_segments(self, run_id: str, run_path: Path, project: Project,
+                                     constraints: str, text: str, findings: str,
+                                     suffix: str = "") -> str:
+        parts = self._split_segments(text)
+        if len(parts) == 1:
+            return await self._stage(
+                run_id, run_path, project, "polish", constraints,
+                f"MANUSCRIPT:\n{text}\n\nSTRUCTURED FINDINGS:\n{findings}", suffix=suffix,
+            )
+        polished_parts: list[str] = []
+        for index, part in enumerate(parts, 1):
+            previous_tail = polished_parts[-1][-800:] if polished_parts else ""
+            prompt = (
+                f"POLISH SEGMENT {index} OF {len(parts)}. Return only the revised prose for this segment. "
+                "Preserve events and length; remove AI-like phrasing and apply the findings.\n\n"
+                f"PREVIOUS POLISHED END:\n{previous_tail}\n\nMANUSCRIPT SEGMENT:\n{part}\n\n"
+                f"STRUCTURED FINDINGS:\n{findings}"
+            )
+            polished_parts.append((await self._stage(
+                run_id, run_path, project, "polish", constraints, prompt,
+                suffix=f"{suffix}-part-{index:02d}", allow_tools=False,
+            )).strip())
+        polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
+        atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
+        return polished
+
+    @staticmethod
     def _write_quality_report(run_path: Path, report: dict) -> None:
         atomic_write(
             run_path / "outputs" / "quality-report.json",
@@ -356,7 +462,7 @@ class WorkflowService:
 
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "",
-                     model_role: str | None = None) -> str:
+                     model_role: str | None = None, allow_tools: bool = True) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -375,7 +481,7 @@ class WorkflowService:
             )
             system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{skill_run.prompt}"
             gateway_role = model_role or stage
-            if hasattr(self.gateway, "complete_with_tools"):
+            if allow_tools and hasattr(self.gateway, "complete_with_tools"):
                 toolbox = StoryToolbox(project, self.memory)
                 result = await self.gateway.complete_with_tools(
                     gateway_role, system, user, toolbox,
@@ -390,6 +496,8 @@ class WorkflowService:
                     gateway_role, system, user,
                     max_output_tokens=self._stage_output_budget(stage),
                 )
+            if not result.text.strip():
+                raise RuntimeError(f"{stage} model returned empty output")
             name = f"{stage}{suffix}"
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
@@ -509,7 +617,9 @@ class WorkflowService:
 
     @staticmethod
     def _stage_output_budget(stage: str) -> int | None:
-        if stage in {"planning", "review", "final_review", "maintenance"}:
+        if stage == "planning":
+            return 8192
+        if stage in {"review", "final_review", "maintenance"}:
             return 4096
         return None
 

@@ -1,6 +1,12 @@
 STAGE_SYSTEM = {
-    "planning": "Design a complete causal story plan. Preserve the requested ending and hard constraints.",
-    "draft": "Write the complete fiction draft from the approved plan. Prioritize scenes, causality, and voice.",
+    "planning": (
+        "Design a complete causal story plan. Preserve the requested ending and hard constraints. "
+        "Use all supplied project facts, include the requested segment map, and never ask the user questions."
+    ),
+    "draft": (
+        "Write publishable fiction prose from the approved plan. Prioritize scenes, causality, and voice. "
+        "Never ask the user for information; infer minor details without changing locked facts."
+    ),
     "review": (
         "Act as a commercial fiction editor. Audit paid-reading motivation, hook and payoff density, "
         "causality, emotion, character knowledge, OOC, continuity, prose, and compliance. Return only "
