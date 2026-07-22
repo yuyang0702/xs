@@ -102,6 +102,12 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert report["status"] == "passed"
     events = db.list_run_events(result["id"])
     assert any(item["event_type"] == "stage_started" and item["stage"] == "planning" for item in events)
+    event_types = [item["event_type"] for item in events]
+    assert "quality_route" in event_types
+    assert "quality_assessed" in event_types
+    assert "quality_escalated" in event_types
+    assert any(item["event_type"] == "quality_gate" and item["severity"] == "success"
+               for item in events)
     completed = next(item for item in events if item["event_type"] == "stage_completed")
     assert completed["metadata"]["model_name"].startswith("fake-")
     assert completed["metadata"]["skills"]
@@ -219,10 +225,12 @@ async def test_volume_boundary_runs_audit_and_persists_result(tmp_path) -> None:
 class RecordingGateway:
     def __init__(self, responses) -> None:
         self.roles = []
+        self.calls = []
         self.responses = iter(responses)
 
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
+        self.calls.append({"role": role, "system": system, "user": user})
         return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
 
@@ -272,6 +280,12 @@ async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
     project = store.create(ProjectCreate(
         title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
     ))
+    project.metadata["story_requirements"] = {
+        "platform": "知乎盐选", "audience": "女性情感读者",
+    }
+    (project.path / "project.json").write_text(
+        json.dumps(project.metadata, ensure_ascii=False), encoding="utf-8",
+    )
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = RecordingGateway([
@@ -287,3 +301,41 @@ async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
     assert gateway.roles.count("review") == 2
     assert gateway.roles.count("polish") == 3
     assert gateway.roles.count("final_review") == 3
+    reader_call = next(call for call in gateway.calls if "TARGET READER SIMULATION" in call["user"])
+    assert "知乎盐选" in reader_call["user"]
+    assert "女性情感读者" in reader_call["user"]
+    assert "reader_signals" in reader_call["user"]
+
+
+@pytest.mark.asyncio
+async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Failed", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    failed = quality_review(commercial=60, story=60, prose=60, decision="revise")
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), quality_review(), "# Polish 1",
+        failed, "# Polish 2", failed, "# Polish 3", failed,
+    ])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    with pytest.raises(RuntimeError, match="quality gate"):
+        await service.run_short(project.id, use_crewai=False)
+
+    run = db.list_runs(project.id)[0]
+    report = json.loads((
+        project.path / "runs" / run["id"] / "outputs" / "quality-report.json"
+    ).read_text(encoding="utf-8"))
+    assert report["status"] == "failed"
+    assert len(report["final_attempts"]) == 3
+    assert report["failure_reasons"]
+    assert not (project.path / "manuscript" / "story.md").exists()
+    events = db.list_run_events(run["id"])
+    assert any(item["event_type"] == "quality_gate" and item["severity"] == "error"
+               for item in events)

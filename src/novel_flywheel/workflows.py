@@ -296,17 +296,21 @@ class WorkflowService:
 
     async def _reader_review(self, run_id: str, run_path: Path, project: Project,
                              constraints: str, text: str, suffix: str = "") -> dict:
+        requirements = project.metadata.get("story_requirements") or {}
         profile = {
-            "platform": project.metadata.get("platform") or "unspecified",
+            "platform": requirements.get("platform") or project.metadata.get("platform") or "unspecified",
             "genre": project.metadata.get("genre") or "unspecified",
-            "audience": project.metadata.get("audience") or "target genre readers",
+            "audience": requirements.get("audience") or project.metadata.get("audience")
+            or "target genre readers",
             "mode": project.mode,
         }
         prompt = (
             "TARGET READER SIMULATION. Do not rewrite the story. Read only the labeled excerpts and "
             "judge whether this target reader would continue, pay, and feel the promised payoff. "
             "Identify abandonment points, weak hooks, fake suspense, unearned emotion,套路化表达, and "
-            "AI-like prose. Return the same strict quality-review JSON schema.\n\n"
+            "AI-like prose. Return the same strict quality-review JSON schema plus reader_signals with "
+            "would_continue (boolean), would_pay (boolean), abandonment_point (text), and payoff_felt "
+            "(boolean).\n\n"
             f"READER PROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
             f"LABELED EXCERPTS:\n{reader_sample(text, project.mode)}"
         )
