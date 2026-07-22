@@ -49,8 +49,11 @@ def normalize_review(value: dict) -> dict:
     result = dict(value)
     dimensions = result.get("dimensions")
     if dimensions is None:
-        legacy = _score(result.get("score"))
-        normalized = {name: legacy for name in WEIGHTS}
+        if all(name in result for name in WEIGHTS):
+            normalized = {name: _score(result[name]) for name in WEIGHTS}
+        else:
+            legacy = _score(result.get("score"))
+            normalized = {name: legacy for name in WEIGHTS}
     else:
         if not isinstance(dimensions, dict):
             raise ValueError("Review dimensions must be an object")
@@ -119,4 +122,3 @@ def reader_sample(text: str, mode: str, limit: int = 9000) -> str:
         start = min(point, last)
         parts.append(header + text[start:start + width])
     return "\n\n".join(parts)[:limit]
-

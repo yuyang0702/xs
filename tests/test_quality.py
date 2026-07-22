@@ -42,6 +42,16 @@ def test_normalize_review_accepts_legacy_score() -> None:
     }]
 
 
+def test_normalize_review_accepts_flat_dimension_fields() -> None:
+    review = normalize_review({
+        "commercial": 76, "story": 61, "prose": 70,
+        "hard_fail": True, "decision": "rewrite", "issues": [],
+    })
+
+    assert review["dimensions"] == {"commercial": 76.0, "story": 61.0, "prose": 70.0}
+    assert review["score"] == 69.55
+
+
 @pytest.mark.parametrize("score", [-1, 101, "high"])
 def test_normalize_review_rejects_invalid_dimension(score) -> None:
     with pytest.raises(ValueError, match="between 0 and 100"):
@@ -95,4 +105,3 @@ def test_reader_sample_labels_long_chapter_checkpoints() -> None:
 
     assert len(sample) <= 6000
     assert all(label in sample for label in ("OPENING", "MIDDLE", "ENDING"))
-
