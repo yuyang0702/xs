@@ -177,24 +177,45 @@ class WorkflowService:
             constraints = self.projects.load_constraints(project.id)
             target_words = int(project.metadata["target_words"])
             segment_count = self._short_segment_count(target_words)
-            brief = json.dumps({
-                **project.metadata,
-                "generation_contract": {
-                    "target_total_words": target_words,
-                    "segment_count": segment_count,
-                    "require_segment_map": segment_count > 1,
-                },
-            }, ensure_ascii=False, indent=2)
-            plan = await self._stage(run_id, run_path, project, "planning", constraints, brief)
-            draft = await self._draft_short_in_segments(
-                run_id, run_path, project, constraints, plan,
+            checkpoint = self._find_short_checkpoint(project, run_id, segment_count)
+            if checkpoint:
+                plan = (checkpoint / "planning.md").read_text(encoding="utf-8")
+                draft = (checkpoint / "draft.md").read_text(encoding="utf-8")
+                atomic_write(run_path / "outputs" / "planning.md", plan)
+                atomic_write(run_path / "outputs" / "draft.md", draft)
+                self.db.add_run_event(
+                    run_id, "success", "checkpoint_reused", "已复用上一轮完整规划和分段草稿",
+                    stage="draft", metadata={"source_run": checkpoint.parent.name},
+                )
+            else:
+                brief = json.dumps({
+                    **project.metadata,
+                    "generation_contract": {
+                        "target_total_words": target_words,
+                        "segment_count": segment_count,
+                        "require_segment_map": segment_count > 1,
+                    },
+                }, ensure_ascii=False, indent=2)
+                plan = await self._stage(run_id, run_path, project, "planning", constraints, brief)
+                draft = await self._draft_short_in_segments(
+                    run_id, run_path, project, constraints, plan,
+                )
+            review_input = (
+                f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
+                f"{reader_sample(draft, project.mode)}"
             )
-            review_text = await self._stage(run_id, run_path, project, "review", constraints, draft)
+            review_text = await self._stage(
+                run_id, run_path, project, "review", constraints, review_input,
+                allow_tools=False,
+            )
             review = self._review(review_text)
             polished, _ = await self._quality_polish(
                 run_id, run_path, project, constraints, draft, review,
             )
-            canon_text = await self._stage(run_id, run_path, project, "maintenance", constraints, polished)
+            canon_text = await self._stage(
+                run_id, run_path, project, "maintenance", constraints, polished,
+                allow_tools=False,
+            )
             canon = self._json_object(canon_text)
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
@@ -287,9 +308,12 @@ class WorkflowService:
 
         reasons: list[str] = []
         for attempt in range(route["max_corrections"] + 1):
+            final_input = (reader_sample(polished, project.mode)
+                           if project.mode == "short" else polished)
             final_review = self._review(await self._stage(
-                run_id, run_path, project, "final_review", constraints, polished,
+                run_id, run_path, project, "final_review", constraints, final_input,
                 suffix=f"-{attempt + 1}" if attempt else "",
+                allow_tools=project.mode != "short",
             ))
             passed, reasons = quality_gate(final_review)
             report["final_attempts"].append({
@@ -359,7 +383,7 @@ class WorkflowService:
         )
         return self._review(await self._stage(
             run_id, run_path, project, "review", constraints, prompt,
-            suffix=f"-reader{suffix}", model_role=model_role or "review",
+            suffix=f"-reader{suffix}", model_role=model_role or "review", allow_tools=False,
         ))
 
     @staticmethod
@@ -371,6 +395,22 @@ class WorkflowService:
     @classmethod
     def _split_segments(cls, text: str) -> list[str]:
         return [part.strip() for part in text.split(cls.SHORT_SEGMENT_SEPARATOR) if part.strip()]
+
+    def _find_short_checkpoint(self, project: Project, current_run_id: str,
+                               segment_count: int) -> Path | None:
+        for run in self.db.list_runs(project.id):
+            if run["id"] == current_run_id or run["workflow"] != "short-story":
+                continue
+            outputs = project.path / "runs" / run["id"] / "outputs"
+            plan_path = outputs / "planning.md"
+            draft_path = outputs / "draft.md"
+            if not plan_path.is_file() or not draft_path.is_file():
+                continue
+            plan = plan_path.read_text(encoding="utf-8").strip()
+            draft = draft_path.read_text(encoding="utf-8")
+            if plan and len(self._split_segments(draft)) == segment_count:
+                return outputs
+        return None
 
     async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
                                        constraints: str, plan: str) -> str:
