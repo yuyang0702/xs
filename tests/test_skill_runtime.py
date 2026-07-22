@@ -32,6 +32,21 @@ def test_runtime_rejects_unknown_tools_paths_and_commands(tmp_path) -> None:
         toolbox.execute("run_story_command", {"command": "exec", "arguments": []})
 
 
+def test_story_command_schema_lists_runtime_subcommands(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "story-init", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("story-init"),
+        StoryCli(project, lambda command: "ok"),
+    )
+
+    definition = next(item for item in toolbox.definitions() if item.name == "run_story_command")
+
+    assert definition.input_schema["properties"]["command"]["enum"] == [
+        "reindex", "links", "validate", "wordcount",
+    ]
+
+
 def test_runtime_applies_allowed_proposals_and_story_validation(tmp_path) -> None:
     db, project = make_project(tmp_path)
     commands = []

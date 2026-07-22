@@ -34,3 +34,23 @@ def test_wizard_rejects_unknown_answer_field(tmp_path) -> None:
         "filesystem_path": {"value": "../x", "policy": "locked"},
     }})
     assert response.status_code == 400
+
+
+def test_initialize_skills_returns_tracked_background_run(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    wizard = client.post("/api/wizards", json={"mode": "short"}).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "Short", "policy": "locked"},
+        "genre": {"value": "suspense", "policy": "suggestible"},
+        "premise": {"value": "A door opens.", "policy": "locked"},
+        "target_words": {"value": 5000, "policy": "suggestible"},
+    }})
+    project = client.post(f"/api/wizards/{wizard['id']}/confirm").json()
+
+    response = client.post(f"/api/projects/{project['id']}/initialize-skills")
+
+    assert response.status_code == 202
+    assert response.json()["workflow"] == "initialize-skills"

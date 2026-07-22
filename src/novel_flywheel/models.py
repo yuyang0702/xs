@@ -71,13 +71,21 @@ class ModelGateway:
                 summaries = []
                 for call in response.tool_calls:
                     started = time.perf_counter()
-                    result = toolbox.execute(call.name, call.arguments)
+                    try:
+                        result = toolbox.execute(call.name, call.arguments)
+                        status = "succeeded"
+                        error = None
+                    except (LookupError, PermissionError, RuntimeError, ValueError) as exc:
+                        result = {"error": str(exc), "retryable": True}
+                        status = "failed"
+                        error = str(exc)
                     encoded = json.dumps(result, ensure_ascii=False)
                     self.db.save_tool_receipt(
                         run_id=run_id, stage=role, model_id=resolved.model_id,
                         execution_mode="native_tools", tool_name=call.name,
                         arguments=call.arguments, result_size=len(encoded),
                         duration_ms=int((time.perf_counter() - started) * 1000),
+                        status=status, fallback_reason=error,
                     )
                     summaries.append({"call_id": call.id, "tool": call.name, "result": result})
                 messages.append(Message(role="assistant", content="Requested read-only story evidence."))

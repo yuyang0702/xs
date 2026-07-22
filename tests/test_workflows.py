@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import pytest
@@ -91,6 +92,47 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     run_path = project.path / "runs" / result["id"]
     assert (run_path / "outputs" / "planning.md").is_file()
     assert (run_path / "outputs" / "final_review.md").is_file()
+    events = db.list_run_events(result["id"])
+    assert any(item["event_type"] == "stage_started" and item["stage"] == "planning" for item in events)
+    completed = next(item for item in events if item["event_type"] == "stage_completed")
+    assert completed["metadata"]["model_name"].startswith("fake-")
+    assert completed["metadata"]["skills"]
+
+
+@pytest.mark.asyncio
+async def test_short_flywheel_uses_managed_run_id_and_restores_on_cancel(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Cancel", mode="short", genre="suspense",
+        premise="A passenger vanishes.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class BlockingGateway:
+        def __init__(self):
+            self.started = asyncio.Event()
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.started.set()
+            await asyncio.Event().wait()
+
+    gateway = BlockingGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("managed-run", project.id, "short-story", status="queued")
+
+    task = asyncio.create_task(service.run_short(
+        project.id, use_crewai=False, run_id="managed-run",
+    ))
+    await gateway.started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert db.get_run("managed-run")["status"] == "cancelled"
+    assert not (project.path / "manuscript" / "story.md").exists()
 
 
 @pytest.mark.asyncio

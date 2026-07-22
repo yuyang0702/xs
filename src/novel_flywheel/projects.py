@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import json
 import re
+import shutil
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,6 +39,7 @@ class ProjectStore:
                  root_constraints: list[Path] | None = None) -> None:
         self.db = db
         self.workspace_root = workspace_root.resolve()
+        self.trash_root = (self.workspace_root.parent / "trash").resolve()
         self.root_constraints = [path.resolve() for path in (root_constraints or []) if path.is_file()]
 
     def create(self, payload: ProjectCreate) -> Project:
@@ -82,6 +86,64 @@ class ProjectStore:
 
     def list(self) -> list[Project]:
         return [self.get(row["id"]) for row in self.db.list_projects()]
+
+    def trash(self, project_id: str) -> dict:
+        row = self.db.get_project(project_id)
+        if row is None:
+            raise LookupError("Project not found")
+        if self.db.has_active_runs(project_id):
+            raise ValueError("Project has an active run; cancel it before moving to trash")
+        source = Path(row["path"]).resolve()
+        if not source.is_relative_to(self.workspace_root):
+            raise ValueError("Project path is outside the workspace")
+        self.trash_root.mkdir(parents=True, exist_ok=True)
+        target = (self.trash_root / project_id).resolve()
+        if not target.is_relative_to(self.trash_root):
+            raise ValueError("Invalid trash path")
+        if target.exists():
+            raise ValueError("Project already exists in trash")
+        shutil.move(str(source), str(target))
+        try:
+            self.db.trash_project(project_id, source, target)
+        except Exception:
+            shutil.move(str(target), str(source))
+            raise
+        return {"id": project_id, "title": row["title"], "mode": row["mode"],
+                "path": target, "original_path": source}
+
+    def list_trash(self) -> list[dict]:
+        return [{**row, "path": Path(row["trash_path"]),
+                 "original_path": Path(row["original_path"])}
+                for row in self.db.list_trashed_projects()]
+
+    def restore(self, project_id: str) -> Project:
+        row = self.db.get_trashed_project(project_id)
+        if row is None:
+            raise LookupError("Trashed project not found")
+        source = Path(row["trash_path"]).resolve()
+        target = Path(row["original_path"]).resolve()
+        if not source.is_relative_to(self.trash_root) or not target.is_relative_to(self.workspace_root):
+            raise ValueError("Project restore path is outside managed roots")
+        if target.exists():
+            raise ValueError("Original project path already exists")
+        shutil.move(str(source), str(target))
+        try:
+            self.db.restore_project(project_id, target)
+        except Exception:
+            shutil.move(str(target), str(source))
+            raise
+        return self.get(project_id)
+
+    def delete_permanently(self, project_id: str) -> None:
+        row = self.db.get_trashed_project(project_id)
+        if row is None:
+            raise LookupError("Trashed project not found")
+        path = Path(row["trash_path"]).resolve()
+        if not path.is_relative_to(self.trash_root) or path == self.trash_root:
+            raise ValueError("Project path is outside the trash root")
+        if path.exists():
+            shutil.rmtree(path)
+        self.db.delete_project_data(project_id)
 
     def load_constraints(self, project_id: str) -> str:
         project = self.get(project_id)

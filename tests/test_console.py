@@ -25,3 +25,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="wizard-fields"' in html
     assert 'id="wizard-confirm"' in html
     assert 'id="migrate-project"' in html
+    assert 'id="run-cancel"' in html
+    assert 'id="run-log"' in html
+    assert 'id="genre-options"' in html
+    assert 'id="project-list"' in html
+    assert 'id="trash-list"' in html
+    assert 'data-view="trash"' in html

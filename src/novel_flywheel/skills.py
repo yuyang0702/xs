@@ -91,6 +91,10 @@ class SkillGate:
                 raise RuntimeError(f"Required executable Skill has no command: {name}")
             try:
                 output = self._execute(skill, argv, cwd)
+            except subprocess.CalledProcessError as exc:
+                detail = (exc.stderr or exc.stdout or str(exc)).strip()[:8000]
+                self._record(stage, skill, "failed", detail)
+                raise RuntimeError(f"Required Skill failed: {name}: {detail}") from exc
             except Exception as exc:
                 self._record(stage, skill, "failed", str(exc))
                 raise RuntimeError(f"Required Skill failed: {name}") from exc

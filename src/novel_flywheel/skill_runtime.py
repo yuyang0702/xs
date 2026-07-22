@@ -36,7 +36,7 @@ class SkillContract:
 
 
 class StoryCli:
-    ALLOWED = {"init", "reindex", "links", "validate", "wordcount"}
+    ALLOWED = ("reindex", "links", "validate", "wordcount")
 
     def __init__(self, project: Project, runner: Callable[[list[str]], str]) -> None:
         self.project = project
@@ -71,7 +71,7 @@ class SkillRuntimeToolbox:
             ToolDefinition(name="update_file_proposal", description="Propose replacement content for a story file", input_schema={"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "facts": {"type": "object"}}, "required": ["relative_path", "content"]}),
             ToolDefinition(name="update_registry_proposal", description="Propose complete registry content", input_schema={"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}}, "required": ["relative_path", "content"]}),
             ToolDefinition(name="check_story_links", description="Run deterministic link checks", input_schema=object_schema),
-            ToolDefinition(name="run_story_command", description="Run one whitelisted Story CLI command", input_schema={"type": "object", "properties": {"command": {"type": "string"}, "arguments": {"type": "array", "items": {"type": "string"}}}, "required": ["command"]}),
+            ToolDefinition(name="run_story_command", description="Run a maintenance subcommand in the existing project. Pass only the subcommand, never the 'story' executable name and never 'init'.", input_schema={"type": "object", "properties": {"command": {"type": "string", "enum": list(StoryCli.ALLOWED)}, "arguments": {"type": "array", "items": {"type": "string"}}}, "required": ["command"]}),
             ToolDefinition(name="complete_skill", description="Mark the Skill execution complete", input_schema={"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}),
         ]
 
@@ -192,7 +192,10 @@ class SkillRuntimeService:
         system = (
             "Execute the Skill using only the supplied runtime tools. Read existing story files, "
             "request input when essential, propose complete validated files, update registries, and "
-            "call complete_skill. Never invent tool results or paths.\n\nSKILL:\n" + skill.instructions
+            "call complete_skill. Never invent tool results or paths. The project structure already exists; "
+            "do not initialize a new project. For run_story_command, pass only an allowed maintenance "
+            "subcommand, never the 'story' executable name. If a tool returns an error, correct the call "
+            "or use file proposals instead.\n\nSKILL:\n" + skill.instructions
         )
         try:
             result = await self.gateway.complete_with_tools(

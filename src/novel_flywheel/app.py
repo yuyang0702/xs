@@ -20,6 +20,7 @@ from novel_flywheel.workflows import WorkflowService
 from novel_flywheel.wizard import SkillFormCatalog, WizardService
 from novel_flywheel.skill_runtime import SkillRuntimeService
 from novel_flywheel.migration import ProjectMigrator
+from novel_flywheel.tasks import RunTaskManager
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -30,6 +31,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     if db is None:
         db = Database(default_settings().database_path)
     db.migrate()
+    db.interrupt_active_runs()
     app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
     settings = default_settings()
     app.state.projects = ProjectStore(
@@ -49,6 +51,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.skill_runtime = SkillRuntimeService(
         db, app.state.projects, gateway, app.state.skill_gate,
     )
+    app.state.run_tasks = RunTaskManager(db)
     app.state.migrator = ProjectMigrator(
         lambda project, command: app.state.skill_runtime._run_story_cli(project, [command, "."]),
     )

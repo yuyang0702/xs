@@ -70,7 +70,7 @@ def test_executable_skill_requires_approval_for_current_hash(tmp_path) -> None:
 
 def test_missing_or_failed_required_skill_blocks_stage(tmp_path) -> None:
     root = tmp_path / "skills"
-    write_skill(root, "broken", "Run it.", "raise SystemExit(2)")
+    write_skill(root, "broken", "Run it.", "import sys\nprint('validation detail', file=sys.stderr)\nraise SystemExit(2)")
     db = Database(tmp_path / "app.db")
     db.migrate()
     gate = SkillGate(db, SkillScanner([root]))
@@ -83,6 +83,7 @@ def test_missing_or_failed_required_skill_blocks_stage(tmp_path) -> None:
     with pytest.raises(RuntimeError, match="broken"):
         gate.run_required("review", ["broken"], {"broken": ["scripts/run.py"]})
     assert db.list_skill_receipts()[-1]["status"] == "failed"
+    assert "validation detail" in db.list_skill_receipts()[-1]["output"]
 
 
 def test_javascript_skill_uses_configured_bundled_runtime(tmp_path) -> None:

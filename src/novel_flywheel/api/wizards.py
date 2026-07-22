@@ -66,16 +66,33 @@ def analyze_wizard(wizard_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
 
 
-@router.post("/projects/{project_id}/initialize-skills")
+@router.post("/projects/{project_id}/initialize-skills", status_code=status.HTTP_202_ACCEPTED)
 async def initialize_project_skills(project_id: str, request: Request) -> dict:
     try:
         project = request.app.state.projects.get(project_id)
         answers = project.metadata.get("story_requirements", {})
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found", "message": str(exc)}) from exc
+
+    async def operation(run_id: str) -> object:
         results = []
         for skill_name in project.metadata.get("initialization_skills", []):
-            results.append(await request.app.state.skill_runtime.run(project_id, skill_name, answers))
-        return {"project_id": project_id, "status": "completed", "skills": results}
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "project_or_skill_not_found", "message": str(exc)}) from exc
-    except (PermissionError, RuntimeError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail={"code": "initialization_failed", "message": str(exc)}) from exc
+            request.app.state.registry.db.update_run(run_id, "running", skill_name)
+            request.app.state.registry.db.add_run_event(
+                run_id, "info", "skill_started", f"开始执行 {skill_name}", stage=skill_name,
+            )
+            try:
+                result = await request.app.state.skill_runtime.run(project_id, skill_name, answers)
+            except Exception as exc:
+                request.app.state.registry.db.add_run_event(
+                    run_id, "error", "skill_failed", str(exc), stage=skill_name,
+                )
+                raise
+            results.append(result)
+            request.app.state.registry.db.add_run_event(
+                run_id, "success", "skill_completed", f"{skill_name} 执行完成",
+                stage=skill_name, metadata={"proposal_count": len(result.get("proposals", []))},
+            )
+        return results
+
+    return request.app.state.run_tasks.start(project_id, "initialize-skills", operation)

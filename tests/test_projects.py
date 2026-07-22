@@ -50,3 +50,58 @@ def test_project_slug_cannot_escape_workspace(tmp_path) -> None:
     store = ProjectStore(db, tmp_path / "workspace")
     with pytest.raises(ValueError):
         store.create(ProjectCreate(title="..", mode="short", genre="test", premise="test", target_words=1000))
+
+
+def test_project_trash_restore_and_permanent_delete(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Keep Me", mode="long", genre="fantasy", premise="An oath.", target_words=100000,
+    ))
+    original = project.path
+    (original / "chapters" / "chapter-01.md").write_text("chapter", encoding="utf-8")
+
+    trashed = store.trash(project.id)
+    assert store.list() == []
+    assert trashed["path"].parent == tmp_path / "trash"
+    assert (trashed["path"] / "chapters" / "chapter-01.md").is_file()
+
+    restored = store.restore(project.id)
+    assert restored.path == original
+    assert (restored.path / "chapters" / "chapter-01.md").is_file()
+
+    store.trash(project.id)
+    store.delete_permanently(project.id)
+    assert store.list_trash() == []
+    assert not (tmp_path / "trash" / project.id).exists()
+
+
+def test_cancelled_run_does_not_hide_project_and_trash_rejects_outside_path(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Continue", mode="long", genre="fantasy", premise="An oath.", target_words=100000,
+    ))
+    db.create_run("run", project.id, "long-chapter", status="cancelled")
+    assert store.list()[0].id == project.id
+
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    db.update_project_path(project.id, outside)
+    with pytest.raises(ValueError, match="outside"):
+        store.trash(project.id)
+
+
+def test_project_with_active_run_cannot_be_trashed(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Running", mode="long", genre="fantasy", premise="An oath.", target_words=100000,
+    ))
+    db.create_run("run", project.id, "long-chapter", status="running")
+
+    with pytest.raises(ValueError, match="active run"):
+        store.trash(project.id)

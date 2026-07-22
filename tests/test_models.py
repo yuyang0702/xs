@@ -73,6 +73,25 @@ class Toolbox:
         return {"items": [{"excerpt": "key evidence"}]}
 
 
+class CorrectingToolAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls == 1:
+            return ModelResponse(tool_calls=[ToolCall(
+                id="bad-call", name="search_chapters", arguments={"query": "bad"},
+            )])
+        assert "query is not allowed" in request.messages[-1].content
+        return ModelResponse(text="corrected", input_tokens=3, output_tokens=2)
+
+
+class RejectingToolbox(Toolbox):
+    def execute(self, name, arguments):
+        raise ValueError("query is not allowed")
+
+
 @pytest.mark.asyncio
 async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -83,6 +102,21 @@ async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> Non
     )
     assert result.text == "approved"
     assert result.receipt["execution_mode"] == "native_tools"
+    assert result.receipt["tool_call_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_gateway_returns_recoverable_tool_errors_to_model(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("review", "provider", "model", None, None)
+
+    result = await ModelGateway(db, ToolRegistry(CorrectingToolAdapter())).complete_with_tools(
+        "review", "rules", "review", RejectingToolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert result.text == "corrected"
     assert result.receipt["tool_call_count"] == 1
 
 

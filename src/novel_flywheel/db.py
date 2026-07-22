@@ -58,6 +58,12 @@ CREATE TABLE IF NOT EXISTS projects(
   path TEXT NOT NULL UNIQUE,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS project_trash(
+  project_id TEXT PRIMARY KEY REFERENCES projects(id),
+  original_path TEXT NOT NULL,
+  trash_path TEXT NOT NULL,
+  trashed_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS runs(
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL REFERENCES projects(id),
@@ -67,6 +73,16 @@ CREATE TABLE IF NOT EXISTS runs(
   error TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS run_events(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  severity TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  stage TEXT,
+  message TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS chapter_search USING fts5(
   project_id UNINDEXED, chapter_id UNINDEXED, chapter_number UNINDEXED, content, summary
@@ -346,19 +362,82 @@ class Database:
     def list_projects(self) -> list[dict[str, Any]]:
         with self.connect() as connection:
             return [dict(row) for row in connection.execute(
-                "SELECT * FROM projects ORDER BY created_at DESC, rowid DESC"
+                "SELECT * FROM projects WHERE NOT EXISTS "
+                "(SELECT 1 FROM project_trash WHERE project_id=projects.id) "
+                "ORDER BY created_at DESC, rowid DESC"
             )]
 
     def get_project(self, project_id: str) -> dict[str, Any] | None:
         with self.connect() as connection:
-            row = connection.execute("SELECT * FROM projects WHERE id = ?", (project_id,)).fetchone()
+            row = connection.execute(
+                "SELECT * FROM projects WHERE id=? AND NOT EXISTS "
+                "(SELECT 1 FROM project_trash WHERE project_id=projects.id)", (project_id,),
+            ).fetchone()
         return dict(row) if row else None
 
-    def create_run(self, run_id: str, project_id: str, workflow: str) -> None:
+    def update_project_path(self, project_id: str, path: Path) -> None:
+        with self.connect() as connection:
+            connection.execute("UPDATE projects SET path=? WHERE id=?", (str(path), project_id))
+
+    def trash_project(self, project_id: str, original_path: Path, trash_path: Path) -> None:
+        with self.connect() as connection:
+            connection.execute("UPDATE projects SET path=? WHERE id=?", (str(trash_path), project_id))
+            connection.execute(
+                "INSERT INTO project_trash VALUES (?, ?, ?, datetime('now'))",
+                (project_id, str(original_path), str(trash_path)),
+            )
+
+    def list_trashed_projects(self) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT projects.*, project_trash.original_path, project_trash.trash_path, "
+                "project_trash.trashed_at FROM projects JOIN project_trash "
+                "ON project_trash.project_id=projects.id ORDER BY project_trash.trashed_at DESC"
+            )]
+
+    def get_trashed_project(self, project_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT projects.*, project_trash.original_path, project_trash.trash_path, "
+                "project_trash.trashed_at FROM projects JOIN project_trash "
+                "ON project_trash.project_id=projects.id WHERE projects.id=?", (project_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def restore_project(self, project_id: str, path: Path) -> None:
+        with self.connect() as connection:
+            connection.execute("UPDATE projects SET path=? WHERE id=?", (str(path), project_id))
+            connection.execute("DELETE FROM project_trash WHERE project_id=?", (project_id,))
+
+    def delete_project_data(self, project_id: str) -> None:
         with self.connect() as connection:
             connection.execute(
-                "INSERT INTO runs VALUES (?, ?, ?, 'running', NULL, NULL, datetime('now'), datetime('now'))",
-                (run_id, project_id, workflow),
+                "DELETE FROM run_events WHERE run_id IN (SELECT id FROM runs WHERE project_id=?)",
+                (project_id,),
+            )
+            connection.execute(
+                "DELETE FROM tool_receipts WHERE run_id IN (SELECT id FROM runs WHERE project_id=?)",
+                (project_id,),
+            )
+            connection.execute("DELETE FROM runs WHERE project_id=?", (project_id,))
+            connection.execute("DELETE FROM chapter_search WHERE project_id=?", (project_id,))
+            for table in ("canon_facts", "chapter_states", "drift_findings", "story_locks", "change_requests"):
+                connection.execute(f"DELETE FROM {table} WHERE project_id=?", (project_id,))
+            connection.execute(
+                "DELETE FROM file_proposals WHERE execution_id IN "
+                "(SELECT id FROM skill_executions WHERE project_id=?)", (project_id,),
+            )
+            connection.execute("DELETE FROM skill_executions WHERE project_id=?", (project_id,))
+            connection.execute("UPDATE wizard_sessions SET project_id=NULL WHERE project_id=?", (project_id,))
+            connection.execute("DELETE FROM project_trash WHERE project_id=?", (project_id,))
+            connection.execute("DELETE FROM projects WHERE id=?", (project_id,))
+
+    def create_run(self, run_id: str, project_id: str, workflow: str,
+                   status: str = "running") -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO runs VALUES (?, ?, ?, ?, NULL, NULL, datetime('now'), datetime('now'))",
+                (run_id, project_id, workflow, status),
             )
 
     def update_run(self, run_id: str, status: str, current_stage: str | None = None,
@@ -380,6 +459,54 @@ class Database:
                 "SELECT * FROM runs WHERE project_id = ? ORDER BY created_at DESC, rowid DESC",
                 (project_id,),
             )]
+
+    def has_active_runs(self, project_id: str) -> bool:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM runs WHERE project_id=? AND status IN ('queued', 'running', 'cancelling') LIMIT 1",
+                (project_id,),
+            ).fetchone()
+        return row is not None
+
+    def add_run_event(self, run_id: str, severity: str, event_type: str,
+                      message: str, *, stage: str | None = None,
+                      metadata: dict[str, Any] | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO run_events(run_id, severity, event_type, stage, message, metadata_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+                (run_id, severity, event_type, stage, message,
+                 json.dumps(metadata or {}, ensure_ascii=False)),
+            )
+
+    def list_run_events(self, run_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM run_events WHERE run_id=? ORDER BY id", (run_id,),
+            ).fetchall()
+        events = []
+        for row in rows:
+            event = dict(row)
+            event["metadata"] = json.loads(event.pop("metadata_json"))
+            events.append(event)
+        return events
+
+    def interrupt_active_runs(self) -> int:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT id FROM runs WHERE status IN ('queued', 'running', 'cancelling')"
+            ).fetchall()
+            connection.execute(
+                "UPDATE runs SET status='interrupted', error='Program restarted while task was active', "
+                "updated_at=datetime('now') WHERE status IN ('queued', 'running', 'cancelling')"
+            )
+            for row in rows:
+                connection.execute(
+                    "INSERT INTO run_events(run_id, severity, event_type, stage, message, metadata_json, created_at) "
+                    "VALUES (?, 'warning', 'interrupted', NULL, '程序重启，任务已中断', '{}', datetime('now'))",
+                    (row["id"],),
+                )
+        return len(rows)
 
     def save_tool_receipt(self, *, run_id: str | None, stage: str, model_id: str,
                           execution_mode: str, tool_name: str | None = None,

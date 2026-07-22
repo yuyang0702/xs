@@ -5,38 +5,57 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/api", tags=["runs"])
 
 
-@router.post("/projects/{project_id}/runs/short", status_code=status.HTTP_201_CREATED)
-async def start_short_run(project_id: str, request: Request) -> dict:
+def _ensure_project(project_id: str, request: Request) -> None:
     try:
-        return await request.app.state.workflows.run_short(project_id)
+        request.app.state.projects.get(project_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "project_or_model_not_found", "message": str(exc)}) from exc
-    except PermissionError as exc:
-        raise HTTPException(status_code=409, detail={"code": "skill_approval_required", "message": str(exc)}) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": "invalid_workflow", "message": str(exc)}) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=422, detail={"code": "workflow_failed", "message": str(exc)}) from exc
+        raise HTTPException(status_code=404, detail={
+            "code": "project_not_found", "message": str(exc),
+        }) from exc
 
 
-@router.post("/projects/{project_id}/runs/setup", status_code=status.HTTP_201_CREATED)
+@router.post("/projects/{project_id}/runs/short", status_code=status.HTTP_202_ACCEPTED)
+async def start_short_run(project_id: str, request: Request) -> dict:
+    _ensure_project(project_id, request)
+
+    async def operation(run_id: str) -> object:
+        return await request.app.state.workflows.run_short(project_id, run_id=run_id)
+
+    return request.app.state.run_tasks.start(project_id, "short-story", operation)
+
+
+@router.post("/projects/{project_id}/runs/setup", status_code=status.HTTP_202_ACCEPTED)
 async def start_long_setup(project_id: str, request: Request) -> dict:
-    try:
-        return await request.app.state.workflows.run_long_setup(project_id)
-    except (LookupError, ValueError, PermissionError, RuntimeError) as exc:
-        raise HTTPException(status_code=422, detail={"code": "workflow_failed", "message": str(exc)}) from exc
+    _ensure_project(project_id, request)
+
+    async def operation(run_id: str) -> object:
+        return await request.app.state.workflows.run_long_setup(project_id, run_id=run_id)
+
+    return request.app.state.run_tasks.start(project_id, "long-setup", operation)
 
 
 class ChapterRun(BaseModel):
     chapter_goal: str = Field(min_length=1)
 
 
-@router.post("/projects/{project_id}/runs/chapter", status_code=status.HTTP_201_CREATED)
+@router.post("/projects/{project_id}/runs/chapter", status_code=status.HTTP_202_ACCEPTED)
 async def start_long_chapter(project_id: str, payload: ChapterRun, request: Request) -> dict:
+    _ensure_project(project_id, request)
+
+    async def operation(run_id: str) -> object:
+        return await request.app.state.workflows.run_chapter(
+            project_id, payload.chapter_goal, run_id=run_id,
+        )
+
+    return request.app.state.run_tasks.start(project_id, "long-chapter", operation)
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel_run(run_id: str, request: Request) -> dict:
     try:
-        return await request.app.state.workflows.run_chapter(project_id, payload.chapter_goal)
-    except (LookupError, ValueError, PermissionError, RuntimeError) as exc:
-        raise HTTPException(status_code=422, detail={"code": "workflow_failed", "message": str(exc)}) from exc
+        return request.app.state.run_tasks.cancel(run_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "run_not_found"}) from exc
 
 
 @router.get("/projects/{project_id}/runs")
@@ -50,4 +69,5 @@ def get_run(run_id: str, request: Request) -> dict:
     if run is None:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"})
     run["tool_receipts"] = request.app.state.registry.db.list_tool_receipts(run_id)
+    run["events"] = request.app.state.registry.db.list_run_events(run_id)
     return run

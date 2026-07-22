@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import re
@@ -24,35 +25,33 @@ class WorkflowService:
         self.crewai_data_dir = crewai_data_dir or db.path.parent / "crewai"
         self.memory = StoryMemory(db)
 
-    async def run_short(self, project_id: str, use_crewai: bool = True) -> dict:
+    async def run_short(self, project_id: str, use_crewai: bool = True,
+                        run_id: str | None = None) -> dict:
         project = self.projects.get(project_id)
         if project.mode != "short":
             raise ValueError("Short-story workflow requires a short project")
         if use_crewai:
-            return await self._run_in_crewai(lambda: self._short_pipeline(project))
-        return await self._short_pipeline(project)
+            return await self._run_in_crewai(lambda: self._short_pipeline(project, run_id))
+        return await self._short_pipeline(project, run_id)
 
     async def run_chapter(self, project_id: str, chapter_goal: str,
-                          use_crewai: bool = True) -> dict:
+                          use_crewai: bool = True, run_id: str | None = None) -> dict:
         project = self.projects.get(project_id)
         if project.mode != "long":
             raise ValueError("Long chapter workflow requires a long project")
-        pipeline = lambda: self._chapter_pipeline(project, chapter_goal)
+        pipeline = lambda: self._chapter_pipeline(project, chapter_goal, run_id)
         return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
 
-    async def run_long_setup(self, project_id: str, use_crewai: bool = True) -> dict:
+    async def run_long_setup(self, project_id: str, use_crewai: bool = True,
+                             run_id: str | None = None) -> dict:
         project = self.projects.get(project_id)
         if project.mode != "long":
             raise ValueError("Long setup workflow requires a long project")
-        pipeline = lambda: self._long_setup_pipeline(project)
+        pipeline = lambda: self._long_setup_pipeline(project, run_id)
         return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
 
-    async def _long_setup_pipeline(self, project: Project) -> dict:
-        run_id = uuid.uuid4().hex
-        run_path = project.path / "runs" / run_id
-        (run_path / "outputs").mkdir(parents=True)
-        (run_path / "receipts").mkdir()
-        self.db.create_run(run_id, project.id, "long-setup")
+    async def _long_setup_pipeline(self, project: Project, run_id: str | None = None) -> dict:
+        run_id, run_path = self._begin_run(project, "long-setup", run_id)
         outline_path = project.path / "outline.md"
         canon_path = project.path / "memory" / "canon.json"
         volumes_path = project.path / "memory" / "volumes.json"
@@ -90,12 +89,17 @@ class WorkflowService:
             self._post_write_maintenance(run_id, project)
             self.db.update_run(run_id, "completed", "archive")
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
+        except asyncio.CancelledError:
+            snapshot.restore()
+            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
+            raise
         except Exception as exc:
             snapshot.restore()
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
-    async def _chapter_pipeline(self, project: Project, chapter_goal: str) -> dict:
+    async def _chapter_pipeline(self, project: Project, chapter_goal: str,
+                                run_id: str | None = None) -> dict:
         numbers = [
             int(match.group(1)) for path in project.path.joinpath("chapters").glob("chapter-*.md")
             if (match := re.fullmatch(r"chapter-(\d+)\.md", path.name))
@@ -104,11 +108,7 @@ class WorkflowService:
         chapter_id = f"chapter-{chapter_number:02d}"
         chapter_path = project.path / "chapters" / f"{chapter_id}.md"
         canon_path = project.path / "memory" / "canon.json"
-        run_id = uuid.uuid4().hex
-        run_path = project.path / "runs" / run_id
-        (run_path / "outputs").mkdir(parents=True)
-        (run_path / "receipts").mkdir()
-        self.db.create_run(run_id, project.id, "long-chapter")
+        run_id, run_path = self._begin_run(project, "long-chapter", run_id)
         self._ensure_previous_volume_passed(project, chapter_number)
         snapshot = ProjectSnapshot.create(
             project.path, project.path / "snapshots" / run_id, [chapter_path, canon_path],
@@ -165,18 +165,19 @@ class WorkflowService:
             await self._audit_volume_boundary(run_id, run_path, project, chapter_number, constraints)
             self.db.update_run(run_id, "completed", "archive")
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
+        except asyncio.CancelledError:
+            if not committed:
+                snapshot.restore()
+            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
+            raise
         except Exception as exc:
             if not committed:
                 snapshot.restore()
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
-    async def _short_pipeline(self, project: Project) -> dict:
-        run_id = uuid.uuid4().hex
-        run_path = project.path / "runs" / run_id
-        (run_path / "outputs").mkdir(parents=True)
-        (run_path / "receipts").mkdir()
-        self.db.create_run(run_id, project.id, "short-story")
+    async def _short_pipeline(self, project: Project, run_id: str | None = None) -> dict:
+        run_id, run_path = self._begin_run(project, "short-story", run_id)
         formal = [
             project.path / "manuscript" / "story.md",
             project.path / "chapters" / "chapter-01.md",
@@ -222,6 +223,10 @@ class WorkflowService:
             self._post_write_maintenance(run_id, project)
             self.db.update_run(run_id, "completed", "archive")
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
+        except asyncio.CancelledError:
+            snapshot.restore()
+            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
+            raise
         except Exception as exc:
             snapshot.restore()
             self.db.update_run(run_id, "failed", error=str(exc))
@@ -230,6 +235,7 @@ class WorkflowService:
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "") -> str:
         self.db.update_run(run_id, "running", stage)
+        self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
         commands = None
         cwd = None
@@ -237,24 +243,59 @@ class WorkflowService:
         if skill and skill.executable:
             commands = {"story-maintenance": ["scripts/story.js", "validate", "."]}
             cwd = project.path
-        skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
-        system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{skill_run.prompt}"
-        if hasattr(self.gateway, "complete_with_tools"):
-            toolbox = StoryToolbox(project, self.memory)
-            result = await self.gateway.complete_with_tools(
-                stage, system, user, toolbox,
-                fallback_context=lambda: json.dumps(
-                    self.memory.context(project.id, user[:500]), ensure_ascii=False,
-                ),
-                run_id=run_id,
+        try:
+            skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
+            skills = [receipt.skill_name for receipt in skill_run.receipts]
+            self.db.add_run_event(
+                run_id, "success", "skills_loaded", f"已加载 {len(skills)} 个 Skill",
+                stage=stage, metadata={"skills": skills},
             )
+            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{skill_run.prompt}"
+            if hasattr(self.gateway, "complete_with_tools"):
+                toolbox = StoryToolbox(project, self.memory)
+                result = await self.gateway.complete_with_tools(
+                    stage, system, user, toolbox,
+                    fallback_context=lambda: json.dumps(
+                        self.memory.context(project.id, user[:500]), ensure_ascii=False,
+                    ),
+                    run_id=run_id,
+                )
+            else:
+                result = await self.gateway.complete(stage, system, user)
+            name = f"{stage}{suffix}"
+            atomic_write(run_path / "outputs" / f"{name}.md", result.text)
+            receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
+            atomic_write(run_path / "receipts" / f"{name}.json", json.dumps(receipt, ensure_ascii=False, indent=2))
+            self.db.add_run_event(
+                run_id, "success", "stage_completed", f"{stage} 执行完成", stage=stage,
+                metadata={
+                    "provider_id": result.receipt.get("provider_id"),
+                    "model_name": result.receipt.get("model_name"),
+                    "input_tokens": result.receipt.get("input_tokens", 0),
+                    "output_tokens": result.receipt.get("output_tokens", 0),
+                    "execution_mode": result.receipt.get("execution_mode"),
+                    "skills": skills,
+                },
+            )
+            return result.text
+        except asyncio.CancelledError:
+            self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
+            raise
+        except Exception as exc:
+            self.db.add_run_event(run_id, "error", "stage_failed", str(exc), stage=stage)
+            raise
+
+    def _begin_run(self, project: Project, workflow: str,
+                   run_id: str | None) -> tuple[str, Path]:
+        run_id = run_id or uuid.uuid4().hex
+        run_path = project.path / "runs" / run_id
+        (run_path / "outputs").mkdir(parents=True, exist_ok=True)
+        (run_path / "receipts").mkdir(exist_ok=True)
+        if self.db.get_run(run_id) is None:
+            self.db.create_run(run_id, project.id, workflow)
         else:
-            result = await self.gateway.complete(stage, system, user)
-        name = f"{stage}{suffix}"
-        atomic_write(run_path / "outputs" / f"{name}.md", result.text)
-        receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
-        atomic_write(run_path / "receipts" / f"{name}.json", json.dumps(receipt, ensure_ascii=False, indent=2))
-        return result.text
+            self.db.update_run(run_id, "running", "starting")
+        return run_id, run_path
 
     def _post_write_maintenance(self, run_id: str, project: Project) -> None:
         skill = self.skills.skills(project.path).get("story-maintenance")

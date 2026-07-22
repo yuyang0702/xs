@@ -14,6 +14,7 @@
       <button class="nav-item" data-view="projects">新建作品</button>
       <button class="nav-item" data-view="models">模型与 API</button>
       <button class="nav-item" data-view="skills">Skill 管理</button>
+      <button class="nav-item" data-view="trash">回收站</button>
     </nav>
     <div class="local-state"><span></span>仅本机运行</div>
   </aside>
@@ -27,7 +28,7 @@
     <section id="workbench" class="view active">
       <div class="toolbar">
         <label>当前作品<select id="active-project"></select></label>
-        <div><button id="migrate-project" class="secondary">迁移标准结构</button> <button id="open-manuscript" class="secondary">查看正文</button></div>
+        <div><button id="migrate-project" class="secondary">迁移标准结构</button> <button id="open-manuscript" class="secondary">查看正文</button> <button id="trash-project" class="secondary danger-text">移入回收站</button></div>
       </div>
       <div id="project-summary" class="summary-band"></div>
       <div class="workspace-grid">
@@ -39,10 +40,11 @@
             <label>本章目标<textarea id="chapter-goal" rows="4" placeholder="本章核心剧情、必须回收的伏笔、结尾钩子"></textarea></label>
             <button id="run-chapter" class="primary">生成下一章</button>
           </div>
-          <div id="run-state" class="run-state">等待任务</div>
+          <div class="run-controls"><div id="run-state" class="run-state">等待任务</div><button id="run-cancel" class="stop-button" title="终止本次生成" aria-label="终止本次生成" hidden>■</button></div>
         </section>
-        <section class="history-panel"><h2>运行记录</h2><div id="run-list" class="run-list"></div></section>
+        <section class="history-panel"><h2>实时执行日志</h2><div id="run-log" class="run-log"><p class="skill-meta">尚未开始任务</p></div><h2 class="history-title">运行记录</h2><div id="run-list" class="run-list"></div></section>
       </div>
+      <section class="project-library"><div class="section-heading"><h2>我的作品</h2><button class="secondary" data-view-target="projects">新建作品</button></div><div id="project-list" class="project-list"></div></section>
       <section class="manuscript-panel" id="manuscript-panel" hidden>
         <div class="section-heading"><h2>正文</h2><button id="close-manuscript" class="icon-button" aria-label="关闭正文">×</button></div>
         <pre id="manuscript"></pre>
@@ -98,7 +100,14 @@
       <div class="section-heading"><div><p class="eyebrow">EXECUTION GATES</p><h2>Skill 管理</h2></div></div>
       <div id="skill-list" class="data-list"></div>
     </section>
+
+    <section id="trash" class="view">
+      <div class="section-heading"><div><p class="eyebrow">RECOVERABLE PROJECTS</p><h2>作品回收站</h2></div></div>
+      <div id="trash-list" class="data-list"></div>
+    </section>
   </main>
+  <datalist id="genre-options"></datalist>
+  <datalist id="subgenre-options"></datalist>
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/app.js" defer></script>
 </body>

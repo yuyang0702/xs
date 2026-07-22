@@ -19,6 +19,12 @@ def list_projects(request: Request) -> list[dict]:
     return [_public(project) for project in get_store(request).list()]
 
 
+@router.get("/projects/trash")
+def list_trashed_projects(request: Request) -> list[dict]:
+    return [{**item, "path": str(item["path"]), "original_path": str(item["original_path"])}
+            for item in get_store(request).list_trash()]
+
+
 @router.get("/projects/{project_id}")
 def get_project(project_id: str, request: Request) -> dict:
     try:
@@ -47,6 +53,37 @@ def create_project(payload: ProjectCreate, request: Request) -> dict:
         return _public(get_store(request).create(payload))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": "invalid_project", "message": str(exc)}) from exc
+
+
+@router.delete("/projects/{project_id}")
+def trash_project(project_id: str, request: Request) -> dict:
+    try:
+        item = get_store(request).trash(project_id)
+        return {**item, "path": str(item["path"]), "original_path": str(item["original_path"])}
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": "trash_failed", "message": str(exc)}) from exc
+
+
+@router.post("/projects/{project_id}/restore")
+def restore_project(project_id: str, request: Request) -> dict:
+    try:
+        return _public(get_store(request).restore(project_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "trashed_project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": "restore_failed", "message": str(exc)}) from exc
+
+
+@router.delete("/projects/{project_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def delete_project_permanently(project_id: str, request: Request) -> None:
+    try:
+        get_store(request).delete_permanently(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "trashed_project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": "delete_failed", "message": str(exc)}) from exc
 
 
 @router.get("/projects/{project_id}/migration")
