@@ -1,5 +1,6 @@
 import fnmatch
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -129,6 +130,8 @@ class SkillRuntimeToolbox:
             raise ValueError("Proposal content is required and must be bounded")
         if relative.endswith(".md") and not content.startswith("---\n"):
             raise ValueError("Story markdown proposals require YAML frontmatter")
+        if relative.endswith("/_index.md") or relative in {"plot/timeline.md", "continuity/state.md"}:
+            content = self._set_frontmatter_scalar(content, "story", self.project.id)
         locks = {item["key"]: item["value"] for item in self.db.list_locks(self.project.id)}
         for key, proposed in (arguments.get("facts") or {}).items():
             if key in locks and locks[key] != proposed:
@@ -144,7 +147,10 @@ class SkillRuntimeToolbox:
         if not proposals:
             self.db.update_skill_execution(self.execution_id, "completed")
             return
-        files = [self.project.path / item["relative_path"] for item in proposals]
+        files = list(dict.fromkeys([
+            *(self.project.path / item["relative_path"] for item in proposals),
+            *self.project.path.rglob("_index.md"),
+        ]))
         snapshot = ProjectSnapshot.create(
             self.project.path, self.project.path / "snapshots" / f"skill-{self.execution_id}", files,
         )
@@ -186,6 +192,21 @@ class SkillRuntimeToolbox:
         if pure.is_absolute() or ".." in pure.parts:
             raise ValueError("Path not allowed")
         return pure.as_posix()
+
+    @staticmethod
+    def _set_frontmatter_scalar(content: str, key: str, value: str) -> str:
+        match = re.match(r"^---\n([\s\S]*?)\n---", content)
+        if not match:
+            raise ValueError("Story markdown proposals require YAML frontmatter")
+        lines = match.group(1).splitlines()
+        replacement = f"{key}: {value}"
+        for index, line in enumerate(lines):
+            if line.startswith(f"{key}:"):
+                lines[index] = replacement
+                break
+        else:
+            lines.append(replacement)
+        return f"---\n{'\n'.join(lines)}\n---{content[match.end():]}"
 
 
 class SkillRuntimeService:
@@ -243,8 +264,17 @@ class SkillRuntimeService:
         if not skill or not skill.executable:
             raise RuntimeError("Executable story-maintenance Skill is required")
         argv = ["scripts/story.js", *command]
-        result = self.skills.run_required(
-            "skill-runtime", ["story-maintenance"], {"story-maintenance": argv},
-            project.path, project.path,
+        story_path = project.path / "story.md"
+        original_story = story_path.read_text(encoding="utf-8")
+        compatible_story = SkillRuntimeToolbox._set_frontmatter_scalar(
+            original_story, "title", project.id,
         )
+        atomic_write(story_path, compatible_story)
+        try:
+            result = self.skills.run_required(
+                "skill-runtime", ["story-maintenance"], {"story-maintenance": argv},
+                project.path, project.path,
+            )
+        finally:
+            atomic_write(story_path, original_story)
         return result.receipts[0].output

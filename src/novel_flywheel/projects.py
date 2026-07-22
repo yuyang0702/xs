@@ -72,7 +72,7 @@ class ProjectStore:
             f"## Must Avoid\n{payload.must_avoid or 'None'}\n",
             encoding="utf-8",
         )
-        self._scaffold_story_files(path, payload)
+        self._scaffold_story_files(path, payload, project_id)
         self.db.save_project(project_id, payload.title, payload.mode, path)
         return Project(project_id, payload.title, payload.mode, path, metadata)
 
@@ -168,9 +168,9 @@ class ProjectStore:
         path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
     @staticmethod
-    def _scaffold_story_files(path: Path, payload: ProjectCreate) -> None:
+    def _scaffold_story_files(path: Path, payload: ProjectCreate, project_id: str) -> None:
         (path / "story.md").write_text(
-            f"---\ntitle: {payload.title}\nschema-version: 2\ngenre: {payload.genre}\n"
+            f"---\ntitle: {payload.title}\nstory: {project_id}\nschema-version: 2\ngenre: {payload.genre}\n"
             f"sub-genre: general\nsetting-era: unspecified\nstatus: planning\n"
             f"themes:\n  - change\npov: {payload.pov}\ntense: past\n---\n\n"
             f"# {payload.title}\n\n## Synopsis\n\n{payload.premise}\n\n"
@@ -183,19 +183,19 @@ class ProjectStore:
             "continuity/promises/_index.md": ("promise-registry", "# Story Promises\n\n| Promise | Status | Planted | Payoff | File |\n|---|---|---|---|---|"),
             "continuity/questions/_index.md": ("question-registry", "# Open Questions\n\n| Question | Status | Opened | Answered | File |\n|---|---|---|---|---|"),
             "glossary/_index.md": ("glossary-registry", "# Glossary\n\n| Term | Meaning | File |\n|---|---|---|"),
-            "plot/_index.md": ("plot-registry", "# Plot Structure\n\n## Story Structure\n\n**Model:** Three-Act Structure\n\n## Arcs\n\n| Name | Type | Status | File |\n|---|---|---|---|\n\n## Theme Tracking"),
+            "plot/_index.md": ("plot-registry\nstructure: three-act", "# Plot Structure\n\n## Story Structure\n\n**Model:** Three-Act Structure\n\n## Arcs\n\n| Name | Type | Status | File |\n|---|---|---|---|\n\n## Theme Tracking"),
             "scenes/_index.md": ("scene-registry", "# Scenes\n\n| Scene | Chapter | POV | Location | Status |\n|---|---|---|---|---|"),
             "worldbuilding/_index.md": ("world-registry", "# Worldbuilding\n\n## World Overview\n\n## Locations\n\n| Name | Type | Region | File |\n|---|---|---|---|\n\n## Systems\n\n| Name | Type | File |\n|---|---|---|\n\n## Factions\n\n| Name | Type | Status | File |\n|---|---|---|---|\n\n## Artifacts\n\n| Name | Type | Status | File |\n|---|---|---|---|"),
         }
         for relative, (kind, body) in registry_files.items():
             (path / relative).write_text(
-                f"---\ntype: {kind}\nstory: {path.name}\n---\n\n{body}\n",
+                f"---\ntype: {kind}\nstory: {project_id}\n---\n\n{body}\n",
                 encoding="utf-8",
             )
         (path / "continuity" / "state.md").write_text(
-            "---\ntype: continuity-state\ncurrent-chapter: 0\ncharacter-state: []\nobject-state: []\nknowledge-state: []\n---\n\n# Current State\n", encoding="utf-8",
+            f"---\ntype: continuity-state\nstory: {project_id}\ncurrent-chapter: 0\ncharacter-state: []\nobject-state: []\nknowledge-state: []\n---\n\n# Current State\n", encoding="utf-8",
         )
         (path / "continuity" / "locks.json").write_text("{\n  \"locks\": []\n}\n", encoding="utf-8")
         (path / "plot" / "timeline.md").write_text(
-            "---\ntype: timeline\n---\n\n# Timeline\n", encoding="utf-8",
+            f"---\ntype: timeline\nstory: {project_id}\n---\n\n# Timeline\n", encoding="utf-8",
         )
