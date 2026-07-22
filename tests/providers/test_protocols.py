@@ -75,3 +75,20 @@ async def test_provider_reports_non_json_endpoint_response() -> None:
 
     with pytest.raises(ProviderResponseError, match="text/html"):
         await AnthropicAdapter("https://relay.test", "secret").complete(REQUEST)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_provider_retries_one_transient_disconnect() -> None:
+    route = respx.post("https://relay.test/v1/messages").mock(side_effect=[
+        httpx.RemoteProtocolError("server disconnected"),
+        httpx.Response(200, json={
+            "id": "msg-retry", "content": [{"type": "text", "text": "recovered"}],
+            "stop_reason": "end_turn", "usage": {},
+        }),
+    ])
+
+    result = await AnthropicAdapter("https://relay.test", "secret").complete(REQUEST)
+
+    assert result.text == "recovered"
+    assert route.call_count == 2

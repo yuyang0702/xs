@@ -202,7 +202,7 @@ class WorkflowService:
                 )
             review_input = (
                 f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
-                f"{reader_sample(draft, project.mode)}"
+                f"{reader_sample(draft, project.mode, limit=6000)}"
             )
             review_text = await self._stage(
                 run_id, run_path, project, "review", constraints, review_input,
@@ -308,7 +308,7 @@ class WorkflowService:
 
         reasons: list[str] = []
         for attempt in range(route["max_corrections"] + 1):
-            final_input = (reader_sample(polished, project.mode)
+            final_input = (reader_sample(polished, project.mode, limit=6000)
                            if project.mode == "short" else polished)
             final_review = self._review(await self._stage(
                 run_id, run_path, project, "final_review", constraints, final_input,
@@ -379,7 +379,7 @@ class WorkflowService:
             "would_continue (boolean), would_pay (boolean), abandonment_point (text), and payoff_felt "
             "(boolean).\n\n"
             f"READER PROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
-            f"LABELED EXCERPTS:\n{reader_sample(text, project.mode)}"
+            f"LABELED EXCERPTS:\n{reader_sample(text, project.mode, limit=6000)}"
         )
         return self._review(await self._stage(
             run_id, run_path, project, "review", constraints, prompt,

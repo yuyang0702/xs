@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any
 
 import httpx
@@ -27,11 +28,18 @@ class HttpProvider:
         self.client = httpx.AsyncClient(timeout=timeout)
 
     async def post(self, path: str, *, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
-        response = await self.client.post(
-            f"{self.base_url}/{path.lstrip('/')}",
-            json=payload,
-            headers={**headers, **self.headers},
-        )
+        for attempt in range(2):
+            try:
+                response = await self.client.post(
+                    f"{self.base_url}/{path.lstrip('/')}",
+                    json=payload,
+                    headers={**headers, **self.headers},
+                )
+                break
+            except httpx.TransportError:
+                if attempt:
+                    raise
+                await asyncio.sleep(0.25)
         if response.status_code in {400, 404, 422} and "tools" in payload:
             detail = response.text.lower()
             if any(term in detail for term in ("tool", "function calling", "function_call")):
