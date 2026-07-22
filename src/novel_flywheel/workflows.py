@@ -219,17 +219,17 @@ class WorkflowService:
                     f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
                     f"{reader_sample(draft, project.mode, limit=6000)}"
                 )
-                review_text = await self._stage(
+                review_text = await self._stage_with_role_fallback(
                     run_id, run_path, project, "review", constraints, review_input,
-                    allow_tools=False,
+                    fallback_role="planning", allow_tools=False,
                 )
                 review = self._review(review_text)
             polished, _ = await self._quality_polish(
                 run_id, run_path, project, constraints, draft, review,
             )
-            canon_text = await self._stage(
+            canon_text = await self._stage_with_role_fallback(
                 run_id, run_path, project, "maintenance", constraints, polished,
-                allow_tools=False,
+                fallback_role="planning", allow_tools=False,
             )
             canon = self._json_object(canon_text)
             if not isinstance(canon.get("facts"), list):
@@ -325,10 +325,10 @@ class WorkflowService:
         for attempt in range(route["max_corrections"] + 1):
             final_input = (reader_sample(polished, project.mode, limit=6000)
                            if project.mode == "short" else polished)
-            final_review = self._review(await self._stage(
+            final_review = self._review(await self._stage_with_role_fallback(
                 run_id, run_path, project, "final_review", constraints, final_input,
                 suffix=f"-{attempt + 1}" if attempt else "",
-                allow_tools=project.mode != "short",
+                fallback_role="planning", allow_tools=project.mode != "short",
             ))
             passed, reasons = quality_gate(final_review)
             report["final_attempts"].append({
@@ -494,9 +494,9 @@ class WorkflowService:
                 f"PREVIOUS POLISHED END:\n{previous_tail}\n\nMANUSCRIPT SEGMENT:\n{part}\n\n"
                 f"STRUCTURED FINDINGS:\n{findings}"
             )
-            polished_parts.append((await self._stage(
+            polished_parts.append((await self._stage_with_role_fallback(
                 run_id, run_path, project, "polish", constraints, prompt,
-                suffix=f"{suffix}-part-{index:02d}", allow_tools=False,
+                suffix=f"{suffix}-part-{index:02d}", fallback_role="draft", allow_tools=False,
             )).strip())
         polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
@@ -586,6 +586,30 @@ class WorkflowService:
         except Exception as exc:
             self.db.add_run_event(run_id, "error", "stage_failed", str(exc), stage=stage)
             raise
+
+    async def _stage_with_role_fallback(
+        self, run_id: str, run_path: Path, project: Project, stage: str,
+        constraints: str, user: str, fallback_role: str, suffix: str = "",
+        allow_tools: bool = True,
+    ) -> str:
+        try:
+            return await self._stage(
+                run_id, run_path, project, stage, constraints, user,
+                suffix=suffix, allow_tools=allow_tools,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self.db.add_run_event(
+                run_id, "warning", "model_fallback",
+                f"{stage} 首选模型失败，已切换到 {fallback_role} 角色模型",
+                stage=stage, metadata={"fallback_role": fallback_role, "error": str(exc)},
+            )
+            return await self._stage(
+                run_id, run_path, project, stage, constraints, user,
+                suffix=f"{suffix}-fallback", model_role=fallback_role,
+                allow_tools=allow_tools,
+            )
 
     def _begin_run(self, project: Project, workflow: str,
                    run_id: str | None) -> tuple[str, Path]:
@@ -683,9 +707,9 @@ class WorkflowService:
 
     @staticmethod
     def _stage_output_budget(stage: str) -> int | None:
-        if stage == "planning":
+        if stage in {"planning", "final_review", "maintenance"}:
             return 8192
-        if stage in {"review", "polish", "final_review", "maintenance"}:
+        if stage in {"review", "polish"}:
             return 4096
         return None
 
