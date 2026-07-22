@@ -68,7 +68,18 @@
           <div id="wizard-fields" class="wizard-fields"></div>
           <div class="wizard-actions"><button id="wizard-back" class="secondary">上一步</button><button id="wizard-next" class="primary">下一步</button><button id="wizard-analyze" class="secondary" hidden>检查关键缺口</button><button id="wizard-confirm" class="primary" hidden>确认并创建项目</button></div>
         </section>
-        <aside class="wizard-summary"><h3>已固定内容</h3><div id="wizard-summary"></div></aside>
+        <aside class="wizard-side">
+          <section class="wizard-summary"><h3>已固定内容</h3><div id="wizard-summary"></div></section>
+          <section id="interview-panel" class="interview-panel">
+            <div class="interview-heading"><div><p class="eyebrow">PLANNING MODEL</p><h3>AI 开书访谈</h3></div><button id="interview-start" class="secondary" type="button">开始访谈</button></div>
+            <div id="interview-messages" class="interview-messages"><p class="skill-meta">AI 会根据当前表单逐题梳理设定。</p></div>
+            <form id="interview-form" class="interview-form">
+              <label><span class="sr-only">回答 AI 访谈</span><textarea id="interview-input" rows="3" maxlength="4000" placeholder="回答问题，或说明你的想法..."></textarea></label>
+              <button id="interview-send" class="primary" type="submit">发送</button>
+            </form>
+            <button id="interview-apply" class="secondary" type="button" hidden>应用所选建议</button>
+          </section>
+        </aside>
       </div>
     </section>
 

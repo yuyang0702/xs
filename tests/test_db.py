@@ -52,6 +52,23 @@ def test_wizard_autosave_round_trip(tmp_path) -> None:
     assert wizard["answers"]["title"]["policy"] == "locked"
 
 
+def test_interview_messages_round_trip_in_order(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_wizard("wizard", "draft", "long", {"steps": []}, {})
+
+    db.save_interview_message("user-1", "wizard", "user", "我想写悬疑小说", [])
+    db.save_interview_message("assistant-1", "wizard", "assistant", "主角最害怕什么？", [
+        {"field_id": "genre", "value": "悬疑", "reason": "用户已明确"},
+    ])
+    db.update_interview_message_status("assistant-1", "applied")
+
+    messages = db.list_interview_messages("wizard")
+    assert [item["role"] for item in messages] == ["user", "assistant"]
+    assert messages[1]["suggestions"][0]["field_id"] == "genre"
+    assert messages[1]["suggestion_status"] == "applied"
+
+
 def test_locks_are_revisioned_and_proposals_are_persisted(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

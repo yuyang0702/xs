@@ -136,6 +136,15 @@ CREATE TABLE IF NOT EXISTS wizard_sessions(
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS wizard_interview_messages(
+  id TEXT PRIMARY KEY,
+  wizard_id TEXT NOT NULL REFERENCES wizard_sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  suggestions_json TEXT NOT NULL DEFAULT '[]',
+  suggestion_status TEXT NOT NULL DEFAULT 'none',
+  created_at TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS story_locks(
   project_id TEXT NOT NULL,
   lock_key TEXT NOT NULL,
@@ -563,6 +572,42 @@ class Database:
                     "SELECT id FROM wizard_sessions ORDER BY updated_at DESC",
                 )]
         return [wizard for item in ids if (wizard := self.get_wizard(item))]
+
+    def save_interview_message(self, message_id: str, wizard_id: str, role: str,
+                               content: str, suggestions: list[dict]) -> None:
+        suggestion_status = "pending" if suggestions else "none"
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO wizard_interview_messages VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+                (message_id, wizard_id, role, content,
+                 json.dumps(suggestions, ensure_ascii=False), suggestion_status),
+            )
+
+    def get_interview_message(self, message_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM wizard_interview_messages WHERE id=?", (message_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        message = dict(row)
+        message["suggestions"] = json.loads(message.pop("suggestions_json"))
+        return message
+
+    def list_interview_messages(self, wizard_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            ids = [row[0] for row in connection.execute(
+                "SELECT id FROM wizard_interview_messages WHERE wizard_id=? ORDER BY rowid",
+                (wizard_id,),
+            )]
+        return [message for item in ids if (message := self.get_interview_message(item))]
+
+    def update_interview_message_status(self, message_id: str, status: str) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "UPDATE wizard_interview_messages SET suggestion_status=? WHERE id=?",
+                (status, message_id),
+            )
 
     def save_lock(self, project_id: str, lock_key: str, value: Any, source: str) -> None:
         with self.connect() as connection:

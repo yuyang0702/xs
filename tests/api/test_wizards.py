@@ -5,6 +5,24 @@ from novel_flywheel.db import Database
 from novel_flywheel.secrets import MemorySecretStore
 
 
+class FakeInterviews:
+    def __init__(self):
+        self.messages = []
+
+    def history(self, wizard_id):
+        return self.messages
+
+    async def turn(self, wizard_id, message=None):
+        result = {"id": "assistant", "wizard_id": wizard_id, "role": "assistant",
+                  "content": "主角最害怕失去什么？", "suggestions": [],
+                  "suggestion_status": "none"}
+        self.messages.append(result)
+        return result
+
+    def apply(self, wizard_id, message_id, field_ids):
+        return {"wizard": {"id": wizard_id}, "applied_fields": field_ids}
+
+
 def test_wizard_create_autosave_resume_and_confirm(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
@@ -54,3 +72,25 @@ def test_initialize_skills_returns_tracked_background_run(tmp_path) -> None:
 
     assert response.status_code == 202
     assert response.json()["workflow"] == "initialize-skills"
+
+
+def test_wizard_interview_history_turn_and_apply_routes(tmp_path) -> None:
+    interviews = FakeInterviews()
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", interview_service=interviews,
+    ))
+    wizard = client.post("/api/wizards", json={"mode": "long"}).json()
+
+    turn = client.post(f"/api/wizards/{wizard['id']}/interview", json={
+        "message": "我不知道怎么设计人物弧光",
+    })
+    history = client.get(f"/api/wizards/{wizard['id']}/interview")
+    applied = client.post(f"/api/wizards/{wizard['id']}/interview/assistant/apply", json={
+        "field_ids": ["protagonist.arc"],
+    })
+
+    assert turn.status_code == 201
+    assert turn.json()["content"] == "主角最害怕失去什么？"
+    assert history.json()[0]["id"] == "assistant"
+    assert applied.json()["applied_fields"] == ["protagonist.arc"]

@@ -31,3 +31,11 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="project-list"' in html
     assert 'id="trash-list"' in html
     assert 'data-view="trash"' in html
+    assert 'id="interview-panel"' in html
+    assert 'id="interview-start"' in html
+    assert 'id="interview-messages"' in html
+    assert 'id="interview-form"' in html
+    assert 'id="interview-apply"' in html
+    script = client.get("/static/app.js").text
+    assert "loadInterview" in script
+    assert "applyInterviewSuggestions" in script

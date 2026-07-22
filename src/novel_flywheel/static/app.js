@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -97,6 +97,7 @@ function renderWizard() {
   document.querySelectorAll("[data-wizard-step]").forEach(button => button.addEventListener("click", async () => { await saveWizardStep(); state.wizardStep = Number(button.dataset.wizardStep); renderWizard(); }));
   let timer; document.querySelectorAll(".field-value,.field-policy").forEach(control => control.addEventListener("input", () => { $("#wizard-save-state").textContent = "保存中"; clearTimeout(timer); timer=setTimeout(() => saveWizardStep().catch(error => toast(error.message)),500); }));
   renderWizardSummary();
+  if (state.interviewWizardId === wizard.id) renderInterview(); else loadInterview().catch(error => toast(error.message));
 }
 function collectWizardStep() {
   const answers = {};
@@ -109,6 +110,55 @@ async function saveWizardStep() {
 function renderWizardSummary() {
   const answers={...state.activeWizard.answers,...collectWizardStep()}; const locked=Object.entries(answers).filter(([,item]) => item.policy === "locked" && item.value !== ""); $("#wizard-summary").innerHTML=locked.length ? locked.map(([key,item]) => `<div class="summary-item"><strong>${escapeHtml(key)}</strong><span>${escapeHtml(item.value)}</span></div>`).join("") : '<span class="skill-meta">尚未锁定内容</span>';
 }
+async function loadInterview() {
+  if (!state.activeWizard) return;
+  const wizardId=state.activeWizard.id; state.interviewWizardId=wizardId;
+  state.interviewMessages=await api(`/api/wizards/${wizardId}/interview`);
+  if (state.activeWizard?.id === wizardId) renderInterview();
+}
+function renderInterview() {
+  const wizard=state.activeWizard; if (!wizard) return;
+  const labels={}; wizard.schema.steps.forEach(step => step.fields.forEach(field => labels[field.id]=field.label));
+  const html=state.interviewMessages.map(message => {
+    const suggestions=message.suggestion_status === "pending" ? (message.suggestions || []) : [];
+    return `<div class="interview-message ${escapeHtml(message.role)}"><span class="interview-role">${message.role === "assistant" ? "AI 访谈编辑" : "你"}</span><div>${escapeHtml(message.content)}</div>${suggestions.length ? `<div class="interview-suggestions">${suggestions.map(item => `<label class="interview-suggestion"><input type="checkbox" data-interview-suggestion data-message-id="${message.id}" value="${escapeHtml(item.field_id)}" checked><span><strong>${escapeHtml(labels[item.field_id] || item.field_id)}：${escapeHtml(item.value)}</strong><small>${escapeHtml(item.reason || "可写回向导")}</small></span></label>`).join("")}</div>` : ""}</div>`;
+  }).join("");
+  $("#interview-messages").innerHTML=html || '<p class="skill-meta">点击“开始访谈”，AI 会结合当前表单提出第一个关键问题。</p>';
+  $("#interview-messages").scrollTop=$("#interview-messages").scrollHeight;
+  $("#interview-start").hidden=state.interviewMessages.length > 0;
+  $("#interview-start").disabled=state.interviewBusy;
+  $("#interview-send").disabled=state.interviewBusy;
+  $("#interview-input").disabled=state.interviewBusy;
+  $("#interview-apply").hidden=!document.querySelector("[data-interview-suggestion]");
+  $("#interview-apply").disabled=state.interviewBusy;
+}
+async function sendInterview(message) {
+  if (!state.activeWizard || state.interviewBusy) return;
+  state.interviewBusy=true; renderInterview();
+  try {
+    await saveWizardStep();
+    await api(`/api/wizards/${state.activeWizard.id}/interview`,{method:"POST",body:JSON.stringify({message:message || null})});
+    $("#interview-input").value=""; await loadInterview();
+  } catch(error) { toast(error.message); }
+  finally { state.interviewBusy=false; renderInterview(); }
+}
+async function applyInterviewSuggestions() {
+  const selected=[...document.querySelectorAll("[data-interview-suggestion]:checked")];
+  if (!selected.length) return toast("请选择要写回向导的建议");
+  const grouped=new Map(); selected.forEach(input => { const list=grouped.get(input.dataset.messageId) || []; list.push(input.value); grouped.set(input.dataset.messageId,list); });
+  state.interviewBusy=true; renderInterview();
+  try {
+    for (const [messageId,fieldIds] of grouped) {
+      const result=await api(`/api/wizards/${state.activeWizard.id}/interview/${messageId}/apply`,{method:"POST",body:JSON.stringify({field_ids:fieldIds})});
+      state.activeWizard=result.wizard;
+    }
+    renderWizard(); await loadInterview(); toast("所选建议已写回向导");
+  } catch(error) { toast(error.message); }
+  finally { state.interviewBusy=false; renderInterview(); }
+}
+$("#interview-start").addEventListener("click", () => sendInterview(null));
+$("#interview-form").addEventListener("submit", event => { event.preventDefault(); const message=$("#interview-input").value.trim(); if (!message) return toast("请先输入你的想法"); sendInterview(message); });
+$("#interview-apply").addEventListener("click", applyInterviewSuggestions);
 $("#start-wizard").addEventListener("click", async () => { const mode=document.querySelector('input[name="wizard-mode"]:checked').value; try { state.activeWizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode})}); state.wizardStep=0; state.wizards.unshift(state.activeWizard); renderWizard(); } catch(error) { toast(error.message); } });
 $("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0; renderWizard(); });
 $("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });

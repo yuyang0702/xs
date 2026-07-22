@@ -15,6 +15,14 @@ class WizardAnswers(BaseModel):
     answers: dict
 
 
+class InterviewTurn(BaseModel):
+    message: str | None = None
+
+
+class InterviewApply(BaseModel):
+    field_ids: list[str]
+
+
 def _service(request: Request):
     return request.app.state.wizards
 
@@ -64,6 +72,42 @@ def analyze_wizard(wizard_id: str, request: Request) -> dict:
         return _service(request).analyze_gaps(wizard_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
+
+
+@router.get("/wizards/{wizard_id}/interview")
+def interview_history(wizard_id: str, request: Request) -> list[dict]:
+    try:
+        return request.app.state.interviews.history(wizard_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
+
+
+@router.post("/wizards/{wizard_id}/interview", status_code=status.HTTP_201_CREATED)
+async def interview_turn(wizard_id: str, payload: InterviewTurn, request: Request) -> dict:
+    try:
+        return await request.app.state.interviews.turn(wizard_id, payload.message)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "wizard_not_found", "message": str(exc)}) from exc
+    except ValueError as exc:
+        code = "invalid_model_output" if "valid JSON" in str(exc) else "invalid_interview"
+        raise HTTPException(status_code=422 if code == "invalid_model_output" else 400,
+                            detail={"code": code, "message": str(exc)}) from exc
+    except (PermissionError, RuntimeError) as exc:
+        raise HTTPException(status_code=422,
+                            detail={"code": "interview_model_failed", "message": str(exc)}) from exc
+
+
+@router.post("/wizards/{wizard_id}/interview/{message_id}/apply")
+def apply_interview_suggestions(wizard_id: str, message_id: str,
+                                payload: InterviewApply, request: Request) -> dict:
+    try:
+        return request.app.state.interviews.apply(wizard_id, message_id, payload.field_ids)
+    except LookupError as exc:
+        raise HTTPException(status_code=404,
+                            detail={"code": "interview_message_not_found", "message": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409,
+                            detail={"code": "wizard_not_editable", "message": str(exc)}) from exc
 
 
 @router.post("/projects/{project_id}/initialize-skills", status_code=status.HTTP_202_ACCEPTED)
