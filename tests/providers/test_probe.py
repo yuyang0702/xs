@@ -25,6 +25,16 @@ class FailingProbeAdapter:
         raise RuntimeError("endpoint returned text/html")
 
 
+class EmptyChatProbeAdapter(ProbeAdapter):
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls == 1:
+            return ModelResponse(text="")
+        if self.calls == 2:
+            return ModelResponse(text='```json\n{"ok": true}\n```')
+        return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+
+
 @pytest.mark.asyncio
 async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
     result = await CapabilityProbe(ProbeAdapter()).run("model")
@@ -46,3 +56,12 @@ async def test_probe_includes_actionable_error_message() -> None:
     result = await CapabilityProbe(FailingProbeAdapter()).run("model")
 
     assert result.error == "RuntimeError: endpoint returned text/html"
+
+
+@pytest.mark.asyncio
+async def test_probe_treats_successful_empty_chat_as_connected_and_accepts_fenced_json() -> None:
+    result = await CapabilityProbe(EmptyChatProbeAdapter()).run("model")
+
+    assert result.chat is True
+    assert result.structured_output is True
+    assert result.tool_calling is True

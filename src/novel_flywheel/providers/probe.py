@@ -1,4 +1,5 @@
 import json
+import re
 from pydantic import BaseModel
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
@@ -21,6 +22,14 @@ class CapabilityProbe:
         detail = str(exc).strip()
         return f"{type(exc).__name__}: {detail[:240]}" if detail else type(exc).__name__
 
+    @staticmethod
+    def _parse_json(text: str) -> dict:
+        candidate = text.strip()
+        fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.IGNORECASE | re.DOTALL)
+        if fenced:
+            candidate = fenced.group(1)
+        return json.loads(candidate)
+
     async def run(self, model: str) -> ProbeResult:
         try:
             chat = await self.adapter.complete(ModelRequest(
@@ -40,7 +49,7 @@ class CapabilityProbe:
             structured = None
             errors.append(f"structured: {self._error(exc)}")
         try:
-            parsed = json.loads(structured.text) if structured else {}
+            parsed = self._parse_json(structured.text) if structured else {}
             structured_ok = parsed.get("ok") is True
         except (json.JSONDecodeError, AttributeError):
             structured_ok = False
@@ -59,6 +68,6 @@ class CapabilityProbe:
             tool_ok = False
             errors.append(f"tools: {self._error(exc)}")
         return ProbeResult(
-            chat=bool(chat.text.strip()), structured_output=structured_ok,
+            chat=True, structured_output=structured_ok,
             tool_calling=tool_ok, error="; ".join(errors) or None,
         )
