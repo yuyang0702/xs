@@ -70,12 +70,13 @@ class StoryCli:
 
 class SkillRuntimeToolbox:
     def __init__(self, db: Database, project: Project, execution_id: str,
-                 contract: SkillContract, story_cli: StoryCli) -> None:
+                 contract: SkillContract, story_cli: StoryCli, bootstrap: bool = False) -> None:
         self.db = db
         self.project = project
         self.execution_id = execution_id
         self.contract = contract
         self.story_cli = story_cli
+        self.bootstrap = bootstrap
         self.awaiting_question: str | None = None
 
     def definitions(self) -> list[ToolDefinition]:
@@ -132,6 +133,8 @@ class SkillRuntimeToolbox:
             raise ValueError("Story markdown proposals require YAML frontmatter")
         if relative.endswith(".md"):
             self._validate_frontmatter_syntax(content)
+        if self.bootstrap:
+            content = self._remove_bootstrap_references(relative, content)
         if relative.endswith("/_index.md") or relative in {"plot/timeline.md", "continuity/state.md"}:
             content = self._set_frontmatter_scalar(content, "story", self.project.id)
         locks = {item["key"]: item["value"] for item in self.db.list_locks(self.project.id)}
@@ -225,6 +228,39 @@ class SkillRuntimeToolbox:
             if line.strip() and not line.lstrip().startswith("#") and not any(pattern.match(line) for pattern in allowed):
                 raise ValueError(f"Unsupported frontmatter line: {line}")
 
+    @classmethod
+    def _remove_bootstrap_references(cls, relative: str, content: str) -> str:
+        fields: set[str] = set()
+        if relative.startswith("characters/") and not relative.endswith("/_index.md"):
+            fields = {"relationships", "locations"}
+        elif relative.startswith("worldbuilding/locations/"):
+            fields = {"notable-characters"}
+        elif relative.startswith("worldbuilding/factions/"):
+            fields = {"members", "locations"}
+        elif relative.startswith("worldbuilding/artifacts/"):
+            fields = {"owner"}
+        elif relative.startswith("plot/arcs/"):
+            fields = {"characters"}
+        elif relative.startswith("continuity/promises/") or relative.startswith("continuity/questions/"):
+            fields = {"characters", "arcs"}
+        return cls._remove_frontmatter_fields(content, fields) if fields else content
+
+    @staticmethod
+    def _remove_frontmatter_fields(content: str, fields: set[str]) -> str:
+        match = re.match(r"^---\n([\s\S]*?)\n---", content)
+        if not match:
+            return content
+        lines = match.group(1).splitlines()
+        kept = []
+        skipping = False
+        for line in lines:
+            top_level = re.match(r"^([A-Za-z0-9_-]+):", line)
+            if top_level:
+                skipping = top_level.group(1) in fields
+            if not skipping:
+                kept.append(line)
+        return f"---\n{'\n'.join(kept)}\n---{content[match.end():]}"
+
 
 class SkillRuntimeService:
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
@@ -234,7 +270,8 @@ class SkillRuntimeService:
         self.gateway = gateway
         self.skills = skills
 
-    async def run(self, project_id: str, skill_name: str, answers: dict) -> dict:
+    async def run(self, project_id: str, skill_name: str, answers: dict,
+                  bootstrap: bool = False) -> dict:
         project = self.projects.get(project_id)
         skill = self.skills.skills(project.path).get(skill_name)
         if skill is None:
@@ -247,6 +284,7 @@ class SkillRuntimeService:
         toolbox = SkillRuntimeToolbox(
             self.db, project, execution_id, contract,
             StoryCli(project, lambda command: self._run_story_cli(project, command)),
+            bootstrap=bootstrap,
         )
         system = (
             "Execute the Skill using only the supplied runtime tools. Read existing story files, "
@@ -256,7 +294,9 @@ class SkillRuntimeService:
             "subcommand, never the 'story' executable name. If a tool returns an error, correct the call "
             "or use file proposals instead. Prefer supplied answers and existing indexes over exhaustive "
             "reads. Follow the supplied Skill references exactly; do not invent nested frontmatter fields. "
-            "Once the proposals are sufficient, call complete_skill immediately.\n\nSKILL:\n"
+            + ("This is initial bootstrap: omit cross-file relationships and references; the local runtime "
+               "will add them only after all entity files exist. " if bootstrap else "")
+            + "Once the proposals are sufficient, call complete_skill immediately.\n\nSKILL:\n"
             + skill.instructions + self._reference_context(skill)
         )
         try:

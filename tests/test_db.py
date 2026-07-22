@@ -82,3 +82,13 @@ def test_locks_are_revisioned_and_proposals_are_persisted(tmp_path) -> None:
     proposals = db.list_file_proposals("execution")
     assert proposals[0]["relative_path"] == "story.md"
     assert len(proposals[0]["content_hash"]) == 64
+
+
+def test_completed_skill_execution_is_matched_by_project_skill_and_hash(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.create_skill_execution("old", "book", "story-init", "hash-a", "completed")
+
+    assert db.has_completed_skill_execution("book", "story-init", "hash-a")
+    assert not db.has_completed_skill_execution("book", "story-init", "hash-b")
+    assert not db.has_completed_skill_execution("other", "story-init", "hash-a")

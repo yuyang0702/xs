@@ -61,8 +61,18 @@ async function renderActiveProject() {
   $("#trash-project").disabled = !p;
   if (!p) { $("#run-list").innerHTML = ""; return; }
   const runs = await api(`/api/projects/${p.id}/runs`);
+  const initialization = runs.find(run => run.workflow === "initialize-skills");
+  const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
+  const initialized = initialization?.status === "completed";
+  $("#initialize-project").hidden = initialized || initializing;
+  ["#run-short", "#run-setup", "#run-chapter"].forEach(selector => { $(selector).disabled = !initialized; });
   $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(r.workflow)}</strong><div class="skill-meta">${escapeHtml(r.current_stage || "-")} · ${escapeHtml(r.created_at)}</div></div><span class="status ${r.status}">${escapeHtml(r.status)}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
-  document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => renderRunLog((await api(`/api/runs/${button.dataset.runDetail}`)).events || [])));
+  document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => showRunDetail(await api(`/api/runs/${button.dataset.runDetail}`))));
+  if (!state.activeRun) {
+    if (initializing) monitorRun(initialization);
+    else if (initialization) showRunDetail(await api(`/api/runs/${initialization.id}`));
+    else { $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”"; }
+  }
 }
 $("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); renderActiveProject(); });
 
@@ -178,6 +188,13 @@ function renderRunLog(events) {
   $("#run-log").innerHTML = events.length ? events.map(item => `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml((item.created_at || "").slice(11,19))}</span><span class="log-stage">${escapeHtml(item.stage || item.event_type)}</span><span>${escapeHtml(item.message)}</span></div>`).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }
+function showRunDetail(detail) {
+  renderRunLog(detail.events || []);
+  const active=["queued","running","cancelling"].includes(detail.status);
+  const initialization=detail.workflow === "initialize-skills";
+  $("#run-state").className=`run-state ${active ? "busy" : detail.status === "failed" ? "error" : detail.status}`;
+  $("#run-state").textContent=active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? (initialization ? "初始化及校验已完成，可以开始写作" : "任务执行完成") : detail.status === "failed" ? `${initialization ? "初始化" : "任务"}失败：${detail.error || "请查看日志"}` : `${detail.status}：${detail.error || "请查看日志"}`;
+}
 async function monitorRun(runRecord) {
   clearTimeout(state.pollTimer); state.activeRun=runRecord.id; $("#run-cancel").hidden=false;
   const poll = async () => {
@@ -191,6 +208,7 @@ async function monitorRun(runRecord) {
   await poll();
 }
 $("#run-cancel").addEventListener("click", async () => { if (!state.activeRun) return; try { await api(`/api/runs/${state.activeRun}/cancel`,{method:"POST"}); $("#run-state").textContent="正在终止当前阶段..."; } catch(error) { toast(error.message); } });
+$("#initialize-project").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/initialize-skills`));
 $("#run-short").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/short`));
 $("#run-setup").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/setup`));
 $("#run-chapter").addEventListener("click", () => { const chapter_goal = $("#chapter-goal").value.trim(); if (!chapter_goal) return toast("请填写本章目标"); run(`/api/projects/${state.activeProject.id}/runs/chapter`, {chapter_goal}); });

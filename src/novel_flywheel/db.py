@@ -655,6 +655,16 @@ class Database:
                 (status, error, execution_id),
             )
 
+    def has_completed_skill_execution(self, project_id: str, skill_name: str,
+                                      content_hash: str) -> bool:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM skill_executions WHERE project_id=? AND skill_name=? "
+                "AND content_hash=? AND status='completed' LIMIT 1",
+                (project_id, skill_name, content_hash),
+            ).fetchone()
+        return row is not None
+
     def save_file_proposal(self, proposal_id: str, execution_id: str,
                            relative_path: str, content: str, status: str,
                            error: str | None = None) -> None:

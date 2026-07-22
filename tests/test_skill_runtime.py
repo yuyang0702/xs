@@ -117,6 +117,28 @@ def test_runtime_rejects_frontmatter_the_story_cli_cannot_parse(tmp_path) -> Non
         })
 
 
+def test_bootstrap_runtime_removes_cross_file_references_until_all_skills_exist(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "character-management", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("character-management"),
+        StoryCli(project, lambda command: "ok"), bootstrap=True,
+    )
+    toolbox.execute("create_file_proposal", {
+        "relative_path": "characters/hero.md",
+        "content": (
+            "---\nname: Hero\nrole: protagonist\nstatus: alive\n"
+            "relationships:\n  - character: rival\n    type: enemy\n"
+            "locations:\n  - missing-place\ntags:\n  - lead\n---\n# Hero\n"
+        ),
+    })
+
+    content = db.list_file_proposals("run")[0]["content"]
+    assert "relationships:" not in content
+    assert "locations:" not in content
+    assert "tags:\n  - lead" in content
+
+
 def test_runtime_loads_bounded_skill_reference_markdown(tmp_path) -> None:
     skill_path = tmp_path / "character-management"
     references = skill_path / "references"

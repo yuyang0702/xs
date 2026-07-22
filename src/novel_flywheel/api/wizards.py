@@ -120,13 +120,24 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
 
     async def operation(run_id: str) -> object:
         results = []
+        available = request.app.state.skill_gate.skills(project.path)
         for skill_name in project.metadata.get("initialization_skills", []):
+            skill = available.get(skill_name)
+            if skill and request.app.state.registry.db.has_completed_skill_execution(
+                    project_id, skill_name, skill.content_hash):
+                request.app.state.registry.db.add_run_event(
+                    run_id, "success", "skill_skipped",
+                    f"{skill_name} already completed; skipped", stage=skill_name,
+                )
+                continue
             request.app.state.registry.db.update_run(run_id, "running", skill_name)
             request.app.state.registry.db.add_run_event(
                 run_id, "info", "skill_started", f"开始执行 {skill_name}", stage=skill_name,
             )
             try:
-                result = await request.app.state.skill_runtime.run(project_id, skill_name, answers)
+                result = await request.app.state.skill_runtime.run(
+                    project_id, skill_name, answers, bootstrap=True,
+                )
             except Exception as exc:
                 request.app.state.registry.db.add_run_event(
                     run_id, "error", "skill_failed", str(exc), stage=skill_name,

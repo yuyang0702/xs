@@ -39,7 +39,7 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .run-controls .run-state { min-width:0; }
 .stop-button { width:42px; height:42px; padding:0; margin:0!important; background:#fff1f0; border-color:#d9a19c; color:var(--red); font-size:15px; }
 .stop-button:hover { background:#f9dfdc; }
-.run-state { min-height:42px; padding:11px; background:#eef1ee; border-left:3px solid #9da79f; color:var(--muted); font-size:13px; }
+.run-state { min-height:42px; padding:11px; background:#eef1ee; border-left:3px solid #9da79f; color:var(--muted); font-size:13px; white-space:pre-wrap; overflow-wrap:anywhere; }
 .run-state.busy { border-left-color:var(--amber); color:#765016; }.run-state.error { border-left-color:var(--red); color:var(--red); }
 .run-state.cancelled { border-left-color:#7c8580; color:#59615c; }
 .run-log { min-height:190px; max-height:340px; overflow:auto; padding:12px; background:#fff; border:1px solid var(--line); font:12px/1.65 Consolas,"Microsoft YaHei",monospace; }
