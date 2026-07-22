@@ -67,6 +67,9 @@ def test_entity_schema_guides_model_and_plural_aliases_work(tmp_path) -> None:
 def test_runtime_applies_allowed_proposals_and_story_validation(tmp_path) -> None:
     db, project = make_project(tmp_path)
     commands = []
+    historical_index = project.path / "snapshots" / "old" / "files" / "plot" / "_index.md"
+    historical_index.parent.mkdir(parents=True)
+    historical_index.write_text("historical", encoding="utf-8")
     db.create_skill_execution("run", project.id, "character-management", "hash")
     toolbox = SkillRuntimeToolbox(db, project, "run", SkillContract.for_skill("character-management"), StoryCli(project, lambda command: commands.append(command) or "ok"))
     content = "---\nname: Lin\nrole: protagonist\n---\n\n# Lin\n"
@@ -77,6 +80,8 @@ def test_runtime_applies_allowed_proposals_and_story_validation(tmp_path) -> Non
     assert (project.path / "characters" / "lin.md").read_text(encoding="utf-8") == content
     assert [item[0] for item in commands] == ["reindex", "links", "validate"]
     assert db.list_file_proposals("run")[0]["status"] == "applied"
+    manifest = json.loads((project.path / "snapshots" / "skill-run" / "manifest.json").read_text(encoding="utf-8"))
+    assert not any(item["path"].startswith("snapshots/") for item in manifest)
 
 
 def test_runtime_canonicalizes_story_id_in_proposals(tmp_path) -> None:

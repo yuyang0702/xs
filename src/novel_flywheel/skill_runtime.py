@@ -149,7 +149,8 @@ class SkillRuntimeToolbox:
             return
         files = list(dict.fromkeys([
             *(self.project.path / item["relative_path"] for item in proposals),
-            *self.project.path.rglob("_index.md"),
+            *(path for path in self.project.path.rglob("_index.md")
+              if path.relative_to(self.project.path).parts[0] != "snapshots"),
         ]))
         snapshot = ProjectSnapshot.create(
             self.project.path, self.project.path / "snapshots" / f"skill-{self.execution_id}", files,
