@@ -102,6 +102,36 @@ def test_runtime_canonicalizes_story_id_in_proposals(tmp_path) -> None:
     assert "story: wrong" not in proposal["content"]
 
 
+def test_runtime_rejects_frontmatter_the_story_cli_cannot_parse(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "character-management", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("character-management"),
+        StoryCli(project, lambda command: "ok"),
+    )
+
+    with pytest.raises(ValueError, match="Unsupported frontmatter line"):
+        toolbox.execute("create_file_proposal", {
+            "relative_path": "characters/hero.md",
+            "content": "---\nname: Hero\nappearance:\n  height: 186cm\n---\n# Hero\n",
+        })
+
+
+def test_runtime_loads_bounded_skill_reference_markdown(tmp_path) -> None:
+    skill_path = tmp_path / "character-management"
+    references = skill_path / "references"
+    references.mkdir(parents=True)
+    (references / "template.md").write_text("# Character Template", encoding="utf-8")
+    (references / "notes.txt").write_text("ignore", encoding="utf-8")
+    skill = SimpleNamespace(path=skill_path)
+
+    context = SkillRuntimeService._reference_context(skill)
+
+    assert "REFERENCE: references/template.md" in context
+    assert "# Character Template" in context
+    assert "notes.txt" not in context
+
+
 def test_story_cli_uses_ascii_project_id_without_changing_display_title(tmp_path) -> None:
     db, project = make_project(tmp_path)
     original = (project.path / "story.md").read_text(encoding="utf-8")

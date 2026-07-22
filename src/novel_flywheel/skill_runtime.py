@@ -130,6 +130,8 @@ class SkillRuntimeToolbox:
             raise ValueError("Proposal content is required and must be bounded")
         if relative.endswith(".md") and not content.startswith("---\n"):
             raise ValueError("Story markdown proposals require YAML frontmatter")
+        if relative.endswith(".md"):
+            self._validate_frontmatter_syntax(content)
         if relative.endswith("/_index.md") or relative in {"plot/timeline.md", "continuity/state.md"}:
             content = self._set_frontmatter_scalar(content, "story", self.project.id)
         locks = {item["key"]: item["value"] for item in self.db.list_locks(self.project.id)}
@@ -209,6 +211,20 @@ class SkillRuntimeToolbox:
             lines.append(replacement)
         return f"---\n{'\n'.join(lines)}\n---{content[match.end():]}"
 
+    @staticmethod
+    def _validate_frontmatter_syntax(content: str) -> None:
+        match = re.match(r"^---\n([\s\S]*?)\n---", content)
+        if not match:
+            raise ValueError("Story markdown proposals require YAML frontmatter")
+        allowed = (
+            re.compile(r"^[A-Za-z0-9_-]+:(?:\s*.*)?$"),
+            re.compile(r"^  -(?:\s+.*)?$"),
+            re.compile(r"^    [A-Za-z0-9_-]+:\s*.*$"),
+        )
+        for line in match.group(1).splitlines():
+            if line.strip() and not line.lstrip().startswith("#") and not any(pattern.match(line) for pattern in allowed):
+                raise ValueError(f"Unsupported frontmatter line: {line}")
+
 
 class SkillRuntimeService:
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
@@ -239,7 +255,9 @@ class SkillRuntimeService:
             "do not initialize a new project. For run_story_command, pass only an allowed maintenance "
             "subcommand, never the 'story' executable name. If a tool returns an error, correct the call "
             "or use file proposals instead. Prefer supplied answers and existing indexes over exhaustive "
-            "reads. Once the proposals are sufficient, call complete_skill immediately.\n\nSKILL:\n" + skill.instructions
+            "reads. Follow the supplied Skill references exactly; do not invent nested frontmatter fields. "
+            "Once the proposals are sufficient, call complete_skill immediately.\n\nSKILL:\n"
+            + skill.instructions + self._reference_context(skill)
         )
         try:
             result = await self.gateway.complete_with_tools(
@@ -279,3 +297,19 @@ class SkillRuntimeService:
         finally:
             atomic_write(story_path, original_story)
         return result.receipts[0].output
+
+    @staticmethod
+    def _reference_context(skill, limit: int = 20000) -> str:
+        reference_root = skill.path / "references"
+        if not reference_root.is_dir():
+            return ""
+        parts = []
+        used = 0
+        for path in sorted(reference_root.rglob("*.md")):
+            content = path.read_text(encoding="utf-8")
+            block = f"\n\nREFERENCE: {path.relative_to(skill.path).as_posix()}\n{content}"
+            if used + len(block) > limit:
+                break
+            parts.append(block)
+            used += len(block)
+        return "".join(parts)
