@@ -32,6 +32,16 @@ class SequenceGateway(FakeGateway):
         return SimpleNamespace(text=next(self.texts), receipt={"model_name": "planner"})
 
 
+class ReasoningBudgetGateway(FakeGateway):
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.calls.append({
+            "role": role, "system": system, "user": user,
+            "max_output_tokens": max_output_tokens,
+        })
+        text = self.text if (max_output_tokens or 0) >= 4096 else ""
+        return SimpleNamespace(text=text, receipt={"model_name": "reasoning-planner"})
+
+
 def make_service(tmp_path, output, *, locked=False):
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -126,3 +136,19 @@ async def test_interview_repairs_non_json_model_response_once(tmp_path) -> None:
     assert result["content"] == "主角最害怕承认什么？"
     assert len(gateway.calls) == 2
     assert "整理为指定 JSON" in gateway.calls[1]["system"]
+
+
+@pytest.mark.asyncio
+async def test_interview_allows_reasoning_model_enough_output_budget(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_wizard("wizard", "draft", "long", SCHEMA, {})
+    gateway = ReasoningBudgetGateway(
+        '{"message":"请继续描述女主的性格。","suggestions":[]}'
+    )
+    service = WizardInterviewService(db, gateway)
+
+    result = await service.turn("wizard", "我选择第二种")
+
+    assert result["content"] == "请继续描述女主的性格。"
+    assert gateway.calls[0]["max_output_tokens"] >= 4096

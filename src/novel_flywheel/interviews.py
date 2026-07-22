@@ -20,6 +20,7 @@ class InterviewModelOutput(BaseModel):
 
 
 class WizardInterviewService:
+    MAX_OUTPUT_TOKENS = 4096
     SYSTEM = """你是小说开书访谈编辑。你的工作是帮助作者澄清当前建书向导中的设定。
 每轮只推进一个最重要的问题；必要时先用通俗语言解释专业术语，再给2到3个可选方向。
 不得改变 policy=locked 的答案，不得发明表单外的字段，不得请求文件或工具。
@@ -46,7 +47,8 @@ class WizardInterviewService:
 
         try:
             result = await self.gateway.complete(
-                "planning", self.SYSTEM, self._context(wizard_id, wizard), max_output_tokens=1200,
+                "planning", self.SYSTEM, self._context(wizard_id, wizard),
+                max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )
         except LookupError as exc:
             raise RuntimeError(str(exc)) from exc
@@ -61,7 +63,7 @@ class WizardInterviewService:
                     "allowed_field_ids": list(self._field_map(wizard)),
                     "model_response": result.text[:12000],
                 }, ensure_ascii=False),
-                max_output_tokens=1200,
+                max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )
             output = self._parse_output(repaired.text)
         suggestions = self._valid_suggestions(wizard, output.suggestions)
