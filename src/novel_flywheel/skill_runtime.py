@@ -21,6 +21,22 @@ CONTRACT_PATHS = {
     "plot-structure": ("plot/*.md", "plot/**/*.md", "continuity/promises/*.md", "continuity/questions/*.md"),
 }
 
+ENTITY_FOLDERS = {
+    "character": "characters",
+    "location": "worldbuilding/locations",
+    "system": "worldbuilding/systems",
+    "arc": "plot/arcs",
+    "chapter": "chapters",
+    "scene": "scenes",
+    "faction": "worldbuilding/factions",
+    "artifact": "worldbuilding/artifacts",
+}
+ENTITY_ALIASES = {**{name: name for name in ENTITY_FOLDERS}, **{
+    "characters": "character", "locations": "location", "systems": "system",
+    "arcs": "arc", "chapters": "chapter", "scenes": "scene",
+    "factions": "faction", "artifacts": "artifact",
+}}
+
 
 @dataclass(frozen=True)
 class SkillContract:
@@ -65,7 +81,7 @@ class SkillRuntimeToolbox:
         object_schema = {"type": "object", "additionalProperties": False}
         return [
             ToolDefinition(name="read_story_file", description="Read one project story file", input_schema={**object_schema, "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}),
-            ToolDefinition(name="list_story_entities", description="List story entities", input_schema={**object_schema, "properties": {"entity_type": {"type": "string"}}, "required": ["entity_type"]}),
+            ToolDefinition(name="list_story_entities", description="List story entities", input_schema={**object_schema, "properties": {"entity_type": {"type": "string", "enum": list(ENTITY_FOLDERS)}}, "required": ["entity_type"]}),
             ToolDefinition(name="request_user_input", description="Request missing structured input", input_schema={"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}),
             ToolDefinition(name="create_file_proposal", description="Propose a complete story file", input_schema={"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "facts": {"type": "object"}}, "required": ["relative_path", "content"]}),
             ToolDefinition(name="update_file_proposal", description="Propose replacement content for a story file", input_schema={"type": "object", "properties": {"relative_path": {"type": "string"}, "content": {"type": "string"}, "facts": {"type": "object"}}, "required": ["relative_path", "content"]}),
@@ -81,11 +97,10 @@ class SkillRuntimeToolbox:
             return {"relative_path": path.relative_to(self.project.path).as_posix(),
                     "content": path.read_text(encoding="utf-8")[:20000]}
         if name == "list_story_entities":
-            entity = str(arguments.get("entity_type", ""))
-            folder = {"character": "characters", "location": "worldbuilding/locations",
-                      "system": "worldbuilding/systems", "arc": "plot/arcs"}.get(entity)
+            entity = ENTITY_ALIASES.get(str(arguments.get("entity_type", "")).lower())
+            folder = ENTITY_FOLDERS.get(entity or "")
             if not folder:
-                raise ValueError("Unknown entity type")
+                raise ValueError(f"Unknown entity type; use one of: {', '.join(ENTITY_FOLDERS)}")
             return {"items": [path.stem for path in sorted((self.project.path / folder).glob("*.md")) if path.name != "_index.md"]}
         if name in {"create_file_proposal", "update_file_proposal", "update_registry_proposal"}:
             return self._propose(arguments)
@@ -195,7 +210,8 @@ class SkillRuntimeService:
             "call complete_skill. Never invent tool results or paths. The project structure already exists; "
             "do not initialize a new project. For run_story_command, pass only an allowed maintenance "
             "subcommand, never the 'story' executable name. If a tool returns an error, correct the call "
-            "or use file proposals instead.\n\nSKILL:\n" + skill.instructions
+            "or use file proposals instead. Prefer supplied answers and existing indexes over exhaustive "
+            "reads. Once the proposals are sufficient, call complete_skill immediately.\n\nSKILL:\n" + skill.instructions
         )
         try:
             result = await self.gateway.complete_with_tools(

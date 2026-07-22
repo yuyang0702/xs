@@ -55,7 +55,13 @@ class ModelGateway:
         calls = 0
         input_tokens = output_tokens = 0
         try:
-            for _ in range(8):
+            for round_index in range(8):
+                if round_index == 7:
+                    messages.append(Message(
+                        role="user",
+                        content=("FINAL TOOL ROUND: Stop reading. Complete required proposals now and "
+                                 "call complete_skill. Do not request more evidence."),
+                    ))
                 response = await resolved.adapter.complete(ModelRequest(
                     model=resolved.model_name, messages=messages, tools=toolbox.definitions(),
                     max_output_tokens=max_output_tokens,
@@ -69,6 +75,7 @@ class ModelGateway:
                     ))
                 calls += len(response.tool_calls)
                 summaries = []
+                completion_summary = None
                 for call in response.tool_calls:
                     started = time.perf_counter()
                     try:
@@ -88,6 +95,14 @@ class ModelGateway:
                         status=status, fallback_reason=error,
                     )
                     summaries.append({"call_id": call.id, "tool": call.name, "result": result})
+                    if (call.name == "complete_skill" and status == "succeeded"
+                            and result.get("status") == "validating"):
+                        completion_summary = str(result.get("summary", ""))
+                if completion_summary is not None:
+                    return ModelResult(completion_summary, self._receipt(
+                        role, resolved, response, input_tokens, output_tokens,
+                        "native_tools", calls,
+                    ))
                 messages.append(Message(role="assistant", content="Requested read-only story evidence."))
                 messages.append(Message(role="user", content="TOOL RESULTS:\n" + json.dumps(summaries, ensure_ascii=False)))
             raise RuntimeError("Model exceeded the eight-round tool limit")

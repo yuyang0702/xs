@@ -92,6 +92,36 @@ class RejectingToolbox(Toolbox):
         raise ValueError("query is not allowed")
 
 
+class FinalRoundAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls < 8:
+            return ModelResponse(tool_calls=[ToolCall(
+                id=str(self.calls), name="search_chapters", arguments={"query": str(self.calls)},
+            )])
+        assert "FINAL TOOL ROUND" in request.messages[-1].content
+        return ModelResponse(tool_calls=[ToolCall(
+            id="complete", name="complete_skill", arguments={"summary": "finished"},
+        )])
+
+
+class MixedCompletingToolbox(Toolbox):
+    def definitions(self):
+        from novel_flywheel.domain.models import ToolDefinition
+        return [
+            ToolDefinition(name="search_chapters", description="Search", input_schema={"type": "object"}),
+            ToolDefinition(name="complete_skill", description="Complete", input_schema={"type": "object"}),
+        ]
+
+    def execute(self, name, arguments):
+        if name == "complete_skill":
+            return {"status": "validating", "summary": arguments["summary"]}
+        return {"items": []}
+
+
 @pytest.mark.asyncio
 async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -118,6 +148,23 @@ async def test_gateway_returns_recoverable_tool_errors_to_model(tmp_path) -> Non
 
     assert result.text == "corrected"
     assert result.receipt["tool_call_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_gateway_prompts_final_round_and_stops_on_complete_skill(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "provider", "model", None, None)
+    adapter = FinalRoundAdapter()
+
+    result = await ModelGateway(db, ToolRegistry(adapter)).complete_with_tools(
+        "planning", "rules", "execute", MixedCompletingToolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert adapter.calls == 8
+    assert result.text == "finished"
+    assert result.receipt["tool_call_count"] == 8
 
 
 @pytest.mark.asyncio

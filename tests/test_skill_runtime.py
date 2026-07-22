@@ -47,6 +47,22 @@ def test_story_command_schema_lists_runtime_subcommands(tmp_path) -> None:
     ]
 
 
+def test_entity_schema_guides_model_and_plural_aliases_work(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "story-init", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("story-init"),
+        StoryCli(project, lambda command: "ok"),
+    )
+    definition = next(item for item in toolbox.definitions() if item.name == "list_story_entities")
+
+    assert definition.input_schema["properties"]["entity_type"]["enum"] == [
+        "character", "location", "system", "arc", "chapter", "scene", "faction", "artifact",
+    ]
+    assert toolbox.execute("list_story_entities", {"entity_type": "characters"}) == {"items": []}
+    assert toolbox.execute("list_story_entities", {"entity_type": "chapters"}) == {"items": []}
+
+
 def test_runtime_applies_allowed_proposals_and_story_validation(tmp_path) -> None:
     db, project = make_project(tmp_path)
     commands = []
