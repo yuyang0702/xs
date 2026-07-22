@@ -50,7 +50,20 @@ class WizardInterviewService:
             )
         except LookupError as exc:
             raise RuntimeError(str(exc)) from exc
-        output = self._parse_output(result.text)
+        try:
+            output = self._parse_output(result.text)
+        except ValueError:
+            repaired = await self.gateway.complete(
+                "planning",
+                "把给定的模型回复整理为指定 JSON，不增加新剧情。只输出 "
+                '{"message":"回复","suggestions":[{"field_id":"字段ID","value":"值","reason":"理由"}]}。',
+                json.dumps({
+                    "allowed_field_ids": list(self._field_map(wizard)),
+                    "model_response": result.text[:12000],
+                }, ensure_ascii=False),
+                max_output_tokens=1200,
+            )
+            output = self._parse_output(repaired.text)
         suggestions = self._valid_suggestions(wizard, output.suggestions)
         message_id = uuid.uuid4().hex
         self.db.save_interview_message(
@@ -112,10 +125,15 @@ class WizardInterviewService:
                               flags=re.IGNORECASE | re.DOTALL)
         if fenced:
             candidate = fenced.group(1)
-        try:
-            return InterviewModelOutput.model_validate(json.loads(candidate))
-        except (json.JSONDecodeError, ValidationError) as exc:
-            raise ValueError("Planning model did not return valid JSON") from exc
+        decoder = json.JSONDecoder()
+        errors = []
+        for start in [0, *(match.start() for match in re.finditer(r"\{", candidate))]:
+            try:
+                value, _ = decoder.raw_decode(candidate, start)
+                return InterviewModelOutput.model_validate(value)
+            except (json.JSONDecodeError, ValidationError) as exc:
+                errors.append(exc)
+        raise ValueError("Planning model did not return valid JSON") from errors[-1]
 
     def _valid_suggestions(self, wizard: dict,
                            suggestions: list[InterviewSuggestion]) -> list[InterviewSuggestion]:

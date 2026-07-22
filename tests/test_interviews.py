@@ -22,6 +22,16 @@ class FakeGateway:
         return SimpleNamespace(text=self.text, receipt={"model_name": "planner"})
 
 
+class SequenceGateway(FakeGateway):
+    def __init__(self, texts):
+        super().__init__(texts[0])
+        self.texts = iter(texts)
+
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.calls.append({"role": role, "system": system, "user": user})
+        return SimpleNamespace(text=next(self.texts), receipt={"model_name": "planner"})
+
+
 def make_service(tmp_path, output, *, locked=False):
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -90,3 +100,29 @@ async def test_interview_rejects_invalid_model_output(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="valid JSON"):
         await service.turn("wizard", "继续")
+
+
+def test_interview_extracts_json_surrounded_by_model_commentary() -> None:
+    output = WizardInterviewService._parse_output(
+        '下面是整理结果：\n{"message":"继续说说主角。","suggestions":[]}\n以上。'
+    )
+
+    assert output.message == "继续说说主角。"
+
+
+@pytest.mark.asyncio
+async def test_interview_repairs_non_json_model_response_once(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_wizard("wizard", "draft", "long", SCHEMA, {})
+    gateway = SequenceGateway([
+        "我建议先明确主角的内在缺陷。",
+        '{"message":"主角最害怕承认什么？","suggestions":[]}',
+    ])
+    service = WizardInterviewService(db, gateway)
+
+    result = await service.turn("wizard", "我暂时只有一个模糊想法")
+
+    assert result["content"] == "主角最害怕承认什么？"
+    assert len(gateway.calls) == 2
+    assert "整理为指定 JSON" in gateway.calls[1]["system"]
