@@ -486,6 +486,7 @@ class WorkflowService:
                 f"MANUSCRIPT:\n{text}\n\nSTRUCTURED FINDINGS:\n{findings}", suffix=suffix,
             )
         polished_parts: list[str] = []
+        fallback_only = False
         for index, part in enumerate(parts, 1):
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             prompt = (
@@ -494,10 +495,32 @@ class WorkflowService:
                 f"PREVIOUS POLISHED END:\n{previous_tail}\n\nMANUSCRIPT SEGMENT:\n{part}\n\n"
                 f"STRUCTURED FINDINGS:\n{findings}"
             )
-            polished_parts.append((await self._stage_with_role_fallback(
-                run_id, run_path, project, "polish", constraints, prompt,
-                suffix=f"{suffix}-part-{index:02d}", fallback_role="draft", allow_tools=False,
-            )).strip())
+            part_suffix = f"{suffix}-part-{index:02d}"
+            if fallback_only:
+                polished_part = await self._stage(
+                    run_id, run_path, project, "polish", constraints, prompt,
+                    suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
+                )
+            else:
+                try:
+                    polished_part = await self._stage(
+                        run_id, run_path, project, "polish", constraints, prompt,
+                        suffix=part_suffix, allow_tools=False,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    fallback_only = True
+                    self.db.add_run_event(
+                        run_id, "warning", "model_fallback",
+                        "polish 首选模型失败，本轮剩余分段切换到 draft 角色模型",
+                        stage="polish", metadata={"fallback_role": "draft", "error": str(exc)},
+                    )
+                    polished_part = await self._stage(
+                        run_id, run_path, project, "polish", constraints, prompt,
+                        suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
+                    )
+            polished_parts.append(polished_part.strip())
         polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
         return polished
