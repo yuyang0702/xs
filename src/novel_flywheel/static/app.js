@@ -32,6 +32,11 @@ const formatLocalTimestamp = (value, timeOnly = false) => {
     : {hour12:false, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit"};
   return timeOnly ? date.toLocaleTimeString("zh-CN", options) : date.toLocaleString("zh-CN", options);
 };
+const isQualityRejected = run => run.status === "failed" && String(run.error || "").includes("quality gate");
+const runStatusLabel = run => isQualityRejected(run) ? "质量未通过" : ({
+  queued:"排队中", running:"执行中", cancelling:"终止中", completed:"已完成",
+  cancelled:"已终止", failed:"失败"
+}[run.status] || run.status);
 
 async function api(path, options = {}) {
   const response = await fetch(path, {headers:{"Content-Type":"application/json"}, ...options});
@@ -80,7 +85,7 @@ async function renderActiveProject() {
   const latestRun = runs[0];
   $("#initialize-project").hidden = initialized || initializing;
   ["#run-short", "#run-setup", "#run-chapter"].forEach(selector => { $(selector).disabled = !initialized; });
-  $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(r.workflow)}</strong><div class="skill-meta">${escapeHtml(r.current_stage || "-")} · ${escapeHtml(formatLocalTimestamp(r.created_at))}</div></div><span class="status ${r.status}">${escapeHtml(r.status)}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
+  $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(r.workflow)}</strong><div class="skill-meta">${escapeHtml(r.current_stage || "-")} · ${escapeHtml(formatLocalTimestamp(r.created_at))}</div></div><span class="status ${isQualityRejected(r) ? "quality-rejected" : r.status}">${escapeHtml(runStatusLabel(r))}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
   document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => showRunDetail(await api(`/api/runs/${button.dataset.runDetail}`))));
   if (!state.activeRun) {
     if (activeRun) monitorRun(activeRun);
@@ -206,16 +211,17 @@ function showRunDetail(detail) {
   renderRunLog(detail.events || []);
   const active=["queued","running","cancelling"].includes(detail.status);
   const initialization=detail.workflow === "initialize-skills";
-  $("#run-state").className=`run-state ${active ? "busy" : detail.status === "failed" ? "error" : detail.status}`;
-  $("#run-state").textContent=active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? (initialization ? "初始化及校验已完成，可以开始写作" : "任务执行完成") : detail.status === "failed" ? `${initialization ? "初始化" : "任务"}失败：${detail.error || "请查看日志"}` : `${detail.status}：${detail.error || "请查看日志"}`;
+  const qualityRejected=isQualityRejected(detail);
+  $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
+  $("#run-state").textContent=active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? (initialization ? "初始化及校验已完成，可以开始写作" : "任务执行完成") : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : detail.status === "failed" ? `${initialization ? "初始化" : "任务"}失败：${detail.error || "请查看日志"}` : `${runStatusLabel(detail)}：${detail.error || "请查看日志"}`;
 }
 async function monitorRun(runRecord) {
   clearTimeout(state.pollTimer); state.activeRun=runRecord.id; $("#run-cancel").hidden=false;
   const poll = async () => {
     try {
       const detail=await api(`/api/runs/${state.activeRun}`); renderRunLog(detail.events || []);
-      const active=["queued","running","cancelling"].includes(detail.status); $("#run-state").className=`run-state ${active ? "busy" : detail.status === "failed" ? "error" : detail.status}`;
-      $("#run-state").textContent=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : `${detail.status}：${detail.error || "请查看日志"}`;
+      const active=["queued","running","cancelling"].includes(detail.status); const qualityRejected=isQualityRejected(detail); $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
+      $("#run-state").textContent=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : `${runStatusLabel(detail)}：${detail.error || "请查看日志"}`;
       if (active) state.pollTimer=setTimeout(poll,900); else { state.activeRun=null; $("#run-cancel").hidden=true; await renderActiveProject(); if (detail.status === "completed") toast("飞轮执行完成"); }
     } catch(error) { $("#run-state").className="run-state error"; $("#run-state").textContent=error.message; $("#run-cancel").hidden=true; }
   };
