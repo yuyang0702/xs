@@ -94,12 +94,14 @@ def test_runtime_canonicalizes_story_id_in_proposals(tmp_path) -> None:
 
     toolbox.execute("update_file_proposal", {
         "relative_path": "plot/timeline.md",
-        "content": "---\ntype: timeline\nstory: wrong\n---\n# Timeline\n",
+        "content": "---\ntype: wrong\nstory: wrong\n---\n# Timeline\n",
     })
 
     proposal = db.list_file_proposals("run")[0]
     assert f"story: {project.id}" in proposal["content"]
     assert "story: wrong" not in proposal["content"]
+    assert "type: timeline" in proposal["content"]
+    assert "type: wrong" not in proposal["content"]
 
 
 def test_runtime_rejects_frontmatter_the_story_cli_cannot_parse(tmp_path) -> None:
@@ -137,6 +139,17 @@ def test_bootstrap_runtime_removes_cross_file_references_until_all_skills_exist(
     assert "relationships:" not in content
     assert "locations:" not in content
     assert "tags:\n  - lead" in content
+
+
+def test_bootstrap_runtime_does_not_offer_interactive_question_tool(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "story-init", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("story-init"),
+        StoryCli(project, lambda command: "ok"), bootstrap=True,
+    )
+
+    assert "request_user_input" not in {tool.name for tool in toolbox.definitions()}
 
 
 def test_runtime_loads_bounded_skill_reference_markdown(tmp_path) -> None:

@@ -138,6 +138,10 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
                 result = await request.app.state.skill_runtime.run(
                     project_id, skill_name, answers, bootstrap=True,
                 )
+                if result.get("status") != "completed":
+                    raise RuntimeError(
+                        f"{skill_name} did not complete: {result.get('status', 'unknown')}"
+                    )
             except Exception as exc:
                 request.app.state.registry.db.add_run_event(
                     run_id, "error", "skill_failed", str(exc), stage=skill_name,

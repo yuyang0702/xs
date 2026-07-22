@@ -81,7 +81,7 @@ class SkillRuntimeToolbox:
 
     def definitions(self) -> list[ToolDefinition]:
         object_schema = {"type": "object", "additionalProperties": False}
-        return [
+        tools = [
             ToolDefinition(name="read_story_file", description="Read one project story file", input_schema={**object_schema, "properties": {"relative_path": {"type": "string"}}, "required": ["relative_path"]}),
             ToolDefinition(name="list_story_entities", description="List story entities", input_schema={**object_schema, "properties": {"entity_type": {"type": "string", "enum": list(ENTITY_FOLDERS)}}, "required": ["entity_type"]}),
             ToolDefinition(name="request_user_input", description="Request missing structured input", input_schema={"type": "object", "properties": {"question": {"type": "string"}}, "required": ["question"]}),
@@ -92,6 +92,7 @@ class SkillRuntimeToolbox:
             ToolDefinition(name="run_story_command", description="Run a maintenance subcommand in the existing project. Pass only the subcommand, never the 'story' executable name and never 'init'.", input_schema={"type": "object", "properties": {"command": {"type": "string", "enum": list(StoryCli.ALLOWED)}, "arguments": {"type": "array", "items": {"type": "string"}}}, "required": ["command"]}),
             ToolDefinition(name="complete_skill", description="Mark the Skill execution complete", input_schema={"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}),
         ]
+        return [tool for tool in tools if not (self.bootstrap and tool.name == "request_user_input")]
 
     def execute(self, name: str, arguments: dict) -> dict:
         if name == "read_story_file":
@@ -137,6 +138,22 @@ class SkillRuntimeToolbox:
             content = self._remove_bootstrap_references(relative, content)
         if relative.endswith("/_index.md") or relative in {"plot/timeline.md", "continuity/state.md"}:
             content = self._set_frontmatter_scalar(content, "story", self.project.id)
+        canonical_types = {
+            "chapters/_index.md": "chapter-registry",
+            "characters/_index.md": "character-registry",
+            "continuity/promises/_index.md": "promise-registry",
+            "continuity/questions/_index.md": "question-registry",
+            "glossary/_index.md": "glossary-registry",
+            "plot/_index.md": "plot-registry",
+            "scenes/_index.md": "scene-registry",
+            "worldbuilding/_index.md": "world-registry",
+            "plot/timeline.md": "timeline",
+            "continuity/state.md": "continuity-state",
+        }
+        if relative in canonical_types:
+            content = self._set_frontmatter_scalar(content, "type", canonical_types[relative])
+        if relative == "plot/_index.md":
+            content = self._set_frontmatter_scalar(content, "structure", "three-act")
         locks = {item["key"]: item["value"] for item in self.db.list_locks(self.project.id)}
         for key, proposed in (arguments.get("facts") or {}).items():
             if key in locks and locks[key] != proposed:
