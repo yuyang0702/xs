@@ -77,7 +77,8 @@ class ProviderRegistry:
         if not secret:
             raise ValueError("missing_api_key")
         adapter = ADAPTERS[provider["protocol"]](provider["base_url"], secret,
-                                                  provider["extra_headers"], provider["timeout_seconds"])
+                                                  provider["extra_headers"], provider["timeout_seconds"],
+                                                  auth_type=provider["auth_type"])
         return ResolvedModel(provider_id, model_id, model["model_name"], adapter, model["capabilities"])
 
     def delete_provider(self, provider_id: str) -> None:

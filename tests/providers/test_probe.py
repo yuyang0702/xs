@@ -20,6 +20,11 @@ class ProbeAdapter:
         return ModelResponse(text="tools unavailable")
 
 
+class FailingProbeAdapter:
+    async def complete(self, request):
+        raise RuntimeError("endpoint returned text/html")
+
+
 @pytest.mark.asyncio
 async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
     result = await CapabilityProbe(ProbeAdapter()).run("model")
@@ -34,3 +39,10 @@ async def test_probe_can_report_partial_support() -> None:
     assert result.chat is True
     assert result.structured_output is True
     assert result.tool_calling is False
+
+
+@pytest.mark.asyncio
+async def test_probe_includes_actionable_error_message() -> None:
+    result = await CapabilityProbe(FailingProbeAdapter()).run("model")
+
+    assert result.error == "RuntimeError: endpoint returned text/html"

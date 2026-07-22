@@ -16,6 +16,11 @@ class CapabilityProbe:
     def __init__(self, adapter: ProviderAdapter) -> None:
         self.adapter = adapter
 
+    @staticmethod
+    def _error(exc: Exception) -> str:
+        detail = str(exc).strip()
+        return f"{type(exc).__name__}: {detail[:240]}" if detail else type(exc).__name__
+
     async def run(self, model: str) -> ProbeResult:
         try:
             chat = await self.adapter.complete(ModelRequest(
@@ -23,7 +28,7 @@ class CapabilityProbe:
             ))
         except Exception as exc:
             return ProbeResult(chat=False, structured_output=False, tool_calling=False,
-                               error=type(exc).__name__)
+                               error=self._error(exc))
         errors = []
         try:
             structured = await self.adapter.complete(ModelRequest(
@@ -33,7 +38,7 @@ class CapabilityProbe:
             ))
         except Exception as exc:
             structured = None
-            errors.append(f"structured:{type(exc).__name__}")
+            errors.append(f"structured: {self._error(exc)}")
         try:
             parsed = json.loads(structured.text) if structured else {}
             structured_ok = parsed.get("ok") is True
@@ -52,7 +57,7 @@ class CapabilityProbe:
             tool_ok = any(call.name == "probe_tool" for call in tool_response.tool_calls)
         except Exception as exc:
             tool_ok = False
-            errors.append(f"tools:{type(exc).__name__}")
+            errors.append(f"tools: {self._error(exc)}")
         return ProbeResult(
             chat=bool(chat.text.strip()), structured_output=structured_ok,
             tool_calling=tool_ok, error="; ".join(errors) or None,

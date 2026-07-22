@@ -18,9 +18,11 @@ class AnthropicAdapter(HttpProvider):
             payload["tools"] = [{
                 "name": tool.name, "description": tool.description, "input_schema": tool.input_schema,
             } for tool in request.tools]
-        body = await self.post("messages", payload=payload, headers={
-            "x-api-key": self.api_key,
-            "anthropic-version": "2023-06-01",
+        auth_headers = ({"Authorization": f"Bearer {self.api_key}"}
+                        if self.auth_type == "bearer" else {"x-api-key": self.api_key})
+        path = "messages" if self.base_url.endswith("/v1") else "v1/messages"
+        body = await self.post(path, payload=payload, headers={
+            **auth_headers, "anthropic-version": "2023-06-01",
         })
         usage = body.get("usage", {})
         content = body.get("content", [])

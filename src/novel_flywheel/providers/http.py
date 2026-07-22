@@ -7,6 +7,10 @@ class ToolCapabilityError(RuntimeError):
     pass
 
 
+class ProviderResponseError(RuntimeError):
+    pass
+
+
 class HttpProvider:
     def __init__(
         self,
@@ -14,10 +18,12 @@ class HttpProvider:
         api_key: str,
         headers: dict[str, str] | None = None,
         timeout: float = 180,
+        auth_type: str | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.headers = headers or {}
+        self.auth_type = auth_type
         self.client = httpx.AsyncClient(timeout=timeout)
 
     async def post(self, path: str, *, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
@@ -31,4 +37,10 @@ class HttpProvider:
             if any(term in detail for term in ("tool", "function calling", "function_call")):
                 raise ToolCapabilityError(response.text[:500])
         response.raise_for_status()
-        return response.json()
+        try:
+            return response.json()
+        except ValueError as exc:
+            content_type = response.headers.get("content-type", "unknown")
+            raise ProviderResponseError(
+                f"Provider endpoint returned non-JSON content ({content_type}) from {response.url}"
+            ) from exc
