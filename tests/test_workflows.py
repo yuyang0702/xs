@@ -348,8 +348,8 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = ReaderFallbackGateway([
-        "# Plan", "# Draft", quality_review(), quality_review(), "# Polish",
-        quality_review(), json.dumps({"facts": []}),
+        "# Plan", "# Draft", quality_review(), "# Polish", quality_review(),
+        json.dumps({"facts": []}),
     ])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
 
@@ -357,7 +357,7 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
 
     assert result["status"] == "completed"
     assert gateway.roles.count("reader_review") == 1
-    assert gateway.roles.count("review") == 2
+    assert gateway.roles.count("review") == 1
     events = db.list_run_events(result["id"])
     fallback = next(item for item in events if item["event_type"] == "reader_fallback")
     assert fallback["severity"] == "warning"

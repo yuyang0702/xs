@@ -200,15 +200,30 @@ class WorkflowService:
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
                 )
-            review_input = (
-                f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
-                f"{reader_sample(draft, project.mode, limit=6000)}"
-            )
-            review_text = await self._stage(
-                run_id, run_path, project, "review", constraints, review_input,
-                allow_tools=False,
-            )
-            review = self._review(review_text)
+            review_checkpoint = self._find_short_stage_output(project, run_id, "review.md")
+            review = None
+            if review_checkpoint:
+                try:
+                    review_text = review_checkpoint.read_text(encoding="utf-8")
+                    review = self._review(review_text)
+                except (ValueError, json.JSONDecodeError):
+                    review = None
+                else:
+                    atomic_write(run_path / "outputs" / "review.md", review_text)
+                    self.db.add_run_event(
+                        run_id, "success", "checkpoint_reused", "已复用上一轮有效编辑审核",
+                        stage="review", metadata={"source_run": review_checkpoint.parent.parent.name},
+                    )
+            if review is None:
+                review_input = (
+                    f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
+                    f"{reader_sample(draft, project.mode, limit=6000)}"
+                )
+                review_text = await self._stage(
+                    run_id, run_path, project, "review", constraints, review_input,
+                    allow_tools=False,
+                )
+                review = self._review(review_text)
             polished, _ = await self._quality_polish(
                 run_id, run_path, project, constraints, draft, review,
             )
@@ -292,10 +307,10 @@ class WorkflowService:
                         "error": str(exc),
                     },
                 )
-                reader_review = await self._reader_review(
-                    run_id, run_path, project, constraints, draft,
-                    suffix="-fallback", model_role="review",
-                )
+                reader_review = {
+                    **review,
+                    "reader_signals": {"unavailable": True, "fallback": "editorial_review"},
+                }
             report["reader_review"] = reader_review
             self._quality_assessed_event(run_id, "target_reader", reader_review)
             self._write_quality_report(run_path, report)
@@ -410,6 +425,16 @@ class WorkflowService:
             draft = draft_path.read_text(encoding="utf-8")
             if plan and len(self._split_segments(draft)) == segment_count:
                 return outputs
+        return None
+
+    def _find_short_stage_output(self, project: Project, current_run_id: str,
+                                 filename: str) -> Path | None:
+        for run in self.db.list_runs(project.id):
+            if run["id"] == current_run_id or run["workflow"] != "short-story":
+                continue
+            path = project.path / "runs" / run["id"] / "outputs" / filename
+            if path.is_file() and path.stat().st_size:
+                return path
         return None
 
     async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
