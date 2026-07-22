@@ -45,3 +45,20 @@ def test_reject_unsupported_protocol_without_storing_key(tmp_path) -> None:
         "name": "bad", "protocol": "unknown", "base_url": "https://bad.test", "api_key": "secret",
     })
     assert response.status_code == 422
+
+
+def test_update_provider_api_key_without_recreating_provider(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider = client.post("/api/providers", json={
+        "name": "relay", "protocol": "anthropic", "base_url": "https://relay.test",
+        "api_key": "old-secret",
+    }).json()
+
+    response = client.put(f"/api/providers/{provider['id']}/api-key", json={
+        "api_key": "new-secret",
+    })
+
+    assert response.status_code == 200
+    assert response.json() == {"id": provider["id"], "has_api_key": True}
+    assert client.app.state.registry.secrets.get(provider["id"]) == "new-secret"
+    assert "new-secret" not in response.text

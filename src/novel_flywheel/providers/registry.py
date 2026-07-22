@@ -84,3 +84,10 @@ class ProviderRegistry:
     def delete_provider(self, provider_id: str) -> None:
         self.db.delete_provider(provider_id)
         self.secrets.delete(provider_id)
+
+    def update_api_key(self, provider_id: str, api_key: str) -> None:
+        if self.db.get_provider(provider_id) is None:
+            raise ValueError("provider_not_found")
+        if not api_key.strip():
+            raise ValueError("missing_api_key")
+        self.secrets.set(provider_id, api_key.strip())

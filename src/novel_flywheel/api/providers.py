@@ -26,6 +26,10 @@ class ModelCreate(BaseModel):
     tool_support: Literal["auto", "enabled", "disabled"] = "auto"
 
 
+class ApiKeyUpdate(BaseModel):
+    api_key: str = Field(min_length=1)
+
+
 def get_registry(request: Request) -> ProviderRegistry:
     return request.app.state.registry
 
@@ -57,6 +61,17 @@ def create_provider(payload: ProviderCreate, registry: ProviderRegistry = Depend
 @router.delete("/providers/{provider_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_provider(provider_id: str, registry: ProviderRegistry = Depends(get_registry)) -> None:
     registry.delete_provider(provider_id)
+
+
+@router.put("/providers/{provider_id}/api-key")
+def update_provider_api_key(provider_id: str, payload: ApiKeyUpdate,
+                            registry: ProviderRegistry = Depends(get_registry)) -> dict:
+    try:
+        registry.update_api_key(provider_id, payload.api_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc) == "provider_not_found" else 400,
+                            detail={"code": str(exc)}) from exc
+    return {"id": provider_id, "has_api_key": True}
 
 
 @router.post("/providers/{provider_id}/models", status_code=status.HTTP_201_CREATED)

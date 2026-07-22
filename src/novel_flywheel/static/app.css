@@ -54,6 +54,7 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .danger-text { color:var(--red); }.danger-button { background:#fff1f0; color:var(--red); border-color:#d9a19c; }
 .probe-result { min-height:18px; margin-top:5px; font-size:11px; color:var(--muted); }.probe-result.success { color:var(--green); }.probe-result.partial { color:#8a5b16; }.probe-result.error { color:var(--red); }
 .model-row { margin-top:8px; padding-top:8px; border-top:1px solid #edf0ed; }
+.key-update { display:flex; gap:7px; margin-top:10px; max-width:460px; }.key-update input { flex:1; min-width:180px; }.badge.missing { color:#9c3327; border-color:#e7b5ae; background:#fff4f2; }
 .manuscript-panel { margin-top:32px; padding-top:26px; border-top:1px solid var(--line); }
 pre { white-space:pre-wrap; font:16px/1.9 "Microsoft YaHei",sans-serif; background:white; border:1px solid var(--line); padding:28px; max-height:65vh; overflow:auto; }
 .form-layout { max-width:980px; display:grid; gap:22px; }.field-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }.field-grid.two { grid-template-columns:1fr 1fr; }
