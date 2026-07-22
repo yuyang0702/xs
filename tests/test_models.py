@@ -122,6 +122,22 @@ class MixedCompletingToolbox(Toolbox):
         return {"items": []}
 
 
+class AutoFinalizingToolbox(Toolbox):
+    def finalize_on_tool_limit(self):
+        return "Generated proposals are ready for local validation"
+
+
+class NeverCompletingAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        return ModelResponse(tool_calls=[ToolCall(
+            id=str(self.calls), name="search_chapters", arguments={"query": str(self.calls)},
+        )])
+
+
 @pytest.mark.asyncio
 async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -164,6 +180,23 @@ async def test_gateway_prompts_final_round_and_stops_on_complete_skill(tmp_path)
 
     assert adapter.calls == 8
     assert result.text == "finished"
+    assert result.receipt["tool_call_count"] == 8
+
+
+@pytest.mark.asyncio
+async def test_gateway_allows_toolbox_to_finalize_safely_at_round_limit(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "provider", "model", None, None)
+    adapter = NeverCompletingAdapter()
+
+    result = await ModelGateway(db, ToolRegistry(adapter)).complete_with_tools(
+        "planning", "rules", "execute", AutoFinalizingToolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert adapter.calls == 8
+    assert result.text == "Generated proposals are ready for local validation"
     assert result.receipt["tool_call_count"] == 8
 
 

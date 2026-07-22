@@ -78,6 +78,22 @@ def test_runtime_applies_allowed_proposals_and_story_validation(tmp_path) -> Non
     assert db.list_file_proposals("run")[0]["status"] == "applied"
 
 
+def test_runtime_only_auto_finalizes_when_proposals_exist(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "story-init", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("story-init"),
+        StoryCli(project, lambda command: "ok"),
+    )
+
+    assert toolbox.finalize_on_tool_limit() is None
+    toolbox.execute("update_file_proposal", {
+        "relative_path": "story.md", "content": "---\ntitle: Book\n---\n# Book\n",
+    })
+
+    assert toolbox.finalize_on_tool_limit() == "Generated proposals are ready for local validation"
+
+
 def test_runtime_lock_conflict_creates_change_request(tmp_path) -> None:
     db, project = make_project(tmp_path)
     db.save_lock(project.id, "protagonist.name", "Lin", "wizard")

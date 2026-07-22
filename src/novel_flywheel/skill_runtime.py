@@ -163,6 +163,12 @@ class SkillRuntimeToolbox:
             self.db.update_skill_execution(self.execution_id, "failed", str(exc))
             raise
 
+    def finalize_on_tool_limit(self) -> str | None:
+        if not self.db.list_file_proposals(self.execution_id):
+            return None
+        self.db.update_skill_execution(self.execution_id, "validating")
+        return "Generated proposals are ready for local validation"
+
     def _safe_read_path(self, relative_path: str) -> Path:
         relative = self._normalize(relative_path)
         path = (self.project.path / relative).resolve()

@@ -105,6 +105,13 @@ class ModelGateway:
                     ))
                 messages.append(Message(role="assistant", content="Requested read-only story evidence."))
                 messages.append(Message(role="user", content="TOOL RESULTS:\n" + json.dumps(summaries, ensure_ascii=False)))
+            finalize = getattr(toolbox, "finalize_on_tool_limit", None)
+            summary = finalize() if finalize else None
+            if summary is not None:
+                return ModelResult(summary, self._receipt(
+                    role, resolved, response, input_tokens, output_tokens,
+                    "native_tools", calls,
+                ))
             raise RuntimeError("Model exceeded the eight-round tool limit")
         except ToolCapabilityError as exc:
             if mode == "enabled":
