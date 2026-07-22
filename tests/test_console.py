@@ -15,6 +15,7 @@ def test_console_and_assets_are_served_locally(tmp_path) -> None:
     assert "小说飞轮" in page.text
     assert "/static/app.js" in page.text
     assert client.get("/static/app.css").status_code == 200
+    assert client.get("/static/app.js").headers["cache-control"] == "no-store"
 
 
 def test_console_contains_skill_wizard_controls(tmp_path) -> None:
@@ -36,6 +37,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="interview-messages"' in html
     assert 'id="interview-form"' in html
     assert 'id="interview-apply"' in html
+    assert 'id="interview-status"' in html
     script = client.get("/static/app.js").text
     assert "loadInterview" in script
     assert "applyInterviewSuggestions" in script

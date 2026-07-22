@@ -114,8 +114,9 @@ async function loadInterview() {
   if (!state.activeWizard) return;
   const wizardId=state.activeWizard.id; state.interviewWizardId=wizardId;
   state.interviewMessages=await api(`/api/wizards/${wizardId}/interview`);
-  if (state.activeWizard?.id === wizardId) renderInterview();
+  if (state.activeWizard?.id === wizardId) { renderInterview(); if (state.interviewMessages.length) setInterviewStatus("访谈记录已恢复", "success"); }
 }
+function setInterviewStatus(message, kind="") { const box=$("#interview-status"); box.textContent=message; box.className=`interview-status ${kind}`; }
 function renderInterview() {
   const wizard=state.activeWizard; if (!wizard) return;
   const labels={}; wizard.schema.steps.forEach(step => step.fields.forEach(field => labels[field.id]=field.label));
@@ -134,26 +135,26 @@ function renderInterview() {
 }
 async function sendInterview(message) {
   if (!state.activeWizard || state.interviewBusy) return;
-  state.interviewBusy=true; renderInterview();
+  state.interviewBusy=true; renderInterview(); setInterviewStatus("正在保存表单并等待规划模型回复...", "busy");
   try {
     await saveWizardStep();
     await api(`/api/wizards/${state.activeWizard.id}/interview`,{method:"POST",body:JSON.stringify({message:message || null})});
-    $("#interview-input").value=""; await loadInterview();
-  } catch(error) { toast(error.message); }
+    $("#interview-input").value=""; await loadInterview(); setInterviewStatus("AI 已回复，可以继续回答或应用建议", "success");
+  } catch(error) { setInterviewStatus(`发送失败：${error.message}`, "error"); toast(error.message); }
   finally { state.interviewBusy=false; renderInterview(); }
 }
 async function applyInterviewSuggestions() {
   const selected=[...document.querySelectorAll("[data-interview-suggestion]:checked")];
   if (!selected.length) return toast("请选择要写回向导的建议");
   const grouped=new Map(); selected.forEach(input => { const list=grouped.get(input.dataset.messageId) || []; list.push(input.value); grouped.set(input.dataset.messageId,list); });
-  state.interviewBusy=true; renderInterview();
+  state.interviewBusy=true; renderInterview(); setInterviewStatus("正在把所选建议写回向导...", "busy");
   try {
     for (const [messageId,fieldIds] of grouped) {
       const result=await api(`/api/wizards/${state.activeWizard.id}/interview/${messageId}/apply`,{method:"POST",body:JSON.stringify({field_ids:fieldIds})});
       state.activeWizard=result.wizard;
     }
-    renderWizard(); await loadInterview(); toast("所选建议已写回向导");
-  } catch(error) { toast(error.message); }
+    renderWizard(); await loadInterview(); setInterviewStatus("所选建议已写回向导", "success"); toast("所选建议已写回向导");
+  } catch(error) { setInterviewStatus(`应用失败：${error.message}`, "error"); toast(error.message); }
   finally { state.interviewBusy=false; renderInterview(); }
 }
 $("#interview-start").addEventListener("click", () => sendInterview(null));

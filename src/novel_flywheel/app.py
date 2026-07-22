@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -30,6 +30,13 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                workflow_service: object | None = None,
                interview_service: object | None = None) -> FastAPI:
     app = FastAPI(title="Novel Flywheel Console")
+
+    @app.middleware("http")
+    async def disable_local_asset_cache(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path == "/" or request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
     if db is None:
         db = Database(default_settings().database_path)
     db.migrate()
