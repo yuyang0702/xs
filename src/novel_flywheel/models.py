@@ -54,16 +54,30 @@ class ModelGateway:
         messages = [Message(role="system", content=system), Message(role="user", content=user)]
         calls = 0
         input_tokens = output_tokens = 0
+        tool_definitions = toolbox.definitions()
+        finalize = getattr(toolbox, "finalize_on_tool_limit", None)
+        controlled_runtime = callable(finalize) or any(
+            definition.name == "complete_skill" for definition in tool_definitions
+        )
+        round_limit = 8 if controlled_runtime else 4
         try:
-            for round_index in range(8):
-                if round_index == 7:
-                    messages.append(Message(
-                        role="user",
-                        content=("FINAL TOOL ROUND: Stop reading. Complete required proposals now and "
-                                 "call complete_skill. Do not request more evidence."),
-                    ))
+            for round_index in range(round_limit):
+                request_tools = tool_definitions
+                if round_index == round_limit - 1:
+                    if controlled_runtime:
+                        final_instruction = (
+                            "FINAL TOOL ROUND: Stop reading. Complete required proposals now and "
+                            "call complete_skill. Do not request more evidence."
+                        )
+                    else:
+                        final_instruction = (
+                            "FINAL RESPONSE: Stop calling tools. Use the evidence already retrieved and "
+                            "produce the complete requested output now."
+                        )
+                        request_tools = []
+                    messages.append(Message(role="user", content=final_instruction))
                 response = await resolved.adapter.complete(ModelRequest(
-                    model=resolved.model_name, messages=messages, tools=toolbox.definitions(),
+                    model=resolved.model_name, messages=messages, tools=request_tools,
                     max_output_tokens=max_output_tokens,
                 ))
                 input_tokens += response.input_tokens
@@ -105,7 +119,6 @@ class ModelGateway:
                     ))
                 messages.append(Message(role="assistant", content="Requested read-only story evidence."))
                 messages.append(Message(role="user", content="TOOL RESULTS:\n" + json.dumps(summaries, ensure_ascii=False)))
-            finalize = getattr(toolbox, "finalize_on_tool_limit", None)
             summary = finalize() if finalize else None
             if summary is not None:
                 return ModelResult(summary, self._receipt(

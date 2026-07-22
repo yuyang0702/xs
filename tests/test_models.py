@@ -138,6 +138,20 @@ class NeverCompletingAdapter:
         )])
 
 
+class ReadUntilForcedAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if request.tools:
+            return ModelResponse(tool_calls=[ToolCall(
+                id=str(self.calls), name="search_chapters", arguments={"query": "all"},
+            )])
+        assert "FINAL RESPONSE" in request.messages[-1].content
+        return ModelResponse(text="# Complete draft", input_tokens=5, output_tokens=120)
+
+
 @pytest.mark.asyncio
 async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -198,6 +212,23 @@ async def test_gateway_allows_toolbox_to_finalize_safely_at_round_limit(tmp_path
     assert adapter.calls == 8
     assert result.text == "Generated proposals are ready for local validation"
     assert result.receipt["tool_call_count"] == 8
+
+
+@pytest.mark.asyncio
+async def test_gateway_forces_read_only_toolbox_to_answer_after_three_read_rounds(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("draft", "provider", "model", None, None)
+    adapter = ReadUntilForcedAdapter()
+
+    result = await ModelGateway(db, ToolRegistry(adapter)).complete_with_tools(
+        "draft", "rules", "write the story", Toolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert adapter.calls == 4
+    assert result.text == "# Complete draft"
+    assert result.receipt["tool_call_count"] == 3
 
 
 @pytest.mark.asyncio

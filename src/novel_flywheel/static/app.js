@@ -76,13 +76,15 @@ async function renderActiveProject() {
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
   const initialized = initialization?.status === "completed";
+  const activeRun = runs.find(run => ["queued","running","cancelling"].includes(run.status));
+  const latestRun = runs[0];
   $("#initialize-project").hidden = initialized || initializing;
   ["#run-short", "#run-setup", "#run-chapter"].forEach(selector => { $(selector).disabled = !initialized; });
   $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(r.workflow)}</strong><div class="skill-meta">${escapeHtml(r.current_stage || "-")} · ${escapeHtml(formatLocalTimestamp(r.created_at))}</div></div><span class="status ${r.status}">${escapeHtml(r.status)}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
   document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => showRunDetail(await api(`/api/runs/${button.dataset.runDetail}`))));
   if (!state.activeRun) {
-    if (initializing) monitorRun(initialization);
-    else if (initialization) showRunDetail(await api(`/api/runs/${initialization.id}`));
+    if (activeRun) monitorRun(activeRun);
+    else if (latestRun) showRunDetail(await api(`/api/runs/${latestRun.id}`));
     else { $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”"; }
   }
 }
