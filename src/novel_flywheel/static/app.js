@@ -20,6 +20,18 @@ const roles = {
 };
 const $ = (selector) => document.querySelector(selector);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+const formatLocalTimestamp = (value, timeOnly = false) => {
+  const text = String(value ?? "").trim();
+  if (!text) return "";
+  const normalized = text.includes("T") ? text : text.replace(" ", "T");
+  const hasZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized);
+  const date = new Date(hasZone ? normalized : `${normalized}Z`);
+  if (Number.isNaN(date.getTime())) return text;
+  const options = timeOnly
+    ? {hour12:false, hour:"2-digit", minute:"2-digit", second:"2-digit"}
+    : {hour12:false, year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit"};
+  return timeOnly ? date.toLocaleTimeString("zh-CN", options) : date.toLocaleString("zh-CN", options);
+};
 
 async function api(path, options = {}) {
   const response = await fetch(path, {headers:{"Content-Type":"application/json"}, ...options});
@@ -66,7 +78,7 @@ async function renderActiveProject() {
   const initialized = initialization?.status === "completed";
   $("#initialize-project").hidden = initialized || initializing;
   ["#run-short", "#run-setup", "#run-chapter"].forEach(selector => { $(selector).disabled = !initialized; });
-  $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(r.workflow)}</strong><div class="skill-meta">${escapeHtml(r.current_stage || "-")} · ${escapeHtml(r.created_at)}</div></div><span class="status ${r.status}">${escapeHtml(r.status)}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
+  $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(r.workflow)}</strong><div class="skill-meta">${escapeHtml(r.current_stage || "-")} · ${escapeHtml(formatLocalTimestamp(r.created_at))}</div></div><span class="status ${r.status}">${escapeHtml(r.status)}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
   document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => showRunDetail(await api(`/api/runs/${button.dataset.runDetail}`))));
   if (!state.activeRun) {
     if (initializing) monitorRun(initialization);
@@ -185,7 +197,7 @@ async function run(path, body) {
   catch (error) { box.className = "run-state error"; box.textContent = error.message; }
 }
 function renderRunLog(events) {
-  $("#run-log").innerHTML = events.length ? events.map(item => `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml((item.created_at || "").slice(11,19))}</span><span class="log-stage">${escapeHtml(item.stage || item.event_type)}</span><span>${escapeHtml(item.message)}</span></div>`).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
+  $("#run-log").innerHTML = events.length ? events.map(item => `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(item.stage || item.event_type)}</span><span>${escapeHtml(item.message)}</span></div>`).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }
 function showRunDetail(detail) {
@@ -223,7 +235,7 @@ async function trashProject(projectId) {
 }
 $("#trash-project").addEventListener("click", () => { if (state.activeProject) trashProject(state.activeProject.id); });
 function renderTrash() {
-  $("#trash-list").innerHTML = state.trash.length ? state.trash.map(item => `<div class="data-row"><div><strong>${escapeHtml(item.title)}</strong><div class="skill-meta">${escapeHtml(item.mode)} · 删除于 ${escapeHtml(item.trashed_at)}</div></div><div class="project-actions"><button class="secondary" data-restore="${item.id}">恢复</button><button class="danger-button" data-permanent="${item.id}">永久删除</button></div></div>`).join("") : '<p class="skill-meta">回收站为空</p>';
+  $("#trash-list").innerHTML = state.trash.length ? state.trash.map(item => `<div class="data-row"><div><strong>${escapeHtml(item.title)}</strong><div class="skill-meta">${escapeHtml(item.mode)} · 删除于 ${escapeHtml(formatLocalTimestamp(item.trashed_at))}</div></div><div class="project-actions"><button class="secondary" data-restore="${item.id}">恢复</button><button class="danger-button" data-permanent="${item.id}">永久删除</button></div></div>`).join("") : '<p class="skill-meta">回收站为空</p>';
   document.querySelectorAll("[data-restore]").forEach(button => button.addEventListener("click", async () => { try { await api(`/api/projects/${button.dataset.restore}/restore`,{method:"POST"}); await loadAll(); toast("作品已恢复"); } catch(error) { toast(error.message); } }));
   document.querySelectorAll("[data-permanent]").forEach(button => button.addEventListener("click", async () => { if (!confirm("永久删除后无法恢复，确定继续？")) return; try { await api(`/api/projects/${button.dataset.permanent}/permanent`,{method:"DELETE"}); await loadAll(); toast("作品已永久删除"); } catch(error) { toast(error.message); } }));
 }
