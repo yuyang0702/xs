@@ -74,7 +74,16 @@ def normalize_review(value: dict) -> dict:
 
 def quality_gate(review: dict) -> tuple[bool, list[str]]:
     reasons = []
-    if review["score"] < 80:
+    dimensions_clear = all(
+        review["dimensions"][name] >= minimum for name, minimum in MINIMUMS.items()
+    )
+    near_pass = (
+        review["score"] >= 78
+        and review.get("decision") == "pass"
+        and not review.get("hard_fail")
+        and dimensions_clear
+    )
+    if review["score"] < 80 and not near_pass:
         reasons.append("overall_below_80")
     for name, minimum in MINIMUMS.items():
         if review["dimensions"][name] < minimum:
@@ -108,6 +117,7 @@ def select_route(mode: str, chapter_number: int | None, chapter_goal: str,
 
 
 def reader_sample(text: str, mode: str, limit: int = 9000) -> str:
+    text = text.replace("<!-- NOVEL_FLYWHEEL_SEGMENT -->", "")
     labels = (["OPENING", "PAID CUTOFF", "CLIMAX", "ENDING"] if mode == "short"
               else ["OPENING", "MIDDLE", "ENDING"])
     headers = [f"--- {label} ---\n" for label in labels]

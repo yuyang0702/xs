@@ -520,6 +520,19 @@ class WorkflowService:
                         run_id, run_path, project, "polish", constraints, prompt,
                         suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
                     )
+            ratio = len(polished_part.strip()) / max(1, len(part))
+            if ratio < 0.70 or ratio > 1.60:
+                self.db.add_run_event(
+                    run_id, "warning", "polish_output_rejected",
+                    f"润色第 {index}/{len(parts)} 段长度异常，已保留原文",
+                    stage="polish", metadata={
+                        "segment": index,
+                        "original_characters": len(part),
+                        "candidate_characters": len(polished_part.strip()),
+                        "ratio": round(ratio, 3),
+                    },
+                )
+                polished_part = part
             polished_parts.append(polished_part.strip())
         polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)

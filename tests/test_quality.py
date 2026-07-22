@@ -32,6 +32,21 @@ def test_quality_gate_enforces_overall_dimensions_and_hard_fail() -> None:
     assert reasons == ["commercial_below_75", "hard_fail"]
 
 
+def test_quality_gate_accepts_near_threshold_explicit_pass() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 82, "story": 78, "prose": 75},
+        "hard_fail": False,
+        "decision": "pass",
+        "issues": [],
+    })
+
+    passed, reasons = quality_gate(review)
+
+    assert review["score"] == 79.2
+    assert passed
+    assert reasons == []
+
+
 def test_normalize_review_accepts_legacy_score() -> None:
     review = normalize_review({"score": 86, "hard_fail": False, "issues": ["tighten prose"]})
 
@@ -90,7 +105,8 @@ def test_route_selects_enhanced_only_for_risky_or_key_content() -> None:
 
 
 def test_reader_sample_is_bounded_and_labels_short_checkpoints() -> None:
-    text = "".join(str(index % 10) for index in range(30000))
+    marker = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
+    text = marker.join("".join(str(index % 10) for index in range(7500)) for _ in range(4))
 
     sample = reader_sample(text, "short", limit=9000)
 
@@ -98,6 +114,7 @@ def test_reader_sample_is_bounded_and_labels_short_checkpoints() -> None:
     assert all(label in sample for label in ("OPENING", "PAID CUTOFF", "CLIMAX", "ENDING"))
     assert text[:100] in sample
     assert text[-100:] in sample
+    assert "NOVEL_FLYWHEEL_SEGMENT" not in sample
 
 
 def test_reader_sample_labels_long_chapter_checkpoints() -> None:

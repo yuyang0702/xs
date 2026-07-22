@@ -394,6 +394,35 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_segment_polish_rejects_truncated_output_and_keeps_original(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Protected", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=20000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    original = "原文" * 1000
+    gateway = RecordingGateway(["太短", "仍然太短"])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("protected", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "protected"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    polished = await service._polish_short_segments(
+        "protected", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join([original, original]), "{}",
+    )
+
+    assert WorkflowService._split_segments(polished) == [original, original]
+    events = db.list_run_events("protected")
+    assert sum(item["event_type"] == "polish_output_rejected" for item in events) == 2
+
+
+@pytest.mark.asyncio
 async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
