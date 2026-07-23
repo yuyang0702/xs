@@ -28,6 +28,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="migrate-project"' in html
     assert 'id="run-cancel"' in html
     assert 'id="run-log"' in html
+    assert 'id="project-locations"' in html
     assert 'id="genre-options"' in html
     assert 'id="project-list"' in html
     assert 'id="trash-list"' in html
@@ -57,5 +58,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "fallback_model_id" in script
     assert 'scrollIntoView({behavior:"smooth",block:"start"})' in script
     assert 'catch(error) { toast(error.message); }' in script
+    assert "loadProjectLocations" in script
+    assert "navigator.clipboard.writeText" in script
+    assert "locations/${button.dataset.openLocation}/open" in script
     assert "主模型和备用模型不能相同" in script
     assert 'reader_review: "目标读者模拟"' in script

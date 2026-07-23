@@ -79,12 +79,32 @@ async function continueProject(projectId) {
   showView("workbench");
   if (project.mode === "short") await run(`/api/projects/${project.id}/runs/short`);
 }
+async function loadProjectLocations(projectId) {
+  const shell = $("#project-locations");
+  if (!projectId) { shell.innerHTML = '<p class="skill-meta">请先选择作品</p>'; return; }
+  try {
+    const result = await api(`/api/projects/${projectId}/locations`);
+    if (state.activeProject?.id !== projectId) return;
+    shell.innerHTML = result.locations.map(item => `<div class="location-row"><div class="location-copy"><strong>${escapeHtml(item.label)}</strong><code>${item.exists ? escapeHtml(item.path) : "尚未生成"}</code></div><div class="location-actions">${item.exists ? `<button class="icon-button small" data-copy-path="${escapeHtml(item.path)}" title="复制路径" aria-label="复制${escapeHtml(item.label)}路径">⧉</button><button class="icon-button small" data-open-location="${escapeHtml(item.kind)}" title="在资源管理器中打开" aria-label="打开${escapeHtml(item.label)}">↗</button>` : ""}</div></div>`).join("");
+    shell.querySelectorAll("[data-copy-path]").forEach(button => button.addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(button.dataset.copyPath); toast("路径已复制"); }
+      catch(error) { toast(`复制失败：${error.message}`); }
+    }));
+    shell.querySelectorAll("[data-open-location]").forEach(button => button.addEventListener("click", async () => {
+      try { await api(`/api/projects/${projectId}/locations/${button.dataset.openLocation}/open`, {method:"POST"}); }
+      catch(error) { toast(error.message); }
+    }));
+  } catch(error) {
+    shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`;
+  }
+}
 async function renderActiveProject() {
   const p = state.activeProject;
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; return; }
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); return; }
+  await loadProjectLocations(p.id);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
