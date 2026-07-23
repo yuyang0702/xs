@@ -539,3 +539,61 @@ async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_pat
                for item in events)
     corrective_calls = [call for call in gateway.calls if call["role"] == "polish"][1:]
     assert all("replace or remove implausible events" in call["user"] for call in corrective_calls)
+
+
+@pytest.mark.asyncio
+async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Targeted", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=12000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    plan = json.dumps({
+        "global_facts": ["The public ceremony is a wedding."],
+        "checks": [{"kind": "forbidden_text", "value": "engagement banquet"}],
+        "tasks": [{"segments": [2], "instruction": "Unify the ceremony timeline."}],
+    })
+    gateway = RecordingGateway([plan, "Revised middle at the wedding. " * 80])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("targeted", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "targeted"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    parts = ["Opening " * 150, "Middle engagement banquet " * 100, "Ending " * 150]
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts)
+    findings = json.dumps({
+        "dimensions": {"commercial": 70, "story": 50, "prose": 70},
+        "score": 62,
+        "hard_fail": True,
+        "decision": "rewrite",
+        "issues": [{
+            "category": "continuity", "severity": "critical",
+            "evidence": "Wedding and engagement banquet conflict.",
+            "action": "Use one ceremony timeline.",
+        }],
+    })
+
+    revised = await service._polish_short_segments(
+        "targeted", run_path, project, "constraints", manuscript, findings,
+        suffix="-2", structural=True,
+    )
+
+    revised_parts = WorkflowService._split_segments(revised)
+    assert revised_parts[0] == parts[0].strip()
+    assert revised_parts[2] == parts[2].strip()
+    assert "Revised middle" in revised_parts[1]
+    assert gateway.roles == ["planning", "polish"]
+    polish_prompt = gateway.calls[1]["user"]
+    assert "The public ceremony is a wedding." in polish_prompt
+    assert "NEXT ORIGINAL START" in polish_prompt
+    events = db.list_run_events("targeted")
+    planned = next(item for item in events if item["event_type"] == "revision_planned")
+    assert planned["metadata"]["target_segments"] == [2]
+    checks = json.loads((run_path / "outputs" / "revision-checks-2.json").read_text(
+        encoding="utf-8",
+    ))
+    assert checks == {"failures": []}

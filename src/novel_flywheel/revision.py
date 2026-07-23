@@ -1,0 +1,79 @@
+from typing import Any
+
+
+CHECK_KINDS = {"required_text", "forbidden_text"}
+
+
+def compact_review(review: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "score": review.get("score"),
+        "dimensions": review.get("dimensions", {}),
+        "hard_fail": bool(review.get("hard_fail")),
+        "decision": review.get("decision", "revise"),
+        "issues": [
+            {
+                "category": issue.get("category", "general"),
+                "severity": issue.get("severity", "medium"),
+                "evidence": issue.get("evidence", ""),
+                "action": issue.get("action", ""),
+            }
+            for issue in review.get("issues", []) if isinstance(issue, dict)
+        ],
+    }
+
+
+def segment_map(parts: list[str], width: int = 320) -> list[dict[str, Any]]:
+    return [
+        {
+            "segment": index,
+            "characters": len(part),
+            "opening": part[:width],
+            "ending": part[-width:],
+        }
+        for index, part in enumerate(parts, 1)
+    ]
+
+
+def normalize_revision_plan(value: dict[str, Any], segment_count: int) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("Revision plan must be an object")
+    facts = [item.strip() for item in value.get("global_facts", [])
+             if isinstance(item, str) and item.strip()]
+    checks = []
+    for item in value.get("checks", []):
+        if not isinstance(item, dict):
+            continue
+        kind, text = item.get("kind"), item.get("value")
+        if kind in CHECK_KINDS and isinstance(text, str) and text.strip():
+            checks.append({"kind": kind, "value": text.strip()})
+    tasks = []
+    for item in value.get("tasks", []):
+        if not isinstance(item, dict):
+            continue
+        instruction = item.get("instruction")
+        segments = item.get("segments")
+        if not isinstance(instruction, str) or not instruction.strip() or not isinstance(segments, list):
+            continue
+        valid_segments = sorted({number for number in segments
+                                 if isinstance(number, int) and 1 <= number <= segment_count})
+        if valid_segments:
+            tasks.append({"segments": valid_segments, "instruction": instruction.strip()})
+    if not tasks:
+        raise ValueError("Revision plan has no actionable task")
+    return {
+        "global_facts": facts,
+        "checks": checks,
+        "tasks": tasks,
+        "target_segments": sorted({number for task in tasks for number in task["segments"]}),
+    }
+
+
+def check_revision_constraints(text: str, plan: dict[str, Any]) -> list[str]:
+    failures = []
+    for check in plan.get("checks", []):
+        value = check["value"]
+        if check["kind"] == "required_text" and value not in text:
+            failures.append(f"required text missing: {value}")
+        elif check["kind"] == "forbidden_text" and value in text:
+            failures.append(f"forbidden text remains: {value}")
+    return failures

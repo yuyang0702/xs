@@ -3,6 +3,11 @@ STAGE_SYSTEM = {
         "Design a complete causal story plan. Preserve the requested ending and hard constraints. "
         "Use all supplied project facts, include the requested segment map, and never ask the user questions."
     ),
+    "revision_plan": (
+        "Act as a structural revision editor. Convert the supplied chief-editor findings into the "
+        "smallest actionable cross-segment correction plan. Preserve locked facts and return only "
+        "the requested strict JSON object."
+    ),
     "draft": (
         "Write publishable fiction prose from the approved plan. Prioritize scenes, causality, and voice. "
         "Never ask the user for information; infer minor details without changing locked facts."
@@ -27,6 +32,7 @@ STAGE_SYSTEM = {
 
 REQUIRED_SKILLS = {
     "planning": ["story-init", "plot-structure", "character-management", "worldbuilding"],
+    "revision_plan": ["revision-continuity", "plot-structure"],
     "draft": ["chapter-writing", "novel-writing", "dialogue"],
     "review": ["revision-continuity"],
     "polish": ["humanizer-zh", "dialogue", "novel-writing"],

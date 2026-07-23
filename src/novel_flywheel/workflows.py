@@ -12,6 +12,12 @@ from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.quality import normalize_review, quality_gate, reader_sample, select_route
+from novel_flywheel.revision import (
+    check_revision_constraints,
+    compact_review,
+    normalize_revision_plan,
+    segment_map,
+)
 from novel_flywheel.skill_prompts import SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
@@ -334,6 +340,15 @@ class WorkflowService:
             reviewed_polished = polished
             final_input = (reader_sample(polished, project.mode, limit=6000)
                            if project.mode == "short" else polished)
+            if attempt:
+                checks_path = run_path / "outputs" / f"revision-checks-{attempt + 1}.json"
+                if checks_path.is_file():
+                    failures = json.loads(checks_path.read_text(encoding="utf-8")).get("failures", [])
+                    if failures:
+                        final_input += (
+                            "\n\nRUNTIME STRUCTURAL CHECK FAILURES. Treat unresolved failures as hard "
+                            f"evidence:\n{json.dumps(failures, ensure_ascii=False)}"
+                        )
             final_review = self._review(await self._stage_with_role_fallback(
                 run_id, run_path, project, "final_review", constraints, final_input,
                 suffix=f"-{attempt + 1}" if attempt else "",
@@ -517,7 +532,12 @@ class WorkflowService:
                                      constraints: str, text: str, findings: str,
                                      suffix: str = "", structural: bool = False) -> str:
         parts = self._split_segments(text)
-        findings = findings[:4000]
+        revision_plan = None
+        story_map = segment_map(parts)
+        if structural and len(parts) > 1:
+            revision_plan = await self._plan_structural_revision(
+                run_id, run_path, project, constraints, findings, story_map, suffix,
+            )
         revision_rule = (
             "You may replace or remove implausible events and reorder material inside this segment "
             "to resolve the findings. Preserve the core premise, required ending, established facts, "
@@ -534,12 +554,25 @@ class WorkflowService:
         polished_parts: list[str] = []
         fallback_only = False
         for index, part in enumerate(parts, 1):
+            if revision_plan and index not in revision_plan["target_segments"]:
+                polished_parts.append(part)
+                continue
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
+            next_head = parts[index][:800] if index < len(parts) else ""
+            tasks = ([task["instruction"] for task in revision_plan["tasks"]
+                      if index in task["segments"]] if revision_plan else [])
+            plan_context = (
+                f"GLOBAL FACTS AND LOCKS:\n{json.dumps(revision_plan['global_facts'], ensure_ascii=False)}\n\n"
+                f"TASKS FOR THIS SEGMENT:\n{json.dumps(tasks, ensure_ascii=False)}\n\n"
+                f"DETERMINISTIC CHECKS:\n{json.dumps(revision_plan['checks'], ensure_ascii=False)}\n\n"
+                f"COMPACT FULL STORY MAP:\n{json.dumps(story_map, ensure_ascii=False)}\n\n"
+                if revision_plan else f"STRUCTURED FINDINGS:\n{findings}\n\n"
+            )
             prompt = (
                 f"POLISH SEGMENT {index} OF {len(parts)}. Return only the revised prose for this segment. "
                 f"{revision_rule}\n\n"
-                f"PREVIOUS POLISHED END:\n{previous_tail}\n\nMANUSCRIPT SEGMENT:\n{part}\n\n"
-                f"STRUCTURED FINDINGS:\n{findings}"
+                f"{plan_context}PREVIOUS POLISHED END:\n{previous_tail}\n\n"
+                f"NEXT ORIGINAL START:\n{next_head}\n\nMANUSCRIPT SEGMENT:\n{part}"
             )
             part_suffix = f"{suffix}-part-{index:02d}"
             if fallback_only:
@@ -581,8 +614,80 @@ class WorkflowService:
                 polished_part = part
             polished_parts.append(polished_part.strip())
         polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
+        if revision_plan:
+            failures = check_revision_constraints(polished, revision_plan)
+            atomic_write(
+                run_path / "outputs" / f"revision-checks{suffix}.json",
+                json.dumps({"failures": failures}, ensure_ascii=False, indent=2),
+            )
+            if failures:
+                self.db.add_run_event(
+                    run_id, "warning", "revision_checks_failed",
+                    "Structural revision still violates deterministic checks",
+                    stage="polish", metadata={"failures": failures},
+                )
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
         return polished
+
+    async def _plan_structural_revision(self, run_id: str, run_path: Path, project: Project,
+                                        constraints: str, findings: str,
+                                        story_map: list[dict], suffix: str) -> dict:
+        try:
+            review = compact_review(json.loads(findings))
+        except (json.JSONDecodeError, TypeError):
+            review = {"issues": [{"action": findings}]}
+        prompt = (
+            "Create a minimal structural revision plan for this segmented manuscript. Map every "
+            "action to the exact segment numbers that must change. Do not target unrelated segments. "
+            "Return one JSON object only with: global_facts (string array), checks (array of objects "
+            "using kind required_text or forbidden_text and value), and tasks (array with segments as "
+            "integer array and instruction as text). Checks must be literal, unambiguous manuscript "
+            "text constraints; omit checks that require semantic judgment.\n\n"
+            f"COMPLETE REVIEW FINDINGS:\n{json.dumps(review, ensure_ascii=False)}\n\n"
+            f"COMPACT SEGMENT MAP:\n{json.dumps(story_map, ensure_ascii=False)}"
+        )
+        try:
+            output = await self._stage(
+                run_id, run_path, project, "revision_plan", constraints, prompt,
+                suffix=f"{suffix}-revision-plan", model_role="planning", allow_tools=False,
+            )
+            plan = normalize_revision_plan(self._json_object(output), len(story_map))
+            event_type, severity = "revision_planned", "success"
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            actions = [issue.get("action", "") for issue in review.get("issues", [])
+                       if isinstance(issue, dict) and issue.get("action")]
+            plan = {
+                "global_facts": [],
+                "checks": [],
+                "tasks": [{
+                    "segments": list(range(1, len(story_map) + 1)),
+                    "instruction": "\n".join(actions) or "Resolve all supplied review findings.",
+                }],
+                "target_segments": list(range(1, len(story_map) + 1)),
+            }
+            event_type, severity = "revision_plan_fallback", "warning"
+            self.db.add_run_event(
+                run_id, severity, event_type,
+                "Revision planner failed; using conservative all-segment correction",
+                stage="revision_plan",
+                metadata={"error": str(exc), "target_segments": plan["target_segments"]},
+            )
+        else:
+            self.db.add_run_event(
+                run_id, severity, event_type, "Structural revision plan created",
+                stage="revision_plan", metadata={
+                    "target_segments": plan["target_segments"],
+                    "task_count": len(plan["tasks"]),
+                    "check_count": len(plan["checks"]),
+                },
+            )
+        atomic_write(
+            run_path / "outputs" / f"revision-plan{suffix}.json",
+            json.dumps(plan, ensure_ascii=False, indent=2),
+        )
+        return plan
 
     @staticmethod
     def _write_quality_report(run_path: Path, report: dict) -> None:
@@ -822,7 +927,7 @@ class WorkflowService:
     def _stage_output_budget(stage: str) -> int | None:
         if stage in {"planning", "final_review", "maintenance"}:
             return 8192
-        if stage in {"review", "polish"}:
+        if stage in {"review", "polish", "revision_plan"}:
             return 4096
         return None
 
