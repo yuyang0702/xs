@@ -19,7 +19,7 @@ from novel_flywheel.revision import (
     normalize_revision_plan,
     segment_map,
 )
-from novel_flywheel.skill_prompts import SkillPromptCompactor
+from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.tools import StoryToolbox
@@ -30,7 +30,8 @@ class WorkflowService:
 
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
                  skills: SkillGate, crewai_data_dir: Path | None = None,
-                 skill_prompts: SkillPromptCompactor | None = None) -> None:
+                 skill_prompts: SkillPromptCompactor | None = None,
+                 constraint_prompts: ConstraintPromptCompactor | None = None) -> None:
         self.db = db
         self.projects = projects
         self.gateway = gateway
@@ -38,6 +39,7 @@ class WorkflowService:
         self.crewai_data_dir = crewai_data_dir or db.path.parent / "crewai"
         self.memory = StoryMemory(db)
         self.skill_prompts = skill_prompts or SkillPromptCompactor()
+        self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
 
     async def run_short(self, project_id: str, use_crewai: bool = True,
                         run_id: str | None = None) -> dict:
@@ -740,6 +742,12 @@ class WorkflowService:
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
                 if stage == "polish" else skill_run.prompt
             )
+            model_constraints = constraints
+            if stage == "polish":
+                model_constraints = self.constraint_prompts.compact(constraints)
+                project_constraints = (project.path / "constraints.md").read_text(encoding="utf-8")
+                if project_constraints not in model_constraints:
+                    model_constraints += "\n\nPROJECT-SPECIFIC CONSTRAINTS:\n" + project_constraints
             self.db.add_run_event(
                 run_id, "success", "skills_loaded", f"已加载 {len(skills)} 个 Skill",
                 stage=stage, metadata={
@@ -747,9 +755,12 @@ class WorkflowService:
                     "prompt_characters": len(model_skill_prompt),
                     "source_prompt_characters": len(skill_run.prompt),
                     "compact_prompt": model_skill_prompt != skill_run.prompt,
+                    "constraint_characters": len(model_constraints),
+                    "source_constraint_characters": len(constraints),
+                    "compact_constraints": model_constraints != constraints,
                 },
             )
-            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{model_skill_prompt}"
+            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}"
             gateway_role = model_role or stage
             if allow_tools and hasattr(self.gateway, "complete_with_tools"):
                 toolbox = StoryToolbox(project, self.memory)
@@ -941,7 +952,9 @@ class WorkflowService:
     def _stage_output_budget(stage: str) -> int | None:
         if stage in {"planning", "final_review", "maintenance"}:
             return 8192
-        if stage in {"review", "polish", "revision_plan"}:
+        if stage == "polish":
+            return 8192
+        if stage in {"review", "revision_plan"}:
             return 4096
         return None
 

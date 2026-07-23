@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from novel_flywheel.skill_prompts import SkillPromptCompactor
+from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 
 
 @dataclass(frozen=True)
@@ -80,3 +80,22 @@ def test_compactor_falls_back_when_no_execution_rules_are_found() -> None:
     prompt = "A plain skill description without structured execution rules."
 
     assert SkillPromptCompactor().compact(prompt, [Receipt("hash-a")]) == prompt
+
+
+def test_constraint_compactor_keeps_hard_rules_and_bounds_repeated_context() -> None:
+    constraints = "\n".join([
+        "# 通用规则",
+        *[f"普通背景说明 {index}" for index in range(200)],
+        "- 必须保持人物已知信息边界。",
+        "- 不能修改已经成立的剧情事实。",
+        "# 项目规则",
+        "- 女主最终不能原谅男主。",
+    ])
+
+    compact = ConstraintPromptCompactor(max_chars=180).compact(constraints)
+
+    assert len(compact) <= 220
+    assert "必须保持人物已知信息边界" in compact
+    assert "不能修改已经成立的剧情事实" in compact
+    assert "女主最终不能原谅男主" in compact
+    assert "普通背景说明 100" not in compact

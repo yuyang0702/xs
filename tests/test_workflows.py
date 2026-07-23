@@ -597,3 +597,7 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
         encoding="utf-8",
     ))
     assert checks == {"failures": []}
+
+
+def test_polish_has_room_for_reasoning_and_publishable_text() -> None:
+    assert WorkflowService._stage_output_budget("polish") == 8192
