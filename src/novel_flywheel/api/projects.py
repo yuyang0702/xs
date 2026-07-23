@@ -1,3 +1,7 @@
+import platform
+import subprocess
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException, Request, status
 
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
@@ -12,6 +16,60 @@ def _public(project: Project) -> dict:
 
 def get_store(request: Request) -> ProjectStore:
     return request.app.state.projects
+
+
+LOCATION_LABELS = {
+    "project": "项目目录",
+    "formal": "正式成品",
+    "draft": "最新草稿",
+    "best_candidate": "最高分候选",
+    "latest_run": "最近运行",
+}
+
+
+def resolve_project_locations(project: Project, store: ProjectStore) -> list[dict]:
+    runs = store.db.list_runs(project.id)
+    formal = (project.path / "manuscript" / "story.md" if project.mode == "short"
+              else project.path / "chapters")
+    resolved: dict[str, Path | None] = {
+        "project": project.path,
+        "formal": formal,
+        "draft": None,
+        "best_candidate": None,
+        "latest_run": project.path / "runs" / runs[0]["id"] if runs else None,
+    }
+    for run in runs:
+        outputs = project.path / "runs" / run["id"] / "outputs"
+        if resolved["draft"] is None and (outputs / "draft.md").is_file():
+            resolved["draft"] = outputs / "draft.md"
+        if resolved["best_candidate"] is None:
+            for name in ("best-candidate.md", "polish.md"):
+                candidate = outputs / name
+                if candidate.is_file():
+                    resolved["best_candidate"] = candidate
+                    break
+        if resolved["draft"] is not None and resolved["best_candidate"] is not None:
+            break
+    root = project.path.resolve()
+    locations = []
+    for kind, label in LOCATION_LABELS.items():
+        target = resolved[kind]
+        if target is not None and not target.resolve().is_relative_to(root):
+            target = None
+        locations.append({
+            "kind": kind,
+            "label": label,
+            "path": str(target.resolve()) if target is not None else None,
+            "exists": bool(target is not None and target.exists()),
+            "is_file": bool(target is not None and target.is_file()),
+        })
+    return locations
+
+
+def _location(project: Project, store: ProjectStore, kind: str) -> dict:
+    if kind not in LOCATION_LABELS:
+        raise LookupError("Unknown project location")
+    return next(item for item in resolve_project_locations(project, store) if item["kind"] == kind)
 
 
 @router.get("/projects")
@@ -61,6 +119,34 @@ def get_manuscript(project_id: str, request: Request) -> dict:
                         "run_id": run["id"],
                     }
     return {"project_id": project.id, "content": "", "source": "none", "run_id": None}
+
+
+@router.get("/projects/{project_id}/locations")
+def get_project_locations(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    return {"project_id": project.id,
+            "locations": resolve_project_locations(project, get_store(request))}
+
+
+@router.post("/projects/{project_id}/locations/{kind}/open")
+def open_project_location(project_id: str, kind: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        location = _location(project, get_store(request), kind)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "location_not_found"}) from exc
+    if not location["exists"]:
+        raise HTTPException(status_code=409, detail={"code": "location_not_generated"})
+    if platform.system() != "Windows":
+        raise HTTPException(status_code=501, detail={"code": "explorer_not_supported"})
+    path = location["path"]
+    command = (["explorer.exe", f"/select,{path}"] if location["is_file"]
+               else ["explorer.exe", path])
+    subprocess.Popen(command, close_fds=True)
+    return {"status": "opened", "kind": kind, "path": path}
 
 
 @router.post("/projects", status_code=status.HTTP_201_CREATED)

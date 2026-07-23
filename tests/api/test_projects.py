@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from unittest.mock import Mock
 
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
@@ -43,6 +44,63 @@ def test_manuscript_falls_back_to_latest_run_candidate(tmp_path) -> None:
         "source": "run_candidate",
         "run_id": "failed-archive",
     }
+
+
+def test_project_locations_resolve_formal_draft_candidate_and_latest_run(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Files", "mode": "short", "genre": "romance",
+        "premise": "A relationship changes.", "target_words": 6000,
+    }).json()
+    root = tmp_path / "workspace" / f"files-{project['id'][:6]}"
+    db.create_run("older", project["id"], "short-story", status="failed")
+    older = root / "runs" / "older" / "outputs"
+    older.mkdir(parents=True)
+    (older / "best-candidate.md").write_text("best", encoding="utf-8")
+    db.create_run("newest", project["id"], "short-story", status="failed")
+    newest = root / "runs" / "newest" / "outputs"
+    newest.mkdir(parents=True)
+    (newest / "draft.md").write_text("draft", encoding="utf-8")
+
+    response = client.get(f"/api/projects/{project['id']}/locations")
+
+    assert response.status_code == 200
+    locations = {item["kind"]: item for item in response.json()["locations"]}
+    assert locations["project"]["exists"] is True
+    assert locations["formal"]["exists"] is False
+    assert locations["draft"]["path"].endswith(r"runs\newest\outputs\draft.md")
+    assert locations["best_candidate"]["path"].endswith(
+        r"runs\older\outputs\best-candidate.md"
+    )
+    assert locations["latest_run"]["path"].endswith(r"runs\newest")
+
+
+def test_open_project_location_uses_server_resolved_path(tmp_path, monkeypatch) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Open", "mode": "short", "genre": "romance",
+        "premise": "A relationship changes.", "target_words": 6000,
+    }).json()
+    popen = Mock()
+    monkeypatch.setattr("novel_flywheel.api.projects.platform.system", lambda: "Windows")
+    monkeypatch.setattr("novel_flywheel.api.projects.subprocess.Popen", popen)
+
+    response = client.post(f"/api/projects/{project['id']}/locations/project/open")
+
+    assert response.status_code == 200
+    command = popen.call_args.args[0]
+    assert command[0] == "explorer.exe"
+    assert command[1].endswith(f"open-{project['id'][:6]}")
+    assert client.post(f"/api/projects/{project['id']}/locations/unknown/open").status_code == 404
+    assert client.post(f"/api/projects/{project['id']}/locations/formal/open").status_code == 409
 
 
 def test_project_trash_restore_and_permanent_delete_api(tmp_path) -> None:
