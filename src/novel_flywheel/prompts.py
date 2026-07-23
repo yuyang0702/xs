@@ -44,3 +44,8 @@ REQUIRED_SKILLS = {
     "final_review": ["revision-continuity"],
     "maintenance": ["story-maintenance"],
 }
+
+OPTIONAL_PROMPT_SKILLS = {
+    "draft": ["better-writing"],
+    "polish": ["better-writing"],
+}

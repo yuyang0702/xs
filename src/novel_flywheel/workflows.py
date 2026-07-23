@@ -12,7 +12,7 @@ from novel_flywheel.db import Database
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
-from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
+from novel_flywheel.prompts import OPTIONAL_PROMPT_SKILLS, REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.quality import (
     normalize_review,
     quality_gate,
@@ -836,6 +836,14 @@ class WorkflowService:
             )
             with identity:
                 skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
+            if OPTIONAL_PROMPT_SKILLS.get(stage) and hasattr(self.skills, "load_optional_prompts"):
+                optional = self.skills.load_optional_prompts(
+                    stage, OPTIONAL_PROMPT_SKILLS[stage], project.path,
+                )
+                skill_run = type(skill_run)(
+                    "\n\n".join(item for item in (skill_run.prompt, optional.prompt) if item),
+                    [*skill_run.receipts, *optional.receipts],
+                )
             skills = [receipt.skill_name for receipt in skill_run.receipts]
             model_skill_prompt = (
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)

@@ -101,6 +101,19 @@ class SkillGate:
             receipts.append(self._record(stage, skill, "succeeded", output))
         return SkillRun("\n\n".join(prompt), receipts)
 
+    def load_optional_prompts(self, stage: str, names: list[str],
+                              project_root: Path | None = None) -> SkillRun:
+        available = self.skills(project_root)
+        prompt = []
+        receipts = []
+        for name in names:
+            skill = available.get(name)
+            if skill is None:
+                continue
+            prompt.append(skill.instructions)
+            receipts.append(self._record(stage, skill, "succeeded", "instructions-loaded"))
+        return SkillRun("\n\n".join(prompt), receipts)
+
     def _execute(self, skill: Skill, argv: list[str], cwd: Path | None) -> str:
         target = (skill.path / argv[0]).resolve()
         if not target.is_relative_to(skill.path.resolve()) or not target.is_file():

@@ -534,6 +534,14 @@ async def test_polish_stage_sends_compact_skill_prompt_only(tmp_path) -> None:
         "- Never flatten character voice.\n## Examples\n改写前：REMOVE_THIS_EXAMPLE\n",
         encoding="utf-8",
     )
+    better = skill_root / "better-writing"
+    better.mkdir()
+    (better / "SKILL.md").write_text(
+        "---\nname: better-writing\n---\n# Better Writing\n- Preserve irregular human voice.\n",
+        encoding="utf-8",
+    )
+    (better / "scripts").mkdir()
+    (better / "scripts" / "validate.py").write_text("raise SystemExit(9)", encoding="utf-8")
     gateway = RecordingGateway(["polished", "drafted"])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("compact", project.id, "short-story", status="running")
@@ -545,8 +553,12 @@ async def test_polish_stage_sends_compact_skill_prompt_only(tmp_path) -> None:
     await service._stage("compact", run_path, project, "draft", "constraints", "text")
 
     assert "Never flatten character voice" in gateway.calls[0]["system"]
+    assert "Preserve irregular human voice" in gateway.calls[0]["system"]
     assert "REMOVE_THIS_EXAMPLE" not in gateway.calls[0]["system"]
     assert "Skill instructions for chapter-writing" in gateway.calls[1]["system"]
+    assert "Preserve irregular human voice" in gateway.calls[1]["system"]
+    receipts = db.list_skill_receipts()
+    assert sum(item["skill_name"] == "better-writing" for item in receipts) == 2
 
 
 @pytest.mark.asyncio

@@ -47,6 +47,31 @@ def test_prompt_skill_executes_automatically_and_records_receipt(tmp_path) -> No
     assert db.list_skill_receipts()[0]["skill_name"] == "humanizer"
 
 
+def test_optional_prompt_skill_loads_instructions_even_with_bundled_scripts(tmp_path) -> None:
+    root = tmp_path / "skills"
+    write_skill(root, "better-writing", "Preserve voice and remove uniform prose.", "print('validator')")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    gate = SkillGate(db, SkillScanner([root]))
+
+    result = gate.load_optional_prompts("polish", ["better-writing"])
+
+    assert "Preserve voice" in result.prompt
+    assert result.receipts[0].skill_name == "better-writing"
+    assert result.receipts[0].output == "instructions-loaded"
+
+
+def test_missing_optional_prompt_skill_does_not_block_stage(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    gate = SkillGate(db, SkillScanner([tmp_path / "skills"]))
+
+    result = gate.load_optional_prompts("draft", ["better-writing"])
+
+    assert result.prompt == ""
+    assert result.receipts == []
+
+
 def test_executable_skill_requires_approval_for_current_hash(tmp_path) -> None:
     root = tmp_path / "skills"
     folder = write_skill(root, "maintenance", "Run it.", "print('checked')")
