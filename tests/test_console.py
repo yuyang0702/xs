@@ -55,5 +55,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "使用程序默认回退" in script
     assert "fallback_provider_id" in script
     assert "fallback_model_id" in script
+    assert 'scrollIntoView({behavior:"smooth",block:"start"})' in script
+    assert 'catch(error) { toast(error.message); }' in script
     assert "主模型和备用模型不能相同" in script
     assert 'reader_review: "目标读者模拟"' in script

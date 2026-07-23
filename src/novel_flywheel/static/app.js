@@ -240,7 +240,16 @@ $("#initialize-project").addEventListener("click", () => run(`/api/projects/${st
 $("#run-short").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/short`));
 $("#run-setup").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/setup`));
 $("#run-chapter").addEventListener("click", () => { const chapter_goal = $("#chapter-goal").value.trim(); if (!chapter_goal) return toast("请填写本章目标"); run(`/api/projects/${state.activeProject.id}/runs/chapter`, {chapter_goal}); });
-$("#open-manuscript").addEventListener("click", async () => { if (!state.activeProject) return; const result = await api(`/api/projects/${state.activeProject.id}/manuscript`); $("#manuscript").textContent = result.content || "尚未生成正文"; $("#manuscript-panel").hidden = false; });
+$("#open-manuscript").addEventListener("click", async () => {
+  if (!state.activeProject) return;
+  try {
+    const result = await api(`/api/projects/${state.activeProject.id}/manuscript`);
+    $("#manuscript").textContent = result.content || "尚未生成正文";
+    const panel = $("#manuscript-panel");
+    panel.hidden = false;
+    panel.scrollIntoView({behavior:"smooth",block:"start"});
+  } catch(error) { toast(error.message); }
+});
 $("#close-manuscript").addEventListener("click", () => $("#manuscript-panel").hidden = true);
 $("#migrate-project").addEventListener("click", async () => { if (!state.activeProject) return toast("请先选择作品"); try { const preview=await api(`/api/projects/${state.activeProject.id}/migration`); if (!confirm(`将映射 ${preview.mapped_facts.length} 条设定，${preview.ambiguous_facts.length} 条需要复核。继续？`)) return; await api(`/api/projects/${state.activeProject.id}/migration`,{method:"POST"}); toast("项目迁移和校验完成"); } catch(error) { toast(error.message); } });
 async function trashProject(projectId) {

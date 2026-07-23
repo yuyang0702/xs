@@ -44,7 +44,23 @@ def get_manuscript(project_id: str, request: Request) -> dict:
     else:
         files = sorted(project.path.joinpath("chapters").glob("chapter-*.md"))
     content = "\n\n".join(path.read_text(encoding="utf-8") for path in files if path.is_file())
-    return {"project_id": project.id, "content": content}
+    if content.strip() or project.mode != "short":
+        return {"project_id": project.id, "content": content, "source": "formal", "run_id": None}
+
+    for run in get_store(request).db.list_runs(project.id):
+        outputs = project.path / "runs" / run["id"] / "outputs"
+        for name in ("best-candidate.md", "polish.md", "draft.md"):
+            candidate = outputs / name
+            if candidate.is_file():
+                content = candidate.read_text(encoding="utf-8")
+                if content.strip():
+                    return {
+                        "project_id": project.id,
+                        "content": content,
+                        "source": "run_candidate",
+                        "run_id": run["id"],
+                    }
+    return {"project_id": project.id, "content": "", "source": "none", "run_id": None}
 
 
 @router.post("/projects", status_code=status.HTTP_201_CREATED)
