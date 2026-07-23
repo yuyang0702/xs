@@ -1,7 +1,7 @@
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from novel_flywheel.providers.probe import CapabilityProbe, ProbeResult
 from novel_flywheel.providers.registry import ProviderRegistry
@@ -105,6 +105,12 @@ class RoleBindingUpdate(BaseModel):
     fallback_provider_id: str | None = None
     fallback_model_id: str | None = None
 
+    @model_validator(mode="after")
+    def validate_fallback_pair(self) -> "RoleBindingUpdate":
+        if bool(self.fallback_provider_id) != bool(self.fallback_model_id):
+            raise ValueError("fallback_provider_id and fallback_model_id must be set together")
+        return self
+
 
 @router.get("/role-bindings")
 def list_role_bindings(registry: ProviderRegistry = Depends(get_registry)) -> list[dict]:
@@ -115,6 +121,10 @@ def list_role_bindings(registry: ProviderRegistry = Depends(get_registry)) -> li
 def update_role_binding(role: str, payload: RoleBindingUpdate,
                         registry: ProviderRegistry = Depends(get_registry)) -> dict:
     registry.resolve(payload.primary_provider_id, payload.primary_model_id)
+    if (payload.fallback_provider_id, payload.fallback_model_id) == (
+        payload.primary_provider_id, payload.primary_model_id,
+    ):
+        raise HTTPException(status_code=400, detail={"code": "fallback_matches_primary"})
     if payload.fallback_provider_id and payload.fallback_model_id:
         registry.resolve(payload.fallback_provider_id, payload.fallback_model_id)
     registry.db.save_role_binding(role, **payload.model_dump())
