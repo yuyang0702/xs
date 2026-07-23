@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -35,6 +36,13 @@ from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptC
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.tools import StoryToolbox
+
+
+class StageText(str):
+    def __new__(cls, value: str, receipt: dict):
+        instance = super().__new__(cls, value)
+        instance.receipt = receipt
+        return instance
 
 
 class WorkflowService:
@@ -516,6 +524,41 @@ class WorkflowService:
     def _split_segments(cls, text: str) -> list[str]:
         return [part.strip() for part in text.split(cls.SHORT_SEGMENT_SEPARATOR) if part.strip()]
 
+    @classmethod
+    def _split_polish_segments(cls, text: str, target: int = 2000,
+                               maximum: int = 2400) -> list[str]:
+        chunks: list[str] = []
+        for original in cls._split_segments(text):
+            paragraphs = [item.strip() for item in re.split(r"\n\s*\n", original) if item.strip()]
+            units: list[str] = []
+            for paragraph in paragraphs:
+                if len(paragraph) <= maximum:
+                    units.append(paragraph)
+                    continue
+                sentences = re.findall(r"[^。！？!?]+[。！？!?]?", paragraph)
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    while len(sentence) > maximum:
+                        units.append(sentence[:maximum])
+                        sentence = sentence[maximum:]
+                    if sentence:
+                        units.append(sentence)
+            current: list[str] = []
+            size = 0
+            for unit in units:
+                added = len(unit) + (2 if current else 0)
+                if current and size + added > maximum:
+                    chunks.append("\n\n".join(current))
+                    current, size = [], 0
+                current.append(unit)
+                size += len(unit) + (2 if len(current) > 1 else 0)
+                if size >= target:
+                    chunks.append("\n\n".join(current))
+                    current, size = [], 0
+            if current:
+                chunks.append("\n\n".join(current))
+        return chunks
+
     def _find_short_checkpoint(self, project: Project, current_run_id: str,
                                segment_count: int) -> Path | None:
         for run in self.db.list_runs(project.id):
@@ -595,9 +638,16 @@ class WorkflowService:
     async def _polish_short_segments(self, run_id: str, run_path: Path, project: Project,
                                      constraints: str, text: str, findings: str,
                                      suffix: str = "", structural: bool = False) -> str:
-        parts = self._split_segments(text)
+        original_parts = self._split_segments(text)
+        grouped_parts = [
+            (part, group)
+            for group, original in enumerate(original_parts, 1)
+            for part in self._split_polish_segments(original)
+        ]
+        parts = [item[0] for item in grouped_parts]
+        part_groups = [item[1] for item in grouped_parts]
         revision_plan = None
-        story_map = segment_map(parts)
+        story_map = segment_map(original_parts)
         if structural and len(parts) > 1:
             revision_plan = await self._plan_structural_revision(
                 run_id, run_path, project, constraints, findings, story_map, suffix,
@@ -643,14 +693,34 @@ class WorkflowService:
             return polished
         polished_parts: list[str] = []
         fallback_only = False
+        primary_circuit_open = False
+        binding = self.db.get_role_binding("polish") or {}
+        configured_fallback = bool(
+            binding.get("fallback_provider_id") and binding.get("fallback_model_id")
+            and hasattr(self.gateway, "complete_configured_fallback")
+        )
+        checkpoint_root = (
+            run_path / "outputs" / "polish-checkpoints" / (suffix.strip("-") or "initial")
+        )
         for index, part in enumerate(parts, 1):
-            if revision_plan and index not in revision_plan["target_segments"]:
+            group = part_groups[index - 1]
+            if revision_plan and group not in revision_plan["target_segments"]:
                 polished_parts.append(part)
+                continue
+            cached = self._load_polish_checkpoint(checkpoint_root, index, part)
+            if cached is not None:
+                polished_parts.append(cached)
+                self.db.add_run_event(
+                    run_id, "success", "polish_checkpoint_reused",
+                    f"润色第 {index}/{len(parts)} 段已从检查点恢复",
+                    stage="polish", metadata={"segment": index, "route": "checkpoint"},
+                )
                 continue
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             next_head = parts[index][:800] if index < len(parts) else ""
+            local_report = analyze_prose(part)
             tasks = ([task["instruction"] for task in revision_plan["tasks"]
-                      if index in task["segments"]] if revision_plan else [])
+                      if group in task["segments"]] if revision_plan else [])
             plan_context = (
                 f"GLOBAL FACTS AND LOCKS:\n{json.dumps(revision_plan['global_facts'], ensure_ascii=False)}\n\n"
                 f"TASKS FOR THIS SEGMENT:\n{json.dumps(tasks, ensure_ascii=False)}\n\n"
@@ -663,11 +733,28 @@ class WorkflowService:
                 f"{revision_rule}\n\n"
                 f"STYLE PROFILE:\n{style_profile}\n\n"
                 f"RELEVANT CHARACTER VOICES:\n{character_fingerprints(project.path, part)}\n\n"
-                f"LOCAL PROSE FINDINGS:\n{json.dumps(analyze_prose(part)['findings'], ensure_ascii=False)}\n\n"
+                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
                 f"{plan_context}PREVIOUS POLISHED END:\n{previous_tail}\n\n"
                 f"NEXT ORIGINAL START:\n{next_head}\n\nMANUSCRIPT SEGMENT:\n{part}"
             )
             part_suffix = f"{suffix}-part-{index:02d}"
+            priority = bool(structural or index in {1, len(parts)} or local_report["findings"])
+            prefer_configured = bool(
+                configured_fallback and (primary_circuit_open or not priority)
+            )
+            route = (
+                "draft_fallback" if fallback_only else
+                "circuit_fallback" if primary_circuit_open and prefer_configured else
+                "configured_fallback" if prefer_configured else "primary"
+            )
+            self.db.add_run_event(
+                run_id, "info", "polish_segment_route",
+                f"润色第 {index}/{len(parts)} 段路由：{route}",
+                stage="polish", metadata={
+                    "segment": index, "total": len(parts), "route": route,
+                    "priority": priority, "characters": len(part),
+                },
+            )
             if fallback_only:
                 polished_part = await self._stage(
                     run_id, run_path, project, "polish", constraints, prompt,
@@ -678,15 +765,25 @@ class WorkflowService:
                     polished_part = await self._stage(
                         run_id, run_path, project, "polish", constraints, prompt,
                         suffix=part_suffix, allow_tools=False,
+                        prefer_configured_fallback=prefer_configured,
                     )
+                    if getattr(polished_part, "receipt", {}).get("fallback_used"):
+                        primary_circuit_open = True
+                        self.db.add_run_event(
+                            run_id, "warning", "polish_circuit_opened",
+                            "润色主模型已回退成功，本轮后续重点段直接使用配置备用模型",
+                            stage="polish", metadata={"segment": index},
+                        )
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
                     fallback_only = True
                     self.db.add_run_event(
                         run_id, "warning", "model_fallback",
-                        "polish 首选模型失败，本轮剩余分段切换到 draft 角色模型",
-                        stage="polish", metadata={"fallback_role": "draft", "error": str(exc)},
+                        "polish 当前路由失败，本轮剩余分段切换到 draft 角色模型",
+                        stage="polish", metadata={
+                            "fallback_role": "draft", "failed_route": route, "error": str(exc),
+                        },
                     )
                     polished_part = await self._stage(
                         run_id, run_path, project, "polish", constraints, prompt,
@@ -708,8 +805,16 @@ class WorkflowService:
                     },
                 )
                 polished_part = part
-            polished_parts.append(polished_part.strip())
-        polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
+            polished_part = polished_part.strip()
+            polished_parts.append(polished_part)
+            self._save_polish_checkpoint(checkpoint_root, index, part, polished_part)
+        restored_groups: list[str] = []
+        for group in range(1, len(original_parts) + 1):
+            restored_groups.append("\n\n".join(
+                part for part, part_group in zip(polished_parts, part_groups)
+                if part_group == group
+            ))
+        polished = self.SHORT_SEGMENT_SEPARATOR.join(restored_groups)
         polished, repairs = normalize_chinese_prose(polished)
         if repairs:
             self.db.add_run_event(
@@ -818,7 +923,8 @@ class WorkflowService:
 
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "",
-                     model_role: str | None = None, allow_tools: bool = True) -> str:
+                     model_role: str | None = None, allow_tools: bool = True,
+                     prefer_configured_fallback: bool = False) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -879,6 +985,13 @@ class WorkflowService:
                     run_id=run_id,
                     max_output_tokens=self._stage_output_budget(stage),
                 )
+            elif prefer_configured_fallback and hasattr(
+                self.gateway, "complete_configured_fallback"
+            ):
+                result = await self.gateway.complete_configured_fallback(
+                    gateway_role, system, user,
+                    max_output_tokens=self._stage_output_budget(stage),
+                )
             else:
                 result = await self.gateway.complete(
                     gateway_role, system, user,
@@ -920,7 +1033,7 @@ class WorkflowService:
                     "skills": skills,
                 },
             )
-            return result.text
+            return StageText(result.text, result.receipt)
         except asyncio.CancelledError:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
@@ -963,6 +1076,26 @@ class WorkflowService:
         else:
             self.db.update_run(run_id, "running", "starting")
         return run_id, run_path
+
+    @staticmethod
+    def _load_polish_checkpoint(root: Path, index: int, source: str) -> str | None:
+        path = root / f"part-{index:02d}.json"
+        if not path.is_file():
+            return None
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+        digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+        polished = value.get("polished")
+        return polished if value.get("source_sha256") == digest and isinstance(polished, str) else None
+
+    @staticmethod
+    def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str) -> None:
+        atomic_write(root / f"part-{index:02d}.json", json.dumps({
+            "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+            "polished": polished,
+        }, ensure_ascii=False, indent=2))
 
     def _post_write_maintenance(self, run_id: str, project: Project) -> None:
         skill = self.skills.skills(project.path).get("story-maintenance")

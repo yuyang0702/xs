@@ -29,6 +29,27 @@ class SuccessfulFallbackAdapter:
         return ModelResponse(text="fallback result", input_tokens=4, output_tokens=6)
 
 
+class FlakyConnectAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("All connection attempts failed")
+        return ModelResponse(text="recovered", input_tokens=2, output_tokens=3)
+
+
+class CountingFailAdapter:
+    def __init__(self, message="timed out"):
+        self.calls = 0
+        self.message = message
+
+    async def complete(self, request):
+        self.calls += 1
+        raise RuntimeError(self.message)
+
+
 class ConfiguredFallbackRegistry:
     def resolve(self, provider_id, model_id):
         if (provider_id, model_id) == ("primary-provider", "primary-model"):
@@ -65,6 +86,68 @@ async def test_gateway_uses_configured_fallback_for_plain_completion(tmp_path) -
         "fallback_from_provider_id": "primary-provider",
         "fallback_from_model_id": "primary-model",
     }
+
+
+@pytest.mark.asyncio
+async def test_gateway_retries_one_transient_connect_failure_before_fallback(tmp_path, monkeypatch) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary-provider", "primary-model", "fallback-provider", "fallback-model")
+    primary = FlakyConnectAdapter()
+
+    class Registry(ConfiguredFallbackRegistry):
+        def resolve(self, provider_id, model_id):
+            if provider_id == "primary-provider":
+                return ResolvedModel(provider_id, model_id, "primary", primary)
+            return super().resolve(provider_id, model_id)
+
+    monkeypatch.setattr(ModelGateway, "CONNECT_RETRY_DELAY", 0)
+    result = await ModelGateway(db, Registry()).complete("polish", "rules", "text")
+
+    assert primary.calls == 2
+    assert result.text == "recovered"
+    assert result.receipt.get("fallback_used") is not True
+
+
+@pytest.mark.asyncio
+async def test_gateway_does_not_retry_full_timeout(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary-provider", "primary-model", "fallback-provider", "fallback-model")
+    primary = CountingFailAdapter("request timed out")
+
+    class Registry(ConfiguredFallbackRegistry):
+        def resolve(self, provider_id, model_id):
+            if provider_id == "primary-provider":
+                return ResolvedModel(provider_id, model_id, "primary", primary)
+            return super().resolve(provider_id, model_id)
+
+    result = await ModelGateway(db, Registry()).complete("polish", "rules", "text")
+
+    assert primary.calls == 1
+    assert result.receipt["fallback_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_gateway_can_call_configured_fallback_directly(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary-provider", "primary-model", "fallback-provider", "fallback-model")
+    primary = CountingFailAdapter("must not be called")
+
+    class Registry(ConfiguredFallbackRegistry):
+        def resolve(self, provider_id, model_id):
+            if provider_id == "primary-provider":
+                return ResolvedModel(provider_id, model_id, "primary", primary)
+            return super().resolve(provider_id, model_id)
+
+    result = await ModelGateway(db, Registry()).complete_configured_fallback(
+        "polish", "rules", "text",
+    )
+
+    assert primary.calls == 0
+    assert result.text == "fallback result"
+    assert result.receipt["configured_fallback_direct"] is True
 
 
 @pytest.mark.asyncio

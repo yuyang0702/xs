@@ -16,6 +16,8 @@ class ModelResult:
 
 
 class ModelGateway:
+    CONNECT_RETRY_DELAY = 2
+
     def __init__(self, db: Database, registry: ProviderRegistry) -> None:
         self.db = db
         self.registry = registry
@@ -32,7 +34,17 @@ class ModelGateway:
             )
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
+            if self._is_transient_connect_error(exc):
+                await asyncio.sleep(self.CONNECT_RETRY_DELAY)
+                try:
+                    return await self._complete_resolved(
+                        role, system, user, resolved, max_output_tokens,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    pass
             fallback = self._resolve_configured_fallback(binding)
             if fallback is None:
                 raise
@@ -40,6 +52,33 @@ class ModelGateway:
                 role, system, user, fallback, max_output_tokens,
             )
             return self._mark_fallback(result, resolved)
+
+    async def complete_configured_fallback(
+        self, role: str, system: str, user: str,
+        max_output_tokens: int | None = None,
+    ) -> ModelResult:
+        binding = self.db.get_role_binding(role)
+        if binding is None:
+            raise LookupError(f"Model role is not configured: {role}")
+        fallback = self._resolve_configured_fallback(binding)
+        if fallback is None:
+            raise LookupError(f"Model role has no configured fallback: {role}")
+        result = await self._complete_resolved(
+            role, system, user, fallback, max_output_tokens,
+        )
+        return ModelResult(result.text, {
+            **result.receipt, "configured_fallback_direct": True,
+        })
+
+    @staticmethod
+    def _is_transient_connect_error(exc: Exception) -> bool:
+        message = str(exc).lower()
+        if "timeout" in message or "timed out" in message:
+            return False
+        return any(marker in message for marker in (
+            "connection attempts failed", "connection reset", "connection refused",
+            "connecterror", "server disconnected",
+        ))
 
     async def _complete_resolved(self, role, system, user, resolved,
                                  max_output_tokens) -> ModelResult:

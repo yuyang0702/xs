@@ -696,7 +696,11 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
         ],
         "tasks": [{"segments": [2], "instruction": "Unify the ceremony timeline."}],
     })
-    gateway = RecordingGateway([plan, 'Revised middle at the wedding. "修好了。" ' * 80])
+    gateway = RecordingGateway([
+        plan,
+        'Revised middle at the wedding. "修好了。" ' * 55,
+        'The wedding continues correctly. "继续。" ' * 55,
+    ])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("targeted", project.id, "short-story", status="running")
     run_path = project.path / "runs" / "targeted"
@@ -727,10 +731,10 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
     assert "Revised middle" in revised_parts[1]
     assert '"修好了。"' not in revised_parts[1]
     assert "“修好了。”" in revised_parts[1]
-    assert gateway.roles == ["planning", "polish"]
-    polish_prompt = gateway.calls[1]["user"]
-    assert "The public ceremony is a wedding." in polish_prompt
-    assert "NEXT ORIGINAL START" in polish_prompt
+    assert gateway.roles == ["planning", "polish", "polish"]
+    for call in gateway.calls[1:]:
+        assert "The public ceremony is a wedding." in call["user"]
+        assert "NEXT ORIGINAL START" in call["user"]
     events = db.list_run_events("targeted")
     planned = next(item for item in events if item["event_type"] == "revision_planned")
     assert planned["metadata"]["target_segments"] == [2]
@@ -748,6 +752,71 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("polish") == 8192
     assert WorkflowService._stage_output_budget("final_review") == 8192
     assert WorkflowService._stage_output_budget("maintenance") == 8192
+
+
+def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:
+    paragraphs = [(f"段落{i}。" * 180) for i in range(1, 9)]
+    text = "\n\n".join(paragraphs)
+
+    parts = WorkflowService._split_polish_segments(text, target=1800, maximum=2400)
+
+    assert len(parts) > 1
+    assert max(map(len, parts)) <= 2400
+    assert "".join("".join(parts).split()) == "".join("".join(text.split()).split())
+
+
+@pytest.mark.asyncio
+async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_and_reuses_checkpoints(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Adaptive", mode="short", genre="comedy",
+        premise="A cat goes to work.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class AdaptiveGateway:
+        def __init__(self):
+            self.routes = []
+
+        @staticmethod
+        def manuscript(user):
+            return user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            return ModelResult(self.manuscript(user), {"model_name": "claude"})
+
+        async def complete_configured_fallback(self, role, system, user, max_output_tokens=None):
+            self.routes.append("configured_fallback")
+            return ModelResult(self.manuscript(user), {
+                "model_name": "ernie", "configured_fallback_direct": True,
+            })
+
+    gateway = AdaptiveGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("adaptive", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "adaptive"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    parts = [f"这是第{i}段连续叙事没有机械短句" * 80 for i in range(1, 5)]
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts)
+
+    first = await service._polish_short_segments(
+        "adaptive", run_path, project, "constraints", manuscript, "{}",
+    )
+    calls_after_first = list(gateway.routes)
+    second = await service._polish_short_segments(
+        "adaptive", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    assert calls_after_first == ["primary", "configured_fallback", "configured_fallback", "primary"]
+    assert gateway.routes == calls_after_first
+    assert first == second
+    assert len(list((run_path / "outputs" / "polish-checkpoints" / "initial").glob("*.json"))) == 4
 
 
 def test_failed_short_story_resumes_from_best_candidate(tmp_path) -> None:
