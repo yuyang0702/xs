@@ -668,33 +668,12 @@ class WorkflowService:
             "Preserve events and length; remove AI-like phrasing and apply the findings."
         )
         style_profile = ensure_style_profile(project)
-        if len(parts) == 1:
-            local_report = analyze_prose(text)
-            voice = character_fingerprints(project.path, text)
-            candidate = await self._stage(
-                run_id, run_path, project, "polish", constraints,
-                f"REVISION RULE:\n{revision_rule}\n\nSTYLE PROFILE:\n{style_profile}\n\n"
-                f"RELEVANT CHARACTER VOICES:\n{voice}\n\n"
-                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
-                f"MANUSCRIPT:\n{text}\n\n"
-                f"STRUCTURED FINDINGS:\n{findings}", suffix=suffix,
-            )
-            required = re.findall(r"(?m)^##\s+(.+)$", voice)
-            assessment = assess_polish_candidate(text, candidate, required)
-            polished = candidate.strip() if assessment["accepted"] else text
-            if not assessment["accepted"]:
-                self.db.add_run_event(run_id, "warning", "polish_output_rejected",
-                    "润色结果未通过本地验收，已保留原文", stage="polish",
-                    metadata={"reasons": assessment["reasons"]})
-            polished, repairs = normalize_chinese_prose(polished)
-            if repairs:
-                self.db.add_run_event(run_id, "success", "local_format_repair",
-                    "已在本地修复机械格式问题", stage="polish", metadata={"repairs": repairs})
-            atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
-            return polished
         polished_parts: list[str] = []
         fallback_only = False
-        primary_circuit_open = False
+        primary_circuit_open = any(
+            event["event_type"] == "polish_circuit_opened"
+            for event in self.db.list_run_events(run_id)
+        )
         binding = self.db.get_role_binding("polish") or {}
         configured_fallback = bool(
             binding.get("fallback_provider_id") and binding.get("fallback_model_id")

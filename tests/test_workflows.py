@@ -819,6 +819,60 @@ async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_an
     assert len(list((run_path / "outputs" / "polish-checkpoints" / "initial").glob("*.json"))) == 4
 
 
+@pytest.mark.asyncio
+async def test_single_segment_reuses_open_polish_circuit_across_correction_passes(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Single segment", mode="short", genre="comedy",
+        premise="A cat goes to work.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        @staticmethod
+        def manuscript(user):
+            marker = "MANUSCRIPT SEGMENT:\n" if "MANUSCRIPT SEGMENT:\n" in user else "MANUSCRIPT:\n"
+            return user.split(marker, 1)[1].split("\n\nSTRUCTURED FINDINGS:", 1)[0]
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            return ModelResult(self.manuscript(user), {
+                "model_name": "ernie", "fallback_used": True,
+            })
+
+        async def complete_configured_fallback(self, role, system, user, max_output_tokens=None):
+            self.routes.append("configured_fallback")
+            return ModelResult(self.manuscript(user), {
+                "model_name": "ernie", "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("single", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "single"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = "这是一段自然连续的短篇正文。" * 30
+
+    await service._polish_short_segments("single", run_path, project, "constraints", manuscript, "{}")
+    await service._polish_short_segments(
+        "single", run_path, project, "constraints", manuscript, "{}", suffix="-2",
+    )
+
+    assert gateway.routes == ["primary", "configured_fallback"]
+    assert any(
+        event["event_type"] == "polish_circuit_opened"
+        for event in db.list_run_events("single")
+    )
+
+
 def test_failed_short_story_resumes_from_best_candidate(tmp_path) -> None:
     outputs = tmp_path / "outputs"
     outputs.mkdir()
