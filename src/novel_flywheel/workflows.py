@@ -419,14 +419,25 @@ class WorkflowService:
             "Identify abandonment points, weak hooks, fake suspense, unearned emotion,套路化表达, and "
             "AI-like prose. Return the same strict quality-review JSON schema plus reader_signals with "
             "would_continue (boolean), would_pay (boolean), abandonment_point (text), and payoff_felt "
-            "(boolean).\n\n"
+            "(boolean). Use double quotes for every JSON key and string. Return one JSON object only, "
+            "without Markdown fences or commentary.\n\n"
             f"READER PROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
             f"LABELED EXCERPTS:\n{reader_sample(text, project.mode, limit=6000)}"
         )
-        return self._review(await self._stage(
+        output = await self._stage(
             run_id, run_path, project, "review", constraints, prompt,
             suffix=f"-reader{suffix}", model_role=model_role or "review", allow_tools=False,
-        ))
+        )
+        try:
+            return self._review(output)
+        except json.JSONDecodeError:
+            repaired = normalize_review(self._reader_json_object(output))
+            self.db.add_run_event(
+                run_id, "warning", "reader_review_repaired",
+                "Reader review returned malformed JSON and was repaired locally",
+                stage="review", metadata={"strategy": "conservative_json_repair"},
+            )
+            return repaired
 
     @staticmethod
     def _short_segment_count(target_words: int) -> int:
@@ -779,6 +790,28 @@ class WorkflowService:
         value = json.loads(cleaned)
         if not isinstance(value, dict):
             raise ValueError("Model output must be a JSON object")
+        return value
+
+    @staticmethod
+    def _reader_json_object(text: str) -> dict:
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
+        start, end = cleaned.find("{"), cleaned.rfind("}")
+        if start < 0 or end <= start:
+            raise ValueError("Reader model output does not contain a JSON object")
+        candidate = cleaned[start:end + 1]
+        field_names = (
+            "category|severity|evidence|action|commercial|story|prose|hard_fail|decision|"
+            "issues|dimensions|reader_signals|would_continue|would_pay|abandonment_point|"
+            "payoff_felt"
+        )
+        candidate = re.sub(
+            rf"['’]\s*,\s*['’]({field_names})['’]\s*:",
+            lambda match: f'", "{match.group(1)}":',
+            candidate,
+        )
+        value = json.loads(candidate)
+        if not isinstance(value, dict):
+            raise ValueError("Reader model output must be a JSON object")
         return value
 
     @classmethod

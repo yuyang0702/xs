@@ -365,6 +365,51 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_short_story_repairs_reader_review_with_single_quoted_field_boundary(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Reader repair", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=6000,
+    ))
+    db.save_role_binding("reader_review", "reader-provider", "reader-model", None, None)
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    malformed_reader_review = """{
+      "commercial": 82,
+      "story": 80,
+      "prose": 78,
+      "hard_fail": false,
+      "decision": "revise",
+      "issues": [{
+        "category": "continuity",
+        "severity": "medium",
+        "evidence": "The clue lacks a source.', 'action': "Add a visible source."
+      }],
+      "reader_signals": {
+        "would_continue": true,
+        "would_pay": true,
+        "abandonment_point": "none",
+        "payoff_felt": true
+      }
+    }"""
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), malformed_reader_review,
+        "# Polish", quality_review(), json.dumps({"facts": []}),
+    ])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    result = await service.run_short(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    events = db.list_run_events(result["id"])
+    assert not any(item["event_type"] == "reader_fallback" for item in events)
+    repaired = next(item for item in events if item["event_type"] == "reader_review_repaired")
+    assert repaired["metadata"]["strategy"] == "conservative_json_repair"
+
+
+@pytest.mark.asyncio
 async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
