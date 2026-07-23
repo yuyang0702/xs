@@ -79,7 +79,7 @@ def quality_gate(review: dict) -> tuple[bool, list[str]]:
     )
     near_pass = (
         review["score"] >= 78
-        and review.get("decision") == "pass"
+        and review.get("decision") in {"pass", "revise"}
         and not review.get("hard_fail")
         and dimensions_clear
     )

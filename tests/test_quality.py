@@ -47,6 +47,21 @@ def test_quality_gate_accepts_near_threshold_explicit_pass() -> None:
     assert reasons == []
 
 
+def test_quality_gate_accepts_near_threshold_minor_revision() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 86, "story": 71, "prose": 78},
+        "hard_fail": False,
+        "decision": "revise",
+        "issues": [{"severity": "medium", "action": "tighten one scene"}],
+    })
+
+    passed, reasons = quality_gate(review)
+
+    assert review["score"] == 79.15
+    assert passed
+    assert reasons == []
+
+
 def test_normalize_review_accepts_legacy_score() -> None:
     review = normalize_review({"score": 86, "hard_fail": False, "issues": ["tighten prose"]})
 
