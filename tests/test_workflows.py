@@ -394,6 +394,37 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_polish_stage_sends_compact_skill_prompt_only(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Compact", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    (skill_root / "humanizer-zh" / "SKILL.md").write_text(
+        "---\nname: humanizer-zh\n---\n# Humanizer\n## Hard Rules\n"
+        "- Never flatten character voice.\n## Examples\n改写前：REMOVE_THIS_EXAMPLE\n",
+        encoding="utf-8",
+    )
+    gateway = RecordingGateway(["polished", "drafted"])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("compact", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "compact"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    await service._stage("compact", run_path, project, "polish", "constraints", "text")
+    await service._stage("compact", run_path, project, "draft", "constraints", "text")
+
+    assert "Never flatten character voice" in gateway.calls[0]["system"]
+    assert "REMOVE_THIS_EXAMPLE" not in gateway.calls[0]["system"]
+    assert "Skill instructions for chapter-writing" in gateway.calls[1]["system"]
+
+
+@pytest.mark.asyncio
 async def test_segment_polish_rejects_truncated_output_and_keeps_original(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

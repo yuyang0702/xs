@@ -12,6 +12,7 @@ from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.quality import normalize_review, quality_gate, reader_sample, select_route
+from novel_flywheel.skill_prompts import SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.tools import StoryToolbox
@@ -21,13 +22,15 @@ class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
 
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
-                 skills: SkillGate, crewai_data_dir: Path | None = None) -> None:
+                 skills: SkillGate, crewai_data_dir: Path | None = None,
+                 skill_prompts: SkillPromptCompactor | None = None) -> None:
         self.db = db
         self.projects = projects
         self.gateway = gateway
         self.skills = skills
         self.crewai_data_dir = crewai_data_dir or db.path.parent / "crewai"
         self.memory = StoryMemory(db)
+        self.skill_prompts = skill_prompts or SkillPromptCompactor()
 
     async def run_short(self, project_id: str, use_crewai: bool = True,
                         run_id: str | None = None) -> dict:
@@ -609,11 +612,20 @@ class WorkflowService:
         try:
             skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
             skills = [receipt.skill_name for receipt in skill_run.receipts]
+            model_skill_prompt = (
+                self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
+                if stage == "polish" else skill_run.prompt
+            )
             self.db.add_run_event(
                 run_id, "success", "skills_loaded", f"已加载 {len(skills)} 个 Skill",
-                stage=stage, metadata={"skills": skills},
+                stage=stage, metadata={
+                    "skills": skills,
+                    "prompt_characters": len(model_skill_prompt),
+                    "source_prompt_characters": len(skill_run.prompt),
+                    "compact_prompt": model_skill_prompt != skill_run.prompt,
+                },
             )
-            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{skill_run.prompt}"
+            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{constraints}\n\n{model_skill_prompt}"
             gateway_role = model_role or stage
             if allow_tools and hasattr(self.gateway, "complete_with_tools"):
                 toolbox = StoryToolbox(project, self.memory)
