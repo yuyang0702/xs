@@ -260,7 +260,7 @@ class SkillRuntimeToolbox:
         elif relative.startswith("worldbuilding/factions/"):
             fields = {"members", "locations"}
         elif relative.startswith("worldbuilding/artifacts/"):
-            fields = {"owner"}
+            fields = {"owner", "location"}
         elif relative.startswith("plot/arcs/"):
             fields = {"characters"}
         elif relative.startswith("continuity/promises/") or relative.startswith("continuity/questions/"):

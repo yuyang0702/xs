@@ -22,13 +22,15 @@ from novel_flywheel.skill_runtime import SkillRuntimeService
 from novel_flywheel.migration import ProjectMigrator
 from novel_flywheel.tasks import RunTaskManager
 from novel_flywheel.interviews import WizardInterviewService
+from novel_flywheel.style_samples import StyleSampleService
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                skill_roots: list[Path] | None = None, workspace_root: Path | None = None,
                root_constraints: list[Path] | None = None,
                workflow_service: object | None = None,
-               interview_service: object | None = None) -> FastAPI:
+               interview_service: object | None = None,
+               style_sample_service: object | None = None) -> FastAPI:
     app = FastAPI(title="Novel Flywheel Console")
 
     @app.middleware("http")
@@ -53,6 +55,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         SkillFormCatalog(app.state.skill_gate, settings.data_dir / "skill-forms"),
     )
     gateway = ModelGateway(db, app.state.registry)
+    app.state.style_samples = style_sample_service or StyleSampleService(gateway)
     app.state.interviews = interview_service or WizardInterviewService(db, gateway)
     app.state.workflows = workflow_service or WorkflowService(
         db, app.state.projects, gateway, app.state.skill_gate,

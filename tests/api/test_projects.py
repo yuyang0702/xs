@@ -6,6 +6,25 @@ from novel_flywheel.db import Database
 from novel_flywheel.secrets import MemorySecretStore
 
 
+class FakeStyleSamples:
+    def __init__(self):
+        self.value = {"configured": False, "source_characters": 0, "profile": None}
+
+    def status(self, project):
+        return {**self.value, "project_id": project.id}
+
+    async def analyze(self, project, text, source_name):
+        self.value = {
+            "configured": True, "source_characters": len(text),
+            "profile": {"summary": "克制的动作叙事", "source_name": source_name},
+        }
+        return self.status(project)
+
+    def delete(self, project):
+        self.value = {"configured": False, "source_characters": 0, "profile": None}
+        return self.status(project)
+
+
 def test_create_and_list_projects(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(),
@@ -172,3 +191,44 @@ def test_project_trash_restore_and_permanent_delete_api(tmp_path) -> None:
     response = client.delete(f"/api/projects/{project['id']}/permanent")
     assert response.status_code == 204
     assert client.get("/api/projects/trash").json() == []
+
+
+def test_project_style_sample_status_analyze_and_delete_api(tmp_path) -> None:
+    service = FakeStyleSamples()
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+        style_sample_service=service,
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Voice", "mode": "short", "genre": "悬疑",
+        "premise": "一封失踪的信。", "target_words": 6000,
+    }).json()
+    endpoint = f"/api/projects/{project['id']}/style-sample"
+
+    assert client.get(endpoint).json()["configured"] is False
+    analyzed = client.post(endpoint, json={"text": "动作与对白。" * 40, "source_name": "范文.txt"})
+    assert analyzed.status_code == 201
+    assert analyzed.json()["profile"]["summary"] == "克制的动作叙事"
+    assert client.delete(endpoint).json()["configured"] is False
+
+
+def test_project_style_sample_rejects_invalid_analysis(tmp_path) -> None:
+    class InvalidStyleSamples(FakeStyleSamples):
+        async def analyze(self, project, text, source_name):
+            raise ValueError("范文至少需要 200 个字符")
+
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+        style_sample_service=InvalidStyleSamples(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Voice", "mode": "short", "genre": "悬疑",
+        "premise": "一封失踪的信。", "target_words": 6000,
+    }).json()
+
+    response = client.post(f"/api/projects/{project['id']}/style-sample", json={"text": "短"})
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_style_sample"

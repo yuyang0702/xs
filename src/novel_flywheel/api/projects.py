@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.prose_quality import analyze_prose
@@ -12,6 +13,11 @@ from novel_flywheel.storage import atomic_write
 
 
 router = APIRouter(prefix="/api", tags=["projects"])
+
+
+class StyleSamplePayload(BaseModel):
+    text: str = Field(min_length=1, max_length=60_000)
+    source_name: str = Field(default="reference.txt", max_length=160)
 
 
 def _public(project: Project) -> dict:
@@ -102,6 +108,43 @@ def list_trashed_projects(request: Request) -> list[dict]:
 def get_project(project_id: str, request: Request) -> dict:
     try:
         return _public(get_store(request).get(project_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.get("/projects/{project_id}/style-sample")
+def get_style_sample(project_id: str, request: Request) -> dict:
+    try:
+        return request.app.state.style_samples.status(get_store(request).get(project_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.post("/projects/{project_id}/style-sample", status_code=status.HTTP_201_CREATED)
+async def analyze_style_sample(project_id: str, payload: StyleSamplePayload, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    try:
+        return await request.app.state.style_samples.analyze(
+            project, payload.text, payload.source_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail={
+            "code": "invalid_style_sample", "message": str(exc),
+        }) from exc
+    except (LookupError, RuntimeError, OSError) as exc:
+        raise HTTPException(status_code=502, detail={
+            "code": "style_analysis_failed", "message": str(exc),
+        }) from exc
+
+
+@router.delete("/projects/{project_id}/style-sample")
+def delete_style_sample(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        return request.app.state.style_samples.delete(project)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
 

@@ -171,6 +171,29 @@ def test_bootstrap_runtime_removes_cross_file_references_until_all_skills_exist(
     assert "tags:\n  - lead" in content
 
 
+def test_bootstrap_runtime_removes_artifact_location_and_owner_references(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "worldbuilding", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("worldbuilding"),
+        StoryCli(project, lambda command: "ok"), bootstrap=True,
+    )
+
+    toolbox.execute("create_file_proposal", {
+        "relative_path": "worldbuilding/artifacts/converter.md",
+        "content": (
+            "---\nname: Converter\ntype: technology\nstatus: active\n"
+            "owner: missing-owner\nlocation: office\ntags:\n  - device\n"
+            "---\n# Converter\n"
+        ),
+    })
+
+    content = db.list_file_proposals("run")[0]["content"]
+    assert "owner:" not in content
+    assert "location:" not in content
+    assert "tags:\n  - device" in content
+
+
 def test_bootstrap_runtime_does_not_offer_interactive_question_tool(tmp_path) -> None:
     db, project = make_project(tmp_path)
     db.create_skill_execution("run", project.id, "story-init", "hash")

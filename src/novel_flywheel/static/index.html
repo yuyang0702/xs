@@ -39,6 +39,17 @@
         <div class="section-heading"><h2 id="candidate-title">候选稿质量</h2><button id="publish-candidate" class="secondary" hidden>设为正式成品</button></div>
         <div id="candidate-quality"><p class="skill-meta">请先选择作品</p></div>
       </section>
+      <section class="style-sample-band" aria-labelledby="style-sample-title">
+        <div class="section-heading"><div><h2 id="style-sample-title">范文笔感</h2><p class="skill-meta">提炼节奏、对白与人物描写习惯，后续生成和润色自动使用</p></div><button id="style-sample-delete" class="secondary danger-text" hidden>删除笔感</button></div>
+        <div class="style-sample-grid">
+          <div class="style-sample-inputs">
+            <label>选择范文文件<input id="style-sample-file" type="file" accept=".txt,.md,text/plain,text/markdown"></label>
+            <label>或粘贴范文<textarea id="style-sample-text" rows="6" maxlength="60000" placeholder="建议提供 1000-10000 字具有代表性的正文"></textarea></label>
+            <div class="style-sample-actions"><span id="style-sample-count" class="skill-meta">0 / 60000 字符</span><button id="style-sample-analyze" class="primary">分析并应用笔感</button></div>
+          </div>
+          <div id="style-sample-status" class="style-sample-status"><p class="skill-meta">请先选择作品</p></div>
+        </div>
+      </section>
       <div class="workspace-grid">
         <section class="action-panel">
           <h2>飞轮操作</h2>

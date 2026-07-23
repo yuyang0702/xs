@@ -111,6 +111,42 @@ async function loadCandidateQuality(projectId) {
     publish.hidden = state.activeProject?.mode !== "short" || report.blocking_count > 0;
   } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
+async function loadStyleSample(projectId) {
+  const shell = $("#style-sample-status"); const remove = $("#style-sample-delete");
+  remove.hidden = true;
+  if (!projectId) { shell.innerHTML = '<p class="skill-meta">请先选择作品</p>'; return; }
+  try {
+    const result = await api(`/api/projects/${projectId}/style-sample`);
+    if (state.activeProject?.id !== projectId) return;
+    if (!result.configured) { shell.innerHTML = '<p class="skill-meta">尚未设置范文笔感。分析后会写入当前作品的风格档案。</p>'; return; }
+    const profile = result.profile || {}; const labels = {sentence_rhythm:"句式与节奏",dialogue:"对白",narrative_distance:"叙事距离",characterization:"人物描写",diction:"用词",avoid:"避免"};
+    shell.innerHTML = `<h3>${escapeHtml(profile.summary || "已配置范文笔感")}</h3><p class="skill-meta">${Number(result.source_characters).toLocaleString()} 字符 · ${escapeHtml(profile.source_name || "reference.txt")}</p><div class="style-profile-groups">${Object.entries(labels).map(([key,label]) => `<div><strong>${label}</strong><span>${escapeHtml((profile[key] || []).join("；") || "-")}</span></div>`).join("")}</div>`;
+    remove.hidden = false;
+  } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
+}
+$("#style-sample-text").addEventListener("input", event => { $("#style-sample-count").textContent = `${event.target.value.length} / 60000 字符`; });
+$("#style-sample-file").addEventListener("change", async event => {
+  const file = event.target.files[0]; if (!file) return;
+  if (!/\.(txt|md)$/i.test(file.name)) { event.target.value = ""; return toast("仅支持 TXT 或 Markdown 文件"); }
+  if (file.size > 240000) { event.target.value = ""; return toast("文件过大，请控制在 60000 个字符以内"); }
+  const text = await file.text(); $("#style-sample-text").value = text.slice(0,60000); $("#style-sample-text").dispatchEvent(new Event("input"));
+});
+$("#style-sample-analyze").addEventListener("click", async () => {
+  if (!state.activeProject) return toast("请先选择作品");
+  const text = $("#style-sample-text").value.trim(); if (text.length < 200) return toast("范文至少需要 200 个字符");
+  const button = $("#style-sample-analyze"); button.disabled = true; button.textContent = "分析中...";
+  try {
+    const file = $("#style-sample-file").files[0];
+    await api(`/api/projects/${state.activeProject.id}/style-sample`, {method:"POST", body:JSON.stringify({text,source_name:file?.name || "pasted-reference.txt"})});
+    await loadStyleSample(state.activeProject.id); toast("范文笔感已应用");
+  } catch(error) { toast(`分析失败：${error.message}`); }
+  finally { button.disabled = false; button.textContent = "分析并应用笔感"; }
+});
+$("#style-sample-delete").addEventListener("click", async () => {
+  if (!state.activeProject || !confirm("删除当前作品的范文和提炼笔感？基础风格设置会保留。")) return;
+  try { await api(`/api/projects/${state.activeProject.id}/style-sample`, {method:"DELETE"}); await loadStyleSample(state.activeProject.id); toast("范文笔感已删除"); }
+  catch(error) { toast(error.message); }
+});
 $("#publish-candidate").addEventListener("click", async () => {
   if (!state.activeProject || !confirm("将当前最高分候选设为正式成品？原正式成品会被替换。")) return;
   try {
@@ -124,8 +160,8 @@ async function renderActiveProject() {
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); return; }
-  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id)]);
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadStyleSample(null); return; }
+  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadStyleSample(p.id)]);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
