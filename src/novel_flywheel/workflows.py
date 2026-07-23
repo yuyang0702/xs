@@ -190,14 +190,21 @@ class WorkflowService:
             target_words = int(project.metadata["target_words"])
             segment_count = self._short_segment_count(target_words)
             checkpoint = self._find_short_checkpoint(project, run_id, segment_count)
+            resumed_best = False
             if checkpoint:
                 plan = (checkpoint / "planning.md").read_text(encoding="utf-8")
-                draft = (checkpoint / "draft.md").read_text(encoding="utf-8")
+                draft, source_artifact = self._short_checkpoint_manuscript(
+                    checkpoint, segment_count,
+                )
+                resumed_best = source_artifact == "best-candidate.md"
                 atomic_write(run_path / "outputs" / "planning.md", plan)
                 atomic_write(run_path / "outputs" / "draft.md", draft)
                 self.db.add_run_event(
                     run_id, "success", "checkpoint_reused", "已复用上一轮完整规划和分段草稿",
-                    stage="draft", metadata={"source_run": checkpoint.parent.name},
+                    stage="draft", metadata={
+                        "source_run": checkpoint.parent.name,
+                        "source_artifact": source_artifact,
+                    },
                 )
             else:
                 brief = json.dumps({
@@ -212,7 +219,8 @@ class WorkflowService:
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
                 )
-            review_checkpoint = self._find_short_stage_output(project, run_id, "review.md")
+            review_checkpoint = (None if resumed_best else
+                                 self._find_short_stage_output(project, run_id, "review.md"))
             review = None
             if review_checkpoint:
                 try:
@@ -482,6 +490,18 @@ class WorkflowService:
             if plan and len(self._split_segments(draft)) == segment_count:
                 return outputs
         return None
+
+    @classmethod
+    def _short_checkpoint_manuscript(cls, outputs: Path,
+                                     segment_count: int) -> tuple[str, str]:
+        for filename in ("best-candidate.md", "draft.md"):
+            path = outputs / filename
+            if not path.is_file():
+                continue
+            text = path.read_text(encoding="utf-8")
+            if len(cls._split_segments(text)) == segment_count:
+                return text, filename
+        raise ValueError("Short-story checkpoint has no complete manuscript")
 
     def _find_short_stage_output(self, project: Project, current_run_id: str,
                                  filename: str) -> Path | None:

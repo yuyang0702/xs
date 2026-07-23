@@ -607,3 +607,32 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("polish") == 8192
     assert WorkflowService._stage_output_budget("final_review") == 8192
     assert WorkflowService._stage_output_budget("maintenance") == 8192
+
+
+def test_failed_short_story_resumes_from_best_candidate(tmp_path) -> None:
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    separator = WorkflowService.SHORT_SEGMENT_SEPARATOR
+    original = separator.join(["original one", "original two"])
+    best = separator.join(["improved one", "improved two"])
+    (outputs / "draft.md").write_text(original, encoding="utf-8")
+    (outputs / "best-candidate.md").write_text(best, encoding="utf-8")
+
+    text, source = WorkflowService._short_checkpoint_manuscript(outputs, 2)
+
+    assert text == best
+    assert source == "best-candidate.md"
+
+
+def test_short_story_checkpoint_ignores_incomplete_best_candidate(tmp_path) -> None:
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    separator = WorkflowService.SHORT_SEGMENT_SEPARATOR
+    original = separator.join(["original one", "original two"])
+    (outputs / "draft.md").write_text(original, encoding="utf-8")
+    (outputs / "best-candidate.md").write_text("truncated", encoding="utf-8")
+
+    text, source = WorkflowService._short_checkpoint_manuscript(outputs, 2)
+
+    assert text == original
+    assert source == "draft.md"
