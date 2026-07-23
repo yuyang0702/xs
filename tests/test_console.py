@@ -50,4 +50,10 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "continueProject(button.dataset.continue)" in script
     assert 'if (project.mode === "short")' in script
     assert "run(`/api/projects/${project.id}/runs/short`)" in script
+    assert "binding-primary-${role}" in script
+    assert "binding-fallback-${role}" in script
+    assert "使用程序默认回退" in script
+    assert "fallback_provider_id" in script
+    assert "fallback_model_id" in script
+    assert "主模型和备用模型不能相同" in script
     assert 'reader_review: "目标读者模拟"' in script

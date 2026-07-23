@@ -275,9 +275,27 @@ function renderProviders() {
 }
 function modelOptions() { return state.providers.flatMap(p => p.models.map(m => `<option value="${p.id}|${m.id}">${escapeHtml(p.name)} / ${escapeHtml(m.display_name)}</option>`)).join(""); }
 function renderBindings() {
-  const options = modelOptions(); $("#role-bindings").innerHTML = Object.entries(roles).map(([role,label]) => `<div class="binding-row"><strong>${label}</strong><select id="binding-${role}"><option value="">请选择模型</option>${options}</select><button class="secondary" data-bind="${role}">保存</button></div>`).join("");
-  document.querySelectorAll("[data-bind]").forEach(button => button.addEventListener("click", async () => { const value = $(`#binding-${button.dataset.bind}`).value; if (!value) return toast("请选择模型"); const [primary_provider_id, primary_model_id] = value.split("|"); try { await api(`/api/role-bindings/${button.dataset.bind}`, {method:"PUT", body:JSON.stringify({primary_provider_id,primary_model_id})}); toast("角色绑定已保存"); } catch(error) { toast(error.message); } }));
-  api("/api/role-bindings").then(bindings => bindings.forEach(b => { const select = $(`#binding-${b.role}`); if (select) select.value = `${b.primary_provider_id}|${b.primary_model_id}`; }));
+  const options = modelOptions();
+  $("#role-bindings").innerHTML = Object.entries(roles).map(([role,label]) => `<div class="binding-row"><strong>${label}</strong><label class="binding-control"><span>主模型</span><select id="binding-primary-${role}"><option value="">请选择模型</option>${options}</select></label><label class="binding-control"><span>备用模型</span><select id="binding-fallback-${role}"><option value="">使用程序默认回退</option>${options}</select></label><button class="secondary" data-bind="${role}">保存</button></div>`).join("");
+  document.querySelectorAll("[data-bind]").forEach(button => button.addEventListener("click", async () => {
+    const role = button.dataset.bind;
+    const primaryValue = $(`#binding-primary-${role}`).value;
+    const fallbackValue = $(`#binding-fallback-${role}`).value;
+    if (!primaryValue) return toast("请选择主模型");
+    if (fallbackValue && fallbackValue === primaryValue) return toast("主模型和备用模型不能相同");
+    const [primary_provider_id, primary_model_id] = primaryValue.split("|");
+    const [fallback_provider_id, fallback_model_id] = fallbackValue ? fallbackValue.split("|") : [null, null];
+    try {
+      await api(`/api/role-bindings/${role}`, {method:"PUT", body:JSON.stringify({primary_provider_id,primary_model_id,fallback_provider_id,fallback_model_id})});
+      toast("角色绑定已保存");
+    } catch(error) { toast(error.message); }
+  }));
+  api("/api/role-bindings").then(bindings => bindings.forEach(binding => {
+    const primary = $(`#binding-primary-${binding.role}`);
+    const fallback = $(`#binding-fallback-${binding.role}`);
+    if (primary) primary.value = `${binding.primary_provider_id}|${binding.primary_model_id}`;
+    if (fallback && binding.fallback_provider_id && binding.fallback_model_id) fallback.value = `${binding.fallback_provider_id}|${binding.fallback_model_id}`;
+  })).catch(error => toast(error.message));
 }
 function renderSkills() {
   $("#skill-list").innerHTML = state.skills.length ? state.skills.map(s => `<div class="data-row"><div><strong>${escapeHtml(s.name)}</strong><div class="skill-meta">${escapeHtml(s.path)}<br>${s.content_hash.slice(0,16)}</div></div><div>${s.executable ? '<span class="badge">执行型</span>' : '<span class="badge">提示词</span>'} ${s.approved ? '<span class="status">已启用</span>' : `<button class="secondary" data-approve="${escapeHtml(s.name)}" data-hash="${s.content_hash}">授权</button>`}</div></div>`).join("") : '<p class="skill-meta">未发现 Skill</p>';
