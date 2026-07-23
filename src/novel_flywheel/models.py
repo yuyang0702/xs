@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import asyncio
 import json
 import time
 
@@ -25,6 +26,23 @@ class ModelGateway:
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
         resolved = self.registry.resolve(binding["primary_provider_id"], binding["primary_model_id"])
+        try:
+            return await self._complete_resolved(
+                role, system, user, resolved, max_output_tokens,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            fallback = self._resolve_configured_fallback(binding)
+            if fallback is None:
+                raise
+            result = await self._complete_resolved(
+                role, system, user, fallback, max_output_tokens,
+            )
+            return self._mark_fallback(result, resolved)
+
+    async def _complete_resolved(self, role, system, user, resolved,
+                                 max_output_tokens) -> ModelResult:
         response = await resolved.adapter.complete(ModelRequest(
             model=resolved.model_name,
             messages=[Message(role="system", content=system), Message(role="user", content=user)],
@@ -48,6 +66,27 @@ class ModelGateway:
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
         resolved = self.registry.resolve(binding["primary_provider_id"], binding["primary_model_id"])
+        try:
+            return await self._complete_with_tools_resolved(
+                role, system, user, toolbox, fallback_context, run_id,
+                max_output_tokens, resolved,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            fallback = self._resolve_configured_fallback(binding)
+            if fallback is None:
+                raise
+            result = await self._complete_with_tools_resolved(
+                role, system, user, toolbox, fallback_context, run_id,
+                max_output_tokens, fallback,
+            )
+            return self._mark_fallback(result, resolved)
+
+    async def _complete_with_tools_resolved(
+        self, role, system, user, toolbox, fallback_context, run_id,
+        max_output_tokens, resolved,
+    ) -> ModelResult:
         mode = resolved.capabilities.get("tool_support", "auto")
         if mode == "disabled":
             return await self._fallback(role, system, user, fallback_context(), resolved, run_id,
@@ -132,6 +171,22 @@ class ModelGateway:
                 raise
             return await self._fallback(role, system, user, fallback_context(), resolved, run_id,
                                         str(exc), max_output_tokens)
+
+    def _resolve_configured_fallback(self, binding):
+        provider_id = binding.get("fallback_provider_id")
+        model_id = binding.get("fallback_model_id")
+        if not provider_id or not model_id:
+            return None
+        return self.registry.resolve(provider_id, model_id)
+
+    @staticmethod
+    def _mark_fallback(result: ModelResult, primary) -> ModelResult:
+        return ModelResult(result.text, {
+            **result.receipt,
+            "fallback_used": True,
+            "fallback_from_provider_id": primary.provider_id,
+            "fallback_from_model_id": primary.model_id,
+        })
 
     async def _fallback(self, role, system, user, evidence, resolved, run_id, reason,
                         max_output_tokens) -> ModelResult:

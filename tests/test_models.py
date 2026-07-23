@@ -19,6 +19,83 @@ class FakeRegistry:
         return ResolvedModel(provider_id, model_id, "actual-model", FakeAdapter())
 
 
+class FailingAdapter:
+    async def complete(self, request):
+        raise RuntimeError("primary unavailable")
+
+
+class SuccessfulFallbackAdapter:
+    async def complete(self, request):
+        return ModelResponse(text="fallback result", input_tokens=4, output_tokens=6)
+
+
+class ConfiguredFallbackRegistry:
+    def resolve(self, provider_id, model_id):
+        if (provider_id, model_id) == ("primary-provider", "primary-model"):
+            return ResolvedModel(provider_id, model_id, "primary", FailingAdapter())
+        if (provider_id, model_id) == ("fallback-provider", "fallback-model"):
+            return ResolvedModel(provider_id, model_id, "fallback", SuccessfulFallbackAdapter())
+        raise AssertionError((provider_id, model_id))
+
+
+def fallback_receipt_fields(result):
+    return {
+        key: result.receipt[key]
+        for key in ("fallback_used", "fallback_from_provider_id", "fallback_from_model_id")
+    }
+
+
+@pytest.mark.asyncio
+async def test_gateway_uses_configured_fallback_for_plain_completion(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "polish", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+
+    result = await ModelGateway(db, ConfiguredFallbackRegistry()).complete(
+        "polish", "rules", "polish",
+    )
+
+    assert result.text == "fallback result"
+    assert result.receipt["provider_id"] == "fallback-provider"
+    assert fallback_receipt_fields(result) == {
+        "fallback_used": True,
+        "fallback_from_provider_id": "primary-provider",
+        "fallback_from_model_id": "primary-model",
+    }
+
+
+@pytest.mark.asyncio
+async def test_gateway_uses_configured_fallback_for_tool_completion(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+
+    result = await ModelGateway(db, ConfiguredFallbackRegistry()).complete_with_tools(
+        "planning", "rules", "plan", Toolbox(),
+        fallback_context=lambda: "evidence", run_id="run-1",
+    )
+
+    assert result.text == "fallback result"
+    assert result.receipt["provider_id"] == "fallback-provider"
+    assert result.receipt["fallback_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_gateway_without_configured_fallback_preserves_primary_failure(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary-provider", "primary-model", None, None)
+
+    with pytest.raises(RuntimeError, match="primary unavailable"):
+        await ModelGateway(db, ConfiguredFallbackRegistry()).complete("polish", "rules", "polish")
+
+
 @pytest.mark.asyncio
 async def test_gateway_routes_role_and_returns_redacted_receipt(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
