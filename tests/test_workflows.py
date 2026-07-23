@@ -599,5 +599,11 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
     assert checks == {"failures": []}
 
 
-def test_polish_has_room_for_reasoning_and_publishable_text() -> None:
+def test_stage_output_budgets_cover_each_model_role() -> None:
+    assert WorkflowService._stage_output_budget("planning") == 12288
+    assert WorkflowService._stage_output_budget("draft") == 8192
+    assert WorkflowService._stage_output_budget("review") == 4096
+    assert WorkflowService._stage_output_budget("revision_plan") == 8192
     assert WorkflowService._stage_output_budget("polish") == 8192
+    assert WorkflowService._stage_output_budget("final_review") == 8192
+    assert WorkflowService._stage_output_budget("maintenance") == 8192

@@ -950,13 +950,15 @@ class WorkflowService:
 
     @staticmethod
     def _stage_output_budget(stage: str) -> int | None:
-        if stage in {"planning", "final_review", "maintenance"}:
-            return 8192
-        if stage == "polish":
-            return 8192
-        if stage in {"review", "revision_plan"}:
-            return 4096
-        return None
+        return {
+            "planning": 12288,
+            "draft": 8192,
+            "review": 4096,
+            "revision_plan": 8192,
+            "polish": 8192,
+            "final_review": 8192,
+            "maintenance": 8192,
+        }.get(stage)
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:
