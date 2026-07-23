@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Iterator
 
 from novel_flywheel.db import Database
+from novel_flywheel.context_policy import polish_context, stage_output_budget
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
@@ -36,6 +37,7 @@ from novel_flywheel.style_context import character_fingerprints, ensure_style_pr
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
+from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
 from novel_flywheel.tools import StoryToolbox
 
 
@@ -59,6 +61,7 @@ class WorkflowService:
         self.skills = skills
         self.crewai_data_dir = crewai_data_dir or db.path.parent / "crewai"
         self.memory = StoryMemory(db)
+        self.story_states = StoryStateStore(db)
         self.skill_prompts = skill_prompts or SkillPromptCompactor()
         self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
 
@@ -225,6 +228,10 @@ class WorkflowService:
 
     async def _short_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "short-story", run_id)
+        state = self.story_states.ensure(project.id, project.path)
+        candidate_id = None
+        draft_candidate_id = None
+        state_committed = False
         formal = [
             project.path / "manuscript" / "story.md",
             project.path / "chapters" / "chapter-01.md",
@@ -265,6 +272,12 @@ class WorkflowService:
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
                 )
+            draft_candidate = self.story_states.create_candidate(
+                project.id, run_id, state.revision, "draft",
+                hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+                {"artifact": "outputs/draft.md"},
+            )
+            draft_candidate_id = draft_candidate.id
             review_checkpoint = (None if resumed_best else
                                  self._find_short_stage_output(project, run_id, "review.md"))
             review = None
@@ -301,18 +314,63 @@ class WorkflowService:
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
             polished = "\n\n".join(self._split_segments(polished))
+            candidate = self.story_states.create_candidate(
+                project.id, run_id, state.revision, "polish",
+                hashlib.sha256(polished.encode("utf-8")).hexdigest(),
+                {"artifact": "outputs/polish.md"},
+            )
+            candidate_id = candidate.id
             atomic_write(formal[0], polished)
             atomic_write(formal[1], self._chapter_file(project, polished))
             atomic_write(formal[2], json.dumps(canon, ensure_ascii=False, indent=2))
             self._post_write_maintenance(run_id, project)
+            confirmed = []
+            for index, fact in enumerate(canon.get("facts", [])):
+                if not isinstance(fact, dict):
+                    continue
+                confirmed.append({
+                    "key": str(fact.get("fact_key") or fact.get("subject") or f"generated.{index}"),
+                    "value": fact.get("value", fact.get("fact", "")),
+                    "level": "confirmed",
+                    "source": run_id,
+                })
+            next_data = {
+                **state.data,
+                "confirmed_facts": confirmed or state.data.get("confirmed_facts", []),
+                "character_states": canon.get("state", state.data.get("character_states", {})),
+                "world_rules": canon.get("world_rules", state.data.get("world_rules", [])),
+                "timeline_events": canon.get("timeline", state.data.get("timeline_events", [])),
+                "manuscript_revision": int(state.data.get("manuscript_revision", 0)) + 1,
+            }
+            committed = self.story_states.commit(candidate.id, state.revision, next_data)
+            state_committed = True
+            self.story_states.reject(draft_candidate.id, "superseded by accepted polish")
+            self.db.add_run_event(
+                run_id, "success", "story_state_committed", "正式稿与权威故事状态已提交",
+                stage="archive", metadata={
+                    "candidate_id": candidate.id,
+                    "base_revision": state.revision,
+                    "revision": committed.revision,
+                },
+            )
             self.db.update_run(run_id, "completed", "archive")
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
-            snapshot.restore()
+            if not state_committed:
+                snapshot.restore()
+            if candidate_id:
+                self.story_states.reject(candidate_id, "cancelled")
+            if draft_candidate_id:
+                self.story_states.reject(draft_candidate_id, "cancelled")
             self.db.update_run(run_id, "cancelled", error="Cancelled by user")
             raise
         except Exception as exc:
-            snapshot.restore()
+            if not state_committed:
+                snapshot.restore()
+            if candidate_id:
+                self.story_states.reject(candidate_id, str(exc))
+            if draft_candidate_id:
+                self.story_states.reject(draft_candidate_id, str(exc))
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
@@ -649,6 +707,7 @@ class WorkflowService:
         part_groups = [item[1] for item in grouped_parts]
         revision_plan = None
         story_map = segment_map(original_parts)
+        authoritative_state = self.story_states.ensure(project.id, project.path).data
         if structural and len(parts) > 1:
             revision_plan = await self._plan_structural_revision(
                 run_id, run_path, project, constraints, findings, story_map, suffix,
@@ -709,13 +768,20 @@ class WorkflowService:
                 if revision_plan else f"STRUCTURED FINDINGS:\n{findings}\n\n"
             )
             prompt = (
-                f"POLISH SEGMENT {index} OF {len(parts)}. Return only the revised prose for this segment. "
-                f"{revision_rule}\n\n"
+                polish_context(
+                    state=authoritative_state,
+                    story_map=story_map,
+                    segment_index=index,
+                    segment_count=len(parts),
+                    segment=part,
+                    previous_tail=previous_tail,
+                    next_head=next_head,
+                    findings=plan_context,
+                    edit_rule=revision_rule,
+                ) + "\n\n"
                 f"STYLE PROFILE:\n{style_profile}\n\n"
                 f"RELEVANT CHARACTER VOICES:\n{character_fingerprints(project.path, part)}\n\n"
-                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
-                f"{plan_context}PREVIOUS POLISHED END:\n{previous_tail}\n\n"
-                f"NEXT ORIGINAL START:\n{next_head}\n\nMANUSCRIPT SEGMENT:\n{part}"
+                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}"
             )
             part_suffix = f"{suffix}-part-{index:02d}"
             priority = bool(structural or index in {1, len(parts)} or local_report["findings"])
@@ -739,6 +805,7 @@ class WorkflowService:
                 polished_part = await self._stage(
                     run_id, run_path, project, "polish", constraints, prompt,
                     suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
+                    output_source_characters=len(part),
                 )
             else:
                 try:
@@ -746,6 +813,7 @@ class WorkflowService:
                         run_id, run_path, project, "polish", constraints, prompt,
                         suffix=part_suffix, allow_tools=False,
                         prefer_configured_fallback=prefer_configured,
+                        output_source_characters=len(part),
                     )
                     if getattr(polished_part, "receipt", {}).get("fallback_used"):
                         primary_circuit_open = True
@@ -768,10 +836,15 @@ class WorkflowService:
                     polished_part = await self._stage(
                         run_id, run_path, project, "polish", constraints, prompt,
                         suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
+                        output_source_characters=len(part),
                     )
             voice = character_fingerprints(project.path, part)
             required = re.findall(r"(?m)^##\s+(.+)$", voice)
             assessment = assess_polish_candidate(part, polished_part, required)
+            locked_failures = validate_locked_facts(part, polished_part, authoritative_state)
+            if locked_failures:
+                assessment["accepted"] = False
+                assessment["reasons"].extend(locked_failures)
             if not assessment["accepted"]:
                 self.db.add_run_event(
                     run_id, "warning", "polish_output_rejected",
@@ -904,7 +977,8 @@ class WorkflowService:
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "",
                      model_role: str | None = None, allow_tools: bool = True,
-                     prefer_configured_fallback: bool = False) -> str:
+                     prefer_configured_fallback: bool = False,
+                     output_source_characters: int | None = None) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -963,19 +1037,19 @@ class WorkflowService:
                         self.memory.context(project.id, user[:500]), ensure_ascii=False,
                     ),
                     run_id=run_id,
-                    max_output_tokens=self._stage_output_budget(stage),
+                    max_output_tokens=self._stage_output_budget(stage, output_source_characters),
                 )
             elif prefer_configured_fallback and hasattr(
                 self.gateway, "complete_configured_fallback"
             ):
                 result = await self.gateway.complete_configured_fallback(
                     gateway_role, system, user,
-                    max_output_tokens=self._stage_output_budget(stage),
+                    max_output_tokens=self._stage_output_budget(stage, output_source_characters),
                 )
             else:
                 result = await self.gateway.complete(
                     gateway_role, system, user,
-                    max_output_tokens=self._stage_output_budget(stage),
+                    max_output_tokens=self._stage_output_budget(stage, output_source_characters),
                 )
             if not result.text.strip():
                 raise RuntimeError(
@@ -1202,16 +1276,8 @@ class WorkflowService:
         return normalize_review(cls._json_object(text))
 
     @staticmethod
-    def _stage_output_budget(stage: str) -> int | None:
-        return {
-            "planning": 12288,
-            "draft": 8192,
-            "review": 4096,
-            "revision_plan": 8192,
-            "polish": 8192,
-            "final_review": 8192,
-            "maintenance": 8192,
-        }.get(stage)
+    def _stage_output_budget(stage: str, source_characters: int | None = None) -> int | None:
+        return stage_output_budget(stage, source_characters)
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:

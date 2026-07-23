@@ -185,6 +185,34 @@ CREATE TABLE IF NOT EXISTS change_requests(
   created_at TEXT NOT NULL,
   resolved_at TEXT
 );
+CREATE TABLE IF NOT EXISTS story_states(
+  project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+  revision INTEGER NOT NULL,
+  state_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS story_state_history(
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  revision INTEGER NOT NULL,
+  state_json TEXT NOT NULL,
+  source TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY(project_id, revision)
+);
+CREATE TABLE IF NOT EXISTS story_candidates(
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  run_id TEXT,
+  base_revision INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  status TEXT NOT NULL,
+  reason TEXT,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  resolved_at TEXT
+);
 """
 
 
@@ -208,8 +236,30 @@ class Database:
 
     def migrate(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._backup_before_story_state_upgrade()
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+
+    def _backup_before_story_state_upgrade(self) -> None:
+        if not self.path.is_file() or self.path.stat().st_size == 0:
+            return
+        backup = self.path.with_name(f"{self.path.stem}.pre-story-state{self.path.suffix}")
+        if backup.exists():
+            return
+        source = sqlite3.connect(self.path)
+        try:
+            tables = {row[0] for row in source.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )}
+            if "projects" not in tables or "story_states" in tables:
+                return
+            target = sqlite3.connect(backup)
+            try:
+                source.backup(target)
+            finally:
+                target.close()
+        finally:
+            source.close()
 
     def table_names(self) -> set[str]:
         with self.connect() as connection:

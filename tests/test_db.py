@@ -1,6 +1,24 @@
 from novel_flywheel.db import Database
 
 
+def test_story_state_schema_upgrade_backs_up_existing_database_once(tmp_path) -> None:
+    path = tmp_path / "app.db"
+    legacy = Database(path)
+    legacy.migrate()
+    with legacy.connect() as connection:
+        connection.execute("DROP TABLE story_candidates")
+        connection.execute("DROP TABLE story_state_history")
+        connection.execute("DROP TABLE story_states")
+
+    legacy.migrate()
+    backup = tmp_path / "app.pre-story-state.db"
+
+    assert backup.is_file()
+    before = backup.stat().st_mtime_ns
+    legacy.migrate()
+    assert backup.stat().st_mtime_ns == before
+
+
 def test_database_creates_foundation_tables(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

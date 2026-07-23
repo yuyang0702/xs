@@ -8,6 +8,7 @@ from novel_flywheel.db import Database
 from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.skills import SkillGate, SkillScanner
+from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.workflows import WorkflowService
 
 
@@ -148,6 +149,11 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     completed = next(item for item in events if item["event_type"] == "stage_completed")
     assert completed["metadata"]["model_name"].startswith("fake-")
     assert completed["metadata"]["skills"]
+    state = StoryStateStore(db).get(project.id)
+    assert state is not None
+    assert state.revision == 2
+    assert state.data["manuscript_revision"] == 1
+    assert any(item["event_type"] == "story_state_committed" for item in events)
 
 
 @pytest.mark.asyncio
@@ -184,6 +190,7 @@ async def test_short_flywheel_uses_managed_run_id_and_restores_on_cancel(tmp_pat
 
     assert db.get_run("managed-run")["status"] == "cancelled"
     assert not (project.path / "manuscript" / "story.md").exists()
+    assert StoryStateStore(db).get(project.id).revision == 1
 
 
 @pytest.mark.asyncio
@@ -749,10 +756,10 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("planning") == 12288
     assert WorkflowService._stage_output_budget("draft") == 8192
     assert WorkflowService._stage_output_budget("review") == 4096
-    assert WorkflowService._stage_output_budget("revision_plan") == 8192
+    assert WorkflowService._stage_output_budget("revision_plan") == 4096
     assert WorkflowService._stage_output_budget("polish") == 8192
-    assert WorkflowService._stage_output_budget("final_review") == 8192
-    assert WorkflowService._stage_output_budget("maintenance") == 8192
+    assert WorkflowService._stage_output_budget("final_review") == 4096
+    assert WorkflowService._stage_output_budget("maintenance") == 4096
 
 
 def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:

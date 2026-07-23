@@ -11,6 +11,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from novel_flywheel.db import Database
+from novel_flywheel.story_state import StoryStateStore
 
 
 class ProjectCreate(BaseModel):
@@ -41,6 +42,11 @@ class ProjectStore:
         self.workspace_root = workspace_root.resolve()
         self.trash_root = (self.workspace_root.parent / "trash").resolve()
         self.root_constraints = [path.resolve() for path in (root_constraints or []) if path.is_file()]
+        states = StoryStateStore(self.db)
+        for row in self.db.list_projects():
+            path = Path(row["path"])
+            if path.is_dir():
+                states.ensure(row["id"], path)
 
     def create(self, payload: ProjectCreate) -> Project:
         slug = re.sub(r"[^\w-]+", "-", payload.title.strip(), flags=re.UNICODE).strip("-_").lower()
@@ -74,6 +80,7 @@ class ProjectStore:
         )
         self._scaffold_story_files(path, payload, project_id)
         self.db.save_project(project_id, payload.title, payload.mode, path)
+        StoryStateStore(self.db).ensure(project_id, path)
         return Project(project_id, payload.title, payload.mode, path, metadata)
 
     def get(self, project_id: str) -> Project:

@@ -4,6 +4,7 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.story_state import StoryStateStore
 
 
 def test_create_short_project_writes_durable_structure(tmp_path) -> None:
@@ -33,6 +34,10 @@ def test_create_short_project_writes_durable_structure(tmp_path) -> None:
     assert f"story: {project.id}" in (project.path / "continuity" / "state.md").read_text(encoding="utf-8")
     assert (project.path / "continuity" / "state.md").is_file()
     assert store.load_constraints(project.id).startswith("Never use canned AI prose.")
+    state = StoryStateStore(db).get(project.id)
+    assert state is not None
+    assert state.revision == 1
+    assert state.data["manuscript_revision"] == 0
 
 
 def test_long_project_has_chapter_and_volume_folders(tmp_path) -> None:
@@ -45,6 +50,20 @@ def test_long_project_has_chapter_and_volume_folders(tmp_path) -> None:
     ))
     assert (project.path / "chapters").is_dir()
     assert (project.path / "volumes").is_dir()
+
+
+def test_project_store_imports_story_state_for_existing_projects(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    path = tmp_path / "workspace" / "legacy"
+    (path / "memory").mkdir(parents=True)
+    (path / "manuscript").mkdir()
+    (path / "memory" / "canon.json").write_text('{"facts": []}', encoding="utf-8")
+    db.save_project("legacy", "Legacy", "short", path)
+
+    ProjectStore(db, tmp_path / "workspace")
+
+    assert StoryStateStore(db).get("legacy") is not None
 
 
 def test_project_slug_cannot_escape_workspace(tmp_path) -> None:
