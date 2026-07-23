@@ -67,9 +67,17 @@ function renderProjects() {
   if (!state.activeProject || !state.projects.some(p => p.id === state.activeProject.id)) state.activeProject = state.projects[0] || null;
   if (state.activeProject) select.value = state.activeProject.id;
   $("#project-list").innerHTML = state.projects.length ? state.projects.map(p => `<article class="project-item"><h3>${escapeHtml(p.title)}</h3><div class="skill-meta">${p.mode === "short" ? "短篇" : "长篇"} · ${escapeHtml(p.genre)} · ${Number(p.target_words).toLocaleString()} 字</div><div class="project-actions"><button class="secondary" data-continue="${p.id}">继续写作</button><button class="secondary danger-text" data-trash="${p.id}">移入回收站</button></div></article>`).join("") : '<p class="skill-meta">尚无作品</p>';
-  document.querySelectorAll("[data-continue]").forEach(button => button.addEventListener("click", () => { state.activeProject=state.projects.find(p => p.id === button.dataset.continue); renderProjects(); showView("workbench"); }));
+  document.querySelectorAll("[data-continue]").forEach(button => button.addEventListener("click", () => continueProject(button.dataset.continue)));
   document.querySelectorAll("[data-trash]").forEach(button => button.addEventListener("click", () => trashProject(button.dataset.trash)));
   renderActiveProject();
+}
+async function continueProject(projectId) {
+  const project = state.projects.find(item => item.id === projectId);
+  if (!project) return toast("作品不存在");
+  state.activeProject = project;
+  renderProjects();
+  showView("workbench");
+  if (project.mode === "short") await run(`/api/projects/${project.id}/runs/short`);
 }
 async function renderActiveProject() {
   const p = state.activeProject;

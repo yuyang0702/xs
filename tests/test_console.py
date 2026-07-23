@@ -47,4 +47,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "formatLocalTimestamp(item.trashed_at)" in script
     assert "const latestRun = runs[0]" in script
     assert "showRunDetail(await api(`/api/runs/${latestRun.id}`))" in script
+    assert "continueProject(button.dataset.continue)" in script
+    assert 'if (project.mode === "short")' in script
+    assert "run(`/api/projects/${project.id}/runs/short`)" in script
     assert 'reader_review: "目标读者模拟"' in script
