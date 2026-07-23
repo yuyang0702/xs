@@ -3,6 +3,7 @@ import pytest
 from novel_flywheel.quality import (
     normalize_review,
     quality_gate,
+    quality_outcome,
     reader_sample,
     select_route,
 )
@@ -60,6 +61,50 @@ def test_quality_gate_accepts_near_threshold_minor_revision() -> None:
     assert review["score"] == 79.15
     assert passed
     assert reasons == []
+
+
+def test_quality_outcome_distinguishes_full_and_conditional_pass() -> None:
+    full = normalize_review({
+        "dimensions": {"commercial": 90, "story": 80, "prose": 70},
+        "hard_fail": False, "decision": "pass", "issues": [],
+    })
+    conditional = normalize_review({
+        "dimensions": {"commercial": 75, "story": 75, "prose": 75},
+        "hard_fail": False, "decision": "revise",
+        "issues": [{"severity": "medium", "action": "tighten one paragraph"}],
+    })
+
+    assert quality_outcome(full) == ("passed", [])
+    assert quality_outcome(conditional) == ("conditional_pass", [])
+
+
+def test_quality_outcome_rejects_score_below_75() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 75, "story": 75, "prose": 70},
+        "hard_fail": False, "decision": "revise", "issues": [],
+    })
+
+    outcome, reasons = quality_outcome(review)
+
+    assert review["score"] == 74.0
+    assert outcome == "failed"
+    assert reasons == ["overall_below_75"]
+
+
+@pytest.mark.parametrize("blocker", ["critical", "rewrite", "hard_fail"])
+def test_quality_outcome_keeps_safety_blockers(blocker) -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 78, "story": 75, "prose": 75},
+        "hard_fail": blocker == "hard_fail",
+        "decision": "rewrite" if blocker == "rewrite" else "revise",
+        "issues": ([{"severity": "critical", "action": "repair unsafe event"}]
+                   if blocker == "critical" else []),
+    })
+
+    outcome, reasons = quality_outcome(review)
+
+    assert outcome == "failed"
+    assert blocker in reasons
 
 
 def test_normalize_review_accepts_legacy_score() -> None:

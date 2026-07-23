@@ -72,25 +72,27 @@ def normalize_review(value: dict) -> dict:
     return result
 
 
-def quality_gate(review: dict) -> tuple[bool, list[str]]:
+def quality_outcome(review: dict) -> tuple[str, list[str]]:
     reasons = []
-    dimensions_clear = all(
-        review["dimensions"][name] >= minimum for name, minimum in MINIMUMS.items()
-    )
-    near_pass = (
-        review["score"] >= 78
-        and review.get("decision") in {"pass", "revise"}
-        and not review.get("hard_fail")
-        and dimensions_clear
-    )
-    if review["score"] < 80 and not near_pass:
-        reasons.append("overall_below_80")
+    if review["score"] < 75:
+        reasons.append("overall_below_75")
     for name, minimum in MINIMUMS.items():
         if review["dimensions"][name] < minimum:
             reasons.append(f"{name}_below_{int(minimum)}")
     if review.get("hard_fail"):
         reasons.append("hard_fail")
-    return not reasons, reasons
+    if review.get("decision") == "rewrite":
+        reasons.append("rewrite")
+    if any(issue.get("severity", "").lower() == "critical" for issue in review["issues"]):
+        reasons.append("critical")
+    if reasons:
+        return "failed", reasons
+    return ("passed" if review["score"] >= 80 else "conditional_pass"), []
+
+
+def quality_gate(review: dict) -> tuple[bool, list[str]]:
+    outcome, reasons = quality_outcome(review)
+    return outcome != "failed", reasons
 
 
 def select_route(mode: str, chapter_number: int | None, chapter_goal: str,
