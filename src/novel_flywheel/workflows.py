@@ -24,6 +24,7 @@ from novel_flywheel.revision import (
     check_revision_constraints,
     compact_polish_findings,
     compact_review,
+    normalize_chinese_prose,
     normalize_revision_plan,
     segment_map,
 )
@@ -657,6 +658,13 @@ class WorkflowService:
             polished_parts.append(polished_part.strip())
         polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
         if revision_plan:
+            polished, repairs = normalize_chinese_prose(polished)
+            if repairs:
+                self.db.add_run_event(
+                    run_id, "success", "local_format_repair",
+                    "已在本地修复机械格式问题",
+                    stage="polish", metadata={"repairs": repairs},
+                )
             failures = check_revision_constraints(polished, revision_plan)
             atomic_write(
                 run_path / "outputs" / f"revision-checks{suffix}.json",

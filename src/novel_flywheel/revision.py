@@ -1,8 +1,26 @@
+import re
 from typing import Any
 
 
 CHECK_KINDS = {"required_text", "forbidden_text"}
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+CJK = r"\u3400-\u9fff"
+
+
+def normalize_chinese_prose(text: str) -> tuple[str, list[str]]:
+    repairs = []
+    normalized, count = re.subn(
+        rf'"([^"\n]*[{CJK}][^"\n]*)"', r"“\1”", text,
+    )
+    if count:
+        repairs.append("ascii_dialogue_quotes")
+    normalized, count = re.subn(rf"(?<=[{CJK}]) +(?=[{CJK}])", "", normalized)
+    if count:
+        repairs.append("cjk_spacing")
+    normalized, count = re.subn(r"([。！？；，])\1{2,}", r"\1", normalized)
+    if count:
+        repairs.append("duplicate_punctuation")
+    return normalized, repairs
 
 
 def compact_review(review: dict[str, Any]) -> dict[str, Any]:
@@ -73,7 +91,8 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int) -> dict[s
         if not isinstance(item, dict):
             continue
         kind, text = item.get("kind"), item.get("value")
-        if kind in CHECK_KINDS and isinstance(text, str) and text.strip():
+        if (kind in CHECK_KINDS and isinstance(text, str) and text.strip()
+                and not (kind == "forbidden_text" and text.strip() in {'"', "'"})):
             checks.append({"kind": kind, "value": text.strip()})
     tasks = []
     for item in value.get("tasks", []):

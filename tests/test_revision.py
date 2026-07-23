@@ -5,6 +5,7 @@ from novel_flywheel.revision import (
     compact_polish_findings,
     compact_review,
     normalize_revision_plan,
+    normalize_chinese_prose,
     segment_map,
 )
 
@@ -52,6 +53,37 @@ def test_normalize_revision_plan_rejects_unknown_segments_and_keeps_valid_tasks(
 
     assert plan["tasks"] == [{"segments": [1, 3], "instruction": "Unify the ceremony."}]
     assert plan["target_segments"] == [1, 3]
+
+
+def test_normalize_revision_plan_drops_mechanical_quote_checks() -> None:
+    plan = normalize_revision_plan({
+        "checks": [
+            {"kind": "forbidden_text", "value": '"'},
+            {"kind": "forbidden_text", "value": "forbidden event"},
+        ],
+        "tasks": [{"segments": [1], "instruction": "Repair the scene."}],
+    }, segment_count=1)
+
+    assert plan["checks"] == [{"kind": "forbidden_text", "value": "forbidden event"}]
+
+
+def test_normalize_chinese_prose_repairs_safe_typography_only() -> None:
+    text = (
+        '他说："门我来修。"\n'
+        "她 慢慢 点头！！！\n"
+        "https://example.com/a  b\n"
+        "<!-- NOVEL_FLYWHEEL_SEGMENT -->"
+    )
+
+    normalized, repairs = normalize_chinese_prose(text)
+
+    assert normalized == (
+        "他说：“门我来修。”\n"
+        "她慢慢点头！\n"
+        "https://example.com/a  b\n"
+        "<!-- NOVEL_FLYWHEEL_SEGMENT -->"
+    )
+    assert repairs == ["ascii_dialogue_quotes", "cjk_spacing", "duplicate_punctuation"]
 
 
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:

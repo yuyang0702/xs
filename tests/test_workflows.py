@@ -678,10 +678,13 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
     make_prompt_skills(skill_root)
     plan = json.dumps({
         "global_facts": ["The public ceremony is a wedding."],
-        "checks": [{"kind": "forbidden_text", "value": "engagement banquet"}],
+        "checks": [
+            {"kind": "forbidden_text", "value": "engagement banquet"},
+            {"kind": "forbidden_text", "value": '"'},
+        ],
         "tasks": [{"segments": [2], "instruction": "Unify the ceremony timeline."}],
     })
-    gateway = RecordingGateway([plan, "Revised middle at the wedding. " * 80])
+    gateway = RecordingGateway([plan, 'Revised middle at the wedding. "修好了。" ' * 80])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("targeted", project.id, "short-story", status="running")
     run_path = project.path / "runs" / "targeted"
@@ -710,6 +713,8 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
     assert revised_parts[0] == parts[0].strip()
     assert revised_parts[2] == parts[2].strip()
     assert "Revised middle" in revised_parts[1]
+    assert '"修好了。"' not in revised_parts[1]
+    assert "“修好了。”" in revised_parts[1]
     assert gateway.roles == ["planning", "polish"]
     polish_prompt = gateway.calls[1]["user"]
     assert "The public ceremony is a wedding." in polish_prompt
