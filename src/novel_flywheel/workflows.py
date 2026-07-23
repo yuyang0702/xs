@@ -805,6 +805,19 @@ class WorkflowService:
                     f"output_tokens={result.receipt.get('output_tokens', 0)}, "
                     f"finish_reason={result.receipt.get('finish_reason', 'unknown')})"
                 )
+            if result.receipt.get("fallback_used"):
+                self.db.add_run_event(
+                    run_id, "warning", "model_fallback",
+                    f"{stage} 首选模型失败，已使用该角色配置的备用模型",
+                    stage=stage, metadata={
+                        "fallback_type": "configured",
+                        "provider_id": result.receipt.get("provider_id"),
+                        "model_id": result.receipt.get("model_id"),
+                        "model_name": result.receipt.get("model_name"),
+                        "primary_provider_id": result.receipt.get("fallback_from_provider_id"),
+                        "primary_model_id": result.receipt.get("fallback_from_model_id"),
+                    },
+                )
             name = f"{stage}{suffix}"
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}

@@ -237,6 +237,52 @@ class RecordingGateway:
         return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
 
+class ExplicitFallbackGateway:
+    async def complete(self, role, system, user, max_output_tokens=None):
+        return ModelResult("fallback output", {
+            "role": role,
+            "provider_id": "backup-provider",
+            "model_id": "backup-model",
+            "model_name": "backup-name",
+            "fallback_used": True,
+            "fallback_from_provider_id": "primary-provider",
+            "fallback_from_model_id": "primary-model",
+        })
+
+
+@pytest.mark.asyncio
+async def test_stage_logs_explicit_model_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Fallback log", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, ExplicitFallbackGateway(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("fallback-log", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "fallback-log"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    await service._stage(
+        "fallback-log", run_path, project, "polish", "constraints", "text",
+        allow_tools=False,
+    )
+
+    event = next(
+        item for item in db.list_run_events("fallback-log")
+        if item["event_type"] == "model_fallback"
+    )
+    assert event["metadata"]["fallback_type"] == "configured"
+    assert event["metadata"]["provider_id"] == "backup-provider"
+    assert event["metadata"]["model_id"] == "backup-model"
+
+
 class ReaderFallbackGateway(RecordingGateway):
     async def complete(self, role, system, user, max_output_tokens=None):
         if role == "reader_review":
