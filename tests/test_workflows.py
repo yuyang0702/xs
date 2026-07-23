@@ -1,5 +1,6 @@
 import asyncio
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -68,6 +69,39 @@ def make_prompt_skills(root) -> None:
         (folder / "SKILL.md").write_text(
             f"---\nname: {name}\n---\n\nSkill instructions for {name}.", encoding="utf-8",
         )
+
+
+def test_post_write_maintenance_uses_project_id_and_restores_story_title(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="中文书名", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=6000,
+    ))
+    original = (project.path / "story.md").read_text(encoding="utf-8")
+
+    class RecordingSkills:
+        def __init__(self) -> None:
+            self.titles = []
+
+        def skills(self, project_root):
+            return {"story-maintenance": SimpleNamespace(executable=True)}
+
+        def run_required(self, stage, required, commands, cwd, project_root):
+            story = (project.path / "story.md").read_text(encoding="utf-8")
+            self.titles.append(next(
+                line.removeprefix("title: ") for line in story.splitlines()
+                if line.startswith("title: ")
+            ))
+
+    skills = RecordingSkills()
+    service = WorkflowService(db, store, FakeGateway(), skills)
+
+    service._post_write_maintenance("run", project)
+
+    assert skills.titles == [project.id, project.id, project.id]
+    assert (project.path / "story.md").read_text(encoding="utf-8") == original
 
 
 @pytest.mark.asyncio

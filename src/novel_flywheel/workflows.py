@@ -4,7 +4,9 @@ import math
 import os
 import re
 import uuid
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
+from typing import Iterator
 
 from novel_flywheel.db import Database
 from novel_flywheel.models import ModelGateway
@@ -766,7 +768,13 @@ class WorkflowService:
             commands = {"story-maintenance": ["scripts/story.js", "validate", "."]}
             cwd = project.path
         try:
-            skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
+            identity = (
+                self._maintenance_story_identity(project)
+                if stage == "maintenance" and skill and skill.executable
+                else nullcontext()
+            )
+            with identity:
+                skill_run = self.skills.run_required(stage, required, commands, cwd, project.path)
             skills = [receipt.skill_name for receipt in skill_run.receipts]
             model_skill_prompt = (
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
@@ -891,12 +899,29 @@ class WorkflowService:
         skill = self.skills.skills(project.path).get("story-maintenance")
         if not skill or not skill.executable:
             return
-        for command in (
-            ["scripts/story.js", "wordcount", ".", "--write"],
-            ["scripts/story.js", "reindex", "."],
-            ["scripts/story.js", "validate", "."],
-        ):
-            self.skills.run_required("archive", ["story-maintenance"], {"story-maintenance": command}, project.path, project.path)
+        with self._maintenance_story_identity(project):
+            for command in (
+                ["scripts/story.js", "wordcount", ".", "--write"],
+                ["scripts/story.js", "reindex", "."],
+                ["scripts/story.js", "validate", "."],
+            ):
+                self.skills.run_required("archive", ["story-maintenance"], {"story-maintenance": command}, project.path, project.path)
+
+    @staticmethod
+    @contextmanager
+    def _maintenance_story_identity(project: Project) -> Iterator[None]:
+        story_path = project.path / "story.md"
+        original = story_path.read_text(encoding="utf-8")
+        compatible, count = re.subn(
+            r"(?m)^title:.*$", f"title: {project.id}", original, count=1,
+        )
+        if count != 1:
+            raise ValueError("story.md requires a title field")
+        atomic_write(story_path, compatible)
+        try:
+            yield
+        finally:
+            atomic_write(story_path, original)
 
     def _volume_for_chapter(self, project: Project, chapter_number: int) -> dict | None:
         path = project.path / "memory" / "volumes.json"
