@@ -289,7 +289,10 @@ async function run(path, body) {
   catch (error) { box.className = "run-state error"; box.textContent = error.message; }
 }
 function renderRunLog(events) {
-  $("#run-log").innerHTML = events.length ? events.map(item => `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(item.stage || item.event_type)}</span><span>${escapeHtml(item.message)}</span></div>`).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
+  $("#run-log").innerHTML = events.length ? events.map(item => {
+    const message = item.message || `${item.event_type || "event"}: 未返回可用诊断信息`;
+    return `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(item.stage || item.event_type)}</span><span>${escapeHtml(message)}</span></div>`;
+  }).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }
 function showRunDetail(detail) {

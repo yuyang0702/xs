@@ -3,6 +3,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 
 from novel_flywheel.db import Database
+from novel_flywheel.errors import describe_error
 
 
 RunOperation = Callable[[str], Awaitable[object]]
@@ -40,8 +41,9 @@ class RunTaskManager:
                 self.db.add_run_event(run_id, "warning", "cancelled", "任务已由用户终止")
             raise
         except Exception as exc:
-            self.db.update_run(run_id, "failed", error=str(exc))
-            self.db.add_run_event(run_id, "error", "failed", str(exc))
+            error = describe_error(exc)
+            self.db.update_run(run_id, "failed", error=error)
+            self.db.add_run_event(run_id, "error", "failed", error)
         else:
             run = self.db.get_run(run_id)
             if run and run["status"] not in {"completed", "failed", "cancelled"}:

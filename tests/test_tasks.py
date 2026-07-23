@@ -86,3 +86,18 @@ async def test_task_manager_records_failure_without_raising_to_caller(tmp_path) 
     assert stored["status"] == "failed"
     assert stored["error"] == "model unavailable"
     assert db.list_run_events(run["id"])[-1]["severity"] == "error"
+
+
+@pytest.mark.asyncio
+async def test_task_manager_records_a_useful_error_when_exception_message_is_empty(tmp_path) -> None:
+    db, manager = make_manager(tmp_path)
+
+    async def operation(run_id):
+        raise TimeoutError()
+
+    run = manager.start("book", "short-story", operation)
+    await manager.wait(run["id"])
+
+    stored = db.get_run(run["id"])
+    assert stored["error"] == "TimeoutError (provider returned no error detail)"
+    assert db.list_run_events(run["id"])[-1]["message"] == stored["error"]

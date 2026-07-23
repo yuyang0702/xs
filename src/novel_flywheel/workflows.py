@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Iterator
 
 from novel_flywheel.db import Database
+from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
@@ -1038,7 +1039,9 @@ class WorkflowService:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
         except Exception as exc:
-            self.db.add_run_event(run_id, "error", "stage_failed", str(exc), stage=stage)
+            self.db.add_run_event(
+                run_id, "error", "stage_failed", describe_error(exc), stage=stage,
+            )
             raise
 
     async def _stage_with_role_fallback(
