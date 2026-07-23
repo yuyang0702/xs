@@ -17,7 +17,10 @@ STAGE_SYSTEM = {
         "causality, emotion, character knowledge, OOC, continuity, prose, and compliance. Return only "
         "strict JSON with dimensions commercial/story/prose (0-100), hard_fail, decision "
         "pass/revise/rewrite, and issues containing category, severity, evidence, and action. "
-        "Compliance or canon violations set hard_fail=true; compliance never increases quality scores."
+        "Only compliance, canon corruption, missing required content, or production/editorial text in "
+        "the manuscript may set hard_fail=true or critical. Style, prose, pacing, dialogue, commercial "
+        "pull, ending taste, and historical or procedural realism are targeted revisions, never hard "
+        "failures by themselves. Compliance never increases quality scores."
     ),
     "polish": "Revise only from the supplied draft and findings. Preserve plot facts while removing AI-like prose.",
     "final_review": (
@@ -25,7 +28,9 @@ STAGE_SYSTEM = {
         "Return only strict JSON with dimensions commercial/story/prose (0-100), hard_fail, decision "
         "pass/revise/rewrite, and issues containing category, severity, evidence, and action. "
         "Measure actual reading quality, emotional payoff, and paid-reading pull. Compliance or canon "
-        "violations set hard_fail=true and never add quality points."
+        "violations set hard_fail=true and never add quality points. Only compliance, canon corruption, "
+        "missing required content, or production/editorial text may be critical. Style, prose, pacing, "
+        "dialogue, commercial pull, ending taste, and realism findings require targeted revision only."
     ),
     "maintenance": "Extract durable canonical facts from the final text. Return strict JSON with a facts array.",
 }

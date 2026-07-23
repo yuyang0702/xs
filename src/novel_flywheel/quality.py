@@ -7,6 +7,15 @@ KEY_MARKERS = (
     "开篇", "前三章", "付费", "高潮", "结局", "关键", "揭晓", "卷末",
     "opening", "paid", "climax", "ending", "reveal", "volume end",
 )
+BLOCKING_CATEGORIES = {
+    "compliance", "canon", "canon_conflict", "manuscript_corruption",
+    "production_text", "missing_required_content", "safety",
+}
+TARGETED_CATEGORIES = {
+    "prose", "style", "dialogue", "pacing", "commercial", "commercial_pull",
+    "historical_realism", "procedural_realism", "ending", "ending_payoff",
+    "format", "character_arc", "story", "story_structure", "logic_continuity",
+}
 
 
 def _score(value: Any) -> float:
@@ -39,6 +48,15 @@ def _issues(values: Any) -> list[dict[str, str]]:
         }
         if any(not isinstance(item, str) for item in issue.values()):
             raise ValueError("Each review issue field must be text")
+        category = issue["category"].lower()
+        if category in BLOCKING_CATEGORIES or (
+            category == "general" and issue["severity"].lower() == "critical"
+        ):
+            issue["severity_class"] = "blocking"
+        elif category in TARGETED_CATEGORIES or issue["severity"].lower() == "critical":
+            issue["severity_class"] = "targeted_revision"
+        else:
+            issue["severity_class"] = "advisory"
         normalized.append(issue)
     return normalized
 
@@ -63,12 +81,18 @@ def normalize_review(value: dict) -> dict:
             raise ValueError(f"Review dimension is missing: {exc.args[0]}") from exc
     result["dimensions"] = normalized
     result["score"] = round(sum(normalized[name] * WEIGHTS[name] for name in WEIGHTS), 2)
-    result["hard_fail"] = bool(result.get("hard_fail", False))
+    model_hard_fail = bool(result.get("hard_fail", False))
+    result["hard_fail"] = model_hard_fail
     decision = result.get("decision", "revise")
     if decision not in {"pass", "revise", "rewrite"}:
         raise ValueError("Review decision must be pass, revise, or rewrite")
     result["decision"] = decision
     result["issues"] = _issues(result.get("issues", []))
+    blockers = [item for item in result["issues"] if item.get("severity_class") == "blocking"]
+    categorized = [item for item in result["issues"] if "severity_class" in item]
+    result["hard_fail"] = bool(blockers) or (model_hard_fail and not categorized)
+    if result["decision"] == "rewrite" and categorized and not blockers:
+        result["decision"] = "revise"
     return result
 
 
@@ -83,7 +107,11 @@ def quality_outcome(review: dict) -> tuple[str, list[str]]:
         reasons.append("hard_fail")
     if review.get("decision") == "rewrite":
         reasons.append("rewrite")
-    if any(issue.get("severity", "").lower() == "critical" for issue in review["issues"]):
+    if any(
+        issue.get("severity_class") == "blocking"
+        or ("severity_class" not in issue and issue.get("severity", "").lower() == "critical")
+        for issue in review["issues"]
+    ):
         reasons.append("critical")
     if reasons:
         return "failed", reasons

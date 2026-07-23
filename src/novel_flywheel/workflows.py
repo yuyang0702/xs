@@ -21,6 +21,7 @@ from novel_flywheel.quality import (
     select_route,
 )
 from novel_flywheel.revision import (
+    assess_polish_candidate,
     check_revision_constraints,
     compact_polish_findings,
     compact_review,
@@ -28,6 +29,8 @@ from novel_flywheel.revision import (
     normalize_revision_plan,
     segment_map,
 )
+from novel_flywheel.prose_quality import analyze_prose, compare_voice_metrics, prose_metrics
+from novel_flywheel.style_context import character_fingerprints, ensure_style_profile
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
@@ -166,6 +169,7 @@ class WorkflowService:
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
             atomic_write(chapter_path, self._chapter_file(project, polished, chapter_number))
+            self._record_voice_drift(run_id, project, chapter_number, polished)
             atomic_write(canon_path, json.dumps(canon, ensure_ascii=False, indent=2))
             self._post_write_maintenance(run_id, project)
             self.memory.index_chapter(project.id, chapter_id, chapter_number, polished, chapter_goal)
@@ -180,11 +184,35 @@ class WorkflowService:
                 snapshot.restore()
             self.db.update_run(run_id, "cancelled", error="Cancelled by user")
             raise
+
         except Exception as exc:
             if not committed:
                 snapshot.restore()
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
+
+    def _record_voice_drift(self, run_id: str, project: Project, chapter_number: int,
+                            text: str) -> None:
+        folder = project.path / "memory" / "style-metrics"
+        history = []
+        for path in sorted(folder.glob("chapter-*.json"))[-5:]:
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(value, dict):
+                history.append(value.get("metrics", value))
+        metrics = prose_metrics(text)
+        drift = compare_voice_metrics(metrics, history)
+        atomic_write(folder / f"chapter-{chapter_number:02d}.json", json.dumps(
+            {"chapter": chapter_number, "metrics": metrics, "drift": drift},
+            ensure_ascii=False, indent=2,
+        ))
+        self.db.add_run_event(
+            run_id, "warning" if drift["drifted"] else "success", "voice_drift",
+            "检测到跨章文风漂移，已记录为优化建议" if drift["drifted"] else "跨章文风指标稳定",
+            stage="quality", metadata=drift,
+        )
 
     async def _short_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "short-story", run_id)
@@ -588,12 +616,31 @@ class WorkflowService:
             if structural else
             "Preserve events and length; remove AI-like phrasing and apply the findings."
         )
+        style_profile = ensure_style_profile(project)
         if len(parts) == 1:
-            return await self._stage(
+            local_report = analyze_prose(text)
+            voice = character_fingerprints(project.path, text)
+            candidate = await self._stage(
                 run_id, run_path, project, "polish", constraints,
-                f"REVISION RULE:\n{revision_rule}\n\nMANUSCRIPT:\n{text}\n\n"
+                f"REVISION RULE:\n{revision_rule}\n\nSTYLE PROFILE:\n{style_profile}\n\n"
+                f"RELEVANT CHARACTER VOICES:\n{voice}\n\n"
+                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
+                f"MANUSCRIPT:\n{text}\n\n"
                 f"STRUCTURED FINDINGS:\n{findings}", suffix=suffix,
             )
+            required = re.findall(r"(?m)^##\s+(.+)$", voice)
+            assessment = assess_polish_candidate(text, candidate, required)
+            polished = candidate.strip() if assessment["accepted"] else text
+            if not assessment["accepted"]:
+                self.db.add_run_event(run_id, "warning", "polish_output_rejected",
+                    "润色结果未通过本地验收，已保留原文", stage="polish",
+                    metadata={"reasons": assessment["reasons"]})
+            polished, repairs = normalize_chinese_prose(polished)
+            if repairs:
+                self.db.add_run_event(run_id, "success", "local_format_repair",
+                    "已在本地修复机械格式问题", stage="polish", metadata={"repairs": repairs})
+            atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
+            return polished
         polished_parts: list[str] = []
         fallback_only = False
         for index, part in enumerate(parts, 1):
@@ -614,6 +661,9 @@ class WorkflowService:
             prompt = (
                 f"POLISH SEGMENT {index} OF {len(parts)}. Return only the revised prose for this segment. "
                 f"{revision_rule}\n\n"
+                f"STYLE PROFILE:\n{style_profile}\n\n"
+                f"RELEVANT CHARACTER VOICES:\n{character_fingerprints(project.path, part)}\n\n"
+                f"LOCAL PROSE FINDINGS:\n{json.dumps(analyze_prose(part)['findings'], ensure_ascii=False)}\n\n"
                 f"{plan_context}PREVIOUS POLISHED END:\n{previous_tail}\n\n"
                 f"NEXT ORIGINAL START:\n{next_head}\n\nMANUSCRIPT SEGMENT:\n{part}"
             )
@@ -642,29 +692,32 @@ class WorkflowService:
                         run_id, run_path, project, "polish", constraints, prompt,
                         suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
                     )
-            ratio = len(polished_part.strip()) / max(1, len(part))
-            if ratio < 0.70 or ratio > 1.60:
+            voice = character_fingerprints(project.path, part)
+            required = re.findall(r"(?m)^##\s+(.+)$", voice)
+            assessment = assess_polish_candidate(part, polished_part, required)
+            if not assessment["accepted"]:
                 self.db.add_run_event(
                     run_id, "warning", "polish_output_rejected",
-                    f"润色第 {index}/{len(parts)} 段长度异常，已保留原文",
+                    f"润色第 {index}/{len(parts)} 段未通过本地验收，已保留原文",
                     stage="polish", metadata={
                         "segment": index,
                         "original_characters": len(part),
                         "candidate_characters": len(polished_part.strip()),
-                        "ratio": round(ratio, 3),
+                        "ratio": assessment["ratio"],
+                        "reasons": assessment["reasons"],
                     },
                 )
                 polished_part = part
             polished_parts.append(polished_part.strip())
         polished = self.SHORT_SEGMENT_SEPARATOR.join(polished_parts)
+        polished, repairs = normalize_chinese_prose(polished)
+        if repairs:
+            self.db.add_run_event(
+                run_id, "success", "local_format_repair",
+                "已在本地修复机械格式问题",
+                stage="polish", metadata={"repairs": repairs},
+            )
         if revision_plan:
-            polished, repairs = normalize_chinese_prose(polished)
-            if repairs:
-                self.db.add_run_event(
-                    run_id, "success", "local_format_repair",
-                    "已在本地修复机械格式问题",
-                    stage="polish", metadata={"repairs": repairs},
-                )
             failures = check_revision_constraints(polished, revision_plan)
             atomic_write(
                 run_path / "outputs" / f"revision-checks{suffix}.json",

@@ -1,6 +1,7 @@
 import pytest
 
 from novel_flywheel.revision import (
+    assess_polish_candidate,
     check_revision_constraints,
     compact_polish_findings,
     compact_review,
@@ -84,6 +85,27 @@ def test_normalize_chinese_prose_repairs_safe_typography_only() -> None:
         "<!-- NOVEL_FLYWHEEL_SEGMENT -->"
     )
     assert repairs == ["ascii_dialogue_quotes", "cjk_spacing", "duplicate_punctuation"]
+
+
+def test_polish_candidate_rejects_process_text_and_missing_locked_literal() -> None:
+    rejected = assess_polish_candidate(
+        "陈东推开门，叫了一声小雨。", "以下是润色版本：他推开门。",
+        required_literals=["陈东", "小雨"],
+    )
+
+    assert rejected["accepted"] is False
+    assert "production_text" in rejected["reasons"]
+    assert "missing_literal:陈东" in rejected["reasons"]
+
+
+def test_polish_candidate_accepts_local_improvement() -> None:
+    accepted = assess_polish_candidate(
+        "陈东轻轻地推开门。", "陈东推开门，门轴蹭过地面。",
+        required_literals=["陈东"],
+    )
+
+    assert accepted["accepted"] is True
+    assert accepted["reasons"] == []
 
 
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:

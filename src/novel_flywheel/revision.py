@@ -1,6 +1,8 @@
 import re
 from typing import Any
 
+from novel_flywheel.prose_quality import analyze_prose
+
 
 CHECK_KINDS = {"required_text", "forbidden_text"}
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -21,6 +23,26 @@ def normalize_chinese_prose(text: str) -> tuple[str, list[str]]:
     if count:
         repairs.append("duplicate_punctuation")
     return normalized, repairs
+
+
+def assess_polish_candidate(source: str, candidate: str,
+                            required_literals: list[str] | None = None) -> dict[str, Any]:
+    candidate = candidate.strip()
+    ratio = len(candidate) / max(1, len(source.strip()))
+    report = analyze_prose(candidate)
+    reasons = []
+    if len(source.strip()) >= 200 and (ratio < 0.70 or ratio > 1.60):
+        reasons.append("length_ratio")
+    if report["blocking_count"]:
+        reasons.append("production_text")
+    for literal in required_literals or []:
+        if literal and literal in source and literal not in candidate:
+            reasons.append(f"missing_literal:{literal}")
+    source_report = analyze_prose(source)
+    if report["targeted_count"] > source_report["targeted_count"] + 2:
+        reasons.append("style_regression")
+    return {"accepted": not reasons, "reasons": reasons, "ratio": round(ratio, 3),
+            "diagnostics": report}
 
 
 def compact_review(review: dict[str, Any]) -> dict[str, Any]:

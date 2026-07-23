@@ -107,6 +107,38 @@ def test_quality_outcome_keeps_safety_blockers(blocker) -> None:
     assert blocker in reasons
 
 
+def test_style_critical_is_downgraded_to_targeted_revision() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 80, "story": 78, "prose": 76},
+        "hard_fail": True,
+        "decision": "revise",
+        "issues": [{"category": "prose", "severity": "critical", "action": "删除主题总结"}],
+    })
+
+    outcome, reasons = quality_outcome(review)
+
+    assert review["hard_fail"] is False
+    assert review["issues"][0]["severity_class"] == "targeted_revision"
+    assert outcome == "conditional_pass"
+    assert reasons == []
+
+
+def test_manuscript_corruption_remains_blocking() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 85, "story": 80, "prose": 80},
+        "hard_fail": False,
+        "decision": "revise",
+        "issues": [{"category": "production_text", "severity": "critical", "action": "删除编辑说明"}],
+    })
+
+    outcome, reasons = quality_outcome(review)
+
+    assert review["hard_fail"] is True
+    assert review["issues"][0]["severity_class"] == "blocking"
+    assert outcome == "failed"
+    assert "hard_fail" in reasons
+
+
 def test_normalize_review_accepts_legacy_score() -> None:
     review = normalize_review({"score": 86, "hard_fail": False, "issues": ["tighten prose"]})
 

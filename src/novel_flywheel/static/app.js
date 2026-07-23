@@ -98,13 +98,34 @@ async function loadProjectLocations(projectId) {
     shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`;
   }
 }
+async function loadCandidateQuality(projectId) {
+  const shell = $("#candidate-quality"); const publish = $("#publish-candidate");
+  publish.hidden = true;
+  if (!projectId) { shell.innerHTML = '<p class="skill-meta">请先选择作品</p>'; return; }
+  try {
+    const result = await api(`/api/projects/${projectId}/candidate`);
+    if (state.activeProject?.id !== projectId) return;
+    if (!result.available) { shell.innerHTML = '<p class="skill-meta">尚无候选稿</p>'; return; }
+    const report = result.diagnostics;
+    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.characters).toLocaleString()}</strong><span>字符数</span></div></div>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}`;
+    publish.hidden = state.activeProject?.mode !== "short" || report.blocking_count > 0;
+  } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
+}
+$("#publish-candidate").addEventListener("click", async () => {
+  if (!state.activeProject || !confirm("将当前最高分候选设为正式成品？原正式成品会被替换。")) return;
+  try {
+    await api(`/api/projects/${state.activeProject.id}/candidate/publish`, {method:"POST"});
+    toast("候选稿已设为正式成品");
+    await Promise.all([loadProjectLocations(state.activeProject.id), loadCandidateQuality(state.activeProject.id)]);
+  } catch(error) { toast(error.message); }
+});
 async function renderActiveProject() {
   const p = state.activeProject;
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); return; }
-  await loadProjectLocations(p.id);
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); return; }
+  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id)]);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);

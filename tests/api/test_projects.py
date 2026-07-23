@@ -103,6 +103,55 @@ def test_open_project_location_uses_server_resolved_path(tmp_path, monkeypatch) 
     assert client.post(f"/api/projects/{project['id']}/locations/formal/open").status_code == 409
 
 
+def test_candidate_diagnostics_and_controlled_publication(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Publish", "mode": "short", "genre": "romance",
+        "premise": "A relationship changes.", "target_words": 6000,
+    }).json()
+    root = tmp_path / "workspace" / f"publish-{project['id'][:6]}"
+    db.create_run("candidate-run", project["id"], "short-story", status="failed")
+    output = root / "runs" / "candidate-run" / "outputs"
+    output.mkdir(parents=True)
+    (output / "best-candidate.md").write_text('他说："回来。"\n她关上门。', encoding="utf-8")
+
+    diagnostics = client.get(f"/api/projects/{project['id']}/candidate")
+    published = client.post(f"/api/projects/{project['id']}/candidate/publish")
+
+    assert diagnostics.status_code == 200
+    assert diagnostics.json()["available"] is True
+    assert diagnostics.json()["run_id"] == "candidate-run"
+    assert published.status_code == 201
+    assert (root / "manuscript" / "story.md").read_text(encoding="utf-8") == "他说：“回来。”\n她关上门。"
+    assert (root / "chapters" / "chapter-01.md").is_file()
+
+
+def test_candidate_publication_rejects_process_text(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Unsafe", "mode": "short", "genre": "romance",
+        "premise": "A relationship changes.", "target_words": 6000,
+    }).json()
+    root = tmp_path / "workspace" / f"unsafe-{project['id'][:6]}"
+    db.create_run("bad-run", project["id"], "short-story", status="failed")
+    output = root / "runs" / "bad-run" / "outputs"
+    output.mkdir(parents=True)
+    (output / "best-candidate.md").write_text("以下是本片段的润色版本：\n正文。", encoding="utf-8")
+
+    response = client.post(f"/api/projects/{project['id']}/candidate/publish")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "candidate_blocked"
+
+
 def test_project_trash_restore_and_permanent_delete_api(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(),

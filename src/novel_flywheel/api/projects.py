@@ -1,10 +1,14 @@
 import platform
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
 
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
+from novel_flywheel.prose_quality import analyze_prose
+from novel_flywheel.revision import normalize_chinese_prose
+from novel_flywheel.storage import atomic_write
 
 
 router = APIRouter(prefix="/api", tags=["projects"])
@@ -72,6 +76,17 @@ def _location(project: Project, store: ProjectStore, kind: str) -> dict:
     return next(item for item in resolve_project_locations(project, store) if item["kind"] == kind)
 
 
+def _candidate(project: Project, store: ProjectStore) -> tuple[Path, str] | None:
+    root = project.path.resolve()
+    for run in store.db.list_runs(project.id):
+        outputs = project.path / "runs" / run["id"] / "outputs"
+        for name in ("best-candidate.md", "polish.md"):
+            path = outputs / name
+            if path.is_file() and path.resolve().is_relative_to(root):
+                return path, run["id"]
+    return None
+
+
 @router.get("/projects")
 def list_projects(request: Request) -> list[dict]:
     return [_public(project) for project in get_store(request).list()]
@@ -129,6 +144,52 @@ def get_project_locations(project_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     return {"project_id": project.id,
             "locations": resolve_project_locations(project, get_store(request))}
+
+
+@router.get("/projects/{project_id}/candidate")
+def get_candidate(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    resolved = _candidate(project, get_store(request))
+    if resolved is None:
+        return {"project_id": project.id, "available": False, "diagnostics": None}
+    path, run_id = resolved
+    text = path.read_text(encoding="utf-8")
+    return {"project_id": project.id, "available": bool(text.strip()), "run_id": run_id,
+            "path": str(path.resolve()), "characters": len(text),
+            "diagnostics": analyze_prose(text)}
+
+
+@router.post("/projects/{project_id}/candidate/publish", status_code=status.HTTP_201_CREATED)
+def publish_candidate(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    if project.mode != "short":
+        raise HTTPException(status_code=409, detail={"code": "candidate_mode_unsupported"})
+    resolved = _candidate(project, get_store(request))
+    if resolved is None:
+        raise HTTPException(status_code=409, detail={"code": "candidate_not_generated"})
+    path, run_id = resolved
+    text, repairs = normalize_chinese_prose(path.read_text(encoding="utf-8").strip())
+    diagnostics = analyze_prose(text)
+    if not text or diagnostics["blocking_count"]:
+        raise HTTPException(status_code=409, detail={"code": "candidate_blocked",
+            "message": "候选稿包含生产说明或正文损坏，不能发布"})
+    formal = project.path / "manuscript" / "story.md"
+    chapter = project.path / "chapters" / "chapter-01.md"
+    atomic_write(formal, text)
+    atomic_write(chapter, text)
+    published_at = datetime.now(timezone.utc).isoformat()
+    atomic_write(project.path / "manuscript" / "publication.json", (
+        f'{{"source_run":"{run_id}","source_file":"{path.name}",'
+        f'"published_at":"{published_at}","mechanical_repairs":{len(repairs)}}}\n'
+    ))
+    return {"status": "published", "project_id": project.id, "run_id": run_id,
+            "path": str(formal.resolve()), "diagnostics": diagnostics}
 
 
 @router.post("/projects/{project_id}/locations/{kind}/open")
