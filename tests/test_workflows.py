@@ -588,6 +588,50 @@ async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_short_story_stops_on_safe_conditional_pass(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Conditional", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    conditional = quality_review(
+        commercial=75, story=75, prose=75, decision="revise",
+        issues=[{"severity": "medium", "action": "Tighten one paragraph."}],
+    )
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), quality_review(),
+        "# Publishable candidate", conditional,
+        json.dumps({"facts": []}),
+    ])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    result = await service.run_short(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    assert gateway.roles.count("polish") == 1
+    assert gateway.roles.count("final_review") == 1
+    assert (project.path / "manuscript" / "story.md").read_text(
+        encoding="utf-8",
+    ) == "# Publishable candidate"
+    report = json.loads((
+        project.path / "runs" / result["id"] / "outputs" / "quality-report.json"
+    ).read_text(encoding="utf-8"))
+    assert report["status"] == "conditional_pass"
+    assert report["final_attempts"][0]["outcome"] == "conditional_pass"
+    event = next(
+        item for item in db.list_run_events(result["id"])
+        if item["event_type"] == "quality_gate"
+    )
+    assert event["severity"] == "success"
+    assert event["metadata"]["outcome"] == "conditional_pass"
+    assert "条件通过" in event["message"]
+
+
+@pytest.mark.asyncio
 async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

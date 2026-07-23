@@ -11,7 +11,13 @@ from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
-from novel_flywheel.quality import normalize_review, quality_gate, reader_sample, select_route
+from novel_flywheel.quality import (
+    normalize_review,
+    quality_gate,
+    quality_outcome,
+    reader_sample,
+    select_route,
+)
 from novel_flywheel.revision import (
     check_revision_constraints,
     compact_polish_findings,
@@ -365,11 +371,13 @@ class WorkflowService:
                 suffix=f"-{attempt + 1}" if attempt else "",
                 fallback_role="planning", allow_tools=project.mode != "short",
             ))
-            passed, reasons = quality_gate(final_review)
+            outcome, reasons = quality_outcome(final_review)
+            passed = outcome != "failed"
             report["final_attempts"].append({
                 "attempt": attempt + 1,
                 "review": final_review,
                 "passed": passed,
+                "outcome": outcome,
                 "reasons": reasons,
             })
             if best_review is None or final_review["score"] > best_review["score"]:
@@ -392,13 +400,15 @@ class WorkflowService:
             self._quality_assessed_event(run_id, "chief_editor", final_review, attempt + 1)
             self._write_quality_report(run_path, report)
             if passed:
-                report["status"] = "passed"
+                report["status"] = outcome
                 report["failure_reasons"] = []
                 self._write_quality_report(run_path, report)
                 self.db.add_run_event(
-                    run_id, "success", "quality_gate", "质量门槛已通过",
+                    run_id, "success", "quality_gate",
+                    "质量审核通过" if outcome == "passed" else "质量条件通过，建议小修",
                     stage="quality", metadata={
                         "attempt": attempt + 1,
+                        "outcome": outcome,
                         "score": final_review["score"],
                         "dimensions": final_review["dimensions"],
                     },
