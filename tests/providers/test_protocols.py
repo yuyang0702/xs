@@ -92,3 +92,16 @@ async def test_provider_retries_one_transient_disconnect() -> None:
 
     assert result.text == "recovered"
     assert route.call_count == 2
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_provider_does_not_retry_read_timeout() -> None:
+    route = respx.post("https://relay.test/v1/messages").mock(
+        side_effect=httpx.ReadTimeout("upstream response timed out"),
+    )
+
+    with pytest.raises(httpx.ReadTimeout, match="upstream response timed out"):
+        await AnthropicAdapter("https://relay.test", "secret").complete(REQUEST)
+
+    assert route.call_count == 1

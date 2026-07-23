@@ -315,6 +315,7 @@ async def test_stage_logs_explicit_model_fallback(tmp_path) -> None:
     assert event["metadata"]["fallback_type"] == "configured"
     assert event["metadata"]["provider_id"] == "backup-provider"
     assert event["metadata"]["model_id"] == "backup-model"
+    assert "primary_error" in event["metadata"]
 
 
 class ReaderFallbackGateway(RecordingGateway):

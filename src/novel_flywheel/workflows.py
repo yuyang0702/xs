@@ -996,6 +996,7 @@ class WorkflowService:
                         "model_name": result.receipt.get("model_name"),
                         "primary_provider_id": result.receipt.get("fallback_from_provider_id"),
                         "primary_model_id": result.receipt.get("fallback_from_model_id"),
+                        "primary_error": result.receipt.get("primary_error"),
                     },
                 )
             name = f"{stage}{suffix}"

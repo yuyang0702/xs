@@ -5,6 +5,7 @@ import time
 
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest
+from novel_flywheel.errors import describe_error
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 
@@ -43,15 +44,15 @@ class ModelGateway:
                     )
                 except asyncio.CancelledError:
                     raise
-                except Exception:
-                    pass
+                except Exception as retry_exc:
+                    exc = retry_exc
             fallback = self._resolve_configured_fallback(binding)
             if fallback is None:
                 raise
             result = await self._complete_resolved(
                 role, system, user, fallback, max_output_tokens,
             )
-            return self._mark_fallback(result, resolved)
+            return self._mark_fallback(result, resolved, exc)
 
     async def complete_configured_fallback(
         self, role: str, system: str, user: str,
@@ -112,7 +113,7 @@ class ModelGateway:
             )
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as exc:
             fallback = self._resolve_configured_fallback(binding)
             if fallback is None:
                 raise
@@ -120,7 +121,7 @@ class ModelGateway:
                 role, system, user, toolbox, fallback_context, run_id,
                 max_output_tokens, fallback,
             )
-            return self._mark_fallback(result, resolved)
+            return self._mark_fallback(result, resolved, exc)
 
     async def _complete_with_tools_resolved(
         self, role, system, user, toolbox, fallback_context, run_id,
@@ -219,12 +220,13 @@ class ModelGateway:
         return self.registry.resolve(provider_id, model_id)
 
     @staticmethod
-    def _mark_fallback(result: ModelResult, primary) -> ModelResult:
+    def _mark_fallback(result: ModelResult, primary, error: Exception) -> ModelResult:
         return ModelResult(result.text, {
             **result.receipt,
             "fallback_used": True,
             "fallback_from_provider_id": primary.provider_id,
             "fallback_from_model_id": primary.model_id,
+            "primary_error": describe_error(error),
         })
 
     async def _fallback(self, role, system, user, evidence, resolved, run_id, reason,

@@ -36,8 +36,8 @@ class HttpProvider:
                     headers={**headers, **self.headers},
                 )
                 break
-            except httpx.TransportError:
-                if attempt:
+            except httpx.TransportError as exc:
+                if isinstance(exc, httpx.TimeoutException) or attempt:
                     raise
                 await asyncio.sleep(0.25)
         if response.status_code in {400, 404, 422} and "tools" in payload:

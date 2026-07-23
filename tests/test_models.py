@@ -126,6 +126,7 @@ async def test_gateway_does_not_retry_full_timeout(tmp_path) -> None:
 
     assert primary.calls == 1
     assert result.receipt["fallback_used"] is True
+    assert result.receipt["primary_error"] == "request timed out"
 
 
 @pytest.mark.asyncio
