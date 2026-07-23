@@ -29,7 +29,7 @@ async def test_gateway_routes_role_and_returns_redacted_receipt(tmp_path) -> Non
     assert result.receipt == {
         "role": "draft", "provider_id": "provider", "model_id": "model",
         "model_name": "actual-model", "input_tokens": 10, "output_tokens": 20,
-        "request_id": "req-1",
+        "request_id": "req-1", "finish_reason": None,
     }
 
 

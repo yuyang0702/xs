@@ -2,6 +2,7 @@ from typing import Any
 
 
 CHECK_KINDS = {"required_text", "forbidden_text"}
+SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 
 
 def compact_review(review: dict[str, Any]) -> dict[str, Any]:
@@ -20,6 +21,34 @@ def compact_review(review: dict[str, Any]) -> dict[str, Any]:
             for issue in review.get("issues", []) if isinstance(issue, dict)
         ],
     }
+
+
+def compact_polish_findings(value: dict[str, Any], max_issues: int = 8) -> dict[str, Any]:
+    reviews = [item for item in value.values() if isinstance(item, dict)]
+    if "issues" in value:
+        reviews.insert(0, value)
+    issues = []
+    seen = set()
+    for review in reviews:
+        for issue in review.get("issues", []):
+            if not isinstance(issue, dict):
+                continue
+            key = (str(issue.get("category", "general")), str(issue.get("action", "")))
+            if key in seen:
+                continue
+            seen.add(key)
+            issues.append({
+                "category": key[0],
+                "severity": str(issue.get("severity", "medium")),
+                "evidence": str(issue.get("evidence", ""))[:280],
+                "action": key[1][:500],
+            })
+    issues.sort(key=lambda issue: SEVERITY_ORDER.get(issue["severity"], 2))
+    reader = value.get("target_reader") if isinstance(value.get("target_reader"), dict) else value
+    result = {"issues": issues[:max_issues]}
+    if isinstance(reader.get("reader_signals"), dict):
+        result["reader_signals"] = reader["reader_signals"]
+    return result
 
 
 def segment_map(parts: list[str], width: int = 320) -> list[dict[str, Any]]:

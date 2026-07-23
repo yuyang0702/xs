@@ -2,6 +2,7 @@ import pytest
 
 from novel_flywheel.revision import (
     check_revision_constraints,
+    compact_polish_findings,
     compact_review,
     normalize_revision_plan,
     segment_map,
@@ -71,3 +72,26 @@ def test_revision_checks_report_required_and_forbidden_text() -> None:
         "required text missing: lawyer escrow",
         "forbidden text remains: wedding",
     ]
+
+
+def test_polish_findings_prioritize_critical_issues_and_bound_evidence() -> None:
+    findings = {
+        "editorial": {
+            "issues": [
+                {"category": f"low-{index}", "severity": "low",
+                 "evidence": "minor", "action": "Minor polish."}
+                for index in range(12)
+            ] + [{
+                "category": "continuity", "severity": "critical",
+                "evidence": "x" * 1000, "action": "Unify wedding timeline.",
+            }],
+        },
+        "target_reader": {"reader_signals": {"would_pay": False}, "issues": []},
+    }
+
+    compacted = compact_polish_findings(findings, max_issues=8)
+
+    assert compacted["issues"][0]["category"] == "continuity"
+    assert len(compacted["issues"]) == 8
+    assert len(compacted["issues"][0]["evidence"]) == 280
+    assert compacted["reader_signals"] == {"would_pay": False}

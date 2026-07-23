@@ -14,6 +14,7 @@ from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.quality import normalize_review, quality_gate, reader_sample, select_route
 from novel_flywheel.revision import (
     check_revision_constraints,
+    compact_polish_findings,
     compact_review,
     normalize_revision_plan,
     segment_map,
@@ -538,6 +539,13 @@ class WorkflowService:
             revision_plan = await self._plan_structural_revision(
                 run_id, run_path, project, constraints, findings, story_map, suffix,
             )
+        elif not structural:
+            try:
+                findings = json.dumps(
+                    compact_polish_findings(json.loads(findings)), ensure_ascii=False,
+                )
+            except (json.JSONDecodeError, TypeError):
+                findings = findings[:4000]
         revision_rule = (
             "You may replace or remove implausible events and reorder material inside this segment "
             "to resolve the findings. Preserve the core premise, required ending, established facts, "
@@ -759,7 +767,13 @@ class WorkflowService:
                     max_output_tokens=self._stage_output_budget(stage),
                 )
             if not result.text.strip():
-                raise RuntimeError(f"{stage} model returned empty output")
+                raise RuntimeError(
+                    f"{stage} model returned empty output "
+                    f"(model={result.receipt.get('model_name', 'unknown')}, "
+                    f"input_tokens={result.receipt.get('input_tokens', 0)}, "
+                    f"output_tokens={result.receipt.get('output_tokens', 0)}, "
+                    f"finish_reason={result.receipt.get('finish_reason', 'unknown')})"
+                )
             name = f"{stage}{suffix}"
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}

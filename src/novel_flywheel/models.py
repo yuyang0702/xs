@@ -38,6 +38,7 @@ class ModelGateway:
             "input_tokens": response.input_tokens,
             "output_tokens": response.output_tokens,
             "request_id": response.raw_request_id,
+            "finish_reason": response.finish_reason,
         })
 
     async def complete_with_tools(self, role: str, system: str, user: str, toolbox,
@@ -155,5 +156,6 @@ class ModelGateway:
             "role": role, "provider_id": resolved.provider_id, "model_id": resolved.model_id,
             "model_name": resolved.model_name, "input_tokens": input_tokens,
             "output_tokens": output_tokens, "request_id": response.raw_request_id,
+            "finish_reason": response.finish_reason,
             "execution_mode": mode, "tool_call_count": calls,
         }
