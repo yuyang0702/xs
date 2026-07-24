@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from typing import Literal
 
+from novel_flywheel.errors import describe_error
+
 
 router = APIRouter(prefix="/api", tags=["wizards"])
 
@@ -95,6 +97,10 @@ async def interview_turn(wizard_id: str, payload: InterviewTurn, request: Reques
     except (PermissionError, RuntimeError) as exc:
         raise HTTPException(status_code=422,
                             detail={"code": "interview_model_failed", "message": str(exc)}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail={
+            "code": "interview_model_failed", "message": describe_error(exc),
+        }) from exc
 
 
 @router.post("/wizards/{wizard_id}/interview/{message_id}/apply")

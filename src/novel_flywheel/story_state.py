@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from novel_flywheel.db import Database
+
+
+STORY_STATE_SCHEMA = 2
 
 
 def validate_locked_facts(source: str, candidate: str,
@@ -61,21 +65,30 @@ class StoryStateStore:
     def ensure(self, project_id: str, project_path: Path) -> StoryState:
         current = self.get(project_id)
         if current:
+            if int(current.data.get("story_state_schema", 0)) >= STORY_STATE_SCHEMA:
+                return current
             imported = self._import(project_path)
-            if (current.revision == 1 and not current.data.get("locked_facts")
-                    and imported.get("locked_facts")):
-                data = {**current.data, "locked_facts": imported["locked_facts"]}
+            missing = {
+                key: imported[key]
+                for key in (
+                    "locked_facts", "confirmed_facts", "world_rules",
+                    "character_states", "timeline_events",
+                )
+                if not current.data.get(key) and imported.get(key)
+            }
+            data = {**current.data, **missing, "story_state_schema": STORY_STATE_SCHEMA}
+            if data != current.data:
                 serialized = json.dumps(data, ensure_ascii=False)
                 with self.db.connect() as connection:
                     connection.execute(
                         "UPDATE story_states SET state_json=?, updated_at=datetime('now') "
-                        "WHERE project_id=? AND revision=1",
-                        (serialized, project_id),
+                        "WHERE project_id=? AND revision=?",
+                        (serialized, project_id, current.revision),
                     )
                     connection.execute(
                         "UPDATE story_state_history SET state_json=? "
-                        "WHERE project_id=? AND revision=1",
-                        (serialized, project_id),
+                        "WHERE project_id=? AND revision=?",
+                        (serialized, project_id, current.revision),
                     )
                 return self.get(project_id) or current
             return current
@@ -189,10 +202,13 @@ class StoryStateStore:
             canon = {}
         facts = []
         for index, fact in enumerate(canon.get("facts", [])):
-            if not isinstance(fact, dict):
+            if isinstance(fact, dict):
+                key = str(fact.get("fact_key") or fact.get("subject") or f"legacy.{index}")
+                value = fact.get("value", fact.get("fact", ""))
+            elif isinstance(fact, str):
+                key, value = f"legacy.{index}", fact
+            else:
                 continue
-            key = str(fact.get("fact_key") or fact.get("subject") or f"legacy.{index}")
-            value = fact.get("value", fact.get("fact", ""))
             facts.append({"key": key, "value": value, "level": "confirmed", "source": "canon.json"})
         locked: dict[str, dict[str, Any]] = {}
         locks_path = project_path / "continuity" / "locks.json"
@@ -220,14 +236,61 @@ class StoryStateStore:
                     locked.setdefault(key, {
                         "key": key, "value": requirements[key], "source": "project.json",
                     })
+        world_rules = canon.get("world_rules", [])
+        if not world_rules and isinstance(requirements, dict) and requirements.get("world.rules"):
+            world_rules = [requirements["world.rules"]]
         manuscript = project_path / "manuscript" / "story.md"
+        character_states = canon.get("state") or StoryStateStore._character_states(project_path)
+        timeline = canon.get("timeline") or StoryStateStore._timeline(project_path)
         return {
+            "story_state_schema": STORY_STATE_SCHEMA,
             "locked_facts": list(locked.values()),
             "confirmed_facts": facts,
             "provisional_facts": [],
-            "world_rules": canon.get("world_rules", []),
-            "character_states": canon.get("state", {}),
-            "timeline_events": canon.get("timeline", []),
+            "world_rules": world_rules,
+            "character_states": character_states,
+            "timeline_events": timeline,
             "issue_ledger": [],
             "manuscript_revision": 1 if manuscript.is_file() and manuscript.stat().st_size else 0,
         }
+
+    @staticmethod
+    def _character_states(project_path: Path) -> dict[str, Any]:
+        path = project_path / "continuity" / "state.md"
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            return {}
+        states: dict[str, Any] = {}
+        frontmatter = text.split("---", 2)[1] if text.startswith("---") and text.count("---") >= 2 else ""
+        block = re.search(r"(?ms)^character-state:\s*\n(?P<body>(?:^[ \t].*\n?)*)", frontmatter)
+        if block:
+            current: dict[str, str] | None = None
+            for line in block.group("body").splitlines():
+                item = re.match(r"\s*-\s+name:\s*(.+)", line)
+                field = re.match(r"\s+([\w-]+):\s*(.+)", line)
+                if item:
+                    current = {}
+                    states[item.group(1).strip()] = current
+                elif current is not None and field:
+                    current[field.group(1).replace("-", "_")] = field.group(2).strip()
+        body = text.split("---", 2)[2] if text.startswith("---") and text.count("---") >= 2 else text
+        for name, value in re.findall(r"(?m)^-\s*([^:：|]+)[：:]\s*(.+)$", body):
+            states.setdefault(name.strip(), {"state": value.strip()})
+        return states
+
+    @staticmethod
+    def _timeline(project_path: Path) -> list[dict[str, str]]:
+        path = project_path / "plot" / "timeline.md"
+        try:
+            rows = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+                    if line.strip().startswith("|")]
+        except OSError:
+            return []
+        if len(rows) < 3:
+            return []
+        cells = lambda row: [value.strip() for value in row.strip("|").split("|")]
+        headers = cells(rows[0])
+        return [dict(zip(headers, values)) for row in rows[2:]
+                if len(values := cells(row)) == len(headers)
+                and not all(set(value) <= {"-", ":"} for value in values)]

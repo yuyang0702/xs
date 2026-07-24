@@ -106,3 +106,55 @@ def test_imports_project_and_continuity_locks_and_detects_literal_removal(tmp_pa
     assert validate_locked_facts(
         "Lin watches. The heroine leaves.", "Lin watches.", state.data,
     ) == ["locked fact removed: ending"]
+
+
+def test_initial_story_state_exposes_project_world_rules(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    project = tmp_path / "book"
+    make_project(db, project)
+    (project / "project.json").write_text(json.dumps({
+        "story_requirements": {"world.rules": "Doors only open once."},
+    }), encoding="utf-8")
+    store = StoryStateStore(db)
+
+    state = store.ensure("book", project)
+
+    assert state.data["world_rules"] == ["Doors only open once."]
+
+
+def test_existing_story_state_backfills_visible_project_material_once(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    project = tmp_path / "book"
+    make_project(db, project)
+    (project / "project.json").write_text(json.dumps({
+        "story_requirements": {"world.rules": "Doors only open once."},
+    }), encoding="utf-8")
+    (project / "memory" / "canon.json").write_text(json.dumps({
+        "facts": ["Lin knows the truth."],
+    }), encoding="utf-8")
+    (project / "continuity").mkdir()
+    (project / "continuity" / "state.md").write_text(
+        "---\ncharacter-state:\n  - name: Lin\n    location: station\n---\n\n"
+        "## Key State\n\n- Mei: waiting at home\n", encoding="utf-8",
+    )
+    (project / "plot").mkdir()
+    (project / "plot" / "timeline.md").write_text(
+        "# Timeline\n\n| When | Event |\n|---|---|\n| Dawn | Lin leaves |\n", encoding="utf-8",
+    )
+    store = StoryStateStore(db)
+    initial = store.ensure("book", project)
+    candidate = store.create_candidate("book", "run", initial.revision, "polish", "hash")
+    legacy = {key: value for key, value in initial.data.items() if key != "story_state_schema"}
+    store.commit(candidate.id, initial.revision, {**legacy, "world_rules": []})
+
+    state = store.ensure("book", project)
+
+    assert state.revision == 2
+    assert state.data["world_rules"] == ["Doors only open once."]
+    assert state.data["confirmed_facts"][0]["value"] == "Lin knows the truth."
+    assert state.data["character_states"]["Lin"]["location"] == "station"
+    assert state.data["character_states"]["Mei"]["state"] == "waiting at home"
+    assert state.data["timeline_events"] == [{"When": "Dawn", "Event": "Lin leaves"}]
+    assert state.data["story_state_schema"] == 2

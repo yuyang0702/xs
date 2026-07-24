@@ -23,6 +23,11 @@ class FakeInterviews:
         return {"wizard": {"id": wizard_id}, "applied_fields": field_ids}
 
 
+class FailingInterviews(FakeInterviews):
+    async def turn(self, wizard_id, message=None):
+        raise ConnectionError("planning provider disconnected")
+
+
 def test_wizard_create_autosave_resume_and_confirm(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
@@ -94,3 +99,18 @@ def test_wizard_interview_history_turn_and_apply_routes(tmp_path) -> None:
     assert turn.json()["content"] == "主角最害怕失去什么？"
     assert history.json()[0]["id"] == "assistant"
     assert applied.json()["applied_fields"] == ["protagonist.arc"]
+
+
+def test_wizard_interview_returns_provider_connection_error(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", interview_service=FailingInterviews(),
+    ))
+    wizard = client.post("/api/wizards", json={"mode": "short"}).json()
+
+    response = client.post(f"/api/wizards/{wizard['id']}/interview", json={"message": "outline"})
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "interview_model_failed", "message": "planning provider disconnected",
+    }

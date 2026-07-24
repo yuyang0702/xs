@@ -340,11 +340,16 @@ class WorkflowService:
             self._post_write_maintenance(run_id, project)
             confirmed = []
             for index, fact in enumerate(canon.get("facts", [])):
-                if not isinstance(fact, dict):
+                if isinstance(fact, dict):
+                    key = str(fact.get("fact_key") or fact.get("subject") or f"generated.{index}")
+                    value = fact.get("value", fact.get("fact", ""))
+                elif isinstance(fact, str):
+                    key, value = f"generated.{index}", fact
+                else:
                     continue
                 confirmed.append({
-                    "key": str(fact.get("fact_key") or fact.get("subject") or f"generated.{index}"),
-                    "value": fact.get("value", fact.get("fact", "")),
+                    "key": key,
+                    "value": value,
                     "level": "confirmed",
                     "source": run_id,
                 })

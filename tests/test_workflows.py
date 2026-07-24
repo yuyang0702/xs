@@ -31,7 +31,7 @@ class FakeGateway:
             json.dumps({"score": 84, "hard_fail": False, "issues": ["strengthen paid hook"]}),
             "# Final Story\nHuman, polished prose.",
             json.dumps({"score": 92, "hard_fail": False, "issues": []}),
-            json.dumps({"facts": [{"subject": "hero", "fact": "survived"}]}),
+            json.dumps({"facts": ["The hero survived."]}),
         ])
 
     async def complete(self, role, system, user, max_output_tokens=None):
@@ -158,6 +158,7 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert state is not None
     assert state.revision == 2
     assert state.data["manuscript_revision"] == 1
+    assert state.data["confirmed_facts"][0]["value"] == "The hero survived."
     assert any(item["event_type"] == "story_state_committed" for item in events)
 
 

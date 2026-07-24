@@ -42,6 +42,14 @@ class ReasoningBudgetGateway(FakeGateway):
         return SimpleNamespace(text=text, receipt={"model_name": "reasoning-planner"})
 
 
+class DisconnectOnceGateway(FakeGateway):
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.calls.append({"role": role, "system": system, "user": user})
+        if len(self.calls) == 1:
+            raise ConnectionError("client disconnected")
+        return SimpleNamespace(text=self.text, receipt={"model_name": "planner"})
+
+
 def make_service(tmp_path, output, *, locked=False):
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -152,3 +160,19 @@ async def test_interview_allows_reasoning_model_enough_output_budget(tmp_path) -
 
     assert result["content"] == "请继续描述女主的性格。"
     assert gateway.calls[0]["max_output_tokens"] >= 4096
+
+
+@pytest.mark.asyncio
+async def test_interview_retry_does_not_duplicate_orphaned_user_message(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_wizard("wizard", "draft", "long", SCHEMA, {})
+    gateway = DisconnectOnceGateway('{"message":"Continue.","suggestions":[]}')
+    service = WizardInterviewService(db, gateway)
+
+    with pytest.raises(ConnectionError):
+        await service.turn("wizard", "A long outline")
+    result = await service.turn("wizard", "A long outline")
+
+    assert result["content"] == "Continue."
+    assert [item["role"] for item in service.history("wizard")] == ["user", "assistant"]

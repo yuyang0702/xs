@@ -41,7 +41,10 @@ class WizardInterviewService:
         if len(message) > 4000:
             raise ValueError("Interview message is too long")
         if message:
-            self.db.save_interview_message(uuid.uuid4().hex, wizard_id, "user", message, [])
+            history = self.db.list_interview_messages(wizard_id)
+            if not (history and history[-1]["role"] == "user"
+                    and history[-1]["content"] == message):
+                self.db.save_interview_message(uuid.uuid4().hex, wizard_id, "user", message, [])
         elif self.db.list_interview_messages(wizard_id):
             raise ValueError("Interview message is required")
 
