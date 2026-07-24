@@ -41,6 +41,8 @@ Short-story polish uses bounded segments with adjacent boundaries, a compact sto
 
 Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks and may target at most 40% of scenes. Invalid or truncated plans stop the correction pass and preserve `best-candidate.md` instead of rewriting the whole manuscript. Exact consecutive duplicate paragraph blocks are removed locally before review.
 
+Revision planning uses compact Skill/constraint prompts. If the planning role returns empty, truncated, or invalid JSON, the Runtime retries the plan once with the review role; a second invalid result fails closed and preserves the best candidate.
+
 Polish input has circuit breakers: 120,000 tokens for the initial pass, 60,000 for each structural correction pass, and 220,000 across the run. Checkpoints are reused when resuming the same pass; failed editorial rounds are never reused as accepted corrections.
 
 Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).

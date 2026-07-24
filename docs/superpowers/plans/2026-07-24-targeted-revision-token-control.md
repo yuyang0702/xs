@@ -14,6 +14,7 @@ Truncated 4,096-token revision plans triggered an all-segment fallback. Every re
 6. Remove exact consecutive duplicate paragraph blocks locally.
 7. Stop before the next request at 120,000 initial, 60,000 structural-round, or 220,000 cumulative polish input tokens.
 8. Emit distinct plan-blocked, token-budget, checkpoint, and quality-halted events.
+9. Compact revision-planning context and retry an invalid/truncated planning result once with the review role before failing closed.
 
 ## Verification
 

@@ -7,6 +7,7 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.revision import segment_map
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.workflows import PolishTokenBudgetError, RevisionPlanError, WorkflowService
@@ -778,11 +779,59 @@ async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path
             suffix="-2", structural=True,
         )
 
-    assert gateway.roles == ["planning"]
+    assert gateway.roles == ["planning", "review"]
     event = next(item for item in db.list_run_events("blocked")
                  if item["event_type"] == "revision_plan_blocked")
     assert event["severity"] == "error"
     assert not (run_path / "outputs" / "polish-2.md").exists()
+
+
+@pytest.mark.asyncio
+async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Plan fallback", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=12000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    plan = json.dumps({
+        "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+        "tasks": [{"segments": [2], "instruction": "Repair the canon conflict."}],
+    })
+
+    class TruncatedPlanGateway(RecordingGateway):
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.roles.append(role)
+            self.calls.append({"role": role, "system": system, "user": user})
+            if role == "planning":
+                return ModelResult("", {
+                    "model_name": "deepseek-v4-pro", "input_tokens": 5615,
+                    "output_tokens": 8192, "finish_reason": "max_tokens",
+                })
+            return ModelResult(plan, {"model_name": "review-model"})
+
+    gateway = TruncatedPlanGateway([])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("plan-fallback", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "plan-fallback"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._plan_structural_revision(
+        "plan-fallback", run_path, project, "constraints",
+        json.dumps({"issues": [{
+            "category": "canon", "severity": "critical", "action": "Repair canon.",
+        }]}),
+        segment_map(["A" * 300] * 5), "-2",
+    )
+
+    assert result["target_segments"] == [2]
+    assert gateway.roles == ["planning", "review"]
+    assert any(event["event_type"] == "model_fallback"
+               for event in db.list_run_events("plan-fallback"))
 
 
 @pytest.mark.asyncio

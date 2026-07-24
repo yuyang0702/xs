@@ -971,14 +971,34 @@ class WorkflowService:
             f"COMPACT SEGMENT MAP:\n{json.dumps(story_map, ensure_ascii=False)}"
         )
         try:
-            output = await self._stage(
-                run_id, run_path, project, "revision_plan", constraints, prompt,
-                suffix=f"{suffix}-revision-plan", model_role="planning", allow_tools=False,
-            )
-            plan = normalize_revision_plan(
-                self._json_object(output), len(story_map),
-                max_target_ratio=0.4, require_checks=require_checks,
-            )
+            try:
+                output = await self._stage(
+                    run_id, run_path, project, "revision_plan", constraints, prompt,
+                    suffix=f"{suffix}-revision-plan", model_role="planning", allow_tools=False,
+                )
+                plan = normalize_revision_plan(
+                    self._json_object(output), len(story_map),
+                    max_target_ratio=0.4, require_checks=require_checks,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.db.add_run_event(
+                    run_id, "warning", "model_fallback",
+                    "Revision planning model failed; retrying with the review role",
+                    stage="revision_plan", metadata={
+                        "fallback_role": "review", "error": str(exc),
+                    },
+                )
+                output = await self._stage(
+                    run_id, run_path, project, "revision_plan", constraints, prompt,
+                    suffix=f"{suffix}-revision-plan-fallback", model_role="review",
+                    allow_tools=False,
+                )
+                plan = normalize_revision_plan(
+                    self._json_object(output), len(story_map),
+                    max_target_ratio=0.4, require_checks=require_checks,
+                )
             event_type, severity = "revision_planned", "success"
         except asyncio.CancelledError:
             raise
@@ -1080,13 +1100,15 @@ class WorkflowService:
                     [*skill_run.receipts, *optional.receipts],
                 )
             skills = [receipt.skill_name for receipt in skill_run.receipts]
+            compact_context = stage in {"polish", "revision_plan"}
             model_skill_prompt = (
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
-                if stage == "polish" else skill_run.prompt
+                if compact_context else skill_run.prompt
             )
             model_constraints = constraints
-            if stage == "polish":
+            if compact_context:
                 model_constraints = self.constraint_prompts.compact(constraints)
+            if stage == "polish":
                 project_constraints = (project.path / "constraints.md").read_text(encoding="utf-8")
                 if project_constraints not in model_constraints:
                     model_constraints += "\n\nPROJECT-SPECIFIC CONSTRAINTS:\n" + project_constraints

@@ -33,6 +33,8 @@ Input-token circuit breakers are 120,000 for initial polish, 60,000 per structur
 
 Structural plans must target no more than 40% of stable `scene-NN` scenes and contain literal checks for hard issues. A truncated/invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.
 
+Revision planning compacts its Skill and constraint prompts. Empty, truncated, invalid-JSON, over-scoped, or checkless hard-issue plans retry once through the `review` role. If that result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
+
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.
