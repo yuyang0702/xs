@@ -145,11 +145,15 @@ $("#style-sample-analyze").addEventListener("click", async () => {
   if (!state.activeProject) return toast("请先选择作品");
   const text = $("#style-sample-text").value.trim(); if (text.length < 200) return toast("范文至少需要 200 个字符");
   const button = $("#style-sample-analyze"); button.disabled = true; button.textContent = "分析中...";
+  $("#style-sample-status").innerHTML = '<p class="skill-meta">正在调用规划模型分析...</p>';
   try {
     const file = $("#style-sample-file").files[0];
     await api(`/api/projects/${state.activeProject.id}/style-sample`, {method:"POST", body:JSON.stringify({text,source_name:file?.name || "pasted-reference.txt"})});
     await loadStyleSample(state.activeProject.id); toast("范文笔感已应用");
-  } catch(error) { toast(`分析失败：${error.message}`); }
+  } catch(error) {
+    $("#style-sample-status").innerHTML = `<p class="skill-meta error-text">分析失败：${escapeHtml(error.message)}</p>`;
+    toast(`分析失败：${error.message}`);
+  }
   finally { button.disabled = false; button.textContent = "分析并应用笔感"; }
 });
 $("#style-sample-delete").addEventListener("click", async () => {

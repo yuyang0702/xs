@@ -41,6 +41,24 @@ def test_analyzer_flags_three_consecutive_fragment_sentences() -> None:
     assert any(item["code"] == "uniform_short_sentence_run" for item in report["findings"])
 
 
+def test_analyzer_flags_consecutive_one_sentence_paragraphs() -> None:
+    text = (
+        "Rain covered the road.\n\n"
+        "She missed the light.\n\n"
+        "A horn sounded.\n\n"
+        "The car crossed the flooded junction."
+    )
+
+    report = analyze_prose(text)
+
+    finding = next(
+        item for item in report["findings"]
+        if item["code"] == "one_sentence_paragraph_run"
+    )
+    assert finding["count"] == 4
+    assert report["metrics"]["one_sentence_paragraph_run"] == 4
+
+
 def test_voice_drift_is_advisory() -> None:
     baseline = [prose_metrics("他说：“走吧。”\n她摇头。" * 20) for _ in range(3)]
     current = prose_metrics("这是一个极长的叙述句，它不断延伸并持续解释人物为什么这样行动以及这意味着什么。" * 30)

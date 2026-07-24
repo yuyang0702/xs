@@ -1,4 +1,10 @@
-from novel_flywheel.context_policy import polish_context, stage_output_budget
+from novel_flywheel.context_policy import estimate_input_tokens, polish_context, stage_output_budget
+
+
+def test_input_token_estimator_is_conservative_for_chinese_and_ascii() -> None:
+    estimated = estimate_input_tokens("中" * 100 + "a" * 400)
+
+    assert 190 <= estimated <= 220
 
 
 def test_polish_context_contains_global_position_without_repeating_manuscript() -> None:

@@ -52,7 +52,19 @@ class StyleSampleService:
             "每条必须是可执行的中文写作规则。\n\n范文：\n" + sample,
             max_output_tokens=1200,
         )
-        profile = self._parse_profile(result.text)
+        try:
+            profile = self._parse_profile(result.text)
+        except ValueError:
+            repaired = await self.gateway.complete(
+                "planning",
+                "把给定的文笔分析整理为指定 JSON，不增加新内容，只返回 JSON。",
+                json.dumps({
+                    "required_fields": ["summary", *FIELDS],
+                    "model_response": result.text[:12000],
+                }, ensure_ascii=False),
+                max_output_tokens=1200,
+            )
+            profile = self._parse_profile(repaired.text)
         folder = Path(project.path) / "style-samples"
         base = self._without_managed_block(ensure_style_profile(project))
         atomic_write(folder / "reference.txt", sample + "\n")

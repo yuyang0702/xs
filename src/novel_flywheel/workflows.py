@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Iterator
 
 from novel_flywheel.db import Database
-from novel_flywheel.context_policy import polish_context, stage_output_budget
+from novel_flywheel.context_policy import estimate_input_tokens, polish_context, stage_output_budget
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
@@ -611,25 +611,15 @@ class WorkflowService:
         return [part.strip() for part in text.split(cls.SHORT_SEGMENT_SEPARATOR) if part.strip()]
 
     @classmethod
-    def _split_polish_segments(cls, text: str, target: int = 2000,
-                               maximum: int = 2400) -> list[str]:
+    def _split_polish_segments(cls, text: str, target: int = 1400,
+                               maximum: int = 1800) -> list[str]:
         chunks: list[str] = []
         for original in cls._split_segments(text):
             first_chunk = len(chunks)
             paragraphs = [item.strip() for item in re.split(r"\n\s*\n", original) if item.strip()]
             units: list[str] = []
             for paragraph in paragraphs:
-                if len(paragraph) <= maximum:
-                    units.append(paragraph)
-                    continue
-                sentences = re.findall(r"[^。！？!?]+[。！？!?]?", paragraph)
-                for sentence in sentences:
-                    sentence = sentence.strip()
-                    while len(sentence) > maximum:
-                        units.append(sentence[:maximum])
-                        sentence = sentence[maximum:]
-                    if sentence:
-                        units.append(sentence)
+                units.append(paragraph)
             current: list[str] = []
             size = 0
             for unit in units:
@@ -728,7 +718,9 @@ class WorkflowService:
 
     async def _polish_short_segments(self, run_id: str, run_path: Path, project: Project,
                                      constraints: str, text: str, findings: str,
-                                     suffix: str = "", structural: bool = False) -> str:
+                                     suffix: str = "", structural: bool = False,
+                                     recovery_depth: int = 0,
+                                     recovery_rule: str | None = None) -> str:
         original_parts = self._split_segments(text)
         grouped_parts = (
             [(part, group) for group, part in enumerate(original_parts, 1)]
@@ -760,14 +752,14 @@ class WorkflowService:
                     "Runtime corrected revision targets using exact manuscript search",
                     stage="revision_plan", metadata={"corrections": target_corrections},
                 )
-        elif not structural:
+        elif not structural and recovery_rule is None:
             try:
                 findings = json.dumps(
                     compact_polish_findings(json.loads(findings)), ensure_ascii=False,
                 )
             except (json.JSONDecodeError, TypeError):
                 findings = findings[:4000]
-        revision_rule = (
+        revision_rule = recovery_rule or (
             "You may replace or remove implausible events and reorder material inside this segment "
             "to resolve the findings. Preserve the core premise, required ending, established facts, "
             "and approximate length."
@@ -776,7 +768,6 @@ class WorkflowService:
         )
         style_profile = ensure_style_profile(project)
         polished_parts: list[str] = []
-        fallback_only = False
         primary_circuit_open = any(
             event["event_type"] == "polish_circuit_opened"
             for event in self.db.list_run_events(run_id)
@@ -872,7 +863,6 @@ class WorkflowService:
                 configured_fallback and (primary_circuit_open or not priority)
             )
             route = (
-                "draft_fallback" if fallback_only else
                 "circuit_fallback" if primary_circuit_open and prefer_configured else
                 "configured_fallback" if prefer_configured else "primary"
             )
@@ -884,43 +874,45 @@ class WorkflowService:
                     "priority": priority, "characters": len(part),
                 },
             )
-            if fallback_only:
+            try:
                 polished_part = await self._stage(
                     run_id, run_path, project, "polish", constraints, prompt,
-                    suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
+                    suffix=part_suffix, allow_tools=False,
+                    prefer_configured_fallback=prefer_configured,
                     output_source_characters=len(part),
                 )
-            else:
-                try:
-                    polished_part = await self._stage(
-                        run_id, run_path, project, "polish", constraints, prompt,
-                        suffix=part_suffix, allow_tools=False,
-                        prefer_configured_fallback=prefer_configured,
-                        output_source_characters=len(part),
-                    )
-                    if getattr(polished_part, "receipt", {}).get("fallback_used"):
-                        primary_circuit_open = True
-                        self.db.add_run_event(
-                            run_id, "warning", "polish_circuit_opened",
-                            "润色主模型已回退成功，本轮后续重点段直接使用配置备用模型",
-                            stage="polish", metadata={"segment": index},
-                        )
-                except asyncio.CancelledError:
-                    raise
-                except Exception as exc:
-                    fallback_only = True
+                if getattr(polished_part, "receipt", {}).get("fallback_used"):
+                    primary_circuit_open = True
                     self.db.add_run_event(
-                        run_id, "warning", "model_fallback",
-                        "polish 当前路由失败，本轮剩余分段切换到 draft 角色模型",
-                        stage="polish", metadata={
-                            "fallback_role": "draft", "failed_route": route, "error": str(exc),
-                        },
+                        run_id, "warning", "polish_circuit_opened",
+                        "润色主模型已回退成功，本轮后续重点段直接使用配置备用模型",
+                        stage="polish", metadata={"segment": index},
                     )
-                    polished_part = await self._stage(
-                        run_id, run_path, project, "polish", constraints, prompt,
-                        suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
-                        output_source_characters=len(part),
-                    )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                children = self._split_failed_polish_segment(part)
+                if (not self._is_recoverable_polish_error(exc)
+                        or recovery_depth >= 2 or children is None):
+                    raise
+                self.db.add_run_event(
+                    run_id, "warning", "polish_segment_split",
+                    "润色中转请求失败，仅拆分当前片段后重试",
+                    stage="polish", metadata={
+                        "segment": index, "characters": len(part),
+                        "child_characters": [len(child) for child in children],
+                        "split_depth": recovery_depth + 1, "failed_route": route,
+                        "error": describe_error(exc),
+                    },
+                )
+                polished_part = await self._polish_short_segments(
+                    run_id, run_path, project, constraints,
+                    self.SHORT_SEGMENT_SEPARATOR.join(children), plan_context,
+                    suffix=f"{part_suffix}-split-{recovery_depth + 1}",
+                    structural=False, recovery_depth=recovery_depth + 1,
+                    recovery_rule=revision_rule,
+                )
+                polished_part = polished_part.replace(self.SHORT_SEGMENT_SEPARATOR, "\n\n")
             round_input_tokens += int(
                 getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
             )
@@ -1010,6 +1002,28 @@ class WorkflowService:
                 )
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
         return polished
+
+    @staticmethod
+    def _is_recoverable_polish_error(exc: Exception) -> bool:
+        message = str(exc).lower()
+        return any(marker in message for marker in (
+            "502", "504", "524", "timeout", "timed out", "connecterror",
+            "connection reset", "connection refused", "connection attempts failed",
+            "server disconnected", "bad gateway", "gateway timeout",
+        ))
+
+    @staticmethod
+    def _split_failed_polish_segment(text: str, minimum: int = 400) -> tuple[str, str] | None:
+        paragraphs = [item.strip() for item in re.split(r"\n\s*\n", text) if item.strip()]
+        if len(paragraphs) < 2 or len(text) < minimum * 2:
+            return None
+        midpoint = len(text) / 2
+        split_at = min(range(1, len(paragraphs)), key=lambda index: abs(
+            len("\n\n".join(paragraphs[:index])) - midpoint
+        ))
+        left = "\n\n".join(paragraphs[:split_at])
+        right = "\n\n".join(paragraphs[split_at:])
+        return (left, right) if min(len(left), len(right)) >= minimum else None
 
     async def _plan_structural_revision(self, run_id: str, run_path: Path, project: Project,
                                         constraints: str, findings: str,
@@ -1174,13 +1188,16 @@ class WorkflowService:
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
                 if compact_context else skill_run.prompt
             )
-            model_constraints = constraints
-            if compact_context:
-                model_constraints = self.constraint_prompts.compact(constraints)
+            source_constraints = constraints
             if stage == "polish":
                 project_constraints = (project.path / "constraints.md").read_text(encoding="utf-8")
-                if project_constraints not in model_constraints:
-                    model_constraints += "\n\nPROJECT-SPECIFIC CONSTRAINTS:\n" + project_constraints
+                if project_constraints not in source_constraints:
+                    source_constraints += (
+                        "\n\nPROJECT-SPECIFIC CONSTRAINTS:\n" + project_constraints
+                    )
+            model_constraints = source_constraints
+            if compact_context:
+                model_constraints = self.constraint_prompts.compact(source_constraints)
             self.db.add_run_event(
                 run_id, "success", "skills_loaded", f"已加载 {len(skills)} 个 Skill",
                 stage=stage, metadata={
@@ -1189,8 +1206,8 @@ class WorkflowService:
                     "source_prompt_characters": len(skill_run.prompt),
                     "compact_prompt": model_skill_prompt != skill_run.prompt,
                     "constraint_characters": len(model_constraints),
-                    "source_constraint_characters": len(constraints),
-                    "compact_constraints": model_constraints != constraints,
+                    "source_constraint_characters": len(source_constraints),
+                    "compact_constraints": model_constraints != source_constraints,
                 },
             )
             style = (
@@ -1200,6 +1217,28 @@ class WorkflowService:
                 else ""
             )
             system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}{style}"
+            estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
+            if stage == "polish" and estimated_input_tokens > 12_000:
+                model_constraints = ConstraintPromptCompactor(max_chars=4000).compact(
+                    source_constraints
+                )
+                model_skill_prompt = SkillPromptCompactor(max_chars=5000).compact(
+                    skill_run.prompt, skill_run.receipts,
+                )
+                system = (
+                    f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}"
+                    f"\n\n{model_skill_prompt}{style}"
+                )
+                estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
+            if stage == "polish":
+                self.db.add_run_event(
+                    run_id, "info", "polish_input_sized",
+                    "Polish request context sized before provider call",
+                    stage=stage, metadata={
+                        "estimated_input_tokens": estimated_input_tokens,
+                        "user_characters": len(user), "system_characters": len(system),
+                    },
+                )
             gateway_role = model_role or stage
             output_budget = self._output_budget_for_call(
                 stage, output_source_characters, gateway_role, prefer_configured_fallback,
@@ -1478,9 +1517,12 @@ class WorkflowService:
 
     def _output_budget_for_call(self, stage: str, source_characters: int | None,
                                 gateway_role: str, prefer_configured_fallback: bool) -> int | None:
-        if stage == "polish" and gateway_role == "polish" and not prefer_configured_fallback:
+        if stage == "polish" and gateway_role == "polish":
             binding = self.db.get_role_binding("polish") or {}
-            model = self.db.get_model(binding.get("primary_model_id", "")) or {}
+            model_key = (
+                "fallback_model_id" if prefer_configured_fallback else "primary_model_id"
+            )
+            model = self.db.get_model(binding.get(model_key, "")) or {}
             identity = f"{model.get('display_name', '')} {model.get('model_name', '')}".lower()
             if "claude" in identity:
                 return 8192

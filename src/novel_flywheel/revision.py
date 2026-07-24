@@ -44,6 +44,16 @@ def assess_polish_candidate(source: str, candidate: str,
     source_report = analyze_prose(source)
     if report["targeted_count"] > source_report["targeted_count"] + 2:
         reasons.append("style_regression")
+    source_metrics = source_report["metrics"]
+    candidate_metrics = report["metrics"]
+    if re.search(r"[。！？.!?]", source) and (
+        candidate_metrics["short_sentence_run"] > max(3, source_metrics["short_sentence_run"])
+        or candidate_metrics["short_sentence_ratio"]
+        > source_metrics["short_sentence_ratio"] + 0.05
+        or candidate_metrics["one_sentence_paragraph_run"]
+        > max(2, source_metrics["one_sentence_paragraph_run"])
+    ):
+        reasons.append("sentence_rhythm_regression")
     return {
         "accepted": not reasons, "reasons": reasons, "ratio": round(ratio, 3),
         "length_bounds": {

@@ -58,6 +58,18 @@ def analyze_prose(text: str) -> dict[str, Any]:
     if ending_match:
         findings.append(_finding("theme_summary_ending", text, ending_match, severity="high"))
     metrics = prose_metrics(text)
+    if metrics["one_sentence_paragraph_run"] >= 3:
+        paragraphs = [item.strip() for item in re.split(r"\n\s*\n", text) if item.strip()]
+        sample = next((item for item in paragraphs if _sentence_count(item) == 1), text[:80])
+        match = re.search(re.escape(sample), text)
+        if match:
+            item = _finding("one_sentence_paragraph_run", text, match)
+            item["count"] = int(metrics["one_sentence_paragraph_run"])
+            item["action"] = (
+                "Merge consecutive one-sentence paragraphs that describe one continuous action; "
+                "keep paragraph breaks only for dialogue, emphasis, suspense, or scene changes."
+            )
+            findings.append(item)
     if metrics["short_sentence_run"] >= 3:
         fake = re.search(r"[^。！？\n]{1,14}[。！？]", text)
         if fake:
@@ -76,20 +88,30 @@ def analyze_prose(text: str) -> dict[str, Any]:
 
 def prose_metrics(text: str) -> dict[str, float]:
     clean = text.replace(SEGMENT_SEPARATOR, "")
-    sentences = [item.strip() for item in re.split(r"[。！？!?]+", clean) if item.strip()]
+    sentences = [item.strip() for item in re.split(r"[。！？.!?]+", clean) if item.strip()]
     lengths = [len(item) for item in sentences] or [0]
     short_run = run = 0
     for length in lengths:
         run = run + 1 if length <= 14 else 0
         short_run = max(short_run, run)
     dialogue_chars = sum(len(item) for item in re.findall(r"[“\"][^”\"\n]+[”\"]", clean))
+    paragraph_run = run = 0
+    for paragraph in (item.strip() for item in re.split(r"\n\s*\n", clean)):
+        is_single = bool(paragraph) and not paragraph.startswith("#") and _sentence_count(paragraph) == 1
+        run = run + 1 if is_single else 0
+        paragraph_run = max(paragraph_run, run)
     return {
         "mean_sentence_length": round(mean(lengths), 2),
         "short_sentence_ratio": round(sum(length <= 14 for length in lengths) / len(lengths), 3),
         "short_sentence_run": float(short_run),
+        "one_sentence_paragraph_run": float(paragraph_run),
         "dialogue_ratio": round(dialogue_chars / max(1, len(clean)), 3),
         "weak_adverb_density": round(len(WEAK_ADVERBS.findall(clean)) * 1000 / max(1, len(clean)), 3),
     }
+
+
+def _sentence_count(text: str) -> int:
+    return len(re.findall(r"[。！？.!?](?:[”\"']|$)", text.strip()))
 
 
 def compare_voice_metrics(current: dict[str, float], history: list[dict[str, float]]) -> dict[str, Any]:

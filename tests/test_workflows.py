@@ -1096,11 +1096,97 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
 
 
 def test_polish_splitter_merges_tiny_trailing_chunk() -> None:
-    text = "A" * 2000 + "\n\n" + "B" * 300
+    text = "A" * 1400 + "\n\n" + "B" * 300
 
     chunks = WorkflowService._split_polish_segments(text)
 
-    assert [len(chunk) for chunk in chunks] == [2302]
+    assert [len(chunk) for chunk in chunks] == [1702]
+
+
+def test_default_polish_segments_stay_below_adaptive_maximum() -> None:
+    text = "\n\n".join(f"paragraph-{index}-" + "x" * 430 for index in range(8))
+
+    chunks = WorkflowService._split_polish_segments(text)
+
+    assert len(chunks) > 1
+    assert max(map(len, chunks)) <= 1800
+
+
+@pytest.mark.asyncio
+async def test_recoverable_polish_failure_splits_segment_without_draft_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Split retry", mode="short", genre="romance",
+        premise="Two people reconcile.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.roles = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.roles.append(role)
+            if len(self.roles) == 1:
+                raise RuntimeError("524 Gateway Timeout")
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "claude-sonnet-5", "input_tokens": 2000,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("split-retry", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "split-retry"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = "\n\n".join((f"Paragraph {index}. " * 35) for index in range(6))
+
+    result = await service._polish_short_segments(
+        "split-retry", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    assert result == "\n\n".join(item.strip() for item in manuscript.split("\n\n"))
+    assert gateway.roles and set(gateway.roles) == {"polish"}
+    assert any(event["event_type"] == "polish_segment_split"
+               for event in db.list_run_events("split-retry"))
+
+
+@pytest.mark.asyncio
+async def test_nonrecoverable_polish_failure_does_not_call_draft(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="No fallback", mode="short", genre="romance",
+        premise="Two people reconcile.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.roles = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.roles.append(role)
+            raise RuntimeError("401 invalid api key")
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("no-fallback", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "no-fallback"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    with pytest.raises(RuntimeError, match="401"):
+        await service._polish_short_segments(
+            "no-fallback", run_path, project, "constraints", "Paragraph. " * 80, "{}",
+        )
+
+    assert gateway.roles == ["polish"]
 
 
 def test_claude_primary_polish_uses_full_budget_while_other_routes_stay_dynamic(tmp_path) -> None:
@@ -1126,8 +1212,68 @@ def test_claude_primary_polish_uses_full_budget_while_other_routes_stay_dynamic(
     assert service._output_budget_for_call("polish", 2000, "polish", False) == 8192
     assert service._output_budget_for_call("polish", 2000, "polish", True) < 8192
 
+    db.save_model(
+        model_id="claude-backup", provider_id="provider", display_name="Claude Backup",
+        model_name="claude-sonnet-5",
+    )
+    db.save_role_binding("polish", "provider", "claude", "provider", "claude-backup")
+    assert service._output_budget_for_call("polish", 2000, "polish", True) == 8192
+
     db.save_role_binding("polish", "provider", "backup", None, None)
     assert service._output_budget_for_call("polish", 2000, "polish", False) < 8192
+
+
+@pytest.mark.asyncio
+async def test_polish_stage_adapts_large_rule_context_without_lowering_output_budget(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="claude", provider_id="provider", display_name="Claude",
+        model_name="claude-sonnet-5",
+    )
+    db.save_role_binding("polish", "provider", "claude", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Bounded input", mode="short", genre="romance",
+        premise="Two people reconcile.", target_words=3000,
+    ))
+    (project.path / "constraints.md").write_text(
+        "\n".join(f"- Must preserve rule {index}: " + "x" * 180 for index in range(120)),
+        encoding="utf-8",
+    )
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append((system, user, max_output_tokens))
+            return ModelResult("Polished prose.", {"model_name": "claude-sonnet-5"})
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("bounded-input", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "bounded-input"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    await service._stage(
+        "bounded-input", run_path, project, "polish", "Must preserve the ending.",
+        "MANUSCRIPT SEGMENT:\nSource prose.", allow_tools=False,
+        output_source_characters=1200,
+    )
+
+    system, user, budget = gateway.calls[0]
+    from novel_flywheel.context_policy import estimate_input_tokens
+    assert estimate_input_tokens(system + user) <= 12000
+    assert budget == 8192
 
 
 def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:

@@ -1,6 +1,12 @@
 import json
 import math
+import re
 from typing import Any
+
+
+def estimate_input_tokens(text: str) -> int:
+    cjk = len(re.findall(r"[\u3400-\u9fff]", text))
+    return cjk + math.ceil((len(text) - cjk) / 4)
 
 
 def _json(value: Any, limit: int) -> str:

@@ -112,6 +112,19 @@ def test_polish_candidate_accepts_local_improvement() -> None:
     assert accepted["reasons"] == []
 
 
+def test_polish_candidate_rejects_short_sentence_rhythm_regression() -> None:
+    source = "A measured sentence carries the action forward with enough context. " * 8
+    candidate = (
+        "Door opened. He entered. Light moved. Rain fell. She stopped. "
+        "A measured sentence carries the action forward with enough context. " * 6
+    )
+
+    rejected = assess_polish_candidate(source, candidate)
+
+    assert rejected["accepted"] is False
+    assert "sentence_rhythm_regression" in rejected["reasons"]
+
+
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:
     with pytest.raises(ValueError, match="actionable task"):
         normalize_revision_plan({"tasks": []}, segment_count=3)

@@ -70,6 +70,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'scrollIntoView({behavior:"smooth",block:"start"})' in script
     assert 'catch(error) { toast(error.message); }' in script
     assert "loadProjectLocations" in script
+    assert "正在调用规划模型分析" in script
+    assert "分析失败：${escapeHtml(error.message)}" in script
     assert "navigator.clipboard.writeText" in script
     assert "locations/${button.dataset.openLocation}/open" in script
     assert "/candidate/publish" in script

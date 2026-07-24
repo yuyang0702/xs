@@ -20,6 +20,16 @@ class Gateway:
         return SimpleNamespace(text=json.dumps(self.output, ensure_ascii=False), receipt={})
 
 
+class SequenceGateway(Gateway):
+    def __init__(self, outputs):
+        super().__init__()
+        self.outputs = iter(outputs)
+
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.calls.append((role, system, user, max_output_tokens))
+        return SimpleNamespace(text=next(self.outputs), receipt={})
+
+
 def project(tmp_path):
     root = tmp_path / "book"
     root.mkdir()
@@ -67,6 +77,28 @@ async def test_failed_analysis_preserves_existing_files(tmp_path):
 
     assert source.read_text(encoding="utf-8") == "old source"
     assert profile.read_text(encoding="utf-8") == "old profile"
+
+
+@pytest.mark.asyncio
+async def test_analyze_repairs_non_json_model_output_once(tmp_path):
+    profile = {
+        "summary": "restrained",
+        "sentence_rhythm": ["vary sentence length"],
+        "dialogue": ["use short dialogue"],
+        "narrative_distance": ["stay close to the viewpoint"],
+        "characterization": ["show emotion through action"],
+        "diction": ["use concrete words"],
+        "avoid": ["avoid abstract summaries"],
+    }
+    gateway = SequenceGateway(["Here is the analysis, not JSON.", json.dumps(profile)])
+
+    result = await StyleSampleService(gateway).analyze(
+        project(tmp_path), "A representative prose sample. " * 20, "sample.txt",
+    )
+
+    assert result["configured"] is True
+    assert result["profile"]["summary"] == "restrained"
+    assert len(gateway.calls) == 2
 
 
 @pytest.mark.asyncio

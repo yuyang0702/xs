@@ -22,6 +22,8 @@ Manual project-data edits update one allowlisted StoryState section through the 
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
 
+Style-sample analysis keeps failures visible in the workbench. If the planning model's first response is not the required JSON profile, the service makes one bounded formatting-repair call before rejecting it.
+
 The style-sample application scope is stored in the existing `project.json` as `style_sample_scope`. Missing values mean `polish`, preserving old behavior. `draft_and_polish` adds the same project `style-profile.md` to draft system context. Run context display is derived from existing events and receipts and stores no duplicate prompt, secret, or header data.
 
 ## Short-story model route
@@ -30,7 +32,7 @@ The short-story workflow reuses complete planning, draft, and valid review check
 
 Polish receives one bounded manuscript segment, adjacent boundaries, a compact full-story map, authoritative facts, character state, findings, and stage-specific Skills. Ordinary expression polishing cannot change plot events. Runtime rejects abnormal length changes and removal of literal locked facts, preserving the original segment.
 
-Three or more consecutive short sentences are reported to polish as a rhythm issue. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, and suspense pauses; Runtime does not mechanically join sentences.
+Three or more consecutive short sentences or one-sentence paragraphs are reported to polish as rhythm issues. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, suspense, and scene changes. Runtime does not mechanically join sentences, but rejects a polish candidate that makes the short-sentence ratio, longest short-sentence run, or one-sentence-paragraph run materially worse than its source.
 
 ### Token budgets
 
@@ -45,7 +47,7 @@ Three or more consecutive short sentences are reported to polish as a rhythm iss
 | Final review | 8,192 |
 | Maintenance extraction | 4,096 |
 
-Claude receives 8,192 immediately because observed relay responses repeatedly consumed the smaller dynamic allowance before returning visible prose. This avoids paying for the same input twice. Non-Claude routes retain dynamic budgets. A non-Claude polish response that is empty specifically because of `finish_reason=max_tokens` may retry once at 8,192; other errors fall through to the configured fallback.
+Configured Claude polish routes receive 8,192 immediately because observed relay responses repeatedly consumed the smaller dynamic allowance before returning visible prose. This applies to both the primary and configured Claude fallback; non-Claude routes retain dynamic budgets. A non-Claude polish response that is empty specifically because of `finish_reason=max_tokens` may retry once at 8,192.
 
 HTTP `524` means the relay reached the upstream model but timed out waiting for a response. It is not a manuscript validation error. The configured fallback handles it without modifying the formal manuscript.
 
@@ -55,7 +57,9 @@ Structural plans must target no more than 40% of stable `scene-NN` scenes and co
 
 Revision planning compacts its Skill and constraint prompts. Empty, truncated, invalid-JSON, over-scoped, or checkless hard-issue plans retry once through the `review` role. If that result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
 
-Ordinary polish splits around 2,000 characters and merges a trailing chunk below 800 characters when the combined chunk is at most 2,800 characters. Structural correction does not reuse those prose chunks: each targeted `scene-NN` is sent exactly once, preventing one scene-level task from being repeated over multiple fragments. Structural candidates use a 60%-180% length contract; ordinary candidates use 70%-160%. Rejection metadata includes absolute bounds and a short candidate preview. Prompt metadata always appears before `MANUSCRIPT SEGMENT`; source prose is last.
+Ordinary polish targets about 1,400 characters and normally stays below 1,800, splitting only at existing paragraph boundaries. A single oversized paragraph is preserved instead of being cut mechanically. Before each provider call, Runtime estimates the complete system and user input; if it is unusually large, repeated Skill and constraint context is compacted further while manuscript prose, locked facts, relevant character state, and the current task remain intact. Structural correction does not reuse ordinary prose chunks: each targeted `scene-NN` is sent exactly once unless a recoverable relay failure requires safe paragraph splitting. Structural candidates use a 60%-180% length contract; ordinary candidates use 70%-160%. Rejection metadata includes absolute bounds and a short candidate preview. Prompt metadata always appears before `MANUSCRIPT SEGMENT`; source prose is last.
+
+After configured Claude routes return a recoverable `502`, `504`, `524`, timeout, or connection failure, Runtime splits only the failed segment near a paragraph boundary and retries its children to a bounded depth. Successful children use source-hash checkpoints. Authentication, configuration, validation, and minimum-size failures stop transparently. Polish never silently switches to the Draft role.
 
 Rejected candidates are never written as polish checkpoints. A later resume can retry the rejected source instead of mistaking the preserved original for a completed edit.
 
@@ -67,6 +71,8 @@ Structural correction has two length thresholds: a preferred floor of 60% and a 
 - `polish_max_tokens_retry`: a dynamically-budgeted non-Claude polish output was empty and received one full-budget retry.
 - `model_fallback`: the primary route failed and a configured model or role fallback is running.
 - `polish_circuit_opened`: a successful fallback is reused for later segments in the same pass.
+- `polish_input_sized`: estimated complete input size recorded before a provider call.
+- `polish_segment_split`: a recoverable relay failure caused only the failed segment to be split and retried.
 - `polish_output_rejected`: local validation kept the original segment.
 - `revision_plan_blocked`: the plan was invalid, truncated, over the 40% scope, or lacked deterministic checks; no scene rewrite started.
 - `token_budget_exhausted`: the next polish request was blocked by the round or cumulative input-token cap.
