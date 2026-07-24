@@ -7,6 +7,7 @@ from novel_flywheel.revision import (
     compact_review,
     normalize_revision_plan,
     normalize_chinese_prose,
+    remove_consecutive_duplicate_blocks,
     segment_map,
 )
 
@@ -33,8 +34,9 @@ def test_compact_review_keeps_every_issue_without_arbitrary_truncation() -> None
 def test_segment_map_includes_both_ends_of_every_segment() -> None:
     mapped = segment_map(["A" * 100 + "middle" + "B" * 100, "second"], width=20)
 
-    assert mapped[0] == {"segment": 1, "characters": 206,
+    assert mapped[0] == {"segment": 1, "scene_id": "scene-01", "characters": 206,
                          "opening": "A" * 20, "ending": "B" * 20}
+    assert mapped[1]["scene_id"] == "scene-02"
     assert mapped[1]["opening"] == "second"
     assert mapped[1]["ending"] == "second"
 
@@ -111,6 +113,31 @@ def test_polish_candidate_accepts_local_improvement() -> None:
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:
     with pytest.raises(ValueError, match="actionable task"):
         normalize_revision_plan({"tasks": []}, segment_count=3)
+
+
+def test_structural_revision_plan_limits_targets_to_forty_percent() -> None:
+    with pytest.raises(ValueError, match="40%"):
+        normalize_revision_plan({
+            "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+            "tasks": [{"segments": [1, 2, 3], "instruction": "Rewrite everything."}],
+        }, segment_count=5, max_target_ratio=0.4, require_checks=True)
+
+
+def test_structural_revision_plan_requires_deterministic_checks() -> None:
+    with pytest.raises(ValueError, match="deterministic check"):
+        normalize_revision_plan({
+            "checks": [],
+            "tasks": [{"segments": [2], "instruction": "Repair the contradiction."}],
+        }, segment_count=5, max_target_ratio=0.4, require_checks=True)
+
+
+def test_remove_consecutive_duplicate_blocks_keeps_single_copy() -> None:
+    text = "Opening.\n\nClimax A.\n\nClimax B.\n\nClimax A.\n\nClimax B.\n\nEnding."
+
+    cleaned, removals = remove_consecutive_duplicate_blocks(text)
+
+    assert cleaned == "Opening.\n\nClimax A.\n\nClimax B.\n\nEnding."
+    assert removals == 1
 
 
 def test_revision_checks_report_required_and_forbidden_text() -> None:

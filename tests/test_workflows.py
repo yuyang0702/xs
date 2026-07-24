@@ -9,7 +9,7 @@ from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
-from novel_flywheel.workflows import WorkflowService
+from novel_flywheel.workflows import PolishTokenBudgetError, RevisionPlanError, WorkflowService
 
 
 REQUIRED_SKILLS = {
@@ -752,11 +752,164 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
     assert checks == {"failures": []}
 
 
+@pytest.mark.asyncio
+async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Blocked", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=12000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway(["not valid json"])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("blocked", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "blocked"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["A" * 500] * 5)
+
+    with pytest.raises(RevisionPlanError, match="Structural revision plan"):
+        await service._polish_short_segments(
+            "blocked", run_path, project, "constraints", manuscript,
+            json.dumps({"issues": [{"severity": "critical", "action": "Repair canon."}]}),
+            suffix="-2", structural=True,
+        )
+
+    assert gateway.roles == ["planning"]
+    event = next(item for item in db.list_run_events("blocked")
+                 if item["event_type"] == "revision_plan_blocked")
+    assert event["severity"] == "error"
+    assert not (run_path / "outputs" / "polish-2.md").exists()
+
+
+@pytest.mark.asyncio
+async def test_structural_polish_stops_at_round_input_budget(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Budget", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=12000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    plan = json.dumps({
+        "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+        "tasks": [{"segments": [1, 2], "instruction": "Repair the contradiction."}],
+    })
+
+    class BudgetGateway(RecordingGateway):
+        async def complete(self, role, system, user, max_output_tokens=None):
+            result = await super().complete(role, system, user, max_output_tokens)
+            if role == "polish":
+                result.receipt["input_tokens"] = 60000
+            return result
+
+    gateway = BudgetGateway([plan, "A" * 500])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("budget", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "budget"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["A" * 500] * 5)
+
+    with pytest.raises(PolishTokenBudgetError, match="round"):
+        await service._polish_short_segments(
+            "budget", run_path, project, "constraints", manuscript,
+            json.dumps({"issues": [{"severity": "critical", "action": "Repair."}]}),
+            suffix="-2", structural=True,
+        )
+
+    assert gateway.roles == ["planning", "polish"]
+    assert any(item["event_type"] == "token_budget_exhausted"
+               for item in db.list_run_events("budget"))
+
+
+@pytest.mark.asyncio
+async def test_polish_stops_before_call_when_total_input_budget_is_spent(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Total budget", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway([])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("total-budget", project.id, "short-story", status="running")
+    db.add_run_event(
+        "total-budget", "success", "stage_completed", "prior polish",
+        stage="polish", metadata={"input_tokens": 220000},
+    )
+    run_path = project.path / "runs" / "total-budget"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    with pytest.raises(PolishTokenBudgetError, match="total"):
+        await service._polish_short_segments(
+            "total-budget", run_path, project, "constraints", "A" * 500, "{}",
+        )
+
+    assert gateway.roles == []
+
+
+@pytest.mark.asyncio
+async def test_quality_flow_preserves_best_candidate_when_polish_is_blocked(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Preserved", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("preserved", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "preserved"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    async def reader(*args, **kwargs):
+        return service._review(quality_review())
+
+    async def blocked(*args, **kwargs):
+        raise PolishTokenBudgetError("Polish total input token budget exhausted")
+
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_polish_short_segments", blocked)
+    draft = "The best available draft."
+
+    with pytest.raises(RuntimeError, match="preserved best candidate"):
+        await service._quality_polish(
+            "preserved", run_path, project, "constraints", draft,
+            service._review(quality_review(commercial=60, story=60, prose=60)),
+        )
+
+    assert (run_path / "outputs" / "best-candidate.md").read_text(
+        encoding="utf-8",
+    ) == draft
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(
+        encoding="utf-8",
+    ))
+    assert report["status"] == "halted"
+    assert report["halt_reason"] == "token_budget_exhausted"
+
+
 def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("planning") == 12288
     assert WorkflowService._stage_output_budget("draft") == 8192
     assert WorkflowService._stage_output_budget("review") == 4096
-    assert WorkflowService._stage_output_budget("revision_plan") == 4096
+    assert WorkflowService._stage_output_budget("revision_plan") == 8192
     assert WorkflowService._stage_output_budget("polish") == 8192
     assert WorkflowService._stage_output_budget("final_review") == 8192
     assert WorkflowService._stage_output_budget("maintenance") == 4096

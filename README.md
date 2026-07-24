@@ -39,6 +39,10 @@ Each novel has an independent versioned StoryState. Models read the same authori
 
 Short-story polish uses bounded segments with adjacent boundaries, a compact story map, character state, locked facts, and stage-specific Skills. Claude primary polish starts with an 8,192 output limit because the configured relay repeatedly exhausted smaller limits before returning visible prose. Other polish routes retain dynamic limits, so ordinary segments do not inherit Claude's cost profile. Final structured review also uses 8,192 to avoid truncated JSON.
 
+Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks and may target at most 40% of scenes. Invalid or truncated plans stop the correction pass and preserve `best-candidate.md` instead of rewriting the whole manuscript. Exact consecutive duplicate paragraph blocks are removed locally before review.
+
+Polish input has circuit breakers: 120,000 tokens for the initial pass, 60,000 for each structural correction pass, and 220,000 across the run. Checkpoints are reused when resuming the same pass; failed editorial rounds are never reused as accepted corrections.
+
 Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).
 
 ## Long novels

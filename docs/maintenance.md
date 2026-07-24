@@ -19,7 +19,7 @@ Polish receives one bounded manuscript segment, adjacent boundaries, a compact f
 | Planning | 12,288 |
 | Draft | 8,192 |
 | Review | 4,096 |
-| Revision plan | 4,096 |
+| Revision plan | 8,192 |
 | Claude primary polish | 8,192 on the first request |
 | Other polish routes | Dynamic, 2,048-8,192 based on segment size |
 | Final review | 8,192 |
@@ -29,6 +29,10 @@ Claude receives 8,192 immediately because observed relay responses repeatedly co
 
 HTTP `524` means the relay reached the upstream model but timed out waiting for a response. It is not a manuscript validation error. The configured fallback handles it without modifying the formal manuscript.
 
+Input-token circuit breakers are 120,000 for initial polish, 60,000 per structural correction round, and 220,000 cumulative polish input per run. The Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.
+
+Structural plans must target no more than 40% of stable `scene-NN` scenes and contain literal checks for hard issues. A truncated/invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.
+
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.
@@ -36,6 +40,10 @@ HTTP `524` means the relay reached the upstream model but timed out waiting for 
 - `model_fallback`: the primary route failed and a configured model or role fallback is running.
 - `polish_circuit_opened`: a successful fallback is reused for later segments in the same pass.
 - `polish_output_rejected`: local validation kept the original segment.
+- `revision_plan_blocked`: the plan was invalid, truncated, over the 40% scope, or lacked deterministic checks; no scene rewrite started.
+- `token_budget_exhausted`: the next polish request was blocked by the round or cumulative input-token cap.
+- `quality_revision_halted`: correction stopped and `best-candidate.md` was preserved.
+- `polish_checkpoint_reused`: an interrupted pass reused an identical source segment from its own checkpoint.
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.
 - `failed`: the run stopped; formal files remain at their last committed revision.
@@ -49,4 +57,3 @@ HTTP `524` means the relay reached the upstream model but timed out waiting for 
 5. Run the focused test and full `pytest -q` suite.
 6. Restart with `start-novel-console.cmd` or the same configured data directory and port.
 7. Verify the home page, project count, database path, and relevant state rows.
-

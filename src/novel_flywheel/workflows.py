@@ -30,6 +30,7 @@ from novel_flywheel.revision import (
     compact_review,
     normalize_chinese_prose,
     normalize_revision_plan,
+    remove_consecutive_duplicate_blocks,
     segment_map,
 )
 from novel_flywheel.prose_quality import analyze_prose, compare_voice_metrics, prose_metrics
@@ -48,8 +49,19 @@ class StageText(str):
         return instance
 
 
+class RevisionPlanError(RuntimeError):
+    pass
+
+
+class PolishTokenBudgetError(RuntimeError):
+    pass
+
+
 class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
+    INITIAL_POLISH_INPUT_CAP = 120_000
+    STRUCTURAL_POLISH_INPUT_CAP = 60_000
+    TOTAL_POLISH_INPUT_CAP = 220_000
 
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
                  skills: SkillGate, crewai_data_dir: Path | None = None,
@@ -442,10 +454,13 @@ class WorkflowService:
             self._write_quality_report(run_path, report)
 
         findings = {"editorial": review, "target_reader": reader_review}
-        polished = await self._polish_short_segments(
-            run_id, run_path, project, constraints, draft,
-            json.dumps(findings, ensure_ascii=False),
-        )
+        try:
+            polished = await self._polish_short_segments(
+                run_id, run_path, project, constraints, draft,
+                json.dumps(findings, ensure_ascii=False),
+            )
+        except (RevisionPlanError, PolishTokenBudgetError) as exc:
+            self._halt_quality_revision(run_id, run_path, report, draft, exc)
 
         reasons: list[str] = []
         best_polished = polished
@@ -520,11 +535,16 @@ class WorkflowService:
                         "attempt": attempt + 1, "reasons": reasons,
                     },
                 )
-                polished = await self._polish_short_segments(
-                    run_id, run_path, project, constraints, best_polished,
-                    json.dumps(final_review, ensure_ascii=False),
-                    suffix=f"-{attempt + 2}", structural=True,
-                )
+                try:
+                    polished = await self._polish_short_segments(
+                        run_id, run_path, project, constraints, best_polished,
+                        json.dumps(final_review, ensure_ascii=False),
+                        suffix=f"-{attempt + 2}", structural=True,
+                    )
+                except (RevisionPlanError, PolishTokenBudgetError) as exc:
+                    self._halt_quality_revision(
+                        run_id, run_path, report, best_polished, exc,
+                    )
 
         report["status"] = "failed"
         report["failure_reasons"] = reasons
@@ -741,6 +761,15 @@ class WorkflowService:
         checkpoint_root = (
             run_path / "outputs" / "polish-checkpoints" / (suffix.strip("-") or "initial")
         )
+        round_input_tokens = 0
+        prior_input_tokens = sum(
+            int(event.get("metadata", {}).get("input_tokens", 0) or 0)
+            for event in self.db.list_run_events(run_id)
+            if event["event_type"] == "stage_completed" and event.get("stage") == "polish"
+        )
+        round_cap = (
+            self.STRUCTURAL_POLISH_INPUT_CAP if structural else self.INITIAL_POLISH_INPUT_CAP
+        )
         for index, part in enumerate(parts, 1):
             group = part_groups[index - 1]
             if revision_plan and group not in revision_plan["target_segments"]:
@@ -755,6 +784,23 @@ class WorkflowService:
                     stage="polish", metadata={"segment": index, "route": "checkpoint"},
                 )
                 continue
+            if round_input_tokens >= round_cap or (
+                prior_input_tokens + round_input_tokens >= self.TOTAL_POLISH_INPUT_CAP
+            ):
+                limit = "round" if round_input_tokens >= round_cap else "total"
+                self.db.add_run_event(
+                    run_id, "error", "token_budget_exhausted",
+                    "Polish input token budget exhausted; stopped before the next model call",
+                    stage="polish", metadata={
+                        "limit": limit,
+                        "round_input_tokens": round_input_tokens,
+                        "total_input_tokens": prior_input_tokens + round_input_tokens,
+                        "round_cap": round_cap,
+                        "total_cap": self.TOTAL_POLISH_INPUT_CAP,
+                        "next_segment": index,
+                    },
+                )
+                raise PolishTokenBudgetError(f"Polish {limit} input token budget exhausted")
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             next_head = parts[index][:800] if index < len(parts) else ""
             local_report = analyze_prose(part)
@@ -838,6 +884,9 @@ class WorkflowService:
                         suffix=f"{part_suffix}-fallback", model_role="draft", allow_tools=False,
                         output_source_characters=len(part),
                     )
+            round_input_tokens += int(
+                getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
+            )
             voice = character_fingerprints(project.path, part)
             required = re.findall(r"(?m)^##\s+(.+)$", voice)
             assessment = assess_polish_candidate(part, polished_part, required)
@@ -868,7 +917,10 @@ class WorkflowService:
                 if part_group == group
             ))
         polished = self.SHORT_SEGMENT_SEPARATOR.join(restored_groups)
+        polished, duplicate_removals = remove_consecutive_duplicate_blocks(polished)
         polished, repairs = normalize_chinese_prose(polished)
+        if duplicate_removals:
+            repairs.append("consecutive_duplicate_blocks")
         if repairs:
             self.db.add_run_event(
                 run_id, "success", "local_format_repair",
@@ -897,13 +949,24 @@ class WorkflowService:
             review = compact_review(json.loads(findings))
         except (json.JSONDecodeError, TypeError):
             review = {"issues": [{"action": findings}]}
+        hard_categories = {
+            "canon", "canon_conflict", "logic_continuity", "manuscript_corruption",
+            "missing_required_content", "production_text", "story_structure",
+        }
+        require_checks = any(
+            issue.get("severity") == "critical" or issue.get("category") in hard_categories
+            for issue in review.get("issues", []) if isinstance(issue, dict)
+        )
         prompt = (
             "Create a minimal structural revision plan for this segmented manuscript. Map every "
-            "action to the exact segment numbers that must change. Do not target unrelated segments. "
+            "review issue to one separate task and the exact scene_id/segment numbers that must "
+            "change. Target no more than 40% of scenes and never target unrelated scenes. "
             "Return one JSON object only with: global_facts (string array), checks (array of objects "
             "using kind required_text or forbidden_text and value), and tasks (array with segments as "
-            "integer array and instruction as text). Checks must be literal, unambiguous manuscript "
-            "text constraints; omit checks that require semantic judgment.\n\n"
+            "integer array and instruction as text). Include at least one literal deterministic check "
+            "for hard fact, canon, duplication, or required-content issues. Do not combine all review "
+            "issues into one instruction. Checks must be unambiguous manuscript text constraints; "
+            "semantic judgments belong in the scene task.\n\n"
             f"COMPLETE REVIEW FINDINGS:\n{json.dumps(review, ensure_ascii=False)}\n\n"
             f"COMPACT SEGMENT MAP:\n{json.dumps(story_map, ensure_ascii=False)}"
         )
@@ -912,29 +975,21 @@ class WorkflowService:
                 run_id, run_path, project, "revision_plan", constraints, prompt,
                 suffix=f"{suffix}-revision-plan", model_role="planning", allow_tools=False,
             )
-            plan = normalize_revision_plan(self._json_object(output), len(story_map))
+            plan = normalize_revision_plan(
+                self._json_object(output), len(story_map),
+                max_target_ratio=0.4, require_checks=require_checks,
+            )
             event_type, severity = "revision_planned", "success"
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            actions = [issue.get("action", "") for issue in review.get("issues", [])
-                       if isinstance(issue, dict) and issue.get("action")]
-            plan = {
-                "global_facts": [],
-                "checks": [],
-                "tasks": [{
-                    "segments": list(range(1, len(story_map) + 1)),
-                    "instruction": "\n".join(actions) or "Resolve all supplied review findings.",
-                }],
-                "target_segments": list(range(1, len(story_map) + 1)),
-            }
-            event_type, severity = "revision_plan_fallback", "warning"
             self.db.add_run_event(
-                run_id, severity, event_type,
-                "Revision planner failed; using conservative all-segment correction",
+                run_id, "error", "revision_plan_blocked",
+                "Structural revision plan is invalid; revision stopped to preserve the best candidate",
                 stage="revision_plan",
-                metadata={"error": str(exc), "target_segments": plan["target_segments"]},
+                metadata={"error": str(exc)},
             )
+            raise RevisionPlanError(f"Structural revision plan failed: {exc}") from exc
         else:
             self.db.add_run_event(
                 run_id, severity, event_type, "Structural revision plan created",
@@ -956,6 +1011,26 @@ class WorkflowService:
             run_path / "outputs" / "quality-report.json",
             json.dumps(report, ensure_ascii=False, indent=2),
         )
+
+    def _halt_quality_revision(self, run_id: str, run_path: Path, report: dict,
+                               candidate: str, error: Exception) -> None:
+        reason = (
+            "revision_plan_invalid" if isinstance(error, RevisionPlanError)
+            else "token_budget_exhausted"
+        )
+        report["status"] = "halted"
+        report["halt_reason"] = reason
+        report["failure_reasons"] = [str(error)]
+        atomic_write(run_path / "outputs" / "best-candidate.md", candidate)
+        self._write_quality_report(run_path, report)
+        self.db.add_run_event(
+            run_id, "error", "quality_revision_halted",
+            "Quality revision stopped and preserved the best candidate",
+            stage="quality", metadata={"reason": reason, "error": str(error)},
+        )
+        raise RuntimeError(
+            f"Quality revision halted; preserved best candidate ({reason})"
+        ) from error
 
     def _quality_assessed_event(self, run_id: str, source: str, review: dict,
                                 attempt: int | None = None) -> None:

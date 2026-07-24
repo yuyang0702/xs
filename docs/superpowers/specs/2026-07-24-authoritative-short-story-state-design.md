@@ -17,12 +17,14 @@ Every generation starts from a state revision. Models produce a candidate manusc
 3. Store draft and polish outputs as candidates, never as the formal manuscript.
 4. Give polish calls a story map, immutable facts, segment role, adjacent boundaries, and explicit edit permissions.
 5. Validate length, required locked facts, boundary continuity, and deterministic revision checks.
-6. Allow at most two targeted structural repair rounds.
+6. Allow at most two targeted structural repair rounds. Each plan uses stable `scene-NN` ids, includes deterministic checks for hard issues, and targets at most 40% of scenes.
 7. Atomically promote the accepted candidate and new state; keep rejected and best candidates for diagnosis.
 
 ## Token policy
 
-Skills remain stage-bound and compacted. Review reports are compact structured issue lists. Polish receives one segment plus adjacent boundaries and compact story context, not the full manuscript. Claude primary polish uses 8,192 on its first request because observed relay responses repeatedly exhausted dynamic limits without visible prose; other polish routes remain dynamically sized. Final review uses 8,192 to keep structured JSON complete. Long-story retrieval remains on SQLite FTS in this phase.
+Skills remain stage-bound and compacted. Review reports are compact structured issue lists. Polish receives one segment plus adjacent boundaries and compact story context, not the full manuscript. Claude primary polish uses 8,192 on its first request because observed relay responses repeatedly exhausted dynamic limits without visible prose; other polish routes remain dynamically sized. Revision planning and final review use 8,192 to keep structured JSON complete. Input caps are 120,000 for initial polish, 60,000 per structural round, and 220,000 cumulative per run. Same-pass checkpoints are reused by source hash after interruption; editorially failed rounds are not reused as accepted corrections. Long-story retrieval remains on SQLite FTS in this phase.
+
+An invalid or truncated structural plan is a fail-closed condition: Runtime preserves the best candidate and performs no all-scene fallback. Exact consecutive multi-paragraph duplicates are removed deterministically; near-duplicate or semantic story problems remain model-reviewed scene tasks.
 
 ## Migration and safety
 

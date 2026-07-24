@@ -1,4 +1,5 @@
 import re
+import math
 from typing import Any
 
 from novel_flywheel.prose_quality import analyze_prose
@@ -95,6 +96,7 @@ def segment_map(parts: list[str], width: int = 320) -> list[dict[str, Any]]:
     return [
         {
             "segment": index,
+            "scene_id": f"scene-{index:02d}",
             "characters": len(part),
             "opening": part[:width],
             "ending": part[-width:],
@@ -103,7 +105,9 @@ def segment_map(parts: list[str], width: int = 320) -> list[dict[str, Any]]:
     ]
 
 
-def normalize_revision_plan(value: dict[str, Any], segment_count: int) -> dict[str, Any]:
+def normalize_revision_plan(value: dict[str, Any], segment_count: int,
+                            max_target_ratio: float | None = None,
+                            require_checks: bool = False) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("Revision plan must be an object")
     facts = [item.strip() for item in value.get("global_facts", [])
@@ -130,12 +134,39 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int) -> dict[s
             tasks.append({"segments": valid_segments, "instruction": instruction.strip()})
     if not tasks:
         raise ValueError("Revision plan has no actionable task")
+    target_segments = sorted({number for task in tasks for number in task["segments"]})
+    if require_checks and not checks:
+        raise ValueError("Structural revision plan requires a deterministic check")
+    if max_target_ratio is not None:
+        limit = max(1, math.ceil(segment_count * max_target_ratio))
+        if len(target_segments) > limit:
+            raise ValueError(
+                f"Structural revision plan targets more than {max_target_ratio:.0%} of scenes"
+            )
     return {
         "global_facts": facts,
         "checks": checks,
         "tasks": tasks,
-        "target_segments": sorted({number for task in tasks for number in task["segments"]}),
+        "target_segments": target_segments,
     }
+
+
+def remove_consecutive_duplicate_blocks(text: str) -> tuple[str, int]:
+    paragraphs = text.split("\n\n")
+    removals = 0
+    index = 0
+    while index < len(paragraphs):
+        removed = False
+        max_width = (len(paragraphs) - index) // 2
+        for width in range(max_width, 1, -1):
+            if paragraphs[index:index + width] == paragraphs[index + width:index + 2 * width]:
+                del paragraphs[index + width:index + 2 * width]
+                removals += 1
+                removed = True
+                break
+        if not removed:
+            index += 1
+    return "\n\n".join(paragraphs), removals
 
 
 def check_revision_constraints(text: str, plan: dict[str, Any]) -> list[str]:

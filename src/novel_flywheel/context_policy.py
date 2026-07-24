@@ -33,7 +33,7 @@ def stage_output_budget(stage: str, source_characters: int | None = None) -> int
         "planning": 12288,
         "draft": 8192,
         "review": 4096,
-        "revision_plan": 4096,
+        "revision_plan": 8192,
         "final_review": 8192,
         "maintenance": 4096,
     }
