@@ -758,7 +758,7 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("review") == 4096
     assert WorkflowService._stage_output_budget("revision_plan") == 4096
     assert WorkflowService._stage_output_budget("polish") == 8192
-    assert WorkflowService._stage_output_budget("final_review") == 4096
+    assert WorkflowService._stage_output_budget("final_review") == 8192
     assert WorkflowService._stage_output_budget("maintenance") == 4096
 
 
@@ -771,6 +771,54 @@ def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:
     assert len(parts) > 1
     assert max(map(len, parts)) <= 2400
     assert "".join("".join(parts).split()) == "".join("".join(text.split()).split())
+
+
+@pytest.mark.asyncio
+async def test_polish_retries_empty_max_token_response_once_with_full_budget(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Retry polish", mode="short", genre="comedy",
+        premise="A cat goes to work.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.budgets = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.budgets.append(max_output_tokens)
+            if len(self.budgets) == 1:
+                return ModelResult("", {
+                    "model_name": "claude", "input_tokens": 7000,
+                    "output_tokens": max_output_tokens, "finish_reason": "max_tokens",
+                })
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "claude", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("retry-polish", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "retry-polish"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = "A continuous scene with fixed events. " * 60
+
+    result = await service._polish_short_segments(
+        "retry-polish", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    assert result == manuscript.strip()
+    assert gateway.budgets[0] < 8192
+    assert gateway.budgets == [gateway.budgets[0], 8192]
+    assert any(
+        event["event_type"] == "polish_max_tokens_retry"
+        for event in db.list_run_events("retry-polish")
+    )
 
 
 @pytest.mark.asyncio

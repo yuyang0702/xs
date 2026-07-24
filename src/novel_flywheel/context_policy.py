@@ -34,7 +34,7 @@ def stage_output_budget(stage: str, source_characters: int | None = None) -> int
         "draft": 8192,
         "review": 4096,
         "revision_plan": 4096,
-        "final_review": 4096,
+        "final_review": 8192,
         "maintenance": 4096,
     }
     if stage != "polish":

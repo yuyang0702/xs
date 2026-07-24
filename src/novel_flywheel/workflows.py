@@ -1051,6 +1051,28 @@ class WorkflowService:
                     gateway_role, system, user,
                     max_output_tokens=self._stage_output_budget(stage, output_source_characters),
                 )
+            if (stage == "polish" and gateway_role == "polish" and not allow_tools
+                    and not result.text.strip()
+                    and result.receipt.get("finish_reason") == "max_tokens"
+                    and self._stage_output_budget(stage, output_source_characters) != 8192):
+                previous_budget = self._stage_output_budget(stage, output_source_characters)
+                self.db.add_run_event(
+                    run_id, "warning", "polish_max_tokens_retry",
+                    "Polish output hit its token limit; retrying with full budget",
+                    stage=stage, metadata={
+                        "previous_budget": previous_budget, "retry_budget": 8192,
+                    },
+                )
+                if prefer_configured_fallback and hasattr(
+                    self.gateway, "complete_configured_fallback"
+                ):
+                    result = await self.gateway.complete_configured_fallback(
+                        gateway_role, system, user, max_output_tokens=8192,
+                    )
+                else:
+                    result = await self.gateway.complete(
+                        gateway_role, system, user, max_output_tokens=8192,
+                    )
             if not result.text.strip():
                 raise RuntimeError(
                     f"{stage} model returned empty output "
