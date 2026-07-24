@@ -64,6 +64,118 @@ def test_update_provider_api_key_without_recreating_provider(tmp_path) -> None:
     assert "new-secret" not in response.text
 
 
+def test_update_provider_preserves_models_and_existing_api_key(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider, model = add_provider_model(client, "relay")
+
+    response = client.put(f"/api/providers/{provider['id']}", json={
+        "name": "renamed relay",
+        "protocol": "openai-chat",
+        "base_url": "https://new-relay.test/v1/",
+        "auth_type": "bearer",
+        "timeout_seconds": 240,
+        "extra_headers": {"X-Relay": "novel"},
+        "api_key": "",
+    })
+
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["name"] == "renamed relay"
+    assert updated["protocol"] == "openai-chat"
+    assert updated["base_url"] == "https://new-relay.test/v1"
+    assert updated["timeout_seconds"] == 240
+    assert updated["extra_headers"] == {"X-Relay": "novel"}
+    assert updated["models"][0]["id"] == model["id"]
+    assert client.app.state.registry.secrets.get(provider["id"]) == "secret"
+
+
+def test_update_provider_replaces_api_key_when_supplied(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider, _ = add_provider_model(client, "relay")
+
+    response = client.put(f"/api/providers/{provider['id']}", json={
+        "name": "relay",
+        "protocol": "anthropic",
+        "base_url": "https://relay.test",
+        "api_key": "new-secret",
+    })
+
+    assert response.status_code == 200
+    assert client.app.state.registry.secrets.get(provider["id"]) == "new-secret"
+    assert "new-secret" not in response.text
+
+
+def test_update_provider_rejects_invalid_url(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider, _ = add_provider_model(client, "relay")
+
+    response = client.put(f"/api/providers/{provider['id']}", json={
+        "name": "relay",
+        "protocol": "anthropic",
+        "base_url": "not-a-url",
+    })
+
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_provider"
+
+
+def test_update_missing_provider_returns_not_found(tmp_path) -> None:
+    client = make_client(tmp_path)
+
+    response = client.put("/api/providers/missing", json={
+        "name": "relay",
+        "protocol": "anthropic",
+        "base_url": "https://relay.test",
+    })
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "provider_not_found"
+
+
+def test_delete_provider_removes_models_and_api_key(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider, model = add_provider_model(client, "relay")
+
+    response = client.delete(f"/api/providers/{provider['id']}")
+
+    assert response.status_code == 204
+    assert client.app.state.registry.db.get_provider(provider["id"]) is None
+    assert client.app.state.registry.db.get_model(model["id"]) is None
+    assert client.app.state.registry.secrets.get(provider["id"]) is None
+
+
+def test_delete_provider_removes_role_bindings_that_reference_it(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider, model = add_provider_model(client, "relay")
+    client.put("/api/role-bindings/polish", json={
+        "primary_provider_id": provider["id"],
+        "primary_model_id": model["id"],
+    })
+
+    client.delete(f"/api/providers/{provider['id']}")
+
+    assert client.get("/api/role-bindings").json() == []
+
+
+def test_delete_fallback_provider_keeps_primary_role_binding(tmp_path) -> None:
+    client = make_client(tmp_path)
+    primary_provider, primary_model = add_provider_model(client, "primary")
+    fallback_provider, fallback_model = add_provider_model(client, "fallback")
+    client.put("/api/role-bindings/polish", json={
+        "primary_provider_id": primary_provider["id"],
+        "primary_model_id": primary_model["id"],
+        "fallback_provider_id": fallback_provider["id"],
+        "fallback_model_id": fallback_model["id"],
+    })
+
+    client.delete(f"/api/providers/{fallback_provider['id']}")
+
+    binding = client.get("/api/role-bindings").json()[0]
+    assert binding["primary_provider_id"] == primary_provider["id"]
+    assert binding["fallback_provider_id"] is None
+    assert binding["fallback_model_id"] is None
+
+
 def add_provider_model(client: TestClient, name: str) -> tuple[dict, dict]:
     provider = client.post("/api/providers", json={
         "name": name, "protocol": "anthropic", "base_url": f"https://{name}.test",

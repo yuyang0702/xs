@@ -1,16 +1,34 @@
 # Novel Flywheel Maintenance
 
+## Provider maintenance
+
+The **模型与 API** page supports in-place updates to a provider's name, protocol, Base URL, and API Key. Provider IDs and model mappings remain stable. Internal authentication, timeout, and extra-header settings are preserved rather than exposed in the ordinary form. A blank API Key during editing preserves the secret already stored in the system credential store.
+
+Deleting a provider is permanent and also removes its model mappings and stored secret. Role bindings that use the provider as primary are deleted; bindings that use it only as fallback retain their primary route and clear the fallback fields. These changes do not alter project files or committed manuscripts.
+
+## Skill classification
+
+The Skill page distinguishes executable Skills from prompt Skills that merely bundle auxiliary validation or development scripts. A script requires approval only when `SKILL.md` explicitly references its `scripts/...` path. Auxiliary scripts remain visible in the UI but are not executable through the writing workflow.
+
+Skill conflict warnings are read-only heuristics. They currently flag explicit fragmented-prose instructions, named-author imitation, and direct formal-manuscript writes. They do not change approval or execution state.
+
 ## Authoritative project state
 
 Every novel owns an independent versioned StoryState in SQLite. It records locked and confirmed facts, character state, world rules, timeline events, unresolved issues, and the formal manuscript revision. Models only produce candidates; Runtime validates and commits the accepted candidate. Failed, cancelled, rejected, or stale candidates cannot overwrite the formal manuscript.
 
 Existing projects are imported without rewriting their files. Before the first StoryState schema upgrade, the application creates `data/app.pre-story-state.db` once. New projects receive StoryState revision 1 during creation.
 
+Manual project-data edits update one allowlisted StoryState section through the existing candidate and optimistic revision commit. They are blocked while a project run is active and cannot edit `manuscript_revision`. History remains available for inspection; normal post-write extraction continues automatically.
+
+The style-sample application scope is stored in the existing `project.json` as `style_sample_scope`. Missing values mean `polish`, preserving old behavior. `draft_and_polish` adds the same project `style-profile.md` to draft system context. Run context display is derived from existing events and receipts and stores no duplicate prompt, secret, or header data.
+
 ## Short-story model route
 
 The short-story workflow reuses complete planning, draft, and valid review checkpoints after a failed or cancelled run.
 
 Polish receives one bounded manuscript segment, adjacent boundaries, a compact full-story map, authoritative facts, character state, findings, and stage-specific Skills. Ordinary expression polishing cannot change plot events. Runtime rejects abnormal length changes and removal of literal locked facts, preserving the original segment.
+
+Three or more consecutive short sentences are reported to polish as a rhythm issue. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, and suspense pauses; Runtime does not mechanically join sentences.
 
 ### Token budgets
 
@@ -65,3 +83,9 @@ Structural correction has two length thresholds: a preferred floor of 60% and a 
 5. Run the focused test and full `pytest -q` suite.
 6. Restart with `start-novel-console.cmd` or the same configured data directory and port.
 7. Verify the home page, project count, database path, and relevant state rows.
+
+## New feature compatibility gate
+
+New capabilities are additive by default. They must not replace or bypass StoryState, Runtime-controlled formal writes, model routing and fallback, stage-specific Skills, candidate validation, quality gates, credential storage, project files, or run history. External projects are design references unless a scoped integration has passed overlap, prompt/Skill conflict, data ownership, migration, rollback, security, and license review.
+
+Optional behavior should be project-scoped, disabled for existing projects, reversible, and implemented through existing contracts. A core workflow may change only when the proposal defines measurable gains in writing quality, consistency, or user control and retains the previous path as a tested fallback until comparative evidence supports removal. Generated content always remains a candidate until the existing validation, review, and commit flow accepts it.

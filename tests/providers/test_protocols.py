@@ -1,8 +1,10 @@
+import json
+
 import httpx
 import pytest
 import respx
 
-from novel_flywheel.domain.models import Message, ModelRequest
+from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.http import ProviderResponseError
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
@@ -23,6 +25,33 @@ async def test_openai_chat_adapter_normalizes_response() -> None:
     result = await OpenAIChatAdapter("https://relay.test/v1", "secret").complete(REQUEST)
     assert route.called
     assert (result.text, result.total_tokens) == ("正文", 33)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_openai_chat_adapter_can_require_a_specific_tool() -> None:
+    route = respx.post("https://relay.test/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "id": "req-tool",
+            "choices": [{"message": {"content": "", "tool_calls": []}}],
+            "usage": {},
+        }),
+    )
+    request = ModelRequest(
+        model="writer",
+        messages=[Message(role="user", content="Call probe_tool")],
+        tools=[ToolDefinition(
+            name="probe_tool", description="Probe", input_schema={"type": "object"},
+        )],
+        required_tool="probe_tool",
+    )
+
+    await OpenAIChatAdapter("https://relay.test/v1", "secret").complete(request)
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["tool_choice"] == {
+        "type": "function", "function": {"name": "probe_tool"},
+    }
 
 
 @pytest.mark.asyncio
@@ -63,6 +92,31 @@ async def test_anthropic_root_base_url_adds_v1_and_uses_bearer_auth() -> None:
     assert route.calls.last.request.headers["authorization"] == "Bearer secret"
     assert "x-api-key" not in route.calls.last.request.headers
     assert result.text == "ok"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_anthropic_adapter_can_require_a_specific_tool() -> None:
+    route = respx.post("https://relay.test/v1/messages").mock(return_value=httpx.Response(200, json={
+        "id": "msg-tool",
+        "content": [{"type": "tool_use", "id": "call-1", "name": "probe_tool", "input": {}}],
+        "stop_reason": "tool_use",
+        "usage": {},
+    }))
+    request = ModelRequest(
+        model="writer",
+        messages=[Message(role="user", content="Call probe_tool")],
+        tools=[ToolDefinition(
+            name="probe_tool", description="Probe", input_schema={"type": "object"},
+        )],
+        required_tool="probe_tool",
+    )
+
+    result = await AnthropicAdapter("https://relay.test/v1", "secret").complete(request)
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["tool_choice"] == {"type": "tool", "name": "probe_tool"}
+    assert result.tool_calls[0].name == "probe_tool"
 
 
 @pytest.mark.asyncio

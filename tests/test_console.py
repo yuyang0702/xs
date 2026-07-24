@@ -41,8 +41,17 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="interview-form"' in html
     assert 'id="interview-apply"' in html
     assert 'id="interview-status"' in html
+    assert 'id="provider-form-title"' in html
+    assert 'id="provider-cancel"' in html
+    assert 'name="auth_type"' not in html
+    assert 'name="timeout_seconds"' not in html
+    assert 'name="extra_headers"' not in html
     script = client.get("/static/app.js").text
     assert "loadInterview" in script
+    assert "data-provider-edit" in script
+    assert "data-provider-delete" in script
+    assert "editingProviderId" in script
+    assert "含辅助脚本" in script
     assert "applyInterviewSuggestions" in script
     assert "formatLocalTimestamp" in script
     assert "formatLocalTimestamp(r.created_at)" in script

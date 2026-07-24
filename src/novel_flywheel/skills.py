@@ -18,6 +18,7 @@ class Skill:
     instructions: str
     content_hash: str
     executable: bool
+    has_scripts: bool
 
 
 @dataclass(frozen=True)
@@ -52,8 +53,15 @@ class SkillScanner:
                 for path in files:
                     digest.update(path.relative_to(manifest.parent).as_posix().encode())
                     digest.update(path.read_bytes())
-                executable = any(path.parts[-2:-1] == ("scripts",) for path in files)
-                found[name] = Skill(name, manifest.parent, instructions, digest.hexdigest(), executable)
+                scripts = [
+                    path.relative_to(manifest.parent).as_posix()
+                    for path in files
+                    if path.relative_to(manifest.parent).parts[:1] == ("scripts",)
+                ]
+                executable = any(script in instructions for script in scripts)
+                found[name] = Skill(
+                    name, manifest.parent, instructions, digest.hexdigest(), executable, bool(scripts),
+                )
         return list(found.values())
 
 

@@ -25,6 +25,7 @@ class ModelRequest(BaseModel):
     max_output_tokens: int | None = None
     response_schema: dict | None = None
     tools: list[ToolDefinition] = Field(default_factory=list)
+    required_tool: str | None = None
 
 
 class ModelResponse(BaseModel):

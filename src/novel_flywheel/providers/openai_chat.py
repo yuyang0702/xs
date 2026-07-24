@@ -20,6 +20,10 @@ class OpenAIChatAdapter(HttpProvider):
             payload["tools"] = [{"type": "function", "function": {
                 "name": tool.name, "description": tool.description, "parameters": tool.input_schema,
             }} for tool in request.tools]
+        if request.required_tool:
+            payload["tool_choice"] = {
+                "type": "function", "function": {"name": request.required_tool},
+            }
         body = await self.post("chat/completions", payload=payload,
                                headers={"Authorization": f"Bearer {self.api_key}"})
         choice = body["choices"][0]

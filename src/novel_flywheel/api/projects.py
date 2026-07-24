@@ -1,7 +1,10 @@
 import platform
 import subprocess
+import json
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -10,6 +13,7 @@ from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.prose_quality import analyze_prose
 from novel_flywheel.revision import normalize_chinese_prose
 from novel_flywheel.storage import atomic_write
+from novel_flywheel.story_state import StaleStoryState, StoryStateStore
 
 
 router = APIRouter(prefix="/api", tags=["projects"])
@@ -18,6 +22,26 @@ router = APIRouter(prefix="/api", tags=["projects"])
 class StyleSamplePayload(BaseModel):
     text: str = Field(min_length=1, max_length=60_000)
     source_name: str = Field(default="reference.txt", max_length=160)
+
+
+class StyleSampleScopePayload(BaseModel):
+    application_scope: Literal["polish", "draft_and_polish"]
+
+
+class StoryStateEditPayload(BaseModel):
+    expected_revision: int = Field(ge=1)
+    section: Literal[
+        "locked_facts", "confirmed_facts", "provisional_facts", "world_rules",
+        "character_states", "timeline_events", "issue_ledger",
+    ]
+    value: Any
+
+
+def _style_sample_status(project: Project, request: Request) -> dict:
+    return {
+        **request.app.state.style_samples.status(project),
+        "application_scope": project.metadata.get("style_sample_scope", "polish"),
+    }
 
 
 def _public(project: Project) -> dict:
@@ -115,7 +139,7 @@ def get_project(project_id: str, request: Request) -> dict:
 @router.get("/projects/{project_id}/style-sample")
 def get_style_sample(project_id: str, request: Request) -> dict:
     try:
-        return request.app.state.style_samples.status(get_store(request).get(project_id))
+        return _style_sample_status(get_store(request).get(project_id), request)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
 
@@ -127,9 +151,10 @@ async def analyze_style_sample(project_id: str, payload: StyleSamplePayload, req
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     try:
-        return await request.app.state.style_samples.analyze(
+        await request.app.state.style_samples.analyze(
             project, payload.text, payload.source_name,
         )
+        return _style_sample_status(project, request)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={
             "code": "invalid_style_sample", "message": str(exc),
@@ -144,9 +169,74 @@ async def analyze_style_sample(project_id: str, payload: StyleSamplePayload, req
 def delete_style_sample(project_id: str, request: Request) -> dict:
     try:
         project = get_store(request).get(project_id)
-        return request.app.state.style_samples.delete(project)
+        request.app.state.style_samples.delete(project)
+        return _style_sample_status(project, request)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.put("/projects/{project_id}/style-sample/scope")
+def update_style_sample_scope(project_id: str, payload: StyleSampleScopePayload,
+                              request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    metadata = {**project.metadata, "style_sample_scope": payload.application_scope}
+    atomic_write(
+        project.path / "project.json",
+        json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
+    )
+    return _style_sample_status(get_store(request).get(project_id), request)
+
+
+@router.get("/projects/{project_id}/story-state")
+def get_story_state(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    state = StoryStateStore(get_store(request).db).ensure(project.id, project.path)
+    return {"project_id": state.project_id, "revision": state.revision, "data": state.data}
+
+
+@router.get("/projects/{project_id}/story-state/history")
+def get_story_state_history(project_id: str, request: Request) -> list[dict]:
+    try:
+        get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    return [
+        {"project_id": item.project_id, "revision": item.revision, "data": item.data}
+        for item in StoryStateStore(get_store(request).db).history(project_id)
+    ]
+
+
+@router.put("/projects/{project_id}/story-state")
+def update_story_state(project_id: str, payload: StoryStateEditPayload,
+                       request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    if get_store(request).db.has_active_runs(project_id):
+        raise HTTPException(status_code=409, detail={"code": "project_run_active"})
+    store = StoryStateStore(get_store(request).db)
+    current = store.ensure(project.id, project.path)
+    serialized = json.dumps(payload.value, ensure_ascii=False, sort_keys=True)
+    candidate = store.create_candidate(
+        project_id, None, payload.expected_revision, "manual_edit",
+        hashlib.sha256(serialized.encode("utf-8")).hexdigest(),
+        {"section": payload.section},
+    )
+    try:
+        updated = store.commit(
+            candidate.id, payload.expected_revision,
+            {**current.data, payload.section: payload.value},
+        )
+    except StaleStoryState as exc:
+        raise HTTPException(status_code=409, detail={"code": "story_state_stale"}) from exc
+    return {"project_id": updated.project_id, "revision": updated.revision, "data": updated.data}
 
 
 @router.get("/projects/{project_id}/manuscript")

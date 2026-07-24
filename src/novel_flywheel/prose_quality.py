@@ -58,7 +58,7 @@ def analyze_prose(text: str) -> dict[str, Any]:
     if ending_match:
         findings.append(_finding("theme_summary_ending", text, ending_match, severity="high"))
     metrics = prose_metrics(text)
-    if metrics["short_sentence_run"] >= 6:
+    if metrics["short_sentence_run"] >= 3:
         fake = re.search(r"[^。！？\n]{1,14}[。！？]", text)
         if fake:
             findings.append(_finding("uniform_short_sentence_run", text, fake))

@@ -54,6 +54,38 @@ class ProviderRegistry:
         self.secrets.set(provider_id, api_key)
         return provider_id
 
+    def update_provider(
+        self,
+        provider_id: str,
+        *,
+        name: str,
+        protocol: str,
+        base_url: str,
+        api_key: str | None = None,
+        auth_type: str = "bearer",
+        timeout_seconds: int = 180,
+        extra_headers: dict[str, str] | None = None,
+    ) -> None:
+        current = self.db.get_provider(provider_id)
+        if current is None:
+            raise ValueError("provider_not_found")
+        if protocol not in ADAPTERS:
+            raise ValueError("unsupported_protocol")
+        if not name.strip() or not base_url.startswith(("http://", "https://")):
+            raise ValueError("invalid_provider")
+        self.db.save_provider(
+            provider_id=provider_id,
+            name=name.strip(),
+            protocol=protocol,
+            base_url=base_url,
+            auth_type=auth_type,
+            timeout_seconds=timeout_seconds,
+            extra_headers=extra_headers or {},
+            enabled=current["enabled"],
+        )
+        if api_key and api_key.strip():
+            self.secrets.set(provider_id, api_key.strip())
+
     def add_model(self, provider_id: str, display_name: str, model_name: str,
                   capabilities: dict | None = None) -> str:
         if self.db.get_provider(provider_id) is None:

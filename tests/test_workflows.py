@@ -23,6 +23,7 @@ REQUIRED_SKILLS = {
 class FakeGateway:
     def __init__(self) -> None:
         self.roles = []
+        self.systems = []
         self.responses = iter([
             "# Story Plan\nA complete causal plan.",
             "# Draft\nRough story.",
@@ -35,6 +36,7 @@ class FakeGateway:
 
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
+        self.systems.append(system)
         assert "Skill instructions" in system
         return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
@@ -42,6 +44,7 @@ class FakeGateway:
 class SetupGateway(FakeGateway):
     def __init__(self) -> None:
         self.roles = []
+        self.systems = []
         self.responses = iter([
             "# Book Bible\nEnding, volumes, characters, world rules and chapter map.",
             json.dumps({"score": 90, "hard_fail": False, "issues": []}),
@@ -52,6 +55,7 @@ class SetupGateway(FakeGateway):
 class VolumeGateway(FakeGateway):
     def __init__(self) -> None:
         self.roles = []
+        self.systems = []
         self.responses = iter([
             "# Chapter Plan",
             "# Draft",
@@ -155,6 +159,33 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert state.revision == 2
     assert state.data["manuscript_revision"] == 1
     assert any(item["event_type"] == "story_state_committed" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_draft_uses_style_profile_only_when_project_enables_it(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Voice", mode="short", genre="suspense",
+        premise="A passenger vanishes.", target_words=6000,
+    ))
+    project.metadata["style_sample_scope"] = "draft_and_polish"
+    (project.path / "project.json").write_text(
+        json.dumps(project.metadata, ensure_ascii=False), encoding="utf-8",
+    )
+    (project.path / "style-profile.md").write_text("# 风格\n\n动作推动情绪。", encoding="utf-8")
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = FakeGateway()
+
+    await WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    ).run_short(project.id, use_crewai=False)
+
+    draft_system = gateway.systems[gateway.roles.index("draft")]
+    assert "PROJECT STYLE PROFILE" in draft_system
+    assert "动作推动情绪" in draft_system
 
 
 @pytest.mark.asyncio

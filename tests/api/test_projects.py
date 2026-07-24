@@ -213,6 +213,25 @@ def test_project_style_sample_status_analyze_and_delete_api(tmp_path) -> None:
     assert client.delete(endpoint).json()["configured"] is False
 
 
+def test_project_style_sample_scope_defaults_to_polish_and_can_be_enabled_for_draft(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Voice", "mode": "short", "genre": "悬疑",
+        "premise": "一封信。", "target_words": 6000,
+    }).json()
+    endpoint = f"/api/projects/{project['id']}/style-sample"
+
+    assert client.get(endpoint).json()["application_scope"] == "polish"
+    response = client.put(f"{endpoint}/scope", json={"application_scope": "draft_and_polish"})
+
+    assert response.status_code == 200
+    assert response.json()["application_scope"] == "draft_and_polish"
+    assert client.get(f"/api/projects/{project['id']}").json()["style_sample_scope"] == "draft_and_polish"
+
+
 def test_project_style_sample_rejects_invalid_analysis(tmp_path) -> None:
     class InvalidStyleSamples(FakeStyleSamples):
         async def analyze(self, project, text, source_name):
@@ -232,3 +251,48 @@ def test_project_style_sample_rejects_invalid_analysis(tmp_path) -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"]["code"] == "invalid_style_sample"
+
+
+def test_story_state_api_reads_edits_section_and_keeps_history(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "State", "mode": "long", "genre": "玄幻",
+        "premise": "旧誓言。", "target_words": 100000,
+    }).json()
+    endpoint = f"/api/projects/{project['id']}/story-state"
+    initial = client.get(endpoint).json()
+
+    updated = client.put(endpoint, json={
+        "expected_revision": initial["revision"],
+        "section": "character_states",
+        "value": {"林昼": {"location": "公司"}},
+    })
+
+    assert updated.status_code == 200
+    assert updated.json()["revision"] == initial["revision"] + 1
+    assert updated.json()["data"]["character_states"]["林昼"]["location"] == "公司"
+    history = client.get(f"{endpoint}/history").json()
+    assert [item["revision"] for item in history] == [1, 2]
+
+
+def test_story_state_api_rejects_stale_manual_edit(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "State", "mode": "short", "genre": "悬疑",
+        "premise": "旧信。", "target_words": 6000,
+    }).json()
+    endpoint = f"/api/projects/{project['id']}/story-state"
+    revision = client.get(endpoint).json()["revision"]
+    payload = {"expected_revision": revision, "section": "world_rules", "value": ["门只能开一次"]}
+
+    assert client.put(endpoint, json=payload).status_code == 200
+    stale = client.put(endpoint, json=payload)
+
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["code"] == "story_state_stale"

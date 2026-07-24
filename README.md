@@ -8,11 +8,15 @@ Run `start-novel-console.cmd`, then open `http://127.0.0.1:8765`.
 
 ## Model tools
 
+Existing providers can be edited or deleted from **模型与 API**. Editing changes the visible name, protocol, and Base URL while preserving internal headers and timeout settings. A blank API Key keeps the current secret; entering a new key replaces it in the system credential store. Deleting a provider also deletes its model mappings. Primary role bindings using that provider are removed, while fallback references are cleared without removing the primary binding.
+
 Each model mapping has a Tool Calling mode:
 
 - `auto`: try native tool calling and fall back to an injected evidence package only when the provider explicitly rejects tools.
 - `enabled`: require native tool calling and fail the stage if the provider rejects it.
 - `disabled`: always use the injected evidence package.
+
+Capability detection forces the provider to call a dedicated probe tool. OpenAI Chat and Anthropic requests both serialize the matching `tool_choice`. Thinking models that explicitly reject forced tool choice are retried once with normal tool selection. If a relay still ignores or strips the tool request, the result reports that no `probe_tool` call was returned instead of showing an unexplained failure.
 
 Models can only use these project-scoped read tools:
 
@@ -31,11 +35,17 @@ Skills are scanned again for every stage. Global Skills are loaded from the conf
 <project>/.agents/skills/<skill-name>/SKILL.md
 ```
 
-A project Skill with the same name overrides the global version on the next run; no server restart is required. Executable Skills still require approval for their current content hash.
+A project Skill with the same name overrides the global version on the next run; no server restart is required. A Skill is executable only when its instructions explicitly reference a bundled script, and executable Skills require approval for their current content hash. Unreferenced validation or development scripts are shown as auxiliary scripts and are never executed by the writing workflow.
+
+The Skill page reports conservative conflicts with project rules, including fragmented-prose directives, named-author imitation, and direct formal-manuscript writes. These warnings are advisory and never silently disable or rewrite a Skill.
 
 ## StoryState and safe revision
 
 Each novel has an independent versioned StoryState. Models read the same authoritative facts and submit candidate output; only Runtime can promote a candidate to the formal manuscript. Cancelled runs, failed quality checks, invalid polish output, and stale tasks cannot overwrite the last committed manuscript.
+
+The workbench exposes StoryState sections for manual correction. A save creates a normal `manual_edit` candidate and a new revision; stale edits and edits during an active run are rejected. Automatic post-write StoryState updates continue without per-chapter confirmation.
+
+范文笔感 remains project-scoped. Existing projects default to applying it only during polish; the workbench can explicitly enable **初稿 + 精修**, which injects the existing `style-profile.md` into draft requests without creating another style store. Run details include a context summary built from existing events and receipts: model route, Skills, prompt and constraint size, token usage, execution mode, tool receipts, and fallback state. Secrets and raw request headers are not exposed.
 
 Short-story polish uses bounded segments with adjacent boundaries, a compact story map, character state, locked facts, and stage-specific Skills. Claude primary polish starts with an 8,192 output limit because the configured relay repeatedly exhausted smaller limits before returning visible prose. Other polish routes retain dynamic limits, so ordinary segments do not inherit Claude's cost profile. Final structured review also uses 8,192 to avoid truncated JSON.
 

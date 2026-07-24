@@ -22,7 +22,11 @@ STAGE_SYSTEM = {
         "pull, ending taste, and historical or procedural realism are targeted revisions, never hard "
         "failures by themselves. Compliance never increases quality scores."
     ),
-    "polish": "Revise only from the supplied draft and findings. Preserve plot facts while removing AI-like prose.",
+    "polish": (
+        "Revise only from the supplied draft and findings. Preserve plot facts while removing AI-like prose. "
+        "Merge fragmentary short sentences that describe one continuous action; preserve intentional dialogue, "
+        "emphasis, and suspense pauses."
+    ),
     "final_review": (
         "Act as the independent chief editor. Audit the revised manuscript without rewriting it. "
         "Return only strict JSON with dimensions commercial/story/prose (0-100), hard_fail, decision "

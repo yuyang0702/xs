@@ -307,6 +307,16 @@ class Database:
 
     def delete_provider(self, provider_id: str) -> None:
         with self.connect() as connection:
+            connection.execute(
+                "DELETE FROM role_bindings WHERE primary_provider_id = ?",
+                (provider_id,),
+            )
+            connection.execute(
+                """UPDATE role_bindings
+                SET fallback_provider_id = NULL, fallback_model_id = NULL
+                WHERE fallback_provider_id = ?""",
+                (provider_id,),
+            )
             connection.execute("DELETE FROM providers WHERE id = ?", (provider_id,))
 
     def save_model(

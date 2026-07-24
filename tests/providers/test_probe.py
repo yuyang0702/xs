@@ -1,16 +1,19 @@
 import pytest
 
 from novel_flywheel.domain.models import ModelResponse, ToolCall
+from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.providers.probe import CapabilityProbe
 
 
 class ProbeAdapter:
     def __init__(self, tool_calling=True):
         self.calls = 0
+        self.requests = []
         self.tool_calling = tool_calling
 
     async def complete(self, request):
         self.calls += 1
+        self.requests.append(request)
         if self.calls == 1:
             return ModelResponse(text="连接正常")
         if self.calls == 2:
@@ -35,12 +38,27 @@ class EmptyChatProbeAdapter(ProbeAdapter):
         return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
 
 
+class ThinkingProbeAdapter(ProbeAdapter):
+    async def complete(self, request):
+        self.calls += 1
+        self.requests.append(request)
+        if self.calls == 1:
+            return ModelResponse(text="ok")
+        if self.calls == 2:
+            return ModelResponse(text='{"ok":true}')
+        if request.required_tool:
+            raise ToolCapabilityError("Thinking mode does not support this tool_choice")
+        return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+
+
 @pytest.mark.asyncio
 async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
-    result = await CapabilityProbe(ProbeAdapter()).run("model")
+    adapter = ProbeAdapter()
+    result = await CapabilityProbe(adapter).run("model")
     assert result.model_dump() == {
         "chat": True, "structured_output": True, "tool_calling": True, "error": None,
     }
+    assert adapter.requests[2].required_tool == "probe_tool"
 
 
 @pytest.mark.asyncio
@@ -49,6 +67,18 @@ async def test_probe_can_report_partial_support() -> None:
     assert result.chat is True
     assert result.structured_output is True
     assert result.tool_calling is False
+    assert result.error == "tools: provider returned no probe_tool call"
+
+
+@pytest.mark.asyncio
+async def test_probe_retries_without_forced_tool_choice_for_thinking_models() -> None:
+    adapter = ThinkingProbeAdapter()
+
+    result = await CapabilityProbe(adapter).run("model")
+
+    assert result.tool_calling is True
+    assert adapter.requests[-1].tools
+    assert adapter.requests[-1].required_tool is None
 
 
 @pytest.mark.asyncio

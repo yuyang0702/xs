@@ -9,6 +9,27 @@ from novel_flywheel.skills import SkillGate
 router = APIRouter(prefix="/api", tags=["skills"])
 
 
+def _conflicts(instructions: str) -> list[dict[str, str]]:
+    text = instructions.lower()
+    conflicts = []
+    if any(term in text for term in ("多用短句", "大量短句", "短句为主", "use short sentences")):
+        conflicts.append({
+            "code": "fragmented_prose",
+            "message": "短句导向可能与项目的连续碎短句治理规则冲突。",
+        })
+    if any(term in text for term in ("模仿指定作者", "模仿某位作者", "in the style of")):
+        conflicts.append({
+            "code": "author_imitation",
+            "message": "作者模仿要求与范文笔感的非复刻约束冲突。",
+        })
+    if any(term in text for term in ("直接修改正式稿", "直接覆盖正式稿", "overwrite the manuscript")):
+        conflicts.append({
+            "code": "direct_formal_write",
+            "message": "直接写正式稿会绕过 Runtime 的候选、校验和提交流程。",
+        })
+    return conflicts
+
+
 def get_gate(request: Request) -> SkillGate:
     return request.app.state.skill_gate
 
@@ -21,6 +42,8 @@ def list_skills(request: Request) -> list[dict]:
         "path": str(skill.path),
         "content_hash": skill.content_hash,
         "executable": skill.executable,
+        "has_scripts": skill.has_scripts,
+        "conflicts": _conflicts(skill.instructions),
         "approved": not skill.executable or gate.db.is_skill_approved(skill.name, skill.content_hash),
     } for skill in gate.skills().values()]
 

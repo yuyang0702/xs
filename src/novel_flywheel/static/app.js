@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -118,12 +118,22 @@ async function loadStyleSample(projectId) {
   try {
     const result = await api(`/api/projects/${projectId}/style-sample`);
     if (state.activeProject?.id !== projectId) return;
+    const scope=document.querySelector(`input[name="style-scope"][value="${result.application_scope || "polish"}"]`); if (scope) scope.checked=true;
     if (!result.configured) { shell.innerHTML = '<p class="skill-meta">尚未设置范文笔感。分析后会写入当前作品的风格档案。</p>'; return; }
     const profile = result.profile || {}; const labels = {sentence_rhythm:"句式与节奏",dialogue:"对白",narrative_distance:"叙事距离",characterization:"人物描写",diction:"用词",avoid:"避免"};
     shell.innerHTML = `<h3>${escapeHtml(profile.summary || "已配置范文笔感")}</h3><p class="skill-meta">${Number(result.source_characters).toLocaleString()} 字符 · ${escapeHtml(profile.source_name || "reference.txt")}</p><div class="style-profile-groups">${Object.entries(labels).map(([key,label]) => `<div><strong>${label}</strong><span>${escapeHtml((profile[key] || []).join("；") || "-")}</span></div>`).join("")}</div>`;
     remove.hidden = false;
   } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
+document.querySelectorAll('input[name="style-scope"]').forEach(input => input.addEventListener("change", async event => {
+  if (!state.activeProject || !event.target.checked) return;
+  try {
+    const result=await api(`/api/projects/${state.activeProject.id}/style-sample/scope`,{method:"PUT",body:JSON.stringify({application_scope:event.target.value})});
+    state.activeProject.style_sample_scope=result.application_scope;
+    const listed=state.projects.find(item => item.id === state.activeProject.id); if (listed) listed.style_sample_scope=result.application_scope;
+    toast(result.application_scope === "draft_and_polish" ? "范文笔感将用于初稿和精修" : "范文笔感仅用于精修");
+  } catch(error) { toast(error.message); await loadStyleSample(state.activeProject.id); }
+}));
 $("#style-sample-text").addEventListener("input", event => { $("#style-sample-count").textContent = `${event.target.value.length} / 60000 字符`; });
 $("#style-sample-file").addEventListener("change", async event => {
   const file = event.target.files[0]; if (!file) return;
@@ -147,6 +157,39 @@ $("#style-sample-delete").addEventListener("click", async () => {
   try { await api(`/api/projects/${state.activeProject.id}/style-sample`, {method:"DELETE"}); await loadStyleSample(state.activeProject.id); toast("范文笔感已删除"); }
   catch(error) { toast(error.message); }
 });
+function renderStoryStateSection() {
+  const section=$("#story-state-section").value; const value=state.storyState?.data?.[section];
+  $("#story-state-value").value=value === undefined ? "" : JSON.stringify(value,null,2);
+  $("#story-state-value").disabled=!state.storyState; $("#story-state-save").disabled=!state.storyState;
+  $("#story-state-diff").hidden=true;
+}
+async function loadStoryState(projectId) {
+  if (!projectId) {
+    state.storyState=null; $("#story-state-revision").textContent="请先选择作品";
+    $("#story-state-value").value=""; $("#story-state-value").disabled=true; $("#story-state-save").disabled=true; return;
+  }
+  try {
+    const result=await api(`/api/projects/${projectId}/story-state`); if (state.activeProject?.id !== projectId) return;
+    state.storyState=result; $("#story-state-revision").textContent=`版本 ${result.revision} · 正常写作时自动更新，人工纠错会保存新版本`;
+    renderStoryStateSection();
+  } catch(error) { state.storyState=null; $("#story-state-revision").textContent=error.message; renderStoryStateSection(); }
+}
+$("#story-state-section").addEventListener("change", renderStoryStateSection);
+$("#story-state-value").addEventListener("input", () => {
+  if (!state.storyState) return;
+  const section=$("#story-state-section").value; const before=JSON.stringify(state.storyState.data[section],null,2); const after=$("#story-state-value").value.trim();
+  const diff=$("#story-state-diff"); diff.hidden=before === after; diff.textContent=before === after ? "" : `修改前\n${before}\n\n修改后\n${after}`;
+});
+$("#story-state-save").addEventListener("click", async () => {
+  if (!state.activeProject || !state.storyState) return;
+  let value; try { value=JSON.parse($("#story-state-value").value); } catch { return toast("项目资料必须是有效 JSON"); }
+  const section=$("#story-state-section").value;
+  try {
+    state.storyState=await api(`/api/projects/${state.activeProject.id}/story-state`,{method:"PUT",body:JSON.stringify({expected_revision:state.storyState.revision,section,value})});
+    $("#story-state-revision").textContent=`版本 ${state.storyState.revision} · 已保存人工修改`;
+    renderStoryStateSection(); toast("项目资料已保存为新版本");
+  } catch(error) { toast(error.message); await loadStoryState(state.activeProject.id); }
+});
 $("#publish-candidate").addEventListener("click", async () => {
   if (!state.activeProject || !confirm("将当前最高分候选设为正式成品？原正式成品会被替换。")) return;
   try {
@@ -160,8 +203,8 @@ async function renderActiveProject() {
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadStyleSample(null); return; }
-  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadStyleSample(p.id)]);
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadStyleSample(null); await loadStoryState(null); return; }
+  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadStyleSample(p.id), loadStoryState(p.id)]);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
@@ -295,8 +338,22 @@ function renderRunLog(events) {
   }).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }
+function renderRunContext(detail) {
+  const events=detail.events || []; const loaded=new Map();
+  events.filter(item => item.event_type === "skills_loaded").forEach(item => loaded.set(item.stage,item.metadata || {}));
+  const completed=events.filter(item => item.event_type === "stage_completed");
+  const fallbacks=new Set(events.filter(item => item.event_type === "model_fallback").map(item => item.stage));
+  const stages=completed.map(item => { const meta=item.metadata || {}; const context=loaded.get(item.stage) || {}; return `<div class="context-stage"><div><strong>${escapeHtml(roles[item.stage] || item.stage)}</strong><span>${escapeHtml(meta.model_name || "未记录模型")}${fallbacks.has(item.stage) ? " · 已回退" : ""}</span></div><dl><dt>Skill</dt><dd>${escapeHtml((context.skills || meta.skills || []).join("、") || "无")}</dd><dt>提示词</dt><dd>${Number(context.prompt_characters || 0).toLocaleString()} 字符</dd><dt>约束</dt><dd>${Number(context.constraint_characters || 0).toLocaleString()} 字符</dd><dt>Token</dt><dd>${Number(meta.input_tokens || 0).toLocaleString()} 输入 · ${Number(meta.output_tokens || 0).toLocaleString()} 输出</dd><dt>执行</dt><dd>${escapeHtml(meta.execution_mode || "普通请求")}</dd></dl></div>`; });
+  const tools=detail.tool_receipts || [];
+  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + (tools.length ? `<div class="context-tools"><strong>工具调用收据</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => item.execution_mode))].join("、"))}</span></div>` : "");
+}
+document.querySelectorAll("[data-run-tab]").forEach(button => button.addEventListener("click", () => {
+  document.querySelectorAll("[data-run-tab]").forEach(item => item.classList.toggle("active",item === button));
+  $("#run-log").hidden=button.dataset.runTab !== "log"; $("#run-context").hidden=button.dataset.runTab !== "context";
+}));
 function showRunDetail(detail) {
   renderRunLog(detail.events || []);
+  renderRunContext(detail);
   const active=["queued","running","cancelling"].includes(detail.status);
   const initialization=detail.workflow === "initialize-skills";
   const qualityRejected=isQualityRejected(detail);
@@ -307,7 +364,7 @@ async function monitorRun(runRecord) {
   clearTimeout(state.pollTimer); state.activeRun=runRecord.id; $("#run-cancel").hidden=false;
   const poll = async () => {
     try {
-      const detail=await api(`/api/runs/${state.activeRun}`); renderRunLog(detail.events || []);
+      const detail=await api(`/api/runs/${state.activeRun}`); renderRunLog(detail.events || []); renderRunContext(detail);
       const active=["queued","running","cancelling"].includes(detail.status); const qualityRejected=isQualityRejected(detail); $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
       $("#run-state").textContent=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : `${runStatusLabel(detail)}：${detail.error || "请查看日志"}`;
       if (active) state.pollTimer=setTimeout(poll,900); else { state.activeRun=null; $("#run-cancel").hidden=true; await renderActiveProject(); if (detail.status === "completed") toast("飞轮执行完成"); }
@@ -345,11 +402,47 @@ function renderTrash() {
   document.querySelectorAll("[data-permanent]").forEach(button => button.addEventListener("click", async () => { if (!confirm("永久删除后无法恢复，确定继续？")) return; try { await api(`/api/projects/${button.dataset.permanent}/permanent`,{method:"DELETE"}); await loadAll(); toast("作品已永久删除"); } catch(error) { toast(error.message); } }));
 }
 
-$("#provider-form").addEventListener("submit", async event => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); try { await api("/api/providers", {method:"POST", body:JSON.stringify(data)}); event.target.reset(); await loadAll(); toast("供应商已保存，API Key 已进入系统凭据库"); } catch(error) { toast(error.message); } });
+function resetProviderForm() {
+  const form = $("#provider-form");
+  state.editingProviderId = null;
+  form.reset();
+  form.elements.api_key.required = true;
+  $("#provider-form-title").textContent = "添加供应商";
+  $("#provider-submit").textContent = "保存供应商";
+  $("#provider-cancel").hidden = true;
+}
+$("#provider-cancel").addEventListener("click", resetProviderForm);
+$("#provider-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const data = Object.fromEntries(new FormData(event.target));
+  const editing = state.editingProviderId;
+  const current = editing ? state.providers.find(provider => provider.id === editing) : null;
+  if (current) Object.assign(data, {auth_type:current.auth_type, timeout_seconds:current.timeout_seconds, extra_headers:current.extra_headers});
+  try {
+    await api(editing ? `/api/providers/${editing}` : "/api/providers", {method:editing ? "PUT" : "POST", body:JSON.stringify(data)});
+    resetProviderForm();
+    await loadAll();
+    toast(editing ? "供应商已更新" : "供应商已保存，API Key 已进入系统凭据库");
+  } catch(error) { toast(error.message); }
+});
 $("#model-form").addEventListener("submit", async event => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); const provider = data.provider_id; delete data.provider_id; try { await api(`/api/providers/${provider}/models`, {method:"POST", body:JSON.stringify(data)}); event.target.reset(); await loadAll(); toast("模型映射已保存"); } catch(error) { toast(error.message); } });
 function renderProviders() {
   $("#model-provider").innerHTML = state.providers.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
-  $("#provider-list").innerHTML = state.providers.length ? state.providers.map(p => `<div class="data-row"><div><strong>${escapeHtml(p.name)}</strong><div class="skill-meta">${escapeHtml(p.protocol)} · ${escapeHtml(p.base_url)}</div><div class="key-update"><input type="password" autocomplete="new-password" placeholder="${p.has_api_key ? "更新 API Key" : "API Key 已缺失，请重新输入"}" data-key-input="${p.id}"><button class="secondary" data-key-save="${p.id}">保存密钥</button></div>${p.models.map(m => `<div class="model-row"><strong>${escapeHtml(m.display_name)}</strong><div class="model-actions"><button class="secondary" data-probe-provider="${p.id}" data-probe-model="${m.id}" ${p.has_api_key ? "" : "disabled"}>检测模型</button><span id="probe-${m.id}" class="probe-result">${p.has_api_key ? "尚未检测" : "请先更新密钥"}</span></div></div>`).join("")}</div><span class="badge ${p.has_api_key ? "" : "missing"}">${p.has_api_key ? `${p.models.length} 个模型` : "密钥缺失"}</span></div>`).join("") : '<p class="skill-meta">尚未配置供应商</p>';
+  $("#provider-list").innerHTML = state.providers.length ? state.providers.map(p => `<div class="data-row"><div><strong>${escapeHtml(p.name)}</strong><div class="skill-meta">${escapeHtml(p.protocol)} · ${escapeHtml(p.base_url)}</div><div class="key-update"><input type="password" autocomplete="new-password" placeholder="${p.has_api_key ? "更新 API Key" : "API Key 已缺失，请重新输入"}" data-key-input="${p.id}"><button class="secondary" data-key-save="${p.id}">保存密钥</button></div>${p.models.map(m => `<div class="model-row"><strong>${escapeHtml(m.display_name)}</strong><div class="model-actions"><button class="secondary" data-probe-provider="${p.id}" data-probe-model="${m.id}" ${p.has_api_key ? "" : "disabled"}>检测模型</button><span id="probe-${m.id}" class="probe-result">${p.has_api_key ? "尚未检测" : "请先更新密钥"}</span></div></div>`).join("")}</div><div class="provider-actions"><span class="badge ${p.has_api_key ? "" : "missing"}">${p.has_api_key ? `${p.models.length} 个模型` : "密钥缺失"}</span><button class="secondary" data-provider-edit="${p.id}">编辑</button><button class="danger-button" data-provider-delete="${p.id}">删除</button></div></div>`).join("") : '<p class="skill-meta">尚未配置供应商</p>';
+  document.querySelectorAll("[data-provider-edit]").forEach(button => button.addEventListener("click", () => {
+    const provider=state.providers.find(item => item.id === button.dataset.providerEdit); if (!provider) return;
+    const form=$("#provider-form"); state.editingProviderId=provider.id;
+    form.elements.name.value=provider.name; form.elements.protocol.value=provider.protocol; form.elements.base_url.value=provider.base_url;
+    form.elements.api_key.value=""; form.elements.api_key.required=false;
+    $("#provider-form-title").textContent="编辑供应商"; $("#provider-submit").textContent="保存修改"; $("#provider-cancel").hidden=false;
+    form.scrollIntoView({behavior:"smooth",block:"start"}); form.elements.name.focus();
+  }));
+  document.querySelectorAll("[data-provider-delete]").forEach(button => button.addEventListener("click", async () => {
+    const provider=state.providers.find(item => item.id === button.dataset.providerDelete); if (!provider) return;
+    if (!confirm(`删除供应商“${provider.name}”？它下面的 ${provider.models.length} 个模型映射也会删除。`)) return;
+    try { await api(`/api/providers/${provider.id}`,{method:"DELETE"}); if (state.editingProviderId === provider.id) resetProviderForm(); await loadAll(); toast("供应商已删除"); }
+    catch(error) { toast(error.message); }
+  }));
   document.querySelectorAll("[data-key-save]").forEach(button => button.addEventListener("click", async () => {
     const input=document.querySelector(`[data-key-input="${button.dataset.keySave}"]`); const apiKey=input.value.trim();
     if (!apiKey) return toast("请输入新的 API Key"); button.disabled=true;
@@ -387,7 +480,7 @@ function renderBindings() {
   })).catch(error => toast(error.message));
 }
 function renderSkills() {
-  $("#skill-list").innerHTML = state.skills.length ? state.skills.map(s => `<div class="data-row"><div><strong>${escapeHtml(s.name)}</strong><div class="skill-meta">${escapeHtml(s.path)}<br>${s.content_hash.slice(0,16)}</div></div><div>${s.executable ? '<span class="badge">执行型</span>' : '<span class="badge">提示词</span>'} ${s.approved ? '<span class="status">已启用</span>' : `<button class="secondary" data-approve="${escapeHtml(s.name)}" data-hash="${s.content_hash}">授权</button>`}</div></div>`).join("") : '<p class="skill-meta">未发现 Skill</p>';
+  $("#skill-list").innerHTML = state.skills.length ? state.skills.map(s => `<div class="data-row"><div><strong>${escapeHtml(s.name)}</strong><div class="skill-meta">${escapeHtml(s.path)}<br>${s.content_hash.slice(0,16)}</div>${s.conflicts?.length ? `<div class="skill-conflicts">${s.conflicts.map(item => `<p><strong>${escapeHtml(item.code)}</strong>${escapeHtml(item.message)}</p>`).join("")}</div>` : ""}</div><div>${s.executable ? '<span class="badge">执行型</span>' : s.has_scripts ? '<span class="badge">提示词 · 含辅助脚本</span>' : '<span class="badge">提示词</span>'} ${s.conflicts?.length ? `<span class="badge conflict">冲突 ${s.conflicts.length}</span>` : ""} ${s.approved ? '<span class="status">已启用</span>' : `<button class="secondary" data-approve="${escapeHtml(s.name)}" data-hash="${s.content_hash}">授权</button>`}</div></div>`).join("") : '<p class="skill-meta">未发现 Skill</p>';
   document.querySelectorAll("[data-approve]").forEach(button => button.addEventListener("click", async () => { try { await api(`/api/skills/${encodeURIComponent(button.dataset.approve)}/approve`, {method:"POST", body:JSON.stringify({content_hash:button.dataset.hash})}); await loadAll(); toast("当前 Skill 版本已授权"); } catch(error) { toast(error.message); } }));
 }
 $("#refresh").addEventListener("click", () => loadAll().then(() => toast("已刷新")));

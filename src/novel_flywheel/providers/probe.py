@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
 from novel_flywheel.providers.base import ProviderAdapter
+from novel_flywheel.providers.http import ToolCapabilityError
 
 
 class ProbeResult(BaseModel):
@@ -58,12 +59,22 @@ class CapabilityProbe:
                 name="probe_tool", description="Return an empty tool call for capability detection",
                 input_schema={"type": "object", "properties": {}, "additionalProperties": False},
             )]
-            tool_response = await self.adapter.complete(ModelRequest(
+            tool_request = ModelRequest(
                 model=model,
                 messages=[Message(role="user", content="Call probe_tool now.")],
-                tools=tools, max_output_tokens=64,
-            ))
+                tools=tools, required_tool="probe_tool", max_output_tokens=64,
+            )
+            try:
+                tool_response = await self.adapter.complete(tool_request)
+            except ToolCapabilityError as exc:
+                if "thinking mode does not support this tool_choice" not in str(exc).lower():
+                    raise
+                tool_response = await self.adapter.complete(
+                    tool_request.model_copy(update={"required_tool": None})
+                )
             tool_ok = any(call.name == "probe_tool" for call in tool_response.tool_calls)
+            if not tool_ok:
+                errors.append("tools: provider returned no probe_tool call")
         except Exception as exc:
             tool_ok = False
             errors.append(f"tools: {self._error(exc)}")

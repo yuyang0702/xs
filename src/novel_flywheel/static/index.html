@@ -40,14 +40,23 @@
         <div id="candidate-quality"><p class="skill-meta">请先选择作品</p></div>
       </section>
       <section class="style-sample-band" aria-labelledby="style-sample-title">
-        <div class="section-heading"><div><h2 id="style-sample-title">范文笔感</h2><p class="skill-meta">提炼节奏、对白与人物描写习惯，后续生成和润色自动使用</p></div><button id="style-sample-delete" class="secondary danger-text" hidden>删除笔感</button></div>
+        <div class="section-heading"><div><h2 id="style-sample-title">范文笔感</h2><p class="skill-meta">提炼节奏、对白与人物描写习惯，按当前作品设置应用</p></div><button id="style-sample-delete" class="secondary danger-text" hidden>删除笔感</button></div>
         <div class="style-sample-grid">
           <div class="style-sample-inputs">
+            <fieldset class="segmented style-scope"><legend>应用阶段</legend><label><input type="radio" name="style-scope" value="polish" checked><span>仅精修</span></label><label><input type="radio" name="style-scope" value="draft_and_polish"><span>初稿 + 精修</span></label></fieldset>
             <label>选择范文文件<input id="style-sample-file" type="file" accept=".txt,.md,text/plain,text/markdown"></label>
             <label>或粘贴范文<textarea id="style-sample-text" rows="6" maxlength="60000" placeholder="建议提供 1000-10000 字具有代表性的正文"></textarea></label>
             <div class="style-sample-actions"><span id="style-sample-count" class="skill-meta">0 / 60000 字符</span><button id="style-sample-analyze" class="primary">分析并应用笔感</button></div>
           </div>
           <div id="style-sample-status" class="style-sample-status"><p class="skill-meta">请先选择作品</p></div>
+        </div>
+      </section>
+      <section class="story-state-band" aria-labelledby="story-state-title">
+        <div class="section-heading"><div><h2 id="story-state-title">项目资料</h2><p class="skill-meta" id="story-state-revision">请先选择作品</p></div><button id="story-state-save" class="primary" disabled>保存为新版本</button></div>
+        <div class="story-state-editor">
+          <label>资料分区<select id="story-state-section"><option value="character_states">人物状态</option><option value="world_rules">世界规则</option><option value="timeline_events">时间线</option><option value="issue_ledger">伏笔与问题</option><option value="locked_facts">锁定事实</option><option value="confirmed_facts">确认事实</option><option value="provisional_facts">暂定事实</option></select></label>
+          <label>JSON 内容<textarea id="story-state-value" rows="10" spellcheck="false" placeholder="请先选择作品"></textarea></label>
+          <pre id="story-state-diff" class="story-state-diff" hidden></pre>
         </div>
       </section>
       <div class="workspace-grid">
@@ -62,7 +71,7 @@
           </div>
           <div class="run-controls"><div id="run-state" class="run-state">等待任务</div><button id="run-cancel" class="stop-button" title="终止本次生成" aria-label="终止本次生成" hidden>■</button></div>
         </section>
-        <section class="history-panel"><h2>实时执行日志</h2><div id="run-log" class="run-log"><p class="skill-meta">尚未开始任务</p></div><h2 class="history-title">运行记录</h2><div id="run-list" class="run-list"></div></section>
+        <section class="history-panel"><div class="run-tabs"><button class="run-tab active" data-run-tab="log">执行日志</button><button class="run-tab" data-run-tab="context">上下文</button></div><div id="run-log" class="run-log"><p class="skill-meta">尚未开始任务</p></div><div id="run-context" class="run-context" hidden><p class="skill-meta">选择运行记录后查看上下文摘要</p></div><h2 class="history-title">运行记录</h2><div id="run-list" class="run-list"></div></section>
       </div>
       <section class="project-library"><div class="section-heading"><h2>我的作品</h2><button class="secondary" data-view-target="projects">新建作品</button></div><div id="project-list" class="project-list"></div></section>
       <section class="manuscript-panel" id="manuscript-panel" hidden>
@@ -108,12 +117,12 @@
       <div class="section-heading"><div><p class="eyebrow">MODEL ROUTING</p><h2>供应商与角色</h2></div></div>
       <div class="config-columns">
         <form id="provider-form" class="plain-panel">
-          <h3>添加供应商</h3>
+          <h3 id="provider-form-title">添加供应商</h3>
           <label>显示名称<input name="name" required></label>
           <label>协议<select name="protocol"><option value="openai-chat">OpenAI Chat Completions</option><option value="openai-responses">OpenAI Responses</option><option value="anthropic">Anthropic Messages</option></select></label>
           <label>Base URL<input name="base_url" type="url" required placeholder="https://relay.example/v1"></label>
           <label>API Key<input name="api_key" type="password" autocomplete="new-password" required></label>
-          <button class="primary" type="submit">保存供应商</button>
+          <div class="form-actions"><button id="provider-submit" class="primary" type="submit">保存供应商</button><button id="provider-cancel" class="secondary" type="button" hidden>取消编辑</button></div>
         </form>
         <form id="model-form" class="plain-panel">
           <h3>添加模型映射</h3>

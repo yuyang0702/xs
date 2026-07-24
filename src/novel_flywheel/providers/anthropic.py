@@ -18,6 +18,8 @@ class AnthropicAdapter(HttpProvider):
             payload["tools"] = [{
                 "name": tool.name, "description": tool.description, "input_schema": tool.input_schema,
             } for tool in request.tools]
+        if request.required_tool:
+            payload["tool_choice"] = {"type": "tool", "name": request.required_tool}
         auth_headers = ({"Authorization": f"Bearer {self.api_key}"}
                         if self.auth_type == "bearer" else {"x-api-key": self.api_key})
         path = "messages" if self.base_url.endswith("/v1") else "v1/messages"

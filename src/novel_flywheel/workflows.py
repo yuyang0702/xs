@@ -1188,7 +1188,13 @@ class WorkflowService:
                     "compact_constraints": model_constraints != constraints,
                 },
             )
-            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}"
+            style = (
+                f"\n\nPROJECT STYLE PROFILE:\n{ensure_style_profile(project)}"
+                if stage == "draft"
+                and project.metadata.get("style_sample_scope") == "draft_and_polish"
+                else ""
+            )
+            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}{style}"
             gateway_role = model_role or stage
             output_budget = self._output_budget_for_call(
                 stage, output_source_characters, gateway_role, prefer_configured_fallback,

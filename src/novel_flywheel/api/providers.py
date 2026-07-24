@@ -20,6 +20,16 @@ class ProviderCreate(BaseModel):
     extra_headers: dict[str, str] = {}
 
 
+class ProviderUpdate(BaseModel):
+    name: str = Field(min_length=1)
+    protocol: Literal["openai-chat", "openai-responses", "anthropic"]
+    base_url: str
+    api_key: str | None = None
+    auth_type: str = "bearer"
+    timeout_seconds: int = Field(default=180, ge=5, le=1800)
+    extra_headers: dict[str, str] = {}
+
+
 class ModelCreate(BaseModel):
     display_name: str = Field(min_length=1)
     model_name: str = Field(min_length=1)
@@ -53,6 +63,21 @@ def create_provider(payload: ProviderCreate, registry: ProviderRegistry = Depend
         provider_id = registry.add_provider(**payload.model_dump())
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
+    provider = registry.db.get_provider(provider_id)
+    assert provider is not None
+    return _public_provider(provider, registry)
+
+
+@router.put("/providers/{provider_id}")
+def update_provider(provider_id: str, payload: ProviderUpdate,
+                    registry: ProviderRegistry = Depends(get_registry)) -> dict:
+    try:
+        registry.update_provider(provider_id, **payload.model_dump())
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=404 if str(exc) == "provider_not_found" else 400,
+            detail={"code": str(exc)},
+        ) from exc
     provider = registry.db.get_provider(provider_id)
     assert provider is not None
     return _public_provider(provider, registry)

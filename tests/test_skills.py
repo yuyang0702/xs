@@ -24,13 +24,23 @@ def write_skill(root: Path, name: str, body: str, script: str | None = None) -> 
 def test_scanner_discovers_prompt_and_executable_skills(tmp_path) -> None:
     root = tmp_path / "skills"
     write_skill(root, "humanizer", "Remove AI patterns.")
-    write_skill(root, "maintenance", "Run maintenance.", "print('checked')")
+    write_skill(root, "maintenance", "Run scripts/run.py.", "print('checked')")
 
     skills = {skill.name: skill for skill in SkillScanner([root]).scan()}
 
     assert skills["humanizer"].executable is False
     assert skills["maintenance"].executable is True
     assert len(skills["maintenance"].content_hash) == 64
+
+
+def test_scanner_does_not_mark_unreferenced_validation_script_executable(tmp_path) -> None:
+    root = tmp_path / "skills"
+    write_skill(root, "better-writing", "Improve prose.", "print('repo validation')")
+
+    skill = SkillScanner([root]).scan()[0]
+
+    assert skill.executable is False
+    assert skill.has_scripts is True
 
 
 def test_prompt_skill_executes_automatically_and_records_receipt(tmp_path) -> None:
@@ -74,7 +84,7 @@ def test_missing_optional_prompt_skill_does_not_block_stage(tmp_path) -> None:
 
 def test_executable_skill_requires_approval_for_current_hash(tmp_path) -> None:
     root = tmp_path / "skills"
-    folder = write_skill(root, "maintenance", "Run it.", "print('checked')")
+    folder = write_skill(root, "maintenance", "Run scripts/run.py.", "print('checked')")
     db = Database(tmp_path / "app.db")
     db.migrate()
     gate = SkillGate(db, SkillScanner([root]))
@@ -88,14 +98,17 @@ def test_executable_skill_requires_approval_for_current_hash(tmp_path) -> None:
     assert result.receipts[0].status == "succeeded"
     assert result.receipts[0].output == "checked"
 
-    (folder / "SKILL.md").write_text("---\nname: maintenance\n---\nchanged", encoding="utf-8")
+    (folder / "SKILL.md").write_text(
+        "---\nname: maintenance\n---\nchanged; run scripts/run.py",
+        encoding="utf-8",
+    )
     with pytest.raises(PermissionError, match="maintenance"):
         gate.run_required("archive", ["maintenance"], {"maintenance": ["scripts/run.py"]})
 
 
 def test_missing_or_failed_required_skill_blocks_stage(tmp_path) -> None:
     root = tmp_path / "skills"
-    write_skill(root, "broken", "Run it.", "import sys\nprint('validation detail', file=sys.stderr)\nraise SystemExit(2)")
+    write_skill(root, "broken", "Run scripts/run.py.", "import sys\nprint('validation detail', file=sys.stderr)\nraise SystemExit(2)")
     db = Database(tmp_path / "app.db")
     db.migrate()
     gate = SkillGate(db, SkillScanner([root]))
@@ -113,7 +126,7 @@ def test_missing_or_failed_required_skill_blocks_stage(tmp_path) -> None:
 
 def test_javascript_skill_uses_configured_bundled_runtime(tmp_path) -> None:
     root = tmp_path / "skills"
-    folder = write_skill(root, "maintenance", "Run it.")
+    folder = write_skill(root, "maintenance", "Run scripts/run.js.")
     scripts = folder / "scripts"
     scripts.mkdir()
     (scripts / "run.js").write_text("print('bundled')", encoding="utf-8")
