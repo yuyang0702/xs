@@ -2,7 +2,9 @@ import pytest
 
 from novel_flywheel.revision import (
     assess_polish_candidate,
+    align_revision_plan_targets,
     check_revision_constraints,
+    check_source_local_constraints,
     compact_polish_findings,
     compact_review,
     normalize_revision_plan,
@@ -128,6 +130,28 @@ def test_structural_polish_can_expand_within_explicit_bounds() -> None:
     assert structural["length_bounds"] == {"minimum_ratio": 0.6, "maximum_ratio": 1.8}
 
 
+def test_revision_targets_follow_actual_forbidden_text_location() -> None:
+    plan = {
+        "global_facts": [],
+        "checks": [{"kind": "forbidden_text", "value": "Lin crouched"}],
+        "tasks": [
+            {"segments": [8], "instruction": "Replace 'Lin crouched' with the full name."},
+            {"segments": [5], "instruction": "Repair the retired employee reference."},
+        ],
+        "target_segments": [5, 8],
+    }
+
+    aligned, corrections = align_revision_plan_targets(
+        plan, ["scene one", "Lin crouched in darkness", "scene three"] + ["other"] * 5,
+    )
+
+    assert aligned["tasks"][0]["segments"] == [2]
+    assert aligned["target_segments"] == [2, 5]
+    assert corrections == [{
+        "value": "Lin crouched", "planned_segments": [8], "actual_segments": [2],
+    }]
+
+
 def test_structural_revision_plan_limits_targets_to_forty_percent() -> None:
     with pytest.raises(ValueError, match="40%"):
         normalize_revision_plan({
@@ -166,6 +190,20 @@ def test_revision_checks_report_required_and_forbidden_text() -> None:
         "required text missing: lawyer escrow",
         "forbidden text remains: wedding",
     ]
+
+
+def test_source_local_constraints_only_require_relevant_forbidden_text_removal() -> None:
+    plan = {"checks": [
+        {"kind": "forbidden_text", "value": "remove here"},
+        {"kind": "forbidden_text", "value": "belongs elsewhere"},
+    ]}
+
+    assert check_source_local_constraints(
+        "keep remove here", "keep remove here", plan,
+    ) == ["forbidden text remains: remove here"]
+    assert check_source_local_constraints(
+        "keep remove here", "keep", plan,
+    ) == []
 
 
 def test_polish_findings_prioritize_critical_issues_and_bound_evidence() -> None:

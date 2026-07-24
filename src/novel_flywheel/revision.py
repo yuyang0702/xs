@@ -158,6 +158,44 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int,
     }
 
 
+def align_revision_plan_targets(plan: dict[str, Any],
+                                scenes: list[str]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    aligned = {
+        **plan,
+        "tasks": [{**task, "segments": list(task["segments"])} for task in plan["tasks"]],
+    }
+    corrections = []
+    for check in aligned.get("checks", []):
+        if check.get("kind") != "forbidden_text":
+            continue
+        value = check["value"]
+        actual = [index for index, scene in enumerate(scenes, 1) if value in scene]
+        if not actual:
+            continue
+        matching = [task for task in aligned["tasks"] if value in task["instruction"]]
+        if matching:
+            for task in matching:
+                planned = list(task["segments"])
+                if planned != actual:
+                    corrections.append({
+                        "value": value, "planned_segments": planned,
+                        "actual_segments": actual,
+                    })
+                    task["segments"] = actual
+        elif not set(actual).issubset(aligned.get("target_segments", [])):
+            aligned["tasks"].append({
+                "segments": actual,
+                "instruction": f"Remove the forbidden literal exactly: {value}",
+            })
+            corrections.append({
+                "value": value, "planned_segments": [], "actual_segments": actual,
+            })
+    aligned["target_segments"] = sorted({
+        segment for task in aligned["tasks"] for segment in task["segments"]
+    })
+    return aligned, corrections
+
+
 def remove_consecutive_duplicate_blocks(text: str) -> tuple[str, int]:
     paragraphs = text.split("\n\n")
     removals = 0
@@ -185,3 +223,12 @@ def check_revision_constraints(text: str, plan: dict[str, Any]) -> list[str]:
         elif check["kind"] == "forbidden_text" and value in text:
             failures.append(f"forbidden text remains: {value}")
     return failures
+
+
+def check_source_local_constraints(source: str, candidate: str,
+                                   plan: dict[str, Any]) -> list[str]:
+    local_plan = {"checks": [
+        check for check in plan.get("checks", [])
+        if check.get("kind") == "forbidden_text" and check.get("value") in source
+    ]}
+    return check_revision_constraints(candidate, local_plan)

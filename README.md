@@ -49,6 +49,8 @@ Ordinary prose polish uses bounded chunks and merges tiny trailing chunks when t
 
 Only locally accepted candidates create checkpoints; rejected candidates remain retryable on resume.
 
+For structural correction only, candidates in the 50%-60% compression gray zone may continue to final review when locked facts and local checks still pass. Runtime also re-aligns forbidden-text repair tasks to the scene that actually contains the exact text.
+
 Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).
 
 ## Long novels

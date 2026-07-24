@@ -847,6 +847,45 @@ async def test_structural_revision_sends_each_target_scene_once(tmp_path) -> Non
 
 
 @pytest.mark.asyncio
+async def test_structural_compression_in_gray_zone_reaches_final_review(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Gray zone", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    source = "A" * 1000
+    candidate = "B" * 550
+    plan = json.dumps({
+        "checks": [{"kind": "forbidden_text", "value": "A" * 20}],
+        "tasks": [{"segments": [2], "instruction": "Compress and remove repetition."}],
+    })
+    gateway = RecordingGateway([plan, candidate])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("gray-zone", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "gray-zone"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    revised = await service._polish_short_segments(
+        "gray-zone", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["Opening", source, "Ending"]),
+        json.dumps({"issues": [{
+            "category": "ending", "severity": "critical", "action": "Compress it.",
+        }]}), suffix="-2", structural=True,
+    )
+
+    assert WorkflowService._split_segments(revised) == ["Opening", candidate, "Ending"]
+    event = next(item for item in db.list_run_events("gray-zone")
+                 if item["event_type"] == "polish_conditional_length")
+    assert event["metadata"]["ratio"] == 0.55
+    assert event["metadata"]["review_required"] is True
+
+
+@pytest.mark.asyncio
 async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

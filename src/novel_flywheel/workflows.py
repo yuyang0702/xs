@@ -24,8 +24,10 @@ from novel_flywheel.quality import (
     select_route,
 )
 from novel_flywheel.revision import (
+    align_revision_plan_targets,
     assess_polish_candidate,
     check_revision_constraints,
+    check_source_local_constraints,
     compact_polish_findings,
     compact_review,
     normalize_chinese_prose,
@@ -740,6 +742,19 @@ class WorkflowService:
             revision_plan = await self._plan_structural_revision(
                 run_id, run_path, project, constraints, findings, story_map, suffix,
             )
+            revision_plan, target_corrections = align_revision_plan_targets(
+                revision_plan, original_parts,
+            )
+            if target_corrections:
+                atomic_write(
+                    run_path / "outputs" / f"revision-plan{suffix}.json",
+                    json.dumps(revision_plan, ensure_ascii=False, indent=2),
+                )
+                self.db.add_run_event(
+                    run_id, "warning", "revision_targets_aligned",
+                    "Runtime corrected revision targets using exact manuscript search",
+                    stage="revision_plan", metadata={"corrections": target_corrections},
+                )
         elif not structural:
             try:
                 findings = json.dumps(
@@ -821,8 +836,9 @@ class WorkflowService:
                 f"COMPACT FULL STORY MAP:\n{json.dumps(story_map, ensure_ascii=False)}\n\n"
                 if revision_plan else f"STRUCTURED FINDINGS:\n{findings}\n\n"
             )
-            minimum_ratio, maximum_ratio = ((0.60, 1.80) if structural else (0.70, 1.60))
-            minimum_characters = math.floor(len(part) * minimum_ratio)
+            preferred_minimum_ratio = 0.60 if structural else 0.70
+            minimum_ratio, maximum_ratio = ((0.50, 1.80) if structural else (0.70, 1.60))
+            minimum_characters = math.floor(len(part) * preferred_minimum_ratio)
             maximum_characters = math.ceil(len(part) * maximum_ratio)
             length_contract = (
                 f" Return between {minimum_characters} and {maximum_characters} characters. "
@@ -914,6 +930,30 @@ class WorkflowService:
                 assessment["accepted"] = False
                 assessment["reasons"].extend(locked_failures)
             accepted = bool(assessment["accepted"])
+            conditional_length = bool(
+                accepted and structural and assessment["ratio"] < preferred_minimum_ratio
+            )
+            if conditional_length and revision_plan:
+                local_check_failures = check_source_local_constraints(
+                    part, polished_part, revision_plan,
+                )
+                if local_check_failures:
+                    accepted = False
+                    conditional_length = False
+                    assessment["accepted"] = False
+                    assessment["reasons"].extend(local_check_failures)
+            if conditional_length:
+                self.db.add_run_event(
+                    run_id, "warning", "polish_conditional_length",
+                    "Compressed structural candidate accepted conditionally for final review",
+                    stage="polish", metadata={
+                        "segment": index,
+                        "ratio": assessment["ratio"],
+                        "preferred_minimum_ratio": preferred_minimum_ratio,
+                        "hard_minimum_ratio": minimum_ratio,
+                        "review_required": True,
+                    },
+                )
             if not assessment["accepted"]:
                 self.db.add_run_event(
                     run_id, "warning", "polish_output_rejected",
