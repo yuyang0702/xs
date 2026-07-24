@@ -115,6 +115,19 @@ def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None
         normalize_revision_plan({"tasks": []}, segment_count=3)
 
 
+def test_structural_polish_can_expand_within_explicit_bounds() -> None:
+    source = "A" * 1000
+    candidate = "B" * 1700
+
+    assert assess_polish_candidate(source, candidate)["accepted"] is False
+    structural = assess_polish_candidate(
+        source, candidate, minimum_ratio=0.6, maximum_ratio=1.8,
+    )
+
+    assert structural["accepted"] is True
+    assert structural["length_bounds"] == {"minimum_ratio": 0.6, "maximum_ratio": 1.8}
+
+
 def test_structural_revision_plan_limits_targets_to_forty_percent() -> None:
     with pytest.raises(ValueError, match="40%"):
         normalize_revision_plan({

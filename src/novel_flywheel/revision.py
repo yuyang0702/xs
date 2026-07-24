@@ -27,12 +27,14 @@ def normalize_chinese_prose(text: str) -> tuple[str, list[str]]:
 
 
 def assess_polish_candidate(source: str, candidate: str,
-                            required_literals: list[str] | None = None) -> dict[str, Any]:
+                            required_literals: list[str] | None = None,
+                            minimum_ratio: float = 0.70,
+                            maximum_ratio: float = 1.60) -> dict[str, Any]:
     candidate = candidate.strip()
     ratio = len(candidate) / max(1, len(source.strip()))
     report = analyze_prose(candidate)
     reasons = []
-    if len(source.strip()) >= 200 and (ratio < 0.70 or ratio > 1.60):
+    if len(source.strip()) >= 200 and (ratio < minimum_ratio or ratio > maximum_ratio):
         reasons.append("length_ratio")
     if report["blocking_count"]:
         reasons.append("production_text")
@@ -42,8 +44,13 @@ def assess_polish_candidate(source: str, candidate: str,
     source_report = analyze_prose(source)
     if report["targeted_count"] > source_report["targeted_count"] + 2:
         reasons.append("style_regression")
-    return {"accepted": not reasons, "reasons": reasons, "ratio": round(ratio, 3),
-            "diagnostics": report}
+    return {
+        "accepted": not reasons, "reasons": reasons, "ratio": round(ratio, 3),
+        "length_bounds": {
+            "minimum_ratio": minimum_ratio, "maximum_ratio": maximum_ratio,
+        },
+        "diagnostics": report,
+    }
 
 
 def compact_review(review: dict[str, Any]) -> dict[str, Any]:

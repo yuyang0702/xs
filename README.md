@@ -45,6 +45,10 @@ Revision planning uses compact Skill/constraint prompts. If the planning role re
 
 Polish input has circuit breakers: 120,000 tokens for the initial pass, 60,000 for each structural correction pass, and 220,000 across the run. Checkpoints are reused when resuming the same pass; failed editorial rounds are never reused as accepted corrections.
 
+Ordinary prose polish uses bounded chunks and merges tiny trailing chunks when the merged request remains safe. Structural correction sends each targeted story scene once instead of repeating a scene-level task across subchunks. Its explicit length contract is 60%-180% of the source scene; ordinary polish remains 70%-160%. All instructions precede the manuscript marker so the model sees only source prose after `MANUSCRIPT SEGMENT`.
+
+Only locally accepted candidates create checkpoints; rejected candidates remain retryable on resume.
+
 Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).
 
 ## Long novels

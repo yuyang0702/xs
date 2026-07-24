@@ -597,6 +597,8 @@ async def test_segment_polish_rejects_truncated_output_and_keeps_original(tmp_pa
     assert WorkflowService._split_segments(polished) == [original, original]
     events = db.list_run_events("protected")
     assert sum(item["event_type"] == "polish_output_rejected" for item in events) == 2
+    checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
+    assert not list(checkpoint_root.glob("*.json"))
 
 
 @pytest.mark.asyncio
@@ -740,10 +742,11 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
     assert "Revised middle" in revised_parts[1]
     assert '"修好了。"' not in revised_parts[1]
     assert "“修好了。”" in revised_parts[1]
-    assert gateway.roles == ["planning", "polish", "polish"]
+    assert gateway.roles == ["planning", "polish"]
     for call in gateway.calls[1:]:
         assert "The public ceremony is a wedding." in call["user"]
         assert "NEXT ORIGINAL START" in call["user"]
+        assert "Return between" in call["user"]
     events = db.list_run_events("targeted")
     planned = next(item for item in events if item["event_type"] == "revision_planned")
     assert planned["metadata"]["target_segments"] == [2]
@@ -784,6 +787,63 @@ async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path
                  if item["event_type"] == "revision_plan_blocked")
     assert event["severity"] == "error"
     assert not (run_path / "outputs" / "polish-2.md").exists()
+
+
+@pytest.mark.asyncio
+async def test_structural_revision_sends_each_target_scene_once(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Whole scene", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=12000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    plan = json.dumps({
+        "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+        "tasks": [{"segments": [2], "instruction": "Repair the wrong fact."}],
+    })
+
+    class WholeSceneGateway:
+        def __init__(self):
+            self.roles = []
+            self.polish_inputs = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.roles.append(role)
+            if role == "planning":
+                return ModelResult(plan, {"model_name": "planner"})
+            source = user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+            self.polish_inputs.append(source)
+            return ModelResult(source.replace("wrong fact", "correct fact"), {
+                "model_name": "polisher", "input_tokens": 1000,
+            })
+
+    gateway = WholeSceneGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("whole-scene", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "whole-scene"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    target = ("wrong fact. " * 375).strip()
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join([
+        "Opening " * 100, target, "Ending " * 100,
+    ])
+
+    revised = await service._polish_short_segments(
+        "whole-scene", run_path, project, "constraints", manuscript,
+        json.dumps({"issues": [{
+            "category": "canon", "severity": "critical", "action": "Repair canon.",
+        }]}), suffix="-2", structural=True,
+    )
+
+    assert gateway.roles == ["planning", "polish"]
+    assert gateway.polish_inputs == [target]
+    assert "wrong fact" not in revised
+    polish_call = next(call for call in db.list_run_events("whole-scene")
+                       if call["event_type"] == "polish_segment_route")
+    assert polish_call["metadata"]["characters"] == len(target)
 
 
 @pytest.mark.asyncio
@@ -962,6 +1022,14 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("polish") == 8192
     assert WorkflowService._stage_output_budget("final_review") == 8192
     assert WorkflowService._stage_output_budget("maintenance") == 4096
+
+
+def test_polish_splitter_merges_tiny_trailing_chunk() -> None:
+    text = "A" * 2000 + "\n\n" + "B" * 300
+
+    chunks = WorkflowService._split_polish_segments(text)
+
+    assert [len(chunk) for chunk in chunks] == [2302]
 
 
 def test_claude_primary_polish_uses_full_budget_while_other_routes_stay_dynamic(tmp_path) -> None:

@@ -35,6 +35,10 @@ Structural plans must target no more than 40% of stable `scene-NN` scenes and co
 
 Revision planning compacts its Skill and constraint prompts. Empty, truncated, invalid-JSON, over-scoped, or checkless hard-issue plans retry once through the `review` role. If that result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
 
+Ordinary polish splits around 2,000 characters and merges a trailing chunk below 800 characters when the combined chunk is at most 2,800 characters. Structural correction does not reuse those prose chunks: each targeted `scene-NN` is sent exactly once, preventing one scene-level task from being repeated over multiple fragments. Structural candidates use a 60%-180% length contract; ordinary candidates use 70%-160%. Rejection metadata includes absolute bounds and a short candidate preview. Prompt metadata always appears before `MANUSCRIPT SEGMENT`; source prose is last.
+
+Rejected candidates are never written as polish checkpoints. A later resume can retry the rejected source instead of mistaking the preserved original for a completed edit.
+
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.

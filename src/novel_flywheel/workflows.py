@@ -608,6 +608,7 @@ class WorkflowService:
                                maximum: int = 2400) -> list[str]:
         chunks: list[str] = []
         for original in cls._split_segments(text):
+            first_chunk = len(chunks)
             paragraphs = [item.strip() for item in re.split(r"\n\s*\n", original) if item.strip()]
             units: list[str] = []
             for paragraph in paragraphs:
@@ -636,6 +637,10 @@ class WorkflowService:
                     current, size = [], 0
             if current:
                 chunks.append("\n\n".join(current))
+            if len(chunks) - first_chunk > 1 and len(chunks[-1]) < 800:
+                merged = chunks[-2] + "\n\n" + chunks[-1]
+                if len(merged) <= maximum + 400:
+                    chunks[-2:] = [merged]
         return chunks
 
     def _find_short_checkpoint(self, project: Project, current_run_id: str,
@@ -718,11 +723,14 @@ class WorkflowService:
                                      constraints: str, text: str, findings: str,
                                      suffix: str = "", structural: bool = False) -> str:
         original_parts = self._split_segments(text)
-        grouped_parts = [
-            (part, group)
-            for group, original in enumerate(original_parts, 1)
-            for part in self._split_polish_segments(original)
-        ]
+        grouped_parts = (
+            [(part, group) for group, part in enumerate(original_parts, 1)]
+            if structural else [
+                (part, group)
+                for group, original in enumerate(original_parts, 1)
+                for part in self._split_polish_segments(original)
+            ]
+        )
         parts = [item[0] for item in grouped_parts]
         part_groups = [item[1] for item in grouped_parts]
         revision_plan = None
@@ -813,8 +821,19 @@ class WorkflowService:
                 f"COMPACT FULL STORY MAP:\n{json.dumps(story_map, ensure_ascii=False)}\n\n"
                 if revision_plan else f"STRUCTURED FINDINGS:\n{findings}\n\n"
             )
+            minimum_ratio, maximum_ratio = ((0.60, 1.80) if structural else (0.70, 1.60))
+            minimum_characters = math.floor(len(part) * minimum_ratio)
+            maximum_characters = math.ceil(len(part) * maximum_ratio)
+            length_contract = (
+                f" Return between {minimum_characters} and {maximum_characters} characters. "
+                "Do not repeat adjacent scenes, include analysis, or rewrite material outside "
+                "this manuscript segment."
+            )
             prompt = (
-                polish_context(
+                f"STYLE PROFILE:\n{style_profile}\n\n"
+                f"RELEVANT CHARACTER VOICES:\n{character_fingerprints(project.path, part)}\n\n"
+                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
+                + polish_context(
                     state=authoritative_state,
                     story_map=story_map,
                     segment_index=index,
@@ -823,11 +842,8 @@ class WorkflowService:
                     previous_tail=previous_tail,
                     next_head=next_head,
                     findings=plan_context,
-                    edit_rule=revision_rule,
-                ) + "\n\n"
-                f"STYLE PROFILE:\n{style_profile}\n\n"
-                f"RELEVANT CHARACTER VOICES:\n{character_fingerprints(project.path, part)}\n\n"
-                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}"
+                    edit_rule=revision_rule + length_contract,
+                )
             )
             part_suffix = f"{suffix}-part-{index:02d}"
             priority = bool(structural or index in {1, len(parts)} or local_report["findings"])
@@ -889,11 +905,15 @@ class WorkflowService:
             )
             voice = character_fingerprints(project.path, part)
             required = re.findall(r"(?m)^##\s+(.+)$", voice)
-            assessment = assess_polish_candidate(part, polished_part, required)
+            assessment = assess_polish_candidate(
+                part, polished_part, required,
+                minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
+            )
             locked_failures = validate_locked_facts(part, polished_part, authoritative_state)
             if locked_failures:
                 assessment["accepted"] = False
                 assessment["reasons"].extend(locked_failures)
+            accepted = bool(assessment["accepted"])
             if not assessment["accepted"]:
                 self.db.add_run_event(
                     run_id, "warning", "polish_output_rejected",
@@ -903,13 +923,17 @@ class WorkflowService:
                         "original_characters": len(part),
                         "candidate_characters": len(polished_part.strip()),
                         "ratio": assessment["ratio"],
+                        "minimum_characters": minimum_characters,
+                        "maximum_characters": maximum_characters,
+                        "candidate_preview": polished_part.strip()[:240],
                         "reasons": assessment["reasons"],
                     },
                 )
                 polished_part = part
             polished_part = polished_part.strip()
             polished_parts.append(polished_part)
-            self._save_polish_checkpoint(checkpoint_root, index, part, polished_part)
+            if accepted:
+                self._save_polish_checkpoint(checkpoint_root, index, part, polished_part)
         restored_groups: list[str] = []
         for group in range(1, len(original_parts) + 1):
             restored_groups.append("\n\n".join(
