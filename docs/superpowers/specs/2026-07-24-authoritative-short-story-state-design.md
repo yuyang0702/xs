@@ -22,7 +22,7 @@ Every generation starts from a state revision. Models produce a candidate manusc
 
 ## Token policy
 
-Skills remain stage-bound and compacted. Review reports are compact structured issue lists. Polish receives one segment plus adjacent boundaries and compact story context, not the full manuscript. Output limits are calculated from the source size and capped by the configured model limit. Long-story retrieval remains on SQLite FTS in this phase.
+Skills remain stage-bound and compacted. Review reports are compact structured issue lists. Polish receives one segment plus adjacent boundaries and compact story context, not the full manuscript. Claude primary polish uses 8,192 on its first request because observed relay responses repeatedly exhausted dynamic limits without visible prose; other polish routes remain dynamically sized. Final review uses 8,192 to keep structured JSON complete. Long-story retrieval remains on SQLite FTS in this phase.
 
 ## Migration and safety
 
@@ -35,4 +35,3 @@ Run events identify state revision, candidate id, actual role/model route, token
 ## Non-goals
 
 No LangGraph migration, vector database, model-to-model chat memory, new provider protocol, or long-story workflow rewrite in this phase.
-

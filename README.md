@@ -33,6 +33,14 @@ Skills are scanned again for every stage. Global Skills are loaded from the conf
 
 A project Skill with the same name overrides the global version on the next run; no server restart is required. Executable Skills still require approval for their current content hash.
 
+## StoryState and safe revision
+
+Each novel has an independent versioned StoryState. Models read the same authoritative facts and submit candidate output; only Runtime can promote a candidate to the formal manuscript. Cancelled runs, failed quality checks, invalid polish output, and stale tasks cannot overwrite the last committed manuscript.
+
+Short-story polish uses bounded segments with adjacent boundaries, a compact story map, character state, locked facts, and stage-specific Skills. Claude primary polish starts with an 8,192 output limit because the configured relay repeatedly exhausted smaller limits before returning visible prose. Other polish routes retain dynamic limits, so ordinary segments do not inherit Claude's cost profile. Final structured review also uses 8,192 to avoid truncated JSON.
+
+Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).
+
 ## Long novels
 
 Long setup may produce `memory/volumes.json` with machine-readable boundaries. When a generated chapter reaches `end_chapter`, the flywheel runs a volume audit and writes `memory/audits/volume-NN.json`.

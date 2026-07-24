@@ -1029,6 +1029,9 @@ class WorkflowService:
             )
             system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}"
             gateway_role = model_role or stage
+            output_budget = self._output_budget_for_call(
+                stage, output_source_characters, gateway_role, prefer_configured_fallback,
+            )
             if allow_tools and hasattr(self.gateway, "complete_with_tools"):
                 toolbox = StoryToolbox(project, self.memory)
                 result = await self.gateway.complete_with_tools(
@@ -1037,25 +1040,25 @@ class WorkflowService:
                         self.memory.context(project.id, user[:500]), ensure_ascii=False,
                     ),
                     run_id=run_id,
-                    max_output_tokens=self._stage_output_budget(stage, output_source_characters),
+                    max_output_tokens=output_budget,
                 )
             elif prefer_configured_fallback and hasattr(
                 self.gateway, "complete_configured_fallback"
             ):
                 result = await self.gateway.complete_configured_fallback(
                     gateway_role, system, user,
-                    max_output_tokens=self._stage_output_budget(stage, output_source_characters),
+                    max_output_tokens=output_budget,
                 )
             else:
                 result = await self.gateway.complete(
                     gateway_role, system, user,
-                    max_output_tokens=self._stage_output_budget(stage, output_source_characters),
+                    max_output_tokens=output_budget,
                 )
             if (stage == "polish" and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"
-                    and self._stage_output_budget(stage, output_source_characters) != 8192):
-                previous_budget = self._stage_output_budget(stage, output_source_characters)
+                    and output_budget != 8192):
+                previous_budget = output_budget
                 self.db.add_run_event(
                     run_id, "warning", "polish_max_tokens_retry",
                     "Polish output hit its token limit; retrying with full budget",
@@ -1300,6 +1303,16 @@ class WorkflowService:
     @staticmethod
     def _stage_output_budget(stage: str, source_characters: int | None = None) -> int | None:
         return stage_output_budget(stage, source_characters)
+
+    def _output_budget_for_call(self, stage: str, source_characters: int | None,
+                                gateway_role: str, prefer_configured_fallback: bool) -> int | None:
+        if stage == "polish" and gateway_role == "polish" and not prefer_configured_fallback:
+            binding = self.db.get_role_binding("polish") or {}
+            model = self.db.get_model(binding.get("primary_model_id", "")) or {}
+            identity = f"{model.get('display_name', '')} {model.get('model_name', '')}".lower()
+            if "claude" in identity:
+                return 8192
+        return self._stage_output_budget(stage, source_characters)
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:

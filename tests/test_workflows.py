@@ -762,6 +762,33 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("maintenance") == 4096
 
 
+def test_claude_primary_polish_uses_full_budget_while_other_routes_stay_dynamic(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="claude", provider_id="provider", display_name="Claude",
+        model_name="claude-sonnet-5",
+    )
+    db.save_model(
+        model_id="backup", provider_id="provider", display_name="Backup",
+        model_name="ernie-5.0",
+    )
+    db.save_role_binding("polish", "provider", "claude", "provider", "backup")
+    service = WorkflowService.__new__(WorkflowService)
+    service.db = db
+
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 8192
+    assert service._output_budget_for_call("polish", 2000, "polish", True) < 8192
+
+    db.save_role_binding("polish", "provider", "backup", None, None)
+    assert service._output_budget_for_call("polish", 2000, "polish", False) < 8192
+
+
 def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:
     paragraphs = [(f"段落{i}。" * 180) for i in range(1, 9)]
     text = "\n\n".join(paragraphs)
