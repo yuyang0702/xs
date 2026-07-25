@@ -1392,6 +1392,45 @@ async def test_polish_retries_unexpected_tool_use_without_tools(tmp_path) -> Non
 
 
 @pytest.mark.asyncio
+async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Retry rhythm", mode="short", genre="historical",
+        premise="A traveler wakes in another era.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    source = "她听清了。侯府。三小姐。林知晚。那些词忽然都有了陌生的分量。"
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            text = source if self.calls == 1 else "她听清了：侯府三小姐林知晚，那些词忽然都有了陌生的分量。"
+            return ModelResult(text, {"model_name": "claude", "finish_reason": "end_turn"})
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("retry-rhythm", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "retry-rhythm"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._polish_short_segments(
+        "retry-rhythm", run_path, project, "constraints", source, "{}",
+    )
+
+    assert gateway.calls == 2
+    assert result == "她听清了：侯府三小姐林知晚，那些词忽然都有了陌生的分量。"
+    assert any(event["event_type"] == "polish_rhythm_retry"
+               for event in db.list_run_events("retry-rhythm"))
+
+
+@pytest.mark.asyncio
 async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_and_reuses_checkpoints(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -1485,7 +1524,7 @@ async def test_single_segment_reuses_open_polish_circuit_across_correction_passe
     run_path = project.path / "runs" / "single"
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
-    manuscript = "这是一段自然连续的短篇正文。" * 30
+    manuscript = "这是一段自然连续而且包含足够上下文信息的短篇正文。" * 30
 
     await service._polish_short_segments("single", run_path, project, "constraints", manuscript, "{}")
     await service._polish_short_segments(

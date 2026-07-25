@@ -46,6 +46,9 @@ def assess_polish_candidate(source: str, candidate: str,
         reasons.append("style_regression")
     source_metrics = source_report["metrics"]
     candidate_metrics = report["metrics"]
+    if (source_metrics["short_sentence_run"] >= 3
+            and candidate_metrics["short_sentence_run"] >= 3):
+        reasons.append("sentence_rhythm_not_improved")
     if re.search(r"[。！？.!?]", source) and (
         candidate_metrics["short_sentence_run"] > max(3, source_metrics["short_sentence_run"])
         or candidate_metrics["short_sentence_ratio"]

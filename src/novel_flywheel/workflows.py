@@ -924,10 +924,44 @@ class WorkflowService:
                 part, polished_part, required,
                 minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
             )
+            if structural and "sentence_rhythm_not_improved" in assessment["reasons"]:
+                assessment["reasons"].remove("sentence_rhythm_not_improved")
+                assessment["accepted"] = not assessment["reasons"]
             locked_failures = validate_locked_facts(part, polished_part, authoritative_state)
             if locked_failures:
                 assessment["accepted"] = False
                 assessment["reasons"].extend(locked_failures)
+            if (not structural
+                    and "sentence_rhythm_not_improved" in assessment["reasons"]):
+                self.db.add_run_event(
+                    run_id, "warning", "polish_rhythm_retry",
+                    f"润色第 {index}/{len(parts)} 段连续短句未改善，正在定向重试",
+                    stage="polish", metadata={"segment": index},
+                )
+                rhythm_prompt = prompt + (
+                    "\n\nRHYTHM RETRY: The previous revision retained three or more consecutive "
+                    "short narrative sentences. Merge that run into natural continuous prose. "
+                    "Keep dialogue and plot facts unchanged. Return only the revised segment."
+                )
+                polished_part = await self._stage(
+                    run_id, run_path, project, "polish", constraints, rhythm_prompt,
+                    suffix=f"{part_suffix}-rhythm-retry", allow_tools=False,
+                    prefer_configured_fallback=prefer_configured,
+                    output_source_characters=len(part),
+                )
+                round_input_tokens += int(
+                    getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
+                )
+                assessment = assess_polish_candidate(
+                    part, polished_part, required,
+                    minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
+                )
+                locked_failures = validate_locked_facts(
+                    part, polished_part, authoritative_state,
+                )
+                if locked_failures:
+                    assessment["accepted"] = False
+                    assessment["reasons"].extend(locked_failures)
             accepted = bool(assessment["accepted"])
             conditional_length = bool(
                 accepted and structural and assessment["ratio"] < preferred_minimum_ratio

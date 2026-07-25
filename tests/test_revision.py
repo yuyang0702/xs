@@ -125,6 +125,18 @@ def test_polish_candidate_rejects_short_sentence_rhythm_regression() -> None:
     assert "sentence_rhythm_regression" in rejected["reasons"]
 
 
+def test_polish_candidate_must_improve_existing_short_sentence_run() -> None:
+    source = (
+        "她听清了对方的话。靖安侯府。三小姐。林知晚。"
+        "这些词她都听得懂，组合起来却像另一个世界的语言。"
+    )
+
+    rejected = assess_polish_candidate(source, source)
+
+    assert rejected["accepted"] is False
+    assert "sentence_rhythm_not_improved" in rejected["reasons"]
+
+
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:
     with pytest.raises(ValueError, match="actionable task"):
         normalize_revision_plan({"tasks": []}, segment_count=3)
