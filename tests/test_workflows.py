@@ -2020,3 +2020,35 @@ async def test_long_manuscript_final_review_audits_every_window_without_planning
     assert gateway.roles == ["final_review"] * (count + 1)
     assert "planning" not in gateway.roles
     assert all("WINDOW " in call["user"] for call in gateway.calls[:-1])
+
+
+@pytest.mark.asyncio
+async def test_final_review_accepts_structured_window_summary(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Structured summary", mode="short", genre="suspense",
+        premise="A closed room.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    evidence = json.dumps({
+        "summary": {"setting": "castle", "survivors": 7},
+        "events": [], "issues": [], "character_states": [], "timeline": [], "promises": [],
+    })
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [], "reconciliations": [],
+    })
+    gateway = RecordingGateway([evidence, final])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    _, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+    )
+
+    saved = json.loads((run_path / "outputs" / "final-review-evidence.json").read_text(encoding="utf-8"))
+    assert json.loads(saved["windows"][0]["summary"]) == {"setting": "castle", "survivors": 7}
+    assert audit["reviewed_windows"] == 1

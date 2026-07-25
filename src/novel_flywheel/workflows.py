@@ -790,6 +790,7 @@ class WorkflowService:
             prompt = (
                 "FULL MANUSCRIPT EVIDENCE EXTRACTION. Do not score or rewrite. Return one JSON "
                 "object with summary, events, character_states, timeline, promises, and issues. "
+                "summary should be a concise non-empty string; structured summaries are accepted but unnecessary. "
                 "Every issue must include category, severity, evidence, location, and action. "
                 "Track what each character knows and when causally important actions become possible.\n\n"
                 f"WINDOW {window['index']}/{len(windows)} "
@@ -803,8 +804,12 @@ class WorkflowService:
                 suffix=f"{suffix}-window-{window['index']}", allow_tools=False,
             )
             item = self._json_object(raw)
-            if not isinstance(item.get("summary"), str):
+            summary = item.get("summary")
+            if isinstance(summary, (dict, list)) and summary:
+                summary = json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
+            if not isinstance(summary, str) or not summary.strip():
                 raise ValueError(f"Final review window {window['index']} has no summary")
+            item["summary"] = summary.strip()
             item["window"] = window["index"]
             item["start"] = window["start"]
             item["end"] = window["end"]
