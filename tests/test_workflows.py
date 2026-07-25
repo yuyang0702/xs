@@ -1613,6 +1613,31 @@ def test_short_story_checkpoint_ignores_incomplete_best_candidate(tmp_path) -> N
 def test_initial_short_story_planning_skips_empty_memory_tools() -> None:
     assert WorkflowService._planning_uses_tools(SimpleNamespace(revision=1)) is False
     assert WorkflowService._planning_uses_tools(SimpleNamespace(revision=2)) is True
+
+
+def test_resume_prefers_complete_outputs_from_same_run(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Resume", mode="short", genre="suspense",
+        premise="A failed polish resumes.", target_words=10000,
+    ))
+    run_id = "same-run"
+    db.create_run(run_id, project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / run_id / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    draft = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["part one", "part two", "part three", "part four"])
+    (outputs / "draft.md").write_text(draft, encoding="utf-8")
+    (outputs / "review.md").write_text(quality_review(), encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+
+    checkpoint = service._find_short_checkpoint(project, run_id, 4)
+    review = service._find_short_stage_output(project, run_id, "review.md")
+
+    assert checkpoint == outputs
+    assert review == outputs / "review.md"
 @pytest.mark.asyncio
 async def test_long_manuscript_final_review_audits_every_window_without_planning(tmp_path) -> None:
     db = Database(tmp_path / "app.db")

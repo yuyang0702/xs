@@ -328,6 +328,20 @@ class WorkflowService:
                     fallback_role="planning", allow_tools=False,
                 )
                 review = self._review(review_text)
+            if checkpoint and checkpoint.parent.name == run_id:
+                polish_parts = self._split_polish_segments(draft)
+                checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
+                completed_parts = len(list(checkpoint_root.glob("part-*.json")))
+                next_part = min(completed_parts + 1, len(polish_parts))
+                self.db.add_run_event(
+                    run_id, "success", "polish_resume_ready",
+                    f"已复用当前任务的规划、完整草稿和审核，将从润色第 {next_part}/{len(polish_parts)} 段继续",
+                    stage="polish", metadata={
+                        "completed_segments": completed_parts,
+                        "next_segment": next_part,
+                        "total_segments": len(polish_parts),
+                    },
+                )
             polished, _ = await self._quality_polish(
                 run_id, run_path, project, constraints, draft, review,
             )
@@ -750,7 +764,7 @@ class WorkflowService:
     def _find_short_checkpoint(self, project: Project, current_run_id: str,
                                segment_count: int) -> Path | None:
         for run in self.db.list_runs(project.id):
-            if run["id"] == current_run_id or run["workflow"] != "short-story":
+            if run["workflow"] != "short-story":
                 continue
             outputs = project.path / "runs" / run["id"] / "outputs"
             plan_path = outputs / "planning.md"
@@ -778,7 +792,7 @@ class WorkflowService:
     def _find_short_stage_output(self, project: Project, current_run_id: str,
                                  filename: str) -> Path | None:
         for run in self.db.list_runs(project.id):
-            if run["id"] == current_run_id or run["workflow"] != "short-story":
+            if run["workflow"] != "short-story":
                 continue
             path = project.path / "runs" / run["id"] / "outputs" / filename
             if path.is_file() and path.stat().st_size:

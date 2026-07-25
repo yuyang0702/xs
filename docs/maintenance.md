@@ -24,7 +24,7 @@ Manual project-data edits update one allowlisted StoryState section through the 
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
 
-For short stories, the project-list `Continue writing` action resumes the most recent `token_budget_exhausted` failed run with the same run ID. Existing polish source-hash checkpoints are reused, so completed segments are not sent again. When no such run exists, the action only opens the workbench; starting a new complete story remains an explicit workbench command.
+For short stories, the project-list `Continue writing` action resumes the most recent failed or cancelled run with the same run ID. Recovery checks that run's own complete planning, draft, review, and source-hash polish checkpoints before older runs. Completed stages are not regenerated; `polish_resume_ready` reports the next polish segment. Only a missing or structurally incomplete artifact is regenerated. When no resumable run exists, the action only opens the workbench; starting a new complete story remains an explicit workbench command.
 
 Style-sample analysis keeps failures visible in the workbench. If the planning model's first response is not the required JSON profile, the service makes one bounded formatting-repair call before rejecting it.
 
@@ -96,6 +96,7 @@ The run detail context can expose manuscript coverage, reviewed window count, re
 - `token_budget_exhausted`: the next polish request was blocked by the round or cumulative input-token cap.
 - `quality_revision_halted`: correction stopped and `best-candidate.md` was preserved.
 - `polish_checkpoint_reused`: an interrupted pass reused an identical source segment from its own checkpoint.
+- `polish_resume_ready`: the current run's planning, complete draft, review, and polish checkpoint position were accepted for resume.
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
 - `final_review_incomplete`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.
