@@ -55,6 +55,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="material-tabs"' in html
     assert 'id="material-check"' in html
     assert 'id="material-impact-status"' in html
+    assert 'id="project-learning-materials"' in html
+    assert 'id="edit-project-learning"' in html
     assert '<details class="story-state-band">' in html
     assert html.index('id="materials"') < html.index('id="story-state-section"')
     assert 'id="interview-panel"' in html
@@ -117,3 +119,6 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'api("/api/references")' in script
     assert '/analyze`' in script
     assert "renderReferences" in script
+    assert "renderProjectLearningMaterials" in script
+    assert "startWizardFromReference" in script
+    assert "data-reference-create" in script

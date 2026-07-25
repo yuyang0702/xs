@@ -63,6 +63,8 @@ The top-level **学习库** stores reference prose locally and separately from s
 
 Confirmed adoptions create versioned creative blueprints. Project learning also includes executable prose baselines, character voice profiles, epistemic boundaries, and scene briefs; active versions enter the existing planning/drafting/review/polish context, while stale versions are excluded. Character or world edits mark derived artifacts for review without rewriting an outline or manuscript.
 
+**项目资料** renders those same active or stale learning artifacts as readable Chinese sections, including versions and review status; it does not create another copy. Editing remains centralized in **学习库**. The existing new-book wizard also accepts an analyzed reference as its creation starting point. It copies only extracted transferable mechanisms into editable premise and plot fields, while the original “自己构思” path remains unchanged.
+
 Candidate outlines use the existing planning route and are stored below `<project>/learning/candidates/`. Targeted `line_edit` uses its own role and stores candidate JSON below `<project>/learning/line-edits/`. Neither path overwrites formal files. Optional LTP neural NLP is installed, enabled, disabled, or uninstalled explicitly from **模型与 API**; it runs in a separate CPU process and fails open to deterministic rules.
 
 Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks and may target at most 40% of scenes. Invalid or truncated plans stop the correction pass and preserve `best-candidate.md` instead of rewriting the whole manuscript. Exact consecutive duplicate paragraph blocks are removed locally before review.

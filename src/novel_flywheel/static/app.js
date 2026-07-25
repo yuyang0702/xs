@@ -108,10 +108,12 @@ function renderReferenceDetail() {
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  const learned=state.mechanisms.some(item=>item.source_id===source.id);
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create ${learned?"":"disabled"}>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
   $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
   $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
+  $("#reference-detail [data-reference-create]").addEventListener("click", startWizardFromReference);
   $("#reference-detail [data-reference-delete]").addEventListener("click", deleteReference);
 }
 
@@ -340,11 +342,11 @@ async function renderMaterials() {
   const project=state.activeProject;
   if (!project) {
     state.materials=null; $("#materials-summary").innerHTML='<span>先创建一部作品。</span>';
-    $("#character-list").innerHTML=""; renderCharacter(null); await loadStoryState(null); return;
+    $("#character-list").innerHTML=""; renderCharacter(null); renderProjectLearningMaterials(null); await loadStoryState(null); return;
   }
   $("#materials-project").value=project.id;
   try {
-    const result=await api(`/api/projects/${project.id}/materials`);
+    const [result,learning]=await Promise.all([api(`/api/projects/${project.id}/materials`),api(`/api/projects/${project.id}/learning`)]);
     if (state.activeProject?.id !== project.id) return;
     state.materials=result;
     $("#materials-summary").innerHTML=`<div class="metric"><strong>${escapeHtml(result.project.title)}</strong><span>作品</span></div><div class="metric"><strong>${result.project.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(result.project.target_words || 0).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${result.characters.length}</strong><span>人物档案</span></div>`;
@@ -354,8 +356,26 @@ async function renderMaterials() {
     $("#material-tabs").querySelectorAll("[data-material-group]").forEach(button=>button.addEventListener("click",()=>{state.activeMaterialGroup=button.dataset.materialGroup; state.activeMaterialPath=null; renderMaterialsTabs();}));
     renderMaterialsTabs();
     renderMaterialImpacts(result.material_impacts || []);
+    renderProjectLearningMaterials(learning);
     await loadStoryState(project.id);
   } catch(error) { $("#character-detail").innerHTML=`<p class="error-text">${escapeHtml(error.message)}</p>`; }
+}
+const learningArtifactLabels={creative_blueprint:"创作蓝图",prose_baseline:"可执行文笔基线",voice_profiles:"人物声音档案",epistemic_state:"人物认知状态",scene_briefs:"场景简报"};
+const learningFieldLabels={status:"状态",mechanisms:"已采纳机制",rules:"执行规则",summary:"摘要",sentence_rhythm:"句子节奏",paragraph_rhythm:"段落节奏",dialogue:"对白规则",psychology:"心理描写",narrative_distance:"叙事距离",viewpoint:"视角",action_sensation:"动作与感官",professional_detail:"专业细节",forbidden_patterns:"禁止表达",states:"认知记录",briefs:"场景",name:"名称",fact:"事实",interpretation:"分析",transfer_guidance:"迁移方式",title:"标题",pov:"视角",entry_goal:"入场目标",obstacle:"阻碍",relationship_tension:"关系张力",required_state_change:"必要变化",information_boundary:"信息边界",reader_question:"读者问题",exit_state:"离场状态",locked_facts:"锁定事实",source:"来源",provenance:"依据"};
+function readableLearningValue(value,key="") {
+  if (value===null || value===undefined || value==="") return '<span class="skill-meta">未设置</span>';
+  if (Array.isArray(value)) return value.length ? `<ul>${value.map(item=>`<li>${typeof item==="object"?readableLearningValue(item):escapeHtml(item)}</li>`).join("")}</ul>` : '<span class="skill-meta">暂无</span>';
+  if (typeof value==="object") return `<dl>${Object.entries(value).map(([name,item])=>`<div><dt>${escapeHtml(learningFieldLabels[name]||name)}</dt><dd>${readableLearningValue(item,name)}</dd></div>`).join("")}</dl>`;
+  if (key==="status") return escapeHtml({candidate:"候选",active:"生效中",stale:"待复核"}[value]||value);
+  return `<span>${escapeHtml(value)}</span>`;
+}
+function renderProjectLearningMaterials(result) {
+  const shell=$("#project-learning-materials"); if(!shell)return;
+  if(!result){shell.innerHTML='<p class="skill-meta">请选择作品</p>';return;}
+  const artifacts=result.artifacts||[], adoptions=result.adoptions||[];
+  const sections=artifacts.map(item=>`<details class="project-learning-item" open><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||item.artifact_type)}</strong><span>版本 ${item.version} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`);
+  if(adoptions.length) sections.splice(1,0,`<details class="project-learning-item" open><summary><strong>已采纳机制</strong><span>${adoptions.length} 项</span></summary><div class="project-learning-copy">${readableLearningValue(adoptions.map(item=>item.data))}</div></details>`);
+  shell.innerHTML=sections.join("")||'<p class="skill-meta">尚未采纳学习机制或建立执行资料</p>';
 }
 function renderMaterialImpacts(impacts) {
   const shell=$("#material-impact-status");
@@ -449,10 +469,17 @@ async function renderActiveProject() {
 }
 $("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
 $("#materials-project").addEventListener("change", async event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
+$("#edit-project-learning").addEventListener("click", async () => {
+  if(!state.activeProject)return toast("请先选择作品");
+  showView("learning"); $("#learning-project").value=state.activeProject.id; state.projectLearning=null;
+  await loadProjectLearning(); renderLearning();
+});
 
 function renderWizardDrafts() {
   const drafts = state.wizards.filter(item => item.status === "draft");
   $("#wizard-drafts").innerHTML = '<option value="">选择草稿</option>' + drafts.map(item => `<option value="${item.id}">${escapeHtml(item.answers?.title?.value || (item.mode === "long" ? "未命名长篇" : "未命名短篇"))}</option>`).join("");
+  const learnedSourceIds=new Set(state.mechanisms.map(item=>item.source_id));
+  $("#wizard-reference").innerHTML='<option value="">自己构思（原方式）</option>'+state.references.filter(item=>learnedSourceIds.has(item.id)).map(item=>`<option value="${item.id}">从《${escapeHtml(item.title)}》的学习成果创建</option>`).join("");
 }
 function fieldControl(field, answer) {
   const value = answer?.value ?? field.default ?? "";
@@ -545,7 +572,25 @@ async function applyInterviewSuggestions() {
 $("#interview-start").addEventListener("click", () => sendInterview(null));
 $("#interview-form").addEventListener("submit", event => { event.preventDefault(); const message=$("#interview-input").value.trim(); if (!message) return toast("请先输入你的想法"); sendInterview(message); });
 $("#interview-apply").addEventListener("click", applyInterviewSuggestions);
-$("#start-wizard").addEventListener("click", async () => { const mode=document.querySelector('input[name="wizard-mode"]:checked').value; try { state.activeWizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode})}); state.wizardStep=0; state.wizards.unshift(state.activeWizard); renderWizard(); } catch(error) { toast(error.message); } });
+async function startWizardFromReference() {
+  const referenceId=this?.dataset?.referenceCreate!==undefined ? state.activeReference?.id : $("#wizard-reference").value;
+  const mode=document.querySelector('input[name="wizard-mode"]:checked').value;
+  try {
+    let wizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode})});
+    if(referenceId){
+      const source=state.references.find(item=>item.id===referenceId);
+      const mechanisms=state.mechanisms.filter(item=>item.source_id===referenceId).map(item=>item.data);
+      const guidance=mechanisms.map(item=>`${item.name||"创作机制"}：${item.transfer_guidance||item.interpretation||item.fact||""}`).filter(Boolean).join("\n");
+      const answers={premise:{value:`基于《${source?.title||"参考资料"}》提炼的可迁移机制进行原创构思：\n${guidance}`,policy:"suggestible"}};
+      const fieldIds=new Set(wizard.schema.steps.flatMap(step=>step.fields.map(field=>field.id)));
+      if(fieldIds.has("plot.main_arc")) answers["plot.main_arc"]={value:`待在此基础上补充原创人物、冲突、转折与结局。\n${guidance}`,policy:"suggestible"};
+      wizard=await api(`/api/wizards/${wizard.id}/answers`,{method:"PUT",body:JSON.stringify({answers})});
+    }
+    state.activeWizard=wizard; state.wizardStep=0; state.wizards.unshift(wizard); showView("projects"); renderWizard();
+    if(referenceId) toast("学习成果已带入建书向导，可继续修改大纲和设定");
+  } catch(error) { toast(error.message); }
+}
+$("#start-wizard").addEventListener("click", startWizardFromReference);
 $("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0; renderWizard(); });
 $("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });
 $("#wizard-next").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep++; renderWizard(); });

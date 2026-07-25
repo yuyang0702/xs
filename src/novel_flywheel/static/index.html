@@ -81,6 +81,10 @@
           <article id="character-detail" class="character-detail"><p class="skill-meta">请选择作品</p></article>
         </div>
       </section>
+      <section class="project-learning-materials-section" aria-labelledby="project-learning-title">
+        <div class="section-heading"><div><h2 id="project-learning-title">创作执行资料</h2><p class="skill-meta">学习库中已采纳、正在参与写作的项目规则</p></div><button id="edit-project-learning" class="secondary">前往学习库编辑</button></div>
+        <div id="project-learning-materials" class="project-learning-materials"><p class="skill-meta">请选择作品</p></div>
+      </section>
       <details class="story-state-band">
         <summary><strong>高级数据与版本历史</strong><span class="skill-meta" id="story-state-revision">请先选择作品</span></summary>
         <section aria-labelledby="story-state-title">
@@ -132,6 +136,7 @@
           <label><input type="radio" name="wizard-mode" value="short" checked><span>短篇小说</span></label>
           <label><input type="radio" name="wizard-mode" value="long"><span>长篇连载</span></label>
         </fieldset>
+        <label>创作起点<select id="wizard-reference"><option value="">自己构思（原方式）</option></select></label>
         <button id="start-wizard" class="primary">开始新向导</button>
         <label>继续草稿<select id="wizard-drafts"><option value="">暂无草稿</option></select></label>
       </div>
