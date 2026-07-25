@@ -1,8 +1,10 @@
+import json
+from types import SimpleNamespace
+
 from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.reference_library import ReferenceLibrary
-from types import SimpleNamespace
 
 
 def setup_system(tmp_path):
@@ -94,6 +96,32 @@ def test_active_learning_artifacts_join_existing_constraint_path(tmp_path) -> No
     constraints = projects.load_constraints(project.id)
     assert "Executable Prose Baseline" in constraints
     assert "每次回应都改变关系或信息" in constraints
+
+
+def test_legacy_style_sample_migrates_once_without_deleting_old_files(tmp_path) -> None:
+    _db, _library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="旧笔感", mode="short", genre="都市", premise="测试", target_words=10_000,
+    ))
+    folder = project.path / "style-samples"
+    folder.mkdir()
+    profile = {
+        "summary": "克制近距离叙事", "sentence_rhythm": ["动作段短，观察段稍长"],
+        "dialogue": ["回应改变信息"], "narrative_distance": ["限知视角"],
+        "characterization": ["用选择表现性格"], "diction": ["具体名词"],
+        "avoid": ["避免直接总结情绪"],
+    }
+    (folder / "profile.json").write_text(json.dumps(profile, ensure_ascii=False), encoding="utf-8")
+    (project.path / "style-profile.md").write_text("# 旧风格档案\n", encoding="utf-8")
+
+    first = system.migrate_legacy_style(project.id)
+    second = system.migrate_legacy_style(project.id)
+
+    assert first["migrated"] is True
+    assert second["migrated"] is False
+    assert system.get_artifact(project.id, "prose_baseline")["data"]["dialogue"] == ["回应改变信息"]
+    assert (folder / "profile.json").is_file()
+    assert (project.path / "style-profile.md").is_file()
 
 
 class FakeGateway:

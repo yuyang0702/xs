@@ -1,4 +1,5 @@
 import re
+import json
 from pathlib import Path
 from typing import Any
 
@@ -8,7 +9,18 @@ from novel_flywheel.storage import atomic_write
 def ensure_style_profile(project: Any) -> str:
     path = Path(project.path) / "style-profile.md"
     if path.is_file():
-        return path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8")
+        baseline = Path(project.path) / "learning" / "prose_baseline.json"
+        try:
+            migrated = json.loads(baseline.read_text(encoding="utf-8")).get("data", {}).get("source") == "legacy_style_sample"
+        except (OSError, json.JSONDecodeError):
+            migrated = False
+        if migrated:
+            return re.sub(
+                r"\n*<!-- STYLE_SAMPLE_START -->.*?<!-- STYLE_SAMPLE_END -->\n*", "\n",
+                text, flags=re.S,
+            ).rstrip() + "\n"
+        return text
     metadata = project.metadata
     profile = (
         "# 作品专属文风档案\n\n"

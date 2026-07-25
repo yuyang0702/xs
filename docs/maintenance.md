@@ -54,7 +54,9 @@ For short stories, the project-list `Continue writing` action resumes the most r
 
 Style-sample analysis keeps failures visible in the workbench. If the planning model's first response is not the required JSON profile, the service makes one bounded formatting-repair call before rejecting it.
 
-The style-sample application scope is stored in the existing `project.json` as `style_sample_scope`. Missing values mean `polish`, preserving old behavior. `draft_and_polish` adds the same project `style-profile.md` to draft system context. Run context display is derived from existing events and receipts and stores no duplicate prompt, secret, or header data.
+The legacy style-sample endpoints and files remain for compatibility, but their workbench uploader is retired. Reading `/api/projects/{id}/learning` lazily converts an existing `style-samples/profile.json` into the first `prose_baseline` version without deleting legacy files. Once migrated, `ensure_style_profile()` omits the managed `STYLE_SAMPLE` block from assembled runtime context so the baseline is not injected twice. The workbench is read-only and all later changes belong in the learning library.
+
+Run context display is derived from existing events and receipts and stores no duplicate prompt, secret, or header data.
 
 ## Short-story model route
 

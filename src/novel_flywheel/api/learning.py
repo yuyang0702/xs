@@ -108,10 +108,14 @@ def revise_node(node_id: str, payload: RevisionPayload, request: Request) -> dic
 
 @router.get("/projects/{project_id}/learning")
 def project_learning(project_id: str, request: Request) -> dict:
-    return _handle(lambda: {
-        "adoptions": _learning(request).list_adoptions(project_id),
-        "artifacts": _learning(request).list_artifacts(project_id),
-    })
+    def result():
+        migration = _learning(request).migrate_legacy_style(project_id)
+        return {
+            "adoptions": _learning(request).list_adoptions(project_id),
+            "artifacts": _learning(request).list_artifacts(project_id),
+            "legacy_style_migration": migration,
+        }
+    return _handle(result)
 
 
 @router.get("/projects/{project_id}/learning/recommend/{node_id}")

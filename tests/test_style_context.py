@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from novel_flywheel.style_context import character_fingerprints, ensure_style_profile
@@ -28,3 +29,22 @@ def test_character_fingerprints_only_include_named_characters(tmp_path: Path) ->
     assert "陈东" in result
     assert "短句" in result
     assert "李明" not in result
+
+
+def test_migrated_legacy_sample_is_not_injected_twice(tmp_path: Path) -> None:
+    project = type("Project", (), {"path": tmp_path, "metadata": {}})()
+    (tmp_path / "style-profile.md").write_text(
+        "# 基础风格\n\n保留。\n\n<!-- STYLE_SAMPLE_START -->\n旧范文规则\n<!-- STYLE_SAMPLE_END -->\n",
+        encoding="utf-8",
+    )
+    learning = tmp_path / "learning"
+    learning.mkdir()
+    (learning / "prose_baseline.json").write_text(json.dumps({
+        "status": "active", "data": {"source": "legacy_style_sample", "dialogue": ["旧范文规则"]},
+    }, ensure_ascii=False), encoding="utf-8")
+
+    result = ensure_style_profile(project)
+
+    assert "保留" in result
+    assert "旧范文规则" not in result
+    assert "旧范文规则" in (tmp_path / "style-profile.md").read_text(encoding="utf-8")

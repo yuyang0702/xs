@@ -49,7 +49,9 @@ Each novel has an independent versioned StoryState. Models read the same authori
 
 The workbench exposes StoryState sections for manual correction. A save creates a normal `manual_edit` candidate and a new revision; stale edits and edits during an active run are rejected. Automatic post-write StoryState updates continue without per-chapter confirmation.
 
-范文笔感 remains project-scoped. Existing projects default to applying it only during polish; the workbench can explicitly enable **初稿 + 精修**, which injects the existing `style-profile.md` into draft requests without creating another style store. Run details include a context summary built from existing events and receipts: model route, Skills, prompt and constraint size, token usage, execution mode, tool receipts, and fallback state. Secrets and raw request headers are not exposed.
+The old workbench **范文笔感** uploader is retired in favor of the learning library. Existing `style-samples/profile.json` data migrates lazily to a versioned prose baseline when the project learning view is first read; old files remain intact for rollback. After migration, the managed legacy block is excluded from runtime style context to avoid injecting the same rules twice. The workbench now shows a read-only summary and links to **学习库** for changes.
+
+Run details include a context summary built from existing events and receipts: model route, Skills, prompt and constraint size, token usage, execution mode, tool receipts, and fallback state. Secrets and raw request headers are not exposed.
 
 Short-story polish uses bounded segments with adjacent boundaries, a compact story map, character state, locked facts, and stage-specific Skills. Claude primary polish starts with an 8,192 output limit because the configured relay repeatedly exhausted smaller limits before returning visible prose. Other polish routes retain dynamic limits, so ordinary segments do not inherit Claude's cost profile. Final structured review also uses 8,192 to avoid truncated JSON.
 

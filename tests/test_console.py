@@ -30,6 +30,10 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="run-log"' in html
     assert 'id="project-locations"' in html
     assert 'id="candidate-quality"' in html
+    assert 'id="writing-rules-summary"' in html
+    assert 'id="open-learning-library"' in html
+    assert 'id="style-sample-analyze"' not in html
+    assert 'id="style-sample-delete"' not in html
     assert 'id="publish-candidate"' in html
     assert 'id="genre-options"' in html
     assert 'id="project-list"' in html
@@ -102,8 +106,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "applyMaterialImpact" in script
     assert "retire_removed_settings" in script
     assert "item.display?.title" in script
-    assert "正在调用规划模型分析" in script
-    assert "分析失败：${escapeHtml(error.message)}" in script
+    assert "loadWritingRulesSummary" in script
+    assert "已迁移旧范文笔感" in script
+    assert "style-sample-analyze" not in script
     assert "navigator.clipboard.writeText" in script
     assert "locations/${button.dataset.openLocation}/open" in script
     assert "/candidate/publish" in script

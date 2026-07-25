@@ -236,6 +236,28 @@ class LearningSystem:
             ).fetchall()
         return [{**dict(row), "data": json.loads(row["data_json"])} for row in rows]
 
+    def migrate_legacy_style(self, project_id: str) -> dict:
+        if self.get_artifact(project_id, "prose_baseline"):
+            return {"migrated": False, "reason": "baseline_exists"}
+        project = self.projects.get(project_id)
+        profile_path = project.path / "style-samples" / "profile.json"
+        try:
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"migrated": False, "reason": "legacy_profile_missing"}
+        baseline = {
+            "source": "legacy_style_sample",
+            "summary": profile.get("summary", ""),
+            "sentence_rhythm": profile.get("sentence_rhythm", []),
+            "dialogue": profile.get("dialogue", []),
+            "narrative_distance": profile.get("narrative_distance", []),
+            "psychology": profile.get("characterization", []),
+            "professional_detail": profile.get("diction", []),
+            "forbidden_patterns": profile.get("avoid", []),
+        }
+        artifact = self.save_artifact(project_id, "prose_baseline", baseline)
+        return {"migrated": True, "artifact": artifact}
+
     def build_prose_baseline(self, project_id: str, rules: dict) -> dict:
         allowed = {"viewpoint", "narrative_distance", "sentence_rhythm", "paragraph_rhythm", "dialogue",
                    "psychology", "action_sensation", "professional_detail", "forbidden_patterns"}
