@@ -924,15 +924,21 @@ class WorkflowService:
                 part, polished_part, required,
                 minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
             )
-            if structural and "sentence_rhythm_not_improved" in assessment["reasons"]:
-                assessment["reasons"].remove("sentence_rhythm_not_improved")
+            rhythm_reasons = {
+                "sentence_rhythm_not_improved",
+                "timestamp_scene_fragment_not_improved",
+            }
+            if structural:
+                assessment["reasons"] = [
+                    reason for reason in assessment["reasons"]
+                    if reason not in rhythm_reasons
+                ]
                 assessment["accepted"] = not assessment["reasons"]
             locked_failures = validate_locked_facts(part, polished_part, authoritative_state)
             if locked_failures:
                 assessment["accepted"] = False
                 assessment["reasons"].extend(locked_failures)
-            if (not structural
-                    and "sentence_rhythm_not_improved" in assessment["reasons"]):
+            if not structural and rhythm_reasons.intersection(assessment["reasons"]):
                 self.db.add_run_event(
                     run_id, "warning", "polish_rhythm_retry",
                     f"润色第 {index}/{len(parts)} 段连续短句未改善，正在定向重试",
@@ -940,7 +946,9 @@ class WorkflowService:
                 )
                 rhythm_prompt = prompt + (
                     "\n\nRHYTHM RETRY: The previous revision retained three or more consecutive "
-                    "short narrative sentences. Merge that run into natural continuous prose. "
+                    "short narrative sentences, or split one continuous beat into a timestamp "
+                    "sentence followed by a static scene sentence. Merge that beat into natural "
+                    "continuous prose. "
                     "Keep dialogue and plot facts unchanged. Return only the revised segment."
                 )
                 polished_part = await self._stage(

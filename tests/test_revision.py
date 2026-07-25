@@ -137,6 +137,18 @@ def test_polish_candidate_must_improve_existing_short_sentence_run() -> None:
     assert "sentence_rhythm_not_improved" in rejected["reasons"]
 
 
+def test_polish_candidate_must_improve_timestamp_scene_fragment() -> None:
+    source = (
+        "林知晚发出文档，看了眼时间——二十三点四十七分。"
+        "会议室白板上还留着下午画的流程图。"
+    )
+
+    rejected = assess_polish_candidate(source, source)
+
+    assert rejected["accepted"] is False
+    assert "timestamp_scene_fragment_not_improved" in rejected["reasons"]
+
+
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:
     with pytest.raises(ValueError, match="actionable task"):
         normalize_revision_plan({"tasks": []}, segment_count=3)

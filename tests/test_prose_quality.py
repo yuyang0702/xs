@@ -41,6 +41,17 @@ def test_analyzer_flags_three_consecutive_fragment_sentences() -> None:
     assert any(item["code"] == "uniform_short_sentence_run" for item in report["findings"])
 
 
+def test_analyzer_flags_timestamp_followed_by_static_scene_fragment() -> None:
+    text = (
+        "林知晚把最后一份需求文档发出去，看了眼时间——二十三点四十七分。"
+        "会议室的白板上还留着下午评审时画的流程图。"
+    )
+
+    report = analyze_prose(text)
+
+    assert any(item["code"] == "timestamp_scene_fragment" for item in report["findings"])
+
+
 def test_analyzer_flags_consecutive_one_sentence_paragraphs() -> None:
     text = (
         "Rain covered the road.\n\n"

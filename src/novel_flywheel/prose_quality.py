@@ -10,6 +10,7 @@ PRODUCTION_PATTERNS = (
     r"(?:修改说明|润色说明|审核结论|作为AI|作为 AI)",
 )
 FORMULA_PATTERNS = (
+    ("timestamp_scene_fragment", r"[-\u2014]{2}\s*[\u96f6\u3007\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\d]{1,4}[\u70b9\u65f6\u6642:\uff1a][^\u3002\uff01\uff1f\n]{0,12}[\u3002\uff01\uff1f]\s*[^\u201c\u201d\n]{4,45}[\u3002\uff01\uff1f]"),
     ("epiphany_formula", r"这一刻.{0,12}(?:终于)?明白"),
     ("binary_formula", r"不是.{0,28}而是"),
     ("vague_metaphor", r"仿佛在(?:诉说|提醒|宣告)"),
