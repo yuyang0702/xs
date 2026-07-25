@@ -247,6 +247,73 @@ def test_material_documents_are_editable_and_sync_story_state(tmp_path) -> None:
     assert response.json()["story_state_revision"] == before["revision"] + 1
 
 
+def test_character_material_edit_creates_linked_material_impact(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
+    project = client.post("/api/projects", json={
+        "title": "Links", "mode": "short", "genre": "test",
+        "premise": "links", "target_words": 1000,
+    }).json()
+    root = tmp_path / "workspace" / f"links-{project['id'][:6]}"
+    profile = root / "characters" / "lin.md"
+    profile.parent.mkdir(parents=True, exist_ok=True)
+    profile.write_text("---\nname: Lin\nrole: protagonist\n---\n\nCarries a notebook.\n", encoding="utf-8")
+    materials = client.get(f"/api/projects/{project['id']}/materials").json()
+    document = next(item for item in materials["groups"][0]["documents"]
+                    if item["path"] == "characters/lin.md")
+
+    response = client.put(
+        f"/api/projects/{project['id']}/materials/characters/lin.md",
+        json={
+            "content": "---\nname: Lin\nrole: protagonist\n---\n\nTrusts her memory.\n",
+            "expected_hash": document["hash"], "retire_removed_settings": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["material_impact"]["status"] == "pending"
+    refreshed = client.get(f"/api/projects/{project['id']}/materials").json()
+    assert refreshed["material_impacts"][0]["id"] == response.json()["material_impact"]["id"]
+
+
+def test_confirmed_material_impact_updates_only_selected_project_material(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
+    project = client.post("/api/projects", json={
+        "title": "Apply links", "mode": "short", "genre": "test",
+        "premise": "links", "target_words": 1000,
+    }).json()
+    root = tmp_path / "workspace" / f"apply-links-{project['id'][:6]}"
+    plot = root / "plot" / "arcs" / "main.md"
+    plot.parent.mkdir(parents=True, exist_ok=True)
+    plot.write_text("She checks her notebook.", encoding="utf-8")
+    service = client.app.state.material_impacts
+    impact = service.record(
+        project["id"], root, "characters/lin.md", "Carries a notebook.",
+        "Trusts her memory.", retire_removed_settings=True,
+    )
+    stored = service.get(root, impact["id"])
+    stored.update({
+        "status": "ready",
+        "proposals": [{
+            "id": "patch-1", "path": "plot/arcs/main.md", "reason": "linked",
+            "old_text": "She checks her notebook.",
+            "new_text": "She recognizes the handwriting.",
+            "target_hash": service.content_hash("She checks her notebook."),
+        }],
+    })
+    service.save(root, stored)
+
+    response = client.post(
+        f"/api/projects/{project['id']}/material-impacts/{impact['id']}/apply",
+        json={"proposal_ids": ["patch-1"]},
+    )
+
+    assert response.status_code == 200
+    assert plot.read_text(encoding="utf-8") == "She recognizes the handwriting."
+    assert client.get(f"/api/projects/{project['id']}/materials").json()["material_impacts"] == []
+
+
 def test_material_documents_expose_localized_structured_display(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))

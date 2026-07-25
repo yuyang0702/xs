@@ -32,12 +32,18 @@ class OpenAIResponsesAdapter(HttpProvider):
                 "type": "function", "name": tool.name, "description": tool.description,
                 "parameters": tool.input_schema,
             } for tool in request.tools]
-        body = await self.post("responses", payload=payload,
-                               headers={"Authorization": f"Bearer {self.api_key}"})
+        payload["stream"] = True
+        events, body = await self.post_stream(
+            "responses", payload=payload,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+        )
+        streamed_text = ""
+        if body is None:
+            body, streamed_text = self._aggregate_stream(events)
         usage = body.get("usage", {})
         output = body.get("output", [])
         return ModelResponse(
-            text=_output_text(body),
+            text=_output_text(body) or streamed_text,
             tool_calls=[ToolCall(
                 id=item.get("call_id") or item.get("id"), name=item["name"],
                 arguments=json.loads(item.get("arguments") or "{}"),
@@ -48,3 +54,16 @@ class OpenAIResponsesAdapter(HttpProvider):
             raw_request_id=body.get("id"),
             provider_state={"output": output},
         )
+
+    @staticmethod
+    def _aggregate_stream(events: list[dict]) -> tuple[dict, str]:
+        text: list[str] = []
+        response: dict = {}
+        for event in events:
+            if event.get("type") == "response.output_text.delta":
+                text.append(event.get("delta", ""))
+            elif event.get("type") in {"response.completed", "response.incomplete", "response.failed"}:
+                response = event.get("response") or response
+            elif event.get("type") == "response.created":
+                response = {**(event.get("response") or {}), **response}
+        return response, "".join(text)

@@ -73,6 +73,14 @@ Review starts with its normal 4,096 output limit. An empty Review response with 
 
 HTTP `524` means the relay reached the upstream model but timed out waiting for a response. It is not a manuscript validation error. The configured fallback handles it without modifying the formal manuscript.
 
+Provider calls use streaming transport for Anthropic, OpenAI Chat, and OpenAI Responses protocols. Each adapter consumes provider-native SSE events and aggregates them into the existing `ModelResponse`, so workflow and browser behavior remain unchanged. OpenAI Chat retries streaming without `stream_options` when a relay rejects that optional parameter; providers that explicitly reject `stream` fall back to the existing non-streaming request. A stream that disconnects after partial output is treated as failed rather than accepting an incomplete manuscript.
+
+## Linked project-material updates
+
+When a character profile is saved with "retire removed settings" enabled, the application stores the before/after change under `.novel-flywheel/material-impacts/`. Saving the profile and syncing its basic StoryState fields complete before model analysis starts. A failed or interrupted analysis can be retried and does not roll back the profile edit.
+
+The `maintenance` role compares the change with project material files only. Candidate patches must identify a project-relative file and an exact existing excerpt. The API rejects paths outside the project, model excerpts that do not exist, empty replacements, unchanged replacements, files modified since analysis, and empty selections. Applying selected patches creates a project snapshot, writes only the selected material excerpts, synchronizes affected StoryState sections, and resolves the candidate. Formal manuscripts and run candidates are outside this operation.
+
 The initial-polish input circuit breaker is the larger of 120,000 or 20,000 per generated segment, so smaller adaptive segments can complete the manuscript. Structural correction remains capped at 60,000 per round, and correction count remains bounded by the quality route. There is no conflicting fixed cumulative cap across resumed and corrective rounds. Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.
 
 Structural plans must target no more than 40% of stable `scene-NN` scenes and contain literal checks for hard issues. A truncated/invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.

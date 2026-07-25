@@ -18,6 +18,10 @@ Each model mapping has a Tool Calling mode:
 
 Capability detection forces the provider to call a dedicated probe tool. OpenAI Chat and Anthropic requests both serialize the matching `tool_choice`. Thinking models that explicitly reject forced tool choice are retried once with normal tool selection. If a relay still ignores or strips the tool request, the result reports that no `probe_tool` call was returned instead of showing an unexplained failure.
 
+Anthropic, OpenAI Chat, and OpenAI Responses adapters receive provider output as streams and aggregate it behind the existing response interface. The browser and workflow stages still receive complete responses; streaming keeps long generations active without requiring UI changes. Relays that reject optional stream parameters or streaming itself use compatibility fallbacks automatically.
+
+Character material edits can retire removed settings and trigger a linked-material analysis through the configured `maintenance` role. The analysis only proposes exact, local patches to project materials such as plot arcs, timelines, promises, and constraints. It never changes manuscript prose. The user selects which proposals to apply; target hashes, project-relative paths, snapshots, and StoryState revisions prevent stale or partial updates.
+
 Models can only use these project-scoped read tools:
 
 - search prior chapters;

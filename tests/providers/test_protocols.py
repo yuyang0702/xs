@@ -206,3 +206,112 @@ async def test_provider_does_not_retry_read_timeout() -> None:
         await AnthropicAdapter("https://relay.test", "secret").complete(REQUEST)
 
     assert route.call_count == 1
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_openai_chat_adapter_aggregates_stream() -> None:
+    route = respx.post("https://relay.test/v1/chat/completions").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+            'data: {"id":"req-stream","choices":[{"delta":{"content":"Hel"},"finish_reason":null}]}\n\n'
+            'data: {"id":"req-stream","choices":[{"delta":{"content":"lo"},"finish_reason":"stop"}]}\n\n'
+            'data: {"choices":[],"usage":{"prompt_tokens":3,"completion_tokens":2}}\n\n'
+            'data: [DONE]\n\n'
+        )),
+    )
+
+    result = await OpenAIChatAdapter("https://relay.test/v1", "secret").complete(REQUEST)
+
+    assert json.loads(route.calls.last.request.content)["stream"] is True
+    assert (result.text, result.finish_reason, result.total_tokens) == ("Hello", "stop", 5)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_anthropic_adapter_aggregates_streamed_tool_call() -> None:
+    route = respx.post("https://relay.test/v1/messages").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+            'data: {"type":"message_start","message":{"id":"msg-stream","usage":{"input_tokens":4}}}\n\n'
+            'data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"call-1","name":"probe_tool","input":{}}}\n\n'
+            'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"ok\\":"}}\n\n'
+            'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"true}"}}\n\n'
+            'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":6}}\n\n'
+            'data: {"type":"message_stop"}\n\n'
+        )),
+    )
+
+    result = await AnthropicAdapter("https://relay.test/v1", "secret").complete(REQUEST)
+
+    assert json.loads(route.calls.last.request.content)["stream"] is True
+    assert result.tool_calls[0].arguments == {"ok": True}
+    assert (result.finish_reason, result.total_tokens) == ("tool_use", 10)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_openai_responses_adapter_aggregates_stream() -> None:
+    route = respx.post("https://relay.test/v1/responses").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+            'data: {"type":"response.created","response":{"id":"resp-stream"}}\n\n'
+            'data: {"type":"response.output_text.delta","delta":"Review "}\n\n'
+            'data: {"type":"response.output_text.delta","delta":"passed"}\n\n'
+            'data: {"type":"response.completed","response":{"id":"resp-stream","status":"completed","usage":{"input_tokens":7,"output_tokens":2},"output":[]}}\n\n'
+        )),
+    )
+
+    result = await OpenAIResponsesAdapter("https://relay.test/v1", "secret").complete(REQUEST)
+
+    assert json.loads(route.calls.last.request.content)["stream"] is True
+    assert (result.text, result.finish_reason, result.total_tokens) == ("Review passed", "completed", 9)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_openai_chat_stream_aggregates_fragmented_tool_arguments() -> None:
+    respx.post("https://relay.test/v1/chat/completions").mock(
+        return_value=httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+            'data: {"id":"req-tool","choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"probe_tool","arguments":"{\\"ok\\":"}}]},"finish_reason":null}]}\n\n'
+            'data: {"id":"req-tool","choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"true}"}}]},"finish_reason":"tool_calls"}]}\n\n'
+            'data: [DONE]\n\n'
+        )),
+    )
+
+    result = await OpenAIChatAdapter("https://relay.test/v1", "secret").complete(REQUEST)
+
+    assert result.tool_calls[0].name == "probe_tool"
+    assert result.tool_calls[0].arguments == {"ok": True}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_stream_retries_without_stream_options_when_relay_rejects_it() -> None:
+    route = respx.post("https://relay.test/v1/chat/completions").mock(side_effect=[
+        httpx.Response(400, json={"error": {"message": "invalid stream_options parameter"}}),
+        httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
+            'data: {"id":"req-stream","choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n'
+            'data: [DONE]\n\n'
+        )),
+    ])
+
+    result = await OpenAIChatAdapter("https://relay.test/v1", "secret").complete(REQUEST)
+
+    assert result.text == "ok"
+    assert route.call_count == 2
+    assert "stream_options" not in json.loads(route.calls.last.request.content)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_stream_falls_back_to_non_streaming_when_relay_rejects_stream() -> None:
+    route = respx.post("https://relay.test/v1/responses").mock(side_effect=[
+        httpx.Response(400, json={"error": {"message": "stream is not supported"}}),
+        httpx.Response(200, json={
+            "id": "resp-fallback", "output_text": "fallback", "status": "completed", "usage": {},
+        }),
+    ])
+
+    result = await OpenAIResponsesAdapter("https://relay.test/v1", "secret").complete(REQUEST)
+
+    assert result.text == "fallback"
+    assert route.call_count == 2
+    assert json.loads(route.calls.last.request.content)["stream"] is False

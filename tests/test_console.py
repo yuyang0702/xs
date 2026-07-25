@@ -41,6 +41,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="character-detail"' in html
     assert 'id="material-tabs"' in html
     assert 'id="material-check"' in html
+    assert 'id="material-impact-status"' in html
     assert '<details class="story-state-band">' in html
     assert html.index('id="materials"') < html.index('id="story-state-section"')
     assert 'id="interview-panel"' in html
@@ -88,6 +89,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "runs/materials-audit" in script
     assert "runs/materials-repair" in script
     assert "material-table" in script
+    assert "analyzeMaterialImpact" in script
+    assert "applyMaterialImpact" in script
+    assert "retire_removed_settings" in script
     assert "item.display?.title" in script
     assert "正在调用规划模型分析" in script
     assert "分析失败：${escapeHtml(error.message)}" in script

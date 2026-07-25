@@ -1,3 +1,5 @@
+import json
+
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.providers.http import HttpProvider
 
@@ -23,9 +25,12 @@ class AnthropicAdapter(HttpProvider):
         auth_headers = ({"Authorization": f"Bearer {self.api_key}"}
                         if self.auth_type == "bearer" else {"x-api-key": self.api_key})
         path = "messages" if self.base_url.endswith("/v1") else "v1/messages"
-        body = await self.post(path, payload=payload, headers={
+        payload["stream"] = True
+        events, body = await self.post_stream(path, payload=payload, headers={
             **auth_headers, "anthropic-version": "2023-06-01",
         })
+        if body is None:
+            body = self._aggregate_stream(events)
         usage = body.get("usage", {})
         content = body.get("content", [])
         return ModelResponse(
@@ -39,3 +44,43 @@ class AnthropicAdapter(HttpProvider):
             raw_request_id=body.get("id"),
             provider_state={"content": content},
         )
+
+    @staticmethod
+    def _aggregate_stream(events: list[dict]) -> dict:
+        message_id = None
+        input_tokens = 0
+        output_tokens = 0
+        stop_reason = None
+        blocks: dict[int, dict] = {}
+        tool_json: dict[int, list[str]] = {}
+        for event in events:
+            kind = event.get("type")
+            if kind == "message_start":
+                message = event.get("message") or {}
+                message_id = message.get("id")
+                input_tokens = (message.get("usage") or {}).get("input_tokens", 0)
+            elif kind == "content_block_start":
+                index = event.get("index", len(blocks))
+                block = dict(event.get("content_block") or {})
+                blocks[index] = block
+                if block.get("type") == "tool_use":
+                    tool_json[index] = []
+            elif kind == "content_block_delta":
+                index = event.get("index", 0)
+                delta = event.get("delta") or {}
+                if delta.get("type") == "text_delta":
+                    blocks.setdefault(index, {"type": "text", "text": ""})["text"] += delta.get("text", "")
+                elif delta.get("type") == "input_json_delta":
+                    tool_json.setdefault(index, []).append(delta.get("partial_json", ""))
+            elif kind == "message_delta":
+                stop_reason = (event.get("delta") or {}).get("stop_reason") or stop_reason
+                output_tokens = (event.get("usage") or {}).get("output_tokens", output_tokens)
+        for index, parts in tool_json.items():
+            raw = "".join(parts)
+            if raw:
+                blocks[index]["input"] = json.loads(raw)
+        return {
+            "id": message_id, "content": [blocks[index] for index in sorted(blocks)],
+            "stop_reason": stop_reason,
+            "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
+        }

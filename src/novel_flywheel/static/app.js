@@ -215,13 +215,15 @@ function renderMaterialDocument(document, groupId) {
 }
 function renderMaterialEditor(document, groupId) {
   const shell=$("#character-detail");
-  shell.innerHTML=`<header><div><p class="eyebrow">正在编辑</p><h2>${escapeHtml(document.title)}</h2></div></header><label class="material-editor">Markdown 内容<textarea rows="24" spellcheck="false">${escapeHtml(document.content)}</textarea></label><p class="skill-meta">保存后影响：${escapeHtml(materialImpact(groupId))}。现有正文不会自动修改。</p><div class="material-actions"><button class="secondary" data-material-cancel>取消</button><button class="primary" data-material-save>保存资料</button></div>`;
+  const linkOption=groupId==="characters" ? '<label class="material-link-option"><input type="checkbox" data-retire-settings checked><span>废弃被删除的设定，并检查关联项目资料</span></label>' : "";
+  shell.innerHTML=`<header><div><p class="eyebrow">正在编辑</p><h2>${escapeHtml(document.title)}</h2></div></header><label class="material-editor">Markdown 内容<textarea rows="24" spellcheck="false">${escapeHtml(document.content)}</textarea></label>${linkOption}<p class="skill-meta">保存后影响：${escapeHtml(materialImpact(groupId))}。现有正文不会自动修改。</p><div class="material-actions"><button class="secondary" data-material-cancel>取消</button><button class="primary" data-material-save>保存资料</button></div>`;
   shell.querySelector("[data-material-cancel]").addEventListener("click",()=>renderSelectedMaterial());
   shell.querySelector("[data-material-save]").addEventListener("click",async()=>{
     const button=shell.querySelector("[data-material-save]"); button.disabled=true;
     try {
-      const result=await api(`/api/projects/${state.activeProject.id}/materials/${document.path}`,{method:"PUT",body:JSON.stringify({content:shell.querySelector("textarea").value,expected_hash:document.hash})});
+      const result=await api(`/api/projects/${state.activeProject.id}/materials/${document.path}`,{method:"PUT",body:JSON.stringify({content:shell.querySelector("textarea").value,expected_hash:document.hash,retire_removed_settings:Boolean(shell.querySelector("[data-retire-settings]")?.checked)})});
       toast(`资料已保存 · StoryState 版本 ${result.story_state_revision}`); await renderMaterials();
+      if (result.material_impact) void analyzeMaterialImpact(result.material_impact.id);
     } catch(error) { toast(error.message); button.disabled=false; }
   });
 }
@@ -254,8 +256,38 @@ async function renderMaterials() {
     $("#material-tabs").innerHTML=groups.map(group=>`<button class="material-tab ${group.id===state.activeMaterialGroup ? "active" : ""}" data-material-group="${group.id}" role="tab">${escapeHtml(group.label)}<span>${group.documents.length}</span></button>`).join("");
     $("#material-tabs").querySelectorAll("[data-material-group]").forEach(button=>button.addEventListener("click",()=>{state.activeMaterialGroup=button.dataset.materialGroup; state.activeMaterialPath=null; renderMaterialsTabs();}));
     renderMaterialsTabs();
+    renderMaterialImpacts(result.material_impacts || []);
     await loadStoryState(project.id);
   } catch(error) { $("#character-detail").innerHTML=`<p class="error-text">${escapeHtml(error.message)}</p>`; }
+}
+function renderMaterialImpacts(impacts) {
+  const shell=$("#material-impact-status");
+  if (!impacts.length) { shell.hidden=true; shell.innerHTML=""; return; }
+  const impact=impacts[0]; shell.hidden=false;
+  const removed=(impact.removed_lines || []).slice(0,4).join("；");
+  const proposals=impact.proposals || [];
+  const statusText=({pending:"等待分析关联资料",analyzing:"正在分析关联资料",failed:"关联分析失败",no_impact:"没有发现需要联动的资料",ready:`发现 ${proposals.length} 项联动建议`})[impact.status] || impact.status;
+  const analyzeButton=["pending","analyzing","failed"].includes(impact.status) ? '<button class="secondary" data-impact-analyze>分析关联资料</button>' : "";
+  const applyButton=impact.status==="ready" ? '<button class="primary" data-impact-apply>应用所选修改</button>' : "";
+  shell.innerHTML=`<div class="material-impact-head"><div><strong>${escapeHtml(statusText)}</strong><span class="skill-meta">${escapeHtml(impact.summary || (removed ? `已废弃：${removed}` : "人物设定已发生变化"))}</span></div><div class="material-impact-actions">${analyzeButton}${applyButton}<button class="secondary" data-impact-dismiss>忽略</button></div></div><div class="material-impact-proposals">${proposals.map(item=>`<label class="material-impact-proposal"><input type="checkbox" value="${escapeHtml(item.id)}" checked><span><strong>${escapeHtml(item.path)}</strong><p>${escapeHtml(item.reason || "保持项目资料与人物新设定一致")}</p><span class="material-impact-diff"><span>${escapeHtml(item.old_text)}</span><span>${escapeHtml(item.new_text)}</span></span></span></label>`).join("")}${impact.error ? `<p class="error-text">${escapeHtml(impact.error)}</p>` : ""}</div>`;
+  shell.querySelector("[data-impact-analyze]")?.addEventListener("click",()=>analyzeMaterialImpact(impact.id));
+  shell.querySelector("[data-impact-dismiss]")?.addEventListener("click",()=>dismissMaterialImpact(impact.id));
+  shell.querySelector("[data-impact-apply]")?.addEventListener("click",()=>applyMaterialImpact(impact.id,[...shell.querySelectorAll('.material-impact-proposal input:checked')].map(item=>item.value)));
+}
+async function analyzeMaterialImpact(impactId) {
+  if (!state.activeProject) return;
+  const shell=$("#material-impact-status"); shell.hidden=false; shell.innerHTML='<div class="material-impact-head"><strong>正在使用项目资料更新模型分析关联内容...</strong></div>';
+  try { await api(`/api/projects/${state.activeProject.id}/material-impacts/${impactId}/analyze`,{method:"POST"}); await renderMaterials(); }
+  catch(error) { toast(error.message); await renderMaterials(); }
+}
+async function dismissMaterialImpact(impactId) {
+  try { await api(`/api/projects/${state.activeProject.id}/material-impacts/${impactId}/dismiss`,{method:"POST"}); await renderMaterials(); }
+  catch(error) { toast(error.message); }
+}
+async function applyMaterialImpact(impactId, proposalIds) {
+  if (!proposalIds.length) return toast("请至少选择一项联动修改");
+  try { const result=await api(`/api/projects/${state.activeProject.id}/material-impacts/${impactId}/apply`,{method:"POST",body:JSON.stringify({proposal_ids:proposalIds})}); toast(`关联资料已更新 · StoryState 版本 ${result.story_state_revision}`); await renderMaterials(); }
+  catch(error) { toast(error.message); await renderMaterials(); }
 }
 function renderMaterialsTabs() {
   $("#material-tabs").querySelectorAll("[data-material-group]").forEach(item=>item.classList.toggle("active",item.dataset.materialGroup===state.activeMaterialGroup));

@@ -26,8 +26,14 @@ class OpenAIChatAdapter(HttpProvider):
             }
         if "api.moonshot.cn" in self.base_url and (request.required_tool or request.response_schema):
             payload["thinking"] = {"type": "disabled"}
-        body = await self.post("chat/completions", payload=payload,
-                               headers={"Authorization": f"Bearer {self.api_key}"})
+        payload["stream"] = True
+        payload["stream_options"] = {"include_usage": True}
+        events, body = await self.post_stream(
+            "chat/completions", payload=payload,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+        )
+        if body is None:
+            body = self._aggregate_stream(events)
         choice = body["choices"][0]
         usage = body.get("usage", {})
         message = choice["message"]
@@ -43,3 +49,34 @@ class OpenAIChatAdapter(HttpProvider):
             raw_request_id=body.get("id"),
             provider_state={"assistant": message},
         )
+
+    @staticmethod
+    def _aggregate_stream(events: list[dict]) -> dict:
+        text: list[str] = []
+        tools: dict[int, dict] = {}
+        request_id = None
+        finish_reason = None
+        usage: dict = {}
+        for event in events:
+            request_id = event.get("id") or request_id
+            usage = event.get("usage") or usage
+            for choice in event.get("choices", []):
+                finish_reason = choice.get("finish_reason") or finish_reason
+                delta = choice.get("delta") or {}
+                if isinstance(delta.get("content"), str):
+                    text.append(delta["content"])
+                for call in delta.get("tool_calls") or []:
+                    item = tools.setdefault(call.get("index", len(tools)), {
+                        "id": "", "type": "function",
+                        "function": {"name": "", "arguments": ""},
+                    })
+                    item["id"] = call.get("id") or item["id"]
+                    function = call.get("function") or {}
+                    item["function"]["name"] += function.get("name") or ""
+                    item["function"]["arguments"] += function.get("arguments") or ""
+        return {
+            "id": request_id,
+            "choices": [{"message": {"content": "".join(text), "tool_calls": list(tools.values())},
+                         "finish_reason": finish_reason}],
+            "usage": usage,
+        }

@@ -3,6 +3,7 @@ import subprocess
 import json
 import hashlib
 import re
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -13,7 +14,7 @@ from pydantic import BaseModel, Field
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.prose_quality import analyze_prose
 from novel_flywheel.revision import normalize_chinese_prose
-from novel_flywheel.storage import atomic_write
+from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StaleStoryState, StoryStateStore
 
 
@@ -80,6 +81,11 @@ class StoryStateEditPayload(BaseModel):
 class MaterialEditPayload(BaseModel):
     content: str = Field(max_length=200_000)
     expected_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    retire_removed_settings: bool = False
+
+
+class MaterialImpactApplyPayload(BaseModel):
+    proposal_ids: list[str] = Field(min_length=1, max_length=100)
 
 
 def _style_sample_status(project: Project, request: Request) -> dict:
@@ -427,6 +433,7 @@ def get_project_materials(project_id: str, request: Request) -> dict:
                     "premise": project.metadata.get("premise", "")},
         "characters": profiles,
         "groups": _material_documents(project),
+        "material_impacts": request.app.state.material_impacts.list(project.path),
     }
 
 
@@ -460,11 +467,93 @@ def update_project_material(project_id: str, relative_path: str,
         except Exception:
             atomic_write(path, previous)
             raise
+    try:
+        impact = request.app.state.material_impacts.record(
+            project.id, project.path, relative_path, previous, content,
+            retire_removed_settings=payload.retire_removed_settings,
+        )
+    except OSError:
+        impact = None
     return {
         "path": relative_path, "group": group_id,
         "hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
         "story_state_revision": revision,
+        "material_impact": impact,
     }
+
+
+def _impact_documents(project: Project) -> list[dict[str, str]]:
+    return [
+        {"path": document["path"], "content": document["content"]}
+        for group in _material_documents(project)
+        for document in group["documents"]
+    ]
+
+
+@router.post("/projects/{project_id}/material-impacts/{impact_id}/analyze")
+async def analyze_material_impact(project_id: str, impact_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        return await request.app.state.material_impacts.analyze(
+            project.path, impact_id, _impact_documents(project),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
+
+
+@router.post("/projects/{project_id}/material-impacts/{impact_id}/dismiss")
+def dismiss_material_impact(project_id: str, impact_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        return request.app.state.material_impacts.resolve(project.path, impact_id, "dismissed")
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
+
+
+@router.post("/projects/{project_id}/material-impacts/{impact_id}/apply")
+def apply_material_impact(
+    project_id: str, impact_id: str, payload: MaterialImpactApplyPayload, request: Request,
+) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    if get_store(request).db.has_active_runs(project_id):
+        raise HTTPException(status_code=409, detail={"code": "project_run_active"})
+    try:
+        impact, updates = request.app.state.material_impacts.prepare_apply(
+            project.path, impact_id, payload.proposal_ids,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": str(exc)}) from exc
+    snapshot = ProjectSnapshot.create(
+        project.path, project.path / "snapshots" / f"material-impact-{impact_id}-{uuid.uuid4().hex[:8]}",
+        list(updates),
+    )
+    store = StoryStateStore(get_store(request).db)
+    current = store.ensure(project.id, project.path)
+    try:
+        for path, content in updates.items():
+            atomic_write(path, content)
+        next_data = current.data
+        for path in updates:
+            group_id, _ = _material_lookup(project, path.relative_to(project.path).as_posix())
+            next_data = _synced_material_state(project, group_id, next_data)
+        revision = current.revision
+        if next_data != current.data:
+            candidate = store.create_candidate(
+                project.id, None, current.revision, "material_impact",
+                hashlib.sha256(json.dumps(impact, ensure_ascii=False).encode()).hexdigest(),
+                {"impact_id": impact_id, "proposal_ids": payload.proposal_ids},
+            )
+            revision = store.commit(candidate.id, current.revision, next_data).revision
+        resolved = request.app.state.material_impacts.resolve(project.path, impact_id, "applied")
+    except Exception:
+        snapshot.restore()
+        raise
+    return {"material_impact": resolved, "story_state_revision": revision}
 
 
 @router.get("/projects/{project_id}/story-state/history")
