@@ -22,7 +22,13 @@ def test_story_state_schema_upgrade_backs_up_existing_database_once(tmp_path) ->
 def test_database_creates_foundation_tables(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    assert {"providers", "models", "role_bindings", "schema_version", "run_events"} <= db.table_names()
+    assert {
+        "providers", "models", "role_bindings", "schema_version", "run_events",
+        "reference_sources", "reference_versions", "reference_analyses",
+    } <= db.table_names()
+
+    db.migrate()
+    assert {"reference_sources", "reference_versions", "reference_analyses"} <= db.table_names()
 
 
 def test_run_events_are_ordered_and_active_runs_can_be_interrupted(tmp_path) -> None:

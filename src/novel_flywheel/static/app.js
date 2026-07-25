@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -61,9 +61,87 @@ document.querySelectorAll(".nav-item").forEach(button => button.addEventListener
 document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
 
 async function loadAll() {
-  [state.projects, state.trash, state.providers, state.skills, state.wizards] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards")]);
-  renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts();
+  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), api("/api/references")]);
+  renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences();
 }
+
+function renderReferences() {
+  const list = $("#reference-list");
+  if (!state.references.length) {
+    state.activeReference = null;
+    list.innerHTML = '<p class="skill-meta reference-empty">尚未导入参考资料</p>';
+    $("#reference-detail").innerHTML = '<p class="skill-meta">选择参考资料后查看原文和本地诊断</p>';
+    return;
+  }
+  if (!state.activeReference || !state.references.some(item => item.id === state.activeReference.id)) {
+    state.activeReference = state.references[0];
+  }
+  list.innerHTML = state.references.map(item => `<button class="reference-list-item ${item.id === state.activeReference.id ? "active" : ""}" data-reference-id="${item.id}"><strong>${escapeHtml(item.title)}</strong><span>${Number(item.latest_version?.character_count || 0).toLocaleString()} 字符 · ${item.versions.length} 个版本</span></button>`).join("");
+  list.querySelectorAll("[data-reference-id]").forEach(button => button.addEventListener("click", () => selectReference(button.dataset.referenceId)));
+  if (!state.referenceContent) loadReferenceContent(state.activeReference.id);
+  else renderReferenceDetail();
+}
+
+async function selectReference(sourceId) {
+  const source = state.references.find(item => item.id === sourceId);
+  if (!source) return;
+  state.activeReference = source;
+  state.referenceAnalysis = null;
+  state.referenceContent = "";
+  renderReferences();
+}
+
+async function loadReferenceContent(sourceId) {
+  $("#reference-detail").innerHTML = '<p class="skill-meta">正在读取本地原文...</p>';
+  try {
+    const content = await api(`/api/references/${sourceId}/content`);
+    if (state.activeReference?.id !== sourceId) return;
+    state.referenceContent = content.text;
+    renderReferenceDetail();
+  } catch(error) { toast(error.message); }
+}
+
+function renderReferenceDetail() {
+  const source = state.activeReference;
+  if (!source) return;
+  const report = state.referenceAnalysis?.result;
+  const metrics = report?.metrics;
+  const findings = report?.findings || [];
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="secondary" data-reference-analyze>本地分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地分析</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
+  $("#reference-detail [data-reference-delete]").addEventListener("click", deleteReference);
+}
+
+async function analyzeReference() {
+  if (!state.activeReference) return;
+  try {
+    state.referenceAnalysis = await api(`/api/references/${state.activeReference.id}/analyze`, {method:"POST"});
+    renderReferenceDetail();
+    toast(state.referenceAnalysis.cached ? "已加载本地分析缓存" : "本地分析完成");
+  } catch(error) { toast(error.message); }
+}
+
+async function deleteReference() {
+  if (!state.activeReference || !confirm(`删除“${state.activeReference.title}”及其本地原文？`)) return;
+  try {
+    await api(`/api/references/${state.activeReference.id}`, {method:"DELETE"});
+    state.activeReference = null; state.referenceContent = ""; state.referenceAnalysis = null;
+    await loadAll(); toast("参考资料已删除");
+  } catch(error) { toast(error.message); }
+}
+
+$("#reference-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const file = $("#reference-file").files[0];
+  const text = file ? await file.text() : $("#reference-text").value;
+  const title = $("#reference-title").value.trim() || file?.name.replace(/\.txt$/i, "");
+  if (!text.trim()) return toast("请选择 TXT 文件或粘贴正文");
+  try {
+    const source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste"})});
+    event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null;
+    await loadAll(); toast("参考资料已导入");
+  } catch(error) { toast(error.message); }
+});
 function renderProjects() {
   const select = $("#active-project");
   select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">尚无作品</option>';

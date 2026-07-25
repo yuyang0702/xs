@@ -53,6 +53,12 @@ The workbench exposes StoryState sections for manual correction. A save creates 
 
 Short-story polish uses bounded segments with adjacent boundaries, a compact story map, character state, locked facts, and stage-specific Skills. Claude primary polish starts with an 8,192 output limit because the configured relay repeatedly exhausted smaller limits before returning visible prose. Other polish routes retain dynamic limits, so ordinary segments do not inherit Claude's cost profile. Final structured review also uses 8,192 to avoid truncated JSON.
 
+## Reference learning library
+
+The top-level **学习库** stores reference prose locally and separately from story projects. The first delivery accepts pasted text and UTF-8 TXT files, normalizes line endings, deduplicates identical content by SHA-256, and preserves immutable source versions under the configured data directory. Deleting a reference removes its database records and its contained local source directory; it never changes project materials or manuscripts.
+
+The initial **本地分析** uses deterministic Python rules only. It reports evidenced sentence, paragraph, rhythm, dialogue, repetition, and checklist-judgment findings and caches the result by source hash and analyzer version. It does not call a provider API, assign a popularity score, or modify the imported text. DOCX, PDF, public-URL extraction, the optional user-installed Chinese NLP backend, knowledge-graph synthesis, project recommendations, and line editing remain later approved phases.
+
 Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks and may target at most 40% of scenes. Invalid or truncated plans stop the correction pass and preserve `best-candidate.md` instead of rewriting the whole manuscript. Exact consecutive duplicate paragraph blocks are removed locally before review.
 
 Revision planning uses compact Skill/constraint prompts. If the planning role returns empty, truncated, or invalid JSON, the Runtime retries the plan once with the review role; a second invalid result fails closed and preserves the best candidate.

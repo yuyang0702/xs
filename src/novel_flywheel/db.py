@@ -213,6 +213,41 @@ CREATE TABLE IF NOT EXISTS story_candidates(
   created_at TEXT NOT NULL,
   resolved_at TEXT
 );
+CREATE TABLE IF NOT EXISTS reference_sources(
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  source_uri TEXT,
+  status TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reference_versions(
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL REFERENCES reference_sources(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL,
+  content_hash TEXT NOT NULL,
+  character_count INTEGER NOT NULL,
+  storage_path TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(source_id, version),
+  UNIQUE(source_id, content_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_reference_versions_source
+  ON reference_versions(source_id, version DESC);
+CREATE TABLE IF NOT EXISTS reference_analyses(
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL REFERENCES reference_sources(id) ON DELETE CASCADE,
+  version_id TEXT NOT NULL REFERENCES reference_versions(id) ON DELETE CASCADE,
+  analyzer TEXT NOT NULL,
+  analyzer_version TEXT NOT NULL,
+  content_hash TEXT NOT NULL,
+  result_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE(version_id, analyzer, analyzer_version, content_hash)
+);
+CREATE INDEX IF NOT EXISTS idx_reference_analyses_version
+  ON reference_analyses(version_id, analyzer, analyzer_version);
 """
 
 
@@ -749,6 +784,97 @@ class Database:
                 "UPDATE file_proposals SET status=?, error=? WHERE id=?",
                 (status, error, proposal_id),
             )
+
+    def create_reference_source(self, source_id: str, title: str, source_type: str,
+                                source_uri: str | None = None) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO reference_sources VALUES (?, ?, ?, ?, 'active', datetime('now'), datetime('now'))",
+                (source_id, title, source_type, source_uri),
+            )
+
+    def get_reference_source(self, source_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM reference_sources WHERE id=?", (source_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_reference_sources(self) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM reference_sources ORDER BY updated_at DESC, rowid DESC",
+            )]
+
+    def delete_reference_source(self, source_id: str) -> bool:
+        with self.connect() as connection:
+            cursor = connection.execute("DELETE FROM reference_sources WHERE id=?", (source_id,))
+        return cursor.rowcount > 0
+
+    def find_reference_source_by_hash(self, content_hash: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT source.* FROM reference_sources source
+                JOIN reference_versions version ON version.source_id=source.id
+                WHERE version.content_hash=? ORDER BY source.updated_at DESC LIMIT 1""",
+                (content_hash,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def create_reference_version(self, version_id: str, source_id: str, content_hash: str,
+                                 character_count: int, storage_path: str) -> dict[str, Any]:
+        with self.connect() as connection:
+            version = int(connection.execute(
+                "SELECT COALESCE(MAX(version), 0) + 1 FROM reference_versions WHERE source_id=?",
+                (source_id,),
+            ).fetchone()[0])
+            connection.execute(
+                "INSERT INTO reference_versions VALUES (?, ?, ?, ?, ?, ?, datetime('now'))",
+                (version_id, source_id, version, content_hash, character_count, storage_path),
+            )
+            connection.execute(
+                "UPDATE reference_sources SET updated_at=datetime('now') WHERE id=?", (source_id,),
+            )
+        return self.get_reference_version(version_id)
+
+    def get_reference_version(self, version_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM reference_versions WHERE id=?", (version_id,),
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_reference_versions(self, source_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM reference_versions WHERE source_id=? ORDER BY version DESC",
+                (source_id,),
+            )]
+
+    def save_reference_analysis(self, analysis_id: str, source_id: str, version_id: str,
+                                analyzer: str, analyzer_version: str, content_hash: str,
+                                result: dict[str, Any]) -> dict[str, Any]:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO reference_analyses VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                (analysis_id, source_id, version_id, analyzer, analyzer_version, content_hash,
+                 json.dumps(result, ensure_ascii=False)),
+            )
+        return self.get_reference_analysis(version_id, analyzer, analyzer_version, content_hash)
+
+    def get_reference_analysis(self, version_id: str, analyzer: str, analyzer_version: str,
+                               content_hash: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                """SELECT * FROM reference_analyses WHERE version_id=? AND analyzer=?
+                AND analyzer_version=? AND content_hash=?""",
+                (version_id, analyzer, analyzer_version, content_hash),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["result"] = json.loads(result.pop("result_json"))
+        return result
 
     def save_change_request(self, request_id: str, project_id: str, lock_key: str,
                             current: Any, proposed: Any, reason: str) -> None:

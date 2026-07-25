@@ -12,6 +12,7 @@
     <nav aria-label="主导航">
       <button class="nav-item active" data-view="workbench">创作工作台</button>
       <button class="nav-item" data-view="materials">项目资料</button>
+      <button class="nav-item" data-view="learning">学习库</button>
       <button class="nav-item" data-view="projects">新建作品</button>
       <button class="nav-item" data-view="models">模型与 API</button>
       <button class="nav-item" data-view="skills">Skill 管理</button>
@@ -99,6 +100,22 @@
           </div>
         </section>
       </details>
+    </section>
+
+    <section id="learning" class="view">
+      <div class="section-heading"><div><p class="eyebrow">REFERENCE LIBRARY</p><h2>参考作品学习库</h2></div></div>
+      <div class="learning-layout">
+        <aside class="reference-sidebar">
+          <form id="reference-form" class="reference-import">
+            <label>资料名称<input id="reference-title" maxlength="120" required placeholder="例如：知乎古风短篇参考"></label>
+            <label>选择 TXT 文件<input id="reference-file" type="file" accept=".txt,text/plain"></label>
+            <label>或粘贴正文<textarea id="reference-text" rows="8" maxlength="1000000" placeholder="粘贴需要分析的参考正文"></textarea></label>
+            <button class="primary" type="submit">导入学习库</button>
+          </form>
+          <nav id="reference-list" class="reference-list" aria-label="参考资料列表"><p class="skill-meta">尚未导入参考资料</p></nav>
+        </aside>
+        <article id="reference-detail" class="reference-detail"><p class="skill-meta">选择参考资料后查看原文和本地诊断</p></article>
+      </div>
     </section>
 
     <section id="projects" class="view">

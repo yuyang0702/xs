@@ -1,0 +1,51 @@
+from novel_flywheel.local_editorial import analyze_prose
+
+
+def finding_ids(text: str) -> set[str]:
+    return {item["rule_id"] for item in analyze_prose(text)["findings"]}
+
+
+def test_detects_checklist_judgment_with_exact_evidence_offsets() -> None:
+    text = "血是暗红色，静脉血。插得不深，没伤到大动脉。刀还不能拔。"
+
+    report = analyze_prose(text)
+    finding = next(item for item in report["findings"] if item["rule_id"] == "checklist_judgment")
+
+    assert finding["severity"] == "review"
+    assert text[finding["start"]:finding["end"]] == finding["evidence"]
+
+
+def test_detects_functional_repetition_across_neighboring_paragraphs() -> None:
+    text = "他沉默了一会儿。\n\n她沉默了很久。\n\n两人都没有说话。"
+
+    assert "functional_repetition" in finding_ids(text)
+
+
+def test_detects_exact_phrase_reuse_and_mechanical_dialogue() -> None:
+    text = (
+        "“你是谁？”\n\n“我不知道。”\n\n“你从哪来？”\n\n“我不知道。”\n\n"
+        "她转身看向门外，夜色已经沉了下来。夜色已经沉了下来。"
+    )
+
+    ids = finding_ids(text)
+    assert "mechanical_dialogue_run" in ids
+    assert "repeated_phrase" in ids
+
+
+def test_detects_unusually_regular_sentence_lengths() -> None:
+    text = "他推开门走进去。她抬起头看着他。风从窗外吹进来。灯在桌上轻轻晃。"
+
+    assert "regular_sentence_rhythm" in finding_ids(text)
+
+
+def test_mixed_scene_prose_has_no_blocking_findings() -> None:
+    text = (
+        "雨敲在窗上，林知晚翻过半页账册，忽然停住。\n\n"
+        "“这个数是谁改的？”她没有抬头，只用指腹压住那道新墨。\n\n"
+        "管事张了张嘴。院外有人跑过，湿鞋踩得石阶一阵乱响。"
+    )
+
+    report = analyze_prose(text)
+    assert not [item for item in report["findings"] if item["severity"] == "blocking"]
+    assert report["metrics"]["sentence_count"] >= 4
+    assert report["analyzer"] == "local-editorial"

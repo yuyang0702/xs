@@ -36,6 +36,11 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="trash-list"' in html
     assert 'data-view="trash"' in html
     assert 'data-view="materials"' in html
+    assert 'data-view="learning"' in html
+    assert 'id="reference-form"' in html
+    assert 'id="reference-list"' in html
+    assert 'id="reference-detail"' in html
+    assert "爆款指数" not in html
     assert 'id="materials-project"' in html
     assert 'id="character-list"' in html
     assert 'id="character-detail"' in html
@@ -100,3 +105,6 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "/candidate/publish" in script
     assert "主模型和备用模型不能相同" in script
     assert 'reader_review: "目标读者模拟"' in script
+    assert 'api("/api/references")' in script
+    assert '/analyze`' in script
+    assert "renderReferences" in script

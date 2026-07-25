@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from novel_flywheel.api.providers import router as providers_router
+from novel_flywheel.api.references import router as references_router
 from novel_flywheel.api.projects import router as projects_router
 from novel_flywheel.api.runs import router as runs_router
 from novel_flywheel.api.skills import router as skills_router
@@ -24,6 +25,7 @@ from novel_flywheel.tasks import RunTaskManager
 from novel_flywheel.interviews import WizardInterviewService
 from novel_flywheel.style_samples import StyleSampleService
 from novel_flywheel.material_impacts import MaterialImpactService
+from novel_flywheel.reference_library import ReferenceLibrary
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -31,7 +33,8 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                root_constraints: list[Path] | None = None,
                workflow_service: object | None = None,
                interview_service: object | None = None,
-               style_sample_service: object | None = None) -> FastAPI:
+               style_sample_service: object | None = None,
+               reference_library: object | None = None) -> FastAPI:
     app = FastAPI(title="Novel Flywheel Console")
 
     @app.middleware("http")
@@ -46,6 +49,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     db.interrupt_active_runs()
     app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
     settings = default_settings()
+    app.state.references = reference_library or ReferenceLibrary(db, settings.data_dir / "references")
     app.state.projects = ProjectStore(
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
     )
@@ -71,6 +75,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         lambda project, command: app.state.skill_runtime._run_story_cli(project, [command, "."]),
     )
     app.include_router(providers_router)
+    app.include_router(references_router)
     app.include_router(projects_router)
     app.include_router(runs_router)
     app.include_router(skills_router)
