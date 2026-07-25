@@ -1565,3 +1565,44 @@ def test_short_story_checkpoint_ignores_incomplete_best_candidate(tmp_path) -> N
 
     assert text == original
     assert source == "draft.md"
+@pytest.mark.asyncio
+async def test_long_manuscript_final_review_audits_every_window_without_planning(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Whole review", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=20000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    manuscript = "\n\n".join(f"scene-{index}-" + "x" * 900 for index in range(18))
+    from novel_flywheel.quality import review_windows
+    count = len(review_windows(manuscript))
+    evidence = [json.dumps({
+        "summary": f"window {index}", "events": [], "issues": [],
+        "character_states": [], "timeline": [], "promises": [],
+    }) for index in range(1, count + 1)]
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [],
+        "reconciliations": [{
+            "issue_id": "initial-001", "status": "resolved",
+            "severity": "medium", "evidence": "The repeated wording is gone.",
+        }],
+    })
+    gateway = RecordingGateway([*evidence, final])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", manuscript,
+        {"issues": [{"category": "prose", "severity": "medium", "action": "Remove repetition."}]},
+    )
+
+    assert review["score"] > 80
+    assert audit["reviewed_windows"] == count
+    assert audit["coverage"] == 1.0
+    assert gateway.roles == ["final_review"] * (count + 1)
+    assert "planning" not in gateway.roles
+    assert all("WINDOW " in call["user"] for call in gateway.calls[:-1])

@@ -5,8 +5,62 @@ from novel_flywheel.quality import (
     quality_gate,
     quality_outcome,
     reader_sample,
+    review_windows,
+    apply_evidence_gate,
     select_route,
 )
+
+
+def test_review_windows_cover_full_text_with_overlap() -> None:
+    text = "\n\n".join(f"paragraph-{index}-" + "x" * 700 for index in range(18))
+
+    windows = review_windows(text, target=5000, overlap=400)
+
+    assert len(windows) >= 3
+    assert windows[0]["start"] == 0
+    assert windows[-1]["end"] == len(text)
+    assert all(item["text"] == text[item["start"]:item["end"]] for item in windows)
+    assert all(current["start"] < previous["end"]
+               for previous, current in zip(windows, windows[1:]))
+
+
+def test_evidence_gate_requires_prior_issue_reconciliation() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 92, "story": 92, "prose": 92},
+        "decision": "pass", "issues": [],
+    })
+
+    gated, reasons = apply_evidence_gate(review, {
+        "coverage": 1.0,
+        "window_count": 4,
+        "reviewed_windows": 4,
+        "prior_issue_ids": ["initial-001"],
+        "reconciliations": [],
+        "evidence_count": 4,
+    })
+
+    assert gated["score"] <= 74
+    assert gated["decision"] == "revise"
+    assert "missing_issue_reconciliation" in reasons
+
+
+def test_evidence_gate_caps_unresolved_major_issue() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 95, "story": 95, "prose": 95},
+        "decision": "pass", "issues": [],
+    })
+
+    gated, reasons = apply_evidence_gate(review, {
+        "coverage": 1.0, "window_count": 3, "reviewed_windows": 3,
+        "prior_issue_ids": ["initial-001"], "evidence_count": 3,
+        "reconciliations": [{
+            "issue_id": "initial-001", "status": "unresolved",
+            "severity": "major", "evidence": "The timeline still contradicts chapter one.",
+        }],
+    })
+
+    assert gated["score"] <= 74
+    assert "unresolved_major_issue" in reasons
 
 
 def test_normalize_review_computes_weighted_score() -> None:

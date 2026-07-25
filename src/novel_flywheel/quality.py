@@ -18,6 +18,64 @@ TARGETED_CATEGORIES = {
 }
 
 
+def review_windows(text: str, target: int = 5000, overlap: int = 400) -> list[dict]:
+    """Return paragraph-aligned, overlapping windows that cover the complete text."""
+    if not text:
+        return []
+    windows = []
+    start = 0
+    while start < len(text):
+        wanted = min(len(text), start + target)
+        end = wanted
+        if wanted < len(text):
+            boundary = text.rfind("\n\n", start + target // 2, wanted + 1)
+            if boundary > start:
+                end = boundary
+        windows.append({"index": len(windows) + 1, "start": start, "end": end,
+                        "text": text[start:end]})
+        if end == len(text):
+            break
+        next_start = max(start + 1, end - overlap)
+        boundary = text.find("\n\n", next_start, end)
+        start = boundary + 2 if boundary >= 0 else next_start
+    return windows
+
+
+def issue_ledger(issues: list[dict]) -> list[dict]:
+    return [{**issue, "issue_id": issue.get("issue_id") or f"initial-{index:03d}"}
+            for index, issue in enumerate(issues, 1)]
+
+
+def apply_evidence_gate(review: dict, evidence: dict) -> tuple[dict, list[str]]:
+    """Apply deterministic coverage and unresolved-issue caps to a model review."""
+    result = dict(review)
+    reasons = []
+    reconciliations = evidence.get("reconciliations") or []
+    reconciled_ids = {item.get("issue_id") for item in reconciliations}
+    prior_ids = set(evidence.get("prior_issue_ids") or [])
+    if prior_ids - reconciled_ids:
+        reasons.append("missing_issue_reconciliation")
+    if (evidence.get("coverage", 0) < 1
+            or evidence.get("reviewed_windows", 0) != evidence.get("window_count", 0)):
+        reasons.append("incomplete_manuscript_coverage")
+    if evidence.get("evidence_count", 0) < evidence.get("window_count", 0):
+        reasons.append("insufficient_review_evidence")
+    unresolved = [item for item in reconciliations
+                  if item.get("status") in {"unresolved", "partially_resolved", "not_found"}]
+    if any(str(item.get("severity", "")).lower() in {"major", "critical", "blocking"}
+           for item in unresolved):
+        reasons.append("unresolved_major_issue")
+    elif len([item for item in unresolved
+              if str(item.get("severity", "")).lower() in {"medium", "moderate"}]) >= 2:
+        reasons.append("multiple_unresolved_moderate_issues")
+    if reasons:
+        cap = 74 if any(reason != "multiple_unresolved_moderate_issues" for reason in reasons) else 79
+        result["score"] = min(result["score"], cap)
+        result["decision"] = "revise"
+    result["evidence_gate_reasons"] = reasons
+    return result, reasons
+
+
 def _score(value: Any) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise ValueError("Quality dimensions must be between 0 and 100")

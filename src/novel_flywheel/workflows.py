@@ -17,10 +17,13 @@ from novel_flywheel.memory import StoryMemory
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import OPTIONAL_PROMPT_SKILLS, REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.quality import (
+    apply_evidence_gate,
+    issue_ledger,
     normalize_review,
     quality_gate,
     quality_outcome,
     reader_sample,
+    review_windows,
     select_route,
 )
 from novel_flywheel.revision import (
@@ -479,8 +482,7 @@ class WorkflowService:
         best_attempt: int | None = None
         for attempt in range(route["max_corrections"] + 1):
             reviewed_polished = polished
-            final_input = (reader_sample(polished, project.mode, limit=6000)
-                           if project.mode == "short" else polished)
+            final_input = polished
             if attempt:
                 checks_path = run_path / "outputs" / f"revision-checks-{attempt + 1}.json"
                 if checks_path.is_file():
@@ -490,11 +492,34 @@ class WorkflowService:
                             "\n\nRUNTIME STRUCTURAL CHECK FAILURES. Treat unresolved failures as hard "
                             f"evidence:\n{json.dumps(failures, ensure_ascii=False)}"
                         )
-            final_review = self._review(await self._stage_with_role_fallback(
-                run_id, run_path, project, "final_review", constraints, final_input,
-                suffix=f"-{attempt + 1}" if attempt else "",
-                fallback_role="planning", allow_tools=project.mode != "short",
-            ))
+            try:
+                if project.mode == "short" and len(final_input) > 6000:
+                    final_review, evidence_audit = await self._full_manuscript_review(
+                        run_id, run_path, project, constraints, final_input, review,
+                        suffix=f"-{attempt + 1}" if attempt else "",
+                    )
+                    report["final_review_evidence"] = evidence_audit
+                else:
+                    final_review = self._review(await self._stage(
+                        run_id, run_path, project, "final_review", constraints, final_input,
+                        suffix=f"-{attempt + 1}" if attempt else "", allow_tools=False,
+                    ))
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                report["status"] = "final_review_incomplete"
+                report["terminal_review_complete"] = False
+                report["failure_reasons"] = [str(exc)]
+                atomic_write(run_path / "outputs" / "best-candidate.md", best_polished)
+                self._write_quality_report(run_path, report)
+                self.db.add_run_event(
+                    run_id, "error", "final_review_incomplete",
+                    "Final review providers failed; preserved the best candidate",
+                    stage="final_review", metadata={"error": str(exc)},
+                )
+                raise RuntimeError(
+                    "Final review incomplete; preserved best candidate"
+                ) from exc
             outcome, reasons = quality_outcome(final_review)
             passed = outcome != "failed"
             report["final_attempts"].append({
@@ -504,6 +529,7 @@ class WorkflowService:
                 "outcome": outcome,
                 "reasons": reasons,
             })
+            report["terminal_review_complete"] = True
             if best_review is None or final_review["score"] > best_review["score"]:
                 best_review = final_review
                 best_polished = reviewed_polished
@@ -566,6 +592,75 @@ class WorkflowService:
             stage="quality", metadata={"reasons": reasons},
         )
         raise RuntimeError("Editorial quality gate did not pass within the correction limit")
+
+    async def _full_manuscript_review(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        manuscript: str, initial_review: dict, suffix: str = "",
+    ) -> tuple[dict, dict]:
+        windows = review_windows(manuscript)
+        ledger = issue_ledger(initial_review.get("issues", []))
+        evidence = []
+        previous_summary = ""
+        for window in windows:
+            prompt = (
+                "FULL MANUSCRIPT EVIDENCE EXTRACTION. Do not score or rewrite. Return one JSON "
+                "object with summary, events, character_states, timeline, promises, and issues. "
+                "Every issue must include category, severity, evidence, location, and action. "
+                "Track what each character knows and when causally important actions become possible.\n\n"
+                f"WINDOW {window['index']}/{len(windows)} "
+                f"CHARACTERS {window['start']}-{window['end']}\n"
+                f"PREVIOUS WINDOW SUMMARY:\n{previous_summary or 'None'}\n\n"
+                f"INITIAL ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
+                f"MANUSCRIPT WINDOW:\n{window['text']}"
+            )
+            raw = await self._stage(
+                run_id, run_path, project, "final_review", constraints, prompt,
+                suffix=f"{suffix}-window-{window['index']}", allow_tools=False,
+            )
+            item = self._json_object(raw)
+            if not isinstance(item.get("summary"), str):
+                raise ValueError(f"Final review window {window['index']} has no summary")
+            item["window"] = window["index"]
+            item["start"] = window["start"]
+            item["end"] = window["end"]
+            evidence.append(item)
+            previous_summary = item["summary"]
+
+        adjudication_prompt = (
+            "FULL MANUSCRIPT FINAL ADJUDICATION. Use the ordered window evidence as a global story "
+            "map and perform cross-window checks for timeline, character state and knowledge, causal "
+            "authority/evidence, relationship transitions, setup/payoff, and premise follow-through. "
+            "Return strict quality-review JSON plus reconciliations. Each initial issue must appear once "
+            "with issue_id, status (resolved, partially_resolved, unresolved, or not_found), severity, "
+            "and concrete evidence. Omission never means resolved. Do not rewrite the manuscript.\n\n"
+            f"INITIAL ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
+            f"ORDERED WINDOW EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
+        )
+        raw_final = await self._stage(
+            run_id, run_path, project, "final_review", constraints, adjudication_prompt,
+            suffix=f"{suffix}-adjudication", allow_tools=False,
+        )
+        payload = self._json_object(raw_final)
+        review = normalize_review(payload)
+        audit = {
+            "coverage": 1.0 if windows and evidence[-1]["end"] == len(manuscript) else 0.0,
+            "window_count": len(windows),
+            "reviewed_windows": len(evidence),
+            "evidence_count": sum(bool(item.get("summary")) for item in evidence),
+            "prior_issue_ids": [item["issue_id"] for item in ledger],
+            "reconciliations": payload.get("reconciliations", []),
+        }
+        review, gate_reasons = apply_evidence_gate(review, audit)
+        audit["gate_reasons"] = gate_reasons
+        audit["reconciliation_counts"] = {
+            status: sum(item.get("status") == status for item in audit["reconciliations"])
+            for status in ("resolved", "partially_resolved", "unresolved", "not_found")
+        }
+        atomic_write(
+            run_path / "outputs" / f"final-review-evidence{suffix}.json",
+            json.dumps({"windows": evidence, "audit": audit}, ensure_ascii=False, indent=2),
+        )
+        return review, audit
 
     async def _reader_review(self, run_id: str, run_path: Path, project: Project,
                              constraints: str, text: str, suffix: str = "",

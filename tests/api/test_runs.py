@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
@@ -61,6 +63,25 @@ def test_run_detail_includes_tool_receipts(tmp_path) -> None:
     detail = client.get("/api/runs/run").json()
     assert detail["tool_receipts"][0]["execution_mode"] == "degraded_prompt_mode"
     assert detail["events"] == []
+
+
+def test_run_detail_includes_quality_report_when_present(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    project_path = tmp_path / "book"
+    report_path = project_path / "runs" / "run" / "outputs" / "quality-report.json"
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text(json.dumps({
+        "status": "failed",
+        "final_review_evidence": {"coverage": 1.0, "window_count": 4},
+    }), encoding="utf-8")
+    db.save_project("book", "Book", "short", project_path)
+    db.create_run("run", "book", "short-story", status="failed")
+    client = TestClient(create_app(db, MemorySecretStore(), workflow_service=FakeWorkflows()))
+
+    detail = client.get("/api/runs/run").json()
+
+    assert detail["quality_report"]["final_review_evidence"]["coverage"] == 1.0
 
 
 def test_cancel_run_endpoint_is_idempotent(tmp_path) -> None:

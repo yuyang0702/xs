@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
@@ -89,4 +92,11 @@ def get_run(run_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"})
     run["tool_receipts"] = request.app.state.registry.db.list_tool_receipts(run_id)
     run["events"] = request.app.state.registry.db.list_run_events(run_id)
+    project = request.app.state.registry.db.get_project(run["project_id"])
+    if project:
+        report_path = Path(project["path"]) / "runs" / run_id / "outputs" / "quality-report.json"
+        try:
+            run["quality_report"] = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            run["quality_report"] = None
     return run

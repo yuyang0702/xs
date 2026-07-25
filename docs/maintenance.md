@@ -67,6 +67,16 @@ Rejected candidates are never written as polish checkpoints. A later resume can 
 
 Structural correction has two length thresholds: a preferred floor of 60% and a hard rejection floor of 50%. Candidates between them emit `polish_conditional_length` and continue only to final review; they are not auto-committed. Before executing a structural plan, Runtime also re-checks each `forbidden_text` against the full manuscript and can move that repair task to the scene that actually contains the text, logging `revision_targets_aligned`.
 
+## Full-manuscript final review
+
+Short manuscripts up to one 6,000-character window are sent to `final_review` in full. Longer short stories are split into paragraph-aligned 4,000-6,000 character windows with overlap. Each window extracts ordered events, character state and knowledge, timeline, promises, payoffs, and evidenced issues; it does not assign the book's final score. Final adjudication receives the merged evidence and performs cross-window consistency checks.
+
+Initial editorial issues receive stable IDs. Final adjudication must mark each one `resolved`, `partially_resolved`, `unresolved`, or `not_found` with evidence. Missing reconciliation, incomplete coverage, or insufficient evidence invalidates approval. An unresolved major issue caps the score at 74; multiple unresolved moderate issues cap it at 79.
+
+Final review uses only the `final_review` role and its configured provider fallback. It never switches to `planning`. If both configured routes fail, Runtime writes `best-candidate.md`, reports `final_review_incomplete`, and leaves the formal manuscript unchanged. The output limit remains 8,192 tokens. A typical 20,000-character story uses several 6,000-12,000 input-token requests and roughly 40,000-70,000 cumulative input tokens.
+
+The run detail context can expose manuscript coverage, reviewed window count, reconciliation counts, and local gate reasons from `quality-report.json`.
+
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.
@@ -81,6 +91,7 @@ Structural correction has two length thresholds: a preferred floor of 60% and a 
 - `quality_revision_halted`: correction stopped and `best-candidate.md` was preserved.
 - `polish_checkpoint_reused`: an interrupted pass reused an identical source segment from its own checkpoint.
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
+- `final_review_incomplete`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.
 - `failed`: the run stopped; formal files remain at their last committed revision.
 
