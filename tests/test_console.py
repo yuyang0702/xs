@@ -66,6 +66,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="learning-project"' in html
     assert 'id="learning-mechanisms"' in html
     assert 'id="nlp-install"' in html
+    assert 'id="workflow-analysis-toggle"' in html
     assert "爆款指数" not in html
     assert 'id="materials-project"' in html
     assert 'id="character-list"' in html
@@ -138,6 +139,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert '/analyze`' in script
     assert "renderReferences" in script
     assert "renderProjectLearningMaterials" in script
+    assert "loadWorkflowAnalysis" in script
+    assert "local_corpus_only" in script
     assert "readableLearningValue(item.data)" in script
     assert "state.references.map(item=>" in script
     assert 'api("/api/learning/mechanisms")' in script

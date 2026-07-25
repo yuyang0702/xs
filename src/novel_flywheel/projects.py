@@ -94,6 +94,12 @@ class ProjectStore:
     def list(self) -> list[Project]:
         return [self.get(row["id"]) for row in self.db.list_projects()]
 
+    def set_optimized_local_review(self, project_id: str, enabled: bool) -> Project:
+        project = self.get(project_id)
+        metadata = {**project.metadata, "optimized_local_review_enabled": bool(enabled)}
+        self._write_json(project.path / "project.json", metadata)
+        return Project(project.id, project.title, project.mode, project.path, metadata)
+
     def trash(self, project_id: str) -> dict:
         row = self.db.get_project(project_id)
         if row is None:

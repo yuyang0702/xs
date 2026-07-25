@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 import shutil
 import uuid
@@ -50,6 +52,27 @@ class ReferenceLibrary:
 
     def list(self) -> list[dict]:
         return [self.get(item["id"]) for item in self.db.list_reference_sources()]
+
+    def comparison_sources(self, project_id: str | None = None,
+                           character_cap: int = 100_000) -> list[dict[str, str]]:
+        del project_id  # Reference storage is global; project adoption filtering can narrow this later.
+        result, used, hashes = [], 0, set()
+        for source in self.list():
+            version = source.get("latest_version")
+            if not version:
+                continue
+            text = self.read_text(source["id"], version["id"])
+            digest = self._hash(text)
+            if digest in hashes or used >= character_cap:
+                continue
+            text = text[:character_cap - used]
+            result.append({
+                "id": f"reference:{source['id']}:{version['id']}",
+                "title": source["title"], "text": text,
+            })
+            hashes.add(digest)
+            used += len(text)
+        return result
 
     def get(self, source_id: str) -> dict:
         self._validate_id(source_id)

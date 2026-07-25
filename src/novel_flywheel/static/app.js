@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, localNlp:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, localNlp:null, workflowAnalysis:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -195,6 +195,18 @@ async function nlpAction(path,options={method:"POST"}){ try{state.localNlp=await
 $("#nlp-install").addEventListener("click",()=>nlpAction("/api/settings/local-nlp/install"));
 $("#nlp-uninstall").addEventListener("click",()=>confirm("卸载 LTP 本地分析组件？")&&nlpAction("/api/settings/local-nlp/uninstall"));
 $("#nlp-toggle").addEventListener("click",()=>nlpAction("/api/settings/local-nlp",{method:"PUT",body:JSON.stringify({enabled:!state.localNlp?.enabled})}));
+async function loadWorkflowAnalysis(){
+  const shell=$("#workflow-analysis-status"),button=$("#workflow-analysis-toggle");
+  if(!state.activeProject){state.workflowAnalysis=null;shell.textContent="请选择作品";button.disabled=true;return;}
+  state.workflowAnalysis=await api(`/api/projects/${state.activeProject.id}/learning/workflow-analysis`);
+  button.disabled=false;button.textContent=state.workflowAnalysis.enabled?"停用当前作品优化":"为当前作品启用";
+  shell.textContent=state.workflowAnalysis.enabled?"已启用 · 首次全文终审，返修后关联窗口复核 · 原创范围 local_corpus_only":"未启用 · 继续使用每轮全文终审";
+}
+$("#workflow-analysis-toggle").addEventListener("click",async()=>{
+  if(!state.activeProject)return toast("请先选择作品");
+  state.workflowAnalysis=await api(`/api/projects/${state.activeProject.id}/learning/workflow-analysis`,{method:"PUT",body:JSON.stringify({enabled:!state.workflowAnalysis?.enabled})});
+  await loadWorkflowAnalysis();toast("作品分析流程已更新");
+});
 function renderProjects() {
   const select = $("#active-project");
   select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">尚无作品</option>';
@@ -250,7 +262,8 @@ async function loadCandidateQuality(projectId) {
     if (state.activeProject?.id !== projectId) return;
     if (!result.available) { shell.innerHTML = '<p class="skill-meta">尚无候选稿</p>'; return; }
     const report = result.diagnostics;
-    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.effective_words).toLocaleString()}</strong><span>正文有效字数 · 纯汉字 ${Number(result.han_characters).toLocaleString()} · 总字符 ${Number(result.characters).toLocaleString()}</span></div></div>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}`;
+    const originality=result.analysis?.originality||{}; const nlp=result.analysis?.nlp||{};
+    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.effective_words).toLocaleString()}</strong><span>正文有效字数 · 纯汉字 ${Number(result.han_characters).toLocaleString()} · 总字符 ${Number(result.characters).toLocaleString()}</span></div></div><p class="skill-meta">全文扫描 ${escapeHtml(result.analysis_status)} · LTP ${nlp.available?"已完成":"规则降级"} · 原创检查仅限本地语料（${escapeHtml(result.review_scope||"local_corpus_only")}） · 连续片段 ${Number(originality.continuous_passages?.length||0)} · 人名 ${Number(originality.similar_names?.length||0)} · 语义候选 ${Number(originality.semantic_candidates?.length||0)}</p>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}`;
     publish.hidden = state.activeProject?.mode !== "short" || report.blocking_count > 0;
   } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
@@ -448,8 +461,8 @@ async function renderActiveProject() {
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadWritingRulesSummary(null); return; }
-  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadWritingRulesSummary(p.id)]);
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadWritingRulesSummary(null); await loadWorkflowAnalysis(); return; }
+  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadWritingRulesSummary(p.id), loadWorkflowAnalysis()]);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
@@ -623,7 +636,7 @@ function renderRunContext(detail) {
   const stages=completed.map(item => { const meta=item.metadata || {}; const context=loaded.get(item.stage) || {}; return `<div class="context-stage"><div><strong>${escapeHtml(roles[item.stage] || item.stage)}</strong><span>${escapeHtml(meta.model_name || "未记录模型")}${item.usedFallback ? " · 已回退" : ""}</span></div><dl><dt>Skill</dt><dd>${escapeHtml((context.skills || meta.skills || []).join("、") || "无")}</dd><dt>提示词</dt><dd>${Number(context.prompt_characters || 0).toLocaleString()} 字符</dd><dt>约束</dt><dd>${Number(context.constraint_characters || 0).toLocaleString()} 字符</dd><dt>Token</dt><dd>${Number(meta.input_tokens || 0).toLocaleString()} 输入 · ${Number(meta.output_tokens || 0).toLocaleString()} 输出</dd><dt>执行</dt><dd>${escapeHtml(meta.execution_mode || "普通请求")}</dd></dl></div>`; });
   const tools=detail.tool_receipts || [];
   const audit=detail.quality_report?.final_review_evidence; const counts=audit?.reconciliation_counts || {};
-  const quality=audit ? `<div class="context-tools"><strong>全文终审</strong><span>覆盖 ${Math.round(Number(audit.coverage || 0)*100)}% · ${Number(audit.reviewed_windows || 0)}/${Number(audit.window_count || 0)} 窗口 · 已解决 ${Number(counts.resolved || 0)} · 部分解决 ${Number(counts.partially_resolved || 0)} · 未解决 ${Number(counts.unresolved || 0)}${(audit.gate_reasons || []).length ? ` · 阻断：${escapeHtml(audit.gate_reasons.join("、"))}` : ""}</span></div>` : "";
+  const quality=audit ? `<div class="context-tools"><strong>${audit.review_mode==="incremental"?"关联窗口复核":"全文终审"}</strong><span>覆盖 ${Math.round(Number(audit.coverage || 0)*100)}% · ${Number(audit.reviewed_windows || 0)}/${Number(audit.window_count || 0)} 窗口 · 节省约 ${Number(audit.estimated_saved_input_characters || 0).toLocaleString()} 输入字符${(audit.fallback_reasons || []).length ? ` · 全文回退：${escapeHtml(audit.fallback_reasons.join("、"))}` : ""} · 已解决 ${Number(counts.resolved || 0)} · 部分解决 ${Number(counts.partially_resolved || 0)} · 未解决 ${Number(counts.unresolved || 0)}${(audit.gate_reasons || []).length ? ` · 阻断：${escapeHtml(audit.gate_reasons.join("、"))}` : ""}</span></div>` : "";
   $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + quality + (tools.length ? `<div class="context-tools"><strong>工具调用收据</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => item.execution_mode))].join("、"))}</span></div>` : "");
 }
 document.querySelectorAll("[data-run-tab]").forEach(button => button.addEventListener("click", () => {

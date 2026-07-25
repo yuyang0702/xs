@@ -70,7 +70,8 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.interviews = interview_service or WizardInterviewService(db, gateway)
     app.state.workflows = workflow_service or WorkflowService(
         db, app.state.projects, gateway, app.state.skill_gate,
-        settings.data_dir / "crewai",
+        settings.data_dir / "crewai", local_nlp=app.state.local_nlp,
+        references=app.state.references,
     )
     app.state.skill_runtime = SkillRuntimeService(
         db, app.state.projects, gateway, app.state.skill_gate,

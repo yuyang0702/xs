@@ -12,6 +12,7 @@ class LocalNLPManager:
     """Manages an optional LTP install; ordinary startup never downloads models."""
 
     PACKAGE = "ltp>=4.2,<5"
+    BACKEND_VERSION = "ltp-v2"
 
     def __init__(self, state_path: Path, runner=subprocess.Popen, command_runner=subprocess.run) -> None:
         self.state_path = state_path
@@ -60,8 +61,10 @@ class LocalNLPManager:
     def analyze(self, text: str) -> dict:
         status = self.status()
         if not status["enabled"]:
-            return {"backend": "rules", "available": False, "reason": "LTP is disabled or unavailable"}
-        digest = hashlib.sha256(("ltp-v1\0" + text).encode("utf-8")).hexdigest()
+            return {"backend": "rules", "available": False,
+                    "backend_version": self.BACKEND_VERSION,
+                    "reason": "LTP is disabled or unavailable"}
+        digest = hashlib.sha256((self.BACKEND_VERSION + "\0" + text).encode("utf-8")).hexdigest()
         cache = self.state_path.parent / "nlp-cache" / f"{digest}.json"
         try:
             return {**json.loads(cache.read_text(encoding="utf-8")), "cached": True}
@@ -75,9 +78,10 @@ class LocalNLPManager:
             result = json.loads(completed.stdout)
             cache.parent.mkdir(parents=True, exist_ok=True)
             cache.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
-            return {**result, "cached": False}
+            return {**result, "backend_version": self.BACKEND_VERSION, "cached": False}
         except Exception as exc:
-            return {"backend": "rules", "available": False, "reason": str(exc)[:300]}
+            return {"backend": "rules", "available": False,
+                    "backend_version": self.BACKEND_VERSION, "reason": str(exc)[:300]}
 
     def _read(self) -> dict:
         try:

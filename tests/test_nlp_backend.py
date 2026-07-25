@@ -20,3 +20,4 @@ def test_analysis_fails_open_when_backend_is_unavailable(tmp_path) -> None:
     result = manager.analyze("一段正文")
     assert result["backend"] == "rules"
     assert result["available"] is False
+    assert result["backend_version"] == manager.BACKEND_VERSION

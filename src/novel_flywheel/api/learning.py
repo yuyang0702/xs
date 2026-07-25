@@ -59,6 +59,10 @@ class NLPEnablePayload(BaseModel):
     enabled: bool
 
 
+class WorkflowAnalysisPayload(BaseModel):
+    enabled: bool
+
+
 def _learning(request: Request):
     return request.app.state.learning
 
@@ -116,6 +120,20 @@ def project_learning(project_id: str, request: Request) -> dict:
             "legacy_style_migration": migration,
         }
     return _handle(result)
+
+
+@router.get("/projects/{project_id}/learning/workflow-analysis")
+def workflow_analysis(project_id: str, request: Request) -> dict:
+    project = request.app.state.projects.get(project_id)
+    return {"enabled": bool(project.metadata.get("optimized_local_review_enabled", False))}
+
+
+@router.put("/projects/{project_id}/learning/workflow-analysis")
+def update_workflow_analysis(
+    project_id: str, payload: WorkflowAnalysisPayload, request: Request,
+) -> dict:
+    project = request.app.state.projects.set_optimized_local_review(project_id, payload.enabled)
+    return {"enabled": bool(project.metadata["optimized_local_review_enabled"])}
 
 
 @router.get("/projects/{project_id}/learning/recommend/{node_id}")

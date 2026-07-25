@@ -21,6 +21,84 @@ REQUIRED_SKILLS = {
 }
 
 
+def test_workflow_analysis_writes_hash_matching_artifact_and_reuses_it(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Analysis", mode="short", genre="suspense",
+        premise="A door changes.", target_words=1000,
+    ))
+    store.set_optimized_local_review(project.id, True)
+    calls = []
+    nlp = SimpleNamespace(analyze=lambda text: calls.append(text) or {
+        "backend": "ltp", "backend_version": "ltp-v2", "available": True,
+        "result": {"cws": [[]], "pos": [[]], "ner": [[]], "srl": [[]], "dep": [[]]},
+    })
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+        local_nlp=nlp,
+    )
+    run_path = project.path / "runs" / "analysis-run"
+    report = service._analyze_manuscript(
+        "林晚发现门锁变了。", run_path, project, "draft",
+    )
+    reused = service._analyze_manuscript(
+        "林晚发现门锁变了。", run_path, project, "draft",
+    )
+    assert report["coverage"] == 1.0
+    assert reused["text_hash"] == report["text_hash"]
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_incremental_review_uses_fewer_than_all_windows_for_middle_prose_change(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Incremental", mode="short", genre="suspense",
+        premise="A long case.", target_words=50_000,
+    ))
+    parts = [f"场景{index}。" + chr(0x4e00 + index) * 4800 for index in range(10)]
+    before = "\n\n".join(parts)
+    after = before.replace("场景5。", "场景五。", 1)
+    old = __import__("novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"]).analyze_manuscript(
+        before, nlp_analyze=lambda text: {"backend": "ltp", "backend_version": "ltp-v2",
+                                          "available": True, "result": {}},
+    )
+    current = __import__("novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"]).analyze_manuscript(
+        after, nlp_analyze=lambda text: {"backend": "ltp", "backend_version": "ltp-v2",
+                                         "available": True, "result": {}},
+    )
+    baseline = __import__("novel_flywheel.incremental_review", fromlist=["build_review_baseline"]).build_review_baseline(
+        before, old, [], {"issues": [], "score": 80},
+    )
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+    prompts = []
+
+    async def fake_stage(*args, **kwargs):
+        prompt = args[5]
+        prompts.append(prompt)
+        if "ADJUDICATION" in prompt:
+            return json.dumps({
+                "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+                "hard_fail": False, "decision": "pass", "issues": [],
+                "reconciliations": [],
+            })
+        return json.dumps({"summary": "局部证据", "events": [], "character_states": {},
+                           "timeline": [], "promises": [], "issues": []})
+
+    service._stage = fake_stage
+    _, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        after, current, baseline, {"issues": []},
+    )
+    assert audit["review_mode"] == "incremental"
+    assert audit["reviewed_windows"] < audit["window_count"]
+    assert audit["estimated_saved_input_characters"] > 0
+
+
 class FakeGateway:
     def __init__(self) -> None:
         self.roles = []
