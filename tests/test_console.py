@@ -87,6 +87,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "正文有效字数" in script
     assert "runs/materials-audit" in script
     assert "runs/materials-repair" in script
+    assert "material-table" in script
+    assert "item.display?.title" in script
     assert "正在调用规划模型分析" in script
     assert "分析失败：${escapeHtml(error.message)}" in script
     assert "navigator.clipboard.writeText" in script

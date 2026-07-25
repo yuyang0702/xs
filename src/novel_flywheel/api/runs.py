@@ -44,6 +44,11 @@ async def start_materials_audit(project_id: str, request: Request) -> dict:
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_materials_audit(project_id, run_id=run_id)
 
+    resumable = next((run for run in request.app.state.registry.db.list_runs(project_id)
+                      if run["workflow"] == "materials-audit"
+                      and run["status"] in {"failed", "cancelled"}), None)
+    if resumable:
+        return request.app.state.run_tasks.resume(resumable["id"], operation)
     return request.app.state.run_tasks.start(project_id, "materials-audit", operation)
 
 
@@ -86,13 +91,15 @@ async def resume_run(run_id: str, request: Request) -> dict:
     run = request.app.state.registry.db.get_run(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"})
-    if run["workflow"] != "short-story":
+    if run["workflow"] not in {"short-story", "materials-audit"}:
         raise HTTPException(status_code=409, detail={"code": "run_not_resumable"})
 
     async def operation(existing_run_id: str) -> object:
-        return await request.app.state.workflows.run_short(
-            run["project_id"], run_id=existing_run_id,
-        )
+        if run["workflow"] == "materials-audit":
+            return await request.app.state.workflows.run_materials_audit(
+                run["project_id"], run_id=existing_run_id,
+            )
+        return await request.app.state.workflows.run_short(run["project_id"], run_id=existing_run_id)
 
     try:
         return request.app.state.run_tasks.resume(run_id, operation)

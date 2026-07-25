@@ -73,6 +73,24 @@ def test_start_material_audit_and_repair_runs(tmp_path) -> None:
     assert audit.json()["workflow"] == "materials-audit"
 
 
+def test_start_material_audit_resumes_latest_interrupted_audit(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+        workflow_service=FakeWorkflows(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Resume audit", "mode": "short", "genre": "test",
+        "premise": "audit", "target_words": 1000,
+    }).json()
+    db.create_run("interrupted-audit", project["id"], "materials-audit", status="cancelled")
+
+    response = client.post(f"/api/projects/{project['id']}/runs/materials-audit")
+
+    assert response.status_code == 202
+    assert response.json()["id"] == "interrupted-audit"
+
+
 def test_run_detail_includes_tool_receipts(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

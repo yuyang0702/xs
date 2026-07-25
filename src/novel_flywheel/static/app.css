@@ -72,6 +72,10 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .character-tags { margin-top:14px; }
 .profile-copy { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; color:#303932; }
 .material-copy { margin-top:18px; }
+.material-table-wrap { max-width:100%; overflow-x:auto; margin-top:10px; }
+.material-table { width:100%; border-collapse:collapse; font-size:12px; line-height:1.6; }
+.material-table th,.material-table td { padding:9px 10px; border:1px solid var(--line); text-align:left; vertical-align:top; }
+.material-table th { background:#f3f5f2; white-space:nowrap; }
 .material-actions { display:flex; justify-content:flex-end; gap:8px; margin:14px 0; }
 .material-editor { margin-top:18px; }
 .material-editor textarea { min-height:520px; font:13px/1.7 Consolas,"Microsoft YaHei",monospace; }

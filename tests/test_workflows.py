@@ -7,10 +7,11 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.quality import review_windows
 from novel_flywheel.revision import segment_map
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
-from novel_flywheel.workflows import PolishTokenBudgetError, RevisionPlanError, WorkflowService
+from novel_flywheel.workflows import PolishTokenBudgetError, RevisionPlanError, StageText, WorkflowService
 
 
 REQUIRED_SKILLS = {
@@ -105,6 +106,86 @@ async def test_material_audit_records_evidenced_conflicts(tmp_path) -> None:
     state = StoryStateStore(db).get(project.id)
     assert state is not None
     assert state.data["issue_ledger"][0]["source"] == "materials_audit"
+
+
+@pytest.mark.asyncio
+async def test_material_audit_reuses_fallback_after_first_window_timeout(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Audit circuit", mode="short", genre="suspense",
+        premise="A long contradiction.", target_words=5000,
+    ))
+    manuscript = project.path / "manuscript" / "story.md"
+    manuscript.parent.mkdir(parents=True, exist_ok=True)
+    manuscript.write_text("沈砚沿着长廊检查每一扇门。" * 1200, encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+    routes = []
+
+    async def fake_stage(*args, **kwargs):
+        routes.append(kwargs.get("prefer_configured_fallback", False))
+        receipt = {"fallback_used": True} if len(routes) == 1 else {
+            "configured_fallback_direct": True,
+        }
+        return StageText('{"issues": []}', receipt)
+
+    service._stage = fake_stage
+    result = await service.run_materials_audit(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    assert len(routes) > 1
+    assert routes == [False, *([True] * (len(routes) - 1))]
+    events = db.list_run_events(result["id"])
+    assert sum(event["event_type"] == "materials_audit_circuit_opened"
+               for event in events) == 1
+
+
+@pytest.mark.asyncio
+async def test_material_audit_resume_reuses_completed_window_checkpoints(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Audit resume", mode="short", genre="suspense",
+        premise="Resume a long audit.", target_words=5000,
+    ))
+    manuscript = project.path / "manuscript" / "story.md"
+    manuscript.parent.mkdir(parents=True, exist_ok=True)
+    manuscript.write_text("沈砚沿着长廊检查每一扇门。" * 1200, encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+    first_calls = 0
+
+    async def interrupted_stage(*args, **kwargs):
+        nonlocal first_calls
+        first_calls += 1
+        if first_calls == 3:
+            raise RuntimeError("Server disconnected without sending a response")
+        return StageText('{"issues": []}', {})
+
+    service._stage = interrupted_stage
+    with pytest.raises(RuntimeError, match="Server disconnected"):
+        await service.run_materials_audit(
+            project.id, use_crewai=False, run_id="resumable-audit",
+        )
+
+    resumed_calls = 0
+
+    async def resumed_stage(*args, **kwargs):
+        nonlocal resumed_calls
+        resumed_calls += 1
+        return StageText('{"issues": []}', {})
+
+    service._stage = resumed_stage
+    result = await service.run_materials_audit(
+        project.id, use_crewai=False, run_id="resumable-audit",
+    )
+
+    assert result["status"] == "completed"
+    assert first_calls + resumed_calls - 1 == len(review_windows(manuscript.read_text(encoding="utf-8")))
+    events = db.list_run_events("resumable-audit")
+    assert sum(event["event_type"] == "materials_audit_checkpoint_reused"
+               for event in events) == 2
 
 
 @pytest.mark.asyncio
@@ -1408,6 +1489,51 @@ async def test_polish_retries_empty_max_token_response_once_with_full_budget(tmp
         event["event_type"] == "polish_max_tokens_retry"
         for event in db.list_run_events("retry-polish")
     )
+
+
+@pytest.mark.asyncio
+async def test_polish_splits_segment_when_full_budget_retry_also_hits_limit(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Split max tokens", mode="short", genre="suspense",
+        premise="A witness revisits the scene.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            if self.calls <= 2:
+                return ModelResult("", {
+                    "model_name": "claude-sonnet-5", "input_tokens": 8330,
+                    "output_tokens": max_output_tokens, "finish_reason": "max_tokens",
+                })
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "claude-sonnet-5", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("split-max-tokens", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "split-max-tokens"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = "\n\n".join((f"Paragraph {index}. " * 45) for index in range(4))
+
+    result = await service._polish_short_segments(
+        "split-max-tokens", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    assert result == "\n\n".join(item.strip() for item in manuscript.split("\n\n"))
+    assert gateway.calls >= 4
+    assert any(event["event_type"] == "polish_segment_split"
+               for event in db.list_run_events("split-max-tokens"))
 
 
 @pytest.mark.asyncio

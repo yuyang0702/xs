@@ -30,6 +30,33 @@ MATERIAL_GROUPS = (
     ("issues", "伏笔与问题", ("continuity/promises/**/*.md", "continuity/questions/**/*.md"), set()),
     ("constraints", "创作约束", ("constraints.md",), set()),
 )
+MATERIAL_LABELS = {
+    "Worldbuilding": "世界设定", "World Overview": "世界概览", "Locations": "地点",
+    "Systems": "规则体系", "Factions": "势力", "Artifacts": "重要物品",
+    "Plot Structure": "剧情结构", "Story Structure": "故事结构", "Arcs": "剧情弧线",
+    "Theme Tracking": "主题追踪", "Story Timeline": "故事时间线",
+    "Promises And Payoffs": "伏笔与回收", "Continuity Questions": "连续性问题",
+    "Project Constraints": "创作约束", "Must Include": "必须包含", "Must Avoid": "必须避免",
+    "Description": "描述", "History": "历史", "Culture & Customs": "文化与习俗",
+    "Notable Features": "显著特征", "Current State": "当前状态", "Overview": "概览",
+    "Rules & Limitations": "规则与限制", "Practitioners": "参与者",
+    "Impact on Society": "社会影响", "Purpose": "目标", "Power Base": "权力基础",
+    "Members": "成员", "Conflicts": "冲突", "Registry": "资料索引",
+    "Name": "名称", "Type": "类型", "Region": "区域", "File": "文件",
+    "Status": "状态", "Description": "描述", "When": "时间", "Event": "事件",
+    "Arc": "剧情弧线", "Chapter": "章节", "Beat": "节拍", "Act": "幕",
+    "Day": "日期", "Theme": "主题", "Arcs": "剧情弧线", "Chapters": "章节",
+    "Promise": "伏笔", "Planted": "埋设位置",
+}
+MATERIAL_VALUE_LABELS = {
+    "building": "建筑", "landmark": "地标", "wilderness": "自然区域",
+    "thriving": "正常", "active": "活跃", "planned": "规划中", "none": "无",
+    "main": "主线", "character": "人物线", "three-act": "三幕式",
+}
+MATERIAL_META_LABELS = {
+    "type": "类型", "region": "区域", "population": "人数", "controlled-by": "控制者",
+    "status": "状态", "structure": "结构",
+}
 
 
 class StyleSamplePayload(BaseModel):
@@ -242,6 +269,83 @@ def _material_title(path: Path, text: str) -> str:
     return heading.group(1).strip() if heading else path.stem.replace("-", " ")
 
 
+def _localized(value: str) -> str:
+    return MATERIAL_LABELS.get(value, MATERIAL_VALUE_LABELS.get(value.lower(), value))
+
+
+def _clean_markdown(text: str) -> str:
+    text = re.sub(r"\[([^]]+)]\([^)]+\)", r"\1", text)
+    text = re.sub(r"(?<!\*)\*{1,2}([^*]+)\*{1,2}", r"\1", text)
+    text = re.sub(r"(?m)^\s*>\s?", "", text)
+    return text.strip()
+
+
+def _material_table(lines: list[str]) -> dict | None:
+    rows = [[_clean_markdown(cell.strip()) for cell in line.strip().strip("|").split("|")]
+            for line in lines if line.strip().startswith("|")]
+    if len(rows) < 2 or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in rows[1]):
+        return None
+    return {"kind": "table", "columns": [_localized(cell) for cell in rows[0]],
+            "rows": rows[2:]}
+
+
+def _material_blocks(body: str) -> list[dict]:
+    lines = body.strip().splitlines()
+    blocks = []
+    text_lines = []
+
+    def flush_text() -> None:
+        text = _clean_markdown("\n".join(text_lines))
+        if text:
+            blocks.append({"kind": "text", "content": text})
+        text_lines.clear()
+
+    index = 0
+    while index < len(lines):
+        if lines[index].strip().startswith("|"):
+            flush_text()
+            end = index
+            while end < len(lines) and lines[end].strip().startswith("|"):
+                end += 1
+            table = _material_table(lines[index:end])
+            if table:
+                blocks.append(table)
+            else:
+                text_lines.extend(lines[index:end])
+            index = end
+            continue
+        text_lines.append(lines[index])
+        index += 1
+    flush_text()
+    return blocks
+
+
+def _material_display(path: Path, text: str) -> dict:
+    parts = text.split("---", 2)
+    frontmatter = parts[1] if len(parts) == 3 else ""
+    body = parts[2] if len(parts) == 3 else text
+    fields = dict(re.findall(r"(?m)^([\w-]+):\s*([^\n]+)$", frontmatter))
+    heading = re.search(r"(?m)^#\s+(.+)$", body)
+    title = fields.get("name") or (heading.group(1).strip() if heading else _material_title(path, text))
+    metadata = [{"label": label, "value": _localized(fields[key].strip().strip('"\''))}
+                for key, label in MATERIAL_META_LABELS.items() if fields.get(key)]
+    matches = list(re.finditer(r"(?m)^##\s+(.+)$", body))
+    sections = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        blocks = _material_blocks(body[match.end():end])
+        section = {"title": _localized(match.group(1).strip()), "blocks": blocks}
+        if len(blocks) == 1:
+            section.update(blocks[0])
+        sections.append(section)
+    if not sections:
+        content = re.sub(r"(?m)^#\s+.+$", "", body, count=1)
+        blocks = _material_blocks(content)
+        if blocks:
+            sections.append({"title": "内容", "blocks": blocks, **(blocks[0] if len(blocks) == 1 else {})})
+    return {"title": _localized(title.strip().strip('"\'')), "metadata": metadata, "sections": sections}
+
+
 def _material_documents(project: Project) -> list[dict]:
     documents = []
     seen: set[Path] = set()
@@ -258,7 +362,8 @@ def _material_documents(project: Project) -> list[dict]:
                 relative = path.relative_to(project.path).as_posix()
                 items.append({
                     "path": relative, "title": _material_title(path, text),
-                    "content": text, "hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                    "content": text, "display": _material_display(path, text),
+                    "hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
                 })
         documents.append({"id": group_id, "label": label, "documents": items})
     return documents

@@ -207,7 +207,10 @@ function renderCharacter(profile, document) {
 function renderMaterialDocument(document, groupId) {
   const shell=$("#character-detail");
   if (!document) { shell.innerHTML='<p class="skill-meta">此分区暂无资料文件</p>'; return; }
-  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(groupId)}</p><h2>${escapeHtml(document.title)}</h2></div></header><div class="material-actions"><button class="secondary" data-material-edit>编辑资料</button></div><div class="profile-copy material-copy">${escapeHtml(document.content)}</div>`;
+  const group=(state.materials?.groups || []).find(item=>item.id===groupId);
+  const display=document.display || {title:document.title,metadata:[],sections:[{title:"内容",blocks:[{kind:"text",content:document.content}]}]};
+  const blockHtml=block=>block.kind==="table" ? `<div class="material-table-wrap"><table class="material-table"><thead><tr>${(block.columns || []).map(value=>`<th>${escapeHtml(value)}</th>`).join("")}</tr></thead><tbody>${(block.rows || []).map(row=>`<tr>${row.map(value=>`<td>${escapeHtml(value)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : `<div class="profile-copy">${escapeHtml(block.content || "")}</div>`;
+  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(group?.label || groupId)}</p><h2>${escapeHtml(display.title)}</h2></div><div class="character-facts">${(display.metadata || []).map(item=>`<span>${escapeHtml(item.label)}：${escapeHtml(item.value)}</span>`).join("")}</div></header><div class="material-actions"><button class="secondary" data-material-edit>编辑资料</button></div>${(display.sections || []).map(section=>`<section><h3>${escapeHtml(section.title)}</h3>${(section.blocks || [section]).map(blockHtml).join("")}</section>`).join("") || '<p class="skill-meta">暂无可展示内容</p>'}`;
   shell.querySelector("[data-material-edit]").addEventListener("click",()=>renderMaterialEditor(document,groupId));
 }
 function renderMaterialEditor(document, groupId) {
@@ -226,7 +229,7 @@ function renderSelectedMaterial() {
   const group=(state.materials?.groups || []).find(item=>item.id===state.activeMaterialGroup);
   const documents=group?.documents || [];
   if (!documents.some(item=>item.path===state.activeMaterialPath)) state.activeMaterialPath=documents[0]?.path || null;
-  $("#character-list").innerHTML=documents.map(item=>`<button class="character-list-item ${item.path===state.activeMaterialPath ? "active" : ""}" data-material-path="${escapeHtml(item.path)}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.path)}</span></button>`).join("") || '<p class="skill-meta">暂无资料文件</p>';
+  $("#character-list").innerHTML=documents.map(item=>`<button class="character-list-item ${item.path===state.activeMaterialPath ? "active" : ""}" data-material-path="${escapeHtml(item.path)}"><strong>${escapeHtml(item.display?.title || item.title)}</strong><span>${escapeHtml(group?.label || "项目资料")}</span></button>`).join("") || '<p class="skill-meta">暂无资料文件</p>';
   $("#character-list").querySelectorAll("[data-material-path]").forEach(button=>button.addEventListener("click",()=>{state.activeMaterialPath=button.dataset.materialPath; renderSelectedMaterial();}));
   const document=documents.find(item=>item.path===state.activeMaterialPath);
   if (state.activeMaterialGroup==="characters") {

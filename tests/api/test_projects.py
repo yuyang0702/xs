@@ -247,6 +247,37 @@ def test_material_documents_are_editable_and_sync_story_state(tmp_path) -> None:
     assert response.json()["story_state_revision"] == before["revision"] + 1
 
 
+def test_material_documents_expose_localized_structured_display(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
+    project = client.post("/api/projects", json={
+        "title": "Display", "mode": "short", "genre": "test",
+        "premise": "display", "target_words": 1000,
+    }).json()
+    root = tmp_path / "workspace" / f"display-{project['id'][:6]}"
+    location = root / "worldbuilding" / "locations" / "tower.md"
+    location.parent.mkdir(parents=True, exist_ok=True)
+    location.write_text(
+        "---\nname: 黑塔\ntype: building\nstatus: thriving\n---\n\n"
+        "## Description\n\n终年无灯。\n\n## Notable Features\n\n"
+        "| Name | Type |\n|---|---|\n| 顶层 | 禁区 |\n",
+        encoding="utf-8",
+    )
+
+    materials = client.get(f"/api/projects/{project['id']}/materials").json()
+    locations = next(group for group in materials["groups"] if group["id"] == "locations")
+    document = next(item for item in locations["documents"] if item["path"].endswith("tower.md"))
+
+    assert document["display"]["title"] == "黑塔"
+    assert document["display"]["metadata"] == [
+        {"label": "类型", "value": "建筑"}, {"label": "状态", "value": "正常"},
+    ]
+    assert document["display"]["sections"][0]["title"] == "描述"
+    assert document["display"]["sections"][0]["content"] == "终年无灯。"
+    assert document["display"]["sections"][1]["columns"] == ["名称", "类型"]
+    assert "type: building" in document["content"]
+
+
 def test_material_edit_is_blocked_during_active_run(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))

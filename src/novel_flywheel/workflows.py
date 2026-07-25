@@ -152,7 +152,31 @@ class WorkflowService:
             constraints = self.projects.load_constraints(project.id)
             issues = []
             windows = review_windows(manuscript)
+            checkpoint_root = run_path / "outputs" / "materials-audit-checkpoints"
+            checkpoint_root.mkdir(parents=True, exist_ok=True)
+            fallback_circuit_open = any(
+                event["event_type"] == "materials_audit_circuit_opened"
+                for event in self.db.list_run_events(run_id)
+            )
             for window in windows:
+                checkpoint_path = checkpoint_root / f"window-{window['index']:03d}.json"
+                source_hash = hashlib.sha256(
+                    (reference + "\0" + constraints + "\0" + window["text"]
+                     + f"\0{window['index']}/{len(windows)}").encode("utf-8")
+                ).hexdigest()
+                try:
+                    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    checkpoint = {}
+                if (checkpoint.get("source_hash") == source_hash
+                        and isinstance(checkpoint.get("issues"), list)):
+                    issues.extend(item for item in checkpoint["issues"] if isinstance(item, dict))
+                    self.db.add_run_event(
+                        run_id, "success", "materials_audit_checkpoint_reused",
+                        f"材料审核第 {window['index']}/{len(windows)} 窗口已从检查点恢复",
+                        stage="final_review", metadata={"window": window["index"]},
+                    )
+                    continue
                 prompt = (
                     "MATERIAL CONSISTENCY AUDIT. Compare this manuscript window against the project "
                     "reference. Return JSON only: {\"issues\":[...]}. Each issue must contain category, "
@@ -161,11 +185,25 @@ class WorkflowService:
                     f"PROJECT REFERENCE:\n{reference}\n\nWINDOW {window['index']}/{len(windows)} "
                     f"CHARACTERS {window['start']}-{window['end']}:\n{window['text']}"
                 )
-                value = self._json_object(await self._stage(
+                result = await self._stage(
                     run_id, run_path, project, "final_review", constraints, prompt,
                     suffix=f"-window-{window['index']}", allow_tools=False,
-                ))
-                issues.extend(item for item in value.get("issues", []) if isinstance(item, dict))
+                    prefer_configured_fallback=fallback_circuit_open,
+                )
+                if (not fallback_circuit_open
+                        and getattr(result, "receipt", {}).get("fallback_used")):
+                    fallback_circuit_open = True
+                    self.db.add_run_event(
+                        run_id, "warning", "materials_audit_circuit_opened",
+                        "材料审核首选模型已回退成功，后续窗口直接使用配置备用模型",
+                        stage="final_review", metadata={"window": window["index"]},
+                    )
+                value = self._json_object(result)
+                window_issues = [item for item in value.get("issues", []) if isinstance(item, dict)]
+                issues.extend(window_issues)
+                atomic_write(checkpoint_path, json.dumps({
+                    "source_hash": source_hash, "issues": window_issues,
+                }, ensure_ascii=False, indent=2))
             report = {"project_id": project.id, "issues": issues, "count": len(issues)}
             atomic_write(run_path / "outputs" / "conflict-report.json",
                          json.dumps(report, ensure_ascii=False, indent=2))
@@ -1312,6 +1350,7 @@ class WorkflowService:
             "502", "504", "524", "timeout", "timed out", "connecterror",
             "connection reset", "connection refused", "connection attempts failed",
             "server disconnected", "bad gateway", "gateway timeout",
+            "finish_reason=max_tokens",
         ))
 
     @classmethod
