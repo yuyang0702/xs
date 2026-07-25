@@ -27,8 +27,8 @@ class RunTaskManager:
         run = self.db.get_run(run_id)
         if run is None:
             raise LookupError("Run not found")
-        if run["status"] != "failed":
-            raise ValueError("Only a failed run can be resumed")
+        if run["status"] not in {"failed", "cancelled"}:
+            raise ValueError("Only a failed or cancelled run can be resumed")
         if run_id in self.tasks:
             raise ValueError("Run is already active")
         self.db.update_run(run_id, "queued")

@@ -62,7 +62,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "continueProject(button.dataset.continue)" in script
     assert "resumableRun" in script
     assert "run(`/api/runs/${resumableRun.id}/resume`)" in script
-    assert 'item.status === "failed")' in script
+    assert '["failed","cancelled"].includes(item.status)' in script
     assert 'includes("token_budget_exhausted")' not in script
     assert 'if (!resumableRun) return toast("没有可继续的失败任务")' in script
     assert "const pendingFallbacks=new Set()" in script

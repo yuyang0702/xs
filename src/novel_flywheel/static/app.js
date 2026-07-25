@@ -81,7 +81,7 @@ async function continueProject(projectId) {
   if (project.mode !== "short") return;
   const runs = await api(`/api/projects/${project.id}/runs`);
   const resumableRun = runs.find(item => item.workflow === "short-story"
-    && item.status === "failed");
+    && ["failed","cancelled"].includes(item.status));
   if (!resumableRun) return toast("没有可继续的失败任务");
   await run(`/api/runs/${resumableRun.id}/resume`);
 }

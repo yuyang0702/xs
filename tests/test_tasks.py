@@ -120,9 +120,24 @@ async def test_task_manager_resumes_failed_run_with_same_id(tmp_path) -> None:
                for event in db.list_run_events("failed-run"))
 
 
+@pytest.mark.asyncio
+async def test_task_manager_resumes_cancelled_run_with_same_id(tmp_path) -> None:
+    db, manager = make_manager(tmp_path)
+    db.create_run("cancelled-run", "book", "short-story", status="cancelled")
+
+    async def operation(run_id):
+        assert run_id == "cancelled-run"
+
+    resumed = manager.resume("cancelled-run", operation)
+    await manager.wait("cancelled-run")
+
+    assert resumed["id"] == "cancelled-run"
+    assert db.get_run("cancelled-run")["status"] == "completed"
+
+
 def test_task_manager_rejects_resuming_completed_run(tmp_path) -> None:
     db, manager = make_manager(tmp_path)
     db.create_run("completed-run", "book", "short-story", status="completed")
 
-    with pytest.raises(ValueError, match="failed run"):
+    with pytest.raises(ValueError, match="failed or cancelled run"):
         manager.resume("completed-run", lambda run_id: None)
