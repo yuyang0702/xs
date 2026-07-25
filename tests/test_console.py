@@ -18,6 +18,24 @@ def test_console_and_assets_are_served_locally(tmp_path) -> None:
     assert client.get("/static/app.js").headers["cache-control"] == "no-store"
 
 
+def test_console_stylesheet_has_visual_system_and_accessible_motion(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    ))
+    css = client.get("/static/app.css").text
+
+    assert "--accent:#6d5dfc" in css
+    assert "--sidebar:#15182a" in css
+    assert "--motion:180ms" in css
+    assert ":focus-visible" in css
+    assert ".status::before" in css
+    assert ".project-item:hover" in css
+    assert ".learning-artifact" in css
+    assert "var(--shadow-sm)" in css
+    assert "@media (prefers-reduced-motion:reduce)" in css
+
+
 def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
     html = client.get("/").text
@@ -120,5 +138,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert '/analyze`' in script
     assert "renderReferences" in script
     assert "renderProjectLearningMaterials" in script
+    assert "readableLearningValue(item.data)" in script
+    assert "state.references.map(item=>" in script
+    assert 'api("/api/learning/mechanisms")' in script
     assert "startWizardFromReference" in script
     assert "data-reference-create" in script

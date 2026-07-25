@@ -108,8 +108,7 @@ function renderReferenceDetail() {
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
-  const learned=state.mechanisms.some(item=>item.source_id===source.id);
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create ${learned?"":"disabled"}>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
   $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
   $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
@@ -181,7 +180,7 @@ function renderLearning() {
 }
 async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); state.mechanisms=await api("/api/learning/mechanisms"); renderLearning(); toast(action==="confirm"?"分析已确认":"分析已拒绝"); } catch(error){toast(error.message);} }
 async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
-function renderLearningArtifacts(){ const shell=$("#learning-artifacts"); if(!shell)return; const artifacts=state.projectLearning?.artifacts||[]; shell.innerHTML=artifacts.length?artifacts.map(item=>`<details class="learning-artifact"><summary>${escapeHtml({creative_blueprint:"创作蓝图",prose_baseline:"可执行文笔基线",voice_profiles:"人物声音档案",epistemic_state:"人物认知状态",scene_briefs:"场景简报"}[item.artifact_type]||item.artifact_type)} · 版本 ${item.version}${item.status==="stale"?" · 待复核":""}</summary><pre>${escapeHtml(JSON.stringify(item.data,null,2))}</pre></details>`).join(""):'<p class="skill-meta">采纳机制或建立文笔资料后在此显示</p>'; }
+function renderLearningArtifacts(){ const shell=$("#learning-artifacts"); if(!shell)return; const artifacts=state.projectLearning?.artifacts||[]; shell.innerHTML=artifacts.length?artifacts.map(item=>`<details class="learning-artifact" open><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||item.artifact_type)}</strong><span>版本 ${item.version} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`).join(""):'<p class="skill-meta">采纳机制或建立文笔资料后在此显示</p>'; }
 $("#learning-project").addEventListener("change",async event=>{ state.activeProject=state.projects.find(item=>item.id===event.target.value)||state.activeProject; state.projectLearning=null; await loadProjectLearning(); renderLearning(); });
 const learningProjectId=()=>$("#learning-project").value;
 async function saveLearningArtifact(path,data){const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/${path}`,{method:"PUT",body:JSON.stringify({data})});await loadProjectLearning();toast("已保存为新版本");}catch(error){toast(error.message);}}
@@ -479,7 +478,7 @@ function renderWizardDrafts() {
   const drafts = state.wizards.filter(item => item.status === "draft");
   $("#wizard-drafts").innerHTML = '<option value="">选择草稿</option>' + drafts.map(item => `<option value="${item.id}">${escapeHtml(item.answers?.title?.value || (item.mode === "long" ? "未命名长篇" : "未命名短篇"))}</option>`).join("");
   const learnedSourceIds=new Set(state.mechanisms.map(item=>item.source_id));
-  $("#wizard-reference").innerHTML='<option value="">自己构思（原方式）</option>'+state.references.filter(item=>learnedSourceIds.has(item.id)).map(item=>`<option value="${item.id}">从《${escapeHtml(item.title)}》的学习成果创建</option>`).join("");
+  $("#wizard-reference").innerHTML='<option value="">自己构思（原方式）</option>'+state.references.map(item=>`<option value="${item.id}">从《${escapeHtml(item.title)}》${learnedSourceIds.has(item.id)?"的学习成果":"开始学习并"}创建</option>`).join("");
 }
 function fieldControl(field, answer) {
   const value = answer?.value ?? field.default ?? "";
@@ -576,6 +575,12 @@ async function startWizardFromReference() {
   const referenceId=this?.dataset?.referenceCreate!==undefined ? state.activeReference?.id : $("#wizard-reference").value;
   const mode=document.querySelector('input[name="wizard-mode"]:checked').value;
   try {
+    if(referenceId&&!state.mechanisms.some(item=>item.source_id===referenceId)){
+      toast("正在先提炼参考小说的写作机制...");
+      await api(`/api/references/${referenceId}/learn`,{method:"POST"});
+      state.mechanisms=await api("/api/learning/mechanisms");
+      renderWizardDrafts(); renderLearning();
+    }
     let wizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode})});
     if(referenceId){
       const source=state.references.find(item=>item.id===referenceId);
