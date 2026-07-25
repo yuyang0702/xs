@@ -1095,6 +1095,12 @@ def test_stage_output_budgets_cover_each_model_role() -> None:
     assert WorkflowService._stage_output_budget("maintenance") == 4096
 
 
+def test_initial_polish_input_cap_scales_with_smaller_segment_count() -> None:
+    assert WorkflowService._polish_round_input_cap(False, 5) == 120_000
+    assert WorkflowService._polish_round_input_cap(False, 15) == 300_000
+    assert WorkflowService._polish_round_input_cap(True, 15) == 60_000
+
+
 def test_polish_splitter_merges_tiny_trailing_chunk() -> None:
     text = "A" * 1400 + "\n\n" + "B" * 300
 

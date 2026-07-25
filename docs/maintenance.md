@@ -51,7 +51,7 @@ Configured Claude polish routes receive 8,192 immediately because observed relay
 
 HTTP `524` means the relay reached the upstream model but timed out waiting for a response. It is not a manuscript validation error. The configured fallback handles it without modifying the formal manuscript.
 
-Input-token circuit breakers are 120,000 for initial polish, 60,000 per structural correction round, and 220,000 cumulative polish input per run. The Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.
+The initial-polish input circuit breaker is the larger of 120,000 or 20,000 per generated segment, so smaller adaptive segments do not exhaust the legacy round cap before the manuscript is complete. Structural correction remains capped at 60,000 per round, and cumulative polish input remains capped at 220,000 per run. Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.
 
 Structural plans must target no more than 40% of stable `scene-NN` scenes and contain literal checks for hard issues. A truncated/invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.
 

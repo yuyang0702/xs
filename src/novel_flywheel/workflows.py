@@ -786,9 +786,7 @@ class WorkflowService:
             for event in self.db.list_run_events(run_id)
             if event["event_type"] == "stage_completed" and event.get("stage") == "polish"
         )
-        round_cap = (
-            self.STRUCTURAL_POLISH_INPUT_CAP if structural else self.INITIAL_POLISH_INPUT_CAP
-        )
+        round_cap = self._polish_round_input_cap(structural, len(parts))
         for index, part in enumerate(parts, 1):
             group = part_groups[index - 1]
             if revision_plan and group not in revision_plan["target_segments"]:
@@ -1011,6 +1009,12 @@ class WorkflowService:
             "connection reset", "connection refused", "connection attempts failed",
             "server disconnected", "bad gateway", "gateway timeout",
         ))
+
+    @classmethod
+    def _polish_round_input_cap(cls, structural: bool, segment_count: int) -> int:
+        if structural:
+            return cls.STRUCTURAL_POLISH_INPUT_CAP
+        return max(cls.INITIAL_POLISH_INPUT_CAP, segment_count * 20_000)
 
     @staticmethod
     def _split_failed_polish_segment(text: str, minimum: int = 400) -> tuple[str, str] | None:
