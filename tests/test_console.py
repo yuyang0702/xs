@@ -62,6 +62,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "continueProject(button.dataset.continue)" in script
     assert "resumableRun" in script
     assert "run(`/api/runs/${resumableRun.id}/resume`)" in script
+    assert "const pendingFallbacks=new Set()" in script
+    assert "pendingFallbacks.delete(item.stage)" in script
+    assert "const fallbacks=new Set(events.filter" not in script
     assert "binding-primary-${role}" in script
     assert "binding-fallback-${role}" in script
     assert "使用程序默认回退" in script
