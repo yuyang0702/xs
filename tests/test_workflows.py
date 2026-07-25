@@ -77,6 +77,75 @@ def make_prompt_skills(root) -> None:
         )
 
 
+@pytest.mark.asyncio
+async def test_material_audit_records_evidenced_conflicts(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Audit", mode="short", genre="suspense",
+        premise="A contradiction.", target_words=1000,
+    ))
+    manuscript = project.path / "manuscript" / "story.md"
+    manuscript.parent.mkdir(parents=True, exist_ok=True)
+    manuscript.write_text("沈砚端起酒杯，一饮而尽。" * 400, encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def fake_stage(*args, **kwargs):
+        return json.dumps({"issues": [{
+            "category": "character_habit", "severity": "high",
+            "evidence": "沈砚一饮而尽", "location": "开篇",
+            "old_setting": "饮酒", "new_setting": "从不饮酒", "action": "修订动作",
+        }]}, ensure_ascii=False)
+
+    service._stage = fake_stage
+    result = await service.run_materials_audit(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    state = StoryStateStore(db).get(project.id)
+    assert state is not None
+    assert state.data["issue_ledger"][0]["source"] == "materials_audit"
+
+
+@pytest.mark.asyncio
+async def test_material_repair_preserves_candidate_until_publication(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Repair", mode="short", genre="suspense",
+        premise="Repair a contradiction.", target_words=1000,
+    ))
+    formal = project.path / "manuscript" / "story.md"
+    formal.parent.mkdir(parents=True, exist_ok=True)
+    formal.write_text("原始正文。" * 1200, encoding="utf-8")
+    db.create_run("audit", project.id, "materials-audit", status="completed")
+    audit_output = project.path / "runs" / "audit" / "outputs"
+    audit_output.mkdir(parents=True)
+    (audit_output / "conflict-report.json").write_text(json.dumps({
+        "issues": [{"category": "character", "severity": "high", "evidence": "冲突"}],
+    }, ensure_ascii=False), encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def fake_polish(*args, **kwargs):
+        return "修订候选。" * 1200
+
+    async def fake_review(*args, **kwargs):
+        return ({
+            "score": 90, "dimensions": {"commercial": 90, "story": 90, "prose": 90},
+            "hard_fail": False, "decision": "pass", "issues": [],
+        }, {"coverage": 1.0})
+
+    service._polish_short_segments = fake_polish
+    service._full_manuscript_review = fake_review
+    result = await service.run_materials_repair(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    assert formal.read_text(encoding="utf-8").startswith("原始正文")
+    candidate = project.path / "runs" / result["id"] / "outputs" / "best-candidate.md"
+    assert candidate.read_text(encoding="utf-8").startswith("修订候选")
+
+
 def test_post_write_maintenance_uses_project_id_and_restores_story_title(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

@@ -202,6 +202,71 @@ def test_project_materials_expose_complete_character_profiles(tmp_path) -> None:
     }
 
 
+def test_candidate_reports_effective_word_count(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
+    project = client.post("/api/projects", json={
+        "title": "Count", "mode": "short", "genre": "test",
+        "premise": "count", "target_words": 1000,
+    }).json()
+    db.create_run("count-run", project["id"], "short-story", status="failed")
+    root = tmp_path / "workspace" / f"count-{project['id'][:6]}"
+    output = root / "runs" / "count-run" / "outputs"
+    output.mkdir(parents=True)
+    (output / "best-candidate.md").write_text("# 标题\n你好，世界！OpenAI 2026。", encoding="utf-8")
+
+    result = client.get(f"/api/projects/{project['id']}/candidate").json()
+
+    assert result["han_characters"] == 6
+    assert result["effective_words"] == 8
+
+
+def test_material_documents_are_editable_and_sync_story_state(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
+    project = client.post("/api/projects", json={
+        "title": "Materials", "mode": "short", "genre": "test",
+        "premise": "materials", "target_words": 1000,
+    }).json()
+    root = tmp_path / "workspace" / f"materials-{project['id'][:6]}"
+    world = root / "worldbuilding" / "rules.md"
+    world.parent.mkdir(parents=True, exist_ok=True)
+    world.write_text("# 世界规则\n\n- 门只能打开一次。\n", encoding="utf-8")
+    before = client.get(f"/api/projects/{project['id']}/story-state").json()
+    materials = client.get(f"/api/projects/{project['id']}/materials").json()
+    groups = {item["id"]: item for item in materials["groups"]}
+    document = next(item for item in groups["world"]["documents"] if item["path"] == "worldbuilding/rules.md")
+
+    response = client.put(
+        f"/api/projects/{project['id']}/materials/worldbuilding/rules.md",
+        json={"content": "# 世界规则\n\n- 门只能打开两次。\n", "expected_hash": document["hash"]},
+    )
+
+    assert response.status_code == 200
+    assert world.read_text(encoding="utf-8").endswith("门只能打开两次。\n")
+    assert response.json()["story_state_revision"] == before["revision"] + 1
+
+
+def test_material_edit_is_blocked_during_active_run(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
+    project = client.post("/api/projects", json={
+        "title": "Busy", "mode": "short", "genre": "test",
+        "premise": "busy", "target_words": 1000,
+    }).json()
+    materials = client.get(f"/api/projects/{project['id']}/materials").json()
+    document = materials["groups"][-1]["documents"][0]
+    db.create_run("busy-run", project["id"], "short-story", status="running")
+
+    response = client.put(
+        f"/api/projects/{project['id']}/materials/{document['path']}",
+        json={"content": document["content"], "expected_hash": document["hash"]},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "project_run_active"
+
+
 def test_project_trash_restore_and_permanent_delete_api(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(),

@@ -19,6 +19,17 @@ from novel_flywheel.story_state import StaleStoryState, StoryStateStore
 
 router = APIRouter(prefix="/api", tags=["projects"])
 HAN_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+WORD_TOKEN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]|[A-Za-z]+(?:['’-][A-Za-z]+)*|\d+(?:[.,]\d+)*")
+
+MATERIAL_GROUPS = (
+    ("characters", "人物档案", ("characters/*.md",), {"_index.md"}),
+    ("world", "世界设定", ("worldbuilding/*.md", "worldbuilding/systems/**/*.md", "worldbuilding/factions/**/*.md", "worldbuilding/artifacts/**/*.md"), set()),
+    ("locations", "地点资料", ("worldbuilding/locations/**/*.md",), {"_index.md"}),
+    ("plot", "剧情结构", ("plot/_index.md", "plot/arcs/**/*.md"), set()),
+    ("timeline", "时间线", ("plot/timeline.md",), set()),
+    ("issues", "伏笔与问题", ("continuity/promises/**/*.md", "continuity/questions/**/*.md"), set()),
+    ("constraints", "创作约束", ("constraints.md",), set()),
+)
 
 
 class StyleSamplePayload(BaseModel):
@@ -37,6 +48,11 @@ class StoryStateEditPayload(BaseModel):
         "character_states", "timeline_events", "issue_ledger",
     ]
     value: Any
+
+
+class MaterialEditPayload(BaseModel):
+    content: str = Field(max_length=200_000)
+    expected_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 def _style_sample_status(project: Project, request: Request) -> dict:
@@ -221,6 +237,73 @@ def _character_profile(path: Path) -> dict:
     return {**fields, "tags": tags, "sections": sections, "file": path.name}
 
 
+def _material_title(path: Path, text: str) -> str:
+    heading = re.search(r"(?m)^#\s+(.+)$", text)
+    return heading.group(1).strip() if heading else path.stem.replace("-", " ")
+
+
+def _material_documents(project: Project) -> list[dict]:
+    documents = []
+    seen: set[Path] = set()
+    for group_id, label, patterns, excluded in MATERIAL_GROUPS:
+        items = []
+        for pattern in patterns:
+            for path in sorted(project.path.glob(pattern)):
+                resolved = path.resolve()
+                if (not path.is_file() or path.name in excluded or resolved in seen
+                        or not resolved.is_relative_to(project.path.resolve())):
+                    continue
+                seen.add(resolved)
+                text = path.read_text(encoding="utf-8")
+                relative = path.relative_to(project.path).as_posix()
+                items.append({
+                    "path": relative, "title": _material_title(path, text),
+                    "content": text, "hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                })
+        documents.append({"id": group_id, "label": label, "documents": items})
+    return documents
+
+
+def _material_lookup(project: Project, relative_path: str) -> tuple[str, Path]:
+    normalized = relative_path.replace("\\", "/").strip("/")
+    for group in _material_documents(project):
+        if any(item["path"] == normalized for item in group["documents"]):
+            return group["id"], project.path / Path(normalized)
+    raise LookupError("Material document not found")
+
+
+def _markdown_bullets(text: str) -> list[str]:
+    return [value.strip() for value in re.findall(r"(?m)^[-*]\s+(.+)$", text)
+            if value.strip() and not value.strip().startswith("*")]
+
+
+def _synced_material_state(project: Project, group_id: str,
+                           current: dict[str, Any]) -> dict[str, Any]:
+    imported = StoryStateStore._import(project.path)
+    section = {"characters": "character_states", "timeline": "timeline_events"}.get(group_id)
+    if section:
+        return {**current, section: imported[section]}
+    if group_id == "world":
+        rules = list(imported.get("world_rules", []))
+        for path in project.path.glob("worldbuilding/**/*.md"):
+            if "locations" not in path.parts:
+                rules.extend(_markdown_bullets(path.read_text(encoding="utf-8")))
+        return {**current, "world_rules": list(dict.fromkeys(rules))}
+    if group_id == "constraints":
+        text = (project.path / "constraints.md").read_text(encoding="utf-8")
+        values = {}
+        for key, title in (("must_include", "Must Include"), ("must_avoid", "Must Avoid")):
+            match = re.search(rf"(?ms)^##\s+{title}\s*$\n(?P<body>.*?)(?=^##\s|\Z)", text)
+            if match and match.group("body").strip():
+                values[key] = match.group("body").strip()
+        locked = [item for item in current.get("locked_facts", [])
+                  if item.get("key") not in values]
+        locked.extend({"key": key, "value": value, "source": "constraints.md"}
+                      for key, value in values.items())
+        return {**current, "locked_facts": locked}
+    return current
+
+
 @router.get("/projects/{project_id}/materials")
 def get_project_materials(project_id: str, request: Request) -> dict:
     try:
@@ -238,6 +321,44 @@ def get_project_materials(project_id: str, request: Request) -> dict:
                     "target_words": project.metadata.get("target_words"),
                     "premise": project.metadata.get("premise", "")},
         "characters": profiles,
+        "groups": _material_documents(project),
+    }
+
+
+@router.put("/projects/{project_id}/materials/{relative_path:path}")
+def update_project_material(project_id: str, relative_path: str,
+                            payload: MaterialEditPayload, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        group_id, path = _material_lookup(project, relative_path)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "material_not_found"}) from exc
+    if get_store(request).db.has_active_runs(project_id):
+        raise HTTPException(status_code=409, detail={"code": "project_run_active"})
+    previous = path.read_text(encoding="utf-8")
+    if hashlib.sha256(previous.encode("utf-8")).hexdigest() != payload.expected_hash:
+        raise HTTPException(status_code=409, detail={"code": "material_stale"})
+    content = payload.content.replace("\r\n", "\n").rstrip() + "\n"
+    atomic_write(path, content)
+    store = StoryStateStore(get_store(request).db)
+    current = store.ensure(project.id, project.path)
+    next_data = _synced_material_state(project, group_id, current.data)
+    revision = current.revision
+    if next_data != current.data:
+        candidate = store.create_candidate(
+            project.id, None, current.revision, "material_edit",
+            hashlib.sha256(content.encode("utf-8")).hexdigest(),
+            {"path": relative_path, "group": group_id},
+        )
+        try:
+            revision = store.commit(candidate.id, current.revision, next_data).revision
+        except Exception:
+            atomic_write(path, previous)
+            raise
+    return {
+        "path": relative_path, "group": group_id,
+        "hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        "story_state_revision": revision,
     }
 
 
@@ -334,6 +455,7 @@ def get_candidate(project_id: str, request: Request) -> dict:
     return {"project_id": project.id, "available": bool(text.strip()), "run_id": run_id,
             "path": str(path.resolve()), "characters": len(text),
             "han_characters": len(HAN_CHARACTER.findall(text)),
+            "effective_words": len(WORD_TOKEN.findall(text)),
             "diagnostics": analyze_prose(text)}
 
 

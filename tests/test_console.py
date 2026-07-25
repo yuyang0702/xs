@@ -39,6 +39,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="materials-project"' in html
     assert 'id="character-list"' in html
     assert 'id="character-detail"' in html
+    assert 'id="material-tabs"' in html
+    assert 'id="material-check"' in html
+    assert '<details class="story-state-band">' in html
     assert html.index('id="materials"') < html.index('id="story-state-section"')
     assert 'id="interview-panel"' in html
     assert 'id="interview-start"' in html
@@ -81,6 +84,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'scrollIntoView({behavior:"smooth",block:"start"})' in script
     assert 'catch(error) { toast(error.message); }' in script
     assert "loadProjectLocations" in script
+    assert "正文有效字数" in script
+    assert "runs/materials-audit" in script
+    assert "runs/materials-repair" in script
     assert "正在调用规划模型分析" in script
     assert "分析失败：${escapeHtml(error.message)}" in script
     assert "navigator.clipboard.writeText" in script

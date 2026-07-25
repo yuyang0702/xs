@@ -107,6 +107,134 @@ class WorkflowService:
         pipeline = lambda: self._long_setup_pipeline(project, run_id)
         return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
 
+    async def run_materials_audit(self, project_id: str, use_crewai: bool = True,
+                                  run_id: str | None = None) -> dict:
+        project = self.projects.get(project_id)
+        pipeline = lambda: self._materials_audit_pipeline(project, run_id)
+        return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
+
+    async def run_materials_repair(self, project_id: str, use_crewai: bool = True,
+                                   run_id: str | None = None) -> dict:
+        project = self.projects.get(project_id)
+        pipeline = lambda: self._materials_repair_pipeline(project, run_id)
+        return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
+
+    def _material_manuscript(self, project: Project) -> str:
+        for run in self.db.list_runs(project.id):
+            for name in ("best-candidate.md", "polish.md"):
+                path = project.path / "runs" / run["id"] / "outputs" / name
+                if path.is_file() and (text := path.read_text(encoding="utf-8")).strip():
+                    return text
+        formal = project.path / "manuscript" / "story.md"
+        if formal.is_file():
+            return formal.read_text(encoding="utf-8")
+        return "\n\n".join(path.read_text(encoding="utf-8")
+                            for path in sorted((project.path / "chapters").glob("chapter-*.md")))
+
+    def _material_reference(self, project: Project) -> str:
+        files = [project.path / "constraints.md"]
+        for folder in ("characters", "worldbuilding", "plot"):
+            files.extend(sorted((project.path / folder).rglob("*.md")))
+        parts = []
+        for path in files:
+            if path.is_file() and "_index.md" not in path.name:
+                parts.append(f"FILE {path.relative_to(project.path).as_posix()}\n{path.read_text(encoding='utf-8')}")
+        return "\n\n".join(parts)[:60_000]
+
+    async def _materials_audit_pipeline(self, project: Project,
+                                        run_id: str | None = None) -> dict:
+        run_id, run_path = self._begin_run(project, "materials-audit", run_id)
+        try:
+            manuscript = self._material_manuscript(project)
+            if not manuscript.strip():
+                raise RuntimeError("No manuscript is available for conflict checking")
+            reference = self._material_reference(project)
+            constraints = self.projects.load_constraints(project.id)
+            issues = []
+            windows = review_windows(manuscript)
+            for window in windows:
+                prompt = (
+                    "MATERIAL CONSISTENCY AUDIT. Compare this manuscript window against the project "
+                    "reference. Return JSON only: {\"issues\":[...]}. Each issue must contain category, "
+                    "severity (low|medium|high|critical), evidence, location, old_setting, new_setting, "
+                    "and action. Report only evidenced contradictions, not style preferences. Do not rewrite.\n\n"
+                    f"PROJECT REFERENCE:\n{reference}\n\nWINDOW {window['index']}/{len(windows)} "
+                    f"CHARACTERS {window['start']}-{window['end']}:\n{window['text']}"
+                )
+                value = self._json_object(await self._stage(
+                    run_id, run_path, project, "final_review", constraints, prompt,
+                    suffix=f"-window-{window['index']}", allow_tools=False,
+                ))
+                issues.extend(item for item in value.get("issues", []) if isinstance(item, dict))
+            report = {"project_id": project.id, "issues": issues, "count": len(issues)}
+            atomic_write(run_path / "outputs" / "conflict-report.json",
+                         json.dumps(report, ensure_ascii=False, indent=2))
+            state = self.story_states.ensure(project.id, project.path)
+            if issues:
+                candidate = self.story_states.create_candidate(
+                    project.id, run_id, state.revision, "materials_audit",
+                    hashlib.sha256(json.dumps(issues, ensure_ascii=False).encode()).hexdigest(),
+                    {"issue_count": len(issues)},
+                )
+                ledger = [item for item in state.data.get("issue_ledger", [])
+                          if item.get("source") != "materials_audit"]
+                ledger.extend({**item, "source": "materials_audit"} for item in issues)
+                self.story_states.commit(candidate.id, state.revision,
+                                         {**state.data, "issue_ledger": ledger})
+            self.db.update_run(run_id, "completed", "archive")
+            return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
+        except asyncio.CancelledError:
+            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
+            raise
+        except Exception as exc:
+            self.db.update_run(run_id, "failed", error=str(exc))
+            raise
+
+    async def _materials_repair_pipeline(self, project: Project,
+                                         run_id: str | None = None) -> dict:
+        run_id, run_path = self._begin_run(project, "materials-repair", run_id)
+        try:
+            audit = next((item for item in self.db.list_runs(project.id)
+                          if item["workflow"] == "materials-audit" and item["status"] == "completed"), None)
+            if not audit:
+                raise RuntimeError("Run a material conflict audit before repair")
+            report_path = project.path / "runs" / audit["id"] / "outputs" / "conflict-report.json"
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            issues = report.get("issues", [])
+            if not issues:
+                raise RuntimeError("The latest material audit has no conflicts to repair")
+            manuscript = self._material_manuscript(project)
+            constraints = self.projects.load_constraints(project.id)
+            repaired = await self._polish_short_segments(
+                run_id, run_path, project, constraints, manuscript,
+                json.dumps({"material_conflicts": issues}, ensure_ascii=False),
+                suffix="-materials", structural=True,
+            )
+            initial = normalize_review({
+                "score": 80, "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+                "hard_fail": False, "decision": "revise", "issues": issues,
+            })
+            final, evidence = await self._full_manuscript_review(
+                run_id, run_path, project, constraints, repaired, initial,
+                suffix="-materials",
+            )
+            outcome, reasons = quality_outcome(final)
+            atomic_write(run_path / "outputs" / "best-candidate.md", repaired)
+            atomic_write(run_path / "outputs" / "quality-report.json", json.dumps({
+                "status": outcome, "failure_reasons": reasons, "final_review": final,
+                "final_review_evidence": evidence, "source_audit": audit["id"],
+            }, ensure_ascii=False, indent=2))
+            if outcome == "failed":
+                raise RuntimeError("Material conflict repair did not pass the final quality gate")
+            self.db.update_run(run_id, "completed", "archive")
+            return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
+        except asyncio.CancelledError:
+            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
+            raise
+        except Exception as exc:
+            self.db.update_run(run_id, "failed", error=str(exc))
+            raise
+
     async def _long_setup_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "long-setup", run_id)
         outline_path = project.path / "outline.md"

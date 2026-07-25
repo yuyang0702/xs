@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -119,7 +119,7 @@ async function loadCandidateQuality(projectId) {
     if (state.activeProject?.id !== projectId) return;
     if (!result.available) { shell.innerHTML = '<p class="skill-meta">尚无候选稿</p>'; return; }
     const report = result.diagnostics;
-    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.han_characters).toLocaleString()}</strong><span>正文汉字数 · 总字符 ${Number(result.characters).toLocaleString()}</span></div></div>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}`;
+    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.effective_words).toLocaleString()}</strong><span>正文有效字数 · 纯汉字 ${Number(result.han_characters).toLocaleString()} · 总字符 ${Number(result.characters).toLocaleString()}</span></div></div>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}`;
     publish.hidden = state.activeProject?.mode !== "short" || report.blocking_count > 0;
   } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
@@ -195,10 +195,44 @@ const materialSectionLabels = {
   "Motivations & Goals":"动机与目标", "Voice & Speech Patterns":"语言与对白习惯",
   "Character Arc":"人物弧线", "Timeline":"人物时间线"
 };
-function renderCharacter(profile) {
+function materialImpact(groupId) {
+  return ({characters:"后续生成、润色与人物一致性审核",world:"后续规划、生成与世界规则审核",locations:"后续场景生成与地点一致性审核",plot:"后续规划与结构审核",timeline:"后续生成与时间线审核",issues:"后续审核与定向修订",constraints:"全部后续生成和发布检查"})[groupId] || "后续写作";
+}
+function renderCharacter(profile, document) {
   const shell=$("#character-detail");
   if (!profile) { shell.innerHTML='<p class="skill-meta">暂无人物档案</p>'; return; }
-  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(profile.role || "character")}</p><h2>${escapeHtml(profile.name)}</h2></div><div class="character-facts"><span>${escapeHtml(profile.age || "-")} 岁</span><span>${escapeHtml(profile.status || "-")}</span></div></header><div class="character-tags">${(profile.tags || []).map(tag=>`<span>${escapeHtml(tag)}</span>`).join("")}</div>${profile.arc ? `<section><h3>人物弧线摘要</h3><p>${escapeHtml(profile.arc)}</p></section>` : ""}${(profile.sections || []).map(section=>`<section><h3>${escapeHtml(materialSectionLabels[section.title] || section.title)}</h3><div class="profile-copy">${escapeHtml(section.content)}</div></section>`).join("")}`;
+  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(profile.role || "character")}</p><h2>${escapeHtml(profile.name)}</h2></div><div class="character-facts"><span>${escapeHtml(profile.age || "-")} 岁</span><span>${escapeHtml(profile.status || "-")}</span></div></header><div class="material-actions"><button class="secondary" data-material-edit>编辑人物档案</button></div><div class="character-tags">${(profile.tags || []).map(tag=>`<span>${escapeHtml(tag)}</span>`).join("")}</div>${profile.arc ? `<section><h3>人物弧线摘要</h3><p>${escapeHtml(profile.arc)}</p></section>` : ""}${(profile.sections || []).map(section=>`<section><h3>${escapeHtml(materialSectionLabels[section.title] || section.title)}</h3><div class="profile-copy">${escapeHtml(section.content)}</div></section>`).join("")}`;
+  shell.querySelector("[data-material-edit]")?.addEventListener("click",()=>renderMaterialEditor(document,"characters"));
+}
+function renderMaterialDocument(document, groupId) {
+  const shell=$("#character-detail");
+  if (!document) { shell.innerHTML='<p class="skill-meta">此分区暂无资料文件</p>'; return; }
+  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(groupId)}</p><h2>${escapeHtml(document.title)}</h2></div></header><div class="material-actions"><button class="secondary" data-material-edit>编辑资料</button></div><div class="profile-copy material-copy">${escapeHtml(document.content)}</div>`;
+  shell.querySelector("[data-material-edit]").addEventListener("click",()=>renderMaterialEditor(document,groupId));
+}
+function renderMaterialEditor(document, groupId) {
+  const shell=$("#character-detail");
+  shell.innerHTML=`<header><div><p class="eyebrow">正在编辑</p><h2>${escapeHtml(document.title)}</h2></div></header><label class="material-editor">Markdown 内容<textarea rows="24" spellcheck="false">${escapeHtml(document.content)}</textarea></label><p class="skill-meta">保存后影响：${escapeHtml(materialImpact(groupId))}。现有正文不会自动修改。</p><div class="material-actions"><button class="secondary" data-material-cancel>取消</button><button class="primary" data-material-save>保存资料</button></div>`;
+  shell.querySelector("[data-material-cancel]").addEventListener("click",()=>renderSelectedMaterial());
+  shell.querySelector("[data-material-save]").addEventListener("click",async()=>{
+    const button=shell.querySelector("[data-material-save]"); button.disabled=true;
+    try {
+      const result=await api(`/api/projects/${state.activeProject.id}/materials/${document.path}`,{method:"PUT",body:JSON.stringify({content:shell.querySelector("textarea").value,expected_hash:document.hash})});
+      toast(`资料已保存 · StoryState 版本 ${result.story_state_revision}`); await renderMaterials();
+    } catch(error) { toast(error.message); button.disabled=false; }
+  });
+}
+function renderSelectedMaterial() {
+  const group=(state.materials?.groups || []).find(item=>item.id===state.activeMaterialGroup);
+  const documents=group?.documents || [];
+  if (!documents.some(item=>item.path===state.activeMaterialPath)) state.activeMaterialPath=documents[0]?.path || null;
+  $("#character-list").innerHTML=documents.map(item=>`<button class="character-list-item ${item.path===state.activeMaterialPath ? "active" : ""}" data-material-path="${escapeHtml(item.path)}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.path)}</span></button>`).join("") || '<p class="skill-meta">暂无资料文件</p>';
+  $("#character-list").querySelectorAll("[data-material-path]").forEach(button=>button.addEventListener("click",()=>{state.activeMaterialPath=button.dataset.materialPath; renderSelectedMaterial();}));
+  const document=documents.find(item=>item.path===state.activeMaterialPath);
+  if (state.activeMaterialGroup==="characters") {
+    const profile=(state.materials?.characters || []).find(item=>`characters/${item.file}`===state.activeMaterialPath);
+    renderCharacter(profile,document);
+  } else renderMaterialDocument(document,state.activeMaterialGroup);
 }
 async function renderMaterials() {
   const project=state.activeProject;
@@ -212,18 +246,28 @@ async function renderMaterials() {
     if (state.activeProject?.id !== project.id) return;
     state.materials=result;
     $("#materials-summary").innerHTML=`<div class="metric"><strong>${escapeHtml(result.project.title)}</strong><span>作品</span></div><div class="metric"><strong>${result.project.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(result.project.target_words || 0).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${result.characters.length}</strong><span>人物档案</span></div>`;
-    const profiles=result.characters || [];
-    if (!profiles.some(item=>item.file===state.activeCharacter)) state.activeCharacter=profiles[0]?.file || null;
-    $("#character-list").innerHTML=profiles.map(item=>`<button class="character-list-item ${item.file===state.activeCharacter ? "active" : ""}" data-character-file="${escapeHtml(item.file)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.role || "-")} · ${escapeHtml(item.status || "-")}</span></button>`).join("") || '<p class="skill-meta">暂无人物档案</p>';
-    $("#character-list").querySelectorAll("[data-character-file]").forEach(button=>button.addEventListener("click",()=>{
-      state.activeCharacter=button.dataset.characterFile;
-      $("#character-list").querySelectorAll("[data-character-file]").forEach(item=>item.classList.toggle("active",item.dataset.characterFile===state.activeCharacter));
-      renderCharacter(profiles.find(item=>item.file===state.activeCharacter));
-    }));
-    renderCharacter(profiles.find(item=>item.file===state.activeCharacter));
+    const groups=result.groups || [];
+    if (!groups.some(item=>item.id===state.activeMaterialGroup)) state.activeMaterialGroup=groups[0]?.id || "characters";
+    $("#material-tabs").innerHTML=groups.map(group=>`<button class="material-tab ${group.id===state.activeMaterialGroup ? "active" : ""}" data-material-group="${group.id}" role="tab">${escapeHtml(group.label)}<span>${group.documents.length}</span></button>`).join("");
+    $("#material-tabs").querySelectorAll("[data-material-group]").forEach(button=>button.addEventListener("click",()=>{state.activeMaterialGroup=button.dataset.materialGroup; state.activeMaterialPath=null; renderMaterialsTabs();}));
+    renderMaterialsTabs();
     await loadStoryState(project.id);
   } catch(error) { $("#character-detail").innerHTML=`<p class="error-text">${escapeHtml(error.message)}</p>`; }
 }
+function renderMaterialsTabs() {
+  $("#material-tabs").querySelectorAll("[data-material-group]").forEach(item=>item.classList.toggle("active",item.dataset.materialGroup===state.activeMaterialGroup));
+  renderSelectedMaterial();
+}
+function renderMaterialAudit(detail) {
+  const shell=$("#material-audit-status"); shell.hidden=false;
+  if (["queued","running","cancelling"].includes(detail.status)) { shell.className="material-audit-status busy"; shell.textContent="正在分窗检查项目资料与正文的一致性..."; return; }
+  if (detail.status!=="completed") { shell.className="material-audit-status error"; shell.textContent=`冲突检查失败：${detail.error || "请查看工作台日志"}`; return; }
+  const issues=detail.conflict_report?.issues || [];
+  shell.className="material-audit-status";
+  shell.innerHTML=`<div class="section-heading"><div><strong>发现 ${issues.length} 个前后文冲突</strong><p class="skill-meta">检查结果已写入动态问题台账，不会自动修改正文</p></div>${issues.length ? '<button class="primary" data-material-repair>按新设定修复正文</button>' : ""}</div>${issues.slice(0,8).map(item=>`<p><strong>${escapeHtml(item.severity || "-")}</strong><span>${escapeHtml(item.location || "位置未知")} · ${escapeHtml(item.evidence || item.action || "")}</span></p>`).join("")}`;
+  shell.querySelector("[data-material-repair]")?.addEventListener("click",()=>run(`/api/projects/${state.activeProject.id}/runs/materials-repair`));
+}
+$("#material-check").addEventListener("click",()=>run(`/api/projects/${state.activeProject.id}/runs/materials-audit`));
 $("#story-state-section").addEventListener("change", renderStoryStateSection);
 $("#story-state-value").addEventListener("input", () => {
   if (!state.storyState) return;
@@ -272,7 +316,7 @@ async function renderActiveProject() {
   }
 }
 $("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
-$("#materials-project").addEventListener("change", async event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; $("#active-project").value=event.target.value; await renderMaterials(); });
+$("#materials-project").addEventListener("change", async event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
 
 function renderWizardDrafts() {
   const drafts = state.wizards.filter(item => item.status === "draft");
@@ -418,6 +462,7 @@ async function monitorRun(runRecord) {
   const poll = async () => {
     try {
       const detail=await api(`/api/runs/${state.activeRun}`); renderRunLog(detail.events || []); renderRunContext(detail);
+      if (detail.workflow==="materials-audit") renderMaterialAudit(detail);
       const active=["queued","running","cancelling"].includes(detail.status); const qualityRejected=isQualityRejected(detail); $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
       $("#run-state").textContent=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${detail.current_stage || detail.workflow}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : `${runStatusLabel(detail)}：${detail.error || "请查看日志"}`;
       if (active) state.pollTimer=setTimeout(poll,900); else { state.activeRun=null; $("#run-cancel").hidden=true; await renderActiveProject(); if (detail.status === "completed") toast("飞轮执行完成"); }

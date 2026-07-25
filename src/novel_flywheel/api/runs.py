@@ -37,6 +37,26 @@ async def start_long_setup(project_id: str, request: Request) -> dict:
     return request.app.state.run_tasks.start(project_id, "long-setup", operation)
 
 
+@router.post("/projects/{project_id}/runs/materials-audit", status_code=status.HTTP_202_ACCEPTED)
+async def start_materials_audit(project_id: str, request: Request) -> dict:
+    _ensure_project(project_id, request)
+
+    async def operation(run_id: str) -> object:
+        return await request.app.state.workflows.run_materials_audit(project_id, run_id=run_id)
+
+    return request.app.state.run_tasks.start(project_id, "materials-audit", operation)
+
+
+@router.post("/projects/{project_id}/runs/materials-repair", status_code=status.HTTP_202_ACCEPTED)
+async def start_materials_repair(project_id: str, request: Request) -> dict:
+    _ensure_project(project_id, request)
+
+    async def operation(run_id: str) -> object:
+        return await request.app.state.workflows.run_materials_repair(project_id, run_id=run_id)
+
+    return request.app.state.run_tasks.start(project_id, "materials-repair", operation)
+
+
 class ChapterRun(BaseModel):
     chapter_goal: str = Field(min_length=1)
 
@@ -95,8 +115,13 @@ def get_run(run_id: str, request: Request) -> dict:
     project = request.app.state.registry.db.get_project(run["project_id"])
     if project:
         report_path = Path(project["path"]) / "runs" / run_id / "outputs" / "quality-report.json"
+        conflict_path = Path(project["path"]) / "runs" / run_id / "outputs" / "conflict-report.json"
         try:
             run["quality_report"] = json.loads(report_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             run["quality_report"] = None
+        try:
+            run["conflict_report"] = json.loads(conflict_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            run["conflict_report"] = None
     return run

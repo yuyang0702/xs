@@ -17,6 +17,12 @@ class FakeWorkflows:
     async def run_chapter(self, project_id, chapter_goal, run_id=None):
         return {"id": run_id, "project_id": project_id, "status": "completed", "workflow": "long-chapter"}
 
+    async def run_materials_audit(self, project_id, run_id=None):
+        return {"id": run_id, "project_id": project_id, "status": "completed", "workflow": "materials-audit"}
+
+    async def run_materials_repair(self, project_id, run_id=None):
+        return {"id": run_id, "project_id": project_id, "status": "completed", "workflow": "materials-repair"}
+
 
 def test_start_short_run_and_list_history(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -50,6 +56,21 @@ def test_start_long_setup_and_chapter(tmp_path) -> None:
     )
     assert response.status_code == 202
     assert response.json()["workflow"] == "long-chapter"
+
+
+def test_start_material_audit_and_repair_runs(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        workspace_root=tmp_path / "workspace", workflow_service=FakeWorkflows(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Audit", "mode": "short", "genre": "test",
+        "premise": "audit", "target_words": 1000,
+    }).json()
+
+    audit = client.post(f"/api/projects/{project['id']}/runs/materials-audit")
+    assert audit.status_code == 202
+    assert audit.json()["workflow"] == "materials-audit"
 
 
 def test_run_detail_includes_tool_receipts(tmp_path) -> None:

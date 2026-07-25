@@ -79,20 +79,25 @@
       </div>
       <div id="materials-summary" class="summary-band"></div>
       <section class="materials-characters" aria-labelledby="materials-characters-title">
-        <div class="section-heading"><div><h2 id="materials-characters-title">人物档案</h2><p class="skill-meta">固定设定直接来自 characters 人物文件</p></div></div>
+        <div class="section-heading"><div><h2 id="materials-characters-title">项目资料</h2><p class="skill-meta">直接读取并保存项目原始资料文件</p></div><button id="material-check" class="secondary">检查前后文冲突</button></div>
+        <div id="material-audit-status" class="material-audit-status" hidden></div>
+        <div id="material-tabs" class="material-tabs" role="tablist"></div>
         <div class="character-browser">
           <nav id="character-list" class="character-list" aria-label="人物列表"></nav>
           <article id="character-detail" class="character-detail"><p class="skill-meta">请选择作品</p></article>
         </div>
       </section>
-      <section class="story-state-band" aria-labelledby="story-state-title">
-        <div class="section-heading"><div><h2 id="story-state-title">动态项目状态</h2><p class="skill-meta" id="story-state-revision">请先选择作品</p></div><button id="story-state-save" class="primary" disabled>保存为新版本</button></div>
-        <div class="story-state-editor">
-          <label>资料分区<select id="story-state-section"><option value="character_states">人物状态</option><option value="world_rules">世界规则</option><option value="timeline_events">时间线</option><option value="issue_ledger">伏笔与问题</option><option value="locked_facts">锁定事实</option><option value="confirmed_facts">确认事实</option><option value="provisional_facts">暂定事实</option></select></label>
-          <label>JSON 内容<textarea id="story-state-value" rows="10" spellcheck="false" placeholder="请先选择作品"></textarea></label>
-          <pre id="story-state-diff" class="story-state-diff" hidden></pre>
-        </div>
-      </section>
+      <details class="story-state-band">
+        <summary><strong>高级数据与版本历史</strong><span class="skill-meta" id="story-state-revision">请先选择作品</span></summary>
+        <section aria-labelledby="story-state-title">
+          <div class="section-heading"><div><h2 id="story-state-title">动态项目状态</h2><p class="skill-meta">通常由程序自动维护，仅在纠错时编辑</p></div><button id="story-state-save" class="primary" disabled>保存为新版本</button></div>
+          <div class="story-state-editor">
+            <label>资料分区<select id="story-state-section"><option value="character_states">人物状态</option><option value="world_rules">世界规则</option><option value="timeline_events">时间线</option><option value="issue_ledger">伏笔与问题</option><option value="locked_facts">锁定事实</option><option value="confirmed_facts">确认事实</option><option value="provisional_facts">暂定事实</option></select></label>
+            <label>JSON 内容<textarea id="story-state-value" rows="10" spellcheck="false" placeholder="请先选择作品"></textarea></label>
+            <pre id="story-state-diff" class="story-state-diff" hidden></pre>
+          </div>
+        </section>
+      </details>
     </section>
 
     <section id="projects" class="view">

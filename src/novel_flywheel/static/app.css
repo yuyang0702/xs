@@ -51,6 +51,10 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .candidate-metrics strong,.candidate-metrics span { display:block; }
 .candidate-metrics strong { font-size:18px; }.candidate-metrics span { margin-top:3px; color:var(--muted); font-size:11px; }
 .materials-characters { border-top:1px solid var(--line); padding-top:18px; }
+.material-tabs { display:flex; gap:0; overflow-x:auto; margin-bottom:12px; border-bottom:1px solid var(--line); }
+.material-tab { flex:0 0 auto; border:0; border-bottom:3px solid transparent; border-radius:0; background:transparent; color:var(--muted); }
+.material-tab span { margin-left:5px; font-size:10px; }
+.material-tab.active { color:var(--green); border-bottom-color:var(--green); }
 .character-browser { display:grid; grid-template-columns:220px minmax(0,1fr); min-height:520px; border:1px solid var(--line); }
 .character-list { border-right:1px solid var(--line); background:#f7f8f6; }
 .character-list-item { width:100%; padding:13px 14px; border:0; border-bottom:1px solid var(--line); background:transparent; color:var(--ink); text-align:left; }
@@ -67,6 +71,13 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .character-facts span,.character-tags span { padding:4px 7px; border:1px solid var(--line); background:#f7f8f6; font-size:11px; }
 .character-tags { margin-top:14px; }
 .profile-copy { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.8; color:#303932; }
+.material-copy { margin-top:18px; }
+.material-actions { display:flex; justify-content:flex-end; gap:8px; margin:14px 0; }
+.material-editor { margin-top:18px; }
+.material-editor textarea { min-height:520px; font:13px/1.7 Consolas,"Microsoft YaHei",monospace; }
+.material-audit-status { margin-bottom:14px; padding:14px; border-left:3px solid var(--green); background:#eef5f1; }
+.material-audit-status.busy { border-left-color:var(--amber); }.material-audit-status.error { border-left-color:var(--red); color:var(--red); }
+.material-audit-status .section-heading { margin-bottom:8px; }.material-audit-status p { display:grid; grid-template-columns:70px minmax(0,1fr); gap:10px; margin:0; padding:7px 0; border-top:1px solid var(--line); font-size:12px; }
 .candidate-findings { margin-top:10px; }.candidate-findings p { display:grid; grid-template-columns:150px minmax(0,1fr); gap:10px; margin:0; padding:7px 0; border-bottom:1px solid #e4e7e4; font-size:12px; }
 .candidate-findings span { color:var(--muted); overflow-wrap:anywhere; }
 .style-sample-band { margin-bottom:28px; padding-bottom:24px; border-bottom:1px solid var(--line); }
@@ -78,7 +89,7 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .style-sample-status h3 { margin-bottom:6px; }.style-profile-groups { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 18px; margin-top:12px; }
 .style-profile-groups div { padding-top:7px; border-top:1px solid #e4e7e4; }.style-profile-groups strong,.style-profile-groups span { display:block; font-size:12px; }.style-profile-groups span { margin-top:3px; color:var(--muted); }
 .style-scope { align-items:end; }.style-scope legend { width:100%; }
-.story-state-band { margin-bottom:28px; padding-bottom:24px; border-bottom:1px solid var(--line); }.story-state-band .section-heading { align-items:center; margin-bottom:12px; }.story-state-band h2 { margin-bottom:4px; }
+.story-state-band { margin:28px 0; padding:14px 0 24px; border-block:1px solid var(--line); }.story-state-band > summary { cursor:pointer; display:flex; justify-content:space-between; gap:14px; padding:4px 0 14px; }.story-state-band .section-heading { align-items:center; margin-bottom:12px; }.story-state-band h2 { margin-bottom:4px; }
 .story-state-editor { display:grid; grid-template-columns:200px minmax(0,1fr); gap:18px; align-items:start; }.story-state-editor textarea { min-height:230px; font:12px/1.55 Consolas,"Microsoft YaHei",monospace; }.story-state-diff { grid-column:2; max-height:300px; margin:0; padding:14px; font-size:12px; line-height:1.55; }
 .workspace-grid { display:grid; grid-template-columns:minmax(300px,0.85fr) minmax(420px,1.4fr); gap:32px; }
 .action-panel { padding-right:30px; border-right:1px solid var(--line); }.action-panel button { margin:6px 0 16px; }
