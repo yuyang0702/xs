@@ -6,6 +6,23 @@ The **模型与 API** page supports in-place updates to a provider's name, proto
 
 Provider secrets remain in the Windows credential store. Runtime startup and CrewAI execution must never override `LOCALAPPDATA`: doing so changes the credential-store context and makes existing keys appear missing even though provider rows remain intact. Only `NOVEL_FLYWHEEL_DATA_DIR`, `CREWAI_STORAGE_DIR`, and telemetry settings are scoped by the launcher.
 
+## Optimized local review artifacts
+
+The project-scoped `optimized_local_review_enabled` key is stored in `project.json`. It is reversible and does not migrate StoryState, role bindings, providers, credentials, references, run history, or manuscripts. The global LTP install/enable controls remain separate.
+
+Run outputs may contain:
+
+- `analysis-draft.json`: complete assembled-draft local analysis;
+- `analysis-polish.json` and `analysis-polish-N.json`: complete post-revision analysis;
+- `analysis-candidate.json`: publication-time hash-matching analysis;
+- `final-review-baseline.json`: first complete terminal-review baseline;
+- `incremental-review-N.json`: correction changes, selection reasons, evidence, and token-scope estimates;
+- `quality-report.json.review_scope_history`: full, incremental, and fallback scope history.
+
+LTP failure is fail-safe: rules still run, but correction approval returns to complete final review. Missing or invalid analysis hashes, incomplete issue reconciliation, ambiguous window mapping, or a structural-change trigger must never be converted into incremental approval.
+
+To roll back, disable the feature for the project. Existing artifacts remain available for audit, while subsequent correction rounds use the previous complete-final-review path. Cached NLP JSON can be removed only when no run is active; it will be rebuilt by text and backend-version hash.
+
 Deleting a provider is permanent and also removes its model mappings and stored secret. Role bindings that use the provider as primary are deleted; bindings that use it only as fallback retain their primary route and clear the fallback fields. These changes do not alter project files or committed manuscripts.
 
 ## Skill classification

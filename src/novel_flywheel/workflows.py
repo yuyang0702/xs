@@ -748,14 +748,32 @@ class WorkflowService:
                                      "summary": "single-request complete review"}],
                     }
                 if attempt == 0:
+                    baseline_review = {
+                        **final_review,
+                        "issues": [
+                            *review.get("issues", []),
+                            *final_review.get("issues", []),
+                        ],
+                    }
                     baseline = build_review_baseline(
                         polished, current_analysis,
-                        evidence_audit.get("windows", []), final_review,
+                        evidence_audit.get("windows", []), baseline_review,
                     )
                     atomic_write(
                         run_path / "outputs" / "final-review-baseline.json",
                         json.dumps(baseline, ensure_ascii=False, indent=2),
                     )
+                report.setdefault("review_scope_history", []).append({
+                    "attempt": attempt + 1,
+                    "mode": evidence_audit.get("review_mode", "full"),
+                    "reviewed_windows": evidence_audit.get("reviewed_windows", 1),
+                    "window_count": evidence_audit.get("window_count", 1),
+                    "selection_reasons": evidence_audit.get("selection_reasons", {}),
+                    "fallback_reasons": evidence_audit.get("fallback_reasons", []),
+                    "estimated_saved_input_characters": evidence_audit.get(
+                        "estimated_saved_input_characters", 0,
+                    ),
+                })
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
