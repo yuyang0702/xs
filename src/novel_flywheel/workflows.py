@@ -1295,6 +1295,29 @@ class WorkflowService:
                     result = await self.gateway.complete(
                         gateway_role, system, user, max_output_tokens=8192,
                     )
+            if (stage == "polish" and gateway_role == "polish" and not allow_tools
+                    and not result.text.strip()
+                    and result.receipt.get("finish_reason") in {"tool_use", "tool_calls"}):
+                self.db.add_run_event(
+                    run_id, "warning", "polish_tool_use_retry",
+                    "Polish returned a tool call without prose; retrying once without tools",
+                    stage=stage,
+                )
+                retry_system = system + (
+                    "\n\nNo tools are available for this request. Return only the polished prose."
+                )
+                if prefer_configured_fallback and hasattr(
+                    self.gateway, "complete_configured_fallback"
+                ):
+                    result = await self.gateway.complete_configured_fallback(
+                        gateway_role, retry_system, user,
+                        max_output_tokens=output_budget,
+                    )
+                else:
+                    result = await self.gateway.complete(
+                        gateway_role, retry_system, user,
+                        max_output_tokens=output_budget,
+                    )
             if not result.text.strip():
                 raise RuntimeError(
                     f"{stage} model returned empty output "

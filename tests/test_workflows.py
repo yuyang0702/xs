@@ -1342,6 +1342,56 @@ async def test_polish_retries_empty_max_token_response_once_with_full_budget(tmp
 
 
 @pytest.mark.asyncio
+async def test_polish_retries_unexpected_tool_use_without_tools(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Retry tool use", mode="short", genre="comedy",
+        premise="A cat goes to work.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.calls.append((system, user, max_output_tokens))
+            if len(self.calls) == 1:
+                return ModelResult("", {
+                    "model_name": "claude", "input_tokens": 2,
+                    "output_tokens": 335, "finish_reason": "tool_use",
+                })
+            return ModelResult("Polished prose.", {
+                "model_name": "claude", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("retry-tool-use", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "retry-tool-use"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._stage(
+        "retry-tool-use", run_path, project, "polish", "constraints", "source",
+        allow_tools=False, prefer_configured_fallback=True,
+    )
+
+    assert result == "Polished prose."
+    assert len(gateway.calls) == 2
+    assert gateway.calls[0][2] == gateway.calls[1][2]
+    assert "No tools are available" in gateway.calls[1][0]
+    assert any(
+        event["event_type"] == "polish_tool_use_retry"
+        for event in db.list_run_events("retry-tool-use")
+    )
+
+
+@pytest.mark.asyncio
 async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_and_reuses_checkpoints(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
