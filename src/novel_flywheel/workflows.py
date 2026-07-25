@@ -1422,8 +1422,7 @@ class WorkflowService:
                 )
             if (stage == "polish" and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
-                    and result.receipt.get("finish_reason") == "max_tokens"
-                    and output_budget != 8192):
+                    and result.receipt.get("finish_reason") == "max_tokens"):
                 previous_budget = output_budget
                 self.db.add_run_event(
                     run_id, "warning", "polish_max_tokens_retry",

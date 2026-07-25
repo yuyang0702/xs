@@ -55,6 +55,8 @@ Three or more consecutive short sentences or one-sentence paragraphs are reporte
 
 Configured Claude polish routes receive 8,192 immediately because observed relay responses repeatedly consumed the smaller dynamic allowance before returning visible prose. This applies to both the primary and configured Claude fallback; non-Claude routes retain dynamic budgets. A non-Claude polish response that is empty specifically because of `finish_reason=max_tokens` may retry once at 8,192.
 
+An empty polish response with `finish_reason=max_tokens` retries once even when the route already used the full 8,192 output budget. Some relays report 8,192 generated tokens while returning no visible text; this malformed response is not accepted as a completed segment.
+
 HTTP `524` means the relay reached the upstream model but timed out waiting for a response. It is not a manuscript validation error. The configured fallback handles it without modifying the formal manuscript.
 
 The initial-polish input circuit breaker is the larger of 120,000 or 20,000 per generated segment, so smaller adaptive segments do not exhaust the legacy round cap before the manuscript is complete. Structural correction remains capped at 60,000 per round, and cumulative polish input remains capped at 220,000 per run. Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.

@@ -1342,6 +1342,49 @@ async def test_polish_retries_empty_max_token_response_once_with_full_budget(tmp
 
 
 @pytest.mark.asyncio
+async def test_polish_retries_empty_fixed_budget_max_token_response(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Fixed retry", mode="short", genre="comedy",
+        premise="A cat goes to work.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            if self.calls == 1:
+                return ModelResult("", {
+                    "model_name": "claude-sonnet-5", "input_tokens": 8298,
+                    "output_tokens": 8192, "finish_reason": "max_tokens",
+                })
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "claude-sonnet-5", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("fixed-retry", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "fixed-retry"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._stage(
+        "fixed-retry", run_path, project, "polish", "constraints",
+        "MANUSCRIPT SEGMENT:\nA continuous scene.", allow_tools=False,
+    )
+
+    assert result == "A continuous scene."
+    assert gateway.calls == 2
+
+
+@pytest.mark.asyncio
 async def test_polish_retries_unexpected_tool_use_without_tools(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
