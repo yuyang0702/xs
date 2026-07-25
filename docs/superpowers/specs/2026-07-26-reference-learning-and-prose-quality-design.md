@@ -19,6 +19,8 @@ The feature must extend the existing planning, drafting, review, candidate, and 
 - Borrow Graphiti's temporal/provenance model and LightRAG's graph retrieval pattern without adopting either framework wholesale.
 - Offer enhanced Chinese NLP as an optional local backend installed and enabled explicitly from Settings.
 - Prefer deterministic local editorial checks before neural NLP or provider calls.
+- Do not deploy or manage a local generative language model; creative generation continues through configured remote providers.
+- Activate completed learning and quality stages directly after their acceptance tests pass; do not add a separate shadow-mode product state.
 - Do not implement model fine-tuning, automatic project mutation, graph database services, or machine-learning ranking in the first release.
 
 ## Non-Goals
@@ -30,6 +32,7 @@ The feature must extend the existing planning, drafting, review, candidate, and 
 - Automatically rewriting formal outlines, project materials, or manuscripts.
 - Replacing StoryState, project files, existing role bindings, Skills, or Runtime validation.
 - Downloading or loading local NLP models without an explicit user action.
+- Installing Ollama, llama.cpp, vLLM, or local generative-model runtimes.
 
 ## Architecture
 
@@ -121,6 +124,8 @@ Rules have stable IDs, evidence locations, severity, applicability, and a repair
 Settings exposes an explicit install action with download size, disk requirement, model license, expected CPU behavior, and uninstall controls. The application never downloads a model during ordinary startup or workflow execution.
 
 The backend is lazy-loaded on first enabled analysis, runs locally, caches results by text and model-version hash, and releases resources when practical. Failure, absence, or incompatibility falls back to the standard-library engine without blocking planning, drafting, or existing projects.
+
+The target workstation has an Intel Core i5-11320H, 16 GB RAM, Intel Iris Xe integrated graphics, and no CUDA-capable GPU. Neural NLP therefore runs as a CPU workload with one analysis job at a time. It must not remain resident in the FastAPI process: a bounded worker process loads the selected NLP model on demand and exits after work or an idle timeout so memory is returned to the operating system. Large local embedding models such as BGE-M3 are excluded from the initial delivery.
 
 Before choosing HanLP or LTP, evaluate both outside the production dependency set against a fixed Chinese-fiction corpus containing modern and historical language, omitted subjects, titles, pronouns, negated actions, dialogue attribution, and multi-action sentences. Adopt one backend only if it materially improves entity, semantic-role, and dependency evidence at acceptable Windows CPU, memory, startup, package-size, and license cost.
 
