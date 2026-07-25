@@ -17,6 +17,8 @@ The feature must extend the existing planning, drafting, review, candidate, and 
 - Support both new projects and candidate outline versions for existing projects.
 - Use a typed knowledge graph, initially persisted in the existing SQLite database.
 - Borrow Graphiti's temporal/provenance model and LightRAG's graph retrieval pattern without adopting either framework wholesale.
+- Offer enhanced Chinese NLP as an optional local backend installed and enabled explicitly from Settings.
+- Prefer deterministic local editorial checks before neural NLP or provider calls.
 - Do not implement model fine-tuning, automatic project mutation, graph database services, or machine-learning ranking in the first release.
 
 ## Non-Goals
@@ -27,6 +29,7 @@ The feature must extend the existing planning, drafting, review, candidate, and 
 - OCR for scanned PDFs in the first release.
 - Automatically rewriting formal outlines, project materials, or manuscripts.
 - Replacing StoryState, project files, existing role bindings, Skills, or Runtime validation.
+- Downloading or loading local NLP models without an explicit user action.
 
 ## Architecture
 
@@ -97,6 +100,43 @@ The project graph is a derived index over authoritative materials. It detects de
 Use typed SQLite tables for graph nodes, edges, evidence, revisions, and project adoptions. Keep IDs stable and use ordinary indexes for type, source, project, status, and validity fields. Add recursive traversal only for bounded impact and provenance queries.
 
 Do not require Neo4j, FalkorDB, Kuzu, embeddings, or a background graph service. NetworkX may be added later only if a measured need for community or path algorithms appears.
+
+## Local Editorial and NLP Layers
+
+Analysis uses a cost and complexity ladder:
+
+1. standard-library rules and project dictionaries;
+2. optional lightweight tokenization where measured value justifies it;
+3. optional neural Chinese NLP installed by the user;
+4. remote language-model analysis only for unresolved semantic work.
+
+### Local Editorial Engine
+
+The standard-library engine detects exact and n-gram repetition, repeated functional phrases, nearby action and body-reaction reuse, sentence-length regularity, repeated sentence signatures, one-sentence paragraph runs, mechanical dialogue alternation, punctuation patterns, and project-specific forbidden expressions.
+
+Rules have stable IDs, evidence locations, severity, applicability, and a repair objective. Project baselines calibrate thresholds; a single universal sentence-length target must not flatten different story voices.
+
+### Optional Chinese NLP Backend
+
+Settings exposes an explicit install action with download size, disk requirement, model license, expected CPU behavior, and uninstall controls. The application never downloads a model during ordinary startup or workflow execution.
+
+The backend is lazy-loaded on first enabled analysis, runs locally, caches results by text and model-version hash, and releases resources when practical. Failure, absence, or incompatibility falls back to the standard-library engine without blocking planning, drafting, or existing projects.
+
+Before choosing HanLP or LTP, evaluate both outside the production dependency set against a fixed Chinese-fiction corpus containing modern and historical language, omitted subjects, titles, pronouns, negated actions, dialogue attribution, and multi-action sentences. Adopt one backend only if it materially improves entity, semantic-role, and dependency evidence at acceptable Windows CPU, memory, startup, package-size, and license cost.
+
+Neural NLP may propose entities, actions, semantic roles, dependency signatures, pronoun ambiguity, and dialogue attribution. It does not edit prose or become authoritative story state.
+
+### Character Epistemic State
+
+Project narrative edges distinguish observed, reported, inferred, doubted, denied, misunderstood, and confirmed knowledge. A character's expression and decision may not use certainty unavailable at that story position.
+
+The prose system does not add random hedges or mistakes to appear human. It derives uncertainty from available evidence, character experience, pressure, bias, and consequences. Local checks flag unjustified certainty; semantic resolution and revision remain bounded model tasks when rules cannot decide.
+
+### Quality Regression Corpus
+
+Store project-independent, anonymized examples of confirmed prose failures and expected diagnostic classes. Initial classes include checklist judgment, fragmented conclusions, mechanical dialogue, repeated body reactions, duplicated semantic statements, overprecise cognition, identical character voices, and unsupported emotional summaries.
+
+Rule, Skill, routing, and prompt changes run against this corpus without paid API calls. Provider-dependent comparative evaluation is manual and separately authorized.
 
 ## Analysis Pipeline
 
@@ -244,31 +284,37 @@ Add additive SQLite schema, safe source import, local source storage, deduplicat
 
 Acceptance: imports are local, deduplicated, versioned, safely bounded, and deletable without changing projects.
 
-### Phase 2: Evidence Analysis and Learning Graph
+### Phase 2: Local Editorial Engine and NLP Evaluation
+
+Add the rule registry, project-calibrated prose metrics, sentence signatures, repetition diagnostics, quality regression corpus, NLP backend interface, Settings install/uninstall controls, model-version cache, and fail-open fallback. Benchmark HanLP and LTP on the approved Chinese-fiction corpus before selecting at most one production backend.
+
+Acceptance: all baseline diagnostics run without provider calls; no model downloads without an explicit Settings action; disabling or uninstalling NLP preserves existing workflows; the selected backend demonstrates recorded quality and resource gains over rules alone.
+
+### Phase 3: Evidence Analysis and Learning Graph
 
 Add deterministic metrics, resumable window analysis, reconciliation, mechanism abstraction, provenance, user revisions, and learning-library report pages.
 
 Acceptance: every usable mechanism has traceable evidence; interrupted analysis resumes unchanged windows; unsupported claims cannot become confirmed automatically.
 
-### Phase 3: Recommendation and Creative Blueprint
+### Phase 4: Recommendation and Creative Blueprint
 
 Add project matching, recommendation review, project adoptions, editable blueprints, candidate outline generation, conflict checks, and outline differences.
 
 Acceptance: no recommendation affects a project before confirmation; existing outlines are never overwritten; disabling the feature uses the old planning path.
 
-### Phase 4: Prose Baseline, Voice, and Scene Briefs
+### Phase 5: Prose Baseline, Voice, Epistemic State, and Scene Briefs
 
-Add executable prose baselines, character voice profiles, scene-brief generation/editing, and bounded context assembly for draft.
+Add executable prose baselines, character voice profiles, observed/reported/inferred/doubted knowledge states, scene-brief generation/editing, and bounded context assembly for draft.
 
-Acceptance: the active rules and source are visible; character-material changes produce impact reports; existing draft behavior remains tested as fallback.
+Acceptance: the active rules and source are visible; character-material changes produce impact reports; characters do not express unjustified certainty from unavailable information; existing draft behavior remains tested as fallback.
 
-### Phase 5: Diagnostic Line Edit
+### Phase 6: Diagnostic Line Edit
 
 Add evidenced prose diagnostics, the `line_edit` role, targeted candidate generation, local acceptance, resumable checkpoints, and candidate comparisons.
 
 Acceptance: no formal manuscript is modified automatically; targeted edits preserve locked facts and do not regress deterministic prose checks.
 
-### Phase 6: Feedback and Evaluation
+### Phase 7: Feedback and Evaluation
 
 Record recommendation and revision outcomes, add evidence coverage and human confirmation metrics, and compare enabled projects against the preserved baseline path.
 
@@ -281,12 +327,15 @@ Each phase requires focused tests followed by the full suite. Required coverage 
 - idempotent schema migration and rollback-safe backup;
 - source deduplication, extraction failure, size limits, redirect validation, and SSRF prevention;
 - prompt-injection content remaining inert source data;
+- local editorial rule IDs, evidence locations, project calibration, and regression-corpus stability;
+- explicit NLP installation, lazy loading, versioned cache, uninstall, and rule-only fallback;
 - stable source offsets and provenance;
 - resumable window checkpoints and provider fallback;
 - graph revision, supersession, bounded traversal, and deletion tombstones;
 - recommendation confirmation gates and project isolation;
 - candidate-only outline and prose writes;
 - character-change impact without automatic formal mutation;
+- character knowledge certainty matching observed, reported, inferred, doubted, and confirmed state;
 - line-edit fact preservation and deterministic quality checks;
 - existing projects, credentials, role bindings, Skills, formal manuscripts, and run history remaining unchanged.
 
