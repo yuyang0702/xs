@@ -144,6 +144,8 @@ def test_candidate_diagnostics_and_controlled_publication(tmp_path) -> None:
     assert diagnostics.status_code == 200
     assert diagnostics.json()["available"] is True
     assert diagnostics.json()["run_id"] == "candidate-run"
+    assert diagnostics.json()["han_characters"] == 8
+    assert diagnostics.json()["characters"] > diagnostics.json()["han_characters"]
     assert published.status_code == 201
     assert (root / "manuscript" / "story.md").read_text(encoding="utf-8") == "他说：“回来。”\n她关上门。"
     assert (root / "chapters" / "chapter-01.md").is_file()

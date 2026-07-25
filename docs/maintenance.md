@@ -22,6 +22,8 @@ Existing projects are imported without rewriting their files. The one-time impor
 
 Manual project-data edits update one allowlisted StoryState section through the existing candidate and optimistic revision commit. They are blocked while a project run is active and cannot edit `manuscript_revision`. History remains available for inspection; normal post-write extraction continues automatically.
 
+Candidate quality displays正文汉字数 as Unicode Han characters only (CJK Unified Ideographs, Extension A, and compatibility ideographs). Punctuation, whitespace, digits, Latin text, and Markdown markers are excluded. The existing total `characters` count remains visible as a technical secondary metric and remains available in the API for compatibility.
+
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
 
 For short stories, the project-list `Continue writing` action resumes the most recent failed or cancelled run with the same run ID. Recovery checks that run's own complete planning, draft, review, and source-hash polish checkpoints before older runs. Completed stages are not regenerated; `polish_resume_ready` reports the first missing or source-mismatched polish segment and the count of valid checkpoints, even when accepted checkpoints are non-contiguous. Only a missing or structurally incomplete artifact is regenerated. When no resumable run exists, the action only opens the workbench; starting a new complete story remains an explicit workbench command.

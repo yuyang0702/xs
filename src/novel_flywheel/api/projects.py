@@ -2,6 +2,7 @@ import platform
 import subprocess
 import json
 import hashlib
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -17,6 +18,7 @@ from novel_flywheel.story_state import StaleStoryState, StoryStateStore
 
 
 router = APIRouter(prefix="/api", tags=["projects"])
+HAN_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
 
 class StyleSamplePayload(BaseModel):
@@ -292,6 +294,7 @@ def get_candidate(project_id: str, request: Request) -> dict:
     text = path.read_text(encoding="utf-8")
     return {"project_id": project.id, "available": bool(text.strip()), "run_id": run_id,
             "path": str(path.resolve()), "characters": len(text),
+            "han_characters": len(HAN_CHARACTER.findall(text)),
             "diagnostics": analyze_prose(text)}
 
 
