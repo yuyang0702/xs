@@ -75,6 +75,16 @@ def analyze_prose(text: str) -> dict[str, Any]:
         fake = re.search(r"[^。！？\n]{1,14}[。！？]", text)
         if fake:
             findings.append(_finding("uniform_short_sentence_run", text, fake))
+    if metrics["dialogue_turn_run"] >= 4:
+        fake = re.search(r"(?m)^[“\"]", text)
+        if fake:
+            item = _finding("dialogue_ping_pong", text, fake)
+            item["count"] = int(metrics["dialogue_turn_run"])
+            item["action"] = (
+                "Break up four or more consecutive dialogue-only paragraphs with meaningful "
+                "action, observation, hesitation, or changed subtext."
+            )
+            findings.append(item)
     blocking_count = sum(item["count"] for item in findings if item["blocking"])
     targeted_count = sum(item["count"] for item in findings if not item["blocking"])
     penalty = blocking_count * 30 + min(45, targeted_count * 5)
@@ -96,16 +106,20 @@ def prose_metrics(text: str) -> dict[str, float]:
         run = run + 1 if length <= 14 else 0
         short_run = max(short_run, run)
     dialogue_chars = sum(len(item) for item in re.findall(r"[“\"][^”\"\n]+[”\"]", clean))
-    paragraph_run = run = 0
+    paragraph_run = dialogue_run = run = 0
+    dialogue_current = 0
     for paragraph in (item.strip() for item in re.split(r"\n\s*\n", clean)):
         is_single = bool(paragraph) and not paragraph.startswith("#") and _sentence_count(paragraph) == 1
         run = run + 1 if is_single else 0
         paragraph_run = max(paragraph_run, run)
+        dialogue_current = dialogue_current + 1 if paragraph.startswith(("“", '"')) else 0
+        dialogue_run = max(dialogue_run, dialogue_current)
     return {
         "mean_sentence_length": round(mean(lengths), 2),
         "short_sentence_ratio": round(sum(length <= 14 for length in lengths) / len(lengths), 3),
         "short_sentence_run": float(short_run),
         "one_sentence_paragraph_run": float(paragraph_run),
+        "dialogue_turn_run": float(dialogue_run),
         "dialogue_ratio": round(dialogue_chars / max(1, len(clean)), 3),
         "weak_adverb_density": round(len(WEAK_ADVERBS.findall(clean)) * 1000 / max(1, len(clean)), 3),
     }

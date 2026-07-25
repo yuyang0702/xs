@@ -70,6 +70,20 @@ def test_analyzer_flags_consecutive_one_sentence_paragraphs() -> None:
     assert report["metrics"]["one_sentence_paragraph_run"] == 4
 
 
+def test_analyzer_flags_four_consecutive_dialogue_turns_without_scene_business() -> None:
+    text = (
+        "“你没走。”他说。\n\n"
+        "“我走了你就死了。”\n\n"
+        "“你也可能死。”\n\n"
+        "“知道了也不行。”她说。"
+    )
+
+    report = analyze_prose(text)
+
+    assert report["metrics"]["dialogue_turn_run"] == 4
+    assert any(item["code"] == "dialogue_ping_pong" for item in report["findings"])
+
+
 def test_voice_drift_is_advisory() -> None:
     baseline = [prose_metrics("他说：“走吧。”\n她摇头。" * 20) for _ in range(3)]
     current = prose_metrics("这是一个极长的叙述句，它不断延伸并持续解释人物为什么这样行动以及这意味着什么。" * 30)

@@ -50,6 +50,9 @@ def assess_polish_candidate(source: str, candidate: str,
     candidate_codes = {item["code"] for item in report["findings"]}
     if "timestamp_scene_fragment" in source_codes & candidate_codes:
         reasons.append("timestamp_scene_fragment_not_improved")
+    if (source_metrics["dialogue_turn_run"] >= 4
+            and candidate_metrics["dialogue_turn_run"] >= 4):
+        reasons.append("dialogue_ping_pong_not_improved")
     if (source_metrics["short_sentence_run"] >= 3
             and candidate_metrics["short_sentence_run"] >= 3):
         reasons.append("sentence_rhythm_not_improved")

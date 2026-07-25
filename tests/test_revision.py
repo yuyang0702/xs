@@ -149,6 +149,18 @@ def test_polish_candidate_must_improve_timestamp_scene_fragment() -> None:
     assert "timestamp_scene_fragment_not_improved" in rejected["reasons"]
 
 
+def test_polish_candidate_must_break_up_existing_dialogue_ping_pong() -> None:
+    source = (
+        "“你没走。”他说。\n\n“我走了你就死了。”\n\n"
+        "“你也可能死。”\n\n“知道了也不行。”她说。"
+    )
+
+    rejected = assess_polish_candidate(source, source)
+
+    assert rejected["accepted"] is False
+    assert "dialogue_ping_pong_not_improved" in rejected["reasons"]
+
+
 def test_normalize_revision_plan_requires_at_least_one_actionable_task() -> None:
     with pytest.raises(ValueError, match="actionable task"):
         normalize_revision_plan({"tasks": []}, segment_count=3)

@@ -927,6 +927,7 @@ class WorkflowService:
             rhythm_reasons = {
                 "sentence_rhythm_not_improved",
                 "timestamp_scene_fragment_not_improved",
+                "dialogue_ping_pong_not_improved",
             }
             if structural:
                 assessment["reasons"] = [
@@ -948,7 +949,8 @@ class WorkflowService:
                     "\n\nRHYTHM RETRY: The previous revision retained three or more consecutive "
                     "short narrative sentences, or split one continuous beat into a timestamp "
                     "sentence followed by a static scene sentence. Merge that beat into natural "
-                    "continuous prose. "
+                    "continuous prose. Also break up four or more consecutive dialogue-only "
+                    "paragraphs with meaningful action, observation, hesitation, or changed subtext. "
                     "Keep dialogue and plot facts unchanged. Return only the revised segment."
                 )
                 polished_part = await self._stage(
