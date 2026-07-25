@@ -278,6 +278,27 @@ class StoryStateStore:
         body = text.split("---", 2)[2] if text.startswith("---") and text.count("---") >= 2 else text
         for name, value in re.findall(r"(?m)^-\s*([^:：|]+)[：:]\s*(.+)$", body):
             states.setdefault(name.strip(), {"state": value.strip()})
+        for profile in (project_path / "characters").glob("*.md"):
+            if profile.name == "_index.md":
+                continue
+            try:
+                profile_text = profile.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            frontmatter = (
+                profile_text.split("---", 2)[1]
+                if profile_text.startswith("---") and profile_text.count("---") >= 2
+                else ""
+            )
+            fields = {
+                key: value.strip().strip('"\'')
+                for key, value in re.findall(
+                    r"(?m)^(name|role|status|arc):\s*(.+)$", frontmatter,
+                )
+            }
+            name = fields.pop("name", "")
+            if name:
+                states.setdefault(name, fields)
         return states
 
     @staticmethod

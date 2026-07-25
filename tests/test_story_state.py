@@ -45,6 +45,7 @@ def test_empty_initial_state_imports_files_generated_after_project_creation(tmp_
     (root / "continuity").mkdir()
     (root / "plot").mkdir()
     (root / "manuscript").mkdir()
+    (root / "characters").mkdir()
     (root / "memory" / "canon.json").write_text('{"facts": []}', encoding="utf-8")
     (root / "continuity" / "locks.json").write_text('{"locks": []}', encoding="utf-8")
     (root / "continuity" / "state.md").write_text("# State\n", encoding="utf-8")
@@ -60,11 +61,16 @@ def test_empty_initial_state_imports_files_generated_after_project_creation(tmp_
             "world.rules": "穿越不可逆",
         },
     }, ensure_ascii=False), encoding="utf-8")
+    (root / "characters" / "hero.md").write_text(
+        '---\nname: "林知晚"\nrole: protagonist\nstatus: alive\narc: 选择自由\n---\n',
+        encoding="utf-8",
+    )
 
     state = store.ensure("book", root)
 
     assert state.revision == 1
     assert state.data["world_rules"] == ["穿越不可逆"]
+    assert state.data["character_states"]["林知晚"]["role"] == "protagonist"
     assert any(item["key"] == "ending" for item in state.data["locked_facts"])
 
 
