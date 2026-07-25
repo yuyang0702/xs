@@ -322,16 +322,17 @@ class WorkflowService:
                     f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
                     f"{reader_sample(draft, project.mode, limit=6000)}"
                 )
-                review_text = await self._stage_with_role_fallback(
+                review_text = await self._stage(
                     run_id, run_path, project, "review", constraints, review_input,
-                    fallback_role="planning", allow_tools=False,
+                    allow_tools=False,
                 )
                 review = self._review(review_text)
             if checkpoint and checkpoint.parent.name == run_id:
                 polish_parts = self._split_polish_segments(draft)
                 checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
-                completed_parts = len(list(checkpoint_root.glob("part-*.json")))
-                next_part = min(completed_parts + 1, len(polish_parts))
+                completed_parts, next_part = self._polish_checkpoint_progress(
+                    checkpoint_root, polish_parts,
+                )
                 self.db.add_run_event(
                     run_id, "success", "polish_resume_ready",
                     f"已复用当前任务的规划、完整草稿和审核，将从润色第 {next_part}/{len(polish_parts)} 段继续",
@@ -1423,6 +1424,49 @@ class WorkflowService:
                     gateway_role, system, user,
                     max_output_tokens=output_budget,
                 )
+            if (stage == "review" and gateway_role == "review" and not allow_tools
+                    and not result.text.strip()
+                    and result.receipt.get("finish_reason") == "max_tokens"):
+                self.db.add_run_event(
+                    run_id, "warning", "review_max_tokens_retry",
+                    "Review output hit its token limit; retrying the same route with full budget",
+                    stage=stage, metadata={
+                        "previous_budget": output_budget, "retry_budget": 8192,
+                        "model_name": result.receipt.get("model_name"),
+                    },
+                )
+                retry_system = system + (
+                    "\n\nDo not expose reasoning. Return only the compact review JSON. "
+                    "Keep at most five highest-severity issues per category."
+                )
+                used_fallback = bool(
+                    prefer_configured_fallback
+                    or result.receipt.get("fallback_used")
+                    or result.receipt.get("configured_fallback_direct")
+                )
+                if used_fallback and hasattr(self.gateway, "complete_configured_fallback"):
+                    result = await self.gateway.complete_configured_fallback(
+                        gateway_role, retry_system, user, max_output_tokens=8192,
+                    )
+                else:
+                    result = await self.gateway.complete(
+                        gateway_role, retry_system, user, max_output_tokens=8192,
+                    )
+                used_fallback = bool(
+                    used_fallback
+                    or result.receipt.get("fallback_used")
+                    or result.receipt.get("configured_fallback_direct")
+                )
+                if (not result.text.strip() and not used_fallback
+                        and hasattr(self.gateway, "complete_configured_fallback")):
+                    self.db.add_run_event(
+                        run_id, "warning", "review_configured_fallback",
+                        "Review retry remained empty; using the review role configured fallback",
+                        stage=stage,
+                    )
+                    result = await self.gateway.complete_configured_fallback(
+                        gateway_role, retry_system, user, max_output_tokens=8192,
+                    )
             if (stage == "polish" and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
@@ -1509,6 +1553,12 @@ class WorkflowService:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
         except Exception as exc:
+            if stage == "review":
+                self.db.add_run_event(
+                    run_id, "error", "review_incomplete",
+                    "Review primary and configured fallback did not produce usable output",
+                    stage=stage, metadata={"error": str(exc)},
+                )
             self.db.add_run_event(
                 run_id, "error", "stage_failed", describe_error(exc), stage=stage,
             )
@@ -1562,6 +1612,12 @@ class WorkflowService:
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
         polished = value.get("polished")
         return polished if value.get("source_sha256") == digest and isinstance(polished, str) else None
+
+    @classmethod
+    def _polish_checkpoint_progress(cls, root: Path, parts: list[str]) -> tuple[int, int]:
+        valid = [cls._load_polish_checkpoint(root, index, part) is not None
+                 for index, part in enumerate(parts, 1)]
+        return sum(valid), next((index for index, done in enumerate(valid, 1) if not done), len(parts))
 
     @staticmethod
     def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str) -> None:

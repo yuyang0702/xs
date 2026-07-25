@@ -24,6 +24,8 @@ class OpenAIChatAdapter(HttpProvider):
             payload["tool_choice"] = {
                 "type": "function", "function": {"name": request.required_tool},
             }
+        if "api.moonshot.cn" in self.base_url and (request.required_tool or request.response_schema):
+            payload["thinking"] = {"type": "disabled"}
         body = await self.post("chat/completions", payload=payload,
                                headers={"Authorization": f"Bearer {self.api_key}"})
         choice = body["choices"][0]

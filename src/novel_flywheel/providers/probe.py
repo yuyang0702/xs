@@ -45,6 +45,16 @@ class CapabilityProbe:
                 model=model,
                 messages=[Message(role="user", content='只输出 JSON：{"ok":true}')],
                 max_output_tokens=64,
+                response_schema={
+                    "name": "probe_json",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {"ok": {"type": "boolean"}},
+                        "required": ["ok"],
+                        "additionalProperties": False,
+                    },
+                },
             ))
         except Exception as exc:
             structured = None
@@ -67,7 +77,12 @@ class CapabilityProbe:
             try:
                 tool_response = await self.adapter.complete(tool_request)
             except ToolCapabilityError as exc:
-                if "thinking mode does not support this tool_choice" not in str(exc).lower():
+                error = str(exc).lower()
+                if not (
+                    "tool_choice" in error
+                    and "thinking" in error
+                    and ("does not support" in error or "incompatible" in error)
+                ):
                     raise
                 tool_response = await self.adapter.complete(
                     tool_request.model_copy(update={"required_tool": None})

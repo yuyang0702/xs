@@ -1342,6 +1342,103 @@ async def test_polish_retries_empty_max_token_response_once_with_full_budget(tmp
 
 
 @pytest.mark.asyncio
+async def test_review_retries_empty_max_token_response_then_uses_review_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Retry review", mode="short", genre="suspense",
+        premise="An editor checks a draft.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.primary_budgets = []
+            self.fallback_budgets = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.primary_budgets.append(max_output_tokens)
+            return ModelResult("", {
+                "model_name": "claude-sonnet-5", "input_tokens": 6490,
+                "output_tokens": max_output_tokens, "finish_reason": "max_tokens",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.fallback_budgets.append(max_output_tokens)
+            return ModelResult(quality_review(), {
+                "model_name": "review-fallback", "finish_reason": "end_turn",
+                "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("retry-review", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "retry-review"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._stage(
+        "retry-review", run_path, project, "review", "constraints", "draft",
+        allow_tools=False,
+    )
+
+    assert result == quality_review()
+    assert gateway.primary_budgets == [4096, 8192]
+    assert gateway.fallback_budgets == [8192]
+    events = db.list_run_events("retry-review")
+    assert any(event["event_type"] == "review_max_tokens_retry" for event in events)
+    assert any(event["event_type"] == "review_configured_fallback" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_review_marks_incomplete_when_primary_and_fallback_are_empty(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Incomplete review", mode="short", genre="suspense",
+        premise="Both review routes fail.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        async def complete(self, role, system, user, max_output_tokens=None):
+            return ModelResult("", {
+                "model_name": "primary", "output_tokens": max_output_tokens,
+                "finish_reason": "max_tokens",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            return ModelResult("", {
+                "model_name": "fallback", "output_tokens": max_output_tokens,
+                "finish_reason": "max_tokens", "configured_fallback_direct": True,
+            })
+
+    service = WorkflowService(db, store, Gateway(), SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("incomplete-review", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "incomplete-review"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    with pytest.raises(RuntimeError, match="review model returned empty output"):
+        await service._stage(
+            "incomplete-review", run_path, project, "review", "constraints", "draft",
+            allow_tools=False,
+        )
+
+    assert not (run_path / "outputs" / "review.md").exists()
+    assert any(
+        event["event_type"] == "review_incomplete"
+        for event in db.list_run_events("incomplete-review")
+    )
+
+
+@pytest.mark.asyncio
 async def test_polish_retries_empty_fixed_budget_max_token_response(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -1608,6 +1705,15 @@ def test_short_story_checkpoint_ignores_incomplete_best_candidate(tmp_path) -> N
 
     assert text == original
     assert source == "draft.md"
+
+
+def test_polish_resume_reports_first_missing_checkpoint(tmp_path) -> None:
+    parts = ["one", "two", "three", "four"]
+    root = tmp_path / "checkpoints"
+    WorkflowService._save_polish_checkpoint(root, 2, parts[1], "polished two")
+    WorkflowService._save_polish_checkpoint(root, 4, parts[3], "polished four")
+
+    assert WorkflowService._polish_checkpoint_progress(root, parts) == (2, 1)
 
 
 def test_initial_short_story_planning_skips_empty_memory_tools() -> None:

@@ -17,6 +17,7 @@ STAGE_SYSTEM = {
         "causality, emotion, character knowledge, OOC, continuity, prose, and compliance. Return only "
         "strict JSON with dimensions commercial/story/prose (0-100), hard_fail, decision "
         "pass/revise/rewrite, and issues containing category, severity, evidence, and action. "
+        "Do not expose reasoning. Keep at most five highest-severity issues per category. "
         "Only compliance, canon corruption, missing required content, or production/editorial text in "
         "the manuscript may set hard_fail=true or critical. Style, prose, pacing, dialogue, commercial "
         "pull, ending taste, and historical or procedural realism are targeted revisions, never hard "

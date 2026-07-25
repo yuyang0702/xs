@@ -24,13 +24,15 @@ Manual project-data edits update one allowlisted StoryState section through the 
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
 
-For short stories, the project-list `Continue writing` action resumes the most recent failed or cancelled run with the same run ID. Recovery checks that run's own complete planning, draft, review, and source-hash polish checkpoints before older runs. Completed stages are not regenerated; `polish_resume_ready` reports the next polish segment. Only a missing or structurally incomplete artifact is regenerated. When no resumable run exists, the action only opens the workbench; starting a new complete story remains an explicit workbench command.
+For short stories, the project-list `Continue writing` action resumes the most recent failed or cancelled run with the same run ID. Recovery checks that run's own complete planning, draft, review, and source-hash polish checkpoints before older runs. Completed stages are not regenerated; `polish_resume_ready` reports the first missing or source-mismatched polish segment and the count of valid checkpoints, even when accepted checkpoints are non-contiguous. Only a missing or structurally incomplete artifact is regenerated. When no resumable run exists, the action only opens the workbench; starting a new complete story remains an explicit workbench command.
 
 Style-sample analysis keeps failures visible in the workbench. If the planning model's first response is not the required JSON profile, the service makes one bounded formatting-repair call before rejecting it.
 
 The style-sample application scope is stored in the existing `project.json` as `style_sample_scope`. Missing values mean `polish`, preserving old behavior. `draft_and_polish` adds the same project `style-profile.md` to draft system context. Run context display is derived from existing events and receipts and stores no duplicate prompt, secret, or header data.
 
 ## Short-story model route
+
+Capability probing uses the provider's structured-output request for JSON and requests a specific probe tool for tools. Moonshot OpenAI Chat requests disable thinking when structured output or a specific tool is required, matching the provider's compatibility contract and the same requests used by real workflow stages. Other thinking models that explicitly reject forced `tool_choice` are retried once with automatic tool selection; unrelated tool errors remain visible.
 
 The short-story workflow reuses complete planning, draft, and valid review checkpoints after a failed or cancelled run.
 
@@ -56,6 +58,8 @@ Three or more consecutive short sentences or one-sentence paragraphs are reporte
 Configured Claude polish routes receive 8,192 immediately because observed relay responses repeatedly consumed the smaller dynamic allowance before returning visible prose. This applies to both the primary and configured Claude fallback; non-Claude routes retain dynamic budgets. A non-Claude polish response that is empty specifically because of `finish_reason=max_tokens` may retry once at 8,192.
 
 An empty polish response with `finish_reason=max_tokens` retries once even when the route already used the full 8,192 output budget. Some relays report 8,192 generated tokens while returning no visible text; this malformed response is not accepted as a completed segment.
+
+Review starts with its normal 4,096 output limit. An empty Review response with `finish_reason=max_tokens` retries the same model route once at 8,192 with compact JSON-only instructions. If it remains empty, only the Review role's configured fallback is used. Planning is never used as an editorial-review substitute. If both Review routes fail, `review_incomplete` preserves the draft and existing polish checkpoints without creating an editorial score.
 
 HTTP `524` means the relay reached the upstream model but timed out waiting for a response. It is not a manuscript validation error. The configured fallback handles it without modifying the formal manuscript.
 
@@ -97,6 +101,9 @@ The run detail context can expose manuscript coverage, reviewed window count, re
 - `quality_revision_halted`: correction stopped and `best-candidate.md` was preserved.
 - `polish_checkpoint_reused`: an interrupted pass reused an identical source segment from its own checkpoint.
 - `polish_resume_ready`: the current run's planning, complete draft, review, and polish checkpoint position were accepted for resume.
+- `review_max_tokens_retry`: an empty token-limited Review response is retrying the same route at 8,192.
+- `review_configured_fallback`: the same-route Review retry stayed empty and the Review role fallback is running.
+- `review_incomplete`: neither Review route produced usable output; no editorial score was fabricated.
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
 - `final_review_incomplete`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.

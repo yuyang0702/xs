@@ -17,6 +17,7 @@ class ProbeAdapter:
         if self.calls == 1:
             return ModelResponse(text="连接正常")
         if self.calls == 2:
+            assert request.response_schema is not None
             return ModelResponse(text='{"ok":true}')
         if self.tool_calling:
             return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
@@ -39,6 +40,8 @@ class EmptyChatProbeAdapter(ProbeAdapter):
 
 
 class ThinkingProbeAdapter(ProbeAdapter):
+    error = "Thinking mode does not support this tool_choice"
+
     async def complete(self, request):
         self.calls += 1
         self.requests.append(request)
@@ -47,8 +50,12 @@ class ThinkingProbeAdapter(ProbeAdapter):
         if self.calls == 2:
             return ModelResponse(text='{"ok":true}')
         if request.required_tool:
-            raise ToolCapabilityError("Thinking mode does not support this tool_choice")
+            raise ToolCapabilityError(self.error)
         return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+
+
+class KimiThinkingProbeAdapter(ThinkingProbeAdapter):
+    error = "tool_choice 'specified' is incompatible with thinking enabled"
 
 
 @pytest.mark.asyncio
@@ -73,6 +80,17 @@ async def test_probe_can_report_partial_support() -> None:
 @pytest.mark.asyncio
 async def test_probe_retries_without_forced_tool_choice_for_thinking_models() -> None:
     adapter = ThinkingProbeAdapter()
+
+    result = await CapabilityProbe(adapter).run("model")
+
+    assert result.tool_calling is True
+    assert adapter.requests[-1].tools
+    assert adapter.requests[-1].required_tool is None
+
+
+@pytest.mark.asyncio
+async def test_probe_retries_kimi_without_forced_tool_choice() -> None:
+    adapter = KimiThinkingProbeAdapter()
 
     result = await CapabilityProbe(adapter).run("model")
 

@@ -56,6 +56,53 @@ async def test_openai_chat_adapter_can_require_a_specific_tool() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_moonshot_disables_thinking_for_forced_tools() -> None:
+    route = respx.post("https://api.moonshot.cn/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "id": "req-tool",
+            "choices": [{"message": {"content": "", "tool_calls": []}}],
+            "usage": {},
+        }),
+    )
+    request = ModelRequest(
+        model="kimi-k3",
+        messages=[Message(role="user", content="Call probe_tool")],
+        tools=[ToolDefinition(
+            name="probe_tool", description="Probe", input_schema={"type": "object"},
+        )],
+        required_tool="probe_tool",
+    )
+
+    await OpenAIChatAdapter("https://api.moonshot.cn/v1", "secret").complete(request)
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["thinking"] == {"type": "disabled"}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_moonshot_disables_thinking_for_structured_output() -> None:
+    route = respx.post("https://api.moonshot.cn/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "id": "req-json",
+            "choices": [{"message": {"content": '{"ok":true}'}}],
+            "usage": {},
+        }),
+    )
+    request = ModelRequest(
+        model="kimi-k3",
+        messages=[Message(role="user", content="Return JSON")],
+        response_schema={"name": "probe", "schema": {"type": "object"}},
+    )
+
+    await OpenAIChatAdapter("https://api.moonshot.cn/v1", "secret").complete(request)
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["thinking"] == {"type": "disabled"}
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_openai_responses_adapter_normalizes_response() -> None:
     respx.post("https://relay.test/v1/responses").mock(return_value=httpx.Response(200, json={
         "id": "resp-1", "output_text": "审核通过", "status": "completed",
