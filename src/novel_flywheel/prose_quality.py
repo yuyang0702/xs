@@ -71,7 +71,7 @@ def analyze_prose(text: str) -> dict[str, Any]:
                 "keep paragraph breaks only for dialogue, emphasis, suspense, or scene changes."
             )
             findings.append(item)
-    if metrics["short_sentence_run"] >= 3:
+    if metrics["short_sentence_run"] >= 4:
         fake = re.search(r"[^。！？\n]{1,14}[。！？]", text)
         if fake:
             findings.append(_finding("uniform_short_sentence_run", text, fake))
@@ -99,8 +99,10 @@ def analyze_prose(text: str) -> dict[str, Any]:
 
 def prose_metrics(text: str) -> dict[str, float]:
     clean = text.replace(SEGMENT_SEPARATOR, "")
-    sentences = [item.strip() for item in re.split(r"[。！？.!?]+", clean) if item.strip()]
-    lengths = [len(item) for item in sentences] or [0]
+    narrative = re.sub(r'[“\"][^”\"\n]*[”\"]', "", clean)
+    narrative = re.sub(r"(?m)^\s*#.*$", "", narrative)
+    sentences = [item.strip() for item in re.split(r"[。！？.!?]+", narrative) if item.strip()]
+    lengths = [len(item) for item in sentences]
     short_run = run = 0
     for length in lengths:
         run = run + 1 if length <= 14 else 0
@@ -109,14 +111,17 @@ def prose_metrics(text: str) -> dict[str, float]:
     paragraph_run = dialogue_run = run = 0
     dialogue_current = 0
     for paragraph in (item.strip() for item in re.split(r"\n\s*\n", clean)):
-        is_single = bool(paragraph) and not paragraph.startswith("#") and _sentence_count(paragraph) == 1
+        is_single = (bool(paragraph) and not paragraph.startswith(("#", "“", '"'))
+                     and _sentence_count(paragraph) == 1)
         run = run + 1 if is_single else 0
         paragraph_run = max(paragraph_run, run)
         dialogue_current = dialogue_current + 1 if paragraph.startswith(("“", '"')) else 0
         dialogue_run = max(dialogue_run, dialogue_current)
     return {
-        "mean_sentence_length": round(mean(lengths), 2),
-        "short_sentence_ratio": round(sum(length <= 14 for length in lengths) / len(lengths), 3),
+        "mean_sentence_length": round(mean(lengths), 2) if lengths else 0,
+        "short_sentence_ratio": round(
+            sum(length <= 14 for length in lengths) / len(lengths), 3,
+        ) if lengths else 0,
         "short_sentence_run": float(short_run),
         "one_sentence_paragraph_run": float(paragraph_run),
         "dialogue_turn_run": float(dialogue_run),

@@ -40,7 +40,9 @@ Initial short-story planning uses the complete wizard/project brief directly and
 
 Polish receives one bounded manuscript segment, adjacent boundaries, a compact full-story map, authoritative facts, character state, findings, and stage-specific Skills. Ordinary expression polishing cannot change plot events. Runtime rejects abnormal length changes and removal of literal locked facts, preserving the original segment.
 
-Three or more consecutive short sentences or one-sentence paragraphs are reported to polish as rhythm issues. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, suspense, and scene changes. Runtime does not mechanically join sentences, but rejects a polish candidate that makes the short-sentence ratio, longest short-sentence run, or one-sentence-paragraph run materially worse than its source.
+Four or more consecutive short narrative sentences are reported to polish as rhythm issues. Headings and quoted dialogue are excluded from narrative short-sentence metrics; dialogue-only runs and timestamp scene fragments remain separate findings. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, suspense, and scene changes. A candidate passes when its longest narrative short-sentence run or short-sentence ratio improves materially, and Runtime still rejects material regression.
+
+Rhythm retry logs name the actual finding: narrative fragments, dialogue-only exchange, or scene fragmentation. Each source segment receives at most one ordinary polish and one targeted rhythm retry for the same polish role configuration and rhythm-policy version. If both fail local validation, Runtime checkpoints the preserved source as `preserved_after_retry`; resume reuses it without another paid call. A source edit, polish provider/model change, or policy-version change invalidates that preservation checkpoint and permits a new attempt.
 
 ### Token budgets
 

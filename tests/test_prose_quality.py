@@ -35,10 +35,21 @@ def test_clean_specific_prose_keeps_high_naturalness() -> None:
     assert report["naturalness_score"] >= 85
 
 
-def test_analyzer_flags_three_consecutive_fragment_sentences() -> None:
-    report = analyze_prose("门开了。他进去。灯亮了。走廊尽头传来脚步声，他停下来侧耳听。")
+def test_analyzer_flags_four_consecutive_fragment_sentences() -> None:
+    report = analyze_prose("门开了。他进去。灯亮了。雨停了。走廊尽头传来脚步声，他停下来侧耳听。")
 
     assert any(item["code"] == "uniform_short_sentence_run" for item in report["findings"])
+
+
+def test_short_sentence_metrics_exclude_dialogue_and_headings() -> None:
+    report = analyze_prose(
+        "# 夜谈\n\n“你没走。”\n\n“我走了你就死了。”\n\n“你也可能死。”\n\n“知道了也不行。”"
+    )
+
+    assert report["metrics"]["short_sentence_run"] == 0
+    assert report["metrics"]["one_sentence_paragraph_run"] == 0
+    assert not any(item["code"] == "uniform_short_sentence_run" for item in report["findings"])
+    assert any(item["code"] == "dialogue_ping_pong" for item in report["findings"])
 
 
 def test_analyzer_flags_timestamp_followed_by_static_scene_fragment() -> None:

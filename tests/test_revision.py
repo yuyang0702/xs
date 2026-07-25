@@ -127,7 +127,7 @@ def test_polish_candidate_rejects_short_sentence_rhythm_regression() -> None:
 
 def test_polish_candidate_must_improve_existing_short_sentence_run() -> None:
     source = (
-        "她听清了对方的话。靖安侯府。三小姐。林知晚。"
+        "她听清了对方的话。靖安侯府。三小姐。林知晚。病了很久。"
         "这些词她都听得懂，组合起来却像另一个世界的语言。"
     )
 
@@ -135,6 +135,15 @@ def test_polish_candidate_must_improve_existing_short_sentence_run() -> None:
 
     assert rejected["accepted"] is False
     assert "sentence_rhythm_not_improved" in rejected["reasons"]
+
+
+def test_polish_candidate_accepts_meaningful_relative_rhythm_improvement() -> None:
+    source = "门开了。他进来。灯亮了。雨停了。风起了。她回头。长廊尽头传来脚步声。"
+    candidate = "门开后，他迎着亮起的灯光走进来。雨停风起时，她听见长廊尽头传来脚步声。"
+
+    result = assess_polish_candidate(source, candidate)
+
+    assert "sentence_rhythm_not_improved" not in result["reasons"]
 
 
 def test_polish_candidate_must_improve_timestamp_scene_fragment() -> None:

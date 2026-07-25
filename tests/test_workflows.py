@@ -1571,6 +1571,46 @@ async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(t
 
 
 @pytest.mark.asyncio
+async def test_rejected_rhythm_retry_is_not_repeated_for_same_source_and_route(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary-provider", "primary-model", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Bounded rhythm", mode="short", genre="historical",
+        premise="A traveler enters a hall.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    source = "门开了。他进来。灯亮了。雨停了。风起了。长廊尽头传来脚步声。"
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            return ModelResult(source, {"model_name": "claude", "finish_reason": "end_turn"})
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("bounded-rhythm", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "bounded-rhythm"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    first = await service._polish_short_segments(
+        "bounded-rhythm", run_path, project, "constraints", source, "{}",
+    )
+    second = await service._polish_short_segments(
+        "bounded-rhythm", run_path, project, "constraints", source, "{}",
+    )
+
+    assert first == second == source
+    assert gateway.calls == 2
+
+
+@pytest.mark.asyncio
 async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_and_reuses_checkpoints(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

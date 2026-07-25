@@ -332,6 +332,7 @@ class WorkflowService:
                 checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
                 completed_parts, next_part = self._polish_checkpoint_progress(
                     checkpoint_root, polish_parts,
+                    self._polish_retry_signature(self.db.get_role_binding("polish") or {}),
                 )
                 self.db.add_run_event(
                     run_id, "success", "polish_resume_ready",
@@ -894,6 +895,7 @@ class WorkflowService:
             for event in self.db.list_run_events(run_id)
         )
         binding = self.db.get_role_binding("polish") or {}
+        retry_signature = self._polish_retry_signature(binding)
         configured_fallback = bool(
             binding.get("fallback_provider_id") and binding.get("fallback_model_id")
             and hasattr(self.gateway, "complete_configured_fallback")
@@ -908,7 +910,9 @@ class WorkflowService:
             if revision_plan and group not in revision_plan["target_segments"]:
                 polished_parts.append(part)
                 continue
-            cached = self._load_polish_checkpoint(checkpoint_root, index, part)
+            cached = self._load_polish_checkpoint(
+                checkpoint_root, index, part, retry_signature,
+            )
             if cached is not None:
                 polished_parts.append(cached)
                 self.db.add_run_event(
@@ -1046,15 +1050,27 @@ class WorkflowService:
             if locked_failures:
                 assessment["accepted"] = False
                 assessment["reasons"].extend(locked_failures)
+            rhythm_retried = False
             if not structural and rhythm_reasons.intersection(assessment["reasons"]):
+                rhythm_retried = True
+                reason = next(item for item in (
+                    "sentence_rhythm_not_improved",
+                    "dialogue_ping_pong_not_improved",
+                    "timestamp_scene_fragment_not_improved",
+                ) if item in assessment["reasons"])
+                labels = {
+                    "sentence_rhythm_not_improved": "连续叙述短句未改善",
+                    "dialogue_ping_pong_not_improved": "连续纯对白未改善",
+                    "timestamp_scene_fragment_not_improved": "场景断句未改善",
+                }
                 self.db.add_run_event(
                     run_id, "warning", "polish_rhythm_retry",
-                    f"润色第 {index}/{len(parts)} 段连续短句未改善，正在定向重试",
-                    stage="polish", metadata={"segment": index},
+                    f"润色第 {index}/{len(parts)} 段{labels[reason]}，正在定向重试",
+                    stage="polish", metadata={"segment": index, "reason": reason},
                 )
                 rhythm_prompt = prompt + (
-                    "\n\nRHYTHM RETRY: The previous revision retained three or more consecutive "
-                    "short narrative sentences, or split one continuous beat into a timestamp "
+                    "\n\nRHYTHM RETRY: The previous revision retained four or more consecutive "
+                    "short narrative sentences outside dialogue, or split one continuous beat into a timestamp "
                     "sentence followed by a static scene sentence. Merge that beat into natural "
                     "continuous prose. Also break up four or more consecutive dialogue-only "
                     "paragraphs with meaningful action, observation, hesitation, or changed subtext. "
@@ -1124,6 +1140,11 @@ class WorkflowService:
             polished_parts.append(polished_part)
             if accepted:
                 self._save_polish_checkpoint(checkpoint_root, index, part, polished_part)
+            elif rhythm_retried:
+                self._save_polish_checkpoint(
+                    checkpoint_root, index, part, part,
+                    status="preserved_after_retry", retry_signature=retry_signature,
+                )
         restored_groups: list[str] = []
         for group in range(1, len(original_parts) + 1):
             restored_groups.append("\n\n".join(
@@ -1601,7 +1622,8 @@ class WorkflowService:
         return run_id, run_path
 
     @staticmethod
-    def _load_polish_checkpoint(root: Path, index: int, source: str) -> str | None:
+    def _load_polish_checkpoint(root: Path, index: int, source: str,
+                                retry_signature: str | None = None) -> str | None:
         path = root / f"part-{index:02d}.json"
         if not path.is_file():
             return None
@@ -1611,19 +1633,37 @@ class WorkflowService:
             return None
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
         polished = value.get("polished")
+        if (value.get("status") == "preserved_after_retry"
+                and value.get("retry_signature") != retry_signature):
+            return None
         return polished if value.get("source_sha256") == digest and isinstance(polished, str) else None
 
     @classmethod
-    def _polish_checkpoint_progress(cls, root: Path, parts: list[str]) -> tuple[int, int]:
-        valid = [cls._load_polish_checkpoint(root, index, part) is not None
+    def _polish_checkpoint_progress(cls, root: Path, parts: list[str],
+                                    retry_signature: str | None = None) -> tuple[int, int]:
+        valid = [cls._load_polish_checkpoint(root, index, part, retry_signature) is not None
                  for index, part in enumerate(parts, 1)]
         return sum(valid), next((index for index, done in enumerate(valid, 1) if not done), len(parts))
 
     @staticmethod
-    def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str) -> None:
+    def _polish_retry_signature(binding: dict) -> str:
+        return hashlib.sha256(json.dumps({
+            "policy": "rhythm-v2",
+            "primary_provider_id": binding.get("primary_provider_id"),
+            "primary_model_id": binding.get("primary_model_id"),
+            "fallback_provider_id": binding.get("fallback_provider_id"),
+            "fallback_model_id": binding.get("fallback_model_id"),
+        }, sort_keys=True).encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str,
+                                status: str = "accepted",
+                                retry_signature: str | None = None) -> None:
         atomic_write(root / f"part-{index:02d}.json", json.dumps({
             "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
             "polished": polished,
+            "status": status,
+            "retry_signature": retry_signature,
         }, ensure_ascii=False, indent=2))
 
     def _post_write_maintenance(self, run_id: str, project: Project) -> None:
