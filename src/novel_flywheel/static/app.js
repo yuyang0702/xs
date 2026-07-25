@@ -77,7 +77,12 @@ async function continueProject(projectId) {
   state.activeProject = project;
   renderProjects();
   showView("workbench");
-  if (project.mode === "short") await run(`/api/projects/${project.id}/runs/short`);
+  await renderActiveProject();
+  if (project.mode !== "short") return;
+  const runs = await api(`/api/projects/${project.id}/runs`);
+  const resumableRun = runs.find(item => item.workflow === "short-story"
+    && item.status === "failed" && (item.error || "").includes("token_budget_exhausted"));
+  if (resumableRun) await run(`/api/runs/${resumableRun.id}/resume`);
 }
 async function loadProjectLocations(projectId) {
   const shell = $("#project-locations");

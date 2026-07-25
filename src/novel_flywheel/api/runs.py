@@ -58,6 +58,25 @@ def cancel_run(run_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"}) from exc
 
 
+@router.post("/runs/{run_id}/resume", status_code=status.HTTP_202_ACCEPTED)
+async def resume_run(run_id: str, request: Request) -> dict:
+    run = request.app.state.registry.db.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail={"code": "run_not_found"})
+    if run["workflow"] != "short-story":
+        raise HTTPException(status_code=409, detail={"code": "run_not_resumable"})
+
+    async def operation(existing_run_id: str) -> object:
+        return await request.app.state.workflows.run_short(
+            run["project_id"], run_id=existing_run_id,
+        )
+
+    try:
+        return request.app.state.run_tasks.resume(run_id, operation)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={"code": "run_not_resumable"}) from exc
+
+
 @router.get("/projects/{project_id}/runs")
 def list_runs(project_id: str, request: Request) -> list[dict]:
     return request.app.state.registry.db.list_runs(project_id)

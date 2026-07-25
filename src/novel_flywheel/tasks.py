@@ -23,6 +23,21 @@ class RunTaskManager:
         task.add_done_callback(lambda finished, rid=run_id: self._task_done(rid, finished))
         return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
 
+    def resume(self, run_id: str, operation: RunOperation) -> dict:
+        run = self.db.get_run(run_id)
+        if run is None:
+            raise LookupError("Run not found")
+        if run["status"] != "failed":
+            raise ValueError("Only a failed run can be resumed")
+        if run_id in self.tasks:
+            raise ValueError("Run is already active")
+        self.db.update_run(run_id, "queued")
+        self.db.add_run_event(run_id, "info", "resumed", "继续上次失败任务", stage="queue")
+        task = asyncio.create_task(self._execute(run_id, operation), name=f"novel-run-{run_id}")
+        self.tasks[run_id] = task
+        task.add_done_callback(lambda finished, rid=run_id: self._task_done(rid, finished))
+        return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
+
     def _task_done(self, run_id: str, task: asyncio.Task) -> None:
         run = self.db.get_run(run_id)
         if run and run["status"] == "cancelling":

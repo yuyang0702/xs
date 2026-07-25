@@ -74,3 +74,19 @@ def test_cancel_run_endpoint_is_idempotent(tmp_path) -> None:
 
     assert response.status_code == 200
     assert response.json()["status"] == "completed"
+
+
+def test_resume_failed_short_run_keeps_original_run_id(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_project("book", "Book", "short", tmp_path / "book")
+    db.create_run("failed-run", "book", "short-story", status="failed")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), workflow_service=FakeWorkflows(),
+        workspace_root=tmp_path / "workspace",
+    ))
+
+    response = client.post("/api/runs/failed-run/resume")
+
+    assert response.status_code == 202
+    assert response.json()["id"] == "failed-run"

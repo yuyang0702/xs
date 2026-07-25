@@ -101,3 +101,28 @@ async def test_task_manager_records_a_useful_error_when_exception_message_is_emp
     stored = db.get_run(run["id"])
     assert stored["error"] == "TimeoutError (provider returned no error detail)"
     assert db.list_run_events(run["id"])[-1]["message"] == stored["error"]
+
+
+@pytest.mark.asyncio
+async def test_task_manager_resumes_failed_run_with_same_id(tmp_path) -> None:
+    db, manager = make_manager(tmp_path)
+    db.create_run("failed-run", "book", "short-story", status="failed")
+
+    async def operation(run_id):
+        assert run_id == "failed-run"
+
+    resumed = manager.resume("failed-run", operation)
+    await manager.wait("failed-run")
+
+    assert resumed["id"] == "failed-run"
+    assert db.get_run("failed-run")["status"] == "completed"
+    assert any(event["event_type"] == "resumed"
+               for event in db.list_run_events("failed-run"))
+
+
+def test_task_manager_rejects_resuming_completed_run(tmp_path) -> None:
+    db, manager = make_manager(tmp_path)
+    db.create_run("completed-run", "book", "short-story", status="completed")
+
+    with pytest.raises(ValueError, match="failed run"):
+        manager.resume("completed-run", lambda run_id: None)

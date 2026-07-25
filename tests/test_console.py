@@ -60,8 +60,8 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "const latestRun = runs[0]" in script
     assert "showRunDetail(await api(`/api/runs/${latestRun.id}`))" in script
     assert "continueProject(button.dataset.continue)" in script
-    assert 'if (project.mode === "short")' in script
-    assert "run(`/api/projects/${project.id}/runs/short`)" in script
+    assert "resumableRun" in script
+    assert "run(`/api/runs/${resumableRun.id}/resume`)" in script
     assert "binding-primary-${role}" in script
     assert "binding-fallback-${role}" in script
     assert "使用程序默认回退" in script

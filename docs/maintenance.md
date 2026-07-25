@@ -22,6 +22,8 @@ Manual project-data edits update one allowlisted StoryState section through the 
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
 
+For short stories, the project-list `Continue writing` action resumes the most recent `token_budget_exhausted` failed run with the same run ID. Existing polish source-hash checkpoints are reused, so completed segments are not sent again. When no such run exists, the action only opens the workbench; starting a new complete story remains an explicit workbench command.
+
 Style-sample analysis keeps failures visible in the workbench. If the planning model's first response is not the required JSON profile, the service makes one bounded formatting-repair call before rejecting it.
 
 The style-sample application scope is stored in the existing `project.json` as `style_sample_scope`. Missing values mean `polish`, preserving old behavior. `draft_and_polish` adds the same project `style-profile.md` to draft system context. Run context display is derived from existing events and receipts and stores no duplicate prompt, secret, or header data.

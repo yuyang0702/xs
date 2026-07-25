@@ -251,7 +251,11 @@ class WorkflowService:
             project.path / "chapters" / "chapter-01.md",
             project.path / "memory" / "canon.json",
         ]
-        snapshot = ProjectSnapshot.create(project.path, project.path / "snapshots" / run_id, formal)
+        snapshot = ProjectSnapshot.create(
+            project.path,
+            project.path / "snapshots" / f"{run_id}-{uuid.uuid4().hex[:8]}",
+            formal,
+        )
         try:
             constraints = self.projects.load_constraints(project.id)
             target_words = int(project.metadata["target_words"])
