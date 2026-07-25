@@ -65,7 +65,8 @@ class StoryStateStore:
     def ensure(self, project_id: str, project_path: Path) -> StoryState:
         current = self.get(project_id)
         if current:
-            if int(current.data.get("story_state_schema", 0)) >= STORY_STATE_SCHEMA:
+            if (int(current.data.get("story_state_schema", 0)) >= STORY_STATE_SCHEMA
+                    and current.revision > 1):
                 return current
             imported = self._import(project_path)
             missing = {

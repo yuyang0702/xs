@@ -37,6 +37,37 @@ def test_story_state_migrates_existing_project_without_rewriting_files(tmp_path)
     assert (project / "memory" / "canon.json").read_bytes() == before
 
 
+def test_empty_initial_state_imports_files_generated_after_project_creation(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    root = tmp_path / "book"
+    (root / "memory").mkdir(parents=True)
+    (root / "continuity").mkdir()
+    (root / "plot").mkdir()
+    (root / "manuscript").mkdir()
+    (root / "memory" / "canon.json").write_text('{"facts": []}', encoding="utf-8")
+    (root / "continuity" / "locks.json").write_text('{"locks": []}', encoding="utf-8")
+    (root / "continuity" / "state.md").write_text("# State\n", encoding="utf-8")
+    (root / "plot" / "timeline.md").write_text("# Timeline\n", encoding="utf-8")
+    (root / "project.json").write_text('{"story_requirements": {}}', encoding="utf-8")
+    db.save_project("book", "Book", "short", root)
+    store = StoryStateStore(db)
+    assert store.ensure("book", root).data["locked_facts"] == []
+
+    (root / "project.json").write_text(json.dumps({
+        "story_requirements": {
+            "ending": "女主归隐山野",
+            "world.rules": "穿越不可逆",
+        },
+    }, ensure_ascii=False), encoding="utf-8")
+
+    state = store.ensure("book", root)
+
+    assert state.revision == 1
+    assert state.data["world_rules"] == ["穿越不可逆"]
+    assert any(item["key"] == "ending" for item in state.data["locked_facts"])
+
+
 def test_story_states_are_isolated_by_project(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
