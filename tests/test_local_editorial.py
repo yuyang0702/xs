@@ -49,3 +49,17 @@ def test_mixed_scene_prose_has_no_blocking_findings() -> None:
     assert not [item for item in report["findings"] if item["severity"] == "blocking"]
     assert report["metrics"]["sentence_count"] >= 4
     assert report["analyzer"] == "local-editorial"
+
+
+def test_detects_project_forbidden_pattern_and_unsupported_certainty() -> None:
+    text = "她很确定，门外的人一定就是凶手。她心头一紧。"
+    ids = finding_ids(text)
+    assert "unsupported_certainty" in ids
+    report = analyze_prose(text, {"forbidden_patterns": ["心头一紧"]})
+    assert any(item["rule_id"] == "project_forbidden_pattern" and item["severity"] == "blocking"
+               for item in report["findings"])
+
+
+def test_detects_repeated_body_reaction() -> None:
+    report = analyze_prose("她皱了皱眉。\n\n他皱了皱眉。\n\n她又皱了皱眉。")
+    assert any(item["rule_id"] == "repeated_body_reaction" for item in report["findings"])

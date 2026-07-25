@@ -1,0 +1,8 @@
+[
+  {"id":"checklist-judgment","text":"血是暗红色，静脉血。插得不深，没伤到大动脉。刀还不能拔。","expected":["checklist_judgment"]},
+  {"id":"unsupported-certainty","text":"她很确定，门外的人一定就是凶手。","expected":["unsupported_certainty"]},
+  {"id":"body-reaction","text":"她皱了皱眉。\n\n他皱了皱眉。\n\n她又皱了皱眉。","expected":["repeated_body_reaction"]},
+  {"id":"mechanical-dialogue","text":"“你是谁？”\n\n“我不知道。”\n\n“你从哪来？”","expected":["mechanical_dialogue_run"]},
+  {"id":"human-review-voice","text":"同一场景内多个人物使用完全相同的词汇与句式。","expected":[],"manual_class":"identical_character_voices"},
+  {"id":"human-review-summary","text":"人物情绪只由旁白直接宣布，缺少动作、感知或选择后果。","expected":[],"manual_class":"unsupported_emotional_summary"}
+]

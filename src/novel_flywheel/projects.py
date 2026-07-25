@@ -168,6 +168,30 @@ class ProjectStore:
                     f"- {item['key']}: {json.dumps(item.get('value'), ensure_ascii=False)}"
                     for item in locks
                 ))
+        learning_root = project.path / "learning"
+        labels = {
+            "creative_blueprint": "Confirmed Creative Blueprint",
+            "prose_baseline": "Executable Prose Baseline",
+            "voice_profiles": "Character Voice Profiles",
+            "epistemic_state": "Character Knowledge Boundaries",
+            "scene_briefs": "Scene Briefs",
+        }
+        learning_size = 0
+        for name, label in labels.items():
+            path = learning_root / f"{name}.json"
+            if not path.is_file():
+                continue
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if value.get("status") != "active":
+                continue
+            content = json.dumps(value.get("data", {}), ensure_ascii=False, indent=2)
+            if learning_size + len(content) > 40_000:
+                continue
+            parts.append(f"# {label}\n\n{content}")
+            learning_size += len(content)
         return "\n\n".join(parts)
 
     @staticmethod

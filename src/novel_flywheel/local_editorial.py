@@ -3,16 +3,17 @@ from collections import Counter
 
 
 ANALYZER = "local-editorial"
-VERSION = "1"
+VERSION = "2"
 _SENTENCE = re.compile(r"[^。！？!?]+[。！？!?]?")
 _DIALOGUE_START = ("“", '"', "‘", "'")
 
 
-def analyze_prose(text: str) -> dict[str, object]:
+def analyze_prose(text: str, baseline: dict | None = None) -> dict[str, object]:
     sentences = _sentences(text)
     paragraphs = [item.strip() for item in re.split(r"\n\s*\n", text) if item.strip()]
     lengths = [len(_plain(item[0])) for item in sentences]
     findings: list[dict[str, object]] = []
+    baseline = baseline or {}
 
     if _is_checklist_judgment(sentences):
         start = sentences[0][1]
@@ -53,6 +54,37 @@ def analyze_prose(text: str) -> dict[str, object]:
             "连续句子长度过于整齐，节奏缺少场景驱动的变化",
             "根据动作速度、注意力和情绪变化调整句子节奏",
         ))
+
+    one_sentence = [item for item in paragraphs if len(_sentences(item)) == 1 and len(_plain(item)) < 24]
+    if len(one_sentence) >= int(baseline.get("one_sentence_paragraph_run", 4)):
+        start, end = text.find(one_sentence[0]), text.find(one_sentence[-1]) + len(one_sentence[-1])
+        findings.append(_finding(
+            "one_sentence_paragraph_run", "review", text, start, end,
+            "连续单句段落让节奏呈现模板化断裂", "按场景动作、观察与因果关系合并必要段落",
+        ))
+
+    body = re.findall(r"(?:皱了皱眉|抿了抿唇|攥紧(?:了)?手|心头一紧|呼吸一滞)", text)
+    if len(body) >= int(baseline.get("body_reaction_repeat", 3)):
+        phrase = Counter(body).most_common(1)[0][0]
+        start, end = text.find(phrase), text.rfind(phrase) + len(phrase)
+        findings.append(_finding(
+            "repeated_body_reaction", "review", text, start, end,
+            "相同身体反应被重复用来代替不同情绪", "改用与人物目标、环境和关系变化相关的具体反应",
+        ))
+
+    certainty = re.search(r"(?:显然|毫无疑问|她很确定|他很确定|一定是).{0,35}(?:。|！|？)", text)
+    if certainty:
+        findings.append(_finding(
+            "unsupported_certainty", "review", text, certainty.start(), certainty.end(),
+            "人物判断显得过度确定，正文未给出足够证据", "补充可感知证据、经验来源或保留合理的不确定性",
+        ))
+
+    for forbidden in baseline.get("forbidden_patterns", []):
+        if forbidden and (index := text.find(str(forbidden))) >= 0:
+            findings.append(_finding(
+                "project_forbidden_pattern", "blocking", text, index, index + len(str(forbidden)),
+                "出现项目明确禁用的表达", "按项目文笔基线替换该表达",
+            ))
 
     return {
         "analyzer": ANALYZER,

@@ -345,3 +345,17 @@ Each phase requires focused tests followed by the full suite. Required coverage 
 - existing projects, credentials, role bindings, Skills, formal manuscripts, and run history remaining unchanged.
 
 No automated test may call paid provider APIs.
+
+## Implementation Status
+
+Implemented on 2026-07-26:
+
+- Phase 1: paste, TXT, DOCX, PDF and public-URL import with immutable local versions, extraction bounds and redirect-aware SSRF protection.
+- Phase 2: versioned editorial rules, project forbidden patterns, regression corpus, explicit LTP lifecycle controls, independent worker, cache and rule-only fallback.
+- Phase 3: paragraph-aligned resumable windows, deterministic and optional model analysis, typed SQLite provenance graph and user revisions.
+- Phase 4: local matching, explicit adoption/rejection, versioned creative blueprints and planning-role candidate outlines.
+- Phase 5: executable prose baselines, voice profiles, epistemic-state validation, scene briefs, existing-context integration and material-change impact reports.
+- Phase 6: explicit `line_edit` role, bounded passages, locked-fact validation and candidate-only storage.
+- Phase 7: descriptive adoption, rejection and candidate feedback metrics. No training or popularity prediction was added.
+
+Optional LTP packages and model files are not bundled or downloaded during migration. Neural NLP remains inactive until the user explicitly selects Install and Enable. Scanned-PDF OCR, local generative models, model training, graph services and automatic formal-file mutation remain intentional non-goals.

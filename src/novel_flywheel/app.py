@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from novel_flywheel.api.providers import router as providers_router
 from novel_flywheel.api.references import router as references_router
+from novel_flywheel.api.learning import router as learning_router
 from novel_flywheel.api.projects import router as projects_router
 from novel_flywheel.api.runs import router as runs_router
 from novel_flywheel.api.skills import router as skills_router
@@ -26,6 +27,8 @@ from novel_flywheel.interviews import WizardInterviewService
 from novel_flywheel.style_samples import StyleSampleService
 from novel_flywheel.material_impacts import MaterialImpactService
 from novel_flywheel.reference_library import ReferenceLibrary
+from novel_flywheel.learning import LearningSystem
+from novel_flywheel.nlp_backend import LocalNLPManager
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -60,6 +63,8 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         SkillFormCatalog(app.state.skill_gate, settings.data_dir / "skill-forms"),
     )
     gateway = ModelGateway(db, app.state.registry)
+    app.state.learning = LearningSystem(db, app.state.references, app.state.projects, gateway)
+    app.state.local_nlp = LocalNLPManager(settings.data_dir / "local-nlp.json")
     app.state.material_impacts = MaterialImpactService(gateway)
     app.state.style_samples = style_sample_service or StyleSampleService(gateway)
     app.state.interviews = interview_service or WizardInterviewService(db, gateway)
@@ -76,6 +81,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     )
     app.include_router(providers_router)
     app.include_router(references_router)
+    app.include_router(learning_router)
     app.include_router(projects_router)
     app.include_router(runs_router)
     app.include_router(skills_router)

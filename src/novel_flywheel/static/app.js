@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, localNlp:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -16,6 +16,7 @@ const genres = {
 const roles = {
   planning: "开书与章节规划", draft: "正文粗稿", review: "逻辑与合规审核",
   reader_review: "目标读者模拟", polish: "精修与去 AI 味",
+  reference_analysis: "参考资料分窗分析", reference_synthesis: "学习机制综合", line_edit: "定向行文精修",
   final_review: "独立终审", maintenance: "项目资料更新"
 };
 const $ = (selector) => document.querySelector(selector);
@@ -42,7 +43,7 @@ async function api(path, options = {}) {
   const response = await fetch(path, {headers:{"Content-Type":"application/json"}, ...options});
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(body.detail?.message || body.detail?.code || `HTTP ${response.status}`);
+    throw new Error(typeof body.detail === "string" ? body.detail : (body.detail?.message || body.detail?.code || `HTTP ${response.status}`));
   }
   if (response.status === 204) return null;
   return response.json();
@@ -61,8 +62,8 @@ document.querySelectorAll(".nav-item").forEach(button => button.addEventListener
 document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
 
 async function loadAll() {
-  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), api("/api/references")]);
-  renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences();
+  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.localNlp] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), api("/api/references"), api("/api/learning/mechanisms"), api("/api/settings/local-nlp")]);
+  renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences(); renderLearning(); renderNlpStatus();
 }
 
 function renderReferences() {
@@ -107,8 +108,10 @@ function renderReferenceDetail() {
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="secondary" data-reference-analyze>本地分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地分析</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
+  $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
+  $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
   $("#reference-detail [data-reference-delete]").addEventListener("click", deleteReference);
 }
 
@@ -116,6 +119,7 @@ async function analyzeReference() {
   if (!state.activeReference) return;
   try {
     state.referenceAnalysis = await api(`/api/references/${state.activeReference.id}/analyze`, {method:"POST"});
+    if (state.localNlp?.enabled) await api(`/api/references/${state.activeReference.id}/nlp`, {method:"POST"});
     renderReferenceDetail();
     toast(state.referenceAnalysis.cached ? "已加载本地分析缓存" : "本地分析完成");
   } catch(error) { toast(error.message); }
@@ -133,15 +137,63 @@ async function deleteReference() {
 $("#reference-form").addEventListener("submit", async event => {
   event.preventDefault();
   const file = $("#reference-file").files[0];
-  const text = file ? await file.text() : $("#reference-text").value;
-  const title = $("#reference-title").value.trim() || file?.name.replace(/\.txt$/i, "");
-  if (!text.trim()) return toast("请选择 TXT 文件或粘贴正文");
+  const url = $("#reference-url").value.trim();
+  const extension = file?.name.split(".").pop().toLowerCase();
+  const text = file && extension === "txt" ? await file.text() : $("#reference-text").value;
+  const title = $("#reference-title").value.trim() || file?.name.replace(/\.(txt|docx|pdf)$/i, "") || url;
+  if (!file && !url && !text.trim()) return toast("请选择文档、输入网址或粘贴正文");
   try {
-    const source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste"})});
+    let source;
+    if (url) source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:"url",source_uri:url})});
+    else if (file && extension !== "txt") source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:extension,source_uri:file.name,data_base64:await fileBase64(file)})});
+    else source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste"})});
     event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null;
     await loadAll(); toast("参考资料已导入");
   } catch(error) { toast(error.message); }
 });
+const fileBase64 = file => new Promise((resolve,reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(",")[1]); reader.onerror=reject; reader.readAsDataURL(file); });
+
+async function learnReference() {
+  if (!state.activeReference) return;
+  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.mechanisms=await api("/api/learning/mechanisms"); renderLearning(); toast(`已提炼 ${result.mechanisms.length} 个带证据机制`); }
+  catch(error) { toast(error.message); }
+}
+async function modelLearnReference() { if(!state.activeReference||!confirm("模型深度分析会调用已配置 API，并可能产生费用。继续？"))return; try{toast("模型正在分窗分析...");const result=await api(`/api/references/${state.activeReference.id}/model-learn`,{method:"POST"});state.mechanisms=await api("/api/learning/mechanisms");renderLearning();toast(`深度分析完成，得到 ${result.mechanisms.length} 个候选机制`);}catch(error){toast(error.message);} }
+
+async function loadProjectLearning() {
+  const projectId=$("#learning-project").value;
+  state.projectLearning=projectId ? await api(`/api/projects/${projectId}/learning`) : null;
+  renderLearningArtifacts();
+}
+
+function renderLearning() {
+  const select=$("#learning-project"); if (!select) return;
+  select.innerHTML=state.projects.length ? state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("") : '<option value="">请先创建作品</option>';
+  if (state.activeProject) select.value=state.activeProject.id;
+  const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
+  $("#learning-mechanisms").innerHTML=state.mechanisms.length ? state.mechanisms.map(item=>`<article class="mechanism-item"><h3>${escapeHtml(item.data.name)}</h3><p><strong>事实：</strong>${escapeHtml(item.data.fact)}</p><p><strong>解释：</strong>${escapeHtml(item.data.interpretation)}</p><p><strong>迁移：</strong>${escapeHtml(item.data.transfer_guidance)}</p>${item.evidence?.[0]?`<blockquote class="mechanism-evidence">${escapeHtml(item.evidence[0].excerpt)}</blockquote>`:""}<div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}">确认分析</button><button class="primary" data-mechanism-adopt="${item.id}" ${adopted.has(item.id)?"disabled":""}>${adopted.has(item.id)?"已采纳":"采纳到作品"}</button><button class="secondary" data-mechanism-reject="${item.id}">拒绝</button></div></article>`).join("") : '<p class="skill-meta">分析参考资料后，这里会展示带证据的可迁移机制</p>';
+  document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
+  document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));
+  document.querySelectorAll("[data-mechanism-reject]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismReject,"reject")));
+  if (select.value && !state.projectLearning) loadProjectLearning(); else renderLearningArtifacts();
+}
+async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); state.mechanisms=await api("/api/learning/mechanisms"); renderLearning(); toast(action==="confirm"?"分析已确认":"分析已拒绝"); } catch(error){toast(error.message);} }
+async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
+function renderLearningArtifacts(){ const shell=$("#learning-artifacts"); if(!shell)return; const artifacts=state.projectLearning?.artifacts||[]; shell.innerHTML=artifacts.length?artifacts.map(item=>`<details class="learning-artifact"><summary>${escapeHtml({creative_blueprint:"创作蓝图",prose_baseline:"可执行文笔基线",voice_profiles:"人物声音档案",epistemic_state:"人物认知状态",scene_briefs:"场景简报"}[item.artifact_type]||item.artifact_type)} · 版本 ${item.version}${item.status==="stale"?" · 待复核":""}</summary><pre>${escapeHtml(JSON.stringify(item.data,null,2))}</pre></details>`).join(""):'<p class="skill-meta">采纳机制或建立文笔资料后在此显示</p>'; }
+$("#learning-project").addEventListener("change",async event=>{ state.activeProject=state.projects.find(item=>item.id===event.target.value)||state.activeProject; state.projectLearning=null; await loadProjectLearning(); renderLearning(); });
+const learningProjectId=()=>$("#learning-project").value;
+async function saveLearningArtifact(path,data){const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/${path}`,{method:"PUT",body:JSON.stringify({data})});await loadProjectLearning();toast("已保存为新版本");}catch(error){toast(error.message);}}
+$("#baseline-form").addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.target);await saveLearningArtifact("prose-baseline",{dialogue:form.get("dialogue"),psychology:form.get("psychology"),forbidden_patterns:String(form.get("forbidden")||"").split(/\r?\n/).map(item=>item.trim()).filter(Boolean)});});
+$("#voice-form").addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.target);const current=state.projectLearning?.artifacts?.find(item=>item.artifact_type==="voice_profiles")?.data||{};await saveLearningArtifact("voice-profiles",{...current,[form.get("name")]:{rules:form.get("profile")}});});
+$("#scene-brief-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/scene-briefs`,{method:"POST",body:JSON.stringify({outline:new FormData(event.target).get("outline")})});await loadProjectLearning();toast("场景简报已生成，可继续编辑");}catch(error){toast(error.message);}});
+$("#outline-candidate-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId||!confirm("将调用规划模型生成候选大纲，不会覆盖现有大纲。继续？"))return;try{const result=await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:new FormData(event.target).get("brief")})});toast(`候选大纲已保存：${result.id}`);}catch(error){toast(error.message);}});
+$("#line-edit-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId||!confirm("将调用 line_edit 模型生成候选文本，不会修改正式正文。继续？"))return;const form=new FormData(event.target);try{const result=await api(`/api/projects/${projectId}/learning/model-line-edit`,{method:"POST",body:JSON.stringify({source:form.get("source"),issues:String(form.get("issues")).split(/[,，]/).map(item=>item.trim()).filter(Boolean),locked_facts:[],adjacent_context:""})});const shell=$("#line-edit-result");shell.hidden=false;shell.textContent=result.candidate;toast("精修候选已生成，原文未修改");}catch(error){toast(error.message);}});
+
+function renderNlpStatus(){ if(!state.localNlp)return; $("#nlp-status").textContent=`${state.localNlp.installed?"已安装":"未安装"} · ${state.localNlp.enabled?"已启用":"未启用"} · ${state.localNlp.operation} · ${state.localNlp.download_notice}`; $("#nlp-toggle").textContent=state.localNlp.enabled?"停用":"启用"; }
+async function nlpAction(path,options={method:"POST"}){ try{state.localNlp=await api(path,options);renderNlpStatus();toast("本地 NLP 状态已更新");}catch(error){toast(error.message);} }
+$("#nlp-install").addEventListener("click",()=>nlpAction("/api/settings/local-nlp/install"));
+$("#nlp-uninstall").addEventListener("click",()=>confirm("卸载 LTP 本地分析组件？")&&nlpAction("/api/settings/local-nlp/uninstall"));
+$("#nlp-toggle").addEventListener("click",()=>nlpAction("/api/settings/local-nlp",{method:"PUT",body:JSON.stringify({enabled:!state.localNlp?.enabled})}));
 function renderProjects() {
   const select = $("#active-project");
   select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">尚无作品</option>';

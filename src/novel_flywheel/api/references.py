@@ -1,7 +1,11 @@
+import base64
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
+
+from novel_flywheel.reference_extractors import extract_docx, extract_pdf, fetch_public_url
 
 
 router = APIRouter(prefix="/api/references", tags=["references"])
@@ -11,6 +15,15 @@ class ReferenceImport(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     source_type: Literal["paste", "txt"]
     text: str = Field(min_length=1, max_length=1_000_000)
+
+
+class ExtractedReferenceImport(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    source_type: Literal["docx", "pdf", "url"]
+    text: str | None = Field(default=None, max_length=1_000_000)
+    source_uri: str | None = Field(default=None, max_length=2000)
+    data_base64: str | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 def _library(request: Request):
@@ -41,6 +54,24 @@ def import_reference(payload: ReferenceImport, request: Request) -> dict:
             title=payload.title, text=payload.text, source_type=payload.source_type,
         ))
     except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.post("/import", status_code=status.HTTP_201_CREATED)
+def import_extracted_reference(payload: ExtractedReferenceImport, request: Request) -> dict:
+    try:
+        text, title, source_uri = payload.text, payload.title, payload.source_uri
+        if payload.source_type == "url" and not text:
+            fetched = fetch_public_url(source_uri or "")
+            text, title, source_uri = fetched["text"], title or fetched["title"], fetched["url"]
+        elif not text:
+            raw = base64.b64decode(payload.data_base64 or "", validate=True)
+            text = extract_docx(raw) if payload.source_type == "docx" else extract_pdf(raw)
+        return _public(_library(request).import_text(
+            title=title, text=text or "", source_type=payload.source_type,
+            source_uri=source_uri, warnings=payload.warnings,
+        ))
+    except (ValueError, httpx.HTTPError) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 

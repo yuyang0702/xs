@@ -28,7 +28,7 @@ def test_import_text_is_versioned_and_global_duplicates_reuse_source(tmp_path) -
     ("", "正文", "paste"),
     ("x" * 121, "正文", "paste"),
     ("标题", "  \n", "paste"),
-    ("标题", "正文", "pdf"),
+        ("标题", "正文", "html"),
 ])
 def test_import_text_rejects_invalid_input(tmp_path, title, text, source_type) -> None:
     with pytest.raises(ValueError):

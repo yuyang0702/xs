@@ -49,3 +49,13 @@ def test_reference_api_validates_input_and_missing_sources(tmp_path) -> None:
         "title": "标题", "source_type": "pdf", "text": "正文",
     }).status_code == 422
     assert client.get("/api/references/deadbeef").status_code == 404
+
+
+def test_document_import_endpoint_accepts_extracted_text(tmp_path) -> None:
+    client = client_for(tmp_path)
+    response = client.post("/api/references/import", json={
+        "title": "文档", "source_type": "docx", "text": "提取后的正文",
+        "source_uri": "book.docx", "warnings": [],
+    })
+    assert response.status_code == 201
+    assert response.json()["source_type"] == "docx"

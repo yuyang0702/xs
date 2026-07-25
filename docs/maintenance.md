@@ -30,6 +30,16 @@ The materials view also enumerates existing worldbuilding, location, plot, timel
 
 Reference sources are not project facts and never write StoryState. Pasted text and browser-read UTF-8 TXT content are stored under `data/references/<source-id>/` with immutable version files; SQLite stores titles, hashes, version metadata, and local-analysis results. Identical normalized content resolves to the existing source rather than creating another copy. API responses omit storage paths and expose source text only through the controlled content endpoint.
 
+DOCX extraction uses the standard library; PDF extraction uses `pypdf`; public URLs use bounded `httpx` requests with public-address checks before every redirect. Imported page text remains untrusted data. Scanned PDFs are rejected rather than silently returning empty prose.
+
+The typed graph lives in `learning_nodes`, `learning_edges`, `learning_evidence`, and `learning_revisions`. Project decisions and versioned derivatives live separately in `project_adoptions` and `project_learning_artifacts`. Deleting a source marks graph nodes and existing adoptions for review before deleting source versions. It never rewrites project files.
+
+Active project artifacts are appended by `ProjectStore.load_constraints()` and therefore use the existing planning, draft, review, and polish routes. Stale artifacts are excluded. Candidate outlines and line edits stay below `<project>/learning/`; formal outlines and manuscripts are never direct targets.
+
+`reference_analysis`, `reference_synthesis`, and `line_edit` are normal role bindings with configured fallbacks. Only explicit UI actions call them. Regression examples in `src/novel_flywheel/quality_regression.json` and all automated tests remain provider-free.
+
+Optional LTP lifecycle endpoints are under `/api/settings/local-nlp`. Installation never runs during startup or migration. Enabled analysis launches `novel_flywheel.nlp_worker` as a bounded process, caches results by text/version hash, and returns rule-only fallback metadata on failure.
+
 The `local-editorial` analyzer is deterministic and provider-free. Reports are cached by source version, content hash, analyzer name, and analyzer version. Current findings are advisory `review` items: exact phrase reuse, functional repetition, long dialogue-only runs, unusually regular sentence rhythm, and short checklist-style judgment chains. A source deletion cascades its versions and analysis rows, then removes only its verified directory below the reference root.
 
 No local generative model is installed or supported by this feature. A later optional Chinese NLP backend requires an explicit Settings installation action, runs one CPU analysis job at a time outside the FastAPI process, and must fall back to these standard-library rules when absent or unhealthy.

@@ -248,6 +248,47 @@ CREATE TABLE IF NOT EXISTS reference_analyses(
 );
 CREATE INDEX IF NOT EXISTS idx_reference_analyses_version
   ON reference_analyses(version_id, analyzer, analyzer_version);
+CREATE TABLE IF NOT EXISTS learning_nodes(
+  id TEXT PRIMARY KEY, node_type TEXT NOT NULL, source_id TEXT,
+  project_id TEXT, status TEXT NOT NULL, data_json TEXT NOT NULL,
+  valid_from TEXT, valid_to TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_learning_nodes_scope ON learning_nodes(node_type, source_id, project_id, status);
+CREATE TABLE IF NOT EXISTS learning_edges(
+  id TEXT PRIMARY KEY, edge_type TEXT NOT NULL,
+  from_node_id TEXT NOT NULL REFERENCES learning_nodes(id) ON DELETE CASCADE,
+  to_node_id TEXT NOT NULL REFERENCES learning_nodes(id) ON DELETE CASCADE,
+  data_json TEXT NOT NULL DEFAULT '{}', valid_from TEXT, valid_to TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_learning_edges_from ON learning_edges(from_node_id, edge_type);
+CREATE INDEX IF NOT EXISTS idx_learning_edges_to ON learning_edges(to_node_id, edge_type);
+CREATE TABLE IF NOT EXISTS learning_evidence(
+  id TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES learning_nodes(id) ON DELETE CASCADE,
+  version_id TEXT NOT NULL REFERENCES reference_versions(id) ON DELETE CASCADE,
+  start_offset INTEGER NOT NULL, end_offset INTEGER NOT NULL, excerpt TEXT NOT NULL,
+  confidence REAL NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS learning_revisions(
+  id TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES learning_nodes(id) ON DELETE CASCADE,
+  action TEXT NOT NULL, data_json TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS project_adoptions(
+  id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  node_id TEXT NOT NULL REFERENCES learning_nodes(id), status TEXT NOT NULL,
+  data_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+  UNIQUE(project_id, node_id)
+);
+CREATE TABLE IF NOT EXISTS project_learning_artifacts(
+  id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  artifact_type TEXT NOT NULL, version INTEGER NOT NULL, status TEXT NOT NULL,
+  data_json TEXT NOT NULL, source_hash TEXT NOT NULL, created_at TEXT NOT NULL,
+  UNIQUE(project_id, artifact_type, version)
+);
+CREATE TABLE IF NOT EXISTS learning_feedback(
+  id TEXT PRIMARY KEY, project_id TEXT, subject_type TEXT NOT NULL, subject_id TEXT NOT NULL,
+  action TEXT NOT NULL, data_json TEXT NOT NULL, created_at TEXT NOT NULL
+);
 """
 
 

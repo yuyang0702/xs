@@ -8,13 +8,14 @@ from novel_flywheel.local_editorial import ANALYZER, VERSION, analyze_prose
 
 
 class ReferenceLibrary:
-    SOURCE_TYPES = {"paste", "txt"}
+    SOURCE_TYPES = {"paste", "txt", "docx", "pdf", "url"}
 
     def __init__(self, db: Database, root: Path) -> None:
         self.db = db
         self.root = root.resolve()
 
-    def import_text(self, *, title: str, text: str, source_type: str) -> dict:
+    def import_text(self, *, title: str, text: str, source_type: str,
+                    source_uri: str | None = None, warnings: list[str] | None = None) -> dict:
         title = title.strip()
         normalized = self._normalize(text)
         if not title or len(title) > 120:
@@ -26,13 +27,15 @@ class ReferenceLibrary:
         if existing:
             return self.get(existing["id"])
         source_id = uuid.uuid4().hex
-        self.db.create_reference_source(source_id, title, source_type)
+        self.db.create_reference_source(source_id, title, source_type, source_uri=source_uri)
         try:
             self._write_version(source_id, normalized, digest)
         except Exception:
             self.db.delete_reference_source(source_id)
             raise
-        return self.get(source_id)
+        result = self.get(source_id)
+        result["extraction_warnings"] = warnings or []
+        return result
 
     def add_version(self, source_id: str, text: str) -> dict:
         self._validate_id(source_id)
@@ -69,6 +72,16 @@ class ReferenceLibrary:
 
     def delete(self, source_id: str) -> None:
         self._validate_id(source_id)
+        with self.db.connect() as connection:
+            connection.execute(
+                "UPDATE learning_nodes SET status='source_deleted', updated_at=datetime('now') WHERE source_id=?",
+                (source_id,),
+            )
+            connection.execute(
+                "UPDATE project_adoptions SET status='review_source_deleted', updated_at=datetime('now') "
+                "WHERE node_id IN (SELECT id FROM learning_nodes WHERE source_id=?) AND status='adopted'",
+                (source_id,),
+            )
         if not self.db.delete_reference_source(source_id):
             raise LookupError(f"Reference source not found: {source_id}")
         directory = self._contained(self.root / source_id)

@@ -55,9 +55,13 @@ Short-story polish uses bounded segments with adjacent boundaries, a compact sto
 
 ## Reference learning library
 
-The top-level **学习库** stores reference prose locally and separately from story projects. The first delivery accepts pasted text and UTF-8 TXT files, normalizes line endings, deduplicates identical content by SHA-256, and preserves immutable source versions under the configured data directory. Deleting a reference removes its database records and its contained local source directory; it never changes project materials or manuscripts.
+The top-level **学习库** stores reference prose locally and separately from story projects. It accepts pasted text, UTF-8 TXT, DOCX, text-extractable PDF, and public HTTP/HTTPS pages, deduplicates identical content by SHA-256, and preserves immutable source versions. URL import rejects local/private destinations at every redirect. Scanned-PDF OCR is intentionally not included.
 
-The initial **本地分析** uses deterministic Python rules only. It reports evidenced sentence, paragraph, rhythm, dialogue, repetition, and checklist-judgment findings and caches the result by source hash and analyzer version. It does not call a provider API, assign a popularity score, or modify the imported text. DOCX, PDF, public-URL extraction, the optional user-installed Chinese NLP backend, knowledge-graph synthesis, project recommendations, and line editing remain later approved phases.
+**本地诊断** and **本地提炼** use deterministic Python rules only. **模型深度分析** uses the configured `reference_analysis` and `reference_synthesis` roles only after an explicit confirmation. Typed SQLite nodes, edges, evidence, and user revisions preserve provenance. Recommendations remain proposals until the user adopts them into one project.
+
+Confirmed adoptions create versioned creative blueprints. Project learning also includes executable prose baselines, character voice profiles, epistemic boundaries, and scene briefs; active versions enter the existing planning/drafting/review/polish context, while stale versions are excluded. Character or world edits mark derived artifacts for review without rewriting an outline or manuscript.
+
+Candidate outlines use the existing planning route and are stored below `<project>/learning/candidates/`. Targeted `line_edit` uses its own role and stores candidate JSON below `<project>/learning/line-edits/`. Neither path overwrites formal files. Optional LTP neural NLP is installed, enabled, disabled, or uninstalled explicitly from **模型与 API**; it runs in a separate CPU process and fails open to deterministic rules.
 
 Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks and may target at most 40% of scenes. Invalid or truncated plans stop the correction pass and preserve `best-candidate.md` instead of rewriting the whole manuscript. Exact consecutive duplicate paragraph blocks are removed locally before review.
 

@@ -331,11 +331,13 @@ Commit message: `feat: add local reference learning library`
 
 ## Subsequent Approved Plans
 
-After this slice passes acceptance, write and execute separate plans in this order:
+Completed in the continuation implementation on 2026-07-26:
 
 1. document and safe public-URL import;
-2. local NLP evaluator, Settings installer, CPU worker, cache, and uninstall;
+2. local NLP interface, Settings installer, CPU worker, cache, and uninstall;
 3. evidenced window analysis and typed learning graph;
 4. project recommendation, adoption, blueprint, and candidate outline;
 5. prose baseline, character voice and epistemic state, and scene briefs;
 6. targeted line edit, impact propagation, and feedback evaluation.
+
+The optional LTP package/model installation itself remains an explicit user action, not a migration or test step. Provider-backed analysis and generation are implemented but are never invoked by automated tests.

@@ -126,6 +126,20 @@ button { border-radius:4px; border:1px solid transparent; padding:9px 14px; font
 .reference-source summary { cursor:pointer; font-weight:650; }
 .reference-source pre { max-height:460px; overflow:auto; padding:16px; border:1px solid var(--line); background:#fff; white-space:pre-wrap; overflow-wrap:anywhere; font:13px/1.8 "Microsoft YaHei",sans-serif; }
 @media (max-width:850px) { .learning-layout { grid-template-columns:1fr; }.reference-sidebar { padding-right:0; border-right:0; border-bottom:1px solid var(--line); }.reference-detail { padding-left:0; }.reference-metrics { grid-template-columns:repeat(2,1fr); }.reference-detail > header,.reference-findings article > div { align-items:stretch; flex-direction:column; } }
+.learning-project-panel { margin-top:30px; padding-top:24px; border-top:1px solid var(--line); }
+.learning-project-panel .section-heading label { min-width:240px; }
+.learning-mechanisms { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); }
+.mechanism-item { min-width:0; padding:16px; background:#fff; }
+.mechanism-item h3 { margin-bottom:7px; }.mechanism-item p { margin:6px 0; line-height:1.6; }
+.mechanism-evidence { padding:9px 11px; border-left:3px solid var(--amber); background:#f7f8f6; font-size:12px; }
+.mechanism-actions { display:flex; gap:7px; flex-wrap:wrap; margin-top:12px; }
+.learning-artifacts { margin-top:22px; display:grid; gap:10px; }
+.learning-artifact { padding:14px 0; border-top:1px solid var(--line); }
+.learning-artifact summary { cursor:pointer; font-weight:650; }.learning-artifact pre { margin:10px 0 0; max-height:320px; padding:14px; font-size:12px; }
+.learning-editor { margin-top:22px; padding-top:16px; border-top:1px solid var(--line); }.learning-editor > summary { cursor:pointer; font-weight:650; }
+.learning-editor-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:28px; margin-top:18px; }.learning-editor-grid form { display:grid; align-content:start; gap:11px; padding-top:14px; border-top:1px solid var(--line); }
+@media (max-width:800px) { .learning-mechanisms { grid-template-columns:1fr; }.learning-project-panel .section-heading { align-items:stretch; flex-direction:column; }.learning-project-panel .section-heading label { min-width:0; } }
+@media (max-width:800px) { .learning-editor-grid { grid-template-columns:1fr; } }
 .style-sample-band .section-heading { align-items:start; margin-bottom:12px; }.style-sample-band h2 { margin-bottom:4px; }
 .style-sample-grid { display:grid; grid-template-columns:minmax(320px,1fr) minmax(320px,1fr); gap:28px; }
 .style-sample-inputs { display:grid; gap:12px; }.style-sample-inputs input[type="file"] { padding:8px; }

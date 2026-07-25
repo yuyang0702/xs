@@ -474,11 +474,17 @@ def update_project_material(project_id: str, relative_path: str,
         )
     except OSError:
         impact = None
+    changed_lines = sorted({line.strip() for line in (previous + "\n" + content).splitlines()
+                            if line.strip() and ((line in previous) != (line in content))})
+    learning_impact = request.app.state.learning.mark_material_change(
+        project.id, relative_path, changed_lines or ["项目资料内容已修改"],
+    )
     return {
         "path": relative_path, "group": group_id,
         "hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
         "story_state_revision": revision,
         "material_impact": impact,
+        "learning_impact": learning_impact,
     }
 
 
