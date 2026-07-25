@@ -290,7 +290,10 @@ class WorkflowService:
                         "require_segment_map": segment_count > 1,
                     },
                 }, ensure_ascii=False, indent=2)
-                plan = await self._stage(run_id, run_path, project, "planning", constraints, brief)
+                plan = await self._stage(
+                    run_id, run_path, project, "planning", constraints, brief,
+                    allow_tools=self._planning_uses_tools(state),
+                )
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
                 )
@@ -699,6 +702,10 @@ class WorkflowService:
                 stage="review", metadata={"strategy": "conservative_json_repair"},
             )
             return repaired
+
+    @staticmethod
+    def _planning_uses_tools(state) -> bool:
+        return state.revision > 1
 
     @staticmethod
     def _short_segment_count(target_words: int) -> int:

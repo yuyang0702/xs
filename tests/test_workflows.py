@@ -1565,6 +1565,11 @@ def test_short_story_checkpoint_ignores_incomplete_best_candidate(tmp_path) -> N
 
     assert text == original
     assert source == "draft.md"
+
+
+def test_initial_short_story_planning_skips_empty_memory_tools() -> None:
+    assert WorkflowService._planning_uses_tools(SimpleNamespace(revision=1)) is False
+    assert WorkflowService._planning_uses_tools(SimpleNamespace(revision=2)) is True
 @pytest.mark.asyncio
 async def test_long_manuscript_final_review_audits_every_window_without_planning(tmp_path) -> None:
     db = Database(tmp_path / "app.db")

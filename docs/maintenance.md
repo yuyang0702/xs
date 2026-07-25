@@ -34,6 +34,8 @@ The style-sample application scope is stored in the existing `project.json` as `
 
 The short-story workflow reuses complete planning, draft, and valid review checkpoints after a failed or cancelled run.
 
+Initial short-story planning uses the complete wizard/project brief directly and does not call StoryToolbox while StoryState is still at revision 1. Those lookups are empty before a manuscript has been committed and would add a second provider round without adding evidence. Planning for an established project retains StoryToolbox access once authoritative state has advanced.
+
 Polish receives one bounded manuscript segment, adjacent boundaries, a compact full-story map, authoritative facts, character state, findings, and stage-specific Skills. Ordinary expression polishing cannot change plot events. Runtime rejects abnormal length changes and removal of literal locked facts, preserving the original segment.
 
 Three or more consecutive short sentences or one-sentence paragraphs are reported to polish as rhythm issues. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, suspense, and scene changes. Runtime does not mechanically join sentences, but rejects a polish candidate that makes the short-sentence ratio, longest short-sentence run, or one-sentence-paragraph run materially worse than its source.
