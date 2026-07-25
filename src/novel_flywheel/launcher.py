@@ -7,6 +7,8 @@ from pathlib import Path
 
 import uvicorn
 
+from novel_flywheel.config import configure_runtime_environment
+
 
 def find_free_port(preferred: int = 8765) -> int:
     with socket.socket() as probe:
@@ -30,10 +32,7 @@ def main() -> None:
     port = find_free_port(args.port)
     data_dir = Path(os.environ.get("NOVEL_FLYWHEEL_DATA_DIR", Path.home() / ".novel-flywheel"))
     data_dir.mkdir(parents=True, exist_ok=True)
-    os.environ["NOVEL_FLYWHEEL_DATA_DIR"] = str(data_dir)
-    os.environ["CREWAI_STORAGE_DIR"] = str(data_dir / "crewai" / "storage")
-    os.environ["LOCALAPPDATA"] = str(data_dir / "runtime")
-    os.environ["OTEL_SDK_DISABLED"] = "true"
+    configure_runtime_environment(data_dir)
     url = local_url(port)
     if not args.no_browser:
         threading.Timer(1.2, lambda: webbrowser.open(url)).start()

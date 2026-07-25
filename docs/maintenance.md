@@ -4,6 +4,8 @@
 
 The **模型与 API** page supports in-place updates to a provider's name, protocol, Base URL, and API Key. Provider IDs and model mappings remain stable. Internal authentication, timeout, and extra-header settings are preserved rather than exposed in the ordinary form. A blank API Key during editing preserves the secret already stored in the system credential store.
 
+Provider secrets remain in the Windows credential store. Runtime startup and CrewAI execution must never override `LOCALAPPDATA`: doing so changes the credential-store context and makes existing keys appear missing even though provider rows remain intact. Only `NOVEL_FLYWHEEL_DATA_DIR`, `CREWAI_STORAGE_DIR`, and telemetry settings are scoped by the launcher.
+
 Deleting a provider is permanent and also removes its model mappings and stored secret. Role bindings that use the provider as primary are deleted; bindings that use it only as fallback retain their primary route and clear the fallback fields. These changes do not alter project files or committed manuscripts.
 
 ## Skill classification

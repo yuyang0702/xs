@@ -11,6 +11,7 @@ from typing import Iterator
 
 from novel_flywheel.db import Database
 from novel_flywheel.context_policy import estimate_input_tokens, polish_context, stage_output_budget
+from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
@@ -1635,9 +1636,7 @@ class WorkflowService:
 
     async def _run_in_crewai(self, pipeline):
         self.crewai_data_dir.mkdir(parents=True, exist_ok=True)
-        os.environ["CREWAI_STORAGE_DIR"] = str(self.crewai_data_dir / "storage")
-        os.environ["LOCALAPPDATA"] = str(self.crewai_data_dir)
-        os.environ["OTEL_SDK_DISABLED"] = "true"
+        configure_runtime_environment(self.db.path.parent, self.crewai_data_dir)
         from crewai.flow.flow import Flow, start
 
         class RuntimeFlow(Flow):
