@@ -67,7 +67,6 @@ class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
     INITIAL_POLISH_INPUT_CAP = 120_000
     STRUCTURAL_POLISH_INPUT_CAP = 60_000
-    TOTAL_POLISH_INPUT_CAP = 220_000
 
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
                  skills: SkillGate, crewai_data_dir: Path | None = None,
@@ -902,11 +901,6 @@ class WorkflowService:
             run_path / "outputs" / "polish-checkpoints" / (suffix.strip("-") or "initial")
         )
         round_input_tokens = 0
-        prior_input_tokens = sum(
-            int(event.get("metadata", {}).get("input_tokens", 0) or 0)
-            for event in self.db.list_run_events(run_id)
-            if event["event_type"] == "stage_completed" and event.get("stage") == "polish"
-        )
         round_cap = self._polish_round_input_cap(structural, len(parts))
         for index, part in enumerate(parts, 1):
             group = part_groups[index - 1]
@@ -922,23 +916,18 @@ class WorkflowService:
                     stage="polish", metadata={"segment": index, "route": "checkpoint"},
                 )
                 continue
-            if round_input_tokens >= round_cap or (
-                prior_input_tokens + round_input_tokens >= self.TOTAL_POLISH_INPUT_CAP
-            ):
-                limit = "round" if round_input_tokens >= round_cap else "total"
+            if round_input_tokens >= round_cap:
                 self.db.add_run_event(
                     run_id, "error", "token_budget_exhausted",
                     "Polish input token budget exhausted; stopped before the next model call",
                     stage="polish", metadata={
-                        "limit": limit,
+                        "limit": "round",
                         "round_input_tokens": round_input_tokens,
-                        "total_input_tokens": prior_input_tokens + round_input_tokens,
                         "round_cap": round_cap,
-                        "total_cap": self.TOTAL_POLISH_INPUT_CAP,
                         "next_segment": index,
                     },
                 )
-                raise PolishTokenBudgetError(f"Polish {limit} input token budget exhausted")
+                raise PolishTokenBudgetError("Polish round input token budget exhausted")
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             next_head = parts[index][:800] if index < len(parts) else ""
             local_report = analyze_prose(part)

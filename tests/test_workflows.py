@@ -1009,7 +1009,7 @@ async def test_structural_polish_stops_at_round_input_budget(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_polish_stops_before_call_when_total_input_budget_is_spent(tmp_path) -> None:
+async def test_prior_polish_usage_does_not_block_a_new_bounded_round(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
@@ -1019,7 +1019,7 @@ async def test_polish_stops_before_call_when_total_input_budget_is_spent(tmp_pat
     ))
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
-    gateway = RecordingGateway([])
+    gateway = RecordingGateway(["A" * 500])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("total-budget", project.id, "short-story", status="running")
     db.add_run_event(
@@ -1030,12 +1030,12 @@ async def test_polish_stops_before_call_when_total_input_budget_is_spent(tmp_pat
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
 
-    with pytest.raises(PolishTokenBudgetError, match="total"):
-        await service._polish_short_segments(
-            "total-budget", run_path, project, "constraints", "A" * 500, "{}",
-        )
+    result = await service._polish_short_segments(
+        "total-budget", run_path, project, "constraints", "A" * 500, "{}",
+    )
 
-    assert gateway.roles == []
+    assert result == "A" * 500
+    assert gateway.roles == ["polish"]
 
 
 @pytest.mark.asyncio
