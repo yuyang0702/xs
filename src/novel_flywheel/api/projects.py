@@ -202,6 +202,45 @@ def get_story_state(project_id: str, request: Request) -> dict:
     return {"project_id": state.project_id, "revision": state.revision, "data": state.data}
 
 
+def _character_profile(path: Path) -> dict:
+    text = path.read_text(encoding="utf-8")
+    parts = text.split("---", 2)
+    frontmatter = parts[1] if len(parts) == 3 else ""
+    body = parts[2] if len(parts) == 3 else text
+    fields = {
+        key: value.strip().strip('"\'')
+        for key, value in re.findall(r"(?m)^(name|role|age|status|arc):\s*(.+)$", frontmatter)
+    }
+    tags_match = re.search(r"(?ms)^tags:\s*\n(?P<items>(?:\s+-\s+.*\n?)*)", frontmatter)
+    tags = re.findall(r"(?m)^\s+-\s+(.+)$", tags_match.group("items")) if tags_match else []
+    matches = list(re.finditer(r"(?m)^##\s+(.+)$", body))
+    sections = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        sections.append({"title": match.group(1).strip(), "content": body[match.end():end].strip()})
+    return {**fields, "tags": tags, "sections": sections, "file": path.name}
+
+
+@router.get("/projects/{project_id}/materials")
+def get_project_materials(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    profiles = sorted(
+        (_character_profile(path) for path in (project.path / "characters").glob("*.md")
+         if path.name != "_index.md"),
+        key=lambda item: (item.get("role") != "protagonist", item.get("name", "")),
+    )
+    return {
+        "project": {"id": project.id, "title": project.title, "mode": project.mode,
+                    "genre": project.metadata.get("genre"),
+                    "target_words": project.metadata.get("target_words"),
+                    "premise": project.metadata.get("premise", "")},
+        "characters": profiles,
+    }
+
+
 @router.get("/projects/{project_id}/story-state/history")
 def get_story_state_history(project_id: str, request: Request) -> list[dict]:
     try:

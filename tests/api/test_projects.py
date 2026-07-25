@@ -173,6 +173,35 @@ def test_candidate_publication_rejects_process_text(tmp_path) -> None:
     assert response.json()["detail"]["code"] == "candidate_blocked"
 
 
+def test_project_materials_expose_complete_character_profiles(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Profiles", "mode": "short", "genre": "suspense",
+        "premise": "Seven strangers arrive.", "target_words": 20000,
+    }).json()
+    root = tmp_path / "workspace" / f"profiles-{project['id'][:6]}"
+    (root / "characters" / "hero.md").write_text(
+        '---\nname: "沈砚"\nrole: protagonist\nage: 34\nstatus: alive\n'
+        'tags:\n  - 理性\n  - 疏离\narc: 看清自己\n---\n\n'
+        '## Personality & Traits\n\n冷静而傲慢。\n\n## Voice & Speech Patterns\n\n很少解释。',
+        encoding="utf-8",
+    )
+
+    response = client.get(f"/api/projects/{project['id']}/materials")
+
+    assert response.status_code == 200
+    profile = response.json()["characters"][0]
+    assert profile["name"] == "沈砚"
+    assert profile["tags"] == ["理性", "疏离"]
+    assert profile["sections"][0] == {
+        "title": "Personality & Traits", "content": "冷静而傲慢。",
+    }
+
+
 def test_project_trash_restore_and_permanent_delete_api(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(),

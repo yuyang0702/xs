@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -54,7 +54,10 @@ function showView(name, label) {
   const nav = document.querySelector(`.nav-item[data-view="${name}"]`); if (nav) nav.classList.add("active");
   $(`#${name}`).classList.add("active"); $("#view-title").textContent = label || nav?.textContent || "小说飞轮";
 }
-document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", () => showView(button.dataset.view, button.textContent)));
+document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", async () => {
+  showView(button.dataset.view, button.textContent);
+  if (button.dataset.view === "materials") await renderMaterials();
+}));
 document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
 
 async function loadAll() {
@@ -66,6 +69,9 @@ function renderProjects() {
   select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">尚无作品</option>';
   if (!state.activeProject || !state.projects.some(p => p.id === state.activeProject.id)) state.activeProject = state.projects[0] || null;
   if (state.activeProject) select.value = state.activeProject.id;
+  const materialsSelect = $("#materials-project");
+  materialsSelect.innerHTML = select.innerHTML;
+  if (state.activeProject) materialsSelect.value = state.activeProject.id;
   $("#project-list").innerHTML = state.projects.length ? state.projects.map(p => `<article class="project-item"><h3>${escapeHtml(p.title)}</h3><div class="skill-meta">${p.mode === "short" ? "短篇" : "长篇"} · ${escapeHtml(p.genre)} · ${Number(p.target_words).toLocaleString()} 字</div><div class="project-actions"><button class="secondary" data-continue="${p.id}">继续写作</button><button class="secondary danger-text" data-trash="${p.id}">移入回收站</button></div></article>`).join("") : '<p class="skill-meta">尚无作品</p>';
   document.querySelectorAll("[data-continue]").forEach(button => button.addEventListener("click", () => continueProject(button.dataset.continue)));
   document.querySelectorAll("[data-trash]").forEach(button => button.addEventListener("click", () => trashProject(button.dataset.trash)));
@@ -184,6 +190,40 @@ async function loadStoryState(projectId) {
     renderStoryStateSection();
   } catch(error) { state.storyState=null; $("#story-state-revision").textContent=error.message; renderStoryStateSection(); }
 }
+const materialSectionLabels = {
+  "Appearance":"外貌", "Personality & Traits":"性格与特质", "Backstory":"背景经历",
+  "Motivations & Goals":"动机与目标", "Voice & Speech Patterns":"语言与对白习惯",
+  "Character Arc":"人物弧线", "Timeline":"人物时间线"
+};
+function renderCharacter(profile) {
+  const shell=$("#character-detail");
+  if (!profile) { shell.innerHTML='<p class="skill-meta">暂无人物档案</p>'; return; }
+  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(profile.role || "character")}</p><h2>${escapeHtml(profile.name)}</h2></div><div class="character-facts"><span>${escapeHtml(profile.age || "-")} 岁</span><span>${escapeHtml(profile.status || "-")}</span></div></header><div class="character-tags">${(profile.tags || []).map(tag=>`<span>${escapeHtml(tag)}</span>`).join("")}</div>${profile.arc ? `<section><h3>人物弧线摘要</h3><p>${escapeHtml(profile.arc)}</p></section>` : ""}${(profile.sections || []).map(section=>`<section><h3>${escapeHtml(materialSectionLabels[section.title] || section.title)}</h3><div class="profile-copy">${escapeHtml(section.content)}</div></section>`).join("")}`;
+}
+async function renderMaterials() {
+  const project=state.activeProject;
+  if (!project) {
+    state.materials=null; $("#materials-summary").innerHTML='<span>先创建一部作品。</span>';
+    $("#character-list").innerHTML=""; renderCharacter(null); await loadStoryState(null); return;
+  }
+  $("#materials-project").value=project.id;
+  try {
+    const result=await api(`/api/projects/${project.id}/materials`);
+    if (state.activeProject?.id !== project.id) return;
+    state.materials=result;
+    $("#materials-summary").innerHTML=`<div class="metric"><strong>${escapeHtml(result.project.title)}</strong><span>作品</span></div><div class="metric"><strong>${result.project.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(result.project.target_words || 0).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${result.characters.length}</strong><span>人物档案</span></div>`;
+    const profiles=result.characters || [];
+    if (!profiles.some(item=>item.file===state.activeCharacter)) state.activeCharacter=profiles[0]?.file || null;
+    $("#character-list").innerHTML=profiles.map(item=>`<button class="character-list-item ${item.file===state.activeCharacter ? "active" : ""}" data-character-file="${escapeHtml(item.file)}"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.role || "-")} · ${escapeHtml(item.status || "-")}</span></button>`).join("") || '<p class="skill-meta">暂无人物档案</p>';
+    $("#character-list").querySelectorAll("[data-character-file]").forEach(button=>button.addEventListener("click",()=>{
+      state.activeCharacter=button.dataset.characterFile;
+      $("#character-list").querySelectorAll("[data-character-file]").forEach(item=>item.classList.toggle("active",item.dataset.characterFile===state.activeCharacter));
+      renderCharacter(profiles.find(item=>item.file===state.activeCharacter));
+    }));
+    renderCharacter(profiles.find(item=>item.file===state.activeCharacter));
+    await loadStoryState(project.id);
+  } catch(error) { $("#character-detail").innerHTML=`<p class="error-text">${escapeHtml(error.message)}</p>`; }
+}
 $("#story-state-section").addEventListener("change", renderStoryStateSection);
 $("#story-state-value").addEventListener("input", () => {
   if (!state.storyState) return;
@@ -213,8 +253,8 @@ async function renderActiveProject() {
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadStyleSample(null); await loadStoryState(null); return; }
-  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadStyleSample(p.id), loadStoryState(p.id)]);
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadStyleSample(null); return; }
+  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadStyleSample(p.id)]);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
@@ -231,7 +271,8 @@ async function renderActiveProject() {
     else { $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”"; }
   }
 }
-$("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); renderActiveProject(); });
+$("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
+$("#materials-project").addEventListener("change", async event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; $("#active-project").value=event.target.value; await renderMaterials(); });
 
 function renderWizardDrafts() {
   const drafts = state.wizards.filter(item => item.status === "draft");

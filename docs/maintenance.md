@@ -22,6 +22,8 @@ Existing projects are imported without rewriting their files. The one-time impor
 
 Manual project-data edits update one allowlisted StoryState section through the existing candidate and optimistic revision commit. They are blocked while a project run is active and cannot edit `manuscript_revision`. History remains available for inspection; normal post-write extraction continues automatically.
 
+The sidebar **项目资料** view is separate from the writing workbench. Its character browser reads the existing `characters/*.md` files directly and exposes their frontmatter, appearance, personality, backstory, motivations, voice, arc, and timeline. The dynamic StoryState editor remains versioned below it. Character files and StoryState keep their existing responsibilities; the page does not create a second source of truth.
+
 Candidate quality displays正文汉字数 as Unicode Han characters only (CJK Unified Ideographs, Extension A, and compatibility ideographs). Punctuation, whitespace, digits, Latin text, and Markdown markers are excluded. The existing total `characters` count remains visible as a technical secondary metric and remains available in the API for compatibility.
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
