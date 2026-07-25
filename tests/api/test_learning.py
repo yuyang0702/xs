@@ -56,3 +56,20 @@ def test_local_nlp_status_is_read_only_until_install_clicked(tmp_path) -> None:
     status = client.get("/api/settings/local-nlp").json()
     assert status["backend"] == "ltp"
     assert status["operation"] == "idle"
+
+
+def test_project_analysis_flag_is_reversible(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, _ = project_and_mechanism(client)
+    initial = client.get(f"/api/projects/{project_id}/learning/workflow-analysis")
+    assert initial.json() == {"enabled": False}
+    enabled = client.put(
+        f"/api/projects/{project_id}/learning/workflow-analysis",
+        json={"enabled": True},
+    )
+    assert enabled.json() == {"enabled": True}
+    assert client.get(f"/api/projects/{project_id}/learning/workflow-analysis").json()["enabled"] is True
+    assert client.put(
+        f"/api/projects/{project_id}/learning/workflow-analysis",
+        json={"enabled": False},
+    ).json() == {"enabled": False}

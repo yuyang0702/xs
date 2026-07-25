@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
+from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript
 from novel_flywheel.prose_quality import analyze_prose
 from novel_flywheel.revision import normalize_chinese_prose
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
@@ -166,6 +167,29 @@ def _candidate(project: Project, store: ProjectStore) -> tuple[Path, str] | None
             if path.is_file() and path.resolve().is_relative_to(root):
                 return path, run["id"]
     return None
+
+
+def _candidate_analysis(request: Request, project: Project, run_id: str, text: str) -> dict:
+    path = project.path / "runs" / run_id / "outputs" / "analysis-candidate.json"
+    try:
+        cached = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        cached = {}
+    if analysis_matches(cached, text):
+        return cached
+    enabled = bool(project.metadata.get("optimized_local_review_enabled", False))
+    local_nlp = getattr(request.app.state, "local_nlp", None)
+    references = getattr(request.app.state, "references", None)
+    report = analyze_manuscript(
+        text,
+        nlp_analyze=(local_nlp.analyze if enabled and local_nlp else None),
+        comparison_sources=(
+            references.comparison_sources(project.id)
+            if enabled and references and hasattr(references, "comparison_sources") else []
+        ),
+    )
+    atomic_write(path, json.dumps(report, ensure_ascii=False, indent=2))
+    return report
 
 
 @router.get("/projects")
@@ -652,11 +676,14 @@ def get_candidate(project_id: str, request: Request) -> dict:
         return {"project_id": project.id, "available": False, "diagnostics": None}
     path, run_id = resolved
     text = path.read_text(encoding="utf-8")
+    analysis = _candidate_analysis(request, project, run_id, text)
     return {"project_id": project.id, "available": bool(text.strip()), "run_id": run_id,
             "path": str(path.resolve()), "characters": len(text),
             "han_characters": len(HAN_CHARACTER.findall(text)),
             "effective_words": len(WORD_TOKEN.findall(text)),
-            "diagnostics": analyze_prose(text)}
+            "diagnostics": analyze_prose(text), "analysis": analysis,
+            "analysis_status": "complete" if analysis.get("coverage") == 1.0 else "incomplete",
+            "review_scope": analysis.get("originality", {}).get("scope")}
 
 
 @router.post("/projects/{project_id}/candidate/publish", status_code=status.HTTP_201_CREATED)
@@ -676,6 +703,18 @@ def publish_candidate(project_id: str, request: Request) -> dict:
     if not text or diagnostics["blocking_count"]:
         raise HTTPException(status_code=409, detail={"code": "candidate_blocked",
             "message": "候选稿包含生产说明或正文损坏，不能发布"})
+    analysis = _candidate_analysis(request, project, run_id, text)
+    expected_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    if analysis.get("coverage") != 1.0 or analysis.get("text_hash") != expected_hash:
+        raise HTTPException(status_code=409, detail={"code": "candidate_analysis_stale"})
+    if project.metadata.get("optimized_local_review_enabled"):
+        quality_path = project.path / "runs" / run_id / "outputs" / "quality-report.json"
+        try:
+            quality = json.loads(quality_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            quality = {}
+        if quality.get("terminal_reviewed_hash") != expected_hash:
+            raise HTTPException(status_code=409, detail={"code": "terminal_review_stale"})
     formal = project.path / "manuscript" / "story.md"
     chapter = project.path / "chapters" / "chapter-01.md"
     atomic_write(formal, text)

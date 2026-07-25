@@ -15,6 +15,14 @@ from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.memory import StoryMemory
+from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript, compact_analysis
+from novel_flywheel.incremental_review import (
+    apply_incremental_gate,
+    build_review_baseline,
+    diff_manuscripts,
+    requires_full_review,
+    select_review_scope,
+)
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import OPTIONAL_PROMPT_SKILLS, REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.quality import (
@@ -71,7 +79,8 @@ class WorkflowService:
     def __init__(self, db: Database, projects: ProjectStore, gateway: ModelGateway,
                  skills: SkillGate, crewai_data_dir: Path | None = None,
                  skill_prompts: SkillPromptCompactor | None = None,
-                 constraint_prompts: ConstraintPromptCompactor | None = None) -> None:
+                 constraint_prompts: ConstraintPromptCompactor | None = None,
+                 local_nlp=None, references=None) -> None:
         self.db = db
         self.projects = projects
         self.gateway = gateway
@@ -81,6 +90,30 @@ class WorkflowService:
         self.story_states = StoryStateStore(db)
         self.skill_prompts = skill_prompts or SkillPromptCompactor()
         self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
+        self.local_nlp = local_nlp
+        self.references = references
+
+    def _analyze_manuscript(
+        self, text: str, run_path: Path, project: Project, label: str,
+    ) -> dict:
+        output = run_path / "outputs" / f"analysis-{label}.json"
+        try:
+            cached = json.loads(output.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            cached = {}
+        if analysis_matches(cached, text):
+            return cached
+        enabled = bool(
+            self.projects.get(project.id).metadata.get("optimized_local_review_enabled", False)
+        )
+        nlp_analyze = self.local_nlp.analyze if enabled and self.local_nlp else None
+        sources = self.references.comparison_sources(project.id) if enabled and self.references else []
+        report = analyze_manuscript(
+            text, nlp_analyze=nlp_analyze, comparison_sources=sources,
+        )
+        output.parent.mkdir(parents=True, exist_ok=True)
+        atomic_write(output, json.dumps(report, ensure_ascii=False, indent=2))
+        return report
 
     async def run_short(self, project_id: str, use_crewai: bool = True,
                         run_id: str | None = None) -> dict:
@@ -348,9 +381,12 @@ class WorkflowService:
             }, ensure_ascii=False, indent=2)
             plan = await self._stage(run_id, run_path, project, "planning", constraints, brief)
             draft = await self._stage(run_id, run_path, project, "draft", constraints, plan)
+            draft_analysis = self._analyze_manuscript(draft, run_path, project, "draft")
             review = self._review(await self._stage(
                 run_id, run_path, project, "review", constraints,
-                f"MEMORY:\n{json.dumps(context, ensure_ascii=False)}\n\nDRAFT:\n{draft}",
+                f"MEMORY:\n{json.dumps(context, ensure_ascii=False)}\n\nDRAFT:\n{draft}\n\n"
+                "LOCAL FULL MANUSCRIPT SUMMARY:\n"
+                f"{json.dumps(compact_analysis(draft_analysis), ensure_ascii=False)}",
             ))
             polished, _ = await self._quality_polish(
                 run_id, run_path, project, constraints, draft, review,
@@ -462,6 +498,9 @@ class WorkflowService:
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
                 )
+            draft_analysis = self._analyze_manuscript(
+                draft, run_path, project, "draft",
+            )
             draft_candidate = self.story_states.create_candidate(
                 project.id, run_id, state.revision, "draft",
                 hashlib.sha256(draft.encode("utf-8")).hexdigest(),
@@ -486,7 +525,9 @@ class WorkflowService:
             if review is None:
                 review_input = (
                     f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
-                    f"{reader_sample(draft, project.mode, limit=6000)}"
+                    f"{reader_sample(draft, project.mode, limit=6000)}\n\n"
+                    "LOCAL FULL MANUSCRIPT SUMMARY:\n"
+                    f"{json.dumps(compact_analysis(draft_analysis), ensure_ascii=False)}"
                 )
                 review_text = await self._stage(
                     run_id, run_path, project, "review", constraints, review_input,
@@ -660,6 +701,10 @@ class WorkflowService:
             )
         except (RevisionPlanError, PolishTokenBudgetError) as exc:
             self._halt_quality_revision(run_id, run_path, report, draft, exc)
+        current_analysis = self._analyze_manuscript(
+            polished, run_path, project, "polish",
+        )
+        baseline: dict | None = None
 
         reasons: list[str] = []
         best_polished = polished
@@ -678,7 +723,15 @@ class WorkflowService:
                             f"evidence:\n{json.dumps(failures, ensure_ascii=False)}"
                         )
             try:
-                if project.mode == "short" and len(final_input) > 6000:
+                optimized = bool(project.metadata.get("optimized_local_review_enabled", False))
+                if attempt and optimized and baseline is not None:
+                    final_review, evidence_audit = await self._incremental_manuscript_review(
+                        run_id, run_path, project, constraints, polished,
+                        current_analysis, baseline, review,
+                        suffix=f"-{attempt + 1}",
+                    )
+                    report["final_review_evidence"] = evidence_audit
+                elif project.mode == "short" and len(final_input) > 6000:
                     final_review, evidence_audit = await self._full_manuscript_review(
                         run_id, run_path, project, constraints, final_input, review,
                         suffix=f"-{attempt + 1}" if attempt else "",
@@ -689,6 +742,20 @@ class WorkflowService:
                         run_id, run_path, project, "final_review", constraints, final_input,
                         suffix=f"-{attempt + 1}" if attempt else "", allow_tools=False,
                     ))
+                    evidence_audit = {
+                        "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
+                        "windows": [{"index": 1, "start": 0, "end": len(polished),
+                                     "summary": "single-request complete review"}],
+                    }
+                if attempt == 0:
+                    baseline = build_review_baseline(
+                        polished, current_analysis,
+                        evidence_audit.get("windows", []), final_review,
+                    )
+                    atomic_write(
+                        run_path / "outputs" / "final-review-baseline.json",
+                        json.dumps(baseline, ensure_ascii=False, indent=2),
+                    )
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -737,6 +804,9 @@ class WorkflowService:
             if passed:
                 report["status"] = outcome
                 report["failure_reasons"] = []
+                report["terminal_reviewed_hash"] = hashlib.sha256(
+                    polished.encode("utf-8")
+                ).hexdigest()
                 self._write_quality_report(run_path, report)
                 self.db.add_run_event(
                     run_id, "success", "quality_gate",
@@ -762,6 +832,9 @@ class WorkflowService:
                         run_id, run_path, project, constraints, best_polished,
                         json.dumps(final_review, ensure_ascii=False),
                         suffix=f"-{attempt + 2}", structural=True,
+                    )
+                    current_analysis = self._analyze_manuscript(
+                        polished, run_path, project, f"polish-{attempt + 2}",
                     )
                 except (RevisionPlanError, PolishTokenBudgetError) as exc:
                     self._halt_quality_revision(
@@ -813,6 +886,7 @@ class WorkflowService:
             item["window"] = window["index"]
             item["start"] = window["start"]
             item["end"] = window["end"]
+            item["receipt"] = getattr(raw, "receipt", {})
             evidence.append(item)
             previous_summary = item["summary"]
 
@@ -839,6 +913,9 @@ class WorkflowService:
             "evidence_count": sum(bool(item.get("summary")) for item in evidence),
             "prior_issue_ids": [item["issue_id"] for item in ledger],
             "reconciliations": payload.get("reconciliations", []),
+            "windows": evidence,
+            "adjudication_receipt": getattr(raw_final, "receipt", {}),
+            "review_mode": "full",
         }
         review, gate_reasons = apply_evidence_gate(review, audit)
         audit["gate_reasons"] = gate_reasons
@@ -888,6 +965,116 @@ class WorkflowService:
                 stage="review", metadata={"strategy": "conservative_json_repair"},
             )
             return repaired
+
+    async def _incremental_manuscript_review(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        manuscript: str, analysis: dict, baseline: dict, initial_review: dict,
+        suffix: str = "",
+    ) -> tuple[dict, dict]:
+        changes = diff_manuscripts(
+            baseline["manuscript"], manuscript, baseline["analysis"], analysis,
+        )
+        scope = select_review_scope(baseline, analysis, changes)
+        full, fallback_reasons = requires_full_review(scope, changes, analysis)
+        if full:
+            review, audit = await self._full_manuscript_review(
+                run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+            )
+            audit.update({
+                "review_mode": "full_fallback",
+                "fallback_reasons": fallback_reasons,
+                "incremental_scope": scope,
+            })
+            return review, audit
+
+        selected = set(scope["selected_windows"])
+        evidence = []
+        ledger = baseline.get("issue_ledger", [])
+        baseline_by_index = {
+            item.get("window", item.get("index")): item
+            for item in baseline.get("evidence", [])
+        }
+        for window in analysis.get("windows", []):
+            if window["index"] not in selected:
+                continue
+            prompt = (
+                "INCREMENTAL FINAL REVIEW EVIDENCE. Do not rewrite. Review the current window "
+                "against its first-full-review baseline and the structured local change evidence. "
+                "Return JSON with summary, events, character_states, timeline, promises, and issues.\n\n"
+                f"SELECTION REASONS:\n{json.dumps(scope['reasons'].get(str(window['index']), []), ensure_ascii=False)}\n\n"
+                f"BASELINE EVIDENCE:\n{json.dumps(baseline_by_index.get(window['index'], {}), ensure_ascii=False)}\n\n"
+                f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
+                f"CURRENT WINDOW:\n{window['text']}"
+            )
+            raw = await self._stage(
+                run_id, run_path, project, "final_review", constraints, prompt,
+                suffix=f"{suffix}-incremental-window-{window['index']}", allow_tools=False,
+            )
+            item = self._json_object(raw)
+            summary = item.get("summary")
+            if not isinstance(summary, str) or not summary.strip():
+                raise ValueError(f"Incremental review window {window['index']} has no summary")
+            item.update({
+                "window": window["index"], "start": window["start"], "end": window["end"],
+                "receipt": getattr(raw, "receipt", {}),
+            })
+            evidence.append(item)
+
+        prompt = (
+            "INCREMENTAL FINAL ADJUDICATION. Reconcile every prior issue and judge only whether "
+            "the correction remains globally safe. Return strict quality-review JSON plus "
+            "reconciliations. Set request_full_review=true if evidence is insufficient.\n\n"
+            f"BASELINE REVIEW:\n{json.dumps(baseline.get('review', {}), ensure_ascii=False)}\n\n"
+            f"ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
+            f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
+            f"SELECTED EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
+        )
+        raw = await self._stage(
+            run_id, run_path, project, "final_review", constraints, prompt,
+            suffix=f"{suffix}-incremental-adjudication", allow_tools=False,
+        )
+        payload = self._json_object(raw)
+        if payload.get("request_full_review"):
+            changes["reviewer_requested_full"] = True
+            review, audit = await self._full_manuscript_review(
+                run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+            )
+            audit.update({"review_mode": "full_fallback",
+                          "fallback_reasons": ["reviewer_requested_full"]})
+            return review, audit
+        review = normalize_review(payload)
+        review, gate_reasons = apply_incremental_gate(
+            review, baseline, scope, analysis, payload.get("reconciliations", []),
+        )
+        if gate_reasons:
+            full_review, audit = await self._full_manuscript_review(
+                run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+            )
+            audit.update({"review_mode": "full_fallback", "fallback_reasons": gate_reasons})
+            return full_review, audit
+        full_input = sum(len(item.get("text", "")) for item in analysis.get("windows", []))
+        reviewed_input = sum(len(item.get("text", "")) for item in analysis.get("windows", [])
+                             if item["index"] in selected)
+        audit = {
+            "coverage": 1.0,
+            "review_mode": "incremental",
+            "window_count": len(analysis.get("windows", [])),
+            "reviewed_windows": len(evidence),
+            "selected_windows": sorted(selected),
+            "selection_reasons": scope["reasons"],
+            "windows": evidence,
+            "reconciliations": payload.get("reconciliations", []),
+            "estimated_full_input_characters": full_input,
+            "reviewed_input_characters": reviewed_input,
+            "estimated_saved_input_characters": max(0, full_input - reviewed_input),
+            "adjudication_receipt": getattr(raw, "receipt", {}),
+        }
+        atomic_write(
+            run_path / "outputs" / f"incremental-review{suffix}.json",
+            json.dumps({"changes": changes, "scope": scope, "audit": audit},
+                       ensure_ascii=False, indent=2),
+        )
+        return review, audit
 
     @staticmethod
     def _planning_uses_tools(state) -> bool:
@@ -1309,12 +1496,21 @@ class WorkflowService:
                 polished_part = part
             polished_part = polished_part.strip()
             polished_parts.append(polished_part)
+            change_evidence = diff_manuscripts(
+                part, polished_part,
+                analyze_manuscript(part, nlp_analyze=None),
+                analyze_manuscript(polished_part, nlp_analyze=None),
+            )
             if accepted:
-                self._save_polish_checkpoint(checkpoint_root, index, part, polished_part)
+                self._save_polish_checkpoint(
+                    checkpoint_root, index, part, polished_part,
+                    change_evidence=change_evidence,
+                )
             elif rhythm_retried:
                 self._save_polish_checkpoint(
                     checkpoint_root, index, part, part,
                     status="preserved_after_retry", retry_signature=retry_signature,
+                    change_evidence=change_evidence,
                 )
         restored_groups: list[str] = []
         for group in range(1, len(original_parts) + 1):
@@ -1830,12 +2026,14 @@ class WorkflowService:
     @staticmethod
     def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str,
                                 status: str = "accepted",
-                                retry_signature: str | None = None) -> None:
+                                retry_signature: str | None = None,
+                                change_evidence: dict | None = None) -> None:
         atomic_write(root / f"part-{index:02d}.json", json.dumps({
             "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
             "polished": polished,
             "status": status,
             "retry_signature": retry_signature,
+            "change_evidence": change_evidence or {"ranges": [], "changed_ratio": 0.0},
         }, ensure_ascii=False, indent=2))
 
     def _post_write_maintenance(self, run_id: str, project: Project) -> None:
