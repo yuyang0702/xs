@@ -100,6 +100,27 @@ class ProjectStore:
         self._write_json(project.path / "project.json", metadata)
         return Project(project.id, project.title, project.mode, project.path, metadata)
 
+    def set_market_baseline_selection(
+        self, project_id: str, *, enabled: bool, key: dict | None,
+    ) -> Project:
+        project = self.get(project_id)
+        metadata = {
+            **project.metadata,
+            "market_baseline_enabled": bool(enabled),
+            "market_baseline_key": key if enabled else None,
+        }
+        self._write_json(project.path / "project.json", metadata)
+        return Project(project.id, project.title, project.mode, project.path, metadata)
+
+    def active_learning_data(self, project_id: str, artifact_type: str) -> dict | None:
+        project = self.get(project_id)
+        path = project.path / "learning" / f"{artifact_type}.json"
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None
+        return value.get("data") if value.get("status") == "active" else None
+
     def trash(self, project_id: str) -> dict:
         row = self.db.get_project(project_id)
         if row is None:
@@ -177,6 +198,7 @@ class ProjectStore:
         learning_root = project.path / "learning"
         labels = {
             "creative_blueprint": "Confirmed Creative Blueprint",
+            "market_baseline": "Advisory Market Baseline",
             "short_causal_chain": "Short Story Causal Chain",
             "prose_baseline": "Executable Prose Baseline",
             "voice_profiles": "Character Voice Profiles",

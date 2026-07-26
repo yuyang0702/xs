@@ -75,6 +75,8 @@ Local mechanisms now require a located trigger excerpt, structural position, tra
 
 Rejected mechanisms disappear from the default candidate view immediately after rejection. The mechanism-status selector can show rejected items or all items for audit; rejected items remain read-only and cannot be confirmed, adopted, or rejected a second time.
 
+Local extraction uses `learning-window-v2`: it scans the complete source in sentence/paragraph-safe 3,000-5,000 character windows, reports coverage, folds repeated mechanisms, and keeps every located evidence occurrence behind expandable details. Rejected mechanisms can be permanently deleted individually or in a batch only when no project has adopted them; adopted records and source TXT files are protected.
+
 Reference metadata shows an explicit saved/dirty/saving/error state. A real change to platform, content type, or related project marks mechanisms already adopted from that source as requiring reconfirmation and marks the affected creative blueprint stale. Saving identical metadata is a no-op. Reconfirmation is explicit; metadata edits never rewrite formal prose.
 
 **本地诊断** and **本地提炼** use deterministic Python rules only. **模型深度分析** uses the configured `reference_analysis` and `reference_synthesis` roles only after an explicit confirmation. Typed SQLite nodes, edges, evidence, and user revisions preserve provenance. Recommendations remain proposals until the user adopts them into one project.
@@ -122,6 +124,10 @@ project relationship.
 Refreshing a ranking updates the market history attached to confirmed references. It does not
 change reference text, user metadata, originality results, model analysis, final review, or
 accepted/rejected decisions.
+
+Confirmed ranking-linked references also form local cohort baselines by platform, ranking, category, and length. Fewer than five works are labelled insufficient, five to nine preliminary, and ten or more advisory. A wizard-selected baseline is saved as a versioned project learning artifact and enters planning and `manuscript-analysis-v2`; deviations are suggestions only and never block a coherent manuscript.
+
+Candidate quality now includes a hash-bound narrative ledger for explicit questions, promises, setup/payoff candidates, and scene state changes. Important unresolved semantic candidates are included in the existing final-review evidence; no new model role is introduced. Revision issues use stable content-derived IDs, revision tasks can carry those IDs, and incremental final review must reconcile every prior issue as `resolved`, `unresolved`, or `uncertain`. Changed relation endpoints are reviewed together; broad, ambiguous, structural, or uncertain changes retain the full-manuscript fallback.
 
 The feature only reads public ranking markup. It does not store credentials or cookies, read
 member-only text, or bypass access controls. Its conclusions describe the captured platform

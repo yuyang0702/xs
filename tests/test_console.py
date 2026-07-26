@@ -82,10 +82,20 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="market-work-mode"' in html
     assert 'id="market-rank-heading"' in html
     assert 'id="market-work-pagination"' in html
+    assert 'id="market-baseline-cohort"' in html
+    assert 'id="market-baseline-detail"' in html
     assert 'value="grouped"' in html
     assert 'value="combined"' in html
     assert "不代表全网市场" in html
     assert 'id="reference-form"' in html
+
+
+def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    assert "叙事账本" in script
+    assert "问题返修台账" in script
     assert 'id="reference-list"' in html
     assert 'id="reference-detail"' in html
     assert 'id="reference-url"' in html
@@ -133,6 +143,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "market-ranking-toggle" in script
     assert "marketWorkPage" in script
     assert "MARKET_WORK_PAGE_SIZE" in script
+    assert "loadMarketBaseline" in script
     assert "updateMarketWorkLength" not in script
     assert "/api/market/refresh" in script
     assert "data-market-link" in script
@@ -146,6 +157,11 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "formatLocalTimestamp(r.created_at)" in script
     assert "formatLocalTimestamp(item.created_at, true)" in script
     assert "formatLocalTimestamp(item.trashed_at)" in script
+    assert "learningReport" in script
+    assert "全文覆盖率" in script
+    assert "data-mechanism-delete" in script
+    assert "deleteRejectedMechanisms" in script
+    assert "展开全部证据" in script
     assert "const latestRun = runs[0]" in script
     assert "showRunDetail(await api(`/api/runs/${latestRun.id}`))" in script
     assert "continueProject(button.dataset.continue)" in script

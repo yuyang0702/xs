@@ -28,6 +28,69 @@ def test_analysis_creates_evidenced_mechanisms_and_reuses_windows(tmp_path) -> N
     assert second["cached_windows"] == second["window_count"]
 
 
+def test_reference_windows_cover_single_line_text_without_splitting_sentences(tmp_path) -> None:
+    _db, library, _projects, system = setup_system(tmp_path)
+    sentences = [f"第{index}次尝试后，他决定继续追查真相。" for index in range(520)]
+    text = "".join(sentences)
+    source = library.import_text(title="单行长文", source_type="paste", text=text)
+
+    result = system.analyze_reference(source["id"])
+    windows = system._windows(text)
+
+    assert result["window_count"] > 1
+    assert result["analyzed_windows"] == result["window_count"]
+    assert result["coverage_percent"] == 100.0
+    for window in windows[:-1]:
+        assert window["text"].endswith(("。", "！", "？", "!", "?"))
+        assert 3000 <= len(window["text"]) <= 5000
+
+
+def test_local_extraction_folds_repeated_mechanism_and_preserves_all_evidence(tmp_path) -> None:
+    _db, library, _projects, system = setup_system(tmp_path)
+    text = "\n\n".join([
+        "他决定进入废弃医院，寻找失踪的朋友。",
+        "调查受阻后，他决定更换身份继续追查。",
+        "知道真相以后，他决定拒绝复活仪式。",
+    ])
+    source = library.import_text(title="多处选择", source_type="paste", text=text)
+
+    result = system.analyze_reference(source["id"])
+    matching = [item for item in result["mechanisms"] if "状态变化" in item["data"]["name"]]
+
+    assert len(matching) == 1
+    assert len(matching[0]["evidence"]) == 3
+    assert matching[0]["data"]["occurrence_count"] == 3
+    assert matching[0]["data"]["positions"] == sorted(matching[0]["data"]["positions"])
+
+
+def test_only_rejected_unadopted_mechanisms_can_be_deleted(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    source = library.import_text(title="删除候选", source_type="paste", text="他决定推门寻找真相。")
+    node = system.analyze_reference(source["id"])["mechanisms"][0]
+
+    with __import__("pytest").raises(ValueError, match="仅能删除已拒绝"):
+        system.delete_rejected_nodes([node["id"]])
+
+    system.revise_node(node["id"], "reject", {})
+    deleted = system.delete_rejected_nodes([node["id"]])
+    assert deleted == {"deleted_ids": [node["id"]], "skipped": []}
+    with __import__("pytest").raises(LookupError):
+        system.get_node(node["id"])
+
+    project = projects.create(ProjectCreate(
+        title="已采纳保护", mode="short", genre="悬疑", premise="测试", target_words=10_000,
+    ))
+    protected = system._save_node("mechanism", {
+        "key": "protected", "name": "保护机制", "confidence": 0.9,
+    }, source_id=source["id"], status="confirmed")
+    system.adopt(project.id, protected["id"])
+    system.revise_node(protected["id"], "reject", {})
+
+    blocked = system.delete_rejected_nodes([protected["id"]])
+    assert blocked["deleted_ids"] == []
+    assert blocked["skipped"] == [{"id": protected["id"], "reason": "已被作品采纳"}]
+
+
 def test_adoption_requires_confirmation_and_never_overwrites_outline(tmp_path) -> None:
     _db, library, projects, system = setup_system(tmp_path)
     project = projects.create(ProjectCreate(
@@ -146,6 +209,22 @@ def test_active_learning_artifacts_join_existing_constraint_path(tmp_path) -> No
     constraints = projects.load_constraints(project.id)
     assert "Executable Prose Baseline" in constraints
     assert "每次回应都改变关系或信息" in constraints
+
+
+def test_active_market_baseline_is_advisory_planning_context(tmp_path) -> None:
+    _db, _library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="市场参考", mode="short", genre="悬疑", premise="测试", target_words=10_000,
+    ))
+    system.save_artifact(project.id, "market_baseline", {
+        "sample_count": 12, "confidence_level": "advisory",
+        "boundary": "只提供建议，不是质量门槛",
+    })
+
+    constraints = projects.load_constraints(project.id)
+
+    assert "Advisory Market Baseline" in constraints
+    assert "只提供建议，不是质量门槛" in constraints
 
 
 def test_short_causal_chain_is_project_artifact_and_constraint(tmp_path) -> None:

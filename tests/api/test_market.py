@@ -82,3 +82,24 @@ def test_market_api_updates_and_filters_length_type(tmp_path) -> None:
     reset = client.put("/api/market/works/zhihu:one/length", json={"length_type": None})
     assert reset.status_code == 200
     assert reset.json()["length_type"] == "unknown"
+
+
+def test_market_api_exposes_confirmed_reference_cohort_baseline(tmp_path) -> None:
+    client = client_for(tmp_path)
+    client.post("/api/market/refresh", json={"source_id": "zhihu-salt"})
+    client.put("/api/market/works/zhihu:one/length", json={"length_type": "short"})
+    reference = client.post("/api/references", json={
+        "title": "循环故事", "source_type": "txt",
+        "text": "为什么第一天会重新开始？他决定调查，最终真相揭晓。",
+        "platform": "知乎", "content_type": "popular_sample",
+    }).json()
+    client.put(f"/api/market/references/{reference['id']}/link", json={"work_id": "zhihu:one"})
+    client.post(f"/api/references/{reference['id']}/learn")
+
+    cohorts = client.get("/api/market/baselines").json()
+    assert cohorts[0]["sample_count"] == 1
+    assert cohorts[0]["confidence_level"] == "insufficient"
+    baseline = client.get("/api/market/baseline", params=cohorts[0]["key"]).json()
+    assert baseline["sample_count"] == 1
+    assert baseline["mechanisms"]
+    assert "不代表爆款原因" in baseline["boundary"]

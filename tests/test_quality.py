@@ -6,9 +6,24 @@ from novel_flywheel.quality import (
     quality_outcome,
     reader_sample,
     review_windows,
+    issue_ledger,
     apply_evidence_gate,
     select_route,
 )
+
+
+def test_issue_ledger_ids_are_stable_when_issue_order_changes() -> None:
+    first = {"category": "story", "severity": "major", "evidence": "门没有锁。", "action": "补足开门条件"}
+    second = {"category": "ending", "severity": "medium", "evidence": "承诺未兑现。", "action": "回应开篇问题"}
+
+    original = issue_ledger([first, second])
+    reordered = issue_ledger([second, first])
+
+    assert original[0]["issue_id"] == reordered[1]["issue_id"]
+    assert original[1]["issue_id"] == reordered[0]["issue_id"]
+    assert original[0]["status"] == "open"
+    assert original[0]["repair_goal"] == "补足开门条件"
+    assert original[0]["source"] == "final_review"
 
 
 def test_review_windows_cover_full_text_with_overlap() -> None:

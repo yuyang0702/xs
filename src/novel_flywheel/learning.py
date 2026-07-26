@@ -13,7 +13,7 @@ from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.storage import atomic_write
 
 
-WINDOW_VERSION = "learning-window-v1"
+WINDOW_VERSION = "learning-window-v2"
 
 
 class LearningSystem:
@@ -29,7 +29,7 @@ class LearningSystem:
         text = self.references.read_text(source_id, version["id"])
         windows = self._windows(text)
         cached = 0
-        mechanisms = []
+        mechanisms_by_id: dict[str, dict] = {}
         for window in windows:
             digest = self._hash(WINDOW_VERSION + "\0" + window["text"])
             node = self._node_by_key("source_window", source_id, digest)
@@ -43,17 +43,30 @@ class LearningSystem:
                 candidates = self._candidate_mechanisms(
                     window["text"], window["start"], len(text), source.get("content_type", "reference_work"),
                 )
-                for index, (data, evidence) in enumerate(candidates):
-                    mechanism = self._save_node("mechanism", {
-                        "key": f"{digest}:mechanism:{index}", **data,
-                        "review_state": "proposal",
-                    }, source_id=source_id, status="proposed")
-                    self._save_edge("abstracts_to", node["id"], mechanism["id"])
-                    self._save_evidence(mechanism["id"], version["id"], evidence)
-            mechanisms.extend(self._mechanisms_for_window(node["id"]))
+                for data, evidence in candidates:
+                    mechanism_key = self._hash(
+                        f"{WINDOW_VERSION}\0{version['id']}\0{data['name']}"
+                    )
+                    mechanism = self._node_by_key("mechanism", source_id, mechanism_key)
+                    if mechanism is None:
+                        mechanism = self._save_node("mechanism", {
+                            "key": mechanism_key, **data,
+                            "review_state": "proposal",
+                        }, source_id=source_id, status="proposed")
+                    self._save_edge_once("abstracts_to", node["id"], mechanism["id"])
+                    self._save_evidence_once(mechanism["id"], version["id"], evidence)
+            for mechanism in self._mechanisms_for_window(node["id"]):
+                mechanisms_by_id[mechanism["id"]] = mechanism
+        for mechanism_id in list(mechanisms_by_id):
+            mechanism = self._refresh_mechanism_evidence_summary(mechanism_id, len(text))
+            mechanisms_by_id[mechanism_id] = mechanism
+        covered = self._coverage_length(windows, len(text))
         return {
             "source_id": source_id, "version_id": version["id"], "window_count": len(windows),
-            "cached_windows": cached, "mechanisms": mechanisms,
+            "analyzed_windows": len(windows), "cached_windows": cached,
+            "coverage_percent": round(covered / max(1, len(text)) * 100, 2),
+            "coverage_ranges": self._merge_ranges([(item["start"], item["end"]) for item in windows]),
+            "mechanisms": list(mechanisms_by_id.values()),
         }
 
     async def model_analyze_reference(self, source_id: str) -> dict:
@@ -152,6 +165,35 @@ class LearningSystem:
                 "UPDATE learning_nodes SET status=?, updated_at=datetime('now') WHERE id=?", (status, node_id),
             )
         return self.get_node(node_id)
+
+    def delete_rejected_nodes(self, node_ids: list[str]) -> dict:
+        unique_ids = list(dict.fromkeys(node_ids))
+        if not unique_ids:
+            raise ValueError("至少选择一条已拒绝机制")
+        deleted_ids: list[str] = []
+        skipped: list[dict[str, str]] = []
+        with self.db.connect() as connection:
+            for node_id in unique_ids:
+                row = connection.execute(
+                    "SELECT node_type,status FROM learning_nodes WHERE id=?", (node_id,),
+                ).fetchone()
+                if not row:
+                    skipped.append({"id": node_id, "reason": "记录不存在"})
+                    continue
+                if row["node_type"] != "mechanism" or row["status"] != "rejected":
+                    if len(unique_ids) == 1:
+                        raise ValueError("仅能删除已拒绝的候选机制")
+                    skipped.append({"id": node_id, "reason": "不是已拒绝机制"})
+                    continue
+                adoption = connection.execute(
+                    "SELECT 1 FROM project_adoptions WHERE node_id=? LIMIT 1", (node_id,),
+                ).fetchone()
+                if adoption:
+                    skipped.append({"id": node_id, "reason": "已被作品采纳"})
+                    continue
+                connection.execute("DELETE FROM learning_nodes WHERE id=?", (node_id,))
+                deleted_ids.append(node_id)
+        return {"deleted_ids": deleted_ids, "skipped": skipped}
 
     def get_node(self, node_id: str) -> dict:
         with self.db.connect() as connection:
@@ -460,6 +502,15 @@ class LearningSystem:
                 (uuid.uuid4().hex, edge_type, from_id, to_id, json.dumps(data or {}, ensure_ascii=False)),
             )
 
+    def _save_edge_once(self, edge_type: str, from_id: str, to_id: str) -> None:
+        with self.db.connect() as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM learning_edges WHERE edge_type=? AND from_node_id=? AND to_node_id=?",
+                (edge_type, from_id, to_id),
+            ).fetchone()
+        if not exists:
+            self._save_edge(edge_type, from_id, to_id)
+
     def _save_evidence(self, node_id: str, version_id: str, evidence: dict) -> None:
         with self.db.connect() as connection:
             connection.execute(
@@ -467,6 +518,34 @@ class LearningSystem:
                 (uuid.uuid4().hex, node_id, version_id, evidence["start"], evidence["end"],
                  evidence["excerpt"], 0.62),
             )
+
+    def _save_evidence_once(self, node_id: str, version_id: str, evidence: dict) -> None:
+        with self.db.connect() as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM learning_evidence WHERE node_id=? AND version_id=? "
+                "AND start_offset=? AND end_offset=?",
+                (node_id, version_id, evidence["start"], evidence["end"]),
+            ).fetchone()
+        if not exists:
+            self._save_evidence(node_id, version_id, evidence)
+
+    def _refresh_mechanism_evidence_summary(self, node_id: str, total: int) -> dict:
+        with self.db.connect() as connection:
+            row = connection.execute("SELECT * FROM learning_nodes WHERE id=?", (node_id,)).fetchone()
+            evidence = connection.execute(
+                "SELECT start_offset,end_offset,excerpt,confidence FROM learning_evidence "
+                "WHERE node_id=? ORDER BY start_offset", (node_id,),
+            ).fetchall()
+            data = json.loads(row["data_json"])
+            data["occurrence_count"] = len(evidence)
+            data["positions"] = [round(item["start_offset"] / max(1, total) * 100, 1) for item in evidence]
+            connection.execute(
+                "UPDATE learning_nodes SET data_json=?,updated_at=datetime('now') WHERE id=?",
+                (json.dumps(data, ensure_ascii=False), node_id),
+            )
+        result = self.get_node(node_id)
+        result["evidence"] = [dict(item) for item in evidence]
+        return result
 
     def _node_by_key(self, node_type: str, source_id: str, key: str):
         with self.db.connect() as connection:
@@ -503,24 +582,41 @@ class LearningSystem:
         return value
 
     @staticmethod
-    def _windows(text: str, target: int = 5000, overlap: int = 500) -> list[dict]:
-        paragraphs = re.split(r"\n\s*\n", text)
-        windows, current, start = [], "", 0
-        cursor = 0
-        for paragraph in paragraphs:
-            located = text.find(paragraph, cursor)
-            cursor = located + len(paragraph)
-            if current and len(current) + len(paragraph) + 2 > target:
-                windows.append({"index": len(windows) + 1, "start": start, "end": start + len(current), "text": current})
-                tail = current[-overlap:]
-                start = start + len(current) - len(tail)
-                current = tail + "\n\n" + paragraph
+    def _windows(text: str, target: int = 4000, overlap: int = 400) -> list[dict]:
+        if not text:
+            return []
+        sentence_ends = [match.end() for match in re.finditer(r"[。！？!?]+(?:[”’\"']|\s)*", text)]
+        paragraph_ends = [match.end() for match in re.finditer(r"\n\s*\n", text)]
+        boundaries = sorted(set(sentence_ends + paragraph_ends + [len(text)]))
+        windows: list[dict] = []
+        start = 0
+        while start < len(text):
+            if len(text) - start <= 5000:
+                windows.append({
+                    "index": len(windows) + 1, "start": start,
+                    "end": len(text), "text": text[start:],
+                })
+                break
+            preferred = [value for value in boundaries if start + 3000 <= value <= start + 5000]
+            if preferred:
+                paragraph_choices = [value for value in paragraph_ends if value in preferred]
+                end = max(paragraph_choices) if paragraph_choices else max(preferred)
             else:
-                if not current:
-                    start = max(0, located)
-                current = current + ("\n\n" if current else "") + paragraph
-        if current:
-            windows.append({"index": len(windows) + 1, "start": start, "end": start + len(current), "text": current})
+                later = next((value for value in boundaries if value > start), len(text))
+                end = min(later, start + 5000)
+                if end < len(text) and end not in boundaries:
+                    before = [value for value in boundaries if start < value <= end]
+                    end = max(before) if before else end
+            if end <= start:
+                end = min(len(text), start + 5000)
+            windows.append({
+                "index": len(windows) + 1, "start": start, "end": end, "text": text[start:end],
+            })
+            if end >= len(text):
+                break
+            overlap_candidates = [value for value in boundaries if start < value <= end - overlap]
+            next_start = max(overlap_candidates) if overlap_candidates else max(start + 1, end - overlap)
+            start = next_start
         return windows
 
     @staticmethod
@@ -558,28 +654,47 @@ class LearningSystem:
         sentences = list(re.finditer(r"[^。！？?!\n]+[。！？?!]?", text))
         seen = set()
         for pattern, name, effect in rules:
-            sentence = next((item for item in sentences if re.search(pattern, item.group())), None)
-            if sentence is None or name in seen:
-                continue
-            seen.add(name)
-            absolute = base + sentence.start()
-            ratio = absolute / max(1, total)
-            position = "开头" if ratio < 0.15 else "结尾" if ratio > 0.85 else "中段"
-            excerpt = sentence.group().strip()
-            data = {
-                "name": name,
-                "fact": f"{position}存在可定位的触发句段",
-                "interpretation": f"该句段主要产生{effect}",
-                "transfer_guidance": "保留触发条件、状态变化和后果链，替换人物、设定、措辞及具体情节",
-                "incompatible_conditions": ["没有新增信息、状态变化或后果时不采用"],
-                "structural_position": position,
-                "confidence": 0.68,
-            }
-            evidence = {
-                "start": absolute, "end": absolute + len(excerpt), "excerpt": excerpt,
-            }
-            candidates.append((data, evidence))
+            matches = [item for item in sentences if re.search(pattern, item.group())]
+            for sentence in matches:
+                identity = (name, sentence.start(), sentence.end())
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                absolute = base + sentence.start()
+                ratio = absolute / max(1, total)
+                position = "开头" if ratio < 0.15 else "结尾" if ratio > 0.85 else "中段"
+                excerpt = sentence.group().strip()
+                data = {
+                    "name": name,
+                    "fact": f"{position}存在可定位的触发句段",
+                    "interpretation": f"该句段主要产生{effect}",
+                    "transfer_guidance": "保留触发条件、状态变化和后果链，替换人物、设定、措辞及具体情节",
+                    "incompatible_conditions": ["没有新增信息、状态变化或后果时不采用"],
+                    "structural_position": position,
+                    "confidence": 0.68,
+                }
+                evidence = {
+                    "start": absolute, "end": absolute + len(excerpt), "excerpt": excerpt,
+                }
+                candidates.append((data, evidence))
         return candidates
+
+    @staticmethod
+    def _merge_ranges(ranges: list[tuple[int, int]]) -> list[dict[str, int]]:
+        merged: list[list[int]] = []
+        for start, end in sorted(ranges):
+            if not merged or start > merged[-1][1]:
+                merged.append([start, end])
+            else:
+                merged[-1][1] = max(merged[-1][1], end)
+        return [{"start": start, "end": end} for start, end in merged]
+
+    @classmethod
+    def _coverage_length(cls, windows: list[dict], total: int) -> int:
+        return sum(
+            item["end"] - item["start"]
+            for item in cls._merge_ranges([(window["start"], window["end"]) for window in windows])
+        ) if total else 0
 
     @staticmethod
     def _evidence(text: str, base: int) -> dict:

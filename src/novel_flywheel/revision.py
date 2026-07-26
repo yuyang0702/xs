@@ -164,7 +164,12 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int,
         valid_segments = sorted({number for number in segments
                                  if isinstance(number, int) and 1 <= number <= segment_count})
         if valid_segments:
-            tasks.append({"segments": valid_segments, "instruction": instruction.strip()})
+            task = {"segments": valid_segments, "instruction": instruction.strip()}
+            issue_ids = sorted({issue_id.strip() for issue_id in item.get("issue_ids", [])
+                                if isinstance(issue_id, str) and issue_id.strip()})
+            if issue_ids:
+                task["issue_ids"] = issue_ids
+            tasks.append(task)
     if not tasks:
         raise ValueError("Revision plan has no actionable task")
     target_segments = sorted({number for task in tasks for number in task["segments"]})

@@ -59,6 +59,28 @@ def test_wizard_rejects_unknown_answer_field(tmp_path) -> None:
     assert response.status_code == 400
 
 
+def test_wizard_confirm_rejects_invalid_market_baseline_key(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    wizard = client.post("/api/wizards", json={"mode": "short"}).json()
+    response = client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "短篇", "policy": "locked"},
+        "genre": {"value": "悬疑", "policy": "locked"},
+        "premise": {"value": "一扇门。", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+        "market_baseline_enabled": {"value": "enabled", "policy": "suggestible"},
+        "market_baseline_key": {"value": "not-json", "policy": "suggestible"},
+    }})
+    assert response.status_code == 200
+
+    confirmed = client.post(f"/api/wizards/{wizard['id']}/confirm")
+
+    assert confirmed.status_code == 400
+    assert confirmed.json()["detail"]["code"] == "invalid_market_baseline"
+
+
 def test_initialize_skills_returns_tracked_background_run(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],

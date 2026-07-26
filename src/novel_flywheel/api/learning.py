@@ -63,6 +63,10 @@ class WorkflowAnalysisPayload(BaseModel):
     enabled: bool
 
 
+class DeleteMechanismsPayload(BaseModel):
+    node_ids: list[str] = Field(min_length=1, max_length=500)
+
+
 def _learning(request: Request):
     return request.app.state.learning
 
@@ -106,6 +110,11 @@ def list_mechanisms(
     view: Literal["active", "rejected", "all"] = "active",
 ) -> list[dict]:
     return _learning(request).list_mechanisms(source_id, view)
+
+
+@router.delete("/learning/mechanisms")
+def delete_mechanisms(payload: DeleteMechanismsPayload, request: Request) -> dict:
+    return _handle(lambda: _learning(request).delete_rejected_nodes(payload.node_ids))
 
 
 @router.post("/learning/nodes/{node_id}/revisions")

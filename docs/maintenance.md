@@ -187,11 +187,19 @@ Structural correction has two length thresholds: a preferred floor of 60% and a 
 
 Short manuscripts up to one 6,000-character window are sent to `final_review` in full. Longer short stories are split into paragraph-aligned 4,000-6,000 character windows with overlap. Each window extracts ordered events, character state and knowledge, timeline, promises, payoffs, and evidenced issues; it does not assign the book's final score. Final adjudication receives the merged evidence and performs cross-window consistency checks.
 
-Initial editorial issues receive stable IDs. Final adjudication must mark each one `resolved`, `partially_resolved`, `unresolved`, or `not_found` with evidence. Missing reconciliation, incomplete coverage, or insufficient evidence invalidates approval. An unresolved major issue caps the score at 74; multiple unresolved moderate issues cap it at 79.
+Initial editorial issues receive content-derived stable IDs plus source, repair goal, and status. Revision-plan tasks preserve related `issue_ids`. Incremental adjudication must mark every prior issue exactly `resolved`, `unresolved`, or `uncertain` with evidence. Missing or invalid reconciliation, incomplete coverage, or insufficient evidence triggers the complete-review fallback. An unresolved or uncertain major issue cannot pass incrementally.
 
 Final review uses only the `final_review` role and its configured provider fallback. It never switches to `planning`. If both configured routes fail, Runtime writes `best-candidate.md`, reports `final_review_incomplete`, and leaves the formal manuscript unchanged. The output limit remains 8,192 tokens. A typical 20,000-character story uses several 6,000-12,000 input-token requests and roughly 40,000-70,000 cumulative input tokens.
 
 The run detail context can expose manuscript coverage, reviewed window count, reconciliation counts, and local gate reasons from `quality-report.json`.
+
+### Evidence-driven local analysis versions
+
+- `learning-window-v2` invalidates local extraction caches when windowing behavior changes. It records full-text coverage ranges and multiple evidence occurrences. Old confirmed/adopted nodes remain intact; operators must not bulk-delete them during cache maintenance.
+- `manuscript-analysis-v2` adds advisory market comparison and a hash-bound narrative ledger. A stale text hash cannot approve an incremental review.
+- Market cohorts count each confirmed linked work once per platform/ranking/category/length group. Missing or fewer than five samples disable guidance without blocking project creation.
+- Rejected-node deletion is intentionally narrow: only rejected nodes with no project adoption are eligible. The transaction cascades graph evidence, edges, and revisions but never source versions.
+- Narrative relation changes add both endpoints to the incremental scope. LTP absence, ambiguous mapping, broad changes, or important structural changes continue to force full review.
 
 ## Log interpretation
 

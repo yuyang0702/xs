@@ -31,6 +31,7 @@ from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.nlp_backend import LocalNLPManager
 from novel_flywheel.market import MarketService
+from novel_flywheel.market_baseline import MarketBaselineService
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -60,6 +61,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.market = market_service or MarketService(
         db, app.state.references, nlp_analyzer=app.state.local_nlp.analyze,
     )
+    app.state.market_baselines = MarketBaselineService(db, app.state.references)
     app.state.projects = ProjectStore(
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
     )

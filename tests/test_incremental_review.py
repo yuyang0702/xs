@@ -61,3 +61,51 @@ def test_incremental_gate_rejects_stale_hash_and_missing_reconciliation():
     assert review["hard_fail"] is True
     assert "stale_analysis" in reasons
     assert "missing_issue_reconciliation" in reasons
+
+
+def test_incremental_gate_rejects_invalid_and_unresolved_reconciliation_states():
+    text = "正文"
+    analysis = _analysis(text)
+    baseline = {
+        "manuscript_hash": hashlib.sha256(text.encode()).hexdigest(),
+        "issue_ledger": [
+            {"issue_id": "issue-a", "severity": "major"},
+            {"issue_id": "issue-b", "severity": "medium"},
+        ],
+        "coverage": 1.0,
+    }
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False, "decision": "pass"}, baseline,
+        {"coverage": 1.0, "reviewed_windows": [1], "selected_windows": [1]},
+        analysis, [
+            {"issue_id": "issue-a", "status": "uncertain"},
+            {"issue_id": "issue-b", "status": "maybe"},
+        ],
+    )
+
+    assert review["hard_fail"] is True
+    assert "invalid_issue_reconciliation" in reasons
+    assert "unresolved_major_issue" in reasons
+
+
+def test_changed_narrative_relation_selects_both_linked_windows():
+    windows = [
+        {"index": 1, "start": 0, "end": 100, "text": "a"},
+        {"index": 2, "start": 100, "end": 200, "text": "b"},
+        {"index": 3, "start": 200, "end": 300, "text": "c"},
+    ]
+    current = {
+        "windows": windows, "entities": [], "events": [],
+        "narrative_ledger": {"relations": [{
+            "id": "relation-1", "from_start": 20, "to_start": 240, "to_end": 250,
+        }]},
+    }
+    scope = select_review_scope(
+        {"windows": windows}, current,
+        {"changed_windows": [1], "changed_entities": [], "changed_events": [],
+         "changed_narrative_relations": ["relation-1"]},
+    )
+
+    assert scope["selected_windows"] == [1, 2, 3]
+    assert "narrative_relation:relation-1" in scope["reasons"]["3"]

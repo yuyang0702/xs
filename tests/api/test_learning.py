@@ -96,3 +96,21 @@ def test_rejected_mechanisms_are_hidden_by_default_and_remain_reviewable(tmp_pat
     assert node_id not in {item["id"] for item in client.get("/api/learning/mechanisms").json()}
     rejected_list = client.get("/api/learning/mechanisms?view=rejected").json()
     assert [item["id"] for item in rejected_list] == [node_id]
+
+
+def test_rejected_mechanisms_can_be_deleted_from_api(tmp_path) -> None:
+    client = client_for(tmp_path)
+    _project_id, node_id = project_and_mechanism(client)
+    client.post(
+        f"/api/learning/nodes/{node_id}/revisions",
+        json={"action": "reject", "data": {}},
+    )
+
+    response = client.request(
+        "DELETE", "/api/learning/mechanisms",
+        json={"node_ids": [node_id]},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted_ids": [node_id], "skipped": []}
+    assert client.get("/api/learning/mechanisms?view=rejected").json() == []

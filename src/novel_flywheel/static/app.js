@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, localNlp:null, workflowAnalysis:null, market:null, marketMatch:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, learningReport:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -63,7 +63,7 @@ document.querySelectorAll(".nav-item").forEach(button => button.addEventListener
 document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
 
 async function loadAll() {
-  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.localNlp] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), api("/api/references"), api("/api/learning/mechanisms"), api("/api/settings/local-nlp")]);
+  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), api("/api/references"), api("/api/learning/mechanisms"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
   renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences(); renderLearning(); renderNlpStatus();
 }
 
@@ -114,6 +114,7 @@ async function selectReference(sourceId) {
   if (!source) return;
   state.activeReference = source;
   state.referenceAnalysis = null;
+  state.learningReport = null;
   state.referenceContent = "";
   renderReferences();
 }
@@ -135,7 +136,9 @@ function renderReferenceDetail() {
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence)}</blockquote><p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  const learning=state.learningReport?.source_id===source.id?state.learningReport:null;
+  const learningSummary=learning?`<section class="reference-learning-summary"><div><strong>${learning.analyzed_windows} / ${learning.window_count}</strong><span>窗口已扫描</span></div><div><strong>${learning.coverage_percent}%</strong><span>全文覆盖率</span></div><div><strong>${learning.mechanisms.length}</strong><span>合并后候选机制</span></div><p>本地规则已覆盖全文；候选机制的多处证据已合并，可在下方项目学习区查看。</p></section>`:"";
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${learningSummary}${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence.length>360?item.evidence.slice(0,360)+"…":item.evidence)}</blockquote>${item.evidence.length>360?`<details><summary>展开完整证据</summary><blockquote>${escapeHtml(item.evidence)}</blockquote></details>`:""}<p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
   $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
   $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
@@ -311,11 +314,35 @@ async function loadMarketDashboard(){
   const shell=$("#market-refresh-state");
   if(shell)shell.textContent="正在读取本地市场快照…";
   try{
-    state.market=await api(`/api/market/dashboard?${marketQuery()}`);
+    [state.market,state.marketBaselines]=await Promise.all([api(`/api/market/dashboard?${marketQuery()}`),api("/api/market/baselines")]);
     renderMarketDashboard();
+    renderMarketBaselineSelector();
   }catch(error){
     if(shell){shell.className="market-refresh-state error";shell.textContent=`读取失败：${error.message}`;}
   }
+}
+
+function renderMarketBaselineSelector(){
+  const select=$("#market-baseline-cohort");if(!select)return;
+  const selected=select.value;
+  const labels={insufficient:"样本不足",preliminary:"初步",advisory:"可用于建议"};
+  select.innerHTML=state.marketBaselines.length?state.marketBaselines.map((item,index)=>{const key=item.key;return `<option value="${index}">${escapeHtml(key.platform)} · ${escapeHtml(key.ranking_name)} · ${escapeHtml(key.category)} · ${escapeHtml(key.length_type)}（${item.sample_count}篇，${labels[item.confidence_level]}）</option>`;}).join(""):'<option value="">暂无可用样本组</option>';
+  if(selected!==""&&state.marketBaselines[Number(selected)])select.value=selected;
+  if(state.marketBaselines.length)loadMarketBaseline(Number(select.value||0));
+  else $("#market-baseline-detail").innerHTML='<p class="market-empty">关联榜单作品并运行本地提炼后生成同类样本观察。</p>';
+}
+
+async function loadMarketBaseline(index){
+  const cohort=state.marketBaselines[index];if(!cohort)return;
+  try{state.marketBaseline=await api(`/api/market/baseline?${new URLSearchParams(cohort.key)}`);renderMarketBaseline();}
+  catch(error){$("#market-baseline-detail").innerHTML=`<p class="market-empty">${escapeHtml(error.message)}</p>`;}
+}
+
+function renderMarketBaseline(){
+  const data=state.marketBaseline;if(!data)return;
+  const labels={insufficient:"样本不足，仅展示观察",preliminary:"初步基线",advisory:"可用于项目建议"};
+  const mechanisms=data.mechanisms.slice(0,8);
+  $("#market-baseline-detail").innerHTML=`<div class="market-baseline-summary"><div><strong>${data.sample_count}</strong><span>有效作品</span></div><div><strong>${labels[data.confidence_level]}</strong><span>可信状态</span></div><div><strong>${escapeHtml(data.date_range?`${data.date_range.start} 至 ${data.date_range.end}`:"暂无")}</strong><span>样本日期</span></div></div><div class="market-baseline-opening"><span>前500字明确问题 <strong>${data.opening.question_percent}%</strong></span><span>前500字异常信号 <strong>${data.opening.anomaly_percent}%</strong></span></div>${mechanisms.length?`<div class="market-baseline-mechanisms">${mechanisms.map(item=>`<article><div><strong>${escapeHtml(item.name)}</strong><span>${item.work_count}/${data.sample_count}篇 · ${item.prevalence_percent}%</span></div><small>${item.position_median===null?"暂无稳定位置":`全文中位位置 ${item.position_median}%`}</small></article>`).join("")}</div>`:'<p class="market-empty">当前样本尚未完成本地提炼，暂无可汇总机制。</p>'}<p class="market-baseline-boundary">${escapeHtml(data.boundary)}</p>`;
 }
 
 function marketMetricText(metrics){
@@ -475,6 +502,7 @@ $("#market-refresh")?.addEventListener("click",async()=>{
 });
 
 ["market-platform","market-period","market-ranking","market-category","market-length-type"].forEach(id=>$("#"+id)?.addEventListener("change",loadMarketDashboard));
+$("#market-baseline-cohort")?.addEventListener("change",event=>loadMarketBaseline(Number(event.target.value)));
 [...document.querySelectorAll('input[name="market-work-mode"]')].forEach(input=>input.addEventListener("change",()=>{marketWorkPage=1;expandedMarketRanking=undefined;renderMarketWorks(state.market?.works||[]);}));
 ["market-keyword-source","market-keyword-category"].forEach(id=>$("#"+id)?.addEventListener("change",()=>renderMarketKeywords(state.market?.keywords||{})));
 $("#market-work-list")?.addEventListener("change",async event=>{
@@ -488,7 +516,7 @@ $("#market-work-list")?.addEventListener("change",async event=>{
 
 async function learnReference() {
   if (!state.activeReference) return;
-  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.mechanisms=await api("/api/learning/mechanisms"); renderLearning(); toast(`已提炼 ${result.mechanisms.length} 个带证据机制`); }
+  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.learningReport=result; state.mechanisms=await api("/api/learning/mechanisms"); renderReferenceDetail(); renderLearning(); toast(`全文覆盖 ${result.coverage_percent}% · 已提炼 ${result.mechanisms.length} 个候选机制`); }
   catch(error) { toast(error.message); }
 }
 async function modelLearnReference() { if(!state.activeReference||!confirm("模型深度分析会调用已配置 API，并可能产生费用。继续？"))return; try{toast("模型正在分窗分析...");const result=await api(`/api/references/${state.activeReference.id}/model-learn`,{method:"POST"});state.mechanisms=await api("/api/learning/mechanisms");renderLearning();toast(`深度分析完成，得到 ${result.mechanisms.length} 个候选机制`);}catch(error){toast(error.message);} }
@@ -504,15 +532,22 @@ function renderLearning() {
   select.innerHTML=state.projects.length ? state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("") : '<option value="">请先创建作品</option>';
   if (state.activeProject) select.value=state.activeProject.id;
   const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
-  $("#learning-mechanisms").innerHTML=state.mechanisms.length ? state.mechanisms.map(item=>{const rejected=item.status==="rejected";const confirmed=item.status==="confirmed";const needsConfirm=Number(item.data.confidence||0)<0.7&&!confirmed;const statusLabel=rejected?"已拒绝":confirmed?"已确认":"候选";return `<article class="mechanism-item"><h3>${escapeHtml(item.data.name)} <span class="skill-meta">· ${statusLabel}</span></h3><p><strong>位置：</strong>${escapeHtml(item.data.structural_position||"未标注")} · <strong>置信度：</strong>${Math.round(Number(item.data.confidence||0)*100)}%</p><p><strong>观察事实：</strong>${escapeHtml(item.data.fact)}</p><p><strong>分析解释：</strong>${escapeHtml(item.data.interpretation)}</p><p><strong>迁移方法：</strong>${escapeHtml(item.data.transfer_guidance)}</p><p><strong>不适用：</strong>${escapeHtml((item.data.incompatible_conditions||[]).join("；"))}</p>${item.evidence?.[0]?`<blockquote class="mechanism-evidence">${escapeHtml(item.evidence[0].excerpt)}</blockquote>`:""}<div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}" ${(confirmed||rejected)?"disabled":""}>${confirmed?"已确认":rejected?"已拒绝":"确认分析"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm||rejected)?"disabled":""} title="${needsConfirm?"低置信度候选需先确认":rejected?"已拒绝机制不能采纳":""}">${adopted.has(item.id)?"已采纳":"采纳到作品"}</button><button class="secondary" data-mechanism-reject="${item.id}" ${rejected?"disabled":""}>${rejected?"已拒绝":"拒绝"}</button></div></article>`;}).join("") : `<p class="skill-meta">${$("#learning-mechanism-view")?.value==="rejected"?"暂无已拒绝机制":"暂无候选机制"}</p>`;
+  const rejectedView=$("#learning-mechanism-view")?.value==="rejected";
+  const batch=rejectedView&&state.mechanisms.length?'<div class="mechanism-batch-actions"><label><input type="checkbox" data-mechanism-select-all> 全选当前结果</label><button class="secondary danger-text" data-mechanism-delete-selected>删除所选</button></div>':"";
+  const cards=state.mechanisms.length ? state.mechanisms.map(item=>{const rejected=item.status==="rejected";const confirmed=item.status==="confirmed";const needsConfirm=Number(item.data.confidence||0)<0.7&&!confirmed;const statusLabel=rejected?"已拒绝":confirmed?"已确认":"候选";const evidence=item.evidence||[];return `<article class="mechanism-item">${rejectedView?`<label class="mechanism-select"><input type="checkbox" data-mechanism-select="${item.id}"> 选择</label>`:""}<h3>${escapeHtml(item.data.name)} <span class="skill-meta">· ${statusLabel}</span></h3><p><strong>位置：</strong>${escapeHtml((item.data.positions||[]).length?(item.data.positions.map(value=>`${value}%`).join(" · ")):(item.data.structural_position||"未标注"))} · <strong>置信度：</strong>${Math.round(Number(item.data.confidence||0)*100)}%</p><p><strong>观察事实：</strong>${escapeHtml(item.data.fact)}</p><p><strong>分析解释：</strong>${escapeHtml(item.data.interpretation)}</p><p><strong>迁移方法：</strong>${escapeHtml(item.data.transfer_guidance)}</p><p><strong>不适用：</strong>${escapeHtml((item.data.incompatible_conditions||[]).join("；"))}</p>${evidence[0]?`<blockquote class="mechanism-evidence">${escapeHtml(evidence[0].excerpt)}</blockquote>`:""}${evidence.length>1?`<details class="mechanism-evidence-list"><summary>展开全部证据（${evidence.length}处）</summary>${evidence.map(value=>`<blockquote class="mechanism-evidence">${escapeHtml(value.excerpt)}</blockquote>`).join("")}</details>`:""}<div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}" ${(confirmed||rejected)?"disabled":""}>${confirmed?"已确认":rejected?"已拒绝":"确认分析"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm||rejected)?"disabled":""}>${adopted.has(item.id)?"已采纳":"采纳到作品"}</button><button class="secondary" data-mechanism-reject="${item.id}" ${rejected?"disabled":""}>${rejected?"已拒绝":"拒绝"}</button>${rejected?`<button class="secondary danger-text" data-mechanism-delete="${item.id}">删除</button>`:""}</div></article>`;}).join("") : `<p class="skill-meta">${rejectedView?"暂无已拒绝机制":"暂无候选机制"}</p>`;
+  $("#learning-mechanisms").innerHTML=batch+cards;
   document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
   document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));
   document.querySelectorAll("[data-mechanism-reject]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismReject,"reject")));
+  document.querySelectorAll("[data-mechanism-delete]").forEach(button=>button.addEventListener("click",()=>deleteRejectedMechanisms([button.dataset.mechanismDelete])));
+  $("[data-mechanism-delete-selected]")?.addEventListener("click",()=>deleteRejectedMechanisms([...document.querySelectorAll("[data-mechanism-select]:checked")].map(item=>item.dataset.mechanismSelect)));
+  $("[data-mechanism-select-all]")?.addEventListener("change",event=>document.querySelectorAll("[data-mechanism-select]").forEach(item=>item.checked=event.target.checked));
   if (select.value && !state.projectLearning) loadProjectLearning(); else renderLearningArtifacts();
 }
 const mechanismView=()=>$("#learning-mechanism-view")?.value||"active";
 async function reloadMechanisms(){state.mechanisms=await api(`/api/learning/mechanisms?view=${encodeURIComponent(mechanismView())}`);renderLearning();}
 async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); await reloadMechanisms(); toast(action==="confirm"?"分析已确认":"分析已拒绝，可在“已拒绝”中查看"); } catch(error){toast(error.message);} }
+async function deleteRejectedMechanisms(ids){if(!ids.length)return toast("请先选择要删除的记录");if(!confirm(`永久删除 ${ids.length} 条已拒绝机制及其证据？此操作不可撤销。`))return;try{const result=await api("/api/learning/mechanisms",{method:"DELETE",body:JSON.stringify({node_ids:ids})});await reloadMechanisms();const skipped=result.skipped.length?`，${result.skipped.length} 条因已采纳或状态不符未删除`:"";toast(`已删除 ${result.deleted_ids.length} 条${skipped}`);}catch(error){toast(error.message);}}
 async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
 function renderLearningArtifacts(){
   const shell=$("#learning-artifacts"); if(!shell)return;
@@ -604,8 +639,10 @@ async function loadCandidateQuality(projectId) {
     if (state.activeProject?.id !== projectId) return;
     if (!result.available) { shell.innerHTML = '<p class="skill-meta">尚无候选稿</p>'; return; }
     const report = result.diagnostics;
-    const originality=result.analysis?.originality||{}; const nlp=result.analysis?.nlp||{};
-    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.effective_words).toLocaleString()}</strong><span>正文有效字数 · 纯汉字 ${Number(result.han_characters).toLocaleString()} · 总字符 ${Number(result.characters).toLocaleString()}</span></div></div><p class="skill-meta">全文扫描 ${escapeHtml(result.analysis_status)} · LTP ${nlp.available?"已完成":"规则降级"} · 原创检查仅限本地语料（${escapeHtml(result.review_scope||"local_corpus_only")}） · 连续片段 ${Number(originality.continuous_passages?.length||0)} · 人名 ${Number(originality.similar_names?.length||0)} · 语义候选 ${Number(originality.semantic_candidates?.length||0)}</p>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}`;
+    const originality=result.analysis?.originality||{}; const nlp=result.analysis?.nlp||{}; const ledger=result.analysis?.narrative_ledger||{};
+    const unresolved=[...(ledger.promises||[]),...(ledger.questions||[]),...(ledger.setups||[])].filter(item=>item.status==="unresolved");
+    const ledgerHtml=`<details class="quality-ledger"><summary><span><strong>叙事账本</strong><small>未兑现 ${unresolved.length} · 已关联 ${(ledger.relations||[]).length} · 场景 ${(ledger.scenes||[]).length}</small></span><span>查看证据</span></summary><div class="ledger-list">${unresolved.slice(0,8).map(item=>`<details><summary><span class="ledger-status">待回应</span>${escapeHtml(item.kind||"线索")} · 位置 ${Number(item.start||0).toLocaleString()}</summary><p>${escapeHtml(item.text||"")}</p></details>`).join("")||'<p class="skill-meta">显式问题、承诺与伏笔均已找到后文回应；语义不确定项仍由终审模型复核。</p>'}</div></details>`;
+    shell.innerHTML = `<div class="candidate-metrics"><div><strong>${report.naturalness_score}</strong><span>自然度</span></div><div><strong>${report.blocking_count}</strong><span>阻断问题</span></div><div><strong>${report.targeted_count}</strong><span>局部优化项</span></div><div><strong>${Number(result.effective_words).toLocaleString()}</strong><span>正文有效字数 · 纯汉字 ${Number(result.han_characters).toLocaleString()} · 总字符 ${Number(result.characters).toLocaleString()}</span></div></div><p class="skill-meta">全文扫描 ${escapeHtml(result.analysis_status)} · LTP ${nlp.available?"已完成":"规则降级"} · 原创检查仅限本地语料（${escapeHtml(result.review_scope||"local_corpus_only")}） · 连续片段 ${Number(originality.continuous_passages?.length||0)} · 人名 ${Number(originality.similar_names?.length||0)} · 语义候选 ${Number(originality.semantic_candidates?.length||0)}</p>${report.findings.length ? `<div class="candidate-findings">${report.findings.slice(0,5).map(item => `<p><strong>${escapeHtml(item.code)}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("")}</div>` : '<p class="skill-meta">本地扫描未发现明显模板化问题</p>'}${ledgerHtml}`;
     publish.hidden = state.activeProject?.mode !== "short" || report.blocking_count > 0;
   } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
@@ -838,6 +875,8 @@ function renderWizardDrafts() {
 function fieldControl(field, answer) {
   const value = answer?.value ?? field.default ?? "";
   if (field.type === "textarea") return `<textarea class="field-value" rows="4">${escapeHtml(value)}</textarea>`;
+  if (field.id === "market_baseline_enabled") return `<select class="field-value"><option value="enabled" ${value!=="disabled"?"selected":""}>启用市场建议</option><option value="disabled" ${value==="disabled"?"selected":""}>不使用市场建议</option></select>`;
+  if (field.id === "market_baseline_key") return `<select class="field-value"><option value="">暂不选择</option>${state.marketBaselines.map(item=>{const serialized=JSON.stringify(item.key);const label={insufficient:"样本不足",preliminary:"初步",advisory:"可用于建议"}[item.confidence_level];return `<option value="${escapeHtml(serialized)}" ${serialized===value?"selected":""}>${escapeHtml(item.key.platform)} · ${escapeHtml(item.key.category)} · ${escapeHtml(item.key.ranking_name)} · ${escapeHtml(item.key.length_type)}（${item.sample_count}篇，${label}）</option>`;}).join("")}</select>`;
   if (field.type === "select") return `<select class="field-value">${(field.options || []).map(option => `<option value="${escapeHtml(option)}" ${String(option) === String(value) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
   if (field.type === "boolean") return `<input class="field-value" type="checkbox" ${value ? "checked" : ""}>`;
   const list = field.id === "genre" ? ' list="genre-options"' : field.id === "sub_genre" ? ' list="subgenre-options"' : "";
@@ -859,11 +898,24 @@ function renderWizard() {
   $("#wizard-fields").innerHTML = step.fields.map(field => { const answer = wizard.answers[field.id] || {}; return `<div class="wizard-field" data-field="${escapeHtml(field.id)}" data-type="${field.type}"><label><span>${escapeHtml(field.label)}${field.required ? " *" : ""}</span>${fieldControl(field,answer)}</label>${field.lockable ? `<label class="policy-label">处理方式<select class="field-policy"><option value="locked" ${answer.policy === "locked" ? "selected" : ""}>严格锁定</option><option value="suggestible" ${!answer.policy || answer.policy === "suggestible" ? "selected" : ""}>可建议</option><option value="generated" ${answer.policy === "generated" ? "selected" : ""}>模型生成</option></select></label>` : ""}</div>`; }).join("");
   updateGenreOptions();
   document.querySelector('[data-field="genre"] .field-value')?.addEventListener("input", updateGenreOptions);
+  updateMarketBaselineWizardState();
+  document.querySelector('[data-field="market_baseline_enabled"] .field-value')?.addEventListener("change",updateMarketBaselineWizardState);
+  document.querySelector('[data-field="platform"] .field-value')?.addEventListener("change",recommendMarketBaseline);
+  document.querySelector('[data-field="genre"] .field-value')?.addEventListener("change",recommendMarketBaseline);
   $("#wizard-back").disabled = state.wizardStep === 0; $("#wizard-next").hidden = state.wizardStep === steps.length - 1; $("#wizard-analyze").hidden = state.wizardStep !== steps.length - 1; $("#wizard-confirm").hidden = state.wizardStep !== steps.length - 1;
   document.querySelectorAll("[data-wizard-step]").forEach(button => button.addEventListener("click", async () => { await saveWizardStep(); state.wizardStep = Number(button.dataset.wizardStep); renderWizard(); }));
   let timer; document.querySelectorAll(".field-value,.field-policy").forEach(control => control.addEventListener("input", () => { $("#wizard-save-state").textContent = "保存中"; clearTimeout(timer); timer=setTimeout(() => saveWizardStep().catch(error => toast(error.message)),500); }));
   renderWizardSummary();
   if (state.interviewWizardId === wizard.id) renderInterview(); else loadInterview().catch(error => toast(error.message));
+}
+function updateMarketBaselineWizardState(){const enabled=document.querySelector('[data-field="market_baseline_enabled"] .field-value')?.value!=="disabled";const select=document.querySelector('[data-field="market_baseline_key"] .field-value');if(select)select.disabled=!enabled;}
+function recommendMarketBaseline(){
+  const select=document.querySelector('[data-field="market_baseline_key"] .field-value');if(!select||select.value)return;
+  const platform=document.querySelector('[data-field="platform"] .field-value')?.value||"";
+  const genre=document.querySelector('[data-field="genre"] .field-value')?.value||"";
+  const length=state.activeWizard?.mode==="short"?"short":"long";
+  const matches=state.marketBaselines.map((item,index)=>({item,index})).filter(({item})=>(!platform||platform.includes("知乎")?item.key.platform==="zhihu":item.key.platform===platform)&&(!genre||item.key.category===genre)&&item.key.length_type===length).sort((a,b)=>b.item.sample_count-a.item.sample_count);
+  if(matches.length){select.value=JSON.stringify(matches[0].item.key);select.dispatchEvent(new Event("input",{bubbles:true}));}
 }
 function collectWizardStep() {
   const answers = {};
@@ -979,7 +1031,9 @@ function renderRunContext(detail) {
   const tools=detail.tool_receipts || [];
   const audit=detail.quality_report?.final_review_evidence; const counts=audit?.reconciliation_counts || {};
   const quality=audit ? `<div class="context-tools"><strong>${audit.review_mode==="incremental"?"关联窗口复核":"全文终审"}</strong><span>覆盖 ${Math.round(Number(audit.coverage || 0)*100)}% · ${Number(audit.reviewed_windows || 0)}/${Number(audit.window_count || 0)} 窗口 · 节省约 ${Number(audit.estimated_saved_input_characters || 0).toLocaleString()} 输入字符${(audit.fallback_reasons || []).length ? ` · 全文回退：${escapeHtml(audit.fallback_reasons.join("、"))}` : ""} · 已解决 ${Number(counts.resolved || 0)} · 部分解决 ${Number(counts.partially_resolved || 0)} · 未解决 ${Number(counts.unresolved || 0)}${(audit.gate_reasons || []).length ? ` · 阻断：${escapeHtml(audit.gate_reasons.join("、"))}` : ""}</span></div>` : "";
-  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + quality + (tools.length ? `<div class="context-tools"><strong>工具调用收据</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => item.execution_mode))].join("、"))}</span></div>` : "");
+  const issues=detail.quality_report?.review?.issues||detail.quality_report?.issues||[];
+  const issueLedger=issues.length?`<details class="quality-ledger"><summary><span><strong>问题返修台账</strong><small>${issues.length} 项 · 未解决优先</small></span><span>展开</span></summary><div class="ledger-list">${[...issues].sort((a,b)=>(a.status==="resolved")-(b.status==="resolved")).map(item=>`<details><summary><span class="ledger-status ${item.status==="resolved"?"resolved":""}">${item.status==="resolved"?"已解决":"待处理"}</span>${escapeHtml(item.issue_id||item.category||"问题")}</summary><p><strong>证据：</strong>${escapeHtml(item.evidence||"未提供")}</p><p><strong>修复目标：</strong>${escapeHtml(item.repair_goal||item.action||"待确认")}</p></details>`).join("")}</div></details>`:"";
+  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + quality + issueLedger + (tools.length ? `<div class="context-tools"><strong>工具调用收据</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => item.execution_mode))].join("、"))}</span></div>` : "");
 }
 document.querySelectorAll("[data-run-tab]").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll("[data-run-tab]").forEach(item => item.classList.toggle("active",item === button));

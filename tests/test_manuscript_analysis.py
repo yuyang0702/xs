@@ -17,6 +17,8 @@ def test_analysis_covers_complete_text_and_opening_zone():
     assert report["windows"][-1]["end"] == len(text)
     assert analysis_matches(report, text)
     assert compact_analysis(report)["text_hash"] == report["text_hash"]
+    assert report["narrative_ledger"]["text_hash"] == report["text_hash"]
+    assert "narrative_ledger" in compact_analysis(report)
 
 
 def test_analysis_normalizes_ltp_entities_and_events():
@@ -52,3 +54,22 @@ def test_originality_candidates_are_limited_to_local_corpus():
     assert originality["continuous_passages"]
     assert originality["similar_names"]
     assert originality["semantic_candidates"]
+
+
+def test_market_baseline_comparison_is_advisory_only():
+    report = analyze_manuscript(
+        "林晚回到家。她整理桌面，然后开始工作。",
+        nlp_analyze=None,
+        market_baseline={
+            "sample_count": 12, "confidence_level": "advisory",
+            "opening": {"question_percent": 80.0, "anomaly_percent": 75.0},
+            "boundary": "本地样本",
+        },
+    )
+
+    assert report["baseline_comparison"]["sample_count"] == 12
+    assert {item["signal"] for item in report["baseline_comparison"]["deviations"]} == {
+        "opening_question", "opening_anomaly",
+    }
+    assert all(item["blocking"] is False for item in report["baseline_comparison"]["deviations"])
+    assert "baseline_comparison" in compact_analysis(report)

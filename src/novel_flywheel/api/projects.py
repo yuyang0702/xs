@@ -187,6 +187,9 @@ def _candidate_analysis(request: Request, project: Project, run_id: str, text: s
             references.comparison_sources(project.id)
             if enabled and references and hasattr(references, "comparison_sources") else []
         ),
+        market_baseline=request.app.state.projects.active_learning_data(
+            project.id, "market_baseline",
+        ),
     )
     atomic_write(path, json.dumps(report, ensure_ascii=False, indent=2))
     return report

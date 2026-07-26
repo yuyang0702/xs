@@ -110,8 +110,10 @@ class WorkflowService:
         )
         nlp_analyze = self.local_nlp.analyze if enabled and self.local_nlp else None
         sources = self.references.comparison_sources(project.id) if enabled and self.references else []
+        baseline = self.projects.active_learning_data(project.id, "market_baseline")
         report = analyze_manuscript(
             text, nlp_analyze=nlp_analyze, comparison_sources=sources,
+            market_baseline=baseline,
         )
         output.parent.mkdir(parents=True, exist_ok=True)
         atomic_write(output, json.dumps(report, ensure_ascii=False, indent=2))
@@ -850,6 +852,7 @@ class WorkflowService:
                 raise RuntimeError(
                     "Final review incomplete; preserved best candidate"
                 ) from exc
+            final_review["issues"] = issue_ledger(final_review.get("issues", []))
             outcome, reasons = quality_outcome(final_review)
             passed = outcome != "failed"
             report["final_attempts"].append({
@@ -1119,7 +1122,8 @@ class WorkflowService:
         prompt = (
             "INCREMENTAL FINAL ADJUDICATION. Reconcile every prior issue and judge only whether "
             "the correction remains globally safe. Return strict quality-review JSON plus "
-            "reconciliations. Set request_full_review=true if evidence is insufficient.\n\n"
+            "reconciliations. Every reconciliation status must be exactly resolved, unresolved, "
+            "or uncertain. Set request_full_review=true if evidence is insufficient.\n\n"
             f"BASELINE REVIEW:\n{json.dumps(baseline.get('review', {}), ensure_ascii=False)}\n\n"
             f"ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
             f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
@@ -1690,7 +1694,8 @@ class WorkflowService:
             "change. Target no more than 40% of scenes and never target unrelated scenes. "
             "Return one JSON object only with: global_facts (string array), checks (array of objects "
             "using kind required_text or forbidden_text and value), and tasks (array with segments as "
-            "integer array and instruction as text). Include at least one literal deterministic check "
+            "integer array, instruction as text, and issue_ids as the exact related review issue IDs). "
+            "Include at least one literal deterministic check "
             "for hard fact, canon, duplication, or required-content issues. Do not combine all review "
             "issues into one instruction. Checks must be unambiguous manuscript text constraints; "
             "semantic judgments belong in the scene task.\n\n"

@@ -21,6 +21,10 @@ def _market(request: Request):
     return request.app.state.market
 
 
+def _baselines(request: Request):
+    return request.app.state.market_baselines
+
+
 @router.get("/sources")
 def list_sources(request: Request) -> list[dict]:
     return _market(request).list_sources()
@@ -60,6 +64,25 @@ def list_market_works(
     return _market(request).list_works(
         platform=platform, ranking=ranking, category=category, length_type=length_type,
     )
+
+
+@router.get("/baselines")
+def list_market_baselines(request: Request) -> list[dict]:
+    return _baselines(request).list_cohorts()
+
+
+@router.get("/baseline")
+def market_baseline(
+    request: Request, platform: str, ranking_name: str,
+    category: str, length_type: str,
+) -> dict:
+    try:
+        return _baselines(request).build_baseline({
+            "platform": platform, "ranking_name": ranking_name,
+            "category": category, "length_type": length_type,
+        })
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.put("/works/{work_id:path}/length")

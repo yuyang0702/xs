@@ -2127,11 +2127,14 @@ async def test_long_manuscript_final_review_audits_every_window_without_planning
         "summary": f"window {index}", "events": [], "issues": [],
         "character_states": [], "timeline": [], "promises": [],
     }) for index in range(1, count + 1)]
+    from novel_flywheel.quality import issue_ledger
+    prior_issue = {"category": "prose", "severity": "medium", "action": "Remove repetition."}
+    stable_issue_id = issue_ledger([prior_issue])[0]["issue_id"]
     final = json.dumps({
         "dimensions": {"commercial": 88, "story": 86, "prose": 84},
         "decision": "pass", "issues": [],
         "reconciliations": [{
-            "issue_id": "initial-001", "status": "resolved",
+                "issue_id": stable_issue_id, "status": "resolved",
             "severity": "medium", "evidence": "The repeated wording is gone.",
         }],
     })
@@ -2141,7 +2144,7 @@ async def test_long_manuscript_final_review_audits_every_window_without_planning
 
     review, audit = await service._full_manuscript_review(
         run_id, run_path, project, "constraints", manuscript,
-        {"issues": [{"category": "prose", "severity": "medium", "action": "Remove repetition."}]},
+            {"issues": [prior_issue]},
     )
 
     assert review["score"] > 80

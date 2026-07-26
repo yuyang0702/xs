@@ -60,6 +60,17 @@ def test_normalize_revision_plan_rejects_unknown_segments_and_keeps_valid_tasks(
     assert plan["target_segments"] == [1, 3]
 
 
+def test_normalize_revision_plan_keeps_issue_links_on_tasks() -> None:
+    plan = normalize_revision_plan({
+        "tasks": [{
+            "segments": [2], "instruction": "回应开篇承诺。",
+            "issue_ids": ["issue-ab12", "", 3, "issue-ab12"],
+        }],
+    }, segment_count=3)
+
+    assert plan["tasks"][0]["issue_ids"] == ["issue-ab12"]
+
+
 def test_normalize_revision_plan_drops_mechanical_quote_checks() -> None:
     plan = normalize_revision_plan({
         "checks": [

@@ -1,4 +1,6 @@
 from typing import Any
+import hashlib
+import json
 
 
 WEIGHTS = {"commercial": 0.45, "story": 0.35, "prose": 0.20}
@@ -41,9 +43,24 @@ def review_windows(text: str, target: int = 5000, overlap: int = 400) -> list[di
     return windows
 
 
-def issue_ledger(issues: list[dict]) -> list[dict]:
-    return [{**issue, "issue_id": issue.get("issue_id") or f"initial-{index:03d}"}
-            for index, issue in enumerate(issues, 1)]
+def issue_ledger(issues: list[dict], source: str = "final_review") -> list[dict]:
+    normalized = []
+    for issue in issues:
+        identity = {
+            key: str(issue.get(key, "")).strip()
+            for key in ("category", "severity", "evidence", "action")
+        }
+        digest = hashlib.sha256(
+            json.dumps(identity, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()[:12]
+        normalized.append({
+            **issue,
+            "issue_id": issue.get("issue_id") or f"issue-{digest}",
+            "status": issue.get("status") or "open",
+            "repair_goal": issue.get("repair_goal") or issue.get("action", ""),
+            "source": issue.get("source") or source,
+        })
+    return normalized
 
 
 def apply_evidence_gate(review: dict, evidence: dict) -> tuple[dict, list[str]]:

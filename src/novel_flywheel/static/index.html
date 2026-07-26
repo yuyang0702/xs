@@ -169,6 +169,10 @@
         <div id="market-keywords" class="market-keywords"></div>
         <div id="market-keyword-evidence" class="market-keyword-evidence" hidden></div>
       </section>
+      <section class="market-panel market-baseline-panel">
+        <div class="market-panel-title"><div><h3>同类样本基线</h3><span>仅统计已确认关联并完成本地提炼的榜单样本</span></div><label>样本组<select id="market-baseline-cohort"><option value="">暂无可用样本组</option></select></label></div>
+        <div id="market-baseline-detail" class="market-baseline-detail"><p class="market-empty">关联榜单作品并运行本地提炼后生成同类样本观察。</p></div>
+      </section>
       <section class="market-panel market-work-panel">
         <div class="market-panel-title market-work-heading"><h3>榜单作品</h3><div><fieldset id="market-work-mode" class="segmented"><legend class="sr-only">作品排序方式</legend><label><input type="radio" name="market-work-mode" value="grouped" checked><span>按榜单</span></label><label><input type="radio" name="market-work-mode" value="combined"><span>综合浏览</span></label></fieldset><span id="market-work-count">0 条记录</span></div></div>
         <div class="market-table-shell"><table class="market-table"><thead><tr><th id="market-rank-heading">榜内排名</th><th>作品</th><th>榜单</th><th>分类</th><th>篇幅类型</th><th>热度数据</th><th>TXT状态</th></tr></thead><tbody id="market-work-list"></tbody></table></div>

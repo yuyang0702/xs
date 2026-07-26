@@ -30,7 +30,7 @@ def test_catalog_combines_core_known_and_sidecar_forms(tmp_path) -> None:
     schema = catalog.build("long", ["story-init", "character-management", "custom-init"])
 
     ids = {field["id"] for step in schema["steps"] for field in step["fields"]}
-    assert {"title", "protagonist.name", "custom.rule"} <= ids
+    assert {"title", "market_baseline_enabled", "market_baseline_key", "protagonist.name", "custom.rule"} <= ids
     assert any(step.get("skill_name") == "character-management" for step in schema["steps"])
 
 

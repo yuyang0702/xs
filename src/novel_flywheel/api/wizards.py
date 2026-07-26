@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 from typing import Literal
+import json
 
 from novel_flywheel.errors import describe_error
 
@@ -60,7 +61,27 @@ def save_answers(wizard_id: str, payload: WizardAnswers, request: Request) -> di
 @router.post("/wizards/{wizard_id}/confirm", status_code=status.HTTP_201_CREATED)
 def confirm_wizard(wizard_id: str, request: Request) -> dict:
     try:
+        wizard = _service(request).get(wizard_id)
+        values = {key: item.get("value") for key, item in wizard.get("answers", {}).items()}
+        enabled = values.get("market_baseline_enabled") != "disabled"
+        raw_key = values.get("market_baseline_key")
+        try:
+            key = json.loads(raw_key) if enabled and raw_key else None
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
+            }) from exc
+        if key is not None and not isinstance(key, dict):
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
+            })
         project = _service(request).confirm(wizard_id)
+        if key:
+            baseline = request.app.state.market_baselines.build_baseline(key)
+            request.app.state.learning.save_artifact(project.id, "market_baseline", baseline)
+        project = request.app.state.projects.set_market_baseline_selection(
+            project.id, enabled=bool(enabled and key), key=key,
+        )
         return {**project.metadata, "path": str(project.path)}
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
