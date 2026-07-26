@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Iterator
 
 from novel_flywheel.db import Database
+from novel_flywheel.causal_chain import compact_causal_chain, extract_short_causal_chain
 from novel_flywheel.context_policy import estimate_input_tokens, polish_context, stage_output_budget
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
@@ -53,6 +54,7 @@ from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptC
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
+from novel_flywheel.learning import LearningSystem
 from novel_flywheel.tools import StoryToolbox
 
 
@@ -503,11 +505,30 @@ class WorkflowService:
                         "segment_count": segment_count,
                         "require_segment_map": segment_count > 1,
                     },
+                    "short_causal_chain_contract": {
+                        "purpose": "append whole-story causal-chain JSON without replacing the outline",
+                        "start_marker": "SHORT_CAUSAL_CHAIN_JSON_START",
+                        "end_marker": "SHORT_CAUSAL_CHAIN_JSON_END",
+                        "fields": [
+                            "core_goal", "cycles", "accidents", "reversal", "ending",
+                        ],
+                        "cycle_shape": [
+                            "obstacle", "effort", "result", "state_change",
+                        ],
+                    },
                 }, ensure_ascii=False, indent=2)
                 plan = await self._stage(
                     run_id, run_path, project, "planning", constraints, brief,
                     allow_tools=self._planning_uses_tools(state),
                 )
+                plan, causal_chain = self._extract_and_save_short_causal_chain(
+                    run_id, run_path, project, plan,
+                )
+                if causal_chain:
+                    constraints += (
+                        "\n\n# Short Story Causal Chain\n\n"
+                        f"{compact_causal_chain(causal_chain)}"
+                    )
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
                 )
@@ -639,6 +660,31 @@ class WorkflowService:
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
+    def _extract_and_save_short_causal_chain(
+        self, run_id: str, run_path: Path, project: Project, plan: str,
+    ) -> tuple[str, dict | None]:
+        try:
+            outline, chain = extract_short_causal_chain(plan)
+        except (ValueError, json.JSONDecodeError) as exc:
+            self.db.add_run_event(
+                run_id, "warning", "causal_chain_parse_failed",
+                "短篇因果链解析失败，已继续使用原大纲",
+                stage="planning", metadata={"error": str(exc)[:300]},
+            )
+            return plan, None
+        if not chain:
+            return plan, None
+        LearningSystem(self.db, self.references, self.projects, self.gateway).build_short_causal_chain(
+            project.id, chain,
+        )
+        atomic_write(run_path / "outputs" / "planning.md", outline)
+        self.db.add_run_event(
+            run_id, "success", "causal_chain_saved",
+            "短篇整篇因果链已保存为项目资料",
+            stage="planning", metadata={"cycles": len(chain.get("cycles") or [])},
+        )
+        return outline, chain
+
     async def _quality_polish(self, run_id: str, run_path: Path, project: Project,
                               constraints: str, draft: str, review: dict,
                               chapter_number: int | None = None,
@@ -751,6 +797,7 @@ class WorkflowService:
                     )
                     report["final_review_evidence"] = evidence_audit
                 else:
+                    final_input = self._causal_chain_review_checks(constraints) + final_input
                     final_review = self._review(await self._stage(
                         run_id, run_path, project, "final_review", constraints, final_input,
                         suffix=f"-{attempt + 1}" if attempt else "", allow_tools=False,
@@ -887,6 +934,7 @@ class WorkflowService:
         manuscript: str, initial_review: dict, suffix: str = "",
     ) -> tuple[dict, dict]:
         constraints = self._constraints_with_platform_rules(project, constraints)
+        causal_checks = self._causal_chain_review_checks(constraints)
         windows = review_windows(manuscript)
         ledger = issue_ledger(initial_review.get("issues", []))
         evidence = []
@@ -902,6 +950,7 @@ class WorkflowService:
                 f"CHARACTERS {window['start']}-{window['end']}\n"
                 f"PREVIOUS WINDOW SUMMARY:\n{previous_summary or 'None'}\n\n"
                 f"INITIAL ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
+                f"{causal_checks}"
                 f"MANUSCRIPT WINDOW:\n{window['text']}"
             )
             raw = await self._stage(
@@ -930,6 +979,7 @@ class WorkflowService:
             "with issue_id, status (resolved, partially_resolved, unresolved, or not_found), severity, "
             "and concrete evidence. Omission never means resolved. Do not rewrite the manuscript.\n\n"
             f"INITIAL ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
+            f"{causal_checks}"
             f"ORDERED WINDOW EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
         )
         raw_final = await self._stage(
@@ -960,6 +1010,19 @@ class WorkflowService:
             json.dumps({"windows": evidence, "audit": audit}, ensure_ascii=False, indent=2),
         )
         return review, audit
+
+    @staticmethod
+    def _causal_chain_review_checks(constraints: str) -> str:
+        if "Short Story Causal Chain" not in constraints:
+            return ""
+        return (
+            "CAUSAL CHAIN CHECKS:\n"
+            "- Verify the manuscript establishes the core goal.\n"
+            "- Verify obstacle-effort-result cycles create state changes instead of repetition.\n"
+            "- Verify accidents change the situation.\n"
+            "- Verify reversal reinterprets earlier evidence rather than appearing from nowhere.\n"
+            "- Verify the ending answers surface goal, inner goal, and cost.\n\n"
+        )
 
     async def _reader_review(self, run_id: str, run_path: Path, project: Project,
                              constraints: str, text: str, suffix: str = "",

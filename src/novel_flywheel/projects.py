@@ -177,6 +177,7 @@ class ProjectStore:
         learning_root = project.path / "learning"
         labels = {
             "creative_blueprint": "Confirmed Creative Blueprint",
+            "short_causal_chain": "Short Story Causal Chain",
             "prose_baseline": "Executable Prose Baseline",
             "voice_profiles": "Character Voice Profiles",
             "epistemic_state": "Character Knowledge Boundaries",

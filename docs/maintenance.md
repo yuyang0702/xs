@@ -92,6 +92,10 @@ The materials view also enumerates existing worldbuilding, location, plot, timel
 
 ## Reference library maintenance
 
+Short stories may carry an active short_causal_chain project artifact. It is a whole-story causal index, not a replacement outline and not a per-chapter template. It stores the core goal, repeatable obstacle-effort-result cycles, accidents, reversal evidence, and ending payoff. Planning may append this JSON between SHORT_CAUSAL_CHAIN_JSON_START and SHORT_CAUSAL_CHAIN_JSON_END; Runtime extracts it, saves diagnostics, rewrites planning.md back to ordinary outline text, and continues even when extraction fails. The compact chain is added to draft and final-review context so the manuscript can be checked for goal setup, state-changing cycles, accident, reversal evidence, and ending payoff.
+
+Learning mechanisms with mechanism_type="causal_structure" are stored in creative_blueprint.causal_structure. They are abstract structure advice only: they cannot directly change project facts, formal outlines, or manuscripts, and must not transfer source names, settings, concrete plot packaging, or unique expression.
+
 Reference sources are not project facts and never write StoryState. Pasted text and browser-read UTF-8 TXT content are stored under `data/references/<source-id>/` with immutable version files; SQLite stores titles, hashes, version metadata, and local-analysis results. Identical normalized content resolves to the existing source rather than creating another copy. API responses omit storage paths and expose source text only through the controlled content endpoint.
 
 DOCX extraction uses the standard library; PDF extraction uses `pypdf`; public URLs use bounded `httpx` requests with public-address checks before every redirect. Imported page text remains untrusted data. Scanned PDFs are rejected rather than silently returning empty prose.

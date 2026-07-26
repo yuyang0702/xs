@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from novel_flywheel.db import Database
+from novel_flywheel.causal_chain import analyze_short_causal_chain
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.storage import atomic_write
 
@@ -188,8 +189,17 @@ class LearningSystem:
                 (adoption_id, project_id, node_id, json.dumps(data, ensure_ascii=False)),
             )
         adoptions = self.list_adoptions(project_id)
+        causal_structure = [
+            item["data"] for item in adoptions
+            if item["data"].get("mechanism_type") == "causal_structure"
+        ]
+        mechanisms = [
+            item["data"] for item in adoptions
+            if item["data"].get("mechanism_type") != "causal_structure"
+        ]
         blueprint = {
-            "status": "candidate", "mechanisms": [item["data"] for item in adoptions],
+            "status": "candidate", "mechanisms": mechanisms,
+            "causal_structure": causal_structure,
             "rules": [item["data"].get("transfer_guidance", "") for item in adoptions],
         }
         self.save_artifact(project_id, "creative_blueprint", blueprint)
@@ -310,6 +320,17 @@ class LearningSystem:
         if any(item.get("state") not in valid for item in states):
             raise ValueError("Invalid epistemic state")
         return self.save_artifact(project_id, "epistemic_state", {"states": states})
+
+    def build_short_causal_chain(self, project_id: str, chain: dict) -> dict:
+        project = self.projects.get(project_id)
+        diagnostics = analyze_short_causal_chain(
+            chain, int(project.metadata.get("target_words") or 0),
+        )
+        status = "active" if diagnostics["status"] != "invalid" else "invalid"
+        return self.save_artifact(
+            project_id, "short_causal_chain",
+            {**chain, "diagnostics": diagnostics}, status=status,
+        )
 
     def build_scene_briefs(self, project_id: str, outline: str) -> dict:
         headings = re.findall(r"^#{2,4}\s+(.+)$", outline, flags=re.MULTILINE)

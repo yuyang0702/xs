@@ -391,6 +391,58 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
 
 
 @pytest.mark.asyncio
+async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Revive Friend", mode="short", genre="suspense",
+        premise="复活死去的朋友。", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class CausalGateway:
+        def __init__(self) -> None:
+            self.roles = []
+            self.systems = []
+            self.users = []
+            self.responses = iter([
+                "# Story Plan\n主角调查死亡现场。\n\nSHORT_CAUSAL_CHAIN_JSON_START\n"
+                '{"core_goal":{"content":"复活死去的朋友"},"cycles":[{"obstacle":"缺少灵魂媒介","effort":"调查死亡现场","result":"找到残缺记忆","state_change":"确认灵魂仍在"},{"obstacle":"仪式需要交换生命","effort":"寻找规则漏洞","result":"朋友暂时复活","state_change":"目标表面达成"}],"reversal":{"content":"朋友主动死亡是为了封印","prior_evidence":["死亡记录被销毁"]},"ending":{"surface_goal":"无法永久复活","inner_goal":"主角放下愧疚"}}'
+                "\nSHORT_CAUSAL_CHAIN_JSON_END",
+                "正文草稿",
+                json.dumps({"score": 86, "hard_fail": False, "issues": []}),
+                json.dumps({"score": 84, "hard_fail": False, "issues": []}),
+                "正文终稿",
+                json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+                json.dumps({"facts": ["主角放下愧疚"]}),
+            ])
+
+        async def complete(self, role, system, user, **kwargs):
+            self.roles.append(role)
+            self.systems.append(system)
+            self.users.append(user)
+            return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
+
+    gateway = CausalGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+
+    result = await service.run_short(project.id, use_crewai=False)
+
+    assert result["status"] == "completed"
+    artifact = (project.path / "learning" / "short_causal_chain.json").read_text(encoding="utf-8")
+    assert "复活死去的朋友" in artifact
+    planning = project.path / "runs" / result["id"] / "outputs" / "planning.md"
+    assert "SHORT_CAUSAL_CHAIN_JSON_START" not in planning.read_text(encoding="utf-8")
+    assert "SHORT_CAUSAL_CHAIN_JSON_START" in gateway.users[0]
+    assert any("Short Story Causal Chain" in system and "复活死去的朋友" in system
+               for system in gateway.systems[1:])
+    final_prompts = [user for role, user in zip(gateway.roles, gateway.users) if role == "final_review"]
+    assert any("CAUSAL CHAIN CHECKS" in prompt for prompt in final_prompts)
+
+
+@pytest.mark.asyncio
 async def test_draft_uses_style_profile_only_when_project_enables_it(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

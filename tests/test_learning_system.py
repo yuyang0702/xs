@@ -148,6 +148,49 @@ def test_active_learning_artifacts_join_existing_constraint_path(tmp_path) -> No
     assert "每次回应都改变关系或信息" in constraints
 
 
+def test_short_causal_chain_is_project_artifact_and_constraint(tmp_path) -> None:
+    _db, _library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="因果短篇", mode="short", genre="悬疑", premise="复活朋友", target_words=6000,
+    ))
+    artifact = system.build_short_causal_chain(project.id, {
+        "core_goal": {"content": "复活死去的朋友"},
+        "cycles": [
+            {"obstacle": "缺少灵魂媒介", "effort": "调查死亡现场", "result": "找到残缺记忆", "state_change": "确认灵魂仍在"},
+            {"obstacle": "仪式需要交换生命", "effort": "寻找规则漏洞", "result": "朋友暂时复活", "state_change": "目标表面达成"},
+        ],
+        "reversal": {"content": "朋友主动死亡是为了封印", "prior_evidence": ["死亡记录被销毁"]},
+        "ending": {"surface_goal": "无法永久复活", "inner_goal": "主角放下愧疚"},
+    })
+
+    assert artifact["artifact_type"] == "short_causal_chain"
+    assert artifact["data"]["diagnostics"]["status"] == "valid"
+    constraints = projects.load_constraints(project.id)
+    assert "Short Story Causal Chain" in constraints
+    assert "复活死去的朋友" in constraints
+
+
+def test_adopted_causal_structure_mechanism_enters_blueprint_bucket(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="结构借鉴", mode="short", genre="悬疑", premise="复活朋友", target_words=6000,
+    ))
+    source = library.import_text(title="结构样本", source_type="paste", text="她救的人其实一直在逃离她。")
+    mechanism = system._save_node("mechanism", {
+        "key": "causal-structure-1",
+        "name": "目标对象主动抗拒被拯救",
+        "mechanism_type": "causal_structure",
+        "transfer_guidance": "只复用目标被重新解释的结构，不复用具体人物和死因",
+        "confidence": 0.9,
+    }, source_id=source["id"], status="confirmed")
+
+    system.adopt(project.id, mechanism["id"])
+
+    blueprint = system.get_artifact(project.id, "creative_blueprint")["data"]
+    assert blueprint["causal_structure"][0]["name"] == "目标对象主动抗拒被拯救"
+    assert blueprint["rules"]
+
+
 def test_legacy_style_sample_migrates_once_without_deleting_old_files(tmp_path) -> None:
     _db, _library, projects, system = setup_system(tmp_path)
     project = projects.create(ProjectCreate(
