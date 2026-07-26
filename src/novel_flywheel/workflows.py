@@ -115,6 +115,19 @@ class WorkflowService:
         atomic_write(output, json.dumps(report, ensure_ascii=False, indent=2))
         return report
 
+    def _constraints_with_platform_rules(self, project: Project, constraints: str) -> str:
+        marker = "\n\nMATCHED PLATFORM RULE REFERENCES:\n"
+        if marker in constraints or not self.references or not hasattr(self.references, "platform_rules"):
+            return constraints
+        rules = self.references.platform_rules(project.metadata.get("platform"))
+        if not rules:
+            return constraints
+        compact = [
+            {"title": item["title"], "text": item["text"][:8000]}
+            for item in rules[:5]
+        ]
+        return constraints + marker + json.dumps(compact, ensure_ascii=False)
+
     async def run_short(self, project_id: str, use_crewai: bool = True,
                         run_id: str | None = None) -> dict:
         project = self.projects.get(project_id)
@@ -873,6 +886,7 @@ class WorkflowService:
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, initial_review: dict, suffix: str = "",
     ) -> tuple[dict, dict]:
+        constraints = self._constraints_with_platform_rules(project, constraints)
         windows = review_windows(manuscript)
         ledger = issue_ledger(initial_review.get("issues", []))
         evidence = []
@@ -989,6 +1003,7 @@ class WorkflowService:
         manuscript: str, analysis: dict, baseline: dict, initial_review: dict,
         suffix: str = "",
     ) -> tuple[dict, dict]:
+        constraints = self._constraints_with_platform_rules(project, constraints)
         changes = diff_manuscripts(
             baseline["manuscript"], manuscript, baseline["analysis"], analysis,
         )

@@ -31,6 +31,15 @@ def test_database_creates_foundation_tables(tmp_path) -> None:
     assert {"reference_sources", "reference_versions", "reference_analyses"} <= db.table_names()
 
 
+def test_reference_metadata_migration_is_idempotent(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.migrate()
+    with db.connect() as connection:
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(reference_sources)")}
+    assert {"platform", "content_type", "project_id"} <= columns
+
+
 def test_run_events_are_ordered_and_active_runs_can_be_interrupted(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

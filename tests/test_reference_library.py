@@ -24,6 +24,21 @@ def test_import_text_is_versioned_and_global_duplicates_reuse_source(tmp_path) -
     assert [item["version"] for item in references.get(source["id"])["versions"]] == [2, 1]
 
 
+def test_import_stores_classification_and_metadata_can_be_updated(tmp_path) -> None:
+    references = library(tmp_path)
+    source = references.import_text(
+        title="知乎高赞样本", text="热门回答正文。", source_type="paste",
+        platform="知乎", content_type="popular_sample",
+    )
+    assert source["platform"] == "知乎"
+    assert source["content_type"] == "popular_sample"
+    updated = references.update_metadata(
+        source["id"], platform="番茄", content_type="competitor_work", project_id=None,
+    )
+    assert updated["platform"] == "番茄"
+    assert updated["content_type"] == "competitor_work"
+
+
 @pytest.mark.parametrize("title,text,source_type", [
     ("", "正文", "paste"),
     ("x" * 121, "正文", "paste"),

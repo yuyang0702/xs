@@ -67,6 +67,12 @@ Short-story polish uses bounded segments with adjacent boundaries, a compact sto
 
 The top-level **学习库** stores reference prose locally and separately from story projects. It accepts pasted text, UTF-8 TXT, DOCX, text-extractable PDF, and public HTTP/HTTPS pages, deduplicates identical content by SHA-256, and preserves immutable source versions. URL import rejects local/private destinations at every redirect. Scanned-PDF OCR is intentionally not included.
 
+References are organized by platform, content type, and an optional related project. Import recommends these values locally from the title, URL, and opening text; users can override them before or after import. Unknown material falls back to `reference_work`, while `competitor_work` is manual-only. Search and platform/type/project filters operate together without changing the globally reusable source.
+
+Content type controls purpose rather than project voice: `reference_work` yields narrative mechanisms, `platform_rule` supplements only same-platform final review, `popular_sample` enables a no-model report for title/first three lines/opening 500 characters/middle/turns/ending, `writing_tutorial` yields methods, and only `competitor_work` enters originality comparison. No classification automatically changes prose style or adopts a mechanism.
+
+Local mechanisms now require a located trigger excerpt, structural position, transfer guidance, incompatible conditions, and confidence. Low-confidence proposals must be confirmed before project adoption. Repetition remains a review-only finding; loop/recurrence anchors with nearby state-change signals are labeled as possible intentional repetition instead of receiving an unconditional deletion instruction.
+
 **本地诊断** and **本地提炼** use deterministic Python rules only. **模型深度分析** uses the configured `reference_analysis` and `reference_synthesis` roles only after an explicit confirmation. Typed SQLite nodes, edges, evidence, and user revisions preserve provenance. Recommendations remain proposals until the user adopts them into one project.
 
 Confirmed adoptions create versioned creative blueprints. Project learning also includes executable prose baselines, character voice profiles, epistemic boundaries, and scene briefs; active versions enter the existing planning/drafting/review/polish context, while stale versions are excluded. Character or world edits mark derived artifacts for review without rewriting an outline or manuscript.

@@ -68,6 +68,20 @@ async function loadAll() {
 
 function renderReferences() {
   const list = $("#reference-list");
+  const typeLabels={reference_work:"参考作品",platform_rule:"平台规则",popular_sample:"爆款样本",writing_tutorial:"写作教程",competitor_work:"竞品作品"};
+  const projectOptions=state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("");
+  if ($("#reference-project")) $("#reference-project").innerHTML='<option value="">不关联作品</option>'+projectOptions;
+  if ($("#reference-filter-project")) {
+    const selected=$("#reference-filter-project").value;
+    $("#reference-filter-project").innerHTML='<option value="">全部作品</option><option value="unlinked">未关联作品</option>'+projectOptions;
+    $("#reference-filter-project").value=selected;
+  }
+  if ($("#reference-filter-platform")) {
+    const selected=$("#reference-filter-platform").value;
+    const platforms=[...new Set(state.references.map(item=>item.platform).filter(Boolean))];
+    $("#reference-filter-platform").innerHTML='<option value="">全部平台</option>'+platforms.map(item=>`<option>${escapeHtml(item)}</option>`).join("");
+    $("#reference-filter-platform").value=selected;
+  }
   if (!state.references.length) {
     state.activeReference = null;
     list.innerHTML = '<p class="skill-meta reference-empty">尚未导入参考资料</p>';
@@ -77,7 +91,18 @@ function renderReferences() {
   if (!state.activeReference || !state.references.some(item => item.id === state.activeReference.id)) {
     state.activeReference = state.references[0];
   }
-  list.innerHTML = state.references.map(item => `<button class="reference-list-item ${item.id === state.activeReference.id ? "active" : ""}" data-reference-id="${item.id}"><strong>${escapeHtml(item.title)}</strong><span>${Number(item.latest_version?.character_count || 0).toLocaleString()} 字符 · ${item.versions.length} 个版本</span></button>`).join("");
+  const keyword=($("#reference-search")?.value||"").trim().toLowerCase();
+  const platform=$("#reference-filter-platform")?.value||"";
+  const contentType=$("#reference-filter-type")?.value||"";
+  const project=$("#reference-filter-project")?.value||"";
+  const filtered=state.references.filter(item=>{
+    const haystack=`${item.title} ${item.platform||""} ${typeLabels[item.content_type]||""}`.toLowerCase();
+    return (!keyword||haystack.includes(keyword))&&(!platform||item.platform===platform)&&(!contentType||item.content_type===contentType)&&(!project||(project==="unlinked"?!item.project_id:item.project_id===project));
+  });
+  list.innerHTML = filtered.length ? filtered.map(item => {
+    const linked=state.projects.find(project=>project.id===item.project_id);
+    return `<button class="reference-list-item ${item.id === state.activeReference.id ? "active" : ""}" data-reference-id="${item.id}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.platform||"未指定平台")} · ${escapeHtml(typeLabels[item.content_type]||"参考作品")}${linked?` · 关联《${escapeHtml(linked.title)}》`:""}</span><span>${Number(item.latest_version?.character_count || 0).toLocaleString()} 字符 · ${item.versions.length} 个版本</span></button>`;
+  }).join("") : '<p class="skill-meta reference-empty">没有符合筛选条件的资料</p>';
   list.querySelectorAll("[data-reference-id]").forEach(button => button.addEventListener("click", () => selectReference(button.dataset.referenceId)));
   if (!state.referenceContent) loadReferenceContent(state.activeReference.id);
   else renderReferenceDetail();
@@ -105,6 +130,7 @@ async function loadReferenceContent(sourceId) {
 function renderReferenceDetail() {
   const source = state.activeReference;
   if (!source) return;
+  const typeLabels={reference_work:"参考作品",platform_rule:"平台规则",popular_sample:"爆款样本",writing_tutorial:"写作教程",competitor_work:"竞品作品"};
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
@@ -114,6 +140,32 @@ function renderReferenceDetail() {
   $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
   $("#reference-detail [data-reference-create]").addEventListener("click", startWizardFromReference);
   $("#reference-detail [data-reference-delete]").addEventListener("click", deleteReference);
+  const header=$("#reference-detail header");
+  const metadata=document.createElement("section");
+  metadata.className="reference-metadata";
+  metadata.innerHTML=`<label>平台<input data-reference-platform maxlength="80" value="${escapeHtml(source.platform||"")}"></label><label>内容类型<select data-reference-type>${Object.entries(typeLabels).map(([value,label])=>`<option value="${value}" ${value===source.content_type?"selected":""}>${label}</option>`).join("")}</select></label><label>关联作品<select data-reference-project><option value="">不关联作品</option>${state.projects.map(item=>`<option value="${item.id}" ${item.id===source.project_id?"selected":""}>${escapeHtml(item.title)}</option>`).join("")}</select></label><button class="secondary" data-reference-metadata-save>保存分类</button>${source.content_type==="popular_sample"?'<button class="secondary" data-reference-popular>爆款分析</button>':""}`;
+  header.insertAdjacentElement("afterend",metadata);
+  metadata.querySelector("[data-reference-metadata-save]").addEventListener("click",saveReferenceMetadata);
+  metadata.querySelector("[data-reference-popular]")?.addEventListener("click",analyzePopularReference);
+}
+
+async function saveReferenceMetadata(){
+  try{
+    const shell=$("#reference-detail .reference-metadata");
+    const source=await api(`/api/references/${state.activeReference.id}/metadata`,{method:"PATCH",body:JSON.stringify({platform:shell.querySelector("[data-reference-platform]").value.trim()||null,content_type:shell.querySelector("[data-reference-type]").value,project_id:shell.querySelector("[data-reference-project]").value||null})});
+    state.activeReference=source; await loadAll(); toast("资料分类已保存");
+  }catch(error){toast(error.message);}
+}
+
+async function analyzePopularReference(){
+  try{
+    const report=await api(`/api/references/${state.activeReference.id}/popular-analysis`,{method:"POST"});
+    const labels={title:"标题",first_three_lines:"前三行",opening_500:"前500字",middle:"中段",turning_points:"转折",ending:"结尾"};
+    const section=document.createElement("section"); section.className="reference-findings popular-report";
+    section.innerHTML=`<h3>爆款样本本地分析</h3>${Object.entries(report.sections).map(([key,value])=>`<article><strong>${labels[key]}</strong><p>${value.findings.length?value.findings.map(escapeHtml).join("；"):"当前本地指标未发现明显缺口"}</p>${value.evidence.slice(0,3).map(item=>`<blockquote>${escapeHtml(item.excerpt)}</blockquote>`).join("")}</article>`).join("")}`;
+    $("#reference-detail .reference-source").insertAdjacentElement("beforebegin",section);
+    toast("爆款样本分析完成（未调用模型）");
+  }catch(error){toast(error.message);}
 }
 
 async function analyzeReference() {
@@ -142,17 +194,19 @@ $("#reference-form").addEventListener("submit", async event => {
   const extension = file?.name.split(".").pop().toLowerCase();
   const text = file && extension === "txt" ? await file.text() : $("#reference-text").value;
   const title = $("#reference-title").value.trim() || file?.name.replace(/\.(txt|docx|pdf)$/i, "") || url;
+  const metadata={platform:$("#reference-platform").value||null,content_type:$("#reference-content-type").value||null,project_id:$("#reference-project").value||null};
   if (!file && !url && !text.trim()) return toast("请选择文档、输入网址或粘贴正文");
   try {
     let source;
-    if (url) source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:"url",source_uri:url})});
-    else if (file && extension !== "txt") source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:extension,source_uri:file.name,data_base64:await fileBase64(file)})});
-    else source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste"})});
+    if (url) source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:"url",source_uri:url,...metadata})});
+    else if (file && extension !== "txt") source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:extension,source_uri:file.name,data_base64:await fileBase64(file),...metadata})});
+    else source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste",...metadata})});
     event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null;
     await loadAll(); toast("参考资料已导入");
   } catch(error) { toast(error.message); }
 });
 const fileBase64 = file => new Promise((resolve,reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(",")[1]); reader.onerror=reject; reader.readAsDataURL(file); });
+["reference-search","reference-filter-platform","reference-filter-type","reference-filter-project"].forEach(id=>$("#"+id)?.addEventListener(id==="reference-search"?"input":"change",renderReferences));
 
 async function learnReference() {
   if (!state.activeReference) return;
@@ -172,7 +226,7 @@ function renderLearning() {
   select.innerHTML=state.projects.length ? state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("") : '<option value="">请先创建作品</option>';
   if (state.activeProject) select.value=state.activeProject.id;
   const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
-  $("#learning-mechanisms").innerHTML=state.mechanisms.length ? state.mechanisms.map(item=>`<article class="mechanism-item"><h3>${escapeHtml(item.data.name)}</h3><p><strong>事实：</strong>${escapeHtml(item.data.fact)}</p><p><strong>解释：</strong>${escapeHtml(item.data.interpretation)}</p><p><strong>迁移：</strong>${escapeHtml(item.data.transfer_guidance)}</p>${item.evidence?.[0]?`<blockquote class="mechanism-evidence">${escapeHtml(item.evidence[0].excerpt)}</blockquote>`:""}<div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}">确认分析</button><button class="primary" data-mechanism-adopt="${item.id}" ${adopted.has(item.id)?"disabled":""}>${adopted.has(item.id)?"已采纳":"采纳到作品"}</button><button class="secondary" data-mechanism-reject="${item.id}">拒绝</button></div></article>`).join("") : '<p class="skill-meta">分析参考资料后，这里会展示带证据的可迁移机制</p>';
+  $("#learning-mechanisms").innerHTML=state.mechanisms.length ? state.mechanisms.map(item=>{const needsConfirm=Number(item.data.confidence||0)<0.7&&item.status!=="confirmed";return `<article class="mechanism-item"><h3>${escapeHtml(item.data.name)}</h3><p><strong>位置：</strong>${escapeHtml(item.data.structural_position||"未标注")} · <strong>置信度：</strong>${Math.round(Number(item.data.confidence||0)*100)}%</p><p><strong>观察事实：</strong>${escapeHtml(item.data.fact)}</p><p><strong>分析解释：</strong>${escapeHtml(item.data.interpretation)}</p><p><strong>迁移方法：</strong>${escapeHtml(item.data.transfer_guidance)}</p><p><strong>不适用：</strong>${escapeHtml((item.data.incompatible_conditions||[]).join("；"))}</p>${item.evidence?.[0]?`<blockquote class="mechanism-evidence">${escapeHtml(item.evidence[0].excerpt)}</blockquote>`:""}<div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}">${item.status==="confirmed"?"已确认":"确认分析"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm)?"disabled":""} title="${needsConfirm?"低置信度候选需先确认":""}">${adopted.has(item.id)?"已采纳":"采纳到作品"}</button><button class="secondary" data-mechanism-reject="${item.id}">拒绝</button></div></article>`;}).join("") : '<p class="skill-meta">分析参考资料后，这里会展示带证据的可迁移机制</p>';
   document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
   document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));
   document.querySelectorAll("[data-mechanism-reject]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismReject,"reject")));

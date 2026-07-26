@@ -34,11 +34,16 @@ def analyze_prose(text: str, baseline: dict | None = None) -> dict[str, object]:
 
     repeated = _repeated_phrase(text)
     if repeated:
-        findings.append(_finding(
+        item = _finding(
             "repeated_phrase", "review", text, *repeated,
             "短距离内出现完全重复的表达",
             "删除重复内容，或让第二次出现承担不同的叙事作用",
-        ))
+        )
+        item["intentional_repetition_candidate"] = _intentional_repetition(text, *repeated)
+        if item["intentional_repetition_candidate"]:
+            item["message"] = "重复表达附近存在循环或状态变化信号，可能是有意复现"
+            item["repair_goal"] = "确认第二次出现是否承担新的信息、状态或情绪叙事作用；有效循环锚点可以保留"
+        findings.append(item)
 
     dialogue = _dialogue_run(text, paragraphs)
     if dialogue:
@@ -149,6 +154,13 @@ def _repeated_phrase(text: str) -> tuple[int, int] | None:
                 if first >= 0 and second >= 0:
                     return first, second + len(repeated)
     return None
+
+
+def _intentional_repetition(text: str, start: int, end: int) -> bool:
+    nearby = text[max(0, start - 80):min(len(text), end + 120)]
+    loop_signal = re.search(r"第[一二三四五六七八九十\d]+(?:轮|次|天)|循环|重来|再次|又一次|重新", nearby)
+    change_signal = re.search(r"但|却|变化|改变|换了|不同|多了|少了|不再|这一次", nearby)
+    return bool(loop_signal and change_signal)
 
 
 def _dialogue_run(text: str, paragraphs: list[str]) -> tuple[int, int] | None:

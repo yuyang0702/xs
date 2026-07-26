@@ -33,6 +33,14 @@ def test_learning_api_confirmation_artifacts_and_candidate_guards(tmp_path) -> N
 
     assert client.get(f"/api/projects/{project_id}/learning/recommend/{node_id}").json()["status"] == "proposed"
     assert client.get(f"/api/projects/{project_id}/learning").json()["adoptions"] == []
+    blocked = client.post(
+        f"/api/projects/{project_id}/learning/adoptions/{node_id}", json={"edits": {}},
+    )
+    assert blocked.status_code == 422
+    assert "确认" in blocked.json()["detail"]
+    assert client.post(
+        f"/api/learning/nodes/{node_id}/revisions", json={"action": "confirm", "data": {}},
+    ).status_code == 200
     adopted = client.post(
         f"/api/projects/{project_id}/learning/adoptions/{node_id}", json={"edits": {"position": "中段"}},
     )

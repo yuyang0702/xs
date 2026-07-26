@@ -104,11 +104,20 @@
         <aside class="reference-sidebar">
           <form id="reference-form" class="reference-import">
             <label>资料名称<input id="reference-title" maxlength="120" required placeholder="例如：知乎古风短篇参考"></label>
+            <label>平台<select id="reference-platform"><option value="">自动判断</option><option>知乎</option><option>番茄</option><option>公众号</option><option>晋江</option><option>其他</option></select></label>
+            <label>内容类型<select id="reference-content-type"><option value="">自动判断（默认参考作品）</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品（仅手动）</option></select></label>
+            <label>关联作品<select id="reference-project"><option value="">不关联作品</option></select></label>
             <label>选择文档<input id="reference-file" type="file" accept=".txt,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
             <label>或公开网址<input id="reference-url" type="url" maxlength="2000" placeholder="https://example.com/article"></label>
             <label>或粘贴正文<textarea id="reference-text" rows="8" maxlength="1000000" placeholder="粘贴需要分析的参考正文"></textarea></label>
             <button class="primary" type="submit">导入学习库</button>
           </form>
+          <div class="reference-filters">
+            <label>搜索<input id="reference-search" type="search" placeholder="名称、平台或类型"></label>
+            <label>平台筛选<select id="reference-filter-platform"><option value="">全部平台</option></select></label>
+            <label>类型筛选<select id="reference-filter-type"><option value="">全部类型</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品</option></select></label>
+            <label>作品筛选<select id="reference-filter-project"><option value="">全部作品</option><option value="unlinked">未关联作品</option></select></label>
+          </div>
           <nav id="reference-list" class="reference-list" aria-label="参考资料列表"><p class="skill-meta">尚未导入参考资料</p></nav>
         </aside>
         <article id="reference-detail" class="reference-detail"><p class="skill-meta">选择参考资料后查看原文和本地诊断</p></article>

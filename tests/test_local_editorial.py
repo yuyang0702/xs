@@ -32,6 +32,22 @@ def test_detects_exact_phrase_reuse_and_mechanical_dialogue() -> None:
     assert "repeated_phrase" in ids
 
 
+def test_changed_loop_anchor_is_marked_as_intentional_candidate() -> None:
+    text = (
+        "第一轮，电梯门在十二点打开，他死了。\n\n"
+        "第二轮，电梯门在十二点打开，但死者换了位置。"
+    )
+    finding = next(item for item in analyze_prose(text)["findings"] if item["rule_id"] == "repeated_phrase")
+    assert finding["intentional_repetition_candidate"] is True
+    assert "叙事作用" in finding["repair_goal"]
+
+
+def test_unchanged_duplicate_remains_plain_review() -> None:
+    text = "夜色已经沉了下来。夜色已经沉了下来。"
+    finding = next(item for item in analyze_prose(text)["findings"] if item["rule_id"] == "repeated_phrase")
+    assert finding["intentional_repetition_candidate"] is False
+
+
 def test_detects_unusually_regular_sentence_lengths() -> None:
     text = "他推开门走进去。她抬起头看着他。风从窗外吹进来。灯在桌上轻轻晃。"
 

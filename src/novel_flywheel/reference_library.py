@@ -7,6 +7,7 @@ from pathlib import Path
 
 from novel_flywheel.db import Database
 from novel_flywheel.local_editorial import ANALYZER, VERSION, analyze_prose
+from novel_flywheel.reference_classification import CONTENT_TYPES, classify_reference
 
 
 class ReferenceLibrary:
@@ -17,27 +18,51 @@ class ReferenceLibrary:
         self.root = root.resolve()
 
     def import_text(self, *, title: str, text: str, source_type: str,
-                    source_uri: str | None = None, warnings: list[str] | None = None) -> dict:
+                    source_uri: str | None = None, warnings: list[str] | None = None,
+                    platform: str | None = None, content_type: str | None = None,
+                    project_id: str | None = None) -> dict:
         title = title.strip()
         normalized = self._normalize(text)
         if not title or len(title) > 120:
             raise ValueError("Reference title must contain 1-120 characters")
         if source_type not in self.SOURCE_TYPES:
             raise ValueError(f"Unsupported reference source type: {source_type}")
+        recommendation = classify_reference(title, normalized, source_uri)
+        selected_type = content_type or str(recommendation["content_type"])
+        if selected_type not in CONTENT_TYPES:
+            raise ValueError(f"Unsupported reference content type: {selected_type}")
+        selected_platform = (platform if platform is not None else str(recommendation["platform"])).strip() or None
         digest = self._hash(normalized)
         existing = self.db.find_reference_source_by_hash(digest)
         if existing:
             return self.get(existing["id"])
         source_id = uuid.uuid4().hex
-        self.db.create_reference_source(source_id, title, source_type, source_uri=source_uri)
+        self.db.create_reference_source(
+            source_id, title, source_type, source_uri=source_uri, platform=selected_platform,
+            content_type=selected_type, project_id=project_id,
+        )
         try:
             self._write_version(source_id, normalized, digest)
         except Exception:
             self.db.delete_reference_source(source_id)
             raise
         result = self.get(source_id)
+        result["recommendation"] = recommendation
         result["extraction_warnings"] = warnings or []
         return result
+
+    def update_metadata(
+        self, source_id: str, *, platform: str | None, content_type: str, project_id: str | None,
+    ) -> dict:
+        self._validate_id(source_id)
+        if content_type not in CONTENT_TYPES:
+            raise ValueError(f"Unsupported reference content type: {content_type}")
+        normalized_platform = (platform or "").strip() or None
+        if not self.db.update_reference_source_metadata(
+            source_id, normalized_platform, content_type, project_id,
+        ):
+            raise LookupError(f"Reference source not found: {source_id}")
+        return self.get(source_id)
 
     def add_version(self, source_id: str, text: str) -> dict:
         self._validate_id(source_id)
@@ -55,9 +80,12 @@ class ReferenceLibrary:
 
     def comparison_sources(self, project_id: str | None = None,
                            character_cap: int = 100_000) -> list[dict[str, str]]:
-        del project_id  # Reference storage is global; project adoption filtering can narrow this later.
         result, used, hashes = [], 0, set()
         for source in self.list():
+            if source.get("content_type") != "competitor_work":
+                continue
+            if source.get("project_id") and source.get("project_id") != project_id:
+                continue
             version = source.get("latest_version")
             if not version:
                 continue
@@ -72,6 +100,22 @@ class ReferenceLibrary:
             })
             hashes.add(digest)
             used += len(text)
+        return result
+
+    def platform_rules(self, platform: str | None) -> list[dict[str, str]]:
+        normalized = (platform or "").strip().lower()
+        if not normalized:
+            return []
+        result = []
+        for source in self.list():
+            if source.get("content_type") != "platform_rule":
+                continue
+            if (source.get("platform") or "").strip().lower() != normalized:
+                continue
+            result.append({
+                "id": source["id"], "title": source["title"],
+                "text": self.read_text(source["id"])[:20_000],
+            })
         return result
 
     def get(self, source_id: str) -> dict:

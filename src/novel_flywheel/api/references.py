@@ -15,6 +15,11 @@ class ReferenceImport(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     source_type: Literal["paste", "txt"]
     text: str = Field(min_length=1, max_length=1_000_000)
+    platform: str | None = Field(default=None, max_length=80)
+    content_type: Literal[
+        "reference_work", "platform_rule", "popular_sample", "writing_tutorial", "competitor_work",
+    ] | None = None
+    project_id: str | None = None
 
 
 class ExtractedReferenceImport(BaseModel):
@@ -24,10 +29,28 @@ class ExtractedReferenceImport(BaseModel):
     source_uri: str | None = Field(default=None, max_length=2000)
     data_base64: str | None = None
     warnings: list[str] = Field(default_factory=list)
+    platform: str | None = Field(default=None, max_length=80)
+    content_type: Literal[
+        "reference_work", "platform_rule", "popular_sample", "writing_tutorial", "competitor_work",
+    ] | None = None
+    project_id: str | None = None
+
+
+class ReferenceMetadataUpdate(BaseModel):
+    platform: str | None = Field(default=None, max_length=80)
+    content_type: Literal[
+        "reference_work", "platform_rule", "popular_sample", "writing_tutorial", "competitor_work",
+    ]
+    project_id: str | None = None
 
 
 def _library(request: Request):
     return request.app.state.references
+
+
+def _validate_project(request: Request, project_id: str | None) -> None:
+    if project_id:
+        request.app.state.projects.get(project_id)
 
 
 def _public(value):
@@ -50,8 +73,10 @@ def list_references(request: Request) -> list[dict]:
 @router.post("", status_code=status.HTTP_201_CREATED)
 def import_reference(payload: ReferenceImport, request: Request) -> dict:
     try:
+        _validate_project(request, payload.project_id)
         return _public(_library(request).import_text(
             title=payload.title, text=payload.text, source_type=payload.source_type,
+            platform=payload.platform, content_type=payload.content_type, project_id=payload.project_id,
         ))
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
@@ -60,6 +85,7 @@ def import_reference(payload: ReferenceImport, request: Request) -> dict:
 @router.post("/import", status_code=status.HTTP_201_CREATED)
 def import_extracted_reference(payload: ExtractedReferenceImport, request: Request) -> dict:
     try:
+        _validate_project(request, payload.project_id)
         text, title, source_uri = payload.text, payload.title, payload.source_uri
         if payload.source_type == "url" and not text:
             fetched = fetch_public_url(source_uri or "")
@@ -69,8 +95,11 @@ def import_extracted_reference(payload: ExtractedReferenceImport, request: Reque
             text = extract_docx(raw) if payload.source_type == "docx" else extract_pdf(raw)
         return _public(_library(request).import_text(
             title=title, text=text or "", source_type=payload.source_type,
-            source_uri=source_uri, warnings=payload.warnings,
+            source_uri=source_uri, warnings=payload.warnings, platform=payload.platform,
+            content_type=payload.content_type, project_id=payload.project_id,
         ))
+    except LookupError as exc:
+        raise _not_found(exc) from exc
     except (ValueError, httpx.HTTPError) as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
@@ -97,6 +126,39 @@ def analyze_reference(source_id: str, request: Request) -> dict:
         return _public(_library(request).analyze(source_id))
     except (LookupError, ValueError) as exc:
         raise _not_found(exc) from exc
+
+
+@router.patch("/{source_id}/metadata")
+def update_reference_metadata(
+    source_id: str, payload: ReferenceMetadataUpdate, request: Request,
+) -> dict:
+    try:
+        if payload.project_id:
+            request.app.state.projects.get(payload.project_id)
+        return _public(_library(request).update_metadata(
+            source_id, platform=payload.platform, content_type=payload.content_type,
+            project_id=payload.project_id,
+        ))
+    except LookupError as exc:
+        raise _not_found(exc) from exc
+    except LookupError as exc:
+        raise _not_found(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.post("/{source_id}/popular-analysis")
+def popular_reference_analysis(source_id: str, request: Request) -> dict:
+    from novel_flywheel.popular_analysis import analyze_popular_sample
+    try:
+        source = _library(request).get(source_id)
+        if source["content_type"] != "popular_sample":
+            raise ValueError("请先将内容类型改为“爆款样本”")
+        return analyze_popular_sample(source["title"], _library(request).read_text(source_id))
+    except LookupError as exc:
+        raise _not_found(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
 
 @router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)

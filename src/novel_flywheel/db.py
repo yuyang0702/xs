@@ -218,6 +218,9 @@ CREATE TABLE IF NOT EXISTS reference_sources(
   title TEXT NOT NULL,
   source_type TEXT NOT NULL,
   source_uri TEXT,
+  platform TEXT,
+  content_type TEXT NOT NULL DEFAULT 'reference_work',
+  project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
   status TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -315,6 +318,17 @@ class Database:
         self._backup_before_story_state_upgrade()
         with self.connect() as connection:
             connection.executescript(SCHEMA)
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(reference_sources)")}
+            if "platform" not in columns:
+                connection.execute("ALTER TABLE reference_sources ADD COLUMN platform TEXT")
+            if "content_type" not in columns:
+                connection.execute(
+                    "ALTER TABLE reference_sources ADD COLUMN content_type TEXT NOT NULL DEFAULT 'reference_work'"
+                )
+            if "project_id" not in columns:
+                connection.execute(
+                    "ALTER TABLE reference_sources ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL"
+                )
 
     def _backup_before_story_state_upgrade(self) -> None:
         if not self.path.is_file() or self.path.stat().st_size == 0:
@@ -827,12 +841,32 @@ class Database:
             )
 
     def create_reference_source(self, source_id: str, title: str, source_type: str,
-                                source_uri: str | None = None) -> None:
+                                source_uri: str | None = None, platform: str | None = None,
+                                content_type: str = "reference_work",
+                                project_id: str | None = None) -> None:
         with self.connect() as connection:
             connection.execute(
-                "INSERT INTO reference_sources VALUES (?, ?, ?, ?, 'active', datetime('now'), datetime('now'))",
-                (source_id, title, source_type, source_uri),
+                "INSERT INTO reference_sources "
+                "(id,title,source_type,source_uri,platform,content_type,project_id,status,created_at,updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))",
+                (source_id, title, source_type, source_uri, platform, content_type, project_id),
             )
+
+    def update_reference_source_metadata(
+        self, source_id: str, platform: str | None, content_type: str, project_id: str | None,
+    ) -> bool:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "UPDATE reference_sources SET platform=?,content_type=?,project_id=?,updated_at=datetime('now') "
+                "WHERE id=?",
+                (platform, content_type, project_id, source_id),
+            )
+            connection.execute(
+                "UPDATE learning_nodes SET status='needs_review',updated_at=datetime('now') "
+                "WHERE source_id=? AND node_type='mechanism' AND status='proposed'",
+                (source_id,),
+            )
+        return cursor.rowcount > 0
 
     def get_reference_source(self, source_id: str) -> dict[str, Any] | None:
         with self.connect() as connection:

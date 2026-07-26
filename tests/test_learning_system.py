@@ -41,6 +41,7 @@ def test_adoption_requires_confirmation_and_never_overwrites_outline(tmp_path) -
     recommendation = system.recommend(project.id, mechanism["id"])
     assert recommendation["status"] == "proposed"
     assert not system.list_adoptions(project.id)
+    system.revise_node(mechanism["id"], "confirm", {})
     adopted = system.adopt(project.id, mechanism["id"], {"position": "中段"})
     assert adopted["status"] == "adopted"
     assert outline.read_text(encoding="utf-8") == "# 原大纲\n"
@@ -80,6 +81,7 @@ def test_deleting_source_keeps_adoption_as_reviewable_tombstone(tmp_path) -> Non
     ))
     source = library.import_text(title="样本", source_type="paste", text="他推门后却发现真相。")
     node = system.analyze_reference(source["id"])["mechanisms"][0]
+    system.revise_node(node["id"], "confirm", {})
     system.adopt(project.id, node["id"])
     library.delete(source["id"])
     with db.connect() as connection:

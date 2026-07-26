@@ -59,3 +59,29 @@ def test_document_import_endpoint_accepts_extracted_text(tmp_path) -> None:
     })
     assert response.status_code == 201
     assert response.json()["source_type"] == "docx"
+
+
+def test_reference_metadata_can_be_overridden_and_updated(tmp_path) -> None:
+    client = client_for(tmp_path)
+    created = client.post("/api/references", json={
+        "title": "循环样本", "source_type": "paste", "text": "第一天重新开始。",
+        "platform": "知乎", "content_type": "popular_sample",
+    }).json()
+    assert created["content_type"] == "popular_sample"
+
+    updated = client.patch(f"/api/references/{created['id']}/metadata", json={
+        "platform": "番茄", "content_type": "competitor_work", "project_id": None,
+    })
+    assert updated.status_code == 200
+    assert updated.json()["platform"] == "番茄"
+    assert updated.json()["content_type"] == "competitor_work"
+
+
+def test_reference_metadata_rejects_unknown_type(tmp_path) -> None:
+    client = client_for(tmp_path)
+    created = client.post("/api/references", json={
+        "title": "样本", "source_type": "paste", "text": "正文。",
+    }).json()
+    assert client.patch(f"/api/references/{created['id']}/metadata", json={
+        "content_type": "unknown",
+    }).status_code == 422
