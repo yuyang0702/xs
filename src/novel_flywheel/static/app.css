@@ -114,8 +114,10 @@ button:active:not(:disabled) { transform:scale(.98); }
 .reference-import { display:grid; gap:12px; padding-bottom:20px; border-bottom:1px solid var(--line); }
 .reference-list { display:block; margin-top:14px; }
 .reference-filters,.reference-metadata { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0;padding:12px;background:var(--panel-soft,#f7f8fb);border:1px solid var(--line); }
-.reference-metadata { align-items:end; }
-.reference-metadata [data-reference-metadata-status] { display:block; margin-top:6px; }
+.reference-metadata { align-items:end; padding-bottom:34px; }
+.reference-metadata-action { position:relative; display:grid; grid-template-rows:20px 40px; gap:7px; color:#4f5751; font-size:13px; font-weight:600; }
+.reference-metadata-action button { height:40px; justify-self:start; }
+.reference-metadata [data-reference-metadata-status] { position:absolute; top:74px; left:0; display:block; margin:0; font-weight:400; white-space:nowrap; }
 .popular-report article { margin:10px 0;padding:12px;border-left:3px solid #6c5ce7;background:#fafaff; }
 .reference-empty { padding:12px 0; }
 .reference-list-item { width:100%; padding:12px 10px; border:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; color:var(--ink); text-align:left; }

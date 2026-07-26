@@ -211,3 +211,14 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert 'api("/api/learning/mechanisms")' in script
     assert "startWizardFromReference" in script
     assert "data-reference-create" in script
+
+
+def test_reference_metadata_save_action_aligns_with_fields(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    assert 'class="reference-metadata-action"' in script
+    assert ".reference-metadata-action" in css
+    assert "grid-template-rows:20px 40px;" in css
+    assert "position:absolute" in css
