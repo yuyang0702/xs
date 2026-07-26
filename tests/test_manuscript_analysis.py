@@ -40,6 +40,33 @@ def test_analysis_normalizes_ltp_entities_and_events():
     assert report["events"][0]["predicate"] == "打开"
 
 
+def test_analysis_normalizes_current_ltp_entity_and_event_shapes():
+    def fake(_text):
+        return {
+            "backend": "ltp", "available": True, "backend_version": "ltp-v2",
+            "result": {
+                "cws": [["林雾", "打开", "木盒"]],
+                "pos": [["nh", "v", "n"]],
+                "ner": [[["Nh", "林雾", 0, 0]]],
+                "srl": [[{
+                    "index": 1,
+                    "predicate": "打开",
+                    "arguments": [["A0", "林雾", 0, 0], ["A1", "木盒", 2, 2]],
+                }]],
+                "dep": [],
+            },
+        }
+
+    report = analyze_manuscript("林雾打开木盒。", nlp_analyze=fake)
+
+    assert report["entities"][0]["text"] == "林雾"
+    assert report["events"][0]["predicate"] == "打开"
+    assert report["events"][0]["arguments"] == [
+        {"role": "A0", "text": "林雾"},
+        {"role": "A1", "text": "木盒"},
+    ]
+
+
 def test_originality_candidates_are_limited_to_local_corpus():
     report = analyze_manuscript(
         "林知晚推开生锈铁门，发现地下室仍亮着灯。",
@@ -54,6 +81,28 @@ def test_originality_candidates_are_limited_to_local_corpus():
     assert originality["continuous_passages"]
     assert originality["similar_names"]
     assert originality["semantic_candidates"]
+
+
+def test_originality_prefers_ltp_entities_over_regex_name_fallback():
+    def fake(_text):
+        return {
+            "backend": "ltp", "available": True,
+            "result": {
+                "cws": [["林雾", "从", "地下", "离开"]],
+                "pos": [["nh", "p", "n", "v"]],
+                "ner": [[["Nh", "林雾", 0, 0]]],
+                "srl": [[]], "dep": [],
+            },
+        }
+
+    report = analyze_manuscript(
+        "林雾从地下离开。", nlp_analyze=fake,
+        comparison_sources=[{"id": "ref", "text": "林晚从地上回来。"}],
+    )
+
+    assert {
+        item["manuscript_name"] for item in report["originality"]["similar_names"]
+    } <= {"林雾"}
 
 
 def test_market_baseline_comparison_is_advisory_only():

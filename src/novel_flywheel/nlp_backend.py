@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -12,6 +13,8 @@ class LocalNLPManager:
     """Manages an optional LTP install; ordinary startup never downloads models."""
 
     PACKAGE = "ltp>=4.2,<5"
+    TRANSFORMERS_PACKAGE = "transformers>=4,<5"
+    HUGGINGFACE_HUB_PACKAGE = "huggingface-hub<1"
     BACKEND_VERSION = "ltp-v2"
 
     def __init__(self, state_path: Path, runner=subprocess.Popen, command_runner=subprocess.run) -> None:
@@ -36,7 +39,9 @@ class LocalNLPManager:
         if self.process and self.process.poll() is None:
             return self.status()
         self.process = self.runner(
-            [sys.executable, "-m", "pip", "install", self.PACKAGE],
+            [sys.executable, "-m", "pip", "install", self.PACKAGE,
+             self.TRANSFORMERS_PACKAGE,
+             self.HUGGINGFACE_HUB_PACKAGE],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
         self._write({"enabled": False, "operation": "installing"})
@@ -67,13 +72,21 @@ class LocalNLPManager:
         digest = hashlib.sha256((self.BACKEND_VERSION + "\0" + text).encode("utf-8")).hexdigest()
         cache = self.state_path.parent / "nlp-cache" / f"{digest}.json"
         try:
-            return {**json.loads(cache.read_text(encoding="utf-8")), "cached": True}
+            return {
+                **json.loads(cache.read_text(encoding="utf-8")),
+                "backend_version": self.BACKEND_VERSION,
+                "cached": True,
+            }
         except (OSError, json.JSONDecodeError):
             pass
         try:
+            environment = os.environ.copy()
+            environment.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
+            environment["PYTHONUTF8"] = "1"
             completed = self.command_runner(
                 [sys.executable, "-m", "novel_flywheel.nlp_worker"], input=text,
                 text=True, encoding="utf-8", capture_output=True, timeout=300, check=True,
+                env=environment,
             )
             result = json.loads(completed.stdout)
             cache.parent.mkdir(parents=True, exist_ok=True)

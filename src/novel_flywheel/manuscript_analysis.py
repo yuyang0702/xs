@@ -166,7 +166,10 @@ def _normalize_ltp(text: str, payload: dict) -> tuple[list[dict], list[dict]]:
     for item in ner:
         if not isinstance(item, (list, tuple)) or len(item) < 3:
             continue
-        label, start_i, end_i = item[0], int(item[1]), int(item[2])
+        if len(item) >= 4 and isinstance(item[1], str):
+            label, start_i, end_i = item[0], int(item[2]), int(item[3])
+        else:
+            label, start_i, end_i = item[0], int(item[1]), int(item[2])
         if 0 <= start_i <= end_i < len(words):
             entities.append({
                 "type": str(label), "text": "".join(map(str, words[start_i:end_i + 1])),
@@ -178,15 +181,23 @@ def _normalize_ltp(text: str, payload: dict) -> tuple[list[dict], list[dict]]:
     if len(srl) == 1 and isinstance(srl[0], list):
         srl = srl[0]
     for frame in srl:
-        if not isinstance(frame, (list, tuple)) or not frame:
+        if isinstance(frame, dict):
+            predicate_i = int(frame.get("index", -1))
+            frame_arguments = frame.get("arguments") or []
+        elif isinstance(frame, (list, tuple)) and frame:
+            predicate_i = int(frame[0])
+            frame_arguments = frame[1] if len(frame) > 1 else []
+        else:
             continue
-        predicate_i = int(frame[0])
         if not 0 <= predicate_i < len(words):
             continue
         arguments = []
-        for argument in (frame[1] if len(frame) > 1 else []):
+        for argument in frame_arguments:
             if isinstance(argument, (list, tuple)) and len(argument) >= 3:
-                label, start_i, end_i = argument[0], int(argument[1]), int(argument[2])
+                if len(argument) >= 4 and isinstance(argument[1], str):
+                    label, start_i, end_i = argument[0], int(argument[2]), int(argument[3])
+                else:
+                    label, start_i, end_i = argument[0], int(argument[1]), int(argument[2])
                 if 0 <= start_i <= end_i < len(words):
                     arguments.append({
                         "role": str(label),
@@ -216,7 +227,8 @@ def _window_for(offset: int, windows: list[dict]) -> int | None:
 def _originality(text: str, entities: list[dict], sources: list[dict[str, str]]) -> dict:
     passages, names, semantic = [], [], []
     manuscript_names = {item["text"] for item in entities if len(item["text"]) in (2, 3)}
-    manuscript_names.update(_NAME.findall(text))
+    if not manuscript_names:
+        manuscript_names.update(_NAME.findall(text))
     manuscript_terms = _terms(text)
     for source in sources:
         source_text = str(source.get("text", ""))
