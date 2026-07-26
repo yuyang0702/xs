@@ -152,6 +152,22 @@ def test_keywords_count_distinct_works_and_expose_evidence_by_text_area(tmp_path
     assert "孤城" not in combined
 
 
+def test_market_keywords_do_not_start_ltp_for_fixed_vocabulary(tmp_path) -> None:
+    market = service(tmp_path, [ZHIHU_HTML])
+    market.nlp_analyzer = lambda _text: (_ for _ in ()).throw(
+        AssertionError("fixed market vocabulary must not start LTP")
+    )
+
+    result = market._keywords([
+        {"id": "1", "title": "重生复仇", "summary": "她决定复仇", "tags": [],
+         "rank": 1, "ranking_name": "推荐榜"},
+        {"id": "2", "title": "重生归来", "summary": "再次复仇", "tags": [],
+         "rank": 2, "ranking_name": "推荐榜"},
+    ])
+
+    assert {item["word"] for item in result["combined"]} >= {"重生", "复仇"}
+
+
 def test_length_filter_and_user_override_have_priority(tmp_path) -> None:
     page = ZHIHU_API_JSON.replace(
         '"business_id":"1654593780966428672"',

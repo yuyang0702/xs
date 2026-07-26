@@ -581,13 +581,6 @@ class MarketService:
                 canonical = KEYWORD_ALIASES.get(tag, tag)
                 if canonical in category_for:
                     found.add(canonical)
-            if self.nlp_analyzer and normalized:
-                analysis = self.nlp_analyzer(normalized)
-                for token in analysis.get("tokens", []) if analysis.get("available") else []:
-                    value = token.get("text") if isinstance(token, dict) else token
-                    canonical = KEYWORD_ALIASES.get(str(value), str(value))
-                    if canonical in category_for:
-                        found.add(canonical)
             return found
 
         areas: dict[str, dict[str, set[str]]] = {
