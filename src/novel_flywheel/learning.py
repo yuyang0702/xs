@@ -38,13 +38,20 @@ class LearningSystem:
         for window in windows:
             digest = self._hash(WINDOW_VERSION + "\0" + window["text"])
             node = self._node_by_key("source_window", source_id, digest)
-            if node:
+            existing_mechanisms = self._mechanisms_for_window(node["id"]) if node else []
+            extraction_current = bool(
+                node
+                and node["data"].get("candidate_extraction_version") == WINDOW_VERSION
+                and (not node["data"].get("candidate_count") or existing_mechanisms)
+            )
+            if extraction_current:
                 cached += 1
             else:
-                node = self._save_node("source_window", {
-                    "key": digest, "index": window["index"], "start": window["start"],
-                    "end": window["end"], "summary": self._summary(window["text"]),
-                }, source_id=source_id, status="analyzed")
+                if node is None:
+                    node = self._save_node("source_window", {
+                        "key": digest, "index": window["index"], "start": window["start"],
+                        "end": window["end"], "summary": self._summary(window["text"]),
+                    }, source_id=source_id, status="analyzed")
                 candidates = self._candidate_mechanisms(
                     window["text"], window["start"], len(text), source.get("content_type", "reference_work"),
                 )
@@ -60,6 +67,16 @@ class LearningSystem:
                         }, source_id=source_id, status="proposed")
                     self._save_edge_once("abstracts_to", node["id"], mechanism["id"])
                     self._save_evidence_once(mechanism["id"], version["id"], evidence)
+                node_data = {
+                    **node["data"], "candidate_extraction_version": WINDOW_VERSION,
+                    "candidate_count": len(candidates),
+                }
+                with self.db.connect() as connection:
+                    connection.execute(
+                        "UPDATE learning_nodes SET data_json=?,updated_at=datetime('now') WHERE id=?",
+                        (json.dumps(node_data, ensure_ascii=False), node["id"]),
+                    )
+                node = {**node, "data": node_data}
             for mechanism in self._mechanisms_for_window(node["id"]):
                 mechanisms_by_id[mechanism["id"]] = mechanism
         for mechanism_id in list(mechanisms_by_id):

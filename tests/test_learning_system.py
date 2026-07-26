@@ -30,6 +30,22 @@ def test_analysis_creates_evidenced_mechanisms_and_reuses_windows(tmp_path) -> N
     assert second["cached_windows"] == second["window_count"]
 
 
+def test_cached_window_rebuilds_missing_mechanisms(tmp_path) -> None:
+    db, library, _projects, system = setup_system(tmp_path)
+    source = library.import_text(
+        title="缓存恢复", source_type="paste", text="她推门后却发现真相，于是决定离开。",
+    )
+    first = system.analyze_reference(source["id"])
+    assert first["mechanisms"]
+    with db.connect() as connection:
+        connection.execute("DELETE FROM learning_nodes WHERE node_type='mechanism' AND source_id=?", (source["id"],))
+
+    second = system.analyze_reference(source["id"])
+
+    assert second["cached_windows"] == 0
+    assert second["mechanisms"]
+
+
 def test_local_reference_analysis_returns_cross_text_attraction_candidates(tmp_path) -> None:
     _db, library, _projects, system = setup_system(tmp_path)
     source = library.import_text(
