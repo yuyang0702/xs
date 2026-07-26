@@ -89,6 +89,54 @@ def test_deleting_source_keeps_adoption_as_reviewable_tombstone(tmp_path) -> Non
     assert status == "review_source_deleted"
 
 
+def test_reference_metadata_change_marks_adoptions_and_artifacts_for_review(tmp_path) -> None:
+    db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="复核作品", mode="short", genre="悬疑", premise="测试", target_words=10_000,
+    ))
+    source = library.import_text(
+        title="样本", source_type="paste", text="他推门后却发现真相。",
+        platform="知乎", content_type="reference_work",
+    )
+    node = system.analyze_reference(source["id"])["mechanisms"][0]
+    system.revise_node(node["id"], "confirm", {})
+    system.adopt(project.id, node["id"])
+
+    library.update_metadata(
+        source["id"], platform="番茄", content_type="popular_sample", project_id=project.id,
+    )
+
+    with db.connect() as connection:
+        adoption = connection.execute(
+            "SELECT status FROM project_adoptions WHERE project_id=? AND node_id=?",
+            (project.id, node["id"]),
+        ).fetchone()
+    assert adoption["status"] == "review_source_metadata_changed"
+    assert system.get_artifact(project.id, "creative_blueprint")["status"] == "stale"
+    assert system.list_adoption_reviews(project.id)[0]["node_id"] == node["id"]
+
+
+def test_saving_unchanged_reference_metadata_keeps_adoption_active(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="稳定作品", mode="short", genre="悬疑", premise="测试", target_words=10_000,
+    ))
+    source = library.import_text(
+        title="样本", source_type="paste", text="他推门后却发现真相。",
+        platform="知乎", content_type="reference_work",
+    )
+    node = system.analyze_reference(source["id"])["mechanisms"][0]
+    system.revise_node(node["id"], "confirm", {})
+    system.adopt(project.id, node["id"])
+
+    library.update_metadata(
+        source["id"], platform="知乎", content_type="reference_work", project_id=None,
+    )
+
+    assert system.list_adoptions(project.id)[0]["node_id"] == node["id"]
+    assert system.get_artifact(project.id, "creative_blueprint")["status"] == "active"
+
+
 def test_active_learning_artifacts_join_existing_constraint_path(tmp_path) -> None:
     _db, _library, projects, system = setup_system(tmp_path)
     project = projects.create(ProjectCreate(

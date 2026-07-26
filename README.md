@@ -75,6 +75,8 @@ Local mechanisms now require a located trigger excerpt, structural position, tra
 
 Rejected mechanisms disappear from the default candidate view immediately after rejection. The mechanism-status selector can show rejected items or all items for audit; rejected items remain read-only and cannot be confirmed, adopted, or rejected a second time.
 
+Reference metadata shows an explicit saved/dirty/saving/error state. A real change to platform, content type, or related project marks mechanisms already adopted from that source as requiring reconfirmation and marks the affected creative blueprint stale. Saving identical metadata is a no-op. Reconfirmation is explicit; metadata edits never rewrite formal prose.
+
 **本地诊断** and **本地提炼** use deterministic Python rules only. **模型深度分析** uses the configured `reference_analysis` and `reference_synthesis` roles only after an explicit confirmation. Typed SQLite nodes, edges, evidence, and user revisions preserve provenance. Recommendations remain proposals until the user adopts them into one project.
 
 Confirmed adoptions create versioned creative blueprints. Project learning also includes executable prose baselines, character voice profiles, epistemic boundaries, and scene briefs; active versions enter the existing planning/drafting/review/polish context, while stale versions are excluded. Character or world edits mark derived artifacts for review without rewriting an outline or manuscript.

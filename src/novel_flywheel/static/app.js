@@ -143,18 +143,38 @@ function renderReferenceDetail() {
   const header=$("#reference-detail header");
   const metadata=document.createElement("section");
   metadata.className="reference-metadata";
-  metadata.innerHTML=`<label>平台<input data-reference-platform maxlength="80" value="${escapeHtml(source.platform||"")}"></label><label>内容类型<select data-reference-type>${Object.entries(typeLabels).map(([value,label])=>`<option value="${value}" ${value===source.content_type?"selected":""}>${label}</option>`).join("")}</select></label><label>关联作品<select data-reference-project><option value="">不关联作品</option>${state.projects.map(item=>`<option value="${item.id}" ${item.id===source.project_id?"selected":""}>${escapeHtml(item.title)}</option>`).join("")}</select></label><button class="secondary" data-reference-metadata-save>保存分类</button>${source.content_type==="popular_sample"?'<button class="secondary" data-reference-popular>爆款分析</button>':""}`;
+  metadata.innerHTML=`<label>平台<input data-reference-platform maxlength="80" value="${escapeHtml(source.platform||"")}"></label><label>内容类型<select data-reference-type>${Object.entries(typeLabels).map(([value,label])=>`<option value="${value}" ${value===source.content_type?"selected":""}>${label}</option>`).join("")}</select></label><label>关联作品<select data-reference-project><option value="">不关联作品</option>${state.projects.map(item=>`<option value="${item.id}" ${item.id===source.project_id?"selected":""}>${escapeHtml(item.title)}</option>`).join("")}</select></label><div><button class="secondary" data-reference-metadata-save disabled>已保存</button><span class="skill-meta" data-reference-metadata-status>分类状态：已保存</span></div>${source.content_type==="popular_sample"?'<button class="secondary" data-reference-popular>爆款分析</button>':""}`;
   header.insertAdjacentElement("afterend",metadata);
   metadata.querySelector("[data-reference-metadata-save]").addEventListener("click",saveReferenceMetadata);
+  metadata.querySelector("[data-reference-platform]").addEventListener("input",markReferenceMetadataDirty);
+  metadata.querySelector("[data-reference-type]").addEventListener("change",markReferenceMetadataDirty);
+  metadata.querySelector("[data-reference-project]").addEventListener("change",markReferenceMetadataDirty);
   metadata.querySelector("[data-reference-popular]")?.addEventListener("click",analyzePopularReference);
 }
 
+function markReferenceMetadataDirty(){
+  const shell=$("#reference-detail .reference-metadata"); if(!shell||!state.activeReference)return;
+  const dirty=(shell.querySelector("[data-reference-platform]").value.trim()||null)!==(state.activeReference.platform||null)
+    ||shell.querySelector("[data-reference-type]").value!==state.activeReference.content_type
+    ||(shell.querySelector("[data-reference-project]").value||null)!==(state.activeReference.project_id||null);
+  const button=shell.querySelector("[data-reference-metadata-save]");
+  button.disabled=!dirty; button.textContent=dirty?"保存修改":"已保存";
+  shell.querySelector("[data-reference-metadata-status]").textContent=dirty?"分类状态：有未保存修改":"分类状态：已保存";
+}
+
 async function saveReferenceMetadata(){
+  const shell=$("#reference-detail .reference-metadata");
+  const button=shell.querySelector("[data-reference-metadata-save]");
   try{
-    const shell=$("#reference-detail .reference-metadata");
+    button.disabled=true; button.textContent="保存中…";
+    shell.querySelector("[data-reference-metadata-status]").textContent="分类状态：正在保存";
     const source=await api(`/api/references/${state.activeReference.id}/metadata`,{method:"PATCH",body:JSON.stringify({platform:shell.querySelector("[data-reference-platform]").value.trim()||null,content_type:shell.querySelector("[data-reference-type]").value,project_id:shell.querySelector("[data-reference-project]").value||null})});
-    state.activeReference=source; await loadAll(); toast("资料分类已保存");
-  }catch(error){toast(error.message);}
+    state.activeReference=source; await loadAll(); toast("资料分类已保存；相关已采纳机制已标记为待复核（如有）");
+  }catch(error){
+    button.disabled=false; button.textContent="保存修改";
+    shell.querySelector("[data-reference-metadata-status]").textContent="分类状态：保存失败";
+    toast(error.message);
+  }
 }
 
 async function analyzePopularReference(){
@@ -236,7 +256,14 @@ const mechanismView=()=>$("#learning-mechanism-view")?.value||"active";
 async function reloadMechanisms(){state.mechanisms=await api(`/api/learning/mechanisms?view=${encodeURIComponent(mechanismView())}`);renderLearning();}
 async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); await reloadMechanisms(); toast(action==="confirm"?"分析已确认":"分析已拒绝，可在“已拒绝”中查看"); } catch(error){toast(error.message);} }
 async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
-function renderLearningArtifacts(){ const shell=$("#learning-artifacts"); if(!shell)return; const artifacts=state.projectLearning?.artifacts||[]; shell.innerHTML=artifacts.length?artifacts.map(item=>`<details class="learning-artifact" open><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||item.artifact_type)}</strong><span>版本 ${item.version} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`).join(""):'<p class="skill-meta">采纳机制或建立文笔资料后在此显示</p>'; }
+function renderLearningArtifacts(){
+  const shell=$("#learning-artifacts"); if(!shell)return;
+  const artifacts=state.projectLearning?.artifacts||[];
+  const reviews=state.projectLearning?.adoption_reviews||[];
+  const warning=reviews.length?`<section class="material-audit-status"><strong>有 ${reviews.length} 条已采纳机制需要重新确认</strong><p>来源资料的平台、内容类型或关联作品已修改。请在上方重新采纳需要保留的机制；正式正文不会被自动修改。</p>${reviews.map(item=>`<p>· ${escapeHtml(item.mechanism?.name||item.node_id)}</p>`).join("")}</section>`:"";
+  const content=artifacts.length?artifacts.map(item=>`<details class="learning-artifact" open><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||item.artifact_type)}</strong><span>版本 ${item.version} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`).join(""):'<p class="skill-meta">采纳机制或建立文笔资料后在此显示</p>';
+  shell.innerHTML=warning+content;
+}
 $("#learning-project").addEventListener("change",async event=>{ state.activeProject=state.projects.find(item=>item.id===event.target.value)||state.activeProject; state.projectLearning=null; await loadProjectLearning(); renderLearning(); });
 $("#learning-mechanism-view").addEventListener("change",reloadMechanisms);
 const learningProjectId=()=>$("#learning-project").value;

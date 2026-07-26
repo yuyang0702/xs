@@ -856,16 +856,50 @@ class Database:
         self, source_id: str, platform: str | None, content_type: str, project_id: str | None,
     ) -> bool:
         with self.connect() as connection:
+            current = connection.execute(
+                "SELECT platform,content_type,project_id FROM reference_sources WHERE id=?",
+                (source_id,),
+            ).fetchone()
+            if current is None:
+                return False
+            changed = (
+                current["platform"] != platform
+                or current["content_type"] != content_type
+                or current["project_id"] != project_id
+            )
             cursor = connection.execute(
                 "UPDATE reference_sources SET platform=?,content_type=?,project_id=?,updated_at=datetime('now') "
                 "WHERE id=?",
                 (platform, content_type, project_id, source_id),
             )
-            connection.execute(
-                "UPDATE learning_nodes SET status='needs_review',updated_at=datetime('now') "
-                "WHERE source_id=? AND node_type='mechanism' AND status='proposed'",
-                (source_id,),
-            )
+            if changed:
+                affected_projects = [
+                    row["project_id"] for row in connection.execute(
+                        "SELECT DISTINCT adoption.project_id FROM project_adoptions adoption "
+                        "JOIN learning_nodes node ON node.id=adoption.node_id "
+                        "WHERE node.source_id=? AND adoption.status='adopted'",
+                        (source_id,),
+                    )
+                ]
+                connection.execute(
+                    "UPDATE learning_nodes SET status='needs_review',updated_at=datetime('now') "
+                    "WHERE source_id=? AND node_type='mechanism' AND status='proposed'",
+                    (source_id,),
+                )
+                connection.execute(
+                    "UPDATE project_adoptions SET status='review_source_metadata_changed',updated_at=datetime('now') "
+                    "WHERE status='adopted' AND node_id IN "
+                    "(SELECT id FROM learning_nodes WHERE source_id=?)",
+                    (source_id,),
+                )
+                if affected_projects:
+                    placeholders = ",".join("?" for _ in affected_projects)
+                    connection.execute(
+                        f"UPDATE project_learning_artifacts SET status='stale' "
+                        f"WHERE artifact_type='creative_blueprint' AND project_id IN ({placeholders}) "
+                        "AND status='active'",
+                        affected_projects,
+                    )
         return cursor.rowcount > 0
 
     def get_reference_source(self, source_id: str) -> dict[str, Any] | None:

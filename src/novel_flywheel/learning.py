@@ -218,6 +218,21 @@ class LearningSystem:
             ).fetchall()
         return [{**dict(row), "data": json.loads(row["data_json"])} for row in rows]
 
+    def list_adoption_reviews(self, project_id: str) -> list[dict]:
+        with self.db.connect() as connection:
+            rows = connection.execute(
+                "SELECT adoption.*,node.source_id,node.data_json AS node_data_json "
+                "FROM project_adoptions adoption JOIN learning_nodes node ON node.id=adoption.node_id "
+                "WHERE adoption.project_id=? AND adoption.status='review_source_metadata_changed' "
+                "ORDER BY adoption.updated_at DESC",
+                (project_id,),
+            ).fetchall()
+        return [{
+            **dict(row),
+            "data": json.loads(row["data_json"]),
+            "mechanism": json.loads(row["node_data_json"]),
+        } for row in rows]
+
     def save_artifact(self, project_id: str, artifact_type: str, data: dict, status: str = "active") -> dict:
         project = self.projects.get(project_id)
         serialized = json.dumps(data, ensure_ascii=False, sort_keys=True)

@@ -119,6 +119,7 @@ def project_learning(project_id: str, request: Request) -> dict:
         migration = _learning(request).migrate_legacy_style(project_id)
         return {
             "adoptions": _learning(request).list_adoptions(project_id),
+            "adoption_reviews": _learning(request).list_adoption_reviews(project_id),
             "artifacts": _learning(request).list_artifacts(project_id),
             "legacy_style_migration": migration,
         }

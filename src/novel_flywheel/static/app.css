@@ -115,6 +115,7 @@ button:active:not(:disabled) { transform:scale(.98); }
 .reference-list { display:block; margin-top:14px; }
 .reference-filters,.reference-metadata { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:14px 0;padding:12px;background:var(--panel-soft,#f7f8fb);border:1px solid var(--line); }
 .reference-metadata { align-items:end; }
+.reference-metadata [data-reference-metadata-status] { display:block; margin-top:6px; }
 .popular-report article { margin:10px 0;padding:12px;border-left:3px solid #6c5ce7;background:#fafaff; }
 .reference-empty { padding:12px 0; }
 .reference-list-item { width:100%; padding:12px 10px; border:0; border-bottom:1px solid var(--line); border-radius:0; background:transparent; color:var(--ink); text-align:left; }
