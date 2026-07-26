@@ -344,9 +344,8 @@ function renderMarketDashboard(){
   renderMarketHeat(data.categories);
   renderMarketRankings(data.rankings);
   renderMarketKeywords(data.keywords||{});
-  $("#market-work-count").textContent=`${data.works.length} 条记录`;
-  const lengthLabels={long:"长篇",short:"短篇",anthology:"作品集",unknown:"待确认"};
-  $("#market-work-list").innerHTML=data.works.length?data.works.map(item=>`<tr><td><strong>${item.rank??"—"}</strong></td><td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml((item.tags||[]).join(" · "))}</small></td><td>${escapeHtml(item.ranking_name)}</td><td>${escapeHtml(item.category||item.original_category||"未分类")}</td><td><select class="market-length-editor" data-market-work-id="${escapeHtml(item.id)}" title="${escapeHtml(item.length_evidence||"暂无判定依据")}"><option value="" ${item.length_override==null?"selected":""}>${escapeHtml(lengthLabels[item.length_type]||"待确认")}（自动）</option><option value="long" ${item.length_override==="long"?"selected":""}>长篇</option><option value="short" ${item.length_override==="short"?"selected":""}>短篇</option><option value="anthology" ${item.length_override==="anthology"?"selected":""}>作品集</option></select><small>${escapeHtml(item.length_source==="user"?"手动确认":item.length_source==="platform"?"平台标记":item.length_source==="ranking"?"榜单推断":"暂无依据")}</small></td><td>${escapeHtml(marketMetricText(item.metrics))}</td><td><span class="badge ${item.reference_id?"":"missing"}">${item.reference_id?"已关联":"未导入"}</span></td></tr>`).join(""):'<tr><td colspan="7" class="market-empty">尚无榜单数据，点击“更新当前平台”开始建立第一份快照。</td></tr>';
+  $("#market-work-count").textContent=`${data.rankings.length} 个榜单 · ${data.works.length} 条记录${refresh.last_success_at?` · ${formatLocalTimestamp(refresh.last_success_at)}`:""}`;
+  renderMarketWorks(data.works);
 }
 
 function renderMarketKeywords(groups){
@@ -411,7 +410,35 @@ function renderMarketHeat(categories){
 
 function renderMarketRankings(rankings){
   const shell=$("#market-ranking-chart");
-  shell.innerHTML=rankings.length?rankings.map(item=>{const total=Object.values(item.categories).reduce((a,b)=>a+b,0);return `<article><strong>${escapeHtml(item.name)}</strong><div>${Object.entries(item.categories).map(([name,count])=>`<span style="flex:${count}" title="${escapeHtml(name)} ${count}部">${escapeHtml(name)} ${Math.round(count*100/total)}%</span>`).join("")}</div></article>`;}).join(""):'<p class="market-empty">暂无榜单分布</p>';
+  const names=[...new Set(rankings.flatMap(item=>Object.keys(item.categories)))].sort();
+  const colors=["#6757d9","#218a6b","#c48622","#3976b8","#c65d66","#7d5aa6","#287f91","#8a7041"];
+  const colorFor=new Map(names.map((name,index)=>[name,colors[index%colors.length]]));
+  shell.innerHTML=rankings.length?rankings.map(item=>{
+    const total=Object.values(item.categories).reduce((a,b)=>a+b,0);
+    const categories=Object.entries(item.categories).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"zh-CN"));
+    return `<article class="market-ranking-row"><header><strong>${escapeHtml(item.name)}</strong><span>${total} 部作品</span></header><div class="market-ranking-track">${categories.map(([name,count])=>{const share=Math.round(count*1000/total)/10;return `<button type="button" class="market-ranking-segment" data-market-category-filter="${escapeHtml(name)}" style="--ranking-color:${colorFor.get(name)};flex:${count}" title="${escapeHtml(name)} · ${count} 部 · ${share}%" aria-label="筛选${escapeHtml(name)}，${count}部，占${share}%">${share>=12?`<span>${share}%</span>`:""}</button>`;}).join("")}</div><div class="market-ranking-legend">${categories.map(([name,count])=>{const share=Math.round(count*1000/total)/10;return `<button type="button" class="market-ranking-legend-item" data-market-category-filter="${escapeHtml(name)}" style="--ranking-color:${colorFor.get(name)}"><i></i><span>${escapeHtml(name)}</span><strong>${count} 部 · ${share}%</strong></button>`;}).join("")}</div></article>`;
+  }).join(""):'<p class="market-empty">暂无榜单分布</p>';
+  shell.querySelectorAll("[data-market-category-filter]").forEach(button=>button.addEventListener("click",()=>{$("#market-category").value=button.dataset.marketCategoryFilter;loadMarketDashboard();}));
+}
+
+const marketWorkSortValue=item=>Math.max(...Object.values(item.metrics||{}).filter(value=>typeof value==="number"),-1);
+function marketWorkRow(item,position,combined=false){
+  const lengthLabels={long:"长篇",short:"短篇",anthology:"作品集",unknown:"待确认"};
+  const originalRank=combined?`<small>${escapeHtml(item.ranking_name)} · 原榜第 ${item.rank??"—"} 名</small>`:`<small>${escapeHtml((item.tags||[]).join(" · "))}</small>`;
+  return `<tr><td><strong>${position}</strong></td><td><strong>${escapeHtml(item.title)}</strong>${originalRank}</td><td>${escapeHtml(item.ranking_name)}</td><td>${escapeHtml(item.category||item.original_category||"未分类")}</td><td><select class="market-length-editor" data-market-work-id="${escapeHtml(item.id)}" title="${escapeHtml(item.length_evidence||"暂无判定依据")}"><option value="" ${item.length_override==null?"selected":""}>${escapeHtml(lengthLabels[item.length_type]||"待确认")}（自动）</option><option value="long" ${item.length_override==="long"?"selected":""}>长篇</option><option value="short" ${item.length_override==="short"?"selected":""}>短篇</option><option value="anthology" ${item.length_override==="anthology"?"selected":""}>作品集</option></select><small>${escapeHtml(item.length_source==="user"?"手动确认":item.length_source==="platform"?"平台标记":item.length_source==="ranking"?"榜单推断":"暂无依据")}</small></td><td>${escapeHtml(marketMetricText(item.metrics))}</td><td><span class="badge ${item.reference_id?"":"missing"}">${item.reference_id?"已关联":"未导入"}</span></td></tr>`;
+}
+function renderMarketWorks(works){
+  const shell=$("#market-work-list");
+  if(!works.length){shell.innerHTML='<tr><td colspan="7" class="market-empty">尚无榜单数据，点击“更新当前平台”开始建立第一份快照。</td></tr>';return;}
+  const mode=document.querySelector('input[name="market-work-mode"]:checked')?.value||"grouped";
+  $("#market-rank-heading").textContent=mode==="combined"?"综合序号":"榜内排名";
+  if(mode==="combined"){
+    const sorted=[...works].sort((a,b)=>marketWorkSortValue(b)-marketWorkSortValue(a)||String(a.ranking_name).localeCompare(String(b.ranking_name),"zh-CN")||(a.rank??999)-(b.rank??999)||String(a.title).localeCompare(String(b.title),"zh-CN"));
+    shell.innerHTML=sorted.map((item,index)=>marketWorkRow(item,index+1,true)).join("");
+  }else{
+    const groups=[...works].sort((a,b)=>(a.rank??999)-(b.rank??999)||String(a.title).localeCompare(String(b.title),"zh-CN")).reduce((result,item)=>{const name=item.ranking_name||"未命名榜单";if(!result.has(name))result.set(name,[]);result.get(name).push(item);return result;},new Map());
+    shell.innerHTML=[...groups.entries()].sort(([a],[b])=>a.localeCompare(b,"zh-CN")).map(([name,items])=>`<tr class="market-ranking-group"><th colspan="7"><span>${escapeHtml(name)}</span><small>${items.length} 部作品</small></th></tr>${items.map(item=>marketWorkRow(item,item.rank??"—")).join("")}`).join("");
+  }
 }
 
 $("#market-refresh")?.addEventListener("click",async()=>{
@@ -422,6 +449,7 @@ $("#market-refresh")?.addEventListener("click",async()=>{
 });
 
 ["market-platform","market-period","market-ranking","market-category","market-length-type"].forEach(id=>$("#"+id)?.addEventListener("change",loadMarketDashboard));
+[...document.querySelectorAll('input[name="market-work-mode"]')].forEach(input=>input.addEventListener("change",()=>renderMarketWorks(state.market?.works||[])));
 ["market-keyword-source","market-keyword-category"].forEach(id=>$("#"+id)?.addEventListener("change",()=>renderMarketKeywords(state.market?.keywords||{})));
 $("#market-work-list")?.addEventListener("change",async event=>{
   const select=event.target.closest(".market-length-editor");if(!select)return;

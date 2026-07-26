@@ -33,6 +33,9 @@ def test_console_stylesheet_has_visual_system_and_accessible_motion(tmp_path) ->
     assert ".project-item:hover" in css
     assert ".learning-artifact" in css
     assert "var(--shadow-sm)" in css
+    assert ".market-ranking-track" in css
+    assert ".market-ranking-legend" in css
+    assert ".market-ranking-segment:focus-visible" in css
     assert "@media (prefers-reduced-motion:reduce)" in css
 
 
@@ -76,6 +79,10 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="market-keyword-category"' in html
     assert '篇幅类型' in html
     assert 'id="market-work-list"' in html
+    assert 'id="market-work-mode"' in html
+    assert 'id="market-rank-heading"' in html
+    assert 'value="grouped"' in html
+    assert 'value="combined"' in html
     assert "不代表全网市场" in html
     assert 'id="reference-form"' in html
     assert 'id="reference-list"' in html
@@ -112,6 +119,12 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     script = client.get("/static/app.js").text
     assert "loadMarketDashboard" in script
     assert "renderMarketDashboard" in script
+    assert "market-ranking-segment" in script
+    assert "market-ranking-legend-item" in script
+    assert "market-ranking-group" in script
+    assert "marketWorkSortValue" in script
+    assert "个榜单" in script
+    assert "updateMarketWorkLength" not in script
     assert "/api/market/refresh" in script
     assert "data-market-link" in script
     assert "loadInterview" in script

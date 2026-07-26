@@ -14,6 +14,7 @@
 - 题材颜色在所有榜单中保持一致。
 - 色块与图例均可触发当前分类筛选。
 - 移动端不缩小字体，图例自动换行。
+- 榜单作品默认按榜单分组，并可切换为按热度排序的综合浏览。
 
 ---
 
@@ -80,3 +81,39 @@ Expected: 全部通过。
 - [ ] **Step 5: 浏览器验证与提交**
 
 在桌面与窄屏视口检查文字不截断、图例不重叠、点击分类可更新筛选；随后运行 `git diff --check` 并提交前端、测试和计划文档。
+
+### Task 3: 榜单作品分组与综合浏览
+
+**Files:**
+- Modify: `src/novel_flywheel/static/index.html`
+- Modify: `src/novel_flywheel/static/app.js`
+- Modify: `src/novel_flywheel/static/app.css`
+- Test: `tests/test_console.py`
+
+**Interfaces:**
+- Consumes: `state.market.works` 中的 `ranking_name`、`rank`、`metrics` 与作品字段。
+- Produces: `#market-work-mode` 分段选择器，以及分组表格行或综合排序表格行。
+
+- [ ] **Step 1: 写失败测试**
+
+断言页面包含 `market-work-mode`，脚本包含 `grouped`、`combined`、`market-ranking-group` 与综合热度排序函数。
+
+- [ ] **Step 2: 验证测试失败**
+
+Run: `.\.venv\Scripts\python.exe -m pytest -q tests\test_console.py`
+
+Expected: FAIL，缺少视图切换与分组结构。
+
+- [ ] **Step 3: 实现视图切换**
+
+默认 `grouped`：按榜单名称分组，组内按原排名和标题排序。`combined`：提取每条记录 `metrics` 中最大数值作为浏览排序值，有数值的降序，无数值的置后，并以榜单、原排名和标题保证稳定顺序；第一列显示连续序号，作品信息旁保留“原榜第 N 名”。
+
+- [ ] **Step 4: 实现分组样式与响应式布局**
+
+为榜单组标题、分段控件和原榜排名增加紧凑样式；移动端保持表格横向滚动，不压缩作品标题。
+
+- [ ] **Step 5: 验证**
+
+Run: `.\.venv\Scripts\python.exe -m pytest -q`
+
+Expected: 全部通过，并在浏览器中验证两种模式切换。
