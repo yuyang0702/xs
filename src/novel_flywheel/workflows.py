@@ -512,11 +512,16 @@ class WorkflowService:
                         "start_marker": "SHORT_CAUSAL_CHAIN_JSON_START",
                         "end_marker": "SHORT_CAUSAL_CHAIN_JSON_END",
                         "fields": [
-                            "core_goal", "cycles", "accidents", "reversal", "ending",
+                            "core_goal", "opening", "cycles", "accidents", "reversal", "ending",
+                            "question_chain", "relationship_arc",
                         ],
                         "cycle_shape": [
-                            "obstacle", "effort", "result", "state_change",
+                            "obstacle", "effort", "result", "state_change", "escalation", "next_question",
                         ],
+                        "opening_shape": [
+                            "pressure", "anomaly", "reader_question", "future_promise",
+                        ],
+                        "ending_shape": ["surface_goal", "inner_goal", "cost"],
                     },
                 }, ensure_ascii=False, indent=2)
                 plan = await self._stage(
@@ -1021,10 +1026,13 @@ class WorkflowService:
         return (
             "CAUSAL CHAIN CHECKS:\n"
             "- Verify the manuscript establishes the core goal.\n"
+            "- Verify opening pressure, anomalous action, reader question, and future promise create honest pull.\n"
             "- Verify obstacle-effort-result cycles create state changes instead of repetition.\n"
+            "- Verify each result escalates cost, risk, knowledge, relationship, or available choice and opens the next question.\n"
             "- Verify accidents change the situation.\n"
             "- Verify reversal reinterprets earlier evidence rather than appearing from nowhere.\n"
-            "- Verify the ending answers surface goal, inner goal, and cost.\n\n"
+            "- Verify question continuity and relationship progression are caused by on-page events.\n"
+            "- Verify the ending answers surface goal, inner goal, and ending cost.\n\n"
         )
 
     async def _reader_review(self, run_id: str, run_path: Path, project: Project,

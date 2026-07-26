@@ -61,6 +61,47 @@ def test_analyzer_flags_missing_state_change_and_reversal_evidence() -> None:
     assert report["status"] == "needs_review"
 
 
+def test_analyzer_flags_repeated_outcome_without_new_state() -> None:
+    chain = {
+        "core_goal": {"content": "把药送进封锁区"},
+        "cycles": [
+            {"obstacle": "守卫阻拦", "effort": "绕路", "result": "暂时脱险", "state_change": "继续前进"},
+            {"obstacle": "追兵阻拦", "effort": "藏匿", "result": "暂时脱险", "state_change": "继续前进"},
+        ],
+        "ending": {"surface_goal": "药已送到", "inner_goal": "承认自己的愧疚"},
+    }
+
+    report = analyze_short_causal_chain(chain, target_words=3000)
+
+    assert report["target_cycle_range"] == [2, 3]
+    assert "cycle_repeated_outcome" in {item["code"] for item in report["findings"]}
+
+
+def test_analyzer_accepts_attraction_fields_when_they_are_evidenced() -> None:
+    chain = {
+        "core_goal": {"content": "把药送进封锁区"},
+        "opening": {
+            "pressure": "妹妹只剩一夜", "anomaly": "主角把通行证交给仇人",
+            "reader_question": "仇人为什么帮助她", "future_promise": "天亮前会有人失去记忆",
+        },
+        "cycles": [
+            {"obstacle": "没有通行证", "effort": "与仇人交易", "result": "进入封锁区",
+             "state_change": "仇人从威胁变成同行者", "escalation": "交易要求交出共同记忆",
+             "next_question": "仇人要拿记忆做什么"},
+            {"obstacle": "药被调包", "effort": "追查运输记录", "result": "找到真药",
+             "state_change": "确认妹妹主动换药", "escalation": "救人目标被重新解释",
+             "next_question": "妹妹为什么拒绝获救"},
+        ],
+        "question_chain": [{"question": "仇人为什么帮助她", "answer": "他欠妹妹一条命"}],
+        "relationship_arc": [{"before": "敌对", "cause": "共同承担记忆代价", "after": "有限信任"}],
+        "ending": {"surface_goal": "药已送到", "inner_goal": "接受妹妹的选择", "cost": "失去共同记忆"},
+    }
+
+    report = analyze_short_causal_chain(chain, target_words=3000)
+
+    assert report["status"] == "valid"
+
+
 def test_extract_short_causal_chain_keeps_outline_text() -> None:
     text = """
 # 正常大纲

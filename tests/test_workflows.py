@@ -436,10 +436,16 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
     planning = project.path / "runs" / result["id"] / "outputs" / "planning.md"
     assert "SHORT_CAUSAL_CHAIN_JSON_START" not in planning.read_text(encoding="utf-8")
     assert "SHORT_CAUSAL_CHAIN_JSON_START" in gateway.users[0]
+    assert '"opening"' in gateway.users[0]
+    assert '"question_chain"' in gateway.users[0]
+    assert '"relationship_arc"' in gateway.users[0]
+    assert '"next_question"' in gateway.users[0]
     assert any("Short Story Causal Chain" in system and "复活死去的朋友" in system
                for system in gateway.systems[1:])
     final_prompts = [user for role, user in zip(gateway.roles, gateway.users) if role == "final_review"]
     assert any("CAUSAL CHAIN CHECKS" in prompt for prompt in final_prompts)
+    assert any("opening pressure" in prompt and "relationship progression" in prompt
+               and "ending cost" in prompt for prompt in final_prompts)
 
 
 @pytest.mark.asyncio

@@ -41,6 +41,7 @@ def analyze_short_causal_chain(chain: dict[str, Any], target_words: int) -> dict
         add("cycle_count_high", f"当前 {len(cycles)} 轮，建议 {low}-{high} 轮")
 
     seen = set()
+    seen_outcomes = set()
     for index, cycle in enumerate(cycles, 1):
         if not isinstance(cycle, dict):
             add("cycle_invalid", f"第 {index} 轮不是结构化对象", "error")
@@ -54,6 +55,10 @@ def analyze_short_causal_chain(chain: dict[str, Any], target_words: int) -> dict
         if signature in seen:
             add("cycle_duplicate", f"第 {index} 轮与前文推进重复")
         seen.add(signature)
+        outcome_signature = tuple(_text(cycle.get(key)) for key in ("result", "state_change"))
+        if all(outcome_signature) and outcome_signature in seen_outcomes:
+            add("cycle_repeated_outcome", f"第 {index} 轮结果和状态变化与前文相同，剧情没有获得新推进")
+        seen_outcomes.add(outcome_signature)
 
     reversal = chain.get("reversal")
     if isinstance(reversal, dict) and _text(reversal):
@@ -78,18 +83,29 @@ def analyze_short_causal_chain(chain: dict[str, Any], target_words: int) -> dict
 
 def compact_causal_chain(chain: dict[str, Any], max_cycles: int = 7) -> str:
     lines = [f"核心目标：{_text(chain.get('core_goal')) or '未确认'}"]
+    opening = chain.get("opening")
+    if isinstance(opening, dict):
+        lines.append(
+            f"开头吸引：压力={_text(opening.get('pressure'))}；异常={_text(opening.get('anomaly'))}；"
+            f"读者问题={_text(opening.get('reader_question'))}；后续承诺={_text(opening.get('future_promise'))}"
+        )
     for index, cycle in enumerate(chain.get("cycles") or [], 1):
         if index > max_cycles or not isinstance(cycle, dict):
             continue
         lines.append(
             f"推进{index}：阻碍={_text(cycle.get('obstacle'))}；"
             f"努力={_text(cycle.get('effort'))}；结果={_text(cycle.get('result'))}；"
-            f"状态变化={_text(cycle.get('state_change'))}"
+            f"状态变化={_text(cycle.get('state_change'))}；升级={_text(cycle.get('escalation'))}；"
+            f"下一问题={_text(cycle.get('next_question'))}"
         )
     for item in chain.get("accidents") or []:
         lines.append(f"意外：{_text(item)}")
     if _text(chain.get("reversal")):
         lines.append(f"反转：{_text(chain.get('reversal'))}")
+    if _text(chain.get("question_chain")):
+        lines.append(f"问题链：{_text(chain.get('question_chain'))}")
+    if _text(chain.get("relationship_arc")):
+        lines.append(f"关系变化：{_text(chain.get('relationship_arc'))}")
     lines.append(f"结局：{_text(chain.get('ending')) or '未确认'}")
     return "\n".join(line for line in lines if line.strip())
 
