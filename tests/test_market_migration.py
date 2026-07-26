@@ -26,4 +26,9 @@ def test_market_migration_is_idempotent_and_preserves_references(tmp_path) -> No
     assert {"market_sources", "market_snapshots", "market_works", "market_entries",
             "reference_market_links"} <= db.table_names()
     assert db.get_reference_source("ref-1")["title"] == "旧资料"
-
+    with db.connect() as connection:
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(market_works)")}
+    assert {
+        "length_type", "platform_length_type", "length_source",
+        "length_evidence", "length_override",
+    } <= columns

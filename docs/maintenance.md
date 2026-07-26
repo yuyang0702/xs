@@ -19,6 +19,17 @@ The HTML response itself contains ranking skeletons rather than the completed ra
 Parser tests therefore cover both the public API's snake-case response and the older embedded
 JSON shape.
 
+Market keyword analysis is local-only. It counts distinct works rather than raw occurrences,
+requires a term to appear in at least two works, separates title, summary, and combined views,
+and exposes matching works as evidence. When LTP is enabled, cached local tokens are used before
+the conservative dictionary fallback; this feature never calls a paid model.
+
+Each ranked work stores an effective `length_type` (`long`, `short`, `anthology`, or `unknown`)
+together with its source and evidence. Resolution priority is a user override, an explicit
+platform `space_type`, a long-form ranking, confirmed TXT inference, and finally `unknown`.
+Clearing a user override restores the best available automatic result. Dashboard filters keep
+different length types from being mixed in market summaries.
+
 Platform adapters return the normalized work contract used by `MarketService.refresh`: platform
 work id, title, optional author/summary/cover/detail URL, ranking name, original category, rank,
 tags, and a platform-specific metrics object. Preserve raw categories and metrics. Cross-platform

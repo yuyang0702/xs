@@ -79,6 +79,18 @@ def test_parse_zhihu_market_accepts_the_live_billboard_api_shape() -> None:
     assert works[1]["metrics"]["black_horse_index"] == 86.2
 
 
+def test_live_shape_preserves_platform_length_type() -> None:
+    page = ZHIHU_API_JSON.replace(
+        '"business_id":"1654593780966428672"',
+        '"business_id":"1654593780966428672","space_type":"LongSpace"',
+    )
+
+    works = parse_zhihu_market(page)
+
+    assert works[0]["length_type"] == "long"
+    assert works[0]["length_source"] == "platform"
+
+
 def test_refresh_keeps_one_work_and_multiple_snapshot_entries(tmp_path) -> None:
     market = service(tmp_path, [ZHIHU_HTML, ZHIHU_HTML.replace('"rank":1', '"rank":2', 1)])
 
@@ -113,6 +125,67 @@ def test_dashboard_requires_two_snapshots_before_claiming_trend(tmp_path) -> Non
     assert dashboard["trend_ready"] is False
     assert dashboard["categories"][0]["trend"] == "数据不足"
     assert "不代表全网市场" in dashboard["boundary"]
+
+
+def test_keywords_count_distinct_works_and_expose_evidence_by_text_area(tmp_path) -> None:
+    market = service(tmp_path, [ZHIHU_HTML])
+    works = [
+        {"id": "1", "title": "重生后复仇", "summary": "她回到婚礼现场复仇", "tags": ["言情"],
+         "rank": 1, "ranking_name": "推荐榜"},
+        {"id": "2", "title": "重来一次", "summary": "重生之后，她决定复仇", "tags": ["言情"],
+         "rank": 8, "ranking_name": "热度榜"},
+        {"id": "2", "title": "重来一次", "summary": "重生之后，她决定复仇", "tags": ["言情"],
+         "rank": 2, "ranking_name": "推荐榜"},
+        {"id": "3", "title": "孤城", "summary": "只有一个人", "tags": ["悬疑"],
+         "rank": 3, "ranking_name": "推荐榜"},
+    ]
+
+    result = market._keywords(works)
+
+    combined = {item["word"]: item for item in result["combined"]}
+    assert combined["重生"]["work_count"] == 2
+    assert combined["重生"]["category"] == "题材设定"
+    assert combined["重生"]["score"] > 0
+    assert {work["id"] for work in combined["重生"]["works"]} == {"1", "2"}
+    assert "复仇" not in {item["word"] for item in result["title"]}
+    assert "复仇" in {item["word"] for item in result["summary"]}
+    assert "孤城" not in combined
+
+
+def test_length_filter_and_user_override_have_priority(tmp_path) -> None:
+    page = ZHIHU_API_JSON.replace(
+        '"business_id":"1654593780966428672"',
+        '"business_id":"1654593780966428672","space_type":"LongSpace"',
+    )
+    market = service(tmp_path, [page])
+    market.refresh()
+
+    assert {item["id"] for item in market.list_works(length_type="long")} == {
+        "zhihu:1654593780966428672",
+    }
+
+    changed = market.set_length_type("zhihu:1654593780966428672", "short")
+    assert changed["length_type"] == "short"
+    assert changed["length_source"] == "user"
+    assert changed["length_override"] == "short"
+
+    reset = market.set_length_type("zhihu:1654593780966428672", None)
+    assert reset["length_type"] == "long"
+    assert reset["length_source"] == "platform"
+
+
+def test_long_ranking_signal_survives_same_work_in_other_rankings(tmp_path) -> None:
+    page = """
+    <script type="application/json">{"lists":[
+      {"name":"长篇榜","category":"悬疑","works":[{"id":"same","title":"长夜","rank":1}]},
+      {"name":"推荐榜","category":"悬疑","works":[{"id":"same","title":"长夜","rank":2}]}
+    ]}</script>
+    """
+    market = service(tmp_path, [page])
+
+    market.refresh()
+
+    assert market.work_detail("zhihu:same")["length_type"] == "long"
 
 
 def test_title_normalization_and_reference_matching(tmp_path) -> None:
@@ -151,3 +224,21 @@ def test_confirmed_link_updates_market_context_without_changing_reference(tmp_pa
 
     market.unlink_reference(reference["id"])
     assert market.reference_context(reference["id"]) is None
+
+
+def test_confirmed_txt_can_supply_length_when_platform_has_no_signal(tmp_path) -> None:
+    market = service(tmp_path, [ZHIHU_HTML])
+    market.refresh("zhihu-salt")
+    text = "\n".join(f"第{i}章\n" + ("正文" * 6000) for i in range(1, 11))
+    reference = market.references.import_text(title="铜臭", text=text, source_type="txt")
+
+    market.confirm_link(reference["id"], "zhihu:zh-2")
+
+    work = market.work_detail("zhihu:zh-2")
+    assert work["length_type"] == "long"
+    assert work["length_source"] == "txt"
+    assert "10" in work["length_evidence"]
+    market.set_length_type("zhihu:zh-2", "short")
+    reset = market.set_length_type("zhihu:zh-2", None)
+    assert reset["length_type"] == "long"
+    assert reset["length_source"] == "txt"

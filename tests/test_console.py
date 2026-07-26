@@ -71,6 +71,10 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="market-heat-chart"' in html
     assert 'id="market-ranking-chart"' in html
     assert 'id="market-keywords"' in html
+    assert 'id="market-length-type"' in html
+    assert 'id="market-keyword-source"' in html
+    assert 'id="market-keyword-category"' in html
+    assert '篇幅类型' in html
     assert 'id="market-work-list"' in html
     assert "不代表全网市场" in html
     assert 'id="reference-form"' in html

@@ -67,3 +67,18 @@ def test_market_api_reports_refresh_failure_and_keeps_dashboard_available(tmp_pa
     response = client.post("/api/market/refresh", json={"source_id": "zhihu-salt"})
     assert response.status_code == 422
     assert client.get("/api/market/dashboard").json()["refresh"]["status"] == "failed"
+
+
+def test_market_api_updates_and_filters_length_type(tmp_path) -> None:
+    client = client_for(tmp_path)
+    client.post("/api/market/refresh", json={"source_id": "zhihu-salt"})
+
+    changed = client.put("/api/market/works/zhihu:one/length", json={"length_type": "short"})
+    assert changed.status_code == 200
+    assert changed.json()["length_source"] == "user"
+    assert len(client.get("/api/market/works?length_type=short").json()) == 1
+    assert client.get("/api/market/dashboard?length_type=long").json()["works"] == []
+
+    reset = client.put("/api/market/works/zhihu:one/length", json={"length_type": None})
+    assert reset.status_code == 200
+    assert reset.json()["length_type"] == "unknown"

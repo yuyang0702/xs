@@ -149,6 +149,7 @@
         <label>统计周期<select id="market-period"><option value="1">当前</option><option value="7">近7天</option><option value="30" selected>近30天</option></select></label>
         <label>榜单<select id="market-ranking"><option value="">全部榜单</option></select></label>
         <label>分类<select id="market-category"><option value="">全部分类</option></select></label>
+        <label>篇幅类型<select id="market-length-type"><option value="">全部篇幅</option><option value="long">长篇</option><option value="short">短篇</option><option value="anthology">作品集</option><option value="unknown">待确认</option></select></label>
       </div>
       <div id="market-refresh-state" class="market-refresh-state" role="status">尚未更新榜单</div>
       <div id="market-summary" class="market-summary"></div>
@@ -160,11 +161,16 @@
       </div>
       <section class="market-panel market-keyword-panel">
         <div class="market-panel-title"><h3>标题与简介热门词</h3><span>按包含该词的作品数统计</span></div>
+        <div class="market-keyword-toolbar">
+          <label>文本范围<select id="market-keyword-source"><option value="combined">综合</option><option value="title">仅标题</option><option value="summary">仅简介</option></select></label>
+          <label>语义分类<select id="market-keyword-category"><option value="">全部分类</option></select></label>
+        </div>
         <div id="market-keywords" class="market-keywords"></div>
+        <div id="market-keyword-evidence" class="market-keyword-evidence" hidden></div>
       </section>
       <section class="market-panel market-work-panel">
         <div class="market-panel-title"><h3>榜单作品</h3><span id="market-work-count">0 条记录</span></div>
-        <div class="market-table-shell"><table class="market-table"><thead><tr><th>排名</th><th>作品</th><th>榜单</th><th>分类</th><th>热度数据</th><th>TXT状态</th></tr></thead><tbody id="market-work-list"></tbody></table></div>
+        <div class="market-table-shell"><table class="market-table"><thead><tr><th>排名</th><th>作品</th><th>榜单</th><th>分类</th><th>篇幅类型</th><th>热度数据</th><th>TXT状态</th></tr></thead><tbody id="market-work-list"></tbody></table></div>
       </section>
       <p id="market-boundary" class="market-boundary">数据边界：结果仅反映当前抓取到的平台榜单样本，不代表全网市场；页面推荐也可能受到平台运营和账号展示差异影响。</p>
     </section>

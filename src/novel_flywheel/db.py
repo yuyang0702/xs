@@ -330,6 +330,11 @@ CREATE TABLE IF NOT EXISTS market_works(
   unified_category TEXT,
   tags_json TEXT NOT NULL DEFAULT '[]',
   latest_metrics_json TEXT NOT NULL DEFAULT '{}',
+  length_type TEXT NOT NULL DEFAULT 'unknown',
+  platform_length_type TEXT,
+  length_source TEXT NOT NULL DEFAULT 'unknown',
+  length_evidence TEXT,
+  length_override TEXT,
   first_seen_at TEXT NOT NULL,
   last_seen_at TEXT NOT NULL,
   UNIQUE(platform, platform_work_id)
@@ -394,6 +399,21 @@ class Database:
                 connection.execute(
                     "ALTER TABLE reference_sources ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL"
                 )
+            market_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(market_works)")
+            }
+            market_additions = {
+                "length_type": "TEXT NOT NULL DEFAULT 'unknown'",
+                "platform_length_type": "TEXT",
+                "length_source": "TEXT NOT NULL DEFAULT 'unknown'",
+                "length_evidence": "TEXT",
+                "length_override": "TEXT",
+            }
+            for name, declaration in market_additions.items():
+                if name not in market_columns:
+                    connection.execute(
+                        f"ALTER TABLE market_works ADD COLUMN {name} {declaration}"
+                    )
 
     def _backup_before_story_state_upgrade(self) -> None:
         if not self.path.is_file() or self.path.stat().st_size == 0:

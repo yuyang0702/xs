@@ -13,6 +13,10 @@ class MarketLink(BaseModel):
     work_id: str
 
 
+class MarketLengthUpdate(BaseModel):
+    length_type: str | None = None
+
+
 def _market(request: Request):
     return request.app.state.market
 
@@ -37,9 +41,11 @@ def market_dashboard(
     days: int = Query(default=30, ge=1, le=365),
     ranking: str | None = None,
     category: str | None = None,
+    length_type: str | None = None,
 ) -> dict:
     return _market(request).dashboard(
         platform=platform, days=days, ranking=ranking, category=category,
+        length_type=length_type,
     )
 
 
@@ -49,10 +55,23 @@ def list_market_works(
     platform: str | None = None,
     ranking: str | None = None,
     category: str | None = None,
+    length_type: str | None = None,
 ) -> list[dict]:
     return _market(request).list_works(
-        platform=platform, ranking=ranking, category=category,
+        platform=platform, ranking=ranking, category=category, length_type=length_type,
     )
+
+
+@router.put("/works/{work_id:path}/length")
+def update_market_work_length(
+    work_id: str, payload: MarketLengthUpdate, request: Request,
+) -> dict:
+    try:
+        return _market(request).set_length_type(work_id, payload.length_type)
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
 
 
 @router.get("/works/{work_id:path}")

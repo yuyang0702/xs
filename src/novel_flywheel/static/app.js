@@ -284,9 +284,11 @@ function marketQuery(){
   const platform=$("#market-platform")?.value||"";
   const ranking=$("#market-ranking")?.value||"";
   const category=$("#market-category")?.value||"";
+  const lengthType=$("#market-length-type")?.value||"";
   if(platform)params.set("platform",platform);
   if(ranking)params.set("ranking",ranking);
   if(category)params.set("category",category);
+  if(lengthType)params.set("length_type",lengthType);
   params.set("days",$("#market-period")?.value||"30");
   return params.toString();
 }
@@ -327,9 +329,30 @@ function renderMarketDashboard(){
   renderMarketTrend(data);
   renderMarketHeat(data.categories);
   renderMarketRankings(data.rankings);
-  $("#market-keywords").innerHTML=data.keywords.length?data.keywords.map((item,index)=>`<button type="button" style="--rank:${index}" title="包含该词的作品数"><strong>${escapeHtml(item.word)}</strong><span>${item.work_count} 部</span></button>`).join(""):'<p class="market-empty">当前样本没有可展示的高频词</p>';
+  renderMarketKeywords(data.keywords||{});
   $("#market-work-count").textContent=`${data.works.length} 条记录`;
-  $("#market-work-list").innerHTML=data.works.length?data.works.map(item=>`<tr><td><strong>${item.rank??"—"}</strong></td><td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml((item.tags||[]).join(" · "))}</small></td><td>${escapeHtml(item.ranking_name)}</td><td>${escapeHtml(item.category||item.original_category||"未分类")}</td><td>${escapeHtml(marketMetricText(item.metrics))}</td><td><span class="badge ${item.reference_id?"":"missing"}">${item.reference_id?"已关联":"未导入"}</span></td></tr>`).join(""):'<tr><td colspan="6" class="market-empty">尚无榜单数据，点击“更新当前平台”开始建立第一份快照。</td></tr>';
+  const lengthLabels={long:"长篇",short:"短篇",anthology:"作品集",unknown:"待确认"};
+  $("#market-work-list").innerHTML=data.works.length?data.works.map(item=>`<tr><td><strong>${item.rank??"—"}</strong></td><td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml((item.tags||[]).join(" · "))}</small></td><td>${escapeHtml(item.ranking_name)}</td><td>${escapeHtml(item.category||item.original_category||"未分类")}</td><td><select class="market-length-editor" data-market-work-id="${escapeHtml(item.id)}" title="${escapeHtml(item.length_evidence||"暂无判定依据")}"><option value="" ${item.length_override==null?"selected":""}>${escapeHtml(lengthLabels[item.length_type]||"待确认")}（自动）</option><option value="long" ${item.length_override==="long"?"selected":""}>长篇</option><option value="short" ${item.length_override==="short"?"selected":""}>短篇</option><option value="anthology" ${item.length_override==="anthology"?"selected":""}>作品集</option></select><small>${escapeHtml(item.length_source==="user"?"手动确认":item.length_source==="platform"?"平台标记":item.length_source==="ranking"?"榜单推断":"暂无依据")}</small></td><td>${escapeHtml(marketMetricText(item.metrics))}</td><td><span class="badge ${item.reference_id?"":"missing"}">${item.reference_id?"已关联":"未导入"}</span></td></tr>`).join(""):'<tr><td colspan="7" class="market-empty">尚无榜单数据，点击“更新当前平台”开始建立第一份快照。</td></tr>';
+}
+
+function renderMarketKeywords(groups){
+  const source=$("#market-keyword-source")?.value||"combined";
+  const selectedCategory=$("#market-keyword-category")?.value||"";
+  const all=groups[source]||[];
+  const categories=[...new Set(all.map(item=>item.category))];
+  const categorySelect=$("#market-keyword-category");
+  if(categorySelect){
+    categorySelect.innerHTML='<option value="">全部分类</option>'+categories.map(item=>`<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+    if(categories.includes(selectedCategory))categorySelect.value=selectedCategory;
+  }
+  const items=all.filter(item=>!selectedCategory||item.category===selectedCategory);
+  $("#market-keywords").innerHTML=items.length?items.map((item,index)=>`<button type="button" data-market-keyword="${escapeHtml(item.word)}" style="--rank:${index}" title="覆盖 ${item.share}%，综合分 ${item.score}"><span class="market-keyword-kind">${escapeHtml(item.category)}</span><strong>${escapeHtml(item.word)}</strong><span>${item.work_count} 部 · ${item.score}分</span></button>`).join(""):'<p class="market-empty">当前范围没有跨作品重复词（至少需出现在 2 部作品中）</p>';
+  $("#market-keywords").querySelectorAll("[data-market-keyword]").forEach(button=>button.addEventListener("click",()=>{
+    const item=items.find(entry=>entry.word===button.dataset.marketKeyword);
+    const evidence=$("#market-keyword-evidence");
+    evidence.hidden=false;
+    evidence.innerHTML=`<div><strong>${escapeHtml(item.word)}</strong><span>覆盖 ${item.work_count} 部（${item.share}%） · 前五 ${item.top_five_count} 部 · 跨 ${item.ranking_count} 个榜单</span></div>${item.works.map(work=>`<article><strong>${escapeHtml(work.title)}</strong><small>${escapeHtml(work.ranking_names.join(" · "))} · 最高第 ${work.rank??"—"} 名</small><p>${escapeHtml(work.excerpt||"")}</p></article>`).join("")}`;
+  }));
 }
 
 function updateMarketFilters(data){
@@ -383,7 +406,17 @@ $("#market-refresh")?.addEventListener("click",async()=>{
   catch(error){await loadMarketDashboard();toast(error.message);}
   finally{button.disabled=false;button.textContent="更新当前平台";}
 });
-["market-platform","market-period","market-ranking","market-category"].forEach(id=>$("#"+id)?.addEventListener("change",loadMarketDashboard));
+
+["market-platform","market-period","market-ranking","market-category","market-length-type"].forEach(id=>$("#"+id)?.addEventListener("change",loadMarketDashboard));
+["market-keyword-source","market-keyword-category"].forEach(id=>$("#"+id)?.addEventListener("change",()=>renderMarketKeywords(state.market?.keywords||{})));
+$("#market-work-list")?.addEventListener("change",async event=>{
+  const select=event.target.closest(".market-length-editor");if(!select)return;
+  select.disabled=true;
+  try{
+    await api(`/api/market/works/${encodeURIComponent(select.dataset.marketWorkId)}/length`,{method:"PUT",body:JSON.stringify({length_type:select.value||null})});
+    await loadMarketDashboard();toast("篇幅类型已更新");
+  }catch(error){toast(error.message);select.disabled=false;}
+});
 
 async function learnReference() {
   if (!state.activeReference) return;

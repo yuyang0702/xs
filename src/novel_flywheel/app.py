@@ -56,7 +56,10 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
     settings = default_settings()
     app.state.references = reference_library or ReferenceLibrary(db, settings.data_dir / "references")
-    app.state.market = market_service or MarketService(db, app.state.references)
+    app.state.local_nlp = LocalNLPManager(settings.data_dir / "local-nlp.json")
+    app.state.market = market_service or MarketService(
+        db, app.state.references, nlp_analyzer=app.state.local_nlp.analyze,
+    )
     app.state.projects = ProjectStore(
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
     )
@@ -68,7 +71,6 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     )
     gateway = ModelGateway(db, app.state.registry)
     app.state.learning = LearningSystem(db, app.state.references, app.state.projects, gateway)
-    app.state.local_nlp = LocalNLPManager(settings.data_dir / "local-nlp.json")
     app.state.material_impacts = MaterialImpactService(gateway)
     app.state.style_samples = style_sample_service or StyleSampleService(gateway)
     app.state.interviews = interview_service or WizardInterviewService(db, gateway)
