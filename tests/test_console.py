@@ -244,6 +244,7 @@ def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
     assert "剧情吸引力" in script
     assert "目前只能确定到这里" in script
     assert "renderAttractionMap" in script
+    assert "本地吸引力候选" in script
     assert "✓ 已保存" in script
     assert ".reference-task-status" in css
     assert ".mechanism-stage-summary" in css

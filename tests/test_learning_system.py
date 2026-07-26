@@ -30,6 +30,21 @@ def test_analysis_creates_evidenced_mechanisms_and_reuses_windows(tmp_path) -> N
     assert second["cached_windows"] == second["window_count"]
 
 
+def test_local_reference_analysis_returns_cross_text_attraction_candidates(tmp_path) -> None:
+    _db, library, _projects, system = setup_system(tmp_path)
+    source = library.import_text(
+        title="无标签推进", source_type="paste",
+        text="她烧掉返程票，独自走进封锁区。三天后药送到了，妹妹却不再认得她。",
+    )
+
+    result = system.analyze_reference(source["id"])
+
+    assert result["attraction_candidates"]["coverage_percent"] == 100.0
+    assert result["attraction_candidates"]["decisions"]
+    assert result["attraction_candidates"]["consequences"]
+    assert "候选证据" in result["attraction_candidates"]["boundary"]
+
+
 def test_reference_windows_cover_single_line_text_without_splitting_sentences(tmp_path) -> None:
     _db, library, _projects, system = setup_system(tmp_path)
     sentences = [f"第{index}次尝试后，他决定继续追查真相。" for index in range(520)]

@@ -72,6 +72,7 @@ class LearningSystem:
             "coverage_percent": round(covered / max(1, len(text)) * 100, 2),
             "coverage_ranges": self._merge_ranges([(item["start"], item["end"]) for item in windows]),
             "mechanisms": list(mechanisms_by_id.values()),
+            "attraction_candidates": local_attraction_candidates(text),
         }
 
     async def model_analyze_reference(self, source_id: str, progress=None) -> dict:
