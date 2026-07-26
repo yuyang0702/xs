@@ -120,6 +120,17 @@ def test_rejected_mechanisms_can_be_deleted_from_api(tmp_path) -> None:
 
 def test_model_analysis_exposes_queryable_progress(tmp_path) -> None:
     client = client_for(tmp_path)
+    for role in ("reference_analysis", "reference_synthesis"):
+        provider = client.post("/api/providers", json={
+            "name": f"{role}-provider", "protocol": "openai-chat",
+            "base_url": "https://example.com/v1", "api_key": "test-key",
+        }).json()
+        model = client.post(f"/api/providers/{provider['id']}/models", json={
+            "display_name": role, "model_name": role,
+        }).json()
+        client.put(f"/api/role-bindings/{role}", json={
+            "primary_provider_id": provider["id"], "primary_model_id": model["id"],
+        })
     source = client.post("/api/references", json={
         "title": "progress", "source_type": "paste", "text": "sample text",
     }).json()
@@ -145,3 +156,53 @@ def test_model_analysis_exposes_queryable_progress(tmp_path) -> None:
     assert status["phase"] == "completed"
     assert status["completed_windows"] == status["total_windows"] == 2
     assert status["result"]["mechanisms"][0]["id"] == "mechanism-1"
+
+
+def test_model_analysis_reports_missing_role_api_key_before_starting(tmp_path) -> None:
+    client = client_for(tmp_path)
+    registry = client.app.state.registry
+    provider_id = "provider-without-key"
+    model_id = "model-without-key"
+    registry.db.save_provider(
+        provider_id=provider_id, name="deepseek", protocol="openai-chat",
+        base_url="https://example.com/v1", auth_type="bearer", timeout_seconds=30,
+        extra_headers={},
+    )
+    registry.db.save_model(
+        model_id=model_id, provider_id=provider_id, display_name="analysis",
+        model_name="analysis", capabilities={},
+    )
+    for role in ("reference_analysis", "reference_synthesis"):
+        registry.db.save_role_binding(
+            role, primary_provider_id=provider_id, primary_model_id=model_id,
+            fallback_provider_id=None, fallback_model_id=None,
+        )
+    source = client.post("/api/references", json={
+        "title": "missing key", "source_type": "paste", "text": "sample text",
+    }).json()
+
+    response = client.post(f"/api/references/{source['id']}/model-learn")
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == "参考资料分窗分析使用的 deepseek 缺少 API Key，请先到“模型与 API”补充密钥"
+    status = client.get(f"/api/references/{source['id']}/model-learn/status").json()
+    assert status["status"] == "idle"
+
+
+def test_reference_attraction_map_is_queryable(tmp_path) -> None:
+    client = client_for(tmp_path)
+    source = client.post("/api/references", json={
+        "title": "map", "source_type": "paste", "text": "她把钥匙递给仇人。",
+    }).json()
+    node = client.app.state.learning._save_node(
+        "attraction_map", {
+            "fit": {"level": "partial", "explanation": "只有开头"},
+            "opening": {"mechanism": "pressure_anomaly"}, "uncertainties": ["结尾尚未出现"],
+        }, source_id=source["id"], status="proposed",
+    )
+
+    response = client.get(f"/api/references/{source['id']}/attraction-map")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == node["id"]
+    assert response.json()["data"]["uncertainties"] == ["结尾尚未出现"]

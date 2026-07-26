@@ -241,6 +241,9 @@ def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
     assert "referenceTask" in script
     assert "showIndeterminate" in script
     assert "正在使用已配置的备用模型" in script
+    assert "剧情吸引力" in script
+    assert "目前只能确定到这里" in script
+    assert "renderAttractionMap" in script
     assert "✓ 已保存" in script
     assert ".reference-task-status" in css
     assert ".mechanism-stage-summary" in css

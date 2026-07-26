@@ -80,6 +80,23 @@ def _handle(call):
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+def _preflight_reference_roles(request: Request) -> None:
+    labels = {
+        "reference_analysis": "参考资料分窗分析",
+        "reference_synthesis": "参考资料全文汇总",
+    }
+    registry = request.app.state.registry
+    for role, label in labels.items():
+        binding = registry.db.get_role_binding(role)
+        if not binding:
+            raise ValueError(f"{label}尚未配置主模型，请先到“模型与 API”完成角色绑定")
+        provider = registry.db.get_provider(binding["primary_provider_id"])
+        provider_name = provider["name"] if provider else "已绑定供应商"
+        if not registry.secrets.get(binding["primary_provider_id"]):
+            raise ValueError(f"{label}使用的 {provider_name} 缺少 API Key，请先到“模型与 API”补充密钥")
+        registry.resolve(binding["primary_provider_id"], binding["primary_model_id"])
+
+
 @router.post("/references/{source_id}/learn")
 def analyze_reference(source_id: str, request: Request) -> dict:
     return _handle(lambda: _learning(request).analyze_reference(source_id))
@@ -89,6 +106,7 @@ def analyze_reference(source_id: str, request: Request) -> dict:
 async def model_analyze_reference(source_id: str, request: Request) -> dict:
     try:
         request.app.state.references.get(source_id)
+        _preflight_reference_roles(request)
         return request.app.state.reference_analysis_tasks.start(
             source_id,
             lambda progress: _learning(request).model_analyze_reference(source_id, progress),
@@ -97,6 +115,12 @@ async def model_analyze_reference(source_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/references/{source_id}/attraction-map")
+def reference_attraction_map(source_id: str, request: Request):
+    request.app.state.references.get(source_id)
+    return _learning(request).attraction_map(source_id)
 
 
 @router.get("/references/{source_id}/model-learn/status")
