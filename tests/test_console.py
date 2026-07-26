@@ -65,6 +65,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="reference-url"' in html
     assert 'id="learning-project"' in html
     assert 'id="learning-mechanisms"' in html
+    assert 'id="learning-mechanism-view"' in html
     assert 'id="nlp-install"' in html
     assert 'id="workflow-analysis-toggle"' in html
     assert "爆款指数" not in html

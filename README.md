@@ -73,6 +73,8 @@ Content type controls purpose rather than project voice: `reference_work` yields
 
 Local mechanisms now require a located trigger excerpt, structural position, transfer guidance, incompatible conditions, and confidence. Low-confidence proposals must be confirmed before project adoption. Repetition remains a review-only finding; loop/recurrence anchors with nearby state-change signals are labeled as possible intentional repetition instead of receiving an unconditional deletion instruction.
 
+Rejected mechanisms disappear from the default candidate view immediately after rejection. The mechanism-status selector can show rejected items or all items for audit; rejected items remain read-only and cannot be confirmed, adopted, or rejected a second time.
+
 **本地诊断** and **本地提炼** use deterministic Python rules only. **模型深度分析** uses the configured `reference_analysis` and `reference_synthesis` roles only after an explicit confirmation. Typed SQLite nodes, edges, evidence, and user revisions preserve provenance. Recommendations remain proposals until the user adopts them into one project.
 
 Confirmed adoptions create versioned creative blueprints. Project learning also includes executable prose baselines, character voice profiles, epistemic boundaries, and scene briefs; active versions enter the existing planning/drafting/review/polish context, while stale versions are excluded. Character or world edits mark derived artifacts for review without rewriting an outline or manuscript.

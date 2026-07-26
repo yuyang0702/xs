@@ -81,3 +81,18 @@ def test_project_analysis_flag_is_reversible(tmp_path) -> None:
         f"/api/projects/{project_id}/learning/workflow-analysis",
         json={"enabled": False},
     ).json() == {"enabled": False}
+
+
+def test_rejected_mechanisms_are_hidden_by_default_and_remain_reviewable(tmp_path) -> None:
+    client = client_for(tmp_path)
+    _project_id, node_id = project_and_mechanism(client)
+
+    rejected = client.post(
+        f"/api/learning/nodes/{node_id}/revisions",
+        json={"action": "reject", "data": {}},
+    )
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "rejected"
+    assert node_id not in {item["id"] for item in client.get("/api/learning/mechanisms").json()}
+    rejected_list = client.get("/api/learning/mechanisms?view=rejected").json()
+    assert [item["id"] for item in rejected_list] == [node_id]

@@ -109,12 +109,18 @@ class LearningSystem:
             ))
         return {"source_id": source_id, "claims": len(claims), "mechanisms": mechanisms}
 
-    def list_mechanisms(self, source_id: str | None = None) -> list[dict]:
+    def list_mechanisms(self, source_id: str | None = None, view: str = "active") -> list[dict]:
+        if view not in {"active", "rejected", "all"}:
+            raise ValueError("Unsupported mechanism view")
         query = "SELECT * FROM learning_nodes WHERE node_type='mechanism'"
         params: list[Any] = []
         if source_id:
             query += " AND source_id=?"
             params.append(source_id)
+        if view == "active":
+            query += " AND status!='rejected'"
+        elif view == "rejected":
+            query += " AND status='rejected'"
         query += " ORDER BY created_at DESC"
         with self.db.connect() as connection:
             rows = connection.execute(query, params).fetchall()

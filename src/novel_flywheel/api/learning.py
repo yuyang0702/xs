@@ -101,8 +101,11 @@ def nlp_analyze_reference(source_id: str, request: Request) -> dict:
 
 
 @router.get("/learning/mechanisms")
-def list_mechanisms(request: Request, source_id: str | None = None) -> list[dict]:
-    return _learning(request).list_mechanisms(source_id)
+def list_mechanisms(
+    request: Request, source_id: str | None = None,
+    view: Literal["active", "rejected", "all"] = "active",
+) -> list[dict]:
+    return _learning(request).list_mechanisms(source_id, view)
 
 
 @router.post("/learning/nodes/{node_id}/revisions")
