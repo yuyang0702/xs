@@ -19,6 +19,9 @@ from novel_flywheel.reference_library import ReferenceLibrary
 
 
 ZHIHU_SALT_URL = "https://www.zhihu.com/fiore/h5/vip-web"
+ZHIHU_BILLBOARD_URL = (
+    "https://api.zhihu.com/km-vip-zhihu-web/vip_tab/svip_story?modules=billboard"
+)
 MARKET_BOUNDARY = "结果仅反映当前抓取到的平台榜单样本，不代表全网市场。"
 TITLE_NOISE = re.compile(
     r"(?i)(?:\.txt$|知乎|盐选|会员|全文|完整版|完结版|完结|修订版|精校版|"
@@ -81,13 +84,17 @@ def _work_from_dict(item: dict[str, Any], ranking: str, category: str, rank: int
     title = item.get("title") or item.get("name")
     if not isinstance(title, str) or not normalize_work_title(title):
         return None
-    raw_id = item.get("id") or item.get("workId") or item.get("columnId") or item.get("contentId")
-    url = item.get("url") or item.get("link") or item.get("detailUrl")
+    raw_id = (
+        item.get("id") or item.get("workId") or item.get("work_id")
+        or item.get("columnId") or item.get("column_id")
+        or item.get("contentId") or item.get("content_id") or item.get("business_id")
+    )
+    url = item.get("url") or item.get("link") or item.get("detailUrl") or item.get("detail_url")
     if not raw_id:
         raw_id = hashlib.sha256(f"{title}|{url or ''}".encode("utf-8")).hexdigest()[:20]
     metrics: dict[str, Any] = {}
     metric_aliases = {
-        "likes": ("likes", "likeCount", "voteCount", "likeText"),
+        "likes": ("likes", "likeCount", "like_count", "voteCount", "vote_count", "likeText", "like_text"),
         "black_horse_index": ("blackHorseIndex", "black_horse_index", "index"),
     }
     for output_name, aliases in metric_aliases.items():
@@ -95,9 +102,14 @@ def _work_from_dict(item: dict[str, Any], ranking: str, category: str, rank: int
             if alias in item and item[alias] not in (None, ""):
                 metrics[output_name] = parse_metric(item[alias])
                 break
-    tags = item.get("tags") or item.get("categories") or []
+    subtitle = str(item.get("subtitle") or item.get("skuGrade") or item.get("sku_grade") or "")
+    if "赞" in subtitle and "likes" not in metrics:
+        metrics["likes"] = parse_metric(subtitle)
+    if "黑马指数" in subtitle and "black_horse_index" not in metrics:
+        metrics["black_horse_index"] = parse_metric(subtitle)
+    tags = item.get("tags") or item.get("categories") or item.get("labels") or item.get("label_text") or []
     if isinstance(tags, str):
-        tags = [part for part in re.split(r"[,，/、\s]+", tags) if part]
+        tags = [part for part in re.split(r"[,，/、·\s]+", tags) if part]
     if isinstance(tags, list):
         tags = [
             str(tag.get("name") if isinstance(tag, dict) else tag).strip()
@@ -107,9 +119,10 @@ def _work_from_dict(item: dict[str, Any], ranking: str, category: str, rank: int
     return {
         "platform_work_id": str(raw_id),
         "title": html.unescape(title.strip()),
-        "author": item.get("author") or item.get("authorName"),
+        "author": item.get("author") or item.get("authorName") or item.get("author_name"),
         "summary": item.get("summary") or item.get("description") or item.get("excerpt"),
-        "cover_url": item.get("cover") or item.get("coverUrl") or item.get("image"),
+        "cover_url": item.get("cover") or item.get("coverUrl") or item.get("cover_url")
+                     or item.get("artwork") or item.get("image"),
         "detail_url": url,
         "ranking_name": ranking or "榜单",
         "category": category or (tags[0] if tags else "未分类"),
@@ -128,9 +141,20 @@ def _extract_market_lists(node: Any, inherited_name: str = "", inherited_categor
     if not isinstance(node, dict):
         return results
 
-    ranking = str(node.get("rankingName") or node.get("listName") or node.get("name") or inherited_name)
-    category = str(node.get("categoryName") or node.get("category") or inherited_category)
-    works = node.get("works") or node.get("items") or node.get("contents")
+    head = node.get("head") if isinstance(node.get("head"), dict) else {}
+    ranking = str(
+        node.get("rankingName") or node.get("ranking_name")
+        or node.get("listName") or node.get("list_name")
+        or head.get("title") or node.get("name") or inherited_name
+    )
+    category = str(
+        node.get("categoryName") or node.get("category_name")
+        or node.get("category") or inherited_category
+    )
+    works = (
+        node.get("works") or node.get("items") or node.get("contents")
+        or node.get("contentList") or node.get("content_list")
+    )
     if isinstance(works, list):
         parsed = [
             _work_from_dict(item, ranking, category, index)
@@ -139,7 +163,7 @@ def _extract_market_lists(node: Any, inherited_name: str = "", inherited_categor
         ]
         results.extend(item for item in parsed if item)
     for key, value in node.items():
-        if key in {"works", "items", "contents"}:
+        if key in {"works", "items", "contents", "contentList", "content_list"}:
             continue
         results.extend(_extract_market_lists(value, ranking, category))
     return results
@@ -149,6 +173,10 @@ def parse_zhihu_market(page: str) -> list[dict[str, Any]]:
     collector = _ScriptCollector()
     collector.feed(page)
     found: list[dict[str, Any]] = []
+    try:
+        found.extend(_extract_market_lists(json.loads(page)))
+    except json.JSONDecodeError:
+        pass
     for script in collector.scripts:
         try:
             found.extend(_extract_market_lists(json.loads(script)))
@@ -162,8 +190,9 @@ def parse_zhihu_market(page: str) -> list[dict[str, Any]]:
 
 
 def _default_fetcher(url: str) -> str:
+    target_url = ZHIHU_BILLBOARD_URL if url == ZHIHU_SALT_URL else url
     response = httpx.get(
-        url,
+        target_url,
         timeout=25,
         follow_redirects=True,
         headers={
@@ -172,6 +201,8 @@ def _default_fetcher(url: str) -> str:
                 "AppleWebKit/537.36 Chrome/126 Safari/537.36"
             ),
             "Accept-Language": "zh-CN,zh;q=0.9",
+            "X-Requested-With": "XMLHttpRequest",
+            "Referer": ZHIHU_SALT_URL,
         },
     )
     response.raise_for_status()

@@ -105,6 +105,8 @@ The **市场趋势** page provides local analysis of public ranking pages withou
 model. The first adapter targets the Zhihu Salt Selection ranking page:
 
 - **更新当前平台** creates a new immutable snapshot from a successful, non-empty parse.
+- The Zhihu adapter reads the public ranking endpoint used by the page itself; the initial HTML
+  contains loading skeletons rather than the completed ranking cards.
 - The page shows category share, local heat and competition scores, ranking distribution,
   title/summary keywords, and the current work table.
 - Trend claims require at least two valid snapshots. A 403, network failure, empty page, or

@@ -25,6 +25,23 @@ ZHIHU_HTML = """
 </body></html>
 """
 
+ZHIHU_API_JSON = """
+{"data":[{"module_type":"billboard","module_title":"榜单","module_data":{"data":{
+  "button_text":"全部","data":[
+    {"head":{"title":"推荐榜","type":"recommend","filters":[{"key":"0","name":"全部"},{"key":"1","name":"言情"}]},
+     "content_list":[
+       {"business_id":"1654593780966428672","title":"河清海晏","artwork":"https://pic.example/a.jpg",
+        "subtitle":"66.3 万赞","url":"https://www.zhihu.com/market/paid_column/1/section/2",
+        "label_text":"言情 · 警察","description":"她在暴雨里等一个答案。"}
+     ]},
+    {"head":{"title":"热度榜","type":"hot","filters":[{"key":"12","name":"脑洞"}]},
+     "content_list":[
+       {"business_id":"2050600604976803918","title":"不提分就出不去的房间",
+        "subtitle":"86.2 黑马指数","label_text":"脑洞 · 学霸","description":"第一天重新开始。"}
+     ]}
+  ]}}}]}
+"""
+
 
 def service(tmp_path, pages: list[str]) -> MarketService:
     db = Database(tmp_path / "app.db")
@@ -48,6 +65,18 @@ def test_parse_zhihu_market_extracts_visible_market_fields() -> None:
     assert works[0]["rank"] == 1
     assert works[0]["metrics"]["likes"] == 259000
     assert works[0]["tags"] == ["脑洞", "言情"]
+
+
+def test_parse_zhihu_market_accepts_the_live_billboard_api_shape() -> None:
+    works = parse_zhihu_market(ZHIHU_API_JSON)
+
+    assert len(works) == 2
+    assert works[0]["platform_work_id"] == "1654593780966428672"
+    assert works[0]["ranking_name"] == "推荐榜"
+    assert works[0]["category"] == "言情"
+    assert works[0]["metrics"]["likes"] == 663000
+    assert works[0]["tags"] == ["言情", "警察"]
+    assert works[1]["metrics"]["black_horse_index"] == 86.2
 
 
 def test_refresh_keeps_one_work_and_multiple_snapshot_entries(tmp_path) -> None:
@@ -122,4 +151,3 @@ def test_confirmed_link_updates_market_context_without_changing_reference(tmp_pa
 
     market.unlink_reference(reference["id"])
     assert market.reference_context(reference["id"]) is None
-

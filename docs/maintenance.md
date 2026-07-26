@@ -13,6 +13,12 @@ must never contact Zhihu or a paid model. A successful non-empty parse creates a
 HTTP failures, empty results, or incompatible markup only update the source failure status and
 must not delete or replace prior snapshots.
 
+The source keeps the user-facing page URL, while its adapter reads the same public
+`api.zhihu.com/km-vip-zhihu-web/vip_tab/svip_story?modules=billboard` endpoint used by that page.
+The HTML response itself contains ranking skeletons rather than the completed ranking cards.
+Parser tests therefore cover both the public API's snake-case response and the older embedded
+JSON shape.
+
 Platform adapters return the normalized work contract used by `MarketService.refresh`: platform
 work id, title, optional author/summary/cover/detail URL, ranking name, original category, rank,
 tags, and a platform-specific metrics object. Preserve raw categories and metrics. Cross-platform
