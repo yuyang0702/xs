@@ -292,6 +292,71 @@ CREATE TABLE IF NOT EXISTS learning_feedback(
   id TEXT PRIMARY KEY, project_id TEXT, subject_type TEXT NOT NULL, subject_id TEXT NOT NULL,
   action TEXT NOT NULL, data_json TEXT NOT NULL, created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS market_sources(
+  id TEXT PRIMARY KEY,
+  platform TEXT NOT NULL,
+  name TEXT NOT NULL,
+  url TEXT NOT NULL,
+  enabled INTEGER NOT NULL DEFAULT 1,
+  config_json TEXT NOT NULL DEFAULT '{}',
+  refresh_status TEXT NOT NULL DEFAULT 'never',
+  refresh_error TEXT,
+  last_success_at TEXT,
+  last_attempt_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS market_snapshots(
+  id TEXT PRIMARY KEY,
+  source_id TEXT NOT NULL REFERENCES market_sources(id) ON DELETE CASCADE,
+  captured_at TEXT NOT NULL,
+  status TEXT NOT NULL,
+  work_count INTEGER NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_market_snapshots_source
+  ON market_snapshots(source_id, captured_at DESC);
+CREATE TABLE IF NOT EXISTS market_works(
+  id TEXT PRIMARY KEY,
+  platform TEXT NOT NULL,
+  platform_work_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  normalized_title TEXT NOT NULL,
+  author TEXT,
+  summary TEXT,
+  cover_url TEXT,
+  detail_url TEXT,
+  original_category TEXT,
+  unified_category TEXT,
+  tags_json TEXT NOT NULL DEFAULT '[]',
+  latest_metrics_json TEXT NOT NULL DEFAULT '{}',
+  first_seen_at TEXT NOT NULL,
+  last_seen_at TEXT NOT NULL,
+  UNIQUE(platform, platform_work_id)
+);
+CREATE INDEX IF NOT EXISTS idx_market_works_title
+  ON market_works(platform, normalized_title);
+CREATE TABLE IF NOT EXISTS market_entries(
+  id TEXT PRIMARY KEY,
+  snapshot_id TEXT NOT NULL REFERENCES market_snapshots(id) ON DELETE CASCADE,
+  work_id TEXT NOT NULL REFERENCES market_works(id) ON DELETE CASCADE,
+  ranking_name TEXT NOT NULL,
+  category TEXT,
+  rank INTEGER,
+  metrics_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_market_entries_work
+  ON market_entries(work_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_market_entries_snapshot
+  ON market_entries(snapshot_id, ranking_name, rank);
+CREATE TABLE IF NOT EXISTS reference_market_links(
+  reference_id TEXT PRIMARY KEY REFERENCES reference_sources(id) ON DELETE CASCADE,
+  work_id TEXT NOT NULL REFERENCES market_works(id) ON DELETE CASCADE,
+  status TEXT NOT NULL,
+  confirmed_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 """
 
 

@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from novel_flywheel.api.providers import router as providers_router
 from novel_flywheel.api.references import router as references_router
 from novel_flywheel.api.learning import router as learning_router
+from novel_flywheel.api.market import router as market_router
 from novel_flywheel.api.projects import router as projects_router
 from novel_flywheel.api.runs import router as runs_router
 from novel_flywheel.api.skills import router as skills_router
@@ -29,6 +30,7 @@ from novel_flywheel.material_impacts import MaterialImpactService
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.nlp_backend import LocalNLPManager
+from novel_flywheel.market import MarketService
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -37,7 +39,8 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                workflow_service: object | None = None,
                interview_service: object | None = None,
                style_sample_service: object | None = None,
-               reference_library: object | None = None) -> FastAPI:
+               reference_library: object | None = None,
+               market_service: object | None = None) -> FastAPI:
     app = FastAPI(title="Novel Flywheel Console")
 
     @app.middleware("http")
@@ -53,6 +56,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
     settings = default_settings()
     app.state.references = reference_library or ReferenceLibrary(db, settings.data_dir / "references")
+    app.state.market = market_service or MarketService(db, app.state.references)
     app.state.projects = ProjectStore(
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
     )
@@ -82,6 +86,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     )
     app.include_router(providers_router)
     app.include_router(references_router)
+    app.include_router(market_router)
     app.include_router(learning_router)
     app.include_router(projects_router)
     app.include_router(runs_router)

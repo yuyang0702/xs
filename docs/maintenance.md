@@ -1,5 +1,35 @@
 # Novel Flywheel Maintenance
 
+## Market trend snapshots
+
+Market data uses the existing SQLite database as its only authority. The relevant tables are
+`market_sources`, `market_snapshots`, `market_works`, `market_entries`, and
+`reference_market_links`. `Database.migrate()` creates them idempotently and must continue to
+preserve existing reference and project rows.
+
+The built-in source id is `zhihu-salt`. Refresh is user-triggered through
+`POST /api/market/refresh`; automated tests must inject static HTML into `MarketService` and
+must never contact Zhihu or a paid model. A successful non-empty parse creates a snapshot.
+HTTP failures, empty results, or incompatible markup only update the source failure status and
+must not delete or replace prior snapshots.
+
+Platform adapters return the normalized work contract used by `MarketService.refresh`: platform
+work id, title, optional author/summary/cover/detail URL, ranking name, original category, rank,
+tags, and a platform-specific metrics object. Preserve raw categories and metrics. Cross-platform
+reports may normalize relative rank or category mappings but must not compare unlike raw units.
+
+Reference links are explicit user decisions. Refresh and matching may suggest candidates but
+must not overwrite a confirmed link, reference metadata, text versions, learning decisions,
+originality reports, model analysis, or final-review results. Removing a link only deletes the
+`reference_market_links` row.
+
+When a platform page changes:
+
+1. Add a static regression fixture that reproduces the new visible page state.
+2. Make the parser test fail for the expected missing works.
+3. Update only the platform parser.
+4. Run focused market, reference, migration, API, and console tests before the full suite.
+
 ## Provider maintenance
 
 The **模型与 API** page supports in-place updates to a provider's name, protocol, Base URL, and API Key. Provider IDs and model mappings remain stable. Internal authentication, timeout, and extra-header settings are preserved rather than exposed in the ordinary form. A blank API Key during editing preserves the secret already stored in the system credential store.

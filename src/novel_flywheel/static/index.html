@@ -13,6 +13,7 @@
       <button class="nav-item active" data-view="workbench">创作工作台</button>
       <button class="nav-item" data-view="materials">项目资料</button>
       <button class="nav-item" data-view="learning">学习库</button>
+      <button class="nav-item" data-view="market">市场趋势</button>
       <button class="nav-item" data-view="projects">新建作品</button>
       <button class="nav-item" data-view="models">模型与 API</button>
       <button class="nav-item" data-view="skills">Skill 管理</button>
@@ -103,7 +104,7 @@
       <div class="learning-layout">
         <aside class="reference-sidebar">
           <form id="reference-form" class="reference-import">
-            <label>资料名称<input id="reference-title" maxlength="120" required placeholder="例如：知乎古风短篇参考"></label>
+            <label>资料名称<input id="reference-title" maxlength="120" placeholder="可留空，文档导入时自动使用文件名"></label>
             <label>平台<select id="reference-platform"><option value="">自动判断</option><option>知乎</option><option>番茄</option><option>公众号</option><option>晋江</option><option>其他</option></select></label>
             <label>内容类型<select id="reference-content-type"><option value="">自动判断（默认参考作品）</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品（仅手动）</option></select></label>
             <label>关联作品<select id="reference-project"><option value="">不关联作品</option></select></label>
@@ -136,6 +137,36 @@
           </div>
         </details>
       </section>
+    </section>
+
+    <section id="market" class="view">
+      <div class="section-heading market-heading">
+        <div><p class="eyebrow">LOCAL MARKET INTELLIGENCE</p><h2>市场趋势</h2><p class="skill-meta">公开榜单快照、本地统计与 TXT 作品关联</p></div>
+        <button id="market-refresh" class="primary">更新当前平台</button>
+      </div>
+      <div class="market-toolbar">
+        <label>平台<select id="market-platform"><option value="">全部平台</option><option value="zhihu">知乎盐选</option></select></label>
+        <label>统计周期<select id="market-period"><option value="1">当前</option><option value="7">近7天</option><option value="30" selected>近30天</option></select></label>
+        <label>榜单<select id="market-ranking"><option value="">全部榜单</option></select></label>
+        <label>分类<select id="market-category"><option value="">全部分类</option></select></label>
+      </div>
+      <div id="market-refresh-state" class="market-refresh-state" role="status">尚未更新榜单</div>
+      <div id="market-summary" class="market-summary"></div>
+      <div class="market-chart-grid">
+        <section class="market-panel"><div class="market-panel-title"><h3>分类市场占比</h3><span>当前有效样本</span></div><div id="market-share-chart" class="market-chart"></div></section>
+        <section class="market-panel"><div class="market-panel-title"><h3>市场趋势</h3><span>至少需要2次快照</span></div><div id="market-trend-chart" class="market-chart"></div></section>
+        <section class="market-panel"><div class="market-panel-title"><h3>分类热度与竞争度</h3><span>本地可解释评分</span></div><div id="market-heat-chart" class="market-chart"></div></section>
+        <section class="market-panel"><div class="market-panel-title"><h3>榜单题材分布</h3><span>点击筛选查看明细</span></div><div id="market-ranking-chart" class="market-chart"></div></section>
+      </div>
+      <section class="market-panel market-keyword-panel">
+        <div class="market-panel-title"><h3>标题与简介热门词</h3><span>按包含该词的作品数统计</span></div>
+        <div id="market-keywords" class="market-keywords"></div>
+      </section>
+      <section class="market-panel market-work-panel">
+        <div class="market-panel-title"><h3>榜单作品</h3><span id="market-work-count">0 条记录</span></div>
+        <div class="market-table-shell"><table class="market-table"><thead><tr><th>排名</th><th>作品</th><th>榜单</th><th>分类</th><th>热度数据</th><th>TXT状态</th></tr></thead><tbody id="market-work-list"></tbody></table></div>
+      </section>
+      <p id="market-boundary" class="market-boundary">数据边界：结果仅反映当前抓取到的平台榜单样本，不代表全网市场；页面推荐也可能受到平台运营和账号展示差异影响。</p>
     </section>
 
     <section id="projects" class="view">

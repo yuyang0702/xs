@@ -99,6 +99,33 @@ For structural correction only, candidates in the 50%-60% compression gray zone 
 
 Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).
 
+## Market trends and TXT ranking links
+
+The **市场趋势** page provides local analysis of public ranking pages without calling a
+model. The first adapter targets the Zhihu Salt Selection ranking page:
+
+- **更新当前平台** creates a new immutable snapshot from a successful, non-empty parse.
+- The page shows category share, local heat and competition scores, ranking distribution,
+  title/summary keywords, and the current work table.
+- Trend claims require at least two valid snapshots. A 403, network failure, empty page, or
+  incompatible page structure keeps the last successful data intact and shows the failure.
+- Current, 7-day, 30-day, platform, ranking, and category filters only recompute local data.
+
+The reference title can be left blank for a document import; the filename becomes the title.
+After importing a TXT, use **查找榜单匹配** in its detail view. Matching normalizes the filename
+and compares the opening text with the ranking summary. It only presents evidence and candidates:
+the link is created after **确认关联**. Unlinking preserves the TXT, metadata, versions, and
+project relationship.
+
+Refreshing a ranking updates the market history attached to confirmed references. It does not
+change reference text, user metadata, originality results, model analysis, final review, or
+accepted/rejected decisions.
+
+The feature only reads public ranking markup. It does not store credentials or cookies, read
+member-only text, or bypass access controls. Its conclusions describe the captured platform
+sample, not the whole fiction market. Future platforms use separate adapters and keep their raw
+metrics; unlike units such as likes, readers, and monthly tickets are not directly compared.
+
 ## Long novels
 
 Long setup may produce `memory/volumes.json` with machine-readable boundaries. When a generated chapter reaches `end_chapter`, the flywheel runs a volume audit and writes `memory/audits/volume-NN.json`.

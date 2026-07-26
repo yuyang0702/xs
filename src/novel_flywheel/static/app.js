@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, localNlp:null, workflowAnalysis:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, localNlp:null, workflowAnalysis:null, market:null, marketMatch:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -58,6 +58,7 @@ function showView(name, label) {
 document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", async () => {
   showView(button.dataset.view, button.textContent);
   if (button.dataset.view === "materials") await renderMaterials();
+  if (button.dataset.view === "market") await loadMarketDashboard();
 }));
 document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
 
@@ -150,6 +151,55 @@ function renderReferenceDetail() {
   metadata.querySelector("[data-reference-type]").addEventListener("change",markReferenceMetadataDirty);
   metadata.querySelector("[data-reference-project]").addEventListener("change",markReferenceMetadataDirty);
   metadata.querySelector("[data-reference-popular]")?.addEventListener("click",analyzePopularReference);
+  const marketPanel=document.createElement("section");
+  marketPanel.className="reference-market-panel";
+  const context=source.market_context;
+  marketPanel.innerHTML=context
+    ? `<div><p class="eyebrow">MARKET LINK</p><h3>已关联《${escapeHtml(context.title)}》</h3><p class="skill-meta">${escapeHtml(context.platform)} · ${escapeHtml(context.current?.ranking_name||"暂无当前榜单")} ${context.current?.rank?`第 ${context.current.rank} 名`:""} · 市场数据 ${escapeHtml(formatLocalTimestamp(context.current?.captured_at)||"尚未更新")}</p></div><button class="secondary danger-text" data-market-unlink>解除榜单关联</button>`
+    : `<div><p class="eyebrow">MARKET MATCH</p><h3>榜单作品匹配</h3><p class="skill-meta">根据文件名、作品名和正文开头在本地查找候选，不会自动关联。</p></div><button class="secondary" data-market-match>查找榜单匹配</button><div class="market-match-results" data-market-match-results></div>`;
+  metadata.insertAdjacentElement("afterend",marketPanel);
+  marketPanel.querySelector("[data-market-match]")?.addEventListener("click",()=>matchReferenceMarket(source.id));
+  marketPanel.querySelector("[data-market-unlink]")?.addEventListener("click",()=>unlinkReferenceMarket(source.id));
+  if(!context&&state.marketMatch?.reference_id===source.id) renderReferenceMarketCandidates(marketPanel,state.marketMatch);
+}
+
+async function matchReferenceMarket(referenceId){
+  try{
+    state.marketMatch=await api(`/api/market/references/${referenceId}/match`);
+    const panel=$("#reference-detail .reference-market-panel");
+    if(panel)renderReferenceMarketCandidates(panel,state.marketMatch);
+  }catch(error){toast(error.message);}
+}
+
+function renderReferenceMarketCandidates(panel,result){
+  const shell=panel.querySelector("[data-market-match-results]");
+  if(!shell)return;
+  if(!result.candidates.length){
+    shell.innerHTML='<p class="skill-meta">当前榜单索引没有找到候选，可继续作为普通 TXT 使用。</p>';
+    return;
+  }
+  const label=result.status==="high"?"高度可信":"需要确认";
+  shell.innerHTML=`<p class="market-match-label">${label}</p>${result.candidates.map(item=>`<article><div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.platform)} · ${escapeHtml(item.ranking_name||"榜单")} · ${escapeHtml(item.category||"未分类")}</span><small>${item.reasons.map(escapeHtml).join(" · ")}</small></div><button class="primary" data-market-link="${escapeHtml(item.work_id)}">确认关联</button></article>`).join("")}`;
+  shell.querySelectorAll("[data-market-link]").forEach(button=>button.addEventListener("click",()=>linkReferenceMarket(result.reference_id,button.dataset.marketLink)));
+}
+
+async function linkReferenceMarket(referenceId,workId){
+  try{
+    await api(`/api/market/references/${referenceId}/link`,{method:"PUT",body:JSON.stringify({work_id:workId})});
+    state.activeReference=await api(`/api/references/${referenceId}`);
+    state.references=await api("/api/references");
+    state.marketMatch=null; renderReferences(); toast("榜单作品关联已确认");
+  }catch(error){toast(error.message);}
+}
+
+async function unlinkReferenceMarket(referenceId){
+  if(!confirm("解除榜单关联？TXT 正文和资料分类会继续保留。"))return;
+  try{
+    await api(`/api/market/references/${referenceId}/link`,{method:"DELETE"});
+    state.activeReference=await api(`/api/references/${referenceId}`);
+    state.references=await api("/api/references");
+    state.marketMatch=null; renderReferences(); toast("已解除榜单关联");
+  }catch(error){toast(error.message);}
 }
 
 function markReferenceMetadataDirty(){
@@ -222,11 +272,118 @@ $("#reference-form").addEventListener("submit", async event => {
     else if (file && extension !== "txt") source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:extension,source_uri:file.name,data_base64:await fileBase64(file),...metadata})});
     else source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste",...metadata})});
     event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null;
-    await loadAll(); toast("参考资料已导入");
+    state.marketMatch=await api(`/api/market/references/${source.id}/match`).catch(()=>null);
+    await loadAll(); toast(state.marketMatch?.candidates?.length?"参考资料已导入，并发现榜单匹配候选":"参考资料已导入");
   } catch(error) { toast(error.message); }
 });
 const fileBase64 = file => new Promise((resolve,reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(",")[1]); reader.onerror=reject; reader.readAsDataURL(file); });
 ["reference-search","reference-filter-platform","reference-filter-type","reference-filter-project"].forEach(id=>$("#"+id)?.addEventListener(id==="reference-search"?"input":"change",renderReferences));
+
+function marketQuery(){
+  const params=new URLSearchParams();
+  const platform=$("#market-platform")?.value||"";
+  const ranking=$("#market-ranking")?.value||"";
+  const category=$("#market-category")?.value||"";
+  if(platform)params.set("platform",platform);
+  if(ranking)params.set("ranking",ranking);
+  if(category)params.set("category",category);
+  params.set("days",$("#market-period")?.value||"30");
+  return params.toString();
+}
+
+async function loadMarketDashboard(){
+  const shell=$("#market-refresh-state");
+  if(shell)shell.textContent="正在读取本地市场快照…";
+  try{
+    state.market=await api(`/api/market/dashboard?${marketQuery()}`);
+    renderMarketDashboard();
+  }catch(error){
+    if(shell){shell.className="market-refresh-state error";shell.textContent=`读取失败：${error.message}`;}
+  }
+}
+
+function marketMetricText(metrics){
+  const entries=Object.entries(metrics||{});
+  if(!entries.length)return "暂无指标";
+  const labels={likes:"赞",black_horse_index:"黑马指数"};
+  return entries.map(([key,value])=>`${Number(value).toLocaleString()} ${labels[key]||key}`).join(" · ");
+}
+
+function renderMarketDashboard(){
+  const data=state.market;if(!data)return;
+  const summary=data.summary;
+  $("#market-summary").innerHTML=[
+    ["收录作品",summary.work_count+" 部"],["热门分类",summary.hot_category||"暂无"],
+    ["上升分类",summary.rising_category||(data.trend_ready?"暂无":"待积累")],
+    ["有效快照",summary.snapshot_count+" 次"],["已关联 TXT",summary.linked_count+" 份"],
+  ].map(([label,value])=>`<article><span>${label}</span><strong>${escapeHtml(value)}</strong></article>`).join("");
+  const refresh=data.refresh||{};
+  const stateLabel=refresh.status==="success"?"最近更新成功":refresh.status==="failed"?"最近更新失败":"尚未更新榜单";
+  $("#market-refresh-state").className=`market-refresh-state ${refresh.status||""}`;
+  $("#market-refresh-state").textContent=`${stateLabel}${refresh.last_success_at?` · ${formatLocalTimestamp(refresh.last_success_at)}`:""}${refresh.error?` · ${refresh.error}`:""}`;
+  $("#market-boundary").textContent=`数据边界：${data.boundary} 页面推荐也可能受到平台运营和账号展示差异影响。`;
+  updateMarketFilters(data);
+  renderMarketShare(data.categories);
+  renderMarketTrend(data);
+  renderMarketHeat(data.categories);
+  renderMarketRankings(data.rankings);
+  $("#market-keywords").innerHTML=data.keywords.length?data.keywords.map((item,index)=>`<button type="button" style="--rank:${index}" title="包含该词的作品数"><strong>${escapeHtml(item.word)}</strong><span>${item.work_count} 部</span></button>`).join(""):'<p class="market-empty">当前样本没有可展示的高频词</p>';
+  $("#market-work-count").textContent=`${data.works.length} 条记录`;
+  $("#market-work-list").innerHTML=data.works.length?data.works.map(item=>`<tr><td><strong>${item.rank??"—"}</strong></td><td><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml((item.tags||[]).join(" · "))}</small></td><td>${escapeHtml(item.ranking_name)}</td><td>${escapeHtml(item.category||item.original_category||"未分类")}</td><td>${escapeHtml(marketMetricText(item.metrics))}</td><td><span class="badge ${item.reference_id?"":"missing"}">${item.reference_id?"已关联":"未导入"}</span></td></tr>`).join(""):'<tr><td colspan="6" class="market-empty">尚无榜单数据，点击“更新当前平台”开始建立第一份快照。</td></tr>';
+}
+
+function updateMarketFilters(data){
+  const ranking=$("#market-ranking"),category=$("#market-category");
+  const rankingValue=ranking.value,categoryValue=category.value;
+  const rankings=[...new Set(data.works.map(item=>item.ranking_name).filter(Boolean))];
+  const categories=[...new Set(data.works.map(item=>item.category||item.original_category).filter(Boolean))];
+  ranking.innerHTML='<option value="">全部榜单</option>'+rankings.map(item=>`<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+  category.innerHTML='<option value="">全部分类</option>'+categories.map(item=>`<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("");
+  if(rankings.includes(rankingValue))ranking.value=rankingValue;
+  if(categories.includes(categoryValue))category.value=categoryValue;
+}
+
+function renderMarketShare(categories){
+  const shell=$("#market-share-chart");
+  if(!categories.length){shell.innerHTML='<p class="market-empty">暂无分类样本</p>';return;}
+  const colors=["#6d5dfc","#25a477","#e4a83a","#4d78c9","#d56b66","#8e67ae"];
+  let cursor=0;
+  const stops=categories.map((item,index)=>{const start=cursor;cursor+=item.share;return `${colors[index%colors.length]} ${start}% ${cursor}%`;});
+  shell.innerHTML=`<div class="market-donut" style="background:conic-gradient(${stops.join(",")})"><span>${categories.reduce((sum,item)=>sum+item.count,0)}<small>条记录</small></span></div><div class="market-legend">${categories.map((item,index)=>`<button type="button" data-market-category-filter="${escapeHtml(item.name)}"><i style="background:${colors[index%colors.length]}"></i><span>${escapeHtml(item.name)}</span><strong>${item.share}%</strong></button>`).join("")}</div>`;
+  shell.querySelectorAll("[data-market-category-filter]").forEach(button=>button.addEventListener("click",()=>{$("#market-category").value=button.dataset.marketCategoryFilter;loadMarketDashboard();}));
+}
+
+function renderMarketTrend(data){
+  const shell=$("#market-trend-chart");
+  if(!data.trend_ready){shell.innerHTML=`<div class="market-empty"><strong>继续积累快照</strong><span>当前 ${data.summary.snapshot_count} 次，至少更新2次后生成真实趋势。</span></div>`;return;}
+  const names=data.categories.slice(0,4).map(item=>item.name),points=data.trend_series;
+  const max=Math.max(1,...points.flatMap(point=>names.map(name=>point.categories[name]||0)));
+  const width=420,height=180,pad=24;
+  const colors=["#6d5dfc","#25a477","#e4a83a","#4d78c9"];
+  const lines=names.map((name,index)=>{
+    const coords=points.map((point,i)=>`${pad+i*(width-pad*2)/Math.max(1,points.length-1)},${height-pad-(point.categories[name]||0)*(height-pad*2)/max}`).join(" ");
+    return `<polyline points="${coords}" fill="none" stroke="${colors[index]}" stroke-width="3"/>`;
+  }).join("");
+  shell.innerHTML=`<svg class="market-line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="分类趋势折线图">${lines}</svg><div class="market-inline-legend">${names.map((name,index)=>`<span><i style="background:${colors[index]}"></i>${escapeHtml(name)}</span>`).join("")}</div>`;
+}
+
+function renderMarketHeat(categories){
+  const shell=$("#market-heat-chart");
+  shell.innerHTML=categories.length?categories.map(item=>`<div class="market-bar"><span>${escapeHtml(item.name)}</span><div><i style="width:${item.heat}%"></i></div><strong>${item.heat}</strong><small>竞争${item.competition} · ${item.trend}</small></div>`).join(""):'<p class="market-empty">暂无热度数据</p>';
+}
+
+function renderMarketRankings(rankings){
+  const shell=$("#market-ranking-chart");
+  shell.innerHTML=rankings.length?rankings.map(item=>{const total=Object.values(item.categories).reduce((a,b)=>a+b,0);return `<article><strong>${escapeHtml(item.name)}</strong><div>${Object.entries(item.categories).map(([name,count])=>`<span style="flex:${count}" title="${escapeHtml(name)} ${count}部">${escapeHtml(name)} ${Math.round(count*100/total)}%</span>`).join("")}</div></article>`;}).join(""):'<p class="market-empty">暂无榜单分布</p>';
+}
+
+$("#market-refresh")?.addEventListener("click",async()=>{
+  const button=$("#market-refresh");button.disabled=true;button.textContent="更新中…";
+  try{await api("/api/market/refresh",{method:"POST",body:JSON.stringify({source_id:"zhihu-salt"})});await loadMarketDashboard();state.references=await api("/api/references");renderReferences();toast("榜单快照已保存，本地市场分析已同步更新");}
+  catch(error){await loadMarketDashboard();toast(error.message);}
+  finally{button.disabled=false;button.textContent="更新当前平台";}
+});
+["market-platform","market-period","market-ranking","market-category"].forEach(id=>$("#"+id)?.addEventListener("change",loadMarketDashboard));
 
 async function learnReference() {
   if (!state.activeReference) return;

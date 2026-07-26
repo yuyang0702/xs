@@ -59,6 +59,20 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'data-view="trash"' in html
     assert 'data-view="materials"' in html
     assert 'data-view="learning"' in html
+    assert 'data-view="market"' in html
+    assert 'id="market-platform"' in html
+    assert 'id="market-period"' in html
+    assert 'id="market-ranking"' in html
+    assert 'id="market-category"' in html
+    assert 'id="market-refresh"' in html
+    assert 'id="market-summary"' in html
+    assert 'id="market-share-chart"' in html
+    assert 'id="market-trend-chart"' in html
+    assert 'id="market-heat-chart"' in html
+    assert 'id="market-ranking-chart"' in html
+    assert 'id="market-keywords"' in html
+    assert 'id="market-work-list"' in html
+    assert "不代表全网市场" in html
     assert 'id="reference-form"' in html
     assert 'id="reference-list"' in html
     assert 'id="reference-detail"' in html
@@ -91,6 +105,10 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'name="timeout_seconds"' not in html
     assert 'name="extra_headers"' not in html
     script = client.get("/static/app.js").text
+    assert "loadMarketDashboard" in script
+    assert "renderMarketDashboard" in script
+    assert "/api/market/refresh" in script
+    assert "data-market-link" in script
     assert "loadInterview" in script
     assert "data-provider-edit" in script
     assert "data-provider-delete" in script

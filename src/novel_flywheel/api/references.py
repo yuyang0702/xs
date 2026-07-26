@@ -61,20 +61,32 @@ def _public(value):
     return value
 
 
+def _with_market(request: Request, value):
+    public = _public(value)
+    market = getattr(request.app.state, "market", None)
+    if market is None:
+        return public
+    if isinstance(public, list):
+        return [_with_market(request, item) for item in public]
+    if isinstance(public, dict) and public.get("id"):
+        public["market_context"] = market.reference_context(public["id"])
+    return public
+
+
 def _not_found(exc: Exception) -> HTTPException:
     return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
 
 
 @router.get("")
 def list_references(request: Request) -> list[dict]:
-    return _public(_library(request).list())
+    return _with_market(request, _library(request).list())
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 def import_reference(payload: ReferenceImport, request: Request) -> dict:
     try:
         _validate_project(request, payload.project_id)
-        return _public(_library(request).import_text(
+        return _with_market(request, _library(request).import_text(
             title=payload.title, text=payload.text, source_type=payload.source_type,
             platform=payload.platform, content_type=payload.content_type, project_id=payload.project_id,
         ))
@@ -93,7 +105,7 @@ def import_extracted_reference(payload: ExtractedReferenceImport, request: Reque
         elif not text:
             raw = base64.b64decode(payload.data_base64 or "", validate=True)
             text = extract_docx(raw) if payload.source_type == "docx" else extract_pdf(raw)
-        return _public(_library(request).import_text(
+        return _with_market(request, _library(request).import_text(
             title=title, text=text or "", source_type=payload.source_type,
             source_uri=source_uri, warnings=payload.warnings, platform=payload.platform,
             content_type=payload.content_type, project_id=payload.project_id,
@@ -107,7 +119,7 @@ def import_extracted_reference(payload: ExtractedReferenceImport, request: Reque
 @router.get("/{source_id}")
 def get_reference(source_id: str, request: Request) -> dict:
     try:
-        return _public(_library(request).get(source_id))
+        return _with_market(request, _library(request).get(source_id))
     except (LookupError, ValueError) as exc:
         raise _not_found(exc) from exc
 
@@ -135,7 +147,7 @@ def update_reference_metadata(
     try:
         if payload.project_id:
             request.app.state.projects.get(payload.project_id)
-        return _public(_library(request).update_metadata(
+        return _with_market(request, _library(request).update_metadata(
             source_id, platform=payload.platform, content_type=payload.content_type,
             project_id=payload.project_id,
         ))
@@ -154,7 +166,9 @@ def popular_reference_analysis(source_id: str, request: Request) -> dict:
         source = _library(request).get(source_id)
         if source["content_type"] != "popular_sample":
             raise ValueError("请先将内容类型改为“爆款样本”")
-        return analyze_popular_sample(source["title"], _library(request).read_text(source_id))
+        report = analyze_popular_sample(source["title"], _library(request).read_text(source_id))
+        report["market_evidence"] = request.app.state.market.reference_context(source_id)
+        return report
     except LookupError as exc:
         raise _not_found(exc) from exc
     except ValueError as exc:
