@@ -32,6 +32,7 @@ from novel_flywheel.learning import LearningSystem
 from novel_flywheel.nlp_backend import LocalNLPManager
 from novel_flywheel.market import MarketService
 from novel_flywheel.market_baseline import MarketBaselineService
+from novel_flywheel.analysis_tasks import ReferenceAnalysisTaskManager
 
 
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
@@ -73,6 +74,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     )
     gateway = ModelGateway(db, app.state.registry)
     app.state.learning = LearningSystem(db, app.state.references, app.state.projects, gateway)
+    app.state.reference_analysis_tasks = ReferenceAnalysisTaskManager()
     app.state.material_impacts = MaterialImpactService(gateway)
     app.state.style_samples = style_sample_service or StyleSampleService(gateway)
     app.state.interviews = interview_service or WizardInterviewService(db, gateway)

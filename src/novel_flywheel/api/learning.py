@@ -85,14 +85,35 @@ def analyze_reference(source_id: str, request: Request) -> dict:
     return _handle(lambda: _learning(request).analyze_reference(source_id))
 
 
-@router.post("/references/{source_id}/model-learn")
+@router.post("/references/{source_id}/model-learn", status_code=status.HTTP_202_ACCEPTED)
 async def model_analyze_reference(source_id: str, request: Request) -> dict:
     try:
-        return await _learning(request).model_analyze_reference(source_id)
+        request.app.state.references.get(source_id)
+        return request.app.state.reference_analysis_tasks.start(
+            source_id,
+            lambda progress: _learning(request).model_analyze_reference(source_id, progress),
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.get("/references/{source_id}/model-learn/status")
+def model_analysis_status(source_id: str, request: Request) -> dict:
+    request.app.state.references.get(source_id)
+    return request.app.state.reference_analysis_tasks.get_for_source(source_id) or {
+        "source_id": source_id, "status": "idle", "phase": "idle",
+        "completed_windows": 0, "total_windows": 0,
+    }
+
+
+@router.delete("/references/{source_id}/model-learn/{task_id}")
+def cancel_model_analysis(source_id: str, task_id: str, request: Request) -> dict:
+    task = request.app.state.reference_analysis_tasks.cancel(task_id)
+    if task["source_id"] != source_id:
+        raise HTTPException(status_code=404, detail="analysis_task_not_found")
+    return task
 
 
 @router.post("/references/{source_id}/nlp")

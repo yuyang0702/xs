@@ -161,7 +161,7 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "全文覆盖率" in script
     assert "data-mechanism-delete" in script
     assert "deleteRejectedMechanisms" in script
-    assert "展开全部证据" in script
+    assert "按文章阶段查看全部证据" in script
     assert "const latestRun = runs[0]" in script
     assert "showRunDetail(await api(`/api/runs/${latestRun.id}`))" in script
     assert "continueProject(button.dataset.continue)" in script
@@ -213,12 +213,32 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "data-reference-create" in script
 
 
-def test_reference_metadata_save_action_aligns_with_fields(tmp_path) -> None:
+def test_reference_metadata_save_action_only_appears_for_changes(tmp_path) -> None:
     client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
     script = client.get("/static/app.js").text
     css = client.get("/static/app.css").text
 
     assert 'class="reference-metadata-action"' in script
-    assert ".reference-metadata-action" in css
-    assert "grid-template-rows:20px 40px;" in css
-    assert "position:absolute" in css
+    assert "data-reference-metadata-save hidden" in script
+    assert "button.hidden=!dirty" in script
+    assert "✓ 已保存" in script
+    assert ".reference-save-state" in css
+
+
+def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for label in (
+        "原文是怎么写的", "为什么值得学习", "你的作品可以怎么用", "什么时候不要用",
+        "发现了什么", "为什么可能影响阅读", "建议你检查什么", "技术详情",
+        "这是什么", "你需要决定",
+    ):
+        assert label in script
+    assert "reference-task-status" in script
+    assert "pollReferenceAnalysisTask" in script
+    assert "referenceTask" in script
+    assert "✓ 已保存" in script
+    assert ".reference-task-status" in css
+    assert ".mechanism-stage-summary" in css

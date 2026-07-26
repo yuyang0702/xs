@@ -1,3 +1,5 @@
+import time
+
 from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
@@ -114,3 +116,32 @@ def test_rejected_mechanisms_can_be_deleted_from_api(tmp_path) -> None:
     assert response.status_code == 200
     assert response.json() == {"deleted_ids": [node_id], "skipped": []}
     assert client.get("/api/learning/mechanisms?view=rejected").json() == []
+
+
+def test_model_analysis_exposes_queryable_progress(tmp_path) -> None:
+    client = client_for(tmp_path)
+    source = client.post("/api/references", json={
+        "title": "progress", "source_type": "paste", "text": "sample text",
+    }).json()
+
+    async def fake_analysis(source_id, progress):
+        progress({"phase": "analyzing_windows", "completed_windows": 0, "total_windows": 2})
+        progress({"phase": "analyzing_windows", "completed_windows": 1, "total_windows": 2})
+        progress({"phase": "synthesizing", "completed_windows": 2, "total_windows": 2})
+        return {"source_id": source_id, "claims": 2, "mechanisms": [{"id": "mechanism-1"}]}
+
+    client.app.state.learning.model_analyze_reference = fake_analysis
+    with client:
+        started = client.post(f"/api/references/{source['id']}/model-learn")
+        assert started.status_code == 202
+        assert started.json()["status"] in {"queued", "running"}
+        for _ in range(50):
+            status = client.get(f"/api/references/{source['id']}/model-learn/status").json()
+            if status["status"] == "completed":
+                break
+            time.sleep(0.01)
+
+    assert status["status"] == "completed"
+    assert status["phase"] == "completed"
+    assert status["completed_windows"] == status["total_windows"] == 2
+    assert status["result"]["mechanisms"][0]["id"] == "mechanism-1"

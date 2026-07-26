@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, learningReport:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, learningReport:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -115,8 +115,11 @@ async function selectReference(sourceId) {
   state.activeReference = source;
   state.referenceAnalysis = null;
   state.learningReport = null;
+  state.referenceTask = null;
+  clearTimeout(state.referenceTaskTimer);
   state.referenceContent = "";
   renderReferences();
+  loadReferenceAnalysisTask(sourceId);
 }
 
 async function loadReferenceContent(sourceId) {
@@ -126,7 +129,54 @@ async function loadReferenceContent(sourceId) {
     if (state.activeReference?.id !== sourceId) return;
     state.referenceContent = content.text;
     renderReferenceDetail();
+    loadReferenceAnalysisTask(sourceId);
   } catch(error) { toast(error.message); }
+}
+
+function diagnosticCopy(item) {
+  const impacts={
+    unsupported_certainty:"读者还没有看到足够依据，人物却已经下定结论，容易让判断显得像作者直接宣布。",
+    repeated_phrase:"短距离重复相同表达会让读者感觉文字停在原地；如果是有意循环，需要让第二次出现承担新的信息。",
+    mechanical_dialogue_run:"连续问答如果缺少动作、观察或关系变化，人物容易像在交换资料，而不是身处真实场景。",
+    regular_sentence_rhythm:"连续句子长度和结构太接近，阅读节奏会变得机械，紧张和舒缓也不容易区分。",
+    one_sentence_paragraph_run:"连续使用短小单句段落会削弱真正需要强调的位置，让页面节奏显得碎。",
+    repeated_body_reaction:"不同情绪反复使用同一种身体反应，会让人物感受变得单一。",
+    project_forbidden_pattern:"这处表达碰到了当前作品已经明确设定的禁用规则。",
+  };
+  return {
+    problem:item.message||"这里可能需要你复核",
+    impact:impacts[item.rule_id]||"这条本地规则发现了可能影响理解或节奏的位置，需要结合上下文由你最终判断。",
+    action:item.repair_goal||"检查这段是否让读者获得了足够信息，并决定保留或修改。",
+  };
+}
+
+function renderDiagnosticFinding(item) {
+  const copy=diagnosticCopy(item);
+  const excerpt=String(item.evidence||"");
+  return `<article class="diagnostic-card"><section><span>发现了什么</span><strong>${escapeHtml(copy.problem)}</strong></section><section><span>为什么可能影响阅读</span><p>${escapeHtml(copy.impact)}</p></section><section><span>建议你检查什么</span><p>${escapeHtml(copy.action)}</p></section><section><span>原文证据</span><blockquote>${escapeHtml(excerpt.length>360?excerpt.slice(0,360)+"…":excerpt)}</blockquote>${excerpt.length>360?`<details><summary>查看完整原文证据</summary><blockquote>${escapeHtml(excerpt)}</blockquote></details>`:""}</section><details class="diagnostic-technical"><summary>技术详情</summary><p>规则：${escapeHtml(item.rule_id)} · 级别：${escapeHtml(item.severity)}</p></details></article>`;
+}
+
+function referenceTaskMarkup() {
+  const task=state.referenceTask;
+  if(!task||task.status==="idle")return `<div><strong>分析状态</strong><p>选择本地诊断、本地提炼或模型深度分析后，这里会持续显示进度和结果。</p></div>`;
+  const labels={queued:"等待分析",running:"正在分析",completed:"分析完成",failed:"分析失败",cancelled:"已停止"};
+  const phases={starting:"正在准备全文",analyzing_windows:"正在逐段分析全文",synthesizing:"正在合并全文结论",completed:"结果已经生成",failed:"任务未能完成",cancelled:"任务已停止",local_analysis:"正在扫描全文问题",local_learning:"正在提炼全文写法"};
+  const total=Number(task.total_windows||0),done=Number(task.completed_windows||0);
+  const elapsedEnd=task.finished_at?Date.parse(task.finished_at):Date.now();
+  const elapsed=task.started_at?Math.max(0,Math.floor((elapsedEnd-Date.parse(task.started_at))/1000)):0;
+  const elapsedText=elapsed>=60?`${Math.floor(elapsed/60)}分${String(elapsed%60).padStart(2,"0")}秒`:`${elapsed}秒`;
+  const progress=total?`<progress max="${total}" value="${done}"></progress><span>${done} / ${total} 个文本窗口</span>`:'<progress></progress>';
+  const result=task.status==="completed"?`<p>结果：${task.summary||`已完成 ${done||total||1} 个处理步骤`}。你现在可以查看下方结果，再决定是否保留或应用。</p>`:task.status==="failed"?`<p>原因：${escapeHtml(task.error||"未知错误")}。已有本地内容不会丢失，可以重新尝试。</p>`:"";
+  const stop=task.id&&["queued","running"].includes(task.status)?`<button class="secondary" data-reference-task-cancel="${task.id}">停止分析</button>`:"";
+  return `<div><strong>${labels[task.status]||"分析状态"}</strong><p>${phases[task.phase]||"正在处理"} · 已用时 ${elapsedText}</p>${progress}${result}</div>${stop}`;
+}
+
+function renderReferenceTaskStatus(){
+  const shell=$("[data-reference-task-status]");if(!shell)return;
+  const task=state.referenceTask;
+  shell.className=`reference-task-status ${task?.status||"idle"}`;
+  shell.innerHTML=referenceTaskMarkup();
+  shell.querySelector("[data-reference-task-cancel]")?.addEventListener("click",cancelReferenceAnalysisTask);
 }
 
 function renderReferenceDetail() {
@@ -138,7 +188,9 @@ function renderReferenceDetail() {
   const findings = report?.findings || [];
   const learning=state.learningReport?.source_id===source.id?state.learningReport:null;
   const learningSummary=learning?`<section class="reference-learning-summary"><div><strong>${learning.analyzed_windows} / ${learning.window_count}</strong><span>窗口已扫描</span></div><div><strong>${learning.coverage_percent}%</strong><span>全文覆盖率</span></div><div><strong>${learning.mechanisms.length}</strong><span>合并后候选机制</span></div><p>本地规则已覆盖全文；候选机制的多处证据已合并，可在下方项目学习区查看。</p></section>`:"";
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header>${learningSummary}${metrics ? `<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>待复核项</span></div></section><section class="reference-findings"><h3>本地诊断</h3>${findings.length ? findings.map(item => `<article><div><strong>${escapeHtml(item.message)}</strong><span>${escapeHtml(item.rule_id)} · ${escapeHtml(item.severity)}</span></div><blockquote>${escapeHtml(item.evidence.length>360?item.evidence.slice(0,360)+"…":item.evidence)}</blockquote>${item.evidence.length>360?`<details><summary>展开完整证据</summary><blockquote>${escapeHtml(item.evidence)}</blockquote></details>`:""}<p>${escapeHtml(item.repair_goal)}</p></article>`).join("") : '<p class="skill-meta">当前本地规则未发现需要复核的问题</p>'}</section>` : '<section><p class="skill-meta">尚未运行本地诊断</p></section>'}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  const diagnosticsHtml=metrics?`<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>需要你复核</span></div></section><section class="reference-findings"><h3>本地诊断</h3><p class="section-intro">这些是本地规则找到的疑似位置，不代表文章一定有错。请结合原文决定是否修改。</p>${findings.length?findings.map(renderDiagnosticFinding).join(""):'<p class="skill-meta">当前没有发现需要你复核的问题。</p>'}</section>`:'<section><p class="skill-meta">尚未运行本地诊断。点击后会扫描全文，并说明每个疑似问题为什么值得检查。</p></section>';
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header><section class="reference-task-status" data-reference-task-status></section>${learningSummary}${diagnosticsHtml}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  renderReferenceTaskStatus();
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
   $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
   $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
@@ -147,7 +199,7 @@ function renderReferenceDetail() {
   const header=$("#reference-detail header");
   const metadata=document.createElement("section");
   metadata.className="reference-metadata";
-  metadata.innerHTML=`<label>平台<input data-reference-platform maxlength="80" value="${escapeHtml(source.platform||"")}"></label><label>内容类型<select data-reference-type>${Object.entries(typeLabels).map(([value,label])=>`<option value="${value}" ${value===source.content_type?"selected":""}>${label}</option>`).join("")}</select></label><label>关联作品<select data-reference-project><option value="">不关联作品</option>${state.projects.map(item=>`<option value="${item.id}" ${item.id===source.project_id?"selected":""}>${escapeHtml(item.title)}</option>`).join("")}</select></label><div class="reference-metadata-action"><span>分类操作</span><button class="secondary" data-reference-metadata-save disabled>已保存</button><span class="skill-meta" data-reference-metadata-status>分类状态：已保存</span></div>${source.content_type==="popular_sample"?'<button class="secondary" data-reference-popular>爆款分析</button>':""}`;
+  metadata.innerHTML=`<label>平台<input data-reference-platform maxlength="80" value="${escapeHtml(source.platform||"")}"></label><label>内容类型<select data-reference-type>${Object.entries(typeLabels).map(([value,label])=>`<option value="${value}" ${value===source.content_type?"selected":""}>${label}</option>`).join("")}</select></label><label>关联写作项目<select data-reference-project><option value="">不关联写作项目</option>${state.projects.map(item=>`<option value="${item.id}" ${item.id===source.project_id?"selected":""}>${escapeHtml(item.title)}</option>`).join("")}</select></label><div class="reference-metadata-action"><span class="reference-save-state" data-reference-metadata-status>✓ 已保存</span><button class="primary" data-reference-metadata-save hidden>保存修改</button></div>${source.content_type==="popular_sample"?'<button class="secondary" data-reference-popular>爆款分析</button>':""}`;
   header.insertAdjacentElement("afterend",metadata);
   metadata.querySelector("[data-reference-metadata-save]").addEventListener("click",saveReferenceMetadata);
   metadata.querySelector("[data-reference-platform]").addEventListener("input",markReferenceMetadataDirty);
@@ -211,21 +263,22 @@ function markReferenceMetadataDirty(){
     ||shell.querySelector("[data-reference-type]").value!==state.activeReference.content_type
     ||(shell.querySelector("[data-reference-project]").value||null)!==(state.activeReference.project_id||null);
   const button=shell.querySelector("[data-reference-metadata-save]");
-  button.disabled=!dirty; button.textContent=dirty?"保存修改":"已保存";
-  shell.querySelector("[data-reference-metadata-status]").textContent=dirty?"分类状态：有未保存修改":"分类状态：已保存";
+  button.hidden=!dirty; button.disabled=false; button.textContent="保存修改";
+  const status=shell.querySelector("[data-reference-metadata-status]");
+  status.hidden=dirty; status.textContent="✓ 已保存";
 }
 
 async function saveReferenceMetadata(){
   const shell=$("#reference-detail .reference-metadata");
   const button=shell.querySelector("[data-reference-metadata-save]");
   try{
-    button.disabled=true; button.textContent="保存中…";
-    shell.querySelector("[data-reference-metadata-status]").textContent="分类状态：正在保存";
+    button.hidden=false; button.disabled=true; button.textContent="保存中…";
+    shell.querySelector("[data-reference-metadata-status]").hidden=true;
     const source=await api(`/api/references/${state.activeReference.id}/metadata`,{method:"PATCH",body:JSON.stringify({platform:shell.querySelector("[data-reference-platform]").value.trim()||null,content_type:shell.querySelector("[data-reference-type]").value,project_id:shell.querySelector("[data-reference-project]").value||null})});
     state.activeReference=source; await loadAll(); toast("资料分类已保存；相关已采纳机制已标记为待复核（如有）");
   }catch(error){
-    button.disabled=false; button.textContent="保存修改";
-    shell.querySelector("[data-reference-metadata-status]").textContent="分类状态：保存失败";
+    button.hidden=false; button.disabled=false; button.textContent="重试保存";
+    const status=shell.querySelector("[data-reference-metadata-status]");status.hidden=false;status.textContent="保存失败，请重试";status.classList.add("failed");
     toast(error.message);
   }
 }
@@ -243,12 +296,49 @@ async function analyzePopularReference(){
 
 async function analyzeReference() {
   if (!state.activeReference) return;
+  state.referenceTask={status:"running",phase:"local_analysis",started_at:new Date().toISOString(),completed_windows:0,total_windows:0};renderReferenceTaskStatus();
   try {
     state.referenceAnalysis = await api(`/api/references/${state.activeReference.id}/analyze`, {method:"POST"});
     if (state.localNlp?.enabled) await api(`/api/references/${state.activeReference.id}/nlp`, {method:"POST"});
+    state.referenceTask={...state.referenceTask,status:"completed",phase:"completed",finished_at:new Date().toISOString(),summary:`全文扫描完成，发现 ${state.referenceAnalysis.result?.findings?.length||0} 处需要你复核`};
     renderReferenceDetail();
     toast(state.referenceAnalysis.cached ? "已加载本地分析缓存" : "本地分析完成");
-  } catch(error) { toast(error.message); }
+  } catch(error) { state.referenceTask={...state.referenceTask,status:"failed",phase:"failed",finished_at:new Date().toISOString(),error:error.message};renderReferenceTaskStatus();toast(error.message); }
+}
+
+async function loadReferenceAnalysisTask(sourceId){
+  try{
+    const task=await api(`/api/references/${sourceId}/model-learn/status`);
+    if(state.activeReference?.id!==sourceId)return;
+    state.referenceTask=task;renderReferenceTaskStatus();
+    if(["queued","running"].includes(task.status))pollReferenceAnalysisTask(sourceId);
+  }catch(error){console.warn("Unable to restore reference analysis status",error);}
+}
+
+async function pollReferenceAnalysisTask(sourceId){
+  clearTimeout(state.referenceTaskTimer);
+  if(state.activeReference?.id!==sourceId)return;
+  try{
+    const previous=state.referenceTask?.status;
+    const task=await api(`/api/references/${sourceId}/model-learn/status`);
+    if(state.activeReference?.id!==sourceId)return;
+    state.referenceTask=task;
+    if(task.status==="completed"&&previous!=="completed"){
+      state.mechanisms=await api("/api/learning/mechanisms");
+      task.summary=`全文模型分析完成，得到 ${task.result?.mechanisms?.length||0} 个候选写法`;
+      renderLearning();
+    }
+    renderReferenceTaskStatus();
+    if(["queued","running"].includes(task.status))state.referenceTaskTimer=setTimeout(()=>pollReferenceAnalysisTask(sourceId),1200);
+  }catch(error){
+    state.referenceTask={...state.referenceTask,status:"failed",phase:"failed",error:error.message};renderReferenceTaskStatus();
+  }
+}
+
+async function cancelReferenceAnalysisTask(event){
+  const taskId=event.currentTarget.dataset.referenceTaskCancel,sourceId=state.activeReference?.id;if(!taskId||!sourceId)return;
+  try{state.referenceTask=await api(`/api/references/${sourceId}/model-learn/${taskId}`,{method:"DELETE"});renderReferenceTaskStatus();}
+  catch(error){toast(error.message);}
 }
 
 async function deleteReference() {
@@ -516,15 +606,52 @@ $("#market-work-list")?.addEventListener("change",async event=>{
 
 async function learnReference() {
   if (!state.activeReference) return;
-  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.learningReport=result; state.mechanisms=await api("/api/learning/mechanisms"); renderReferenceDetail(); renderLearning(); toast(`全文覆盖 ${result.coverage_percent}% · 已提炼 ${result.mechanisms.length} 个候选机制`); }
-  catch(error) { toast(error.message); }
+  state.referenceTask={status:"running",phase:"local_learning",started_at:new Date().toISOString(),completed_windows:0,total_windows:0};renderReferenceTaskStatus();
+  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.learningReport=result; state.mechanisms=await api("/api/learning/mechanisms");state.referenceTask={...state.referenceTask,status:"completed",phase:"completed",finished_at:new Date().toISOString(),completed_windows:result.analyzed_windows,total_windows:result.window_count,summary:`全文覆盖 ${result.coverage_percent}%，整理出 ${result.mechanisms.length} 个候选写法`}; renderReferenceDetail(); renderLearning(); toast(`全文覆盖 ${result.coverage_percent}% · 已提炼 ${result.mechanisms.length} 个候选机制`); }
+  catch(error) { state.referenceTask={...state.referenceTask,status:"failed",phase:"failed",finished_at:new Date().toISOString(),error:error.message};renderReferenceTaskStatus();toast(error.message); }
 }
-async function modelLearnReference() { if(!state.activeReference||!confirm("模型深度分析会调用已配置 API，并可能产生费用。继续？"))return; try{toast("模型正在分窗分析...");const result=await api(`/api/references/${state.activeReference.id}/model-learn`,{method:"POST"});state.mechanisms=await api("/api/learning/mechanisms");renderLearning();toast(`深度分析完成，得到 ${result.mechanisms.length} 个候选机制`);}catch(error){toast(error.message);} }
+async function modelLearnReference() {
+  if(!state.activeReference||!confirm("这是什么：模型会逐段阅读全文，再整理成需要你确认的候选写法。\n\n为什么现在询问：这个操作会调用已配置 API，可能产生费用。\n\n操作后会发生什么：分析结果只进入候选区，不会自动修改正文或写作项目。\n\n开始模型深度分析？"))return;
+  try{
+    state.referenceTask=await api(`/api/references/${state.activeReference.id}/model-learn`,{method:"POST"});renderReferenceTaskStatus();
+    pollReferenceAnalysisTask(state.activeReference.id);
+  }catch(error){state.referenceTask={status:"failed",phase:"failed",started_at:new Date().toISOString(),error:error.message};renderReferenceTaskStatus();toast(error.message);}
+}
 
 async function loadProjectLearning() {
   const projectId=$("#learning-project").value;
   state.projectLearning=projectId ? await api(`/api/projects/${projectId}/learning`) : null;
   renderLearningArtifacts();
+}
+
+function mechanismStage(position){
+  const value=Number(position);
+  if(value<=10)return "开头";
+  if(value<=30)return "前段";
+  if(value<=70)return "中段";
+  if(value<=90)return "后段";
+  return "结尾";
+}
+
+function mechanismEvidenceGroups(item){
+  const positions=item.data.positions||[],groups={};
+  (item.evidence||[]).forEach((evidence,index)=>{
+    const stage=mechanismStage(positions[index]??50);
+    (groups[stage]??=[]).push(evidence);
+  });
+  return groups;
+}
+
+function renderMechanismCard(item,adopted,rejectedView){
+  const rejected=item.status==="rejected",confirmed=item.status==="confirmed";
+  const needsConfirm=Number(item.data.confidence||0)<0.7&&!confirmed;
+  const statusLabel=rejected?"已拒绝":confirmed?"已确认":"等待你判断";
+  const evidence=item.evidence||[],positions=item.data.positions||[];
+  const stages=[...new Set(positions.map(mechanismStage))];
+  const groups=mechanismEvidenceGroups(item);
+  const conditions=(item.data.incompatible_conditions||[]).join("；")||"当情节没有产生新信息、人物选择或关系变化时，不要为了模仿而硬加。";
+  const groupedEvidence=Object.entries(groups).map(([stage,items])=>`<section><strong>${stage} · ${items.length} 处</strong>${items.map(value=>`<blockquote class="mechanism-evidence">${escapeHtml(value.excerpt)}</blockquote>`).join("")}</section>`).join("");
+  return `<article class="mechanism-item">${rejectedView?`<label class="mechanism-select"><input type="checkbox" data-mechanism-select="${item.id}"> 选择</label>`:""}<header><div><h3>${escapeHtml(item.data.name)}</h3><span class="mechanism-status">${statusLabel}</span></div><p><strong>这是什么：</strong>系统从参考作品中归纳出的候选写法，还没有自动进入你的作品。</p></header><div class="mechanism-stage-summary"><strong>全文命中 ${evidence.length||positions.length||1} 处</strong><span>${stages.length?`主要分布在${stages.join("、")}`:escapeHtml(item.data.structural_position||"位置待确认")}</span><span>参考可信度 ${Math.round(Number(item.data.confidence||0)*100)}%</span></div><div class="mechanism-explanation"><section><span>原文是怎么写的</span><p>${escapeHtml(item.data.fact||"模型从多处原文证据中归纳了这一写法。")}</p></section><section><span>为什么值得学习</span><p>${escapeHtml(item.data.interpretation||item.data.emotional_effect||"它可能影响读者对信息、人物或情节推进的感受。")}</p></section><section><span>你的作品可以怎么用</span><p>${escapeHtml(item.data.transfer_guidance||"保留这种写法的作用，替换人物、设定、情节和具体表达。")}</p></section><section><span>什么时候不要用</span><p>${escapeHtml(conditions)}</p></section></div>${evidence[0]?`<section class="mechanism-representative"><span>代表证据</span><blockquote class="mechanism-evidence">${escapeHtml(evidence[0].excerpt)}</blockquote></section>`:""}${evidence.length>1?`<details class="mechanism-evidence-list"><summary>按文章阶段查看全部证据（${evidence.length} 处）</summary>${groupedEvidence}</details>`:""}<p class="mechanism-decision"><strong>你需要决定：</strong>“保留为候选”表示认可这条分析；“应用到当前作品”会把它写入当前作品的创作蓝图，但不会直接改正文；“不采用”会把它移到已拒绝列表。</p><div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}" ${(confirmed||rejected)?"disabled":""}>${confirmed?"已保留":rejected?"已拒绝":"保留为候选"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm||rejected)?"disabled":""}>${adopted.has(item.id)?"已应用":"应用到当前作品"}</button><button class="secondary" data-mechanism-reject="${item.id}" ${rejected?"disabled":""}>${rejected?"已拒绝":"不采用"}</button>${rejected?`<button class="secondary danger-text" data-mechanism-delete="${item.id}">永久删除</button>`:""}</div></article>`;
 }
 
 function renderLearning() {
@@ -534,7 +661,7 @@ function renderLearning() {
   const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
   const rejectedView=$("#learning-mechanism-view")?.value==="rejected";
   const batch=rejectedView&&state.mechanisms.length?'<div class="mechanism-batch-actions"><label><input type="checkbox" data-mechanism-select-all> 全选当前结果</label><button class="secondary danger-text" data-mechanism-delete-selected>删除所选</button></div>':"";
-  const cards=state.mechanisms.length ? state.mechanisms.map(item=>{const rejected=item.status==="rejected";const confirmed=item.status==="confirmed";const needsConfirm=Number(item.data.confidence||0)<0.7&&!confirmed;const statusLabel=rejected?"已拒绝":confirmed?"已确认":"候选";const evidence=item.evidence||[];return `<article class="mechanism-item">${rejectedView?`<label class="mechanism-select"><input type="checkbox" data-mechanism-select="${item.id}"> 选择</label>`:""}<h3>${escapeHtml(item.data.name)} <span class="skill-meta">· ${statusLabel}</span></h3><p><strong>位置：</strong>${escapeHtml((item.data.positions||[]).length?(item.data.positions.map(value=>`${value}%`).join(" · ")):(item.data.structural_position||"未标注"))} · <strong>置信度：</strong>${Math.round(Number(item.data.confidence||0)*100)}%</p><p><strong>观察事实：</strong>${escapeHtml(item.data.fact)}</p><p><strong>分析解释：</strong>${escapeHtml(item.data.interpretation)}</p><p><strong>迁移方法：</strong>${escapeHtml(item.data.transfer_guidance)}</p><p><strong>不适用：</strong>${escapeHtml((item.data.incompatible_conditions||[]).join("；"))}</p>${evidence[0]?`<blockquote class="mechanism-evidence">${escapeHtml(evidence[0].excerpt)}</blockquote>`:""}${evidence.length>1?`<details class="mechanism-evidence-list"><summary>展开全部证据（${evidence.length}处）</summary>${evidence.map(value=>`<blockquote class="mechanism-evidence">${escapeHtml(value.excerpt)}</blockquote>`).join("")}</details>`:""}<div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}" ${(confirmed||rejected)?"disabled":""}>${confirmed?"已确认":rejected?"已拒绝":"确认分析"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm||rejected)?"disabled":""}>${adopted.has(item.id)?"已采纳":"采纳到作品"}</button><button class="secondary" data-mechanism-reject="${item.id}" ${rejected?"disabled":""}>${rejected?"已拒绝":"拒绝"}</button>${rejected?`<button class="secondary danger-text" data-mechanism-delete="${item.id}">删除</button>`:""}</div></article>`;}).join("") : `<p class="skill-meta">${rejectedView?"暂无已拒绝机制":"暂无候选机制"}</p>`;
+  const cards=state.mechanisms.length?state.mechanisms.map(item=>renderMechanismCard(item,adopted,rejectedView)).join(""):`<p class="skill-meta">${rejectedView?"暂无已拒绝机制":"暂无候选机制"}</p>`;
   $("#learning-mechanisms").innerHTML=batch+cards;
   document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
   document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));

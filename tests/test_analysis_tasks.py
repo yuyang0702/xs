@@ -1,0 +1,33 @@
+import asyncio
+
+from novel_flywheel.analysis_tasks import ReferenceAnalysisTaskManager
+
+
+async def test_reference_analysis_task_records_failure() -> None:
+    manager = ReferenceAnalysisTaskManager()
+
+    async def fail(_progress):
+        raise RuntimeError("provider timeout")
+
+    manager.start("source-1", fail)
+    await asyncio.sleep(0)
+
+    state = manager.get_for_source("source-1")
+    assert state["status"] == "failed"
+    assert state["error"] == "provider timeout"
+    assert state["finished_at"]
+
+
+async def test_reference_analysis_task_can_be_cancelled() -> None:
+    manager = ReferenceAnalysisTaskManager()
+    blocker = asyncio.Event()
+
+    async def wait(_progress):
+        await blocker.wait()
+
+    started = manager.start("source-1", wait)
+    cancelled = manager.cancel(started["id"])
+    await asyncio.sleep(0)
+
+    assert cancelled["status"] == "cancelled"
+    assert manager.get_for_source("source-1")["phase"] == "cancelled"

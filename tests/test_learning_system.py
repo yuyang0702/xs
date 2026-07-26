@@ -317,9 +317,14 @@ async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_
     ])
     system = LearningSystem(db, library, projects, gateway)
     source = library.import_text(title="模型样本", source_type="paste", text="他忽然发现了线索。")
-    result = await system.model_analyze_reference(source["id"])
+    progress = []
+    result = await system.model_analyze_reference(source["id"], progress.append)
     assert gateway.roles == ["reference_analysis", "reference_synthesis"]
     assert result["mechanisms"][0]["status"] == "proposed"
+    assert progress[0]["phase"] == "analyzing_windows"
+    assert progress[0]["completed_windows"] == 0
+    assert progress[-1]["phase"] == "synthesizing"
+    assert progress[-1]["completed_windows"] == progress[-1]["total_windows"] == 1
 
 
 async def test_model_line_edit_routes_to_line_edit_and_remains_candidate(tmp_path) -> None:
