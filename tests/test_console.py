@@ -81,6 +81,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="reference-list"' in html
     assert 'id="reference-detail"' in html
     assert 'id="reference-url"' in html
+    assert 'id="reference-import-status"' in html
     assert 'id="learning-project"' in html
     assert 'id="learning-mechanisms"' in html
     assert 'id="learning-mechanism-view"' in html
@@ -128,6 +129,9 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "continueProject(button.dataset.continue)" in script
     assert "resumableRun" in script
     assert "run(`/api/runs/${resumableRun.id}/resume`)" in script
+    assert "reference-import-status" in script
+    assert "正在读取网页内容" in script
+    assert "form.querySelector" in script
     assert '["failed","cancelled"].includes(item.status)' in script
     assert 'includes("token_budget_exhausted")' not in script
     assert 'if (!resumableRun) return toast("没有可继续的失败任务")' in script

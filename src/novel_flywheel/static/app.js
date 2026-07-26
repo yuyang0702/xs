@@ -259,6 +259,9 @@ async function deleteReference() {
 
 $("#reference-form").addEventListener("submit", async event => {
   event.preventDefault();
+  const form = event.target;
+  const button = form.querySelector('button[type="submit"]');
+  const status = $("#reference-import-status");
   const file = $("#reference-file").files[0];
   const url = $("#reference-url").value.trim();
   const extension = file?.name.split(".").pop().toLowerCase();
@@ -266,6 +269,10 @@ $("#reference-form").addEventListener("submit", async event => {
   const title = $("#reference-title").value.trim() || file?.name.replace(/\.(txt|docx|pdf)$/i, "") || url;
   const metadata={platform:$("#reference-platform").value||null,content_type:$("#reference-content-type").value||null,project_id:$("#reference-project").value||null};
   if (!file && !url && !text.trim()) return toast("请选择文档、输入网址或粘贴正文");
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "导入中...";
+  status.textContent = url ? "正在读取网页内容，公开网页最多等待约 20 秒；会员或动态页面可能无法直接提取。" : "正在导入学习库...";
   try {
     let source;
     if (url) source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:"url",source_uri:url,...metadata})});
@@ -273,8 +280,15 @@ $("#reference-form").addEventListener("submit", async event => {
     else source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste",...metadata})});
     event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null;
     state.marketMatch=await api(`/api/market/references/${source.id}/match`).catch(()=>null);
+    status.textContent = "";
     await loadAll(); toast(state.marketMatch?.candidates?.length?"参考资料已导入，并发现榜单匹配候选":"参考资料已导入");
-  } catch(error) { toast(error.message); }
+  } catch(error) {
+    status.textContent = `导入失败：${error.message}`;
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
 });
 const fileBase64 = file => new Promise((resolve,reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(",")[1]); reader.onerror=reject; reader.readAsDataURL(file); });
 ["reference-search","reference-filter-platform","reference-filter-type","reference-filter-project"].forEach(id=>$("#"+id)?.addEventListener(id==="reference-search"?"input":"change",renderReferences));
