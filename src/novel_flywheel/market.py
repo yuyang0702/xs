@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from html.parser import HTMLParser
 from typing import Any, Callable
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -504,7 +505,7 @@ class MarketService:
             for item in categories:
                 change = last.get(item["name"], 0) - first.get(item["name"], 0)
                 item["trend"] = "上升" if change > 0 else "下降" if change < 0 else "稳定"
-        keywords = self._keywords(works)
+        keywords = self._keywords(works, self._rank_history(cutoff, platform, ranking))
         refresh = dict(source) if source else {"refresh_status": "never", "refresh_error": None}
         refresh = {
             "status": refresh.get("refresh_status", "never"),
@@ -558,7 +559,51 @@ class MarketService:
             table[item["ranking_name"]][item["category"] or "未分类"] += 1
         return [{"name": name, "categories": dict(values)} for name, values in sorted(table.items())]
 
-    def _keywords(self, works: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    def _rank_history(
+        self, cutoff: str, platform: str | None, ranking: str | None,
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        with self.db.connect() as connection:
+            rows = connection.execute(
+                """SELECT work.id,entry.rank,entry.ranking_name,snapshot.captured_at
+                FROM market_entries entry
+                JOIN market_snapshots snapshot ON snapshot.id=entry.snapshot_id
+                JOIN market_works work ON work.id=entry.work_id
+                WHERE snapshot.status='success' AND snapshot.captured_at>=?
+                AND (? IS NULL OR work.platform=?)
+                AND (? IS NULL OR entry.ranking_name=?)""",
+                (cutoff, platform, platform, ranking, ranking),
+            ).fetchall()
+        by_work: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        local_tz = ZoneInfo("Asia/Shanghai")
+        for row in rows:
+            captured = datetime.fromisoformat(row["captured_at"])
+            if captured.tzinfo is None:
+                captured = captured.replace(tzinfo=timezone.utc)
+            by_work[row["id"]].append({
+                "date": captured.astimezone(local_tz).date().isoformat(),
+                "rank": row["rank"], "ranking_name": row["ranking_name"],
+            })
+        result = {}
+        for work_id, entries in by_work.items():
+            days: dict[str, list[dict[str, Any]]] = defaultdict(list)
+            for entry in entries:
+                days[entry["date"]].append(entry)
+            latest_day = max(days)
+            best = lambda values: min(values, key=lambda item: (
+                item["rank"] if item["rank"] is not None else 999,
+                item["ranking_name"], item["date"],
+            ))
+            result[work_id] = {
+                "daily_best": best(days[latest_day]),
+                "period_best": best(entries),
+            }
+        return result
+
+    def _keywords(
+        self, works: list[dict[str, Any]],
+        rank_history: dict[str, dict[str, dict[str, Any]]] | None = None,
+    ) -> dict[str, list[dict[str, Any]]]:
+        rank_history = rank_history or {}
         unique: dict[str, dict[str, Any]] = {}
         for item in works:
             current = unique.setdefault(item["id"], {**item, "_rankings": set()})
@@ -635,7 +680,7 @@ class MarketService:
                         "excerpt": (
                             item.get("title") if area == "title"
                             else (item.get("summary") or item.get("title") or "")[:100]
-                        ),
+                        ), **rank_history.get(item["id"], {}),
                     } for item in matched],
                 })
             return sorted(result, key=lambda item: (-item["score"], -item["work_count"], item["word"]))[:30]

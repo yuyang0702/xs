@@ -117,3 +117,34 @@ Expected: FAIL，缺少视图切换与分组结构。
 Run: `.\.venv\Scripts\python.exe -m pytest -q`
 
 Expected: 全部通过，并在浏览器中验证两种模式切换。
+
+### Task 4: 热门词详情收起与日期排名
+
+**Files:**
+- Modify: `src/novel_flywheel/market.py`
+- Modify: `src/novel_flywheel/static/app.js`
+- Modify: `src/novel_flywheel/static/app.css`
+- Test: `tests/test_market.py`
+- Test: `tests/test_console.py`
+
+**Interfaces:**
+- Consumes: 统计周期内 `market_entries` 与 `market_snapshots.captured_at`。
+- Produces: 热门词证据作品的 `daily_best`、`period_best`，以及可收起的详情面板。
+
+- [ ] **Step 1: 写失败测试**
+
+构造同一天多次快照和跨日快照，断言同日取最好名次，周期最高保留日期与榜单；前端契约断言关闭按钮、重复点击切换和 `Escape` 处理存在。
+
+- [ ] **Step 2: 实现日期排名聚合**
+
+按北京时间日期聚合每部作品的最低排名；最新有数据日期作为 `daily_best`，统计周期内最低排名作为 `period_best`，并以榜单名稳定处理并列。
+
+- [ ] **Step 3: 实现详情收起交互**
+
+详情顶部使用关闭图标按钮；重复点击当前词、点击关闭图标或按 `Escape` 时隐藏详情并移除选中态，点击其他词时替换详情和选中态。
+
+- [ ] **Step 4: 验证**
+
+Run: `.\.venv\Scripts\python.exe -m pytest -q`
+
+Expected: 全部通过，并在浏览器验证展开、切换和三种收起方式。

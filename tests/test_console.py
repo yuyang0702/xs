@@ -81,6 +81,7 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert 'id="market-work-list"' in html
     assert 'id="market-work-mode"' in html
     assert 'id="market-rank-heading"' in html
+    assert 'id="market-work-pagination"' in html
     assert 'value="grouped"' in html
     assert 'value="combined"' in html
     assert "不代表全网市场" in html
@@ -124,6 +125,14 @@ def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     assert "market-ranking-group" in script
     assert "marketWorkSortValue" in script
     assert "个榜单" in script
+    assert "data-market-keyword-close" in script
+    assert 'event.key==="Escape"' in script
+    assert "activeMarketKeyword" in script
+    assert "daily_best" in script
+    assert "period_best" in script
+    assert "market-ranking-toggle" in script
+    assert "marketWorkPage" in script
+    assert "MARKET_WORK_PAGE_SIZE" in script
     assert "updateMarketWorkLength" not in script
     assert "/api/market/refresh" in script
     assert "data-market-link" in script

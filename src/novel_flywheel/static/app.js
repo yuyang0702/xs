@@ -359,14 +359,26 @@ function renderMarketKeywords(groups){
     if(categories.includes(selectedCategory))categorySelect.value=selectedCategory;
   }
   const items=all.filter(item=>!selectedCategory||item.category===selectedCategory);
-  $("#market-keywords").innerHTML=items.length?items.map((item,index)=>`<button type="button" data-market-keyword="${escapeHtml(item.word)}" style="--rank:${index}" title="覆盖 ${item.share}%，综合分 ${item.score}"><span class="market-keyword-kind">${escapeHtml(item.category)}</span><strong>${escapeHtml(item.word)}</strong><span>${item.work_count} 部 · ${item.score}分</span></button>`).join(""):'<p class="market-empty">当前范围没有跨作品重复词（至少需出现在 2 部作品中）</p>';
+  $("#market-keywords").innerHTML=items.length?items.map((item,index)=>`<button type="button" data-market-keyword="${escapeHtml(item.word)}" style="--rank:${index}" title="覆盖 ${item.share}%，综合分 ${item.score}" aria-pressed="false"><span class="market-keyword-kind">${escapeHtml(item.category)}</span><strong>${escapeHtml(item.word)}</strong><span>${item.work_count} 部 · ${item.score}分</span></button>`).join(""):'<p class="market-empty">当前范围没有跨作品重复词（至少需出现在 2 部作品中）</p>';
   $("#market-keywords").querySelectorAll("[data-market-keyword]").forEach(button=>button.addEventListener("click",()=>{
     const item=items.find(entry=>entry.word===button.dataset.marketKeyword);
+    if(state.activeMarketKeyword===item.word){closeMarketKeywordEvidence();return;}
+    state.activeMarketKeyword=item.word;
+    $("#market-keywords").querySelectorAll("[data-market-keyword]").forEach(candidate=>{const active=candidate===button;candidate.classList.toggle("active",active);candidate.setAttribute("aria-pressed",String(active));});
     const evidence=$("#market-keyword-evidence");
     evidence.hidden=false;
-    evidence.innerHTML=`<div><strong>${escapeHtml(item.word)}</strong><span>覆盖 ${item.work_count} 部（${item.share}%） · 前五 ${item.top_five_count} 部 · 跨 ${item.ranking_count} 个榜单</span></div>${item.works.map(work=>`<article><strong>${escapeHtml(work.title)}</strong><small>${escapeHtml(work.ranking_names.join(" · "))} · 最高第 ${work.rank??"—"} 名</small><p>${escapeHtml(work.excerpt||"")}</p></article>`).join("")}`;
+    evidence.innerHTML=`<div><strong>${escapeHtml(item.word)}</strong><span>覆盖 ${item.work_count} 部（${item.share}%） · 前五 ${item.top_five_count} 部 · 跨 ${item.ranking_count} 个榜单</span><button type="button" class="icon-button" data-market-keyword-close aria-label="收起热门词详情" title="收起">×</button></div>${item.works.map(work=>{const daily=work.daily_best;const period=work.period_best;const dailyText=daily?`${daily.date} 当日最高第 ${daily.rank??"—"} 名 · ${daily.ranking_name}`:`当前最高第 ${work.rank??"—"} 名`;const periodText=period?`周期最高第 ${period.rank??"—"} 名 · ${period.date} · ${period.ranking_name}`:"";return `<article><strong>${escapeHtml(work.title)}</strong><small>${escapeHtml(dailyText)}${periodText?` · ${escapeHtml(periodText)}`:""}</small><p>${escapeHtml(work.excerpt||"")}</p></article>`;}).join("")}`;
+    evidence.querySelector("[data-market-keyword-close]").addEventListener("click",closeMarketKeywordEvidence);
   }));
 }
+
+function closeMarketKeywordEvidence(){
+  state.activeMarketKeyword=null;
+  const evidence=$("#market-keyword-evidence");
+  evidence.hidden=true;evidence.innerHTML="";
+  $("#market-keywords")?.querySelectorAll("[data-market-keyword]").forEach(button=>{button.classList.remove("active");button.setAttribute("aria-pressed","false");});
+}
+document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!$("#market-keyword-evidence")?.hidden)closeMarketKeywordEvidence();});
 
 function updateMarketFilters(data){
   const ranking=$("#market-ranking"),category=$("#market-category");
@@ -422,6 +434,9 @@ function renderMarketRankings(rankings){
 }
 
 const marketWorkSortValue=item=>Math.max(...Object.values(item.metrics||{}).filter(value=>typeof value==="number"),-1);
+const MARKET_WORK_PAGE_SIZE=10;
+let marketWorkPage=1;
+let expandedMarketRanking;
 function marketWorkRow(item,position,combined=false){
   const lengthLabels={long:"长篇",short:"短篇",anthology:"作品集",unknown:"待确认"};
   const originalRank=combined?`<small>${escapeHtml(item.ranking_name)} · 原榜第 ${item.rank??"—"} 名</small>`:`<small>${escapeHtml((item.tags||[]).join(" · "))}</small>`;
@@ -429,15 +444,26 @@ function marketWorkRow(item,position,combined=false){
 }
 function renderMarketWorks(works){
   const shell=$("#market-work-list");
+  const pagination=$("#market-work-pagination");
   if(!works.length){shell.innerHTML='<tr><td colspan="7" class="market-empty">尚无榜单数据，点击“更新当前平台”开始建立第一份快照。</td></tr>';return;}
   const mode=document.querySelector('input[name="market-work-mode"]:checked')?.value||"grouped";
   $("#market-rank-heading").textContent=mode==="combined"?"综合序号":"榜内排名";
   if(mode==="combined"){
     const sorted=[...works].sort((a,b)=>marketWorkSortValue(b)-marketWorkSortValue(a)||String(a.ranking_name).localeCompare(String(b.ranking_name),"zh-CN")||(a.rank??999)-(b.rank??999)||String(a.title).localeCompare(String(b.title),"zh-CN"));
-    shell.innerHTML=sorted.map((item,index)=>marketWorkRow(item,index+1,true)).join("");
+    const pageCount=Math.ceil(sorted.length/MARKET_WORK_PAGE_SIZE);
+    marketWorkPage=Math.max(1,Math.min(marketWorkPage,pageCount));
+    const start=(marketWorkPage-1)*MARKET_WORK_PAGE_SIZE;
+    shell.innerHTML=sorted.slice(start,start+MARKET_WORK_PAGE_SIZE).map((item,index)=>marketWorkRow(item,start+index+1,true)).join("");
+    pagination.hidden=pageCount<=1;
+    pagination.innerHTML=pageCount>1?`<button type="button" class="icon-button" data-market-work-page="${marketWorkPage-1}" aria-label="上一页" ${marketWorkPage===1?"disabled":""}>←</button><span>第 ${marketWorkPage} / ${pageCount} 页</span><button type="button" class="icon-button" data-market-work-page="${marketWorkPage+1}" aria-label="下一页" ${marketWorkPage===pageCount?"disabled":""}>→</button>`:"";
+    pagination.querySelectorAll("[data-market-work-page]").forEach(button=>button.addEventListener("click",()=>{marketWorkPage=Number(button.dataset.marketWorkPage);renderMarketWorks(works);}));
   }else{
     const groups=[...works].sort((a,b)=>(a.rank??999)-(b.rank??999)||String(a.title).localeCompare(String(b.title),"zh-CN")).reduce((result,item)=>{const name=item.ranking_name||"未命名榜单";if(!result.has(name))result.set(name,[]);result.get(name).push(item);return result;},new Map());
-    shell.innerHTML=[...groups.entries()].sort(([a],[b])=>a.localeCompare(b,"zh-CN")).map(([name,items])=>`<tr class="market-ranking-group"><th colspan="7"><span>${escapeHtml(name)}</span><small>${items.length} 部作品</small></th></tr>${items.map(item=>marketWorkRow(item,item.rank??"—")).join("")}`).join("");
+    const entries=[...groups.entries()].sort(([a],[b])=>a.localeCompare(b,"zh-CN"));
+    if(expandedMarketRanking===undefined||(expandedMarketRanking!==null&&!entries.some(([name])=>name===expandedMarketRanking)))expandedMarketRanking=entries[0][0];
+    shell.innerHTML=entries.map(([name,items])=>{const expanded=name===expandedMarketRanking;return `<tr class="market-ranking-group"><th colspan="7"><button type="button" data-market-ranking-toggle="${escapeHtml(name)}" aria-expanded="${expanded}"><span>${expanded?"▾":"▸"} ${escapeHtml(name)}</span><small>${items.length} 部作品</small></button></th></tr>${expanded?items.map(item=>marketWorkRow(item,item.rank??"—")).join(""):""}`;}).join("");
+    shell.querySelectorAll("[data-market-ranking-toggle]").forEach(button=>button.addEventListener("click",()=>{expandedMarketRanking=expandedMarketRanking===button.dataset.marketRankingToggle?null:button.dataset.marketRankingToggle;renderMarketWorks(works);}));
+    pagination.hidden=true;pagination.innerHTML="";
   }
 }
 
@@ -449,7 +475,7 @@ $("#market-refresh")?.addEventListener("click",async()=>{
 });
 
 ["market-platform","market-period","market-ranking","market-category","market-length-type"].forEach(id=>$("#"+id)?.addEventListener("change",loadMarketDashboard));
-[...document.querySelectorAll('input[name="market-work-mode"]')].forEach(input=>input.addEventListener("change",()=>renderMarketWorks(state.market?.works||[])));
+[...document.querySelectorAll('input[name="market-work-mode"]')].forEach(input=>input.addEventListener("change",()=>{marketWorkPage=1;expandedMarketRanking=undefined;renderMarketWorks(state.market?.works||[]);}));
 ["market-keyword-source","market-keyword-category"].forEach(id=>$("#"+id)?.addEventListener("change",()=>renderMarketKeywords(state.market?.keywords||{})));
 $("#market-work-list")?.addEventListener("change",async event=>{
   const select=event.target.closest(".market-length-editor");if(!select)return;

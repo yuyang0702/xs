@@ -152,6 +152,34 @@ def test_keywords_count_distinct_works_and_expose_evidence_by_text_area(tmp_path
     assert "孤城" not in combined
 
 
+def test_keyword_evidence_separates_daily_and_period_best_rank(tmp_path) -> None:
+    now = {"value": datetime(2026, 7, 26, 2, 0, tzinfo=timezone.utc)}
+    page = ZHIHU_HTML.replace("那年暗室逢月明", "重生月明").replace("铜臭", "重生铜臭")
+    pages = iter([
+        page.replace('"rank":1', '"rank":4', 1),
+        page.replace('"rank":1', '"rank":2', 1),
+        page.replace('"rank":1', '"rank":3', 1),
+    ])
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    market = MarketService(
+        db, ReferenceLibrary(db, tmp_path / "references"),
+        fetcher=lambda _url: next(pages), clock=lambda: now["value"],
+    )
+    market.refresh()
+    now["value"] = datetime(2026, 7, 26, 8, 0, tzinfo=timezone.utc)
+    market.refresh()
+    now["value"] = datetime(2026, 7, 27, 1, 0, tzinfo=timezone.utc)
+    market.refresh()
+
+    result = market.dashboard(days=30)
+    keyword = next(item for item in result["keywords"]["combined"] if item["word"] == "重生")
+    work = next(item for item in keyword["works"] if item["id"] == "zhihu:zh-1")
+
+    assert work["daily_best"] == {"date": "2026-07-27", "rank": 3, "ranking_name": "推荐榜"}
+    assert work["period_best"] == {"date": "2026-07-26", "rank": 2, "ranking_name": "推荐榜"}
+
+
 def test_market_keywords_do_not_start_ltp_for_fixed_vocabulary(tmp_path) -> None:
     market = service(tmp_path, [ZHIHU_HTML])
     market.nlp_analyzer = lambda _text: (_ for _ in ()).throw(
