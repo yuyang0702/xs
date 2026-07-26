@@ -1,6 +1,8 @@
 import json
 from types import SimpleNamespace
 
+import pytest
+
 from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.projects import ProjectCreate, ProjectStore
@@ -325,6 +327,47 @@ async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_
     assert progress[0]["completed_windows"] == 0
     assert progress[-1]["phase"] == "synthesizing"
     assert progress[-1]["completed_windows"] == progress[-1]["total_windows"] == 1
+
+
+def test_reference_model_json_accepts_fenced_or_explained_object() -> None:
+    assert LearningSystem._json_object('```json\n{"events": []}\n```') == {"events": []}
+    assert LearningSystem._json_object('分析如下：\n```json\n{"events": []}\n```\n请确认。') == {"events": []}
+
+
+async def test_model_analysis_explains_empty_window_response(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    system = LearningSystem(db, library, projects, FakeGateway([""]))
+    source = library.import_text(title="empty-model", source_type="paste", text="一段需要分析的正文。")
+
+    with pytest.raises(ValueError, match="第 1 个文本窗口.*空内容"):
+        await system.model_analyze_reference(source["id"])
+
+
+async def test_model_analysis_uses_configured_fallback_for_invalid_json(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithFallback(FakeGateway):
+        def __init__(self):
+            super().__init__([
+                "",
+                '{"mechanisms": []}',
+            ])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(text='{"events": []}', receipt={"model_id": "fallback"})
+
+    gateway = GatewayWithFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(title="fallback-model", source_type="paste", text="一段需要分析的正文。")
+    progress = []
+
+    result = await system.model_analyze_reference(source["id"], progress.append)
+
+    assert result["claims"] == 1
+    assert gateway.fallback_roles == ["reference_analysis"]
+    assert any(item["phase"] == "fallback_window" for item in progress)
 
 
 async def test_model_line_edit_routes_to_line_edit_and_remains_candidate(tmp_path) -> None:

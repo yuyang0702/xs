@@ -99,7 +99,30 @@ class LearningSystem:
                 "reference_analysis", f"You extract evidenced reference facts. {focus}",
                 prompt, max_output_tokens=4096,
             )
-            value = self._json_object(response.text)
+            try:
+                value = self._json_object(response.text)
+            except ValueError as exc:
+                fallback = getattr(self.gateway, "complete_configured_fallback", None)
+                if not callable(fallback):
+                    raise ValueError(
+                        f"第 {window['index']} 个文本窗口分析失败：{exc}。请重新分析；已经完成的本地结果不会丢失。"
+                    ) from exc
+                if progress:
+                    progress({
+                        "phase": "fallback_window", "completed_windows": completed - 1,
+                        "total_windows": len(windows),
+                    })
+                fallback_response = await fallback(
+                    "reference_analysis", f"You extract evidenced reference facts. {focus}",
+                    prompt, max_output_tokens=4096,
+                )
+                try:
+                    value = self._json_object(fallback_response.text)
+                except ValueError as fallback_exc:
+                    raise ValueError(
+                        f"第 {window['index']} 个文本窗口的主模型和备用模型都没有返回有效结果："
+                        f"{fallback_exc}。已经完成的本地结果不会丢失。"
+                    ) from fallback_exc
             claim = self._save_node("model_claim", {
                 "window": window["index"], "result": value, "review_state": "proposal",
                 "model_receipt": getattr(response, "receipt", {}),
@@ -125,7 +148,34 @@ class LearningSystem:
             json.dumps([item["data"]["result"] for item in claims], ensure_ascii=False)[:100_000],
             max_output_tokens=4096,
         )
-        result = self._json_object(synthesis.text)
+        try:
+            result = self._json_object(synthesis.text)
+        except ValueError as exc:
+            fallback = getattr(self.gateway, "complete_configured_fallback", None)
+            if not callable(fallback):
+                raise ValueError(f"全文汇总阶段失败：{exc}。请重新分析；已有窗口分析结果会保留。") from exc
+            if progress:
+                progress({
+                    "phase": "fallback_synthesis", "completed_windows": len(windows),
+                    "total_windows": len(windows),
+                })
+            fallback_synthesis = await fallback(
+                "reference_synthesis",
+                f"Abstract reusable mechanisms for {content_type}. {focus} "
+                "Remove names, wording, settings, and concrete plot packaging.",
+                "Return JSON only with mechanisms. Each mechanism needs name, trigger_conditions, structural_position, "
+                "state_change, emotional_effect, required_preparation, downstream_consequence, transfer_guidance, "
+                "incompatible_conditions, supporting_windows, and confidence.\n\n" +
+                json.dumps([item["data"]["result"] for item in claims], ensure_ascii=False)[:100_000],
+                max_output_tokens=4096,
+            )
+            try:
+                result = self._json_object(fallback_synthesis.text)
+            except ValueError as fallback_exc:
+                raise ValueError(
+                    f"全文汇总阶段的主模型和备用模型都没有返回有效结果：{fallback_exc}。"
+                    "已有窗口分析结果会保留。"
+                ) from fallback_exc
         mechanisms = []
         for raw in result.get("mechanisms", []):
             if not isinstance(raw, dict) or not raw.get("name") or not raw.get("supporting_windows"):
@@ -735,8 +785,20 @@ class LearningSystem:
 
     @staticmethod
     def _json_object(text: str) -> dict:
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
-        value = json.loads(cleaned)
-        if not isinstance(value, dict):
-            raise ValueError("Reference model output must be a JSON object")
-        return value
+        cleaned = text.strip()
+        if not cleaned:
+            raise ValueError("模型返回了空内容")
+        fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned, flags=re.IGNORECASE | re.DOTALL)
+        candidates = [fenced.group(1)] if fenced else []
+        candidates.append(cleaned)
+        decoder = json.JSONDecoder()
+        for candidate in candidates:
+            starts = [index for index, character in enumerate(candidate) if character == "{"]
+            for start in starts:
+                try:
+                    value, _end = decoder.raw_decode(candidate[start:])
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(value, dict):
+                    return value
+        raise ValueError("模型返回的内容不是可识别的 JSON 对象")

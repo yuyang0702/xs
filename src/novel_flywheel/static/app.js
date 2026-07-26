@@ -160,12 +160,13 @@ function referenceTaskMarkup() {
   const task=state.referenceTask;
   if(!task||task.status==="idle")return `<div><strong>分析状态</strong><p>选择本地诊断、本地提炼或模型深度分析后，这里会持续显示进度和结果。</p></div>`;
   const labels={queued:"等待分析",running:"正在分析",completed:"分析完成",failed:"分析失败",cancelled:"已停止"};
-  const phases={starting:"正在准备全文",analyzing_windows:"正在逐段分析全文",synthesizing:"正在合并全文结论",completed:"结果已经生成",failed:"任务未能完成",cancelled:"任务已停止",local_analysis:"正在扫描全文问题",local_learning:"正在提炼全文写法"};
+  const phases={starting:"正在准备全文",analyzing_windows:"正在逐段分析全文",fallback_window:"首选模型结果无效，正在使用已配置的备用模型分析当前窗口",synthesizing:"正在合并全文结论",fallback_synthesis:"首选模型汇总结果无效，正在使用已配置的备用模型汇总",completed:"结果已经生成",failed:"任务未能完成",cancelled:"任务已停止",local_analysis:"正在扫描全文问题",local_learning:"正在提炼全文写法"};
   const total=Number(task.total_windows||0),done=Number(task.completed_windows||0);
   const elapsedEnd=task.finished_at?Date.parse(task.finished_at):Date.now();
   const elapsed=task.started_at?Math.max(0,Math.floor((elapsedEnd-Date.parse(task.started_at))/1000)):0;
   const elapsedText=elapsed>=60?`${Math.floor(elapsed/60)}分${String(elapsed%60).padStart(2,"0")}秒`:`${elapsed}秒`;
-  const progress=total?`<progress max="${total}" value="${done}"></progress><span>${done} / ${total} 个文本窗口</span>`:'<progress></progress>';
+  const showIndeterminate=["queued","running"].includes(task.status);
+  const progress=total?`<progress max="${total}" value="${done}"></progress><span>${done} / ${total} 个文本窗口</span>`:showIndeterminate?'<progress></progress>':"";
   const result=task.status==="completed"?`<p>结果：${task.summary||`已完成 ${done||total||1} 个处理步骤`}。你现在可以查看下方结果，再决定是否保留或应用。</p>`:task.status==="failed"?`<p>原因：${escapeHtml(task.error||"未知错误")}。已有本地内容不会丢失，可以重新尝试。</p>`:"";
   const stop=task.id&&["queued","running"].includes(task.status)?`<button class="secondary" data-reference-task-cancel="${task.id}">停止分析</button>`:"";
   return `<div><strong>${labels[task.status]||"分析状态"}</strong><p>${phases[task.phase]||"正在处理"} · 已用时 ${elapsedText}</p>${progress}${result}</div>${stop}`;
