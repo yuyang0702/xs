@@ -302,9 +302,11 @@ class FakeGateway:
     def __init__(self, outputs):
         self.outputs = iter(outputs)
         self.roles = []
+        self.users = []
 
     async def complete(self, role, system, user, **kwargs):
         self.roles.append(role)
+        self.users.append(user)
         return SimpleNamespace(text=next(self.outputs), receipt={"model_id": "fake"})
 
 
@@ -327,6 +329,47 @@ async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_
     assert progress[0]["completed_windows"] == 0
     assert progress[-1]["phase"] == "synthesizing"
     assert progress[-1]["completed_windows"] == progress[-1]["total_windows"] == 1
+
+
+async def test_model_analysis_saves_proposed_attraction_map_with_local_evidence(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([
+        '{"events":[{"start":0,"end":10,"fact":"递出钥匙","interpretation":"主动冒险","confidence":0.8}],'
+        '"state_changes":[],"reader_questions":[],"turning_points":[],"relationship_changes":[],"style_evidence":[]}',
+        json.dumps({
+            "mechanisms": [],
+            "attraction_map": {
+                "fit": {"level": "strong", "explanation": "目标和推进清楚"},
+                "opening": {
+                    "mechanism": "opening_pressure_anomaly_future_promise",
+                    "transfer_guidance": "先建立压力，再给反常行动和后果预告",
+                    "evidence": [{"start": 0, "end": 10, "excerpt": "她把钥匙递给仇人"}],
+                },
+                "core_goal": {"surface": "把药送进封锁区", "emotional": "得到妹妹原谅"},
+                "cycles": [{
+                    "obstacle": "封锁", "effort": "冒险进入", "result": "药已送到",
+                    "state_change": "妹妹获救但忘记主角", "transfer_guidance": "结果解决旧问题并产生新问题",
+                }],
+                "accidents": [],
+                "reversal": None,
+                "ending": {"surface_payoff": "药已送到", "emotional_payoff": "尚未和解", "cost": "失去共同记忆"},
+                "question_chain": [], "relationship_arc": [], "uncertainties": [],
+            },
+        }, ensure_ascii=False),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="无标签结构", source_type="paste",
+        text="她把钥匙递给仇人，独自走进封锁区。三天后药送到了，妹妹却不再认得她。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert "LOCAL ATTRACTION CANDIDATES" in gateway.users[0]
+    assert result["attraction_map"]["status"] == "proposed"
+    assert result["attraction_map"]["data"]["fit"]["level"] == "strong"
+    assert result["attraction_map"]["data"]["cycles"][0]["state_change"] == "妹妹获救但忘记主角"
+    assert system.attraction_map(source["id"])["id"] == result["attraction_map"]["id"]
 
 
 def test_reference_model_json_accepts_fenced_or_explained_object() -> None:
