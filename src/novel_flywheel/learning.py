@@ -10,6 +10,7 @@ from typing import Any
 from novel_flywheel.db import Database
 from novel_flywheel.causal_chain import analyze_short_causal_chain
 from novel_flywheel.narrative_attraction import (
+    compact_attraction_guidance,
     local_attraction_candidates,
     normalize_attraction_map,
 )
@@ -320,7 +321,18 @@ class LearningSystem:
         if float(node["data"].get("confidence", 0)) < 0.7 and node["status"] != "confirmed":
             raise ValueError("低置信度候选必须先确认分析，才能采纳到作品")
         adoption_id = uuid.uuid4().hex
-        data = {**node["data"], **(edits or {}), "provenance": {"source_id": node["source_id"], "node_id": node_id}}
+        if node["node_type"] == "attraction_map":
+            data = {
+                "mechanism_type": "attraction_guidance",
+                **compact_attraction_guidance(node["data"]),
+                **(edits or {}),
+                "provenance": {"source_id": node["source_id"], "node_id": node_id},
+            }
+        else:
+            data = {
+                **node["data"], **(edits or {}),
+                "provenance": {"source_id": node["source_id"], "node_id": node_id},
+            }
         with self.db.connect() as connection:
             connection.execute(
                 "INSERT INTO project_adoptions VALUES (?, ?, ?, 'adopted', ?, datetime('now'), datetime('now')) "
@@ -332,14 +344,29 @@ class LearningSystem:
             item["data"] for item in adoptions
             if item["data"].get("mechanism_type") == "causal_structure"
         ]
+        attraction_guidance = [
+            item["data"] for item in adoptions
+            if item["data"].get("mechanism_type") == "attraction_guidance"
+        ]
         mechanisms = [
             item["data"] for item in adoptions
-            if item["data"].get("mechanism_type") != "causal_structure"
+            if item["data"].get("mechanism_type") not in {"causal_structure", "attraction_guidance"}
         ]
+        attraction_rules = []
+        for guidance in attraction_guidance:
+            for key, value in guidance.items():
+                if key.endswith("_rule") and isinstance(value, str) and value:
+                    attraction_rules.append(value)
+                elif key.endswith("_rules") and isinstance(value, list):
+                    attraction_rules.extend(item for item in value if isinstance(item, str) and item)
         blueprint = {
             "status": "candidate", "mechanisms": mechanisms,
             "causal_structure": causal_structure,
-            "rules": [item["data"].get("transfer_guidance", "") for item in adoptions],
+            "attraction_guidance": attraction_guidance,
+            "rules": [
+                item["data"].get("transfer_guidance", "") for item in adoptions
+                if item["data"].get("transfer_guidance")
+            ] + attraction_rules,
         }
         self.save_artifact(project_id, "creative_blueprint", blueprint)
         self.record_feedback(project_id, "mechanism", node_id, "adopted", edits or {})

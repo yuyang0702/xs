@@ -272,6 +272,45 @@ def test_adopted_causal_structure_mechanism_enters_blueprint_bucket(tmp_path) ->
     assert blueprint["rules"]
 
 
+def test_adopted_attraction_map_adds_only_abstract_guidance(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="吸引力迁移", mode="short", genre="悬疑", premise="原创送药故事", target_words=3000,
+    ))
+    source = library.import_text(
+        title="河清海晏", source_type="paste", text="周海晏收下十块钱，真的保护了她十年。",
+    )
+    node = system._save_node("attraction_map", {
+        "fit": {"level": "strong", "explanation": "承诺贯穿全文"},
+        "opening": {
+            "mechanism": "opening_pressure_anomaly_future_promise",
+            "transfer_guidance": "先建立压力，再给反常行动和长期结果预告",
+            "evidence": [{"start": 0, "end": 8, "excerpt": "周海晏收下十块钱"}],
+        },
+        "core_goal": {"surface": "获得保护", "emotional": "获得归属"},
+        "cycles": [{
+            "obstacle": "家暴", "effort": "向周海晏交十块钱", "result": "获得保护",
+            "state_change": "从孤立变为拥有保护者", "transfer_guidance": "每轮结果改变人物可用选择",
+            "evidence": [{"start": 0, "end": 8, "excerpt": "十块钱保护十年"}],
+        }],
+        "ending": {
+            "surface_payoff": "保护兑现", "emotional_payoff": "确认被爱", "cost": "失去周海晏",
+            "transfer_guidance": "结尾同时回答表层目标、情感目标和代价",
+        },
+        "review_state": "confirmed",
+    }, source_id=source["id"], status="confirmed")
+
+    system.adopt(project.id, node["id"])
+
+    blueprint = system.get_artifact(project.id, "creative_blueprint")["data"]
+    assert blueprint["attraction_guidance"][0]["opening"] == "opening_pressure_anomaly_future_promise"
+    constraints = projects.load_constraints(project.id)
+    assert "每轮结果改变人物可用选择" in constraints
+    assert "周海晏" not in constraints
+    assert "十块钱" not in constraints
+    assert "excerpt" not in constraints
+
+
 def test_legacy_style_sample_migrates_once_without_deleting_old_files(tmp_path) -> None:
     _db, _library, projects, system = setup_system(tmp_path)
     project = projects.create(ProjectCreate(
