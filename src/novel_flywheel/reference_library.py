@@ -8,6 +8,7 @@ from pathlib import Path
 from novel_flywheel.db import Database
 from novel_flywheel.local_editorial import ANALYZER, VERSION, analyze_prose
 from novel_flywheel.reference_classification import CONTENT_TYPES, classify_reference
+from novel_flywheel.reference_policy import build_classification_snapshot
 
 
 class ReferenceLibrary:
@@ -32,6 +33,10 @@ class ReferenceLibrary:
         if selected_type not in CONTENT_TYPES:
             raise ValueError(f"Unsupported reference content type: {selected_type}")
         selected_platform = (platform if platform is not None else str(recommendation["platform"])).strip() or None
+        classification = build_classification_snapshot(
+            recommendation, platform=selected_platform, content_type=selected_type,
+            user_selected=platform is not None or content_type is not None,
+        )
         digest = self._hash(normalized)
         existing = self.db.find_reference_source_by_hash(digest)
         if existing:
@@ -39,7 +44,7 @@ class ReferenceLibrary:
         source_id = uuid.uuid4().hex
         self.db.create_reference_source(
             source_id, title, source_type, source_uri=source_uri, platform=selected_platform,
-            content_type=selected_type, project_id=project_id,
+            content_type=selected_type, project_id=project_id, classification=classification,
         )
         try:
             self._write_version(source_id, normalized, digest)
@@ -58,8 +63,12 @@ class ReferenceLibrary:
         if content_type not in CONTENT_TYPES:
             raise ValueError(f"Unsupported reference content type: {content_type}")
         normalized_platform = (platform or "").strip() or None
+        classification = build_classification_snapshot(
+            {"platform": normalized_platform or "", "content_type": content_type, "confidence": 1.0},
+            platform=normalized_platform, content_type=content_type, user_selected=True,
+        )
         if not self.db.update_reference_source_metadata(
-            source_id, normalized_platform, content_type, project_id,
+            source_id, normalized_platform, content_type, project_id, classification,
         ):
             raise LookupError(f"Reference source not found: {source_id}")
         return self.get(source_id)
@@ -124,7 +133,18 @@ class ReferenceLibrary:
         if source is None:
             raise LookupError(f"Reference source not found: {source_id}")
         versions = [self._public_version(item) for item in self.db.list_reference_versions(source_id)]
-        return {**source, "latest_version": versions[0] if versions else None, "versions": versions}
+        raw = source.pop("classification_json", None)
+        try:
+            classification = __import__("json").loads(raw) if raw else {}
+        except (TypeError, ValueError):
+            classification = {}
+        classification = {
+            "platform": source.get("platform") or "",
+            "content_type": source.get("content_type") or "reference_work",
+            **classification,
+        }
+        return {**source, "classification": classification,
+                "latest_version": versions[0] if versions else None, "versions": versions}
 
     def read_text(self, source_id: str, version_id: str | None = None) -> str:
         source = self.get(source_id)

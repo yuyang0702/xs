@@ -221,6 +221,7 @@ CREATE TABLE IF NOT EXISTS reference_sources(
   platform TEXT,
   content_type TEXT NOT NULL DEFAULT 'reference_work',
   project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
+  classification_json TEXT,
   status TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -399,6 +400,13 @@ class Database:
                 connection.execute(
                     "ALTER TABLE reference_sources ADD COLUMN project_id TEXT REFERENCES projects(id) ON DELETE SET NULL"
                 )
+            if "classification_json" not in columns:
+                connection.execute("ALTER TABLE reference_sources ADD COLUMN classification_json TEXT")
+            connection.execute(
+                "UPDATE reference_sources SET classification_json=? WHERE classification_json IS NULL",
+                (json.dumps({"trust": "legacy", "confidence": 0.5,
+                             "reasons": ["根据已有分类恢复"]}, ensure_ascii=False),),
+            )
             market_columns = {
                 row["name"] for row in connection.execute("PRAGMA table_info(market_works)")
             }
@@ -928,17 +936,20 @@ class Database:
     def create_reference_source(self, source_id: str, title: str, source_type: str,
                                 source_uri: str | None = None, platform: str | None = None,
                                 content_type: str = "reference_work",
-                                project_id: str | None = None) -> None:
+                                project_id: str | None = None,
+                                classification: dict | None = None) -> None:
         with self.connect() as connection:
             connection.execute(
                 "INSERT INTO reference_sources "
-                "(id,title,source_type,source_uri,platform,content_type,project_id,status,created_at,updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))",
-                (source_id, title, source_type, source_uri, platform, content_type, project_id),
+                "(id,title,source_type,source_uri,platform,content_type,project_id,classification_json,status,created_at,updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))",
+                (source_id, title, source_type, source_uri, platform, content_type, project_id,
+                 json.dumps(classification or {}, ensure_ascii=False)),
             )
 
     def update_reference_source_metadata(
         self, source_id: str, platform: str | None, content_type: str, project_id: str | None,
+        classification: dict | None = None,
     ) -> bool:
         with self.connect() as connection:
             current = connection.execute(
@@ -953,9 +964,10 @@ class Database:
                 or current["project_id"] != project_id
             )
             cursor = connection.execute(
-                "UPDATE reference_sources SET platform=?,content_type=?,project_id=?,updated_at=datetime('now') "
+                "UPDATE reference_sources SET platform=?,content_type=?,project_id=?,classification_json=COALESCE(?,classification_json),updated_at=datetime('now') "
                 "WHERE id=?",
-                (platform, content_type, project_id, source_id),
+                (platform, content_type, project_id,
+                 json.dumps(classification, ensure_ascii=False) if classification is not None else None, source_id),
             )
             if changed:
                 affected_projects = [
