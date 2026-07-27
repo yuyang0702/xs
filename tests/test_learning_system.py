@@ -383,11 +383,12 @@ class FakeGateway:
 async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_path) -> None:
     db, library, projects, _system = setup_system(tmp_path)
     gateway = FakeGateway([
-        '{"events":[{"start":0,"end":3,"fact":"发现线索","interpretation":"信息变化","confidence":0.8}]}',
+        '{"events":[{"start":0,"end":3,"fact":"发现线索","interpretation":"信息变化","confidence":0.8}],'
+        '"state_changes":[],"reader_questions":[],"turning_points":[],"relationship_changes":[],"style_evidence":[]}',
         '{"mechanisms":[{"name":"延迟揭示","supporting_windows":[1],"trigger_conditions":["线索"],'
         '"structural_position":"中段","state_change":"获得信息","emotional_effect":"意外",'
         '"required_preparation":["伏笔"],"downstream_consequence":"改变选择",'
-        '"transfer_guidance":"替换内容包装","incompatible_conditions":[],"confidence":0.8}]}',
+        '"transfer_guidance":"替换内容包装","incompatible_conditions":[],"confidence":0.8}],"attraction_map":{}}',
     ])
     system = LearningSystem(db, library, projects, gateway)
     source = library.import_text(title="模型样本", source_type="paste", text="他忽然发现了线索。")
@@ -463,13 +464,13 @@ async def test_model_analysis_uses_configured_fallback_for_invalid_json(tmp_path
         def __init__(self):
             super().__init__([
                 "",
-                '{"mechanisms": []}',
+                valid_synthesis_result(),
             ])
             self.fallback_roles = []
 
         async def complete_configured_fallback(self, role, system, user, **kwargs):
             self.fallback_roles.append(role)
-            return SimpleNamespace(text='{"events": []}', receipt={"model_id": "fallback"})
+            return SimpleNamespace(text=valid_window_result(), receipt={"model_id": "fallback"})
 
     gateway = GatewayWithFallback()
     system = LearningSystem(db, library, projects, gateway)
@@ -481,6 +482,67 @@ async def test_model_analysis_uses_configured_fallback_for_invalid_json(tmp_path
     assert result["claims"] == 1
     assert gateway.fallback_roles == ["reference_analysis"]
     assert any(item["phase"] == "fallback_window" for item in progress)
+
+
+def valid_window_result() -> str:
+    return json.dumps({
+        "events": [], "state_changes": [], "reader_questions": [],
+        "turning_points": [], "relationship_changes": [], "style_evidence": [],
+    })
+
+
+def valid_synthesis_result() -> str:
+    return json.dumps({"mechanisms": [], "attraction_map": {}})
+
+
+async def test_model_analysis_uses_fallback_for_wrong_window_shape(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithFallback(FakeGateway):
+        def __init__(self):
+            super().__init__([
+                '{"start":0,"end":10,"fact":"single claim"}',
+                valid_synthesis_result(),
+            ])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(text=valid_window_result(), receipt={"model_id": "fallback"})
+
+    gateway = GatewayWithFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(title="wrong-window-shape", source_type="paste", text="sample text")
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["claims"] == 1
+    assert gateway.fallback_roles == ["reference_analysis"]
+
+
+async def test_model_analysis_uses_fallback_for_wrong_synthesis_shape(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithFallback(FakeGateway):
+        def __init__(self):
+            super().__init__([
+                valid_window_result(),
+                '{"start":0,"fact":"not a synthesis"}',
+            ])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(text=valid_synthesis_result(), receipt={"model_id": "fallback"})
+
+    gateway = GatewayWithFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(title="wrong-synthesis-shape", source_type="paste", text="sample text")
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["attraction_map"]["status"] == "proposed"
+    assert gateway.fallback_roles == ["reference_synthesis"]
 
 
 async def test_model_line_edit_routes_to_line_edit_and_remains_candidate(tmp_path) -> None:

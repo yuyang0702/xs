@@ -19,6 +19,10 @@ from novel_flywheel.storage import atomic_write
 
 
 WINDOW_VERSION = "learning-window-v2"
+WINDOW_RESULT_FIELDS = (
+    "events", "state_changes", "reader_questions", "turning_points",
+    "relationship_changes", "style_evidence",
+)
 
 
 class LearningSystem:
@@ -117,17 +121,19 @@ class LearningSystem:
                 f"REFERENCE PURPOSE: {content_type}. FOCUS: {focus} "
                 "Return JSON only with events, state_changes, reader_questions, turning_points, "
                 "relationship_changes, and style_evidence. "
-                "Every item must include start, end, fact, interpretation, and confidence. Offsets are relative to the excerpt.\n\n"
+                "Return at most 3 high-value items per list. Every item must include start, end, fact, "
+                "interpretation, and confidence. Offsets are relative to the excerpt.\n\n"
                 "LOCAL ATTRACTION CANDIDATES (unconfirmed signals, not conclusions):\n"
                 + json.dumps(local_candidates, ensure_ascii=False)[:20_000]
                 + "\n\nSOURCE WINDOW:\n" + window["text"]
             )
             response = await self.gateway.complete(
                 "reference_analysis", f"You extract evidenced reference facts. {focus}",
-                prompt, max_output_tokens=4096,
+                prompt, max_output_tokens=2048,
             )
+            used_response = response
             try:
-                value = self._json_object(response.text)
+                value = self._window_result(response.text)
             except ValueError as exc:
                 fallback = getattr(self.gateway, "complete_configured_fallback", None)
                 if not callable(fallback):
@@ -141,10 +147,11 @@ class LearningSystem:
                     })
                 fallback_response = await fallback(
                     "reference_analysis", f"You extract evidenced reference facts. {focus}",
-                    prompt, max_output_tokens=4096,
+                    prompt, max_output_tokens=2048,
                 )
                 try:
-                    value = self._json_object(fallback_response.text)
+                    value = self._window_result(fallback_response.text)
+                    used_response = fallback_response
                 except ValueError as fallback_exc:
                     raise ValueError(
                         f"第 {window['index']} 个文本窗口的主模型和备用模型都没有返回有效结果："
@@ -153,7 +160,7 @@ class LearningSystem:
             claim = self._save_node("model_claim", {
                 "window": window["index"], "window_start": window["start"],
                 "window_end": window["end"], "result": value, "review_state": "proposal",
-                "model_receipt": getattr(response, "receipt", {}),
+                "model_receipt": getattr(used_response, "receipt", {}),
             }, source_id=source_id, status="proposed")
             claims.append(claim)
             if progress:
@@ -180,7 +187,7 @@ class LearningSystem:
             max_output_tokens=4096,
         )
         try:
-            result = self._json_object(synthesis.text)
+            result = self._synthesis_result(synthesis.text)
         except ValueError as exc:
             fallback = getattr(self.gateway, "complete_configured_fallback", None)
             if not callable(fallback):
@@ -203,7 +210,7 @@ class LearningSystem:
                 max_output_tokens=4096,
             )
             try:
-                result = self._json_object(fallback_synthesis.text)
+                result = self._synthesis_result(fallback_synthesis.text)
             except ValueError as fallback_exc:
                 raise ValueError(
                     f"全文汇总阶段的主模型和备用模型都没有返回有效结果：{fallback_exc}。"
@@ -211,8 +218,11 @@ class LearningSystem:
                 ) from fallback_exc
         mechanisms = []
         for raw in result.get("mechanisms", []):
-            if not isinstance(raw, dict) or not raw.get("name") or not raw.get("supporting_windows"):
-                continue
+            if not isinstance(raw, dict):
+                raise ValueError("全文汇总的 mechanisms 必须只包含对象")
+            missing = [key for key in ("name", "supporting_windows", "transfer_guidance") if not raw.get(key)]
+            if missing:
+                raise ValueError("候选写法缺少字段：" + "、".join(missing))
             mechanisms.append(self._save_node(
                 "mechanism", {**raw, "fact": "由分窗证据综合", "interpretation": raw.get("emotional_effect", ""),
                               "review_state": "proposal"}, source_id=source_id, status="proposed",
@@ -881,3 +891,27 @@ class LearningSystem:
                 if isinstance(value, dict):
                     return value
         raise ValueError("模型返回的内容不是可识别的 JSON 对象")
+
+    @classmethod
+    def _window_result(cls, text: str) -> dict:
+        value = cls._json_object(text)
+        missing = [key for key in WINDOW_RESULT_FIELDS if not isinstance(value.get(key), list)]
+        if missing:
+            raise ValueError("窗口分析缺少列表字段：" + "、".join(missing))
+        for key in WINDOW_RESULT_FIELDS:
+            for item in value[key]:
+                if not isinstance(item, dict):
+                    raise ValueError(f"窗口分析字段 {key} 必须只包含对象")
+                required = [name for name in ("start", "end", "fact", "interpretation") if item.get(name) is None]
+                if required:
+                    raise ValueError(f"窗口分析字段 {key} 的项目缺少：" + "、".join(required))
+        return value
+
+    @classmethod
+    def _synthesis_result(cls, text: str) -> dict:
+        value = cls._json_object(text)
+        if not isinstance(value.get("mechanisms"), list):
+            raise ValueError("全文汇总缺少 mechanisms 列表")
+        if not isinstance(value.get("attraction_map"), dict):
+            raise ValueError("全文汇总缺少 attraction_map 对象")
+        return value
