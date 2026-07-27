@@ -39,6 +39,36 @@ def test_create_and_list_projects(tmp_path) -> None:
     assert client.get("/api/projects").json()[0]["title"] == "Night Train"
 
 
+def test_zhihu_publication_preview_and_create_api(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Package", "mode": "short", "genre": "suspense",
+        "premise": "A friend returns.", "target_words": 6000,
+    }).json()
+    project = app.state.projects.apply_platform_profile(created["id"], "zhihu-salt-short")
+    (project.path / "manuscript" / "story.md").write_text("正式正文", encoding="utf-8")
+    output = project.path / "runs" / "done" / "outputs"
+    output.mkdir(parents=True)
+    (output / "quality-report.json").write_text('{"status":"passed"}', encoding="utf-8")
+
+    preview = client.get(f"/api/projects/{project.id}/publication/zhihu/preview")
+    built = client.post(f"/api/projects/{project.id}/publication/zhihu", json={
+        "title": "归来", "alternate_titles": [], "selling_point": "死者敲响我的门。",
+        "introduction": "死去的朋友回来了。", "content_type": "悬疑",
+        "audience": "悬疑读者", "expected_manuscript_hash": preview.json()["manuscript_hash"],
+    })
+
+    assert preview.status_code == 200
+    assert preview.json()["ready"] is True
+    assert built.status_code == 201
+    assert built.json()["version"] == "v001"
+
+
 def test_manuscript_falls_back_to_latest_run_candidate(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(

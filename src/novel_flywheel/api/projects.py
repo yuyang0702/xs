@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
+from novel_flywheel.publication import build_zhihu_package, preview_zhihu_package
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript
 from novel_flywheel.prose_quality import analyze_prose
 from novel_flywheel.revision import normalize_chinese_prose
@@ -87,6 +88,16 @@ class MaterialEditPayload(BaseModel):
 
 class MaterialImpactApplyPayload(BaseModel):
     proposal_ids: list[str] = Field(min_length=1, max_length=100)
+
+
+class ZhihuPublicationPayload(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+    alternate_titles: list[str] = Field(default_factory=list, max_length=10)
+    selling_point: str = Field(min_length=1, max_length=300)
+    introduction: str = Field(min_length=1, max_length=2000)
+    content_type: str = Field(min_length=1, max_length=80)
+    audience: str = Field(min_length=1, max_length=200)
+    expected_manuscript_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 def _style_sample_status(project: Project, request: Request) -> dict:
@@ -804,3 +815,27 @@ def migrate_project(project_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except (ValueError, RuntimeError, PermissionError) as exc:
         raise HTTPException(status_code=422, detail={"code": "migration_failed", "message": str(exc)}) from exc
+
+
+@router.get("/projects/{project_id}/publication/zhihu/preview")
+def preview_zhihu_publication(project_id: str, request: Request) -> dict:
+    try:
+        return preview_zhihu_package(get_store(request).get(project_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "publication_not_ready", "message": str(exc)}) from exc
+
+
+@router.post("/projects/{project_id}/publication/zhihu", status_code=status.HTTP_201_CREATED)
+def create_zhihu_publication(
+    project_id: str, payload: ZhihuPublicationPayload, request: Request,
+) -> dict:
+    try:
+        return build_zhihu_package(
+            get_store(request).get(project_id), payload.model_dump(),
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "publication_failed", "message": str(exc)}) from exc
