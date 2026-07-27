@@ -238,6 +238,7 @@ def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
         assert label in script
     assert "reference-task-status" in script
     assert "pollReferenceAnalysisTask" in script
+    assert "模型未形成可逐条采纳的候选写法" in script
     assert "referenceTask" in script
     assert "showIndeterminate" in script
     assert "正在使用已配置的备用模型" in script

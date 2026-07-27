@@ -350,7 +350,8 @@ async function pollReferenceAnalysisTask(sourceId){
     if(task.status==="completed"&&previous!=="completed"){
       state.mechanisms=await api("/api/learning/mechanisms");
       state.attractionMap=task.result?.attraction_map||await api(`/api/references/${sourceId}/attraction-map`);
-      task.summary=`全文模型分析完成，得到 ${task.result?.mechanisms?.length||0} 个候选写法`;
+      const count=task.result?.mechanisms?.length||0;
+      task.summary=count?`全文模型分析完成，得到 ${count} 个候选写法`:"全文模型分析完成；模型未形成可逐条采纳的候选写法，剧情吸引力报告仍可查看";
       renderLearning();renderReferenceDetail();
     }
     renderReferenceTaskStatus();
