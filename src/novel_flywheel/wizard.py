@@ -37,7 +37,9 @@ CORE_STEP = FormStep(title="作品定位", fields=[
     FormField(id="sub_genre", label="子类型", type="text"),
     FormField(id="premise", label="核心创意或梗概", type="textarea", required=True),
     FormField(id="target_words", label="目标字数", type="number", required=True, default=100000),
-    FormField(id="platform", label="发布平台", type="text"),
+    FormField(id="platform_profile_id", label="准备发布到哪里", type="select",
+              default="none", options=["none", "zhihu-salt-short"],
+              help="选择后只调整后续创作检查，不会改动你的正文。"),
     FormField(id="audience", label="目标读者", type="text"),
     FormField(id="market_baseline_enabled", label="同类市场建议", type="select",
               default="enabled", options=["enabled", "disabled"]),
@@ -258,6 +260,9 @@ class WizardService:
             if step.get("skill_name") and step["skill_name"] != "runtime-followup"
         ]
         atomic_write(project.path / "project.json", json.dumps(metadata, ensure_ascii=False, indent=2))
+        profile_id = values.get("platform_profile_id")
+        if profile_id and profile_id != "none":
+            project = self.projects.apply_platform_profile(project.id, str(profile_id))
         self.db.save_wizard(wizard_id, "completed", wizard["mode"], wizard["schema"],
                             wizard["answers"], project.id)
         return self.projects.get(project.id)

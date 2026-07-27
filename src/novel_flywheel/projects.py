@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from novel_flywheel.db import Database
 from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.platform_profiles import resolve_platform_profile
 
 
 class ProjectCreate(BaseModel):
@@ -112,6 +113,32 @@ class ProjectStore:
         self._write_json(project.path / "project.json", metadata)
         return Project(project.id, project.title, project.mode, project.path, metadata)
 
+    def preview_platform_profile(self, project_id: str, profile_id: str | None) -> dict:
+        project = self.get(project_id)
+        profile = resolve_platform_profile(
+            profile_id, project, self.active_learning_data(project_id, "market_baseline"),
+        )
+        return {
+            "current": project.metadata.get("platform_profile_id"),
+            "selected": profile,
+            "will_change_manuscript": False,
+            "message": "只调整后续创作检查和投稿设置，现有正文不会改变。",
+        }
+
+    def apply_platform_profile(self, project_id: str, profile_id: str | None) -> Project:
+        project = self.get(project_id)
+        profile = resolve_platform_profile(
+            profile_id, project, self.active_learning_data(project_id, "market_baseline"),
+        )
+        metadata = {
+            **project.metadata,
+            "platform_profile_id": profile["id"],
+            "platform_profile_version": profile["version"],
+            "platform": "zhihu" if profile["id"] == "zhihu-salt-short" else None,
+        }
+        self._write_json(project.path / "project.json", metadata)
+        return Project(project.id, project.title, project.mode, project.path, metadata)
+
     def active_learning_data(self, project_id: str, artifact_type: str) -> dict | None:
         project = self.get(project_id)
         path = project.path / "learning" / f"{artifact_type}.json"
@@ -187,6 +214,17 @@ class ProjectStore:
             if path.is_file():
                 parts.append(path.read_text(encoding="utf-8"))
         parts.append((project.path / "constraints.md").read_text(encoding="utf-8"))
+        profile = resolve_platform_profile(
+            project.metadata.get("platform_profile_id"), project,
+            self.active_learning_data(project_id, "market_baseline"),
+        )
+        if profile["id"]:
+            parts.append(
+                "# PLATFORM HARD RULES\n\n" + "\n".join(f"- {item}" for item in profile["hard_rules"])
+                + "\n\n# MARKET ADVICE (OPTIONAL)\n\n"
+                + ("\n".join(f"- {item}" for item in profile["market_advice"])
+                   or f"- {profile['market_note']}")
+            )
         locks_path = project.path / "continuity" / "locks.json"
         if locks_path.is_file():
             locks = json.loads(locks_path.read_text(encoding="utf-8")).get("locks", [])

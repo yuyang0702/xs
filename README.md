@@ -131,6 +131,10 @@ accepted/rejected decisions.
 
 Confirmed ranking-linked references also form local cohort baselines by platform, ranking, category, and length. Fewer than five works are labelled insufficient, five to nine preliminary, and ten or more advisory. A wizard-selected baseline is saved as a versioned project learning artifact and enters planning and `manuscript-analysis-v2`; deviations are suggestions only and never block a coherent manuscript.
 
+Short-story projects can enable **知乎盐选短篇创作配置** in the creation wizard or project settings. The profile keeps platform requirements separate from optional market advice and is reused by planning, drafting, revision, and final review. When no reliable cohort exists, the workflow continues with platform requirements only. Applying or changing the profile never edits the formal manuscript; it only changes later guidance and checks.
+
+Ranking association is automatic only when there is one exact-title candidate and the imported opening also matches the ranking summary. Every other case stays unconfirmed for the user to decide. Market baselines keep the raw sample count and add an explainable local weight based on recency, observation days, best rank, and available interaction data.
+
 Candidate quality now includes a hash-bound narrative ledger for explicit questions, promises, setup/payoff candidates, and scene state changes. Important unresolved semantic candidates are included in the existing final-review evidence; no new model role is introduced. Revision issues use stable content-derived IDs, revision tasks can carry those IDs, and incremental final review must reconcile every prior issue as `resolved`, `unresolved`, or `uncertain`. Changed relation endpoints are reviewed together; broad, ambiguous, structural, or uncertain changes retain the full-manuscript fallback.
 
 The feature only reads public ranking markup. It does not store credentials or cookies, read
