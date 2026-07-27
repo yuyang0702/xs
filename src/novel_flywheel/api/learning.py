@@ -30,6 +30,18 @@ class SceneBriefPayload(BaseModel):
 
 class OutlineCandidatePayload(BaseModel):
     outline: str = Field(min_length=1, max_length=500_000)
+    title: str = Field(default="候选大纲", min_length=1, max_length=80)
+
+
+class OutlineApplyPayload(BaseModel):
+    expected_revision: int | None = None
+    change_ids: list[str] | None = Field(default=None, max_length=500)
+    apply_whole: bool = False
+    confirm_manuscript_impact: bool = False
+
+
+class OutlineRestorePayload(BaseModel):
+    outline_version: int = Field(ge=1)
 
 
 class OutlineGeneratePayload(BaseModel):
@@ -231,7 +243,64 @@ def scene_briefs(project_id: str, payload: SceneBriefPayload, request: Request) 
 
 @router.post("/projects/{project_id}/learning/outline-candidates", status_code=status.HTTP_201_CREATED)
 def outline_candidate(project_id: str, payload: OutlineCandidatePayload, request: Request) -> dict:
-    return _handle(lambda: _learning(request).create_outline_candidate(project_id, payload.outline))
+    return _handle(lambda: request.app.state.outlines.create_candidate(
+        project_id, payload.outline, title=payload.title,
+    ))
+
+
+@router.get("/projects/{project_id}/learning/outlines")
+def outline_overview(project_id: str, request: Request) -> dict:
+    return _handle(lambda: request.app.state.outlines.overview(project_id))
+
+
+@router.put("/projects/{project_id}/learning/outline-candidates/{candidate_id}")
+def update_outline_candidate(
+    project_id: str, candidate_id: str, payload: OutlineCandidatePayload, request: Request,
+) -> dict:
+    return _handle(lambda: request.app.state.outlines.update_candidate(
+        project_id, candidate_id, payload.outline, title=payload.title,
+    ))
+
+
+@router.delete("/projects/{project_id}/learning/outline-candidates/{candidate_id}")
+def reject_outline_candidate(project_id: str, candidate_id: str, request: Request) -> dict:
+    return _handle(lambda: request.app.state.outlines.reject_candidate(project_id, candidate_id))
+
+
+@router.get("/projects/{project_id}/learning/outline-candidates/{candidate_id}/comparison")
+def compare_outline_candidate(project_id: str, candidate_id: str, request: Request) -> dict:
+    return _handle(lambda: request.app.state.outlines.compare_candidate(project_id, candidate_id))
+
+
+@router.post("/projects/{project_id}/learning/outline-candidates/{candidate_id}/semantic-review")
+async def semantic_review_outline_candidate(project_id: str, candidate_id: str, request: Request) -> dict:
+    try:
+        return await request.app.state.outlines.semantic_review(project_id, candidate_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/projects/{project_id}/learning/outline-candidates/{candidate_id}/apply")
+def apply_outline_candidate(
+    project_id: str, candidate_id: str, payload: OutlineApplyPayload, request: Request,
+) -> dict:
+    if not payload.apply_whole and payload.change_ids is None:
+        raise HTTPException(status_code=422, detail="请选择要应用的变化，或选择整体应用")
+    return _handle(lambda: request.app.state.outlines.apply_candidate(
+        project_id, candidate_id,
+        change_ids=None if payload.apply_whole else payload.change_ids,
+        expected_revision=payload.expected_revision,
+        allow_full_with_manuscript=payload.confirm_manuscript_impact,
+    ))
+
+
+@router.post("/projects/{project_id}/learning/outlines/restore")
+def restore_outline(project_id: str, payload: OutlineRestorePayload, request: Request) -> dict:
+    return _handle(lambda: request.app.state.outlines.restore(
+        project_id, outline_version=payload.outline_version,
+    ))
 
 
 @router.post("/projects/{project_id}/learning/generate-outline", status_code=status.HTTP_201_CREATED)

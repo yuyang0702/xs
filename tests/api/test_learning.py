@@ -1,4 +1,5 @@
 import time
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -61,6 +62,17 @@ def test_learning_api_confirmation_artifacts_and_candidate_guards(tmp_path) -> N
     assert candidate.json()["status"] == "pending"
 
 
+def test_learning_api_explains_local_analysis_source(tmp_path) -> None:
+    client = client_for(tmp_path)
+    _project_id, node_id = project_and_mechanism(client)
+
+    item = next(value for value in client.get("/api/learning/mechanisms").json() if value["id"] == node_id)
+
+    assert item["analysis"]["state"] == "local_only"
+    assert item["analysis"]["source_title"] == "样本"
+    assert item["analysis"]["model"] is None
+
+
 def test_local_nlp_status_is_read_only_until_install_clicked(tmp_path) -> None:
     client = client_for(tmp_path)
     status = client.get("/api/settings/local-nlp").json()
@@ -116,6 +128,64 @@ def test_rejected_mechanisms_can_be_deleted_from_api(tmp_path) -> None:
     assert response.status_code == 200
     assert response.json() == {"deleted_ids": [node_id], "skipped": []}
     assert client.get("/api/learning/mechanisms?view=rejected").json() == []
+
+
+def test_historical_rejected_adoption_does_not_block_mechanism_deletion(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, node_id = project_and_mechanism(client)
+    rejected_adoption = client.post(
+        f"/api/projects/{project_id}/learning/rejections/{node_id}",
+        json={"reason": "not suitable"},
+    )
+    assert rejected_adoption.status_code == 200
+    client.post(
+        f"/api/learning/nodes/{node_id}/revisions",
+        json={"action": "reject", "data": {}},
+    )
+
+    rejected = client.get("/api/learning/mechanisms?view=rejected").json()
+    response = client.request("DELETE", "/api/learning/mechanisms", json={"node_ids": [node_id]})
+
+    assert rejected[0]["deletable"] is True
+    assert rejected[0]["delete_reason"] == ""
+    assert response.json() == {"deleted_ids": [node_id], "skipped": []}
+
+
+def test_rejecting_an_active_adoption_removes_it_from_the_creative_blueprint(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, node_id = project_and_mechanism(client)
+    client.post(f"/api/learning/nodes/{node_id}/revisions", json={"action": "confirm", "data": {}})
+    client.post(f"/api/projects/{project_id}/learning/adoptions/{node_id}", json={"edits": {}})
+
+    response = client.post(
+        f"/api/projects/{project_id}/learning/rejections/{node_id}",
+        json={"reason": "user removed rejected mechanism"},
+    )
+    learning = client.get(f"/api/projects/{project_id}/learning").json()
+    blueprint = next(item for item in learning["artifacts"] if item["artifact_type"] == "creative_blueprint")
+
+    assert response.status_code == 200
+    assert learning["adoptions"] == []
+    assert blueprint["data"]["mechanisms"] == []
+
+
+def test_active_adoption_explains_why_rejected_mechanism_cannot_be_deleted(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, node_id = project_and_mechanism(client)
+    client.post(f"/api/learning/nodes/{node_id}/revisions", json={"action": "confirm", "data": {}})
+    client.post(f"/api/projects/{project_id}/learning/adoptions/{node_id}", json={"edits": {}})
+    client.post(f"/api/learning/nodes/{node_id}/revisions", json={"action": "reject", "data": {}})
+
+    rejected = client.get("/api/learning/mechanisms?view=rejected").json()
+    response = client.request("DELETE", "/api/learning/mechanisms", json={"node_ids": [node_id]})
+
+    assert rejected[0]["deletable"] is False
+    assert rejected[0]["delete_reason"] == "仍在作品中使用，取消应用后才能删除"
+    assert rejected[0]["active_project_ids"] == [project_id]
+    assert response.json() == {
+        "deleted_ids": [],
+        "skipped": [{"id": node_id, "reason": "仍在作品中使用，取消应用后才能删除"}],
+    }
 
 
 def test_model_analysis_exposes_queryable_progress(tmp_path) -> None:
@@ -206,3 +276,140 @@ def test_reference_attraction_map_is_queryable(tmp_path) -> None:
     assert response.status_code == 200
     assert response.json()["id"] == node["id"]
     assert response.json()["data"]["uncertainties"] == ["结尾尚未出现"]
+
+
+def test_learning_api_normalizes_legacy_single_incompatible_condition(tmp_path) -> None:
+    client = client_for(tmp_path)
+    source = client.post("/api/references", json={
+        "title": "旧数据", "source_type": "paste", "text": "他推开门。",
+    }).json()
+    node = client.app.state.learning._save_node(
+        "mechanism", {
+            "name": "旧写法", "confidence": 0.9,
+            "incompatible_conditions": "主角没有选择时不要使用",
+        }, source_id=source["id"], status="confirmed",
+    )
+
+    response = client.get("/api/learning/mechanisms")
+    returned = next(item for item in response.json() if item["id"] == node["id"])
+
+    assert returned["data"]["incompatible_conditions"] == ["主角没有选择时不要使用"]
+
+
+def test_outline_candidates_can_be_viewed_compared_edited_applied_and_restored(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, _node_id = project_and_mechanism(client)
+
+    created = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"outline": "# 初版\n\n## 开头\n旧开头。\n\n## 结尾\n旧结尾。", "title": "初版大纲"},
+    )
+    assert created.status_code == 201
+    candidate_id = created.json()["id"]
+    overview = client.get(f"/api/projects/{project_id}/learning/outlines")
+    assert overview.status_code == 200
+    assert overview.json()["candidates"][0]["content"].startswith("# 初版")
+
+    edited = client.put(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate_id}",
+        json={"outline": "# 初版\n\n## 开头\n新的开头。\n\n## 结尾\n旧结尾。", "title": "调整开头"},
+    )
+    assert edited.status_code == 200
+    assert edited.json()["title"] == "调整开头"
+
+    class MustNotRun:
+        async def complete(self, *args, **kwargs):
+            raise AssertionError("本地比较不应调用模型")
+
+    client.app.state.outlines.gateway = MustNotRun()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate_id}/comparison",
+    )
+    assert comparison.status_code == 200
+    assert comparison.json()["model_called"] is False
+
+    applied = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate_id}/apply",
+        json={"expected_revision": comparison.json()["state_revision"], "apply_whole": True},
+    )
+    assert applied.status_code == 200
+    assert applied.json()["outline_version"] == 1
+    assert applied.json()["formal_manuscript_changed"] is False
+
+    replacement = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"outline": "# 第二版\n\n## 开头\n第二版开头。", "title": "第二版"},
+    ).json()
+    revision = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{replacement['id']}/comparison",
+    ).json()["state_revision"]
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{replacement['id']}/apply",
+        json={"expected_revision": revision, "apply_whole": True},
+    )
+    restored = client.post(
+        f"/api/projects/{project_id}/learning/outlines/restore",
+        json={"outline_version": 1},
+    )
+    assert restored.status_code == 200
+    assert restored.json()["outline_version"] == 3
+    assert "新的开头" in restored.json()["content"]
+
+    abandoned = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"outline": "# 不采用", "title": "不采用"},
+    ).json()
+    deleted = client.delete(
+        f"/api/projects/{project_id}/learning/outline-candidates/{abandoned['id']}",
+    )
+    assert deleted.status_code == 200
+    remaining = client.get(f"/api/projects/{project_id}/learning/outlines").json()["candidates"]
+    assert abandoned["id"] not in {item["id"] for item in remaining}
+
+
+def test_outline_semantic_review_sends_only_uncertain_changes_to_planning_model(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, _node_id = project_and_mechanism(client)
+    first = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"outline": "# 大纲\n\n## 开头\n主角收到求救信。", "title": "初版"},
+    ).json()
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{first['id']}/apply",
+        json={"apply_whole": True},
+    )
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"outline": "# 大纲\n\n## 开头\n十年后，陌生法医带着一截断指登门。", "title": "大改版"},
+    ).json()
+
+    class RecordingGateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append((role, system, user, max_output_tokens))
+            report = client.get(
+                f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+            ).json()
+            uncertain_id = next(item["id"] for item in report["changes"] if item["type"] == "uncertain")
+            return SimpleNamespace(
+                text=("{\"decisions\":[{\"id\":\"" + uncertain_id
+                      + "\",\"type\":\"changed\",\"explanation\":\"仍是开头，但冲突更强。\","
+                        "\"impact\":\"会改变主角接到任务的原因。\"}]}"),
+                receipt={"role": role},
+            )
+
+    gateway = RecordingGateway()
+    client.app.state.outlines.gateway = gateway
+    response = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/semantic-review",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["model_called"] is True
+    assert response.json()["summary"]["uncertain"] == 0
+    assert gateway.calls[0][0] == "planning"
+    assert gateway.calls[0][3] == 2048
+    assert '"type": "uncertain"' in gateway.calls[0][2]
+    assert len(gateway.calls[0][2]) <= 30_000

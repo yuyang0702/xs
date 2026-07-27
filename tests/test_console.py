@@ -161,7 +161,7 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "全文覆盖率" in script
     assert "data-mechanism-delete" in script
     assert "deleteRejectedMechanisms" in script
-    assert "按文章阶段查看全部证据" in script
+    assert "查看全部证据" in script
     assert "const latestRun = runs[0]" in script
     assert "showRunDetail(await api(`/api/runs/${latestRun.id}`))" in script
     assert "continueProject(button.dataset.continue)" in script
@@ -238,6 +238,22 @@ def test_reference_import_receipt_uses_plain_language_and_direct_actions(tmp_pat
     assert ".reference-import-receipt" in css
     assert "正在保存资料" in script
     assert "资料已保存" in script
+    assert 'class="receipt-purpose"' in script
+    assert 'class="receipt-details"' in script
+    assert "receipt-primary-action" in script
+
+
+def test_learning_library_is_split_into_plain_language_task_views(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+
+    for view in ("references", "mechanisms", "application"):
+        assert f'data-learning-view="{view}"' in html
+        assert f'data-learning-panel="{view}"' in html
+    assert "本地诊断是找问题" in html
+    assert "本地提炼是找写法" in html
+    assert "switchLearningView" in script
 
 
 def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
@@ -262,5 +278,104 @@ def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
     assert "renderAttractionMap" in script
     assert "本地吸引力候选" in script
     assert "✓ 已保存" in script
+    assert "item.deletable!==false" in script
+    assert "delete_reason" in script
+    assert "data-mechanism-release" in script
+    assert 'class="mechanism-details"' in script
+    assert "查看详情" in script
+    for label in ("核心目标", "阻碍升级", "阶段结果", "状态变化", "结局设计", "开头设计", "技术详情"):
+        assert label in script
+    assert 'short_causal_chain:"七步剧情结构"' in script
+    for label in ("仍在当前作品中使用", "需要你确认", "继续使用", "从作品移除"):
+        assert label in script
+    assert 'class="learning-review-reason"' in script
+    assert 'class="learning-review-intro"' not in script
+    assert "keepLearningReview" in script
+    assert "removeLearningReview" in script
     assert ".reference-task-status" in css
     assert ".mechanism-stage-summary" in css
+    assert ".learning-review-reason" in css
+    assert "learning-review-rules { grid-template-columns:1fr" in css
+    assert ".learning-review-item footer button { flex:1" in css
+
+
+def test_project_application_keeps_title_and_review_actions_easy_to_find(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    assert "当前作品的创作设置" in html
+    assert "正在使用的写法和规则" in html
+    assert '<p class="eyebrow">大纲版本</p>' not in html
+    assert 'class="learning-review-details"' in script
+    assert "查看具体规则" in script
+    assert 'class="learning-review-actions"' in script
+    assert ".application-overview" in css
+    assert ".application-section-heading" in css
+    assert ".learning-review-details" in css
+
+
+def test_outline_workspace_uses_plain_language_and_visible_operation_states(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for control in (
+        "outline-workspace", "outline-current", "outline-generate-form",
+        "outline-operation-status", "outline-candidates", "outline-editor",
+        "outline-comparison", "outline-history",
+    ):
+        assert f'id="{control}"' in html
+    for label in (
+        "不会修改已经写好的正文", "查看并编辑全文", "比较变化",
+        "应用勾选的变化", "整体采用这个版本", "请模型判断",
+        "恢复这个版本", "正在生成候选大纲", "生成失败",
+    ):
+        assert label in html + script
+    assert 'id="outline-candidate-form"' not in html
+    assert "loadOutlineWorkspace" in script
+    assert "renderOutlineWorkspace" in script
+    assert "setOutlineOperationStatus" in script
+    assert ".outline-operation-status.busy" in css
+    assert ".outline-change-list" in css
+    assert "outline-layout { grid-template-columns:1fr" in css
+    assert 'id="wizard-confirmed-methods"' in html
+    assert "可选：带入已确认写法" in html
+    assert "默认不选，只有勾选的写法才会用于新作品" in html
+    assert "loadWizardConfirmedMethods" in script
+    assert "selected_mechanism_ids" in script
+
+
+def test_legacy_outline_does_not_render_as_numbered_old_version(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    assert "旧项目已有版本" in script
+    assert 'current.outline_version||"旧"' not in script
+
+
+def test_learning_candidates_explain_local_and_model_sources_in_chinese(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for label in (
+        "本地提炼", "模型新增", "本地发现 + 模型确认", "本地与模型意见不同",
+        "等待模型判断", "模型全文分析", "综合判断", "来源资料",
+    ):
+        assert label in html + script
+    assert 'id="learning-mechanism-origin"' in html
+    assert "mechanismSourceMeta" in script
+    assert "readableModelText" in script
+    assert "模型返回的旧结果没有完成中文化" in script
+    assert ".mechanism-source-badges" in css
+    assert ".reference-analysis-guide" in css
+    for old_label in (
+        "LOCAL WRITING SYSTEM", "LOCAL MARKET INTELLIGENCE", "SKILL-DRIVEN SETUP",
+        "PLANNING MODEL", "MODEL ROUTING", "EXECUTION GATES", "RECOVERABLE PROJECTS",
+        "MARKET LINK", "MARKET MATCH", "CORE REQUIREMENTS",
+    ):
+        assert old_label not in html + script

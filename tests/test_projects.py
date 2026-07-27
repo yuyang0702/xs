@@ -4,6 +4,7 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.outlines import OutlineService
 from novel_flywheel.story_state import StoryStateStore
 
 
@@ -127,3 +128,23 @@ def test_project_with_active_run_cannot_be_trashed(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="active run"):
         store.trash(project.id)
+
+
+def test_current_confirmed_outline_is_loaded_as_a_creation_constraint(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Follow Outline", mode="short", genre="suspense",
+        premise="A friend returns.", target_words=8_000,
+    ))
+    outlines = OutlineService(db, store)
+    candidate = outlines.create_candidate(
+        project.id, "# 正式大纲\n\n## 开头\n主角收到死者来信。\n",
+    )
+    outlines.apply_candidate(project.id, candidate["id"])
+
+    constraints = store.load_constraints(project.id)
+
+    assert "# Current Confirmed Outline" in constraints
+    assert "主角收到死者来信" in constraints

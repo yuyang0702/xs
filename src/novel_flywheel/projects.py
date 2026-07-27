@@ -214,6 +214,10 @@ class ProjectStore:
             if path.is_file():
                 parts.append(path.read_text(encoding="utf-8"))
         parts.append((project.path / "constraints.md").read_text(encoding="utf-8"))
+        state = StoryStateStore(self.db).get(project_id)
+        outline = state.data.get("outline") if state else None
+        if isinstance(outline, dict) and str(outline.get("content") or "").strip():
+            parts.append("# Current Confirmed Outline\n\n" + str(outline["content"])[:30_000])
         profile = resolve_platform_profile(
             project.metadata.get("platform_profile_id"), project,
             self.active_learning_data(project_id, "market_baseline"),

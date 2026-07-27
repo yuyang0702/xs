@@ -24,7 +24,7 @@
 
   <main>
     <header class="topbar">
-      <div><p class="eyebrow">LOCAL WRITING SYSTEM</p><h1 id="view-title">创作工作台</h1></div>
+      <div><p class="eyebrow">本地写作系统</p><h1 id="view-title">创作工作台</h1></div>
       <button id="refresh" class="icon-button" title="刷新数据" aria-label="刷新数据">↻</button>
     </header>
 
@@ -116,41 +116,96 @@
     </section>
 
     <section id="learning" class="view">
-      <div class="section-heading"><div><p class="eyebrow">REFERENCE LIBRARY</p><h2>参考作品学习库</h2></div></div>
-      <div class="learning-layout">
-        <aside class="reference-sidebar">
-          <form id="reference-form" class="reference-import">
-            <label>资料名称<input id="reference-title" maxlength="120" placeholder="可留空，文档导入时自动使用文件名"></label>
-            <label>平台<select id="reference-platform"><option value="">自动判断</option><option>知乎</option><option>番茄</option><option>公众号</option><option>晋江</option><option>其他</option></select></label>
-            <label>内容类型<select id="reference-content-type"><option value="">自动判断（默认参考作品）</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品（仅手动）</option></select></label>
-            <label>关联作品<select id="reference-project"><option value="">不关联作品</option></select></label>
-            <label>选择文档<input id="reference-file" type="file" accept=".txt,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
-            <label>或公开网址<input id="reference-url" type="url" maxlength="2000" placeholder="https://example.com/article"></label>
-            <label>或粘贴正文<textarea id="reference-text" rows="8" maxlength="1000000" placeholder="粘贴需要分析的参考正文"></textarea></label>
-            <p id="reference-import-status" class="skill-meta" role="status" aria-live="polite"></p>
-            <button class="primary" type="submit">导入学习库</button>
+      <div class="section-heading learning-page-heading"><div><p class="eyebrow">学习资料库</p><h2>参考资料与写作方法</h2><p class="skill-meta">整理参考资料、确认可借鉴写法，并查看它们如何用于当前作品</p></div><label class="learning-project-picker">当前作品<select id="learning-project"><option value="">请先创建作品</option></select></label></div>
+      <nav class="learning-view-tabs" aria-label="学习库内容">
+        <button type="button" class="active" data-learning-view="references">资料与分析</button>
+        <button type="button" data-learning-view="mechanisms">候选写法</button>
+        <button type="button" data-learning-view="application">作品应用</button>
+      </nav>
+
+      <section class="learning-view-panel active" data-learning-panel="references">
+        <div class="local-tools-guide reference-analysis-guide">
+          <div><strong>本地诊断是找问题</strong><p>扫描全文，标出可能影响节奏、开头吸引力、重复和阅读体验的位置，由你决定是否修改。</p></div>
+          <div><strong>本地提炼是找写法</strong><p>扫描全文，整理可借鉴的结构和叙事方法，形成候选写法，确认后才能用于作品。</p></div>
+          <div><strong>模型全文分析是复核和查漏</strong><p>阅读全文，复核本地候选并独立寻找遗漏内容。会消耗模型 Token，但不会修改原文。</p></div>
+          <span>建议先运行本地工具；重要样本再使用模型全文分析。所有结果都需要你确认后才会用于作品。</span>
+        </div>
+        <div class="learning-layout">
+          <aside class="reference-sidebar">
+            <details class="reference-importer"><summary>导入新资料</summary>
+              <form id="reference-form" class="reference-import">
+                <label>资料名称<input id="reference-title" maxlength="120" placeholder="可留空，文档导入时自动使用文件名"></label>
+                <label>平台<select id="reference-platform"><option value="">自动判断</option><option>知乎</option><option>番茄</option><option>公众号</option><option>晋江</option><option>其他</option></select></label>
+                <label>内容类型<select id="reference-content-type"><option value="">自动判断（默认参考作品）</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品（仅手动）</option></select></label>
+                <label>关联作品<select id="reference-project"><option value="">不关联作品</option></select></label>
+                <label>选择文档<input id="reference-file" type="file" accept=".txt,.docx,.pdf,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+                <label>或公开网址<input id="reference-url" type="url" maxlength="2000" placeholder="https://example.com/article"></label>
+                <label>或粘贴正文<textarea id="reference-text" rows="8" maxlength="1000000" placeholder="粘贴需要分析的参考正文"></textarea></label>
+                <p id="reference-import-status" class="skill-meta" role="status" aria-live="polite"></p>
+                <button class="primary" type="submit">导入学习库</button>
+              </form>
+              <section id="reference-import-receipt" class="reference-import-receipt" hidden aria-live="polite"></section>
+            </details>
+            <div class="reference-filters">
+              <label class="wide">搜索<input id="reference-search" type="search" placeholder="名称、平台或类型"></label>
+              <label>平台<select id="reference-filter-platform"><option value="">全部平台</option></select></label>
+              <label>类型<select id="reference-filter-type"><option value="">全部类型</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品</option></select></label>
+              <label>作品<select id="reference-filter-project"><option value="">全部作品</option><option value="unlinked">未关联作品</option></select></label>
+            </div>
+            <nav id="reference-list" class="reference-list" aria-label="参考资料列表"><p class="skill-meta">尚未导入参考资料</p></nav>
+          </aside>
+          <article id="reference-detail" class="reference-detail"><p class="skill-meta">选择参考资料后查看分析和原文</p></article>
+        </div>
+      </section>
+
+      <section class="learning-view-panel" data-learning-panel="mechanisms" hidden>
+        <div class="learning-panel-heading"><div><p class="eyebrow">写法整理</p><h2>候选写法</h2><p>每条结果都会说明来自本地还是模型。展开依据后，再决定保留、应用或拒绝。</p></div><div class="mechanism-filters"><label>状态<select id="learning-mechanism-view"><option value="active">待确认与已保留</option><option value="rejected">已拒绝</option><option value="all">全部</option></select></label><label>分析来源<select id="learning-mechanism-origin"><option value="all">全部来源</option><option value="local">本地提炼</option><option value="hybrid">本地 + 模型复核</option><option value="model">模型新增</option></select></label></div></div>
+        <div id="learning-mechanisms" class="learning-mechanisms"><p class="skill-meta">完成本地提炼后，这里会显示候选写法</p></div>
+      </section>
+
+      <section class="learning-view-panel" data-learning-panel="application" hidden>
+        <div class="learning-panel-heading application-overview"><div><h2>当前作品的创作设置</h2><p>在这里管理大纲版本、待确认写法和已经生效的规则。所有操作只影响后续创作，不会改动现有正文。</p></div></div>
+        <section id="outline-workspace" class="outline-workspace" aria-labelledby="outline-workspace-title">
+          <header class="outline-workspace-heading">
+            <div><h3 id="outline-workspace-title">大纲版本</h3><p>候选版本只有经过你确认才会生效，也不会修改已经写好的正文。</p></div>
+            <div id="outline-current" class="outline-current"><strong>正在读取当前大纲</strong><span>请稍候</span></div>
+          </header>
+          <form id="outline-generate-form" class="outline-generate-form">
+            <label><span>想让大纲怎么调整</span><textarea name="brief" rows="3" placeholder="例如：保留结局，把中段阻碍增加到两轮"></textarea></label>
+            <button class="primary" type="submit">生成候选大纲</button>
           </form>
-          <section id="reference-import-receipt" class="reference-import-receipt" hidden aria-live="polite"></section>
-          <div class="reference-filters">
-            <label>搜索<input id="reference-search" type="search" placeholder="名称、平台或类型"></label>
-            <label>平台筛选<select id="reference-filter-platform"><option value="">全部平台</option></select></label>
-            <label>类型筛选<select id="reference-filter-type"><option value="">全部类型</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品</option></select></label>
-            <label>作品筛选<select id="reference-filter-project"><option value="">全部作品</option><option value="unlinked">未关联作品</option></select></label>
+          <div id="outline-operation-status" class="outline-operation-status" role="status" aria-live="polite">
+            <strong>可以开始</strong><span>生成候选会调用规划模型；查看、编辑和比较在本地完成。</span>
           </div>
-          <nav id="reference-list" class="reference-list" aria-label="参考资料列表"><p class="skill-meta">尚未导入参考资料</p></nav>
-        </aside>
-        <article id="reference-detail" class="reference-detail"><p class="skill-meta">选择参考资料后查看原文和本地诊断</p></article>
-      </div>
-      <section class="learning-project-panel">
-        <div class="section-heading"><div><p class="eyebrow">PROJECT ADOPTION</p><h2>项目学习与执行资料</h2></div><div class="form-actions"><label>机制状态<select id="learning-mechanism-view"><option value="active">候选与已确认</option><option value="rejected">已拒绝</option><option value="all">全部</option></select></label><label>目标作品<select id="learning-project"><option value="">请先创建作品</option></select></label></div></div>
-        <div id="learning-mechanisms" class="learning-mechanisms"><p class="skill-meta">分析参考资料后，这里会展示带证据的可迁移机制</p></div>
+          <div class="outline-layout">
+            <section class="outline-candidate-column" aria-labelledby="outline-candidate-title">
+              <div class="outline-subheading"><h4 id="outline-candidate-title">待处理候选</h4><span>先看全文，再决定是否应用</span></div>
+              <div id="outline-candidates" class="outline-candidates"><p class="skill-meta">还没有候选大纲</p></div>
+            </section>
+            <section id="outline-editor" class="outline-editor" hidden>
+              <div class="outline-subheading"><h4>候选全文</h4><span>编辑后先保存，再比较变化</span></div>
+              <label>版本名称<input id="outline-editor-title" maxlength="80"></label>
+              <label>大纲全文<textarea id="outline-editor-content" rows="18"></textarea></label>
+              <div class="outline-editor-actions">
+                <button id="outline-save" class="secondary" type="button">保存修改</button>
+                <button id="outline-compare" class="primary" type="button">比较变化</button>
+                <button id="outline-discard" class="secondary danger-text" type="button">放弃这个候选</button>
+              </div>
+              <section id="outline-comparison" class="outline-comparison" hidden></section>
+            </section>
+          </div>
+          <details id="outline-history" class="outline-history">
+            <summary><span><strong>历史版本</strong><small>需要时可以恢复，不会覆盖历史记录</small></span><span id="outline-history-count">0 个版本</span></summary>
+            <div id="outline-history-list" class="outline-history-list"><p class="skill-meta">还没有正式大纲版本</p></div>
+          </details>
+        </section>
+        <div class="application-section-heading"><div><h3>正在使用的写法和规则</h3><p>需要确认的内容会排在前面；其他内容点击标题后展开查看。</p></div></div>
         <div id="learning-artifacts" class="learning-artifacts"></div>
-        <details class="learning-editor"><summary>编辑项目学习资料</summary>
+        <details class="learning-editor"><summary>编辑高级学习资料</summary>
           <div class="learning-editor-grid">
             <form id="baseline-form"><h3>可执行文笔基线</h3><label>对白规则<input name="dialogue" placeholder="例如：回应必须改变信息或关系"></label><label>心理描写<input name="psychology" placeholder="例如：先展示证据，再写有限判断"></label><label>禁用表达<textarea name="forbidden" rows="3" placeholder="每行一条"></textarea></label><button class="secondary">保存新版本</button></form>
             <form id="voice-form"><h3>人物声音档案</h3><label>人物名<input name="name" required></label><label>声音规则<textarea name="profile" rows="5" required placeholder="词汇、句式、压力反应、称呼和禁用表达"></textarea></label><button class="secondary">保存新版本</button></form>
             <form id="scene-brief-form"><h3>场景简报</h3><label>已确认大纲<textarea name="outline" rows="6" required></textarea></label><button class="secondary">生成可编辑场景简报</button></form>
-            <form id="outline-candidate-form"><h3>候选大纲</h3><label>微调要求<textarea name="brief" rows="4"></textarea></label><button class="secondary">让规划模型生成候选版本</button></form>
             <form id="line-edit-form"><h3>定向行文精修</h3><label>原文<textarea name="source" rows="6" required></textarea></label><label>问题类别<input name="issues" required placeholder="例如：机械对白,过度确定"></label><button class="secondary">生成精修候选</button><pre id="line-edit-result" hidden></pre></form>
           </div>
         </details>
@@ -159,7 +214,7 @@
 
     <section id="market" class="view">
       <div class="section-heading market-heading">
-        <div><p class="eyebrow">LOCAL MARKET INTELLIGENCE</p><h2>市场趋势</h2><p class="skill-meta">公开榜单快照、本地统计与 TXT 作品关联</p></div>
+        <div><p class="eyebrow">本地市场分析</p><h2>市场趋势</h2><p class="skill-meta">公开榜单快照、本地统计与 TXT 作品关联</p></div>
         <button id="market-refresh" class="primary">更新当前平台</button>
       </div>
       <div class="market-toolbar">
@@ -199,7 +254,7 @@
     </section>
 
     <section id="projects" class="view">
-      <div class="section-heading"><div><p class="eyebrow">SKILL-DRIVEN SETUP</p><h2>建书向导</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">创作设置</p><h2>建书向导</h2></div></div>
       <div id="wizard-launcher" class="wizard-launcher">
         <fieldset class="segmented"><legend>作品模式</legend>
           <label><input type="radio" name="wizard-mode" value="short" checked><span>短篇小说</span></label>
@@ -214,12 +269,16 @@
         <section class="wizard-main">
           <div class="section-heading"><div><p id="wizard-source" class="eyebrow"></p><h3 id="wizard-title"></h3></div><span id="wizard-save-state" class="skill-meta">已保存</span></div>
           <div id="wizard-fields" class="wizard-fields"></div>
+          <section id="wizard-confirmed-methods" class="wizard-confirmed-methods" hidden>
+            <header><h4>可选：带入已确认写法</h4><p>默认不选，只有勾选的写法才会用于新作品。以后也可以在学习库里添加或移除。</p></header>
+            <div id="wizard-confirmed-method-list"><p class="skill-meta">正在读取已确认写法</p></div>
+          </section>
           <div class="wizard-actions"><button id="wizard-back" class="secondary">上一步</button><button id="wizard-next" class="primary">下一步</button><button id="wizard-analyze" class="secondary" hidden>检查关键缺口</button><button id="wizard-confirm" class="primary" hidden>确认并创建项目</button></div>
         </section>
         <aside class="wizard-side">
           <section class="wizard-summary"><h3>已固定内容</h3><div id="wizard-summary"></div></section>
           <section id="interview-panel" class="interview-panel">
-            <div class="interview-heading"><div><p class="eyebrow">PLANNING MODEL</p><h3>AI 开书访谈</h3></div><button id="interview-start" class="secondary" type="button">开始访谈</button></div>
+            <div class="interview-heading"><div><p class="eyebrow">规划模型</p><h3>AI 开书访谈</h3></div><button id="interview-start" class="secondary" type="button">开始访谈</button></div>
             <div id="interview-messages" class="interview-messages"><p class="skill-meta">AI 会根据当前表单逐题梳理设定。</p></div>
             <form id="interview-form" class="interview-form">
               <label><span class="sr-only">回答 AI 访谈</span><textarea id="interview-input" rows="3" maxlength="4000" placeholder="回答问题，或说明你的想法..."></textarea></label>
@@ -233,7 +292,7 @@
     </section>
 
     <section id="models" class="view">
-      <div class="section-heading"><div><p class="eyebrow">MODEL ROUTING</p><h2>供应商与角色</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">模型调度</p><h2>供应商与角色</h2></div></div>
       <div class="config-columns">
         <form id="provider-form" class="plain-panel">
           <h3 id="provider-form-title">添加供应商</h3>
@@ -259,12 +318,12 @@
     </section>
 
     <section id="skills" class="view">
-      <div class="section-heading"><div><p class="eyebrow">EXECUTION GATES</p><h2>Skill 管理</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">执行检查</p><h2>Skill 管理</h2></div></div>
       <div id="skill-list" class="data-list"></div>
     </section>
 
     <section id="trash" class="view">
-      <div class="section-heading"><div><p class="eyebrow">RECOVERABLE PROJECTS</p><h2>作品回收站</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">可恢复作品</p><h2>作品回收站</h2></div></div>
       <div id="trash-list" class="data-list"></div>
     </section>
   </main>

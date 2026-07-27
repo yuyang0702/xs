@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
+from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.secrets import MemorySecretStore
 
 
@@ -136,3 +137,78 @@ def test_wizard_interview_returns_provider_connection_error(tmp_path) -> None:
     assert response.json()["detail"] == {
         "code": "interview_model_failed", "message": "planning provider disconnected",
     }
+
+
+def test_wizard_lists_safe_confirmed_methods_and_adopts_only_selected_items(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+        reference_library=ReferenceLibrary(db, tmp_path / "references"),
+    ))
+    source = client.post("/api/references", json={
+        "title": "可学习样本", "source_type": "paste", "text": "他推门后却发现真相。",
+    }).json()
+    mechanism = client.post(f"/api/references/{source['id']}/learn").json()["mechanisms"][0]
+    client.post(
+        f"/api/learning/nodes/{mechanism['id']}/revisions",
+        json={"action": "confirm", "data": {}},
+    )
+    competitor = client.post("/api/references", json={
+        "title": "竞品", "source_type": "paste", "text": "她转身后门外传来枪声。",
+    }).json()
+    client.patch(f"/api/references/{competitor['id']}/metadata", json={
+        "platform": "知乎", "content_type": "competitor_work", "project_id": None,
+    })
+    competitor_node = client.post(
+        f"/api/references/{competitor['id']}/learn",
+    ).json()["mechanisms"][0]
+    client.post(
+        f"/api/learning/nodes/{competitor_node['id']}/revisions",
+        json={"action": "confirm", "data": {}},
+    )
+    wizard = client.post("/api/wizards", json={"mode": "short"}).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "选择写法", "policy": "locked"},
+        "genre": {"value": "悬疑", "policy": "locked"},
+        "premise": {"value": "一封来信。", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+    }})
+
+    choices = client.get(f"/api/wizards/{wizard['id']}/confirmed-mechanisms")
+    project = client.post(
+        f"/api/wizards/{wizard['id']}/confirm",
+        json={"selected_mechanism_ids": [mechanism["id"]]},
+    )
+
+    assert choices.status_code == 200
+    assert [item["id"] for item in choices.json()] == [mechanism["id"]]
+    assert len(choices.json()) <= 12
+    assert project.status_code == 201
+    learning = client.get(f"/api/projects/{project.json()['id']}/learning").json()
+    assert [item["node_id"] for item in learning["adoptions"]] == [mechanism["id"]]
+
+
+def test_wizard_does_not_adopt_confirmed_methods_without_explicit_selection(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+        reference_library=ReferenceLibrary(db, tmp_path / "references"),
+    ))
+    source = client.post("/api/references", json={
+        "title": "样本", "source_type": "paste", "text": "他推门后却发现真相。",
+    }).json()
+    mechanism = client.post(f"/api/references/{source['id']}/learn").json()["mechanisms"][0]
+    client.post(f"/api/learning/nodes/{mechanism['id']}/revisions", json={"action": "confirm", "data": {}})
+    wizard = client.post("/api/wizards", json={"mode": "short"}).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "默认不选", "policy": "locked"},
+        "genre": {"value": "悬疑", "policy": "locked"},
+        "premise": {"value": "一扇门。", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+    }})
+
+    project = client.post(f"/api/wizards/{wizard['id']}/confirm", json={})
+
+    assert client.get(f"/api/projects/{project.json()['id']}/learning").json()["adoptions"] == []

@@ -201,6 +201,16 @@ The run detail context can expose manuscript coverage, reviewed window count, re
 - Rejected-node deletion is intentionally narrow: only rejected nodes with no project adoption are eligible. The transaction cascades graph evidence, edges, and revisions but never source versions.
 - Narrative relation changes add both endpoints to the incremental scope. LTP absence, ambiguous mapping, broad changes, or important structural changes continue to force full review.
 
+## Outline versions
+
+The `outline` object inside StoryState is the authoritative formal outline. It contains content, outline version, source, candidate ID, timestamp, and content hash. `<project>/plot/outline.md` is an atomic readable copy, not a second authority. Existing projects without a StoryState outline expose the latest completed run's `outputs/planning.md` read-only as version 0; it is not migrated or rewritten until the user applies a candidate.
+
+Outline candidates use the existing `story_candidates` table with kind `outline` and content files under `<project>/learning/candidates/`. Editing updates the candidate hash and metadata. Local comparison uses heading or paragraph blocks and standard-library sequence matching. It reports additions, removals, edits, moves, and uncertain matches without calling a model. Semantic review is explicit, uses only the configured `planning` role, sends only uncertain items and locked-fact summaries, limits the request to 30,000 characters and output to 2,048 tokens, and validates returned JSON before displaying it.
+
+Applying selected changes or a whole candidate validates the current StoryState revision and locked facts, commits a new revision, and writes the readable outline copy. Whole-version application requires a second confirmation after a manuscript exists. Neither application nor history restoration writes `manuscript/story.md`; restoration creates a new candidate and revision instead of deleting later history. The latest active `scene_briefs` and `short_causal_chain` artifacts become stale because they depend on the previous outline, while prose and character voice artifacts remain active. `ProjectStore.load_constraints()` includes the current confirmed outline with a 30,000-character cap.
+
+The new-project wizard lists no more than 12 confirmed learning mechanisms. Rejected, unconfirmed, missing-source, and `competitor_work` mechanisms are excluded. Options are unchecked by default, and the confirm API revalidates selected IDs before creating project adoptions.
+
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.

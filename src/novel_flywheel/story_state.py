@@ -136,6 +136,40 @@ class StoryStateStore:
             json.loads(row["metadata_json"]),
         )
 
+    def list_candidates(self, project_id: str, *, kind: str | None = None,
+                        status: str | None = None) -> list[StoryCandidate]:
+        query = "SELECT id FROM story_candidates WHERE project_id=?"
+        params: list[Any] = [project_id]
+        if kind is not None:
+            query += " AND kind=?"
+            params.append(kind)
+        if status is not None:
+            query += " AND status=?"
+            params.append(status)
+        query += " ORDER BY created_at DESC, rowid DESC"
+        with self.db.connect() as connection:
+            ids = [row["id"] for row in connection.execute(query, params)]
+        return [candidate for candidate_id in ids
+                if (candidate := self.get_candidate(candidate_id)) is not None]
+
+    def update_candidate(self, candidate_id: str, *, content_hash: str,
+                         metadata: dict[str, Any]) -> StoryCandidate:
+        candidate = self.get_candidate(candidate_id)
+        if candidate is None:
+            raise LookupError("Candidate not found")
+        if candidate.status != "pending":
+            raise ValueError("Candidate is already resolved")
+        with self.db.connect() as connection:
+            connection.execute(
+                "UPDATE story_candidates SET content_hash=?, metadata_json=? "
+                "WHERE id=? AND status='pending'",
+                (content_hash, json.dumps(metadata, ensure_ascii=False), candidate_id),
+            )
+        updated = self.get_candidate(candidate_id)
+        if updated is None:
+            raise RuntimeError("Updated candidate is unavailable")
+        return updated
+
     def reject(self, candidate_id: str, reason: str) -> None:
         with self.db.connect() as connection:
             connection.execute(

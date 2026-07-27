@@ -66,7 +66,7 @@ def reference_usage(source: dict[str, Any], market_context: dict | None) -> dict
     else:
         allowed = ["剧情结构提炼", "开头吸引力分析", "文笔候选"]
         excluded = ["自动采纳写法", "真实市场统计"]
-        next_steps = [{"action": "local_learn", "label": "提炼可学习写法"}]
+        next_steps = []
     return {
         "trust": trust,
         "trust_label": {

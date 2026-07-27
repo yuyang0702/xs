@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -21,6 +21,10 @@ const roles = {
 };
 const $ = (selector) => document.querySelector(selector);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+const readableModelText = (value, fallback="模型返回的旧结果没有完成中文化，请重新运行模型全文分析。") => {
+  const text=String(value??"").trim();
+  return text&&/[\u3400-\u9fff]/.test(text)?text:fallback;
+};
 const formatLocalTimestamp = (value, timeOnly = false) => {
   const text = String(value ?? "").trim();
   if (!text) return "";
@@ -129,7 +133,8 @@ function renderImportReceipt() {
   if(!receipt){shell.hidden=true;shell.innerHTML="";return;}
   shell.hidden=false;
   const list=items=>items?.length?`<ul>${items.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>`:'<p>暂无</p>';
-  shell.innerHTML=`<header><div><span>资料已保存</span><h3>${escapeHtml(receipt.headline)}</h3></div><strong>${escapeHtml(receipt.trust_label)}</strong></header><div class="receipt-grid"><section><span>系统判断</span><p>${escapeHtml(receipt.market_message)}</p></section><section><span>判断依据</span>${list(receipt.reasons)}</section><section><span>可以用于</span>${list(receipt.recommended_for)}</section><section><span>不会用于</span>${list(receipt.not_used_for)}</section></div><footer><div><span>下一步</span><p>${escapeHtml(receipt.cost_message)}</p></div><div>${(receipt.next_steps||[]).map(item=>`<button type="button" class="secondary" data-receipt-action="${escapeHtml(item.action)}">${escapeHtml(item.label)}</button>`).join("")}</div></footer>`;
+  const actions=(receipt.next_steps||[]).map((item,index)=>`<button type="button" class="${index===0?"primary receipt-primary-action":"secondary"}" data-receipt-action="${escapeHtml(item.action)}">${escapeHtml(item.label)}</button>`).join("");
+  shell.innerHTML=`<header><div><span>资料已保存</span><h3>${escapeHtml(receipt.headline)}</h3></div><strong>${escapeHtml(receipt.trust_label)}</strong></header><section class="receipt-purpose"><span>系统判断</span><p>${escapeHtml(receipt.market_message)}</p><strong>可以用于</strong>${list(receipt.recommended_for)}</section><details class="receipt-details"><summary>查看判断依据和使用范围</summary><div class="receipt-grid"><section><span>判断依据</span>${list(receipt.reasons)}</section><section><span>不会用于</span>${list(receipt.not_used_for)}</section></div></details><footer><div><span>下一步</span><p>${escapeHtml(receipt.cost_message)}</p></div><div>${actions}</div></footer>`;
   shell.querySelectorAll("[data-receipt-action]").forEach(button=>button.addEventListener("click",()=>runReceiptAction(button.dataset.receiptAction)));
 }
 
@@ -178,7 +183,7 @@ function renderDiagnosticFinding(item) {
 
 function referenceTaskMarkup() {
   const task=state.referenceTask;
-  if(!task||task.status==="idle")return `<div><strong>分析状态</strong><p>选择本地诊断、本地提炼或模型深度分析后，这里会持续显示进度和结果。</p></div>`;
+  if(!task||task.status==="idle")return `<div><strong>分析状态</strong><p>选择本地诊断、本地提炼或模型全文分析后，这里会持续显示进度和结果。</p></div>`;
   const labels={queued:"等待分析",running:"正在分析",completed:"分析完成",failed:"分析失败",cancelled:"已停止"};
   const phases={starting:"正在准备全文",analyzing_windows:"正在逐段分析全文",fallback_window:"首选模型结果无效，正在使用已配置的备用模型分析当前窗口",synthesizing:"正在合并全文结论",fallback_synthesis:"首选模型汇总结果无效，正在使用已配置的备用模型汇总",completed:"结果已经生成",failed:"任务未能完成",cancelled:"任务已停止",local_analysis:"正在扫描全文问题",local_learning:"正在提炼全文写法"};
   const total=Number(task.total_windows||0),done=Number(task.completed_windows||0);
@@ -197,10 +202,11 @@ function renderAttractionMap() {
   const data=node.data,fit={strong:"结构证据完整",partial:"部分结构可以确认",not_applicable:"不适合强套七步"}[data.fit?.level]||"需要复核";
   const goal=data.core_goal||{},opening=data.opening||{},ending=data.ending||{},reversal=data.reversal||null;
   const cycles=Array.isArray(data.cycles)?data.cycles:[],questions=Array.isArray(data.question_chain)?data.question_chain:[],relationships=Array.isArray(data.relationship_arc)?data.relationship_arc:[],uncertainties=Array.isArray(data.uncertainties)?data.uncertainties:[];
+  const zh=(value,fallback)=>readableModelText(value,fallback);
   const evidence=value=>{const items=Array.isArray(value)?value:[];return items.length?`<details><summary>查看原文依据（${items.length}处）</summary>${items.slice(0,8).map(item=>`<blockquote>${escapeHtml(item.excerpt||item)}</blockquote>`).join("")}</details>`:""};
   const projectOptions=state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("");
   const actions=node.status==="confirmed"?`<div class="attraction-actions"><label>应用到作品<select data-attraction-project><option value="">选择作品</option>${projectOptions}</select></label><button class="primary" data-attraction-adopt>采纳抽象写法</button></div>`:node.status==="rejected"?'<p class="skill-meta">这份分析已拒绝，不会进入任何作品。</p>':`<div class="attraction-actions"><button class="primary" data-attraction-confirm>确认分析</button><button class="secondary" data-attraction-reject>拒绝分析</button></div>`;
-  return `<section class="attraction-map"><header><div><p class="eyebrow">剧情吸引力</p><h3>${fit}</h3><p>${escapeHtml(data.fit?.explanation||"系统按全文证据整理了可能推动读者继续阅读的结构。")}</p></div><span>${node.status==="confirmed"?"已确认":node.status==="rejected"?"已拒绝":"等待你确认"}</span></header><div class="attraction-grid"><article><span>开头为什么让人继续看</span><strong>${escapeHtml(opening.transfer_guidance||opening.mechanism||"目前没有足够证据判断")}</strong>${evidence(opening.evidence)}</article><article><span>人物一直想完成什么</span><p>外部：${escapeHtml(goal.surface||"尚不明确")}</p><p>内心：${escapeHtml(goal.emotional||"尚不明确")}</p>${evidence(goal.evidence)}</article></div><section class="attraction-cycles"><h4>剧情怎样一轮轮向前走</h4>${cycles.length?cycles.map((item,index)=>`<article><b>${index+1}</b><div><strong>遇到：${escapeHtml(item.obstacle||"未确认")}</strong><p>采取：${escapeHtml(item.effort||"未确认")}</p><p>得到：${escapeHtml(item.result||"未确认")}</p><p>真正变化：${escapeHtml(item.state_change||"未确认")}</p><p>留下的新问题：${escapeHtml(item.next_question||"未确认")}</p>${evidence(item.evidence)}</div></article>`).join(""):'<p class="skill-meta">目前没有足够证据整理出完整推进轮次。</p>'}</section><div class="attraction-grid"><article><span>问题与答案是否接得上</span><strong>${questions.length?`${questions.length}条问题链`:"目前没有完整问题链"}</strong>${questions.slice(0,4).map(item=>`<p>${escapeHtml(item.question||"问题未命名")} → ${escapeHtml(item.answer||item.next_question||"尚未回答")}</p>`).join("")}</article><article><span>人物关系怎样变化</span><strong>${relationships.length?`${relationships.length}次有原因的变化`:"目前没有明确关系变化"}</strong>${relationships.slice(0,4).map(item=>`<p>${escapeHtml(item.before||"之前")} → ${escapeHtml(item.after||"之后")}，因为${escapeHtml(item.cause||"原因未确认")}</p>`).join("")}</article><article><span>反转是否有前文依据</span><strong>${escapeHtml(reversal?.content||"没有确认到有效反转")}</strong>${reversal?evidence(reversal.prior_evidence):""}</article><article><span>结尾最终兑现什么</span><p>事情结果：${escapeHtml(ending.surface_payoff||ending.surface_goal||"尚不明确")}</p><p>情感结果：${escapeHtml(ending.emotional_payoff||ending.inner_goal||"尚不明确")}</p><p>付出代价：${escapeHtml(ending.cost||"尚不明确")}</p>${evidence(ending.evidence)}</article></div>${uncertainties.length?`<details class="attraction-uncertainty"><summary>目前只能确定到这里（${uncertainties.length}项）</summary><ul>${uncertainties.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul></details>`:""}${actions}</section>`;
+  return `<section class="attraction-map"><header><div><p class="eyebrow">模型全文分析 · 剧情吸引力</p><h3>${fit}</h3><p>${escapeHtml(zh(data.fit?.explanation,"系统按全文证据整理了可能推动读者继续阅读的结构。"))}</p></div><span>${node.status==="confirmed"?"已确认":node.status==="rejected"?"已拒绝":"等待你确认"}</span></header><div class="attraction-grid"><article><span>开头为什么让人继续看</span><strong>${escapeHtml(zh(opening.transfer_guidance,"目前没有足够证据判断"))}</strong>${evidence(opening.evidence)}</article><article><span>人物一直想完成什么</span><p>外部：${escapeHtml(zh(goal.surface,"尚不明确"))}</p><p>内心：${escapeHtml(zh(goal.emotional,"尚不明确"))}</p>${evidence(goal.evidence)}</article></div><section class="attraction-cycles"><h4>剧情怎样一轮轮向前走</h4>${cycles.length?cycles.map((item,index)=>`<article><b>${index+1}</b><div><strong>遇到：${escapeHtml(zh(item.obstacle,"未确认"))}</strong><p>采取：${escapeHtml(zh(item.effort,"未确认"))}</p><p>得到：${escapeHtml(zh(item.result,"未确认"))}</p><p>真正变化：${escapeHtml(zh(item.state_change,"未确认"))}</p><p>留下的新问题：${escapeHtml(zh(item.next_question,"未确认"))}</p>${evidence(item.evidence)}</div></article>`).join(""):'<p class="skill-meta">目前没有足够证据整理出完整推进轮次。</p>'}</section><div class="attraction-grid"><article><span>问题与答案是否接得上</span><strong>${questions.length?`${questions.length}条问题链`:"目前没有完整问题链"}</strong>${questions.slice(0,4).map(item=>`<p>${escapeHtml(zh(item.question,"问题未命名"))} → ${escapeHtml(zh(item.answer||item.next_question,"尚未回答"))}</p>`).join("")}</article><article><span>人物关系怎样变化</span><strong>${relationships.length?`${relationships.length}次有原因的变化`:"目前没有明确关系变化"}</strong>${relationships.slice(0,4).map(item=>`<p>${escapeHtml(zh(item.before,"之前"))} → ${escapeHtml(zh(item.after,"之后"))}，因为${escapeHtml(zh(item.cause,"原因未确认"))}</p>`).join("")}</article><article><span>反转是否有前文依据</span><strong>${escapeHtml(zh(reversal?.content,"没有确认到有效反转"))}</strong>${reversal?evidence(reversal.prior_evidence):""}</article><article><span>结尾最终兑现什么</span><p>事情结果：${escapeHtml(zh(ending.surface_payoff||ending.surface_goal,"尚不明确"))}</p><p>情感结果：${escapeHtml(zh(ending.emotional_payoff||ending.inner_goal,"尚不明确"))}</p><p>付出代价：${escapeHtml(zh(ending.cost,"尚不明确"))}</p>${evidence(ending.evidence)}</article></div>${uncertainties.length?`<details class="attraction-uncertainty"><summary>目前只能确定到这里（${uncertainties.length}项）</summary><ul>${uncertainties.map(item=>`<li>${escapeHtml(zh(item,"这项内容还没有足够证据"))}</li>`).join("")}</ul></details>`:""}${actions}</section>`;
 }
 
 function renderLocalAttractionCandidates(candidates){
@@ -222,13 +228,14 @@ function renderReferenceDetail() {
   const source = state.activeReference;
   if (!source) return;
   const typeLabels={reference_work:"参考作品",platform_rule:"平台规则",popular_sample:"爆款样本",writing_tutorial:"写作教程",competitor_work:"竞品作品"};
+  const sourceTypeLabels={paste:"粘贴文本",txt:"TXT 文本",docx:"Word 文档",pdf:"PDF 文档",url:"网页资料"};
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
   const learning=state.learningReport?.source_id===source.id?state.learningReport:null;
   const learningSummary=learning?`<section class="reference-learning-summary"><div><strong>${learning.analyzed_windows} / ${learning.window_count}</strong><span>窗口已扫描</span></div><div><strong>${learning.coverage_percent}%</strong><span>全文覆盖率</span></div><div><strong>${learning.mechanisms.length}</strong><span>合并后候选机制</span></div><p>本地规则已覆盖全文；候选机制的多处证据已合并，可在下方项目学习区查看。</p></section>`:"";
   const diagnosticsHtml=metrics?`<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>需要你复核</span></div></section><section class="reference-findings"><h3>本地诊断</h3><p class="section-intro">这些是本地规则找到的疑似位置，不代表文章一定有错。请结合原文决定是否修改。</p>${findings.length?findings.map(renderDiagnosticFinding).join(""):'<p class="skill-meta">当前没有发现需要你复核的问题。</p>'}</section>`:'<section><p class="skill-meta">尚未运行本地诊断。点击后会扫描全文，并说明每个疑似问题为什么值得检查。</p></section>';
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(source.source_type.toUpperCase())}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型深度分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header><section class="reference-task-status" data-reference-task-status></section>${learningSummary}${renderLocalAttractionCandidates(learning?.attraction_candidates)}${renderAttractionMap()}${diagnosticsHtml}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(sourceTypeLabels[source.source_type]||"参考资料")}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型全文分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header><section class="reference-task-status" data-reference-task-status></section>${learningSummary}${renderLocalAttractionCandidates(learning?.attraction_candidates)}${renderAttractionMap()}${diagnosticsHtml}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
   renderReferenceTaskStatus();
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
   $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
@@ -252,8 +259,8 @@ function renderReferenceDetail() {
   marketPanel.className="reference-market-panel";
   const context=source.market_context;
   marketPanel.innerHTML=context
-    ? `<div><p class="eyebrow">MARKET LINK</p><h3>已关联《${escapeHtml(context.title)}》</h3><p class="skill-meta">${escapeHtml(context.platform)} · ${escapeHtml(context.current?.ranking_name||"暂无当前榜单")} ${context.current?.rank?`第 ${context.current.rank} 名`:""} · 市场数据 ${escapeHtml(formatLocalTimestamp(context.current?.captured_at)||"尚未更新")}</p></div><button class="secondary danger-text" data-market-unlink>解除榜单关联</button>`
-    : `<div><p class="eyebrow">MARKET MATCH</p><h3>榜单作品匹配</h3><p class="skill-meta">根据文件名、作品名和正文开头在本地查找候选，不会自动关联。</p></div><button class="secondary" data-market-match>查找榜单匹配</button><div class="market-match-results" data-market-match-results></div>`;
+    ? `<div><p class="eyebrow">榜单关联</p><h3>已关联《${escapeHtml(context.title)}》</h3><p class="skill-meta">${escapeHtml(context.platform)} · ${escapeHtml(context.current?.ranking_name||"暂无当前榜单")} ${context.current?.rank?`第 ${context.current.rank} 名`:""} · 市场数据 ${escapeHtml(formatLocalTimestamp(context.current?.captured_at)||"尚未更新")}</p></div><button class="secondary danger-text" data-market-unlink>解除榜单关联</button>`
+    : `<div><p class="eyebrow">榜单匹配</p><h3>榜单作品匹配</h3><p class="skill-meta">根据文件名、作品名和正文开头在本地查找候选，不会自动关联。</p></div><button class="secondary" data-market-match>查找榜单匹配</button><div class="market-match-results" data-market-match-results></div>`;
   metadata.insertAdjacentElement("afterend",marketPanel);
   marketPanel.querySelector("[data-market-match]")?.addEventListener("click",()=>matchReferenceMarket(source.id));
   marketPanel.querySelector("[data-market-unlink]")?.addEventListener("click",()=>unlinkReferenceMarket(source.id));
@@ -673,7 +680,7 @@ async function learnReference() {
   catch(error) { state.referenceTask={...state.referenceTask,status:"failed",phase:"failed",finished_at:new Date().toISOString(),error:error.message};renderReferenceTaskStatus();toast(error.message); }
 }
 async function modelLearnReference() {
-  if(!state.activeReference||!confirm("这是什么：模型会逐段阅读全文，再整理成需要你确认的候选写法。\n\n为什么现在询问：这个操作会调用已配置 API，可能产生费用。\n\n操作后会发生什么：分析结果只进入候选区，不会自动修改正文或写作项目。\n\n开始模型深度分析？"))return;
+  if(!state.activeReference||!confirm("这是什么：模型会逐段阅读全文，先独立查找重要内容，再复核本地候选。\n\n为什么现在询问：这个操作会调用已配置 API，可能产生费用。\n\n操作后会发生什么：结果会明确标注为模型确认或模型新增，不会自动修改正文或写作项目。\n\n开始模型全文分析？"))return;
   try{
     state.referenceTask=await api(`/api/references/${state.activeReference.id}/model-learn`,{method:"POST"});renderReferenceTaskStatus();
     pollReferenceAnalysisTask(state.activeReference.id);
@@ -682,8 +689,140 @@ async function modelLearnReference() {
 
 async function loadProjectLearning() {
   const projectId=$("#learning-project").value;
-  state.projectLearning=projectId ? await api(`/api/projects/${projectId}/learning`) : null;
+  if(projectId){
+    [state.projectLearning,state.outlines]=await Promise.all([
+      api(`/api/projects/${projectId}/learning`),
+      api(`/api/projects/${projectId}/learning/outlines`),
+    ]);
+  }else{
+    state.projectLearning=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
+  }
   renderLearningArtifacts();
+  renderOutlineWorkspace();
+}
+
+function setOutlineOperationStatus(kind,title,detail){
+  const shell=$("#outline-operation-status");if(!shell)return;
+  shell.className=`outline-operation-status ${kind||""}`.trim();
+  shell.innerHTML=`<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail||"")}</span>`;
+}
+
+async function loadOutlineWorkspace(){
+  const projectId=learningProjectId();
+  state.outlines=projectId?await api(`/api/projects/${projectId}/learning/outlines`):null;
+  const ids=new Set((state.outlines?.candidates||[]).map(item=>item.id));
+  if(!ids.has(state.activeOutlineCandidateId)){state.activeOutlineCandidateId=null;state.outlineComparison=null;}
+  renderOutlineWorkspace();
+}
+
+function outlineChangeLabel(type){return {added:"新增剧情",removed:"删除剧情",changed:"内容变化",reordered:"位置调整",uncertain:"暂时判断不了"}[type]||"发生变化";}
+
+function renderOutlineComparison(report){
+  const shell=$("#outline-comparison");if(!shell)return;
+  if(!report){shell.hidden=true;shell.innerHTML="";return;}
+  shell.hidden=false;
+  const summary=report.summary||{},changes=report.changes||[];
+  const risks=(report.risks||[]).map(item=>`<li>${escapeHtml(item)}</li>`).join("");
+  const list=changes.length?changes.map(item=>`<article class="outline-change-item">
+    <label><input type="checkbox" data-outline-change="${item.id}"> <span><strong>${escapeHtml(item.label)}</strong><small>${outlineChangeLabel(item.type)}</small></span></label>
+    <p>${escapeHtml(item.explanation||"请查看前后内容后决定是否采用。")}</p>
+    ${item.impact?`<p class="outline-impact"><strong>可能影响：</strong>${escapeHtml(item.impact)}</p>`:""}
+    <details><summary>查看改动前后</summary><div class="outline-before-after"><section><span>当前大纲</span><pre>${escapeHtml(item.current_text||"（没有这段）")}</pre></section><section><span>候选大纲</span><pre>${escapeHtml(item.candidate_text||"（将删除这段）")}</pre></section></div></details>
+  </article>`).join(""):'<div class="learning-empty"><strong>没有发现变化</strong><p>这个候选与当前大纲内容相同，不需要应用。</p></div>';
+  shell.innerHTML=`<header><div><h4>比较结果</h4><p>勾选你想要的变化；没有勾选的内容会保持原样。</p></div><div class="outline-change-summary"><span>新增 <b>${summary.added||0}</b></span><span>删除 <b>${summary.removed||0}</b></span><span>调整 <b>${summary.changed||0}</b></span></div></header>
+    ${risks?`<ul class="outline-risks">${risks}</ul>`:""}
+    <div class="outline-change-list">${list}</div>
+    <footer>
+      ${report.semantic_review_recommended?'<button class="secondary" type="button" data-outline-semantic>请模型判断</button>':""}
+      <button class="secondary" type="button" data-outline-apply-selected ${changes.length?"":"disabled"}>应用勾选的变化</button>
+      <button class="primary" type="button" data-outline-apply-whole ${report.can_apply&&changes.length?"":"disabled"}>整体采用这个版本</button>
+    </footer>`;
+  shell.querySelector("[data-outline-semantic]")?.addEventListener("click",semanticReviewOutline);
+  shell.querySelector("[data-outline-apply-selected]")?.addEventListener("click",()=>applyOutline(false));
+  shell.querySelector("[data-outline-apply-whole]")?.addEventListener("click",()=>applyOutline(true));
+}
+
+function renderOutlineWorkspace(){
+  const currentShell=$("#outline-current"),candidateShell=$("#outline-candidates"),editor=$("#outline-editor");
+  if(!currentShell||!candidateShell||!editor)return;
+  const current=state.outlines?.current;
+  const currentVersion=Number(current?.outline_version)>0?`第 ${current.outline_version} 版`:"旧项目已有版本";
+  currentShell.innerHTML=current?.exists
+    ?`<strong>当前正式大纲 · ${currentVersion}</strong><span>${escapeHtml(current.message)}</span>`
+    :`<strong>还没有正式大纲</strong><span>${escapeHtml(current?.message||"生成候选后，可以把它设为第一版大纲。")}</span>`;
+  const candidates=state.outlines?.candidates||[];
+  candidateShell.innerHTML=candidates.length?candidates.map(item=>`<button type="button" class="outline-candidate-item ${item.id===state.activeOutlineCandidateId?"active":""}" data-outline-open="${item.id}"><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.message||"等待你处理")}</small></span><b>查看并编辑全文</b></button>`).join(""):'<div class="learning-empty"><strong>还没有候选大纲</strong><p>在上方说明想调整什么，然后生成候选版本。</p></div>';
+  candidateShell.querySelectorAll("[data-outline-open]").forEach(button=>button.addEventListener("click",()=>{
+    state.activeOutlineCandidateId=button.dataset.outlineOpen;state.outlineComparison=null;renderOutlineWorkspace();
+  }));
+  const candidate=candidates.find(item=>item.id===state.activeOutlineCandidateId);
+  editor.hidden=!candidate;
+  if(candidate){
+    $("#outline-editor-title").value=candidate.title||"候选大纲";
+    $("#outline-editor-content").value=candidate.content||"";
+  }
+  renderOutlineComparison(candidate?state.outlineComparison:null);
+  const history=state.outlines?.history||[];
+  $("#outline-history-count").textContent=`${history.length} 个版本`;
+  $("#outline-history-list").innerHTML=history.length?history.slice().reverse().map(item=>`<div class="outline-history-item"><span><strong>第 ${item.outline_version} 版${item.is_current?" · 当前":""}</strong><small>${escapeHtml(item.source==="restored"?"从历史恢复":"由候选大纲确认")}</small></span><button class="secondary" type="button" data-outline-restore="${item.outline_version}" ${item.is_current?"disabled":""}>恢复这个版本</button></div>`).join(""):'<p class="skill-meta">还没有正式大纲版本</p>';
+  $("#outline-history-list").querySelectorAll("[data-outline-restore]").forEach(button=>button.addEventListener("click",()=>restoreOutline(Number(button.dataset.outlineRestore))));
+}
+
+async function saveOutlineCandidate(){
+  const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId;if(!projectId||!candidateId)return;
+  setOutlineOperationStatus("busy","正在保存修改","保存完成后会重新读取候选全文。");
+  try{
+    await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}`,{method:"PUT",body:JSON.stringify({title:$("#outline-editor-title").value,outline:$("#outline-editor-content").value})});
+    state.outlineComparison=null;await loadOutlineWorkspace();setOutlineOperationStatus("success","修改已保存","现在可以比较它与正式大纲的变化。");
+  }catch(error){setOutlineOperationStatus("error","保存失败",error.message);}
+}
+
+async function compareOutlineCandidate(){
+  const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId;if(!projectId||!candidateId)return;
+  setOutlineOperationStatus("busy","正在本地比较","只比较大纲文字和结构，不会调用模型。");
+  try{
+    await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}`,{method:"PUT",body:JSON.stringify({title:$("#outline-editor-title").value,outline:$("#outline-editor-content").value})});
+    state.outlineComparison=await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}/comparison`);renderOutlineWorkspace();
+    setOutlineOperationStatus("success","比较完成","请勾选想采用的变化，或整体采用候选版本。");
+  }catch(error){setOutlineOperationStatus("error","比较失败",error.message);}
+}
+
+async function semanticReviewOutline(){
+  const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId;if(!projectId||!candidateId)return;
+  setOutlineOperationStatus("busy","正在请模型判断","只发送本地无法确定的变化，不会发送或改写正文。");
+  try{
+    state.outlineComparison=await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}/semantic-review`,{method:"POST"});renderOutlineWorkspace();
+    setOutlineOperationStatus("success","模型判断完成","判断已放回变化列表，请继续选择是否应用。");
+  }catch(error){setOutlineOperationStatus("error","模型判断失败",error.message);}
+}
+
+async function applyOutline(whole){
+  const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId,report=state.outlineComparison;if(!projectId||!candidateId||!report)return;
+  const changeIds=[...document.querySelectorAll("[data-outline-change]:checked")].map(item=>item.dataset.outlineChange);
+  if(!whole&&!changeIds.length)return setOutlineOperationStatus("error","还没有勾选变化","请先勾选至少一项想采用的变化。");
+  const manuscript=Boolean(report.current?.manuscript_exists);
+  const message=whole?(manuscript?"整体采用会改变后续创作依据，但不会修改已经写好的正文。确认继续？":"整体采用这个候选版本作为正式大纲？"):`应用勾选的 ${changeIds.length} 项变化？其他内容保持不变。`;
+  if(!confirm(message))return;
+  setOutlineOperationStatus("busy","正在应用大纲","系统正在保存新版本并检查锁定设定。");
+  try{
+    await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}/apply`,{method:"POST",body:JSON.stringify({expected_revision:report.state_revision,apply_whole:whole,change_ids:whole?null:changeIds,confirm_manuscript_impact:whole&&manuscript})});
+    state.activeOutlineCandidateId=null;state.outlineComparison=null;await loadProjectLearning();
+    setOutlineOperationStatus("success","新大纲已生效","后续创作会使用它；已经写好的正文没有改变。");
+  }catch(error){setOutlineOperationStatus("error","应用失败",error.message);}
+}
+
+async function discardOutlineCandidate(){
+  const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId;if(!projectId||!candidateId||!confirm("放弃这个候选大纲？正式大纲和正文都不会改变。"))return;
+  setOutlineOperationStatus("busy","正在放弃候选","请稍候。");
+  try{await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}`,{method:"DELETE"});state.activeOutlineCandidateId=null;state.outlineComparison=null;await loadOutlineWorkspace();setOutlineOperationStatus("success","候选已放弃","正式大纲和正文都没有改变。");}
+  catch(error){setOutlineOperationStatus("error","放弃失败",error.message);}
+}
+
+async function restoreOutline(version){
+  const projectId=learningProjectId();if(!projectId||!confirm(`恢复第 ${version} 版大纲？系统会新增一个恢复版本，现有历史和正文都不会删除。`))return;
+  setOutlineOperationStatus("busy","正在恢复历史版本","系统正在创建新的正式大纲版本。");
+  try{await api(`/api/projects/${projectId}/learning/outlines/restore`,{method:"POST",body:JSON.stringify({outline_version:version})});await loadProjectLearning();setOutlineOperationStatus("success","历史版本已恢复","它已成为新的正式大纲，原历史仍然保留。");}
+  catch(error){setOutlineOperationStatus("error","恢复失败",error.message);}
 }
 
 function mechanismStage(position){
@@ -704,16 +843,38 @@ function mechanismEvidenceGroups(item){
   return groups;
 }
 
+function mechanismSourceMeta(item){
+  const analysis=item.analysis||{},origin=item.data.analysis_origin||"local";
+  const values={
+    local_only:{label:"本地提炼",detail:"未调用模型",judgment:"等待模型判断",tone:"local"},
+    model_only:{label:"模型新增",detail:"模型全文分析",judgment:"等待你确认",tone:"model"},
+    model_confirmed:{label:"本地发现 + 模型确认",detail:"模型全文分析",judgment:"较高",tone:"confirmed"},
+    model_disagrees:{label:"本地与模型意见不同",detail:"需要你判断",judgment:"意见不同",tone:"conflict"},
+    needs_review:{label:"本地 + 模型复核",detail:"模型暂时无法确定",judgment:"待复核",tone:"uncertain"},
+  };
+  return {...(values[analysis.state]||values[origin==="model"?"model_only":"local_only"]),origin,analysis};
+}
+
 function renderMechanismCard(item,adopted,rejectedView){
   const rejected=item.status==="rejected",confirmed=item.status==="confirmed";
   const needsConfirm=Number(item.data.confidence||0)<0.7&&!confirmed;
   const statusLabel=rejected?"已拒绝":confirmed?"已确认":"等待你判断";
+  const source=mechanismSourceMeta(item),modelOnly=source.origin==="model";
+  const text=(value,fallback)=>modelOnly?readableModelText(value,fallback):String(value||fallback);
   const evidence=item.evidence||[],positions=item.data.positions||[];
   const stages=[...new Set(positions.map(mechanismStage))];
   const groups=mechanismEvidenceGroups(item);
-  const conditions=(item.data.incompatible_conditions||[]).join("；")||"当情节没有产生新信息、人物选择或关系变化时，不要为了模仿而硬加。";
+  const conditions=text((item.data.incompatible_conditions||[]).join("；"),"没有明确使用条件，请结合原文证据判断是否适合。 ");
   const groupedEvidence=Object.entries(groups).map(([stage,items])=>`<section><strong>${stage} · ${items.length} 处</strong>${items.map(value=>`<blockquote class="mechanism-evidence">${escapeHtml(value.excerpt)}</blockquote>`).join("")}</section>`).join("");
-  return `<article class="mechanism-item">${rejectedView?`<label class="mechanism-select"><input type="checkbox" data-mechanism-select="${item.id}"> 选择</label>`:""}<header><div><h3>${escapeHtml(item.data.name)}</h3><span class="mechanism-status">${statusLabel}</span></div><p><strong>这是什么：</strong>系统从参考作品中归纳出的候选写法，还没有自动进入你的作品。</p></header><div class="mechanism-stage-summary"><strong>全文命中 ${evidence.length||positions.length||1} 处</strong><span>${stages.length?`主要分布在${stages.join("、")}`:escapeHtml(item.data.structural_position||"位置待确认")}</span><span>参考可信度 ${Math.round(Number(item.data.confidence||0)*100)}%</span></div><div class="mechanism-explanation"><section><span>原文是怎么写的</span><p>${escapeHtml(item.data.fact||"模型从多处原文证据中归纳了这一写法。")}</p></section><section><span>为什么值得学习</span><p>${escapeHtml(item.data.interpretation||item.data.emotional_effect||"它可能影响读者对信息、人物或情节推进的感受。")}</p></section><section><span>你的作品可以怎么用</span><p>${escapeHtml(item.data.transfer_guidance||"保留这种写法的作用，替换人物、设定、情节和具体表达。")}</p></section><section><span>什么时候不要用</span><p>${escapeHtml(conditions)}</p></section></div>${evidence[0]?`<section class="mechanism-representative"><span>代表证据</span><blockquote class="mechanism-evidence">${escapeHtml(evidence[0].excerpt)}</blockquote></section>`:""}${evidence.length>1?`<details class="mechanism-evidence-list"><summary>按文章阶段查看全部证据（${evidence.length} 处）</summary>${groupedEvidence}</details>`:""}<p class="mechanism-decision"><strong>你需要决定：</strong>“保留为候选”表示认可这条分析；“应用到当前作品”会把它写入当前作品的创作蓝图，但不会直接改正文；“不采用”会把它移到已拒绝列表。</p><div class="mechanism-actions"><button class="secondary" data-mechanism-confirm="${item.id}" ${(confirmed||rejected)?"disabled":""}>${confirmed?"已保留":rejected?"已拒绝":"保留为候选"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm||rejected)?"disabled":""}>${adopted.has(item.id)?"已应用":"应用到当前作品"}</button><button class="secondary" data-mechanism-reject="${item.id}" ${rejected?"disabled":""}>${rejected?"已拒绝":"不采用"}</button>${rejected?`<button class="secondary danger-text" data-mechanism-delete="${item.id}">永久删除</button>`:""}</div></article>`;
+  const deletable=item.deletable!==false;
+  const selection=rejectedView&&deletable?`<label class="mechanism-select"><input type="checkbox" data-mechanism-select="${item.id}"> 选择</label>`:"";
+  const rejectedActions=deletable?`<button class="secondary danger-text" data-mechanism-delete="${item.id}">永久删除</button>`:`<p class="mechanism-delete-blocked">${escapeHtml(item.delete_reason||"这条写法当前不能删除")}</p><button class="secondary" data-mechanism-release="${item.id}">从作品中移除</button>`;
+  const activeActions=`<button class="secondary" data-mechanism-confirm="${item.id}" ${confirmed?"disabled":""}>${confirmed?"已保留":"保留为候选"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm)?"disabled":""}>${adopted.has(item.id)?"已应用":"应用到当前作品"}</button><button class="secondary" data-mechanism-reject="${item.id}">不采用</button>`;
+  const decision=rejected?"这条写法已被你拒绝。可以永久删除；如果仍在作品中使用，需要先取消应用。":"“保留为候选”表示认可分析；“应用到当前作品”会写入创作蓝图，但不会直接修改正文。";
+  const modelReason=source.analysis.model?readableModelText(source.analysis.model.reason,"模型完成了复核，但没有提供可读的中文理由。 "):"";
+  const localScore=source.analysis.local?.confidence;
+  const technical=`<details class="mechanism-judgment-details"><summary>查看判断依据</summary><p>本地判断：${localScore==null?"未运行":`${Math.round(Number(localScore)*100)}%`} · 模型复核：${source.analysis.model?source.detail:"未调用模型"}</p>${modelReason?`<p>模型理由：${escapeHtml(modelReason)}</p>`:""}<p>分析时间：${escapeHtml(formatLocalTimestamp(item.updated_at)||"未记录")}</p></details>`;
+  return `<article class="mechanism-item">${selection}<div class="mechanism-source-badges"><span class="${source.tone}">${source.label}</span><span>${source.detail}</span></div><header><div><h3>${escapeHtml(text(item.data.name,"模型提取的候选写法"))}</h3><span class="mechanism-status">${statusLabel}</span></div><div class="mechanism-stage-summary"><strong>来源资料：${escapeHtml(source.analysis.source_title||"未记录")}</strong><span>证据 ${evidence.length||positions.length||1} 处</span><span>${stages.length?stages.join("、"):escapeHtml(text(item.data.structural_position,"位置待确认"))}</span><span>综合判断：${source.judgment}</span></div></header><details class="mechanism-details"><summary>查看详情 · 写法和原文依据</summary><div class="mechanism-explanation"><section><span>原文是怎么写的</span><p>${escapeHtml(text(item.data.fact,"系统从全文证据中归纳了这一写法。"))}</p></section><section><span>为什么值得学习</span><p>${escapeHtml(text(item.data.interpretation||item.data.emotional_effect,"它可能影响读者对信息、人物或情节推进的感受。"))}</p></section><section><span>你的作品可以怎么用</span><p>${escapeHtml(text(item.data.transfer_guidance,"保留这种写法的作用，替换人物、设定、情节和具体表达。"))}</p></section><section><span>什么时候不要用</span><p>${escapeHtml(conditions)}</p></section></div>${evidence[0]?`<section class="mechanism-representative"><span>代表证据</span><blockquote class="mechanism-evidence">${escapeHtml(evidence[0].excerpt)}</blockquote></section>`:""}${evidence.length>1?`<details class="mechanism-evidence-list"><summary>查看全部证据（${evidence.length} 处）</summary>${groupedEvidence}</details>`:""}${technical}<p class="mechanism-decision"><strong>${rejected?"当前状态：":"你需要决定："}</strong>${decision}</p></details><div class="mechanism-actions">${rejected?rejectedActions:activeActions}</div></article>`;
 }
 
 function renderLearning() {
@@ -722,13 +883,17 @@ function renderLearning() {
   if (state.activeProject) select.value=state.activeProject.id;
   const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
   const rejectedView=$("#learning-mechanism-view")?.value==="rejected";
-  const batch=rejectedView&&state.mechanisms.length?'<div class="mechanism-batch-actions"><label><input type="checkbox" data-mechanism-select-all> 全选当前结果</label><button class="secondary danger-text" data-mechanism-delete-selected>删除所选</button></div>':"";
-  const cards=state.mechanisms.length?state.mechanisms.map(item=>renderMechanismCard(item,adopted,rejectedView)).join(""):`<p class="skill-meta">${rejectedView?"暂无已拒绝机制":"暂无候选机制"}</p>`;
+  const origin=$("#learning-mechanism-origin")?.value||"all";
+  const visible=state.mechanisms.filter(item=>origin==="all"||(item.data.analysis_origin||"local")===origin);
+  const deletableCount=visible.filter(item=>item.deletable!==false).length;
+  const batch=rejectedView&&deletableCount?`<div class="mechanism-batch-actions"><label><input type="checkbox" data-mechanism-select-all> 全选可删除的 ${deletableCount} 条</label><button class="secondary danger-text" data-mechanism-delete-selected>删除所选</button></div>`:"";
+  const cards=visible.length?visible.map(item=>renderMechanismCard(item,adopted,rejectedView)).join(""):`<p class="skill-meta">${rejectedView?"当前筛选下没有已拒绝写法":"当前筛选下没有候选写法"}</p>`;
   $("#learning-mechanisms").innerHTML=batch+cards;
   document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
   document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));
   document.querySelectorAll("[data-mechanism-reject]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismReject,"reject")));
   document.querySelectorAll("[data-mechanism-delete]").forEach(button=>button.addEventListener("click",()=>deleteRejectedMechanisms([button.dataset.mechanismDelete])));
+  document.querySelectorAll("[data-mechanism-release]").forEach(button=>button.addEventListener("click",()=>releaseMechanism(button.dataset.mechanismRelease)));
   $("[data-mechanism-delete-selected]")?.addEventListener("click",()=>deleteRejectedMechanisms([...document.querySelectorAll("[data-mechanism-select]:checked")].map(item=>item.dataset.mechanismSelect)));
   $("[data-mechanism-select-all]")?.addEventListener("change",event=>document.querySelectorAll("[data-mechanism-select]").forEach(item=>item.checked=event.target.checked));
   if (select.value && !state.projectLearning) loadProjectLearning(); else renderLearningArtifacts();
@@ -736,24 +901,66 @@ function renderLearning() {
 const mechanismView=()=>$("#learning-mechanism-view")?.value||"active";
 async function reloadMechanisms(){state.mechanisms=await api(`/api/learning/mechanisms?view=${encodeURIComponent(mechanismView())}`);renderLearning();}
 async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); await reloadMechanisms(); toast(action==="confirm"?"分析已确认":"分析已拒绝，可在“已拒绝”中查看"); } catch(error){toast(error.message);} }
-async function deleteRejectedMechanisms(ids){if(!ids.length)return toast("请先选择要删除的记录");if(!confirm(`永久删除 ${ids.length} 条已拒绝机制及其证据？此操作不可撤销。`))return;try{const result=await api("/api/learning/mechanisms",{method:"DELETE",body:JSON.stringify({node_ids:ids})});await reloadMechanisms();const skipped=result.skipped.length?`，${result.skipped.length} 条因已采纳或状态不符未删除`:"";toast(`已删除 ${result.deleted_ids.length} 条${skipped}`);}catch(error){toast(error.message);}}
+async function deleteRejectedMechanisms(ids){if(!ids.length)return toast("请先选择要删除的记录");if(!confirm(`永久删除 ${ids.length} 条已拒绝机制及其证据？此操作不可撤销。`))return;try{const result=await api("/api/learning/mechanisms",{method:"DELETE",body:JSON.stringify({node_ids:ids})});await reloadMechanisms();const skipped=result.skipped.length?`；未删除：${result.skipped.map(item=>item.reason).join("；")}`:"";toast(`已删除 ${result.deleted_ids.length} 条${skipped}`);}catch(error){toast(error.message);}}
+async function releaseMechanism(id){const item=state.mechanisms.find(value=>value.id===id);const projectIds=item?.active_project_ids||[];if(!projectIds.length)return reloadMechanisms();if(!confirm(`这条写法仍在 ${projectIds.length} 个作品中使用。确认从这些作品的创作蓝图中移除？不会修改已经生成的正文。`))return;try{for(const projectId of projectIds)await api(`/api/projects/${projectId}/learning/rejections/${id}`,{method:"POST",body:JSON.stringify({reason:"用户从已拒绝列表中取消应用"})});state.projectLearning=null;await reloadMechanisms();toast("已从作品中移除，现在可以永久删除");}catch(error){toast(error.message);}}
 async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
 function renderLearningArtifacts(){
   const shell=$("#learning-artifacts"); if(!shell)return;
   const artifacts=state.projectLearning?.artifacts||[];
   const reviews=state.projectLearning?.adoption_reviews||[];
-  const warning=reviews.length?`<section class="material-audit-status"><strong>有 ${reviews.length} 条已采纳机制需要重新确认</strong><p>来源资料的平台、内容类型或关联作品已修改。请在上方重新采纳需要保留的机制；正式正文不会被自动修改。</p>${reviews.map(item=>`<p>· ${escapeHtml(item.mechanism?.name||item.node_id)}</p>`).join("")}</section>`:"";
-  const content=artifacts.length?artifacts.map(item=>`<details class="learning-artifact" open><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||item.artifact_type)}</strong><span>版本 ${item.version} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`).join(""):'<p class="skill-meta">采纳机制或建立文笔资料后在此显示</p>';
+  const warning=reviews.length?`<section class="learning-review-alert"><div class="learning-review-list">${reviews.map(renderLearningReview).join("")}</div></section>`:"";
+  const content=artifacts.length?artifacts.map(item=>`<details class="learning-artifact"><summary><span><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||"学习资料")}</strong><small>${artifactSummary(item)}</small></span><b>${item.status==="stale"?"待复核":"生效中"}</b></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`).join(""):'<div class="learning-empty"><strong>当前作品还没有应用任何写法</strong><p>在“候选写法”中确认并应用后，这里会展示真正生效的创作规则。</p></div>';
   shell.innerHTML=warning+content;
+  shell.querySelectorAll("[data-learning-review-keep]").forEach(button=>button.addEventListener("click",()=>keepLearningReview(button.dataset.learningReviewKeep)));
+  shell.querySelectorAll("[data-learning-review-remove]").forEach(button=>button.addEventListener("click",()=>removeLearningReview(button.dataset.learningReviewRemove)));
 }
-$("#learning-project").addEventListener("change",async event=>{ state.activeProject=state.projects.find(item=>item.id===event.target.value)||state.activeProject; state.projectLearning=null; await loadProjectLearning(); renderLearning(); });
+function learningReviewItems(review){
+  const data=review.data||{};
+  const items=[];
+  if(data.opening_rule)items.push(["开头设计",data.opening_rule]);
+  (data.cycle_rules||[]).forEach((value,index)=>items.push([`第 ${index+1} 轮推进`,value]));
+  (data.question_rules||[]).forEach(value=>items.push(["问题链",value]));
+  (data.relationship_rules||[]).forEach(value=>items.push(["关系变化",value]));
+  if(data.reversal_rule)items.push(["反转",data.reversal_rule]);
+  if(data.ending_rule)items.push(["结局",data.ending_rule]);
+  if(!items.length&&data.transfer_guidance)items.push(["使用方法",data.transfer_guidance]);
+  if(!items.length&&review.mechanism?.transfer_guidance)items.push(["使用方法",review.mechanism.transfer_guidance]);
+  return items;
+}
+function renderLearningReview(review){
+  const title=review.mechanism?.name||(review.data?.mechanism_type==="attraction_guidance"?"剧情吸引力规则":"已采用的写法");
+  const items=learningReviewItems(review);
+  const ruleCount=items.length;
+  const rules=ruleCount?items.map(([label,value])=>`<div><span>${escapeHtml(label)}</span><p>${escapeHtml(value)}</p></div>`).join(""):'<p class="skill-meta">没有找到可读摘要，请在下方创作蓝图中查看。</p>';
+  return `<article class="learning-review-item"><header><div><strong>${escapeHtml(title)}</strong><span>需要你确认</span></div><small>仍在当前作品中使用</small></header><p class="learning-review-reason">来源资料的分类变了，请决定是否继续用于新创作。已生成的正文不会改变。</p><footer class="learning-review-actions"><button class="primary" data-learning-review-keep="${review.node_id}">继续使用</button><button class="secondary danger-text" data-learning-review-remove="${review.node_id}">从作品移除</button></footer><details class="learning-review-details"><summary>查看具体规则${ruleCount?`（${ruleCount} 条）`:""}</summary><div class="learning-review-rules">${rules}</div></details></article>`;
+}
+async function keepLearningReview(nodeId){const projectId=learningProjectId();if(!projectId||!confirm("继续使用这项内容？系统会按当前资料分类重新启用它，不会修改已经生成的正文。"))return;try{await api(`/api/projects/${projectId}/learning/adoptions/${nodeId}`,{method:"POST",body:JSON.stringify({edits:{}})});await loadProjectLearning();renderLearning();toast("已确认继续使用");}catch(error){toast(error.message);}}
+async function removeLearningReview(nodeId){const projectId=learningProjectId();if(!projectId||!confirm("从当前作品移除这项内容？创作蓝图会同步更新，但不会修改已经生成的正文。"))return;try{await api(`/api/projects/${projectId}/learning/rejections/${nodeId}`,{method:"POST",body:JSON.stringify({reason:"用户在作品应用复核中移除"})});await loadProjectLearning();renderLearning();toast("已从当前作品移除");}catch(error){toast(error.message);}}
+function switchLearningView(view){
+  const target=["references","mechanisms","application"].includes(view)?view:"references";
+  document.querySelectorAll("[data-learning-view]").forEach(button=>button.classList.toggle("active",button.dataset.learningView===target));
+  document.querySelectorAll("[data-learning-panel]").forEach(panel=>{const active=panel.dataset.learningPanel===target;panel.hidden=!active;panel.classList.toggle("active",active);});
+}
+document.querySelectorAll("[data-learning-view]").forEach(button=>button.addEventListener("click",()=>switchLearningView(button.dataset.learningView)));
+$("#learning-project").addEventListener("change",async event=>{ state.activeProject=state.projects.find(item=>item.id===event.target.value)||state.activeProject; state.projectLearning=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null; await loadProjectLearning(); renderLearning(); });
 $("#learning-mechanism-view").addEventListener("change",reloadMechanisms);
+$("#learning-mechanism-origin").addEventListener("change",renderLearning);
 const learningProjectId=()=>$("#learning-project").value;
 async function saveLearningArtifact(path,data){const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/${path}`,{method:"PUT",body:JSON.stringify({data})});await loadProjectLearning();toast("已保存为新版本");}catch(error){toast(error.message);}}
 $("#baseline-form").addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.target);await saveLearningArtifact("prose-baseline",{dialogue:form.get("dialogue"),psychology:form.get("psychology"),forbidden_patterns:String(form.get("forbidden")||"").split(/\r?\n/).map(item=>item.trim()).filter(Boolean)});});
 $("#voice-form").addEventListener("submit",async event=>{event.preventDefault();const form=new FormData(event.target);const current=state.projectLearning?.artifacts?.find(item=>item.artifact_type==="voice_profiles")?.data||{};await saveLearningArtifact("voice-profiles",{...current,[form.get("name")]:{rules:form.get("profile")}});});
 $("#scene-brief-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/scene-briefs`,{method:"POST",body:JSON.stringify({outline:new FormData(event.target).get("outline")})});await loadProjectLearning();toast("场景简报已生成，可继续编辑");}catch(error){toast(error.message);}});
-$("#outline-candidate-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId||!confirm("将调用规划模型生成候选大纲，不会覆盖现有大纲。继续？"))return;try{const result=await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:new FormData(event.target).get("brief")})});toast(`候选大纲已保存：${result.id}`);}catch(error){toast(error.message);}});
+$("#outline-generate-form").addEventListener("submit",async event=>{
+  event.preventDefault();const projectId=learningProjectId();if(!projectId)return setOutlineOperationStatus("error","还没有选择作品","请先在页面顶部选择要处理的作品。");
+  if(!confirm("生成候选会调用规划模型，可能产生费用。结果只进入候选区，不会覆盖正式大纲或正文。继续？"))return;
+  const button=event.currentTarget.querySelector("button");button.disabled=true;setOutlineOperationStatus("busy","正在生成候选大纲","规划模型正在整理新版本，完成前请不要重复点击。");
+  try{await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:new FormData(event.currentTarget).get("brief")})});await loadOutlineWorkspace();setOutlineOperationStatus("success","候选大纲已生成","请在下方打开全文，编辑或比较后再决定是否应用。");}
+  catch(error){setOutlineOperationStatus("error","生成失败",error.message);}
+  finally{button.disabled=false;}
+});
+$("#outline-save").addEventListener("click",saveOutlineCandidate);
+$("#outline-compare").addEventListener("click",compareOutlineCandidate);
+$("#outline-discard").addEventListener("click",discardOutlineCandidate);
 $("#line-edit-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId||!confirm("将调用 line_edit 模型生成候选文本，不会修改正式正文。继续？"))return;const form=new FormData(event.target);try{const result=await api(`/api/projects/${projectId}/learning/model-line-edit`,{method:"POST",body:JSON.stringify({source:form.get("source"),issues:String(form.get("issues")).split(/[,，]/).map(item=>item.trim()).filter(Boolean),locked_facts:[],adjacent_context:""})});const shell=$("#line-edit-result");shell.hidden=false;shell.textContent=result.candidate;toast("精修候选已生成，原文未修改");}catch(error){toast(error.message);}});
 
 function renderNlpStatus(){ if(!state.localNlp)return; $("#nlp-status").textContent=`${state.localNlp.installed?"已安装":"未安装"} · ${state.localNlp.enabled?"已启用":"未启用"} · ${state.localNlp.operation} · ${state.localNlp.download_notice}`; $("#nlp-toggle").textContent=state.localNlp.enabled?"停用":"启用"; }
@@ -965,12 +1172,21 @@ async function renderMaterials() {
     await loadStoryState(project.id);
   } catch(error) { $("#character-detail").innerHTML=`<p class="error-text">${escapeHtml(error.message)}</p>`; }
 }
-const learningArtifactLabels={creative_blueprint:"创作蓝图",prose_baseline:"可执行文笔基线",voice_profiles:"人物声音档案",epistemic_state:"人物认知状态",scene_briefs:"场景简报"};
-const learningFieldLabels={status:"状态",mechanisms:"已采纳机制",rules:"执行规则",summary:"摘要",sentence_rhythm:"句子节奏",paragraph_rhythm:"段落节奏",dialogue:"对白规则",psychology:"心理描写",narrative_distance:"叙事距离",viewpoint:"视角",action_sensation:"动作与感官",professional_detail:"专业细节",forbidden_patterns:"禁止表达",states:"认知记录",briefs:"场景",name:"名称",fact:"事实",interpretation:"分析",transfer_guidance:"迁移方式",title:"标题",pov:"视角",entry_goal:"入场目标",obstacle:"阻碍",relationship_tension:"关系张力",required_state_change:"必要变化",information_boundary:"信息边界",reader_question:"读者问题",exit_state:"离场状态",locked_facts:"锁定事实",source:"来源",provenance:"依据"};
+const learningArtifactLabels={creative_blueprint:"创作蓝图",short_causal_chain:"七步剧情结构",prose_baseline:"文笔规则",voice_profiles:"人物说话方式",epistemic_state:"人物认知状态",scene_briefs:"场景安排"};
+const learningFieldLabels={status:"状态",mechanisms:"已采用的写法",rules:"执行规则",summary:"摘要",sentence_rhythm:"句子节奏",paragraph_rhythm:"段落节奏",dialogue:"对白规则",psychology:"心理描写",narrative_distance:"叙事距离",viewpoint:"视角",action_sensation:"动作与感官",professional_detail:"专业细节",forbidden_patterns:"避免使用",states:"认知记录",briefs:"场景",name:"名称",fact:"事实",interpretation:"作用",transfer_guidance:"使用方法",title:"标题",pov:"视角",entry_goal:"入场目标",obstacle:"阻碍",relationship_tension:"关系张力",required_state_change:"必要变化",information_boundary:"信息边界",reader_question:"读者问题",exit_state:"离场状态",locked_facts:"锁定事实",attraction_guidance:"剧情吸引力",causal_structure:"七步剧情结构",incidents:"触发事件",core_goal:"核心目标",inner_goal:"内在目标",surface_goal:"表面目标",cycles:"推进过程",effort:"人物努力",escalation:"阻碍升级",next_question:"下一个问题",result:"阶段结果",state_change:"状态变化",dynamics:"整体节奏",cycle_count:"推进轮数",target_cycle_range:"建议轮数",ending:"结局设计",opening:"开头设计",cost:"付出的代价",future_promise:"后续承诺",pressure:"现实压力",anomaly:"异常信号",question_chain:"问题链",reversal:"反转",ending_rule:"结尾规则",opening_rule:"开头规则",cycle_rules:"推进规则",question_rules:"问题规则",relationship_rules:"关系变化规则",reversal_rule:"反转规则",fit:"适配程度",finding:"发现",findings:"发现"};
+const learningTechnicalFields=new Set(["provenance","key","id","node_id","source_id","review_state","valid","source","confidence","positions","occurrence_count"]);
+function artifactSummary(item){const data=item.data||{};if(item.artifact_type==="creative_blueprint")return `${(data.mechanisms||[]).length} 条写法 · ${(data.rules||[]).length} 条规则`;if(item.artifact_type==="short_causal_chain")return "目标、推进与结局安排";if(item.artifact_type==="scene_briefs")return `${(data.briefs||[]).length} 个场景`;return `版本 ${item.version}`;}
 function readableLearningValue(value,key="") {
   if (value===null || value===undefined || value==="") return '<span class="skill-meta">未设置</span>';
   if (Array.isArray(value)) return value.length ? `<ul>${value.map(item=>`<li>${typeof item==="object"?readableLearningValue(item):escapeHtml(item)}</li>`).join("")}</ul>` : '<span class="skill-meta">暂无</span>';
-  if (typeof value==="object") return `<dl>${Object.entries(value).map(([name,item])=>`<div><dt>${escapeHtml(learningFieldLabels[name]||name)}</dt><dd>${readableLearningValue(item,name)}</dd></div>`).join("")}</dl>`;
+  if (typeof value==="object") {
+    const entries=Object.entries(value).filter(([,item])=>item!==null&&item!==undefined&&item!==""&&(!Array.isArray(item)||item.length));
+    const readable=entries.filter(([name])=>learningFieldLabels[name]&&!learningTechnicalFields.has(name));
+    const technical=entries.filter(([name])=>!learningFieldLabels[name]||learningTechnicalFields.has(name));
+    const main=readable.length?`<dl>${readable.map(([name,item])=>`<div><dt>${escapeHtml(learningFieldLabels[name])}</dt><dd>${readableLearningValue(item,name)}</dd></div>`).join("")}</dl>`:'<p class="skill-meta">暂无可展示内容</p>';
+    const raw=technical.length?`<details class="learning-technical"><summary>技术详情</summary><dl>${technical.map(([name,item])=>`<div><dt>${escapeHtml(learningFieldLabels[name]||name)}</dt><dd>${readableLearningValue(item,name)}</dd></div>`).join("")}</dl></details>`:"";
+    return main+raw;
+  }
   if (key==="status") return escapeHtml({candidate:"候选",active:"生效中",stale:"待复核"}[value]||value);
   return `<span>${escapeHtml(value)}</span>`;
 }
@@ -978,8 +1194,8 @@ function renderProjectLearningMaterials(result) {
   const shell=$("#project-learning-materials"); if(!shell)return;
   if(!result){shell.innerHTML='<p class="skill-meta">请选择作品</p>';return;}
   const artifacts=result.artifacts||[], adoptions=result.adoptions||[];
-  const sections=artifacts.map(item=>`<details class="project-learning-item" open><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||item.artifact_type)}</strong><span>版本 ${item.version} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`);
-  if(adoptions.length) sections.splice(1,0,`<details class="project-learning-item" open><summary><strong>已采纳机制</strong><span>${adoptions.length} 项</span></summary><div class="project-learning-copy">${readableLearningValue(adoptions.map(item=>item.data))}</div></details>`);
+  const sections=artifacts.map(item=>`<details class="project-learning-item"><summary><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||"学习资料")}</strong><span>${artifactSummary(item)} · ${item.status==="stale"?"待复核":"生效中"}</span></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div></details>`);
+  if(adoptions.length) sections.splice(1,0,`<details class="project-learning-item"><summary><strong>已采用的写法</strong><span>${adoptions.length} 项</span></summary><div class="project-learning-copy">${readableLearningValue({mechanisms:adoptions.map(item=>item.data)})}</div></details>`);
   shell.innerHTML=sections.join("")||'<p class="skill-meta">尚未采纳学习机制或建立执行资料</p>';
 }
 function renderMaterialImpacts(impacts) {
@@ -1109,7 +1325,7 @@ function renderWizard() {
   const steps = wizard.schema.steps; state.wizardStep = Math.max(0, Math.min(state.wizardStep, steps.length - 1));
   $("#wizard-steps").innerHTML = steps.map((step,index) => `<button class="wizard-step ${index === state.wizardStep ? "active" : ""}" data-wizard-step="${index}"><span>${index + 1}</span>${escapeHtml(step.title)}</button>`).join("");
   const step = steps[state.wizardStep]; $("#wizard-title").textContent = step.title;
-  $("#wizard-source").textContent = step.skill_name ? `${step.skill_name} · ${step.skill_hash.slice(0,12)}` : "CORE REQUIREMENTS";
+  $("#wizard-source").textContent = step.skill_name ? `${step.skill_name} · ${step.skill_hash.slice(0,12)}` : "核心要求";
   $("#wizard-fields").innerHTML = step.fields.map(field => { const answer = wizard.answers[field.id] || {}; return `<div class="wizard-field" data-field="${escapeHtml(field.id)}" data-type="${field.type}"><label><span>${escapeHtml(field.label)}${field.required ? " *" : ""}</span>${fieldControl(field,answer)}</label>${field.lockable ? `<label class="policy-label">处理方式<select class="field-policy"><option value="locked" ${answer.policy === "locked" ? "selected" : ""}>严格锁定</option><option value="suggestible" ${!answer.policy || answer.policy === "suggestible" ? "selected" : ""}>可建议</option><option value="generated" ${answer.policy === "generated" ? "selected" : ""}>模型生成</option></select></label>` : ""}</div>`; }).join("");
   updateGenreOptions();
   document.querySelector('[data-field="genre"] .field-value')?.addEventListener("input", updateGenreOptions);
@@ -1118,10 +1334,31 @@ function renderWizard() {
   document.querySelector('[data-field="platform"] .field-value')?.addEventListener("change",recommendMarketBaseline);
   document.querySelector('[data-field="genre"] .field-value')?.addEventListener("change",recommendMarketBaseline);
   $("#wizard-back").disabled = state.wizardStep === 0; $("#wizard-next").hidden = state.wizardStep === steps.length - 1; $("#wizard-analyze").hidden = state.wizardStep !== steps.length - 1; $("#wizard-confirm").hidden = state.wizardStep !== steps.length - 1;
+  renderWizardConfirmedMethods(state.wizardStep === steps.length - 1);
   document.querySelectorAll("[data-wizard-step]").forEach(button => button.addEventListener("click", async () => { await saveWizardStep(); state.wizardStep = Number(button.dataset.wizardStep); renderWizard(); }));
   let timer; document.querySelectorAll(".field-value,.field-policy").forEach(control => control.addEventListener("input", () => { $("#wizard-save-state").textContent = "保存中"; clearTimeout(timer); timer=setTimeout(() => saveWizardStep().catch(error => toast(error.message)),500); }));
   renderWizardSummary();
   if (state.interviewWizardId === wizard.id) renderInterview(); else loadInterview().catch(error => toast(error.message));
+}
+async function loadWizardConfirmedMethods(){
+  const wizard=state.activeWizard;if(!wizard)return;
+  state.wizardMethodsFor=wizard.id;state.wizardConfirmedMethods=null;renderWizardConfirmedMethods(true);
+  try{
+    const methods=await api(`/api/wizards/${wizard.id}/confirmed-mechanisms`);
+    if(state.activeWizard?.id!==wizard.id)return;
+    state.wizardConfirmedMethods=methods;renderWizardConfirmedMethods(true);
+  }catch(error){
+    if(state.activeWizard?.id!==wizard.id)return;
+    $("#wizard-confirmed-method-list").innerHTML=`<p class="error-text">读取失败：${escapeHtml(error.message)}</p>`;
+  }
+}
+function renderWizardConfirmedMethods(show){
+  const shell=$("#wizard-confirmed-methods"),list=$("#wizard-confirmed-method-list");if(!shell||!list)return;
+  shell.hidden=!show;if(!show||!state.activeWizard)return;
+  if(state.wizardMethodsFor!==state.activeWizard.id){loadWizardConfirmedMethods();return;}
+  if(!state.wizardConfirmedMethods){list.innerHTML='<p class="skill-meta">正在读取已确认写法</p>';return;}
+  list.innerHTML=state.wizardConfirmedMethods.length?state.wizardConfirmedMethods.map(item=>`<label class="wizard-method-item"><input type="checkbox" value="${item.id}" ${state.selectedWizardMethods.has(item.id)?"checked":""}><span><strong>${escapeHtml(item.name)}</strong><small>来自《${escapeHtml(item.source_title)}》</small><p>${escapeHtml(item.use)}</p></span></label>`).join(""):'<p class="skill-meta">学习库里还没有可直接带入的已确认写法。</p>';
+  list.querySelectorAll("input").forEach(input=>input.addEventListener("change",()=>input.checked?state.selectedWizardMethods.add(input.value):state.selectedWizardMethods.delete(input.value)));
 }
 function updateMarketBaselineWizardState(){const enabled=document.querySelector('[data-field="market_baseline_enabled"] .field-value')?.value!=="disabled";const select=document.querySelector('[data-field="market_baseline_key"] .field-value');if(select)select.disabled=!enabled;}
 function recommendMarketBaseline(){
@@ -1213,16 +1450,16 @@ async function startWizardFromReference() {
       if(fieldIds.has("plot.main_arc")) answers["plot.main_arc"]={value:`待在此基础上补充原创人物、冲突、转折与结局。\n${guidance}`,policy:"suggestible"};
       wizard=await api(`/api/wizards/${wizard.id}/answers`,{method:"PUT",body:JSON.stringify({answers})});
     }
-    state.activeWizard=wizard; state.wizardStep=0; state.wizards.unshift(wizard); showView("projects"); renderWizard();
+    state.activeWizard=wizard; state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(); state.wizards.unshift(wizard); showView("projects"); renderWizard();
     if(referenceId) toast("学习成果已带入建书向导，可继续修改大纲和设定");
   } catch(error) { toast(error.message); }
 }
 $("#start-wizard").addEventListener("click", startWizardFromReference);
-$("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0; renderWizard(); });
+$("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(); renderWizard(); });
 $("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });
 $("#wizard-next").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep++; renderWizard(); });
 $("#wizard-analyze").addEventListener("click", async () => { try { await saveWizardStep(); state.activeWizard=await api(`/api/wizards/${state.activeWizard.id}/analyze`,{method:"POST"}); state.wizardStep=state.activeWizard.schema.steps.length-1; renderWizard(); toast(state.activeWizard.status === "ready" ? "关键资料完整" : "已生成必要追问"); } catch(error) { toast(error.message); } });
-$("#wizard-confirm").addEventListener("click", async () => { try { await saveWizardStep(); const project=await api(`/api/wizards/${state.activeWizard.id}/confirm`,{method:"POST"}); state.projects.unshift(project); state.activeProject=project; state.activeWizard=null; $("#wizard-shell").hidden=true; $("#wizard-launcher").hidden=false; renderProjects(); showView("workbench"); const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"}); monitorRun(initialized); } catch(error) { toast(error.message); } });
+$("#wizard-confirm").addEventListener("click", async () => { try { await saveWizardStep(); const project=await api(`/api/wizards/${state.activeWizard.id}/confirm`,{method:"POST",body:JSON.stringify({selected_mechanism_ids:[...state.selectedWizardMethods]})}); state.projects.unshift(project); state.activeProject=project; state.activeWizard=null;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(); $("#wizard-shell").hidden=true; $("#wizard-launcher").hidden=false; renderProjects(); showView("workbench"); const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"}); monitorRun(initialized); } catch(error) { toast(error.message); } });
 
 async function run(path, body) {
   if (!state.activeProject) return toast("请先创建作品");

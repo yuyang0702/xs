@@ -26,6 +26,10 @@ class InterviewApply(BaseModel):
     field_ids: list[str]
 
 
+class WizardConfirm(BaseModel):
+    selected_mechanism_ids: list[str] = []
+
+
 def _service(request: Request):
     return request.app.state.wizards
 
@@ -58,8 +62,40 @@ def save_answers(wizard_id: str, payload: WizardAnswers, request: Request) -> di
         raise HTTPException(status_code=400, detail={"code": "invalid_answers", "message": str(exc)}) from exc
 
 
+def _confirmed_mechanisms(request: Request) -> list[dict]:
+    result = []
+    for item in request.app.state.learning.list_mechanisms(view="active"):
+        if item.get("status") != "confirmed" or item.get("node_type") != "mechanism":
+            continue
+        try:
+            source = request.app.state.references.get(item["source_id"])
+        except LookupError:
+            continue
+        if source.get("content_type") == "competitor_work":
+            continue
+        result.append({
+            "id": item["id"],
+            "name": item.get("data", {}).get("name") or "已确认写法",
+            "use": item.get("data", {}).get("transfer_guidance") or "用于后续创作规则",
+            "confidence": item.get("data", {}).get("confidence"),
+            "source_title": source.get("title") or "参考资料",
+        })
+        if len(result) == 12:
+            break
+    return result
+
+
+@router.get("/wizards/{wizard_id}/confirmed-mechanisms")
+def confirmed_wizard_mechanisms(wizard_id: str, request: Request) -> list[dict]:
+    try:
+        _service(request).get(wizard_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
+    return _confirmed_mechanisms(request)
+
+
 @router.post("/wizards/{wizard_id}/confirm", status_code=status.HTTP_201_CREATED)
-def confirm_wizard(wizard_id: str, request: Request) -> dict:
+def confirm_wizard(wizard_id: str, request: Request, payload: WizardConfirm | None = None) -> dict:
     try:
         wizard = _service(request).get(wizard_id)
         values = {key: item.get("value") for key, item in wizard.get("answers", {}).items()}
@@ -75,6 +111,16 @@ def confirm_wizard(wizard_id: str, request: Request) -> dict:
             raise HTTPException(status_code=400, detail={
                 "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
             })
+        selected_ids = list(dict.fromkeys((payload or WizardConfirm()).selected_mechanism_ids))
+        if len(selected_ids) > 12:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_learning_selection", "message": "一次最多选择 12 条已确认写法。",
+            })
+        allowed = {item["id"] for item in _confirmed_mechanisms(request)}
+        if any(node_id not in allowed for node_id in selected_ids):
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_learning_selection", "message": "所选写法已失效，请返回确认页重新选择。",
+            })
         project = _service(request).confirm(wizard_id)
         if key:
             baseline = request.app.state.market_baselines.build_baseline(key)
@@ -82,6 +128,8 @@ def confirm_wizard(wizard_id: str, request: Request) -> dict:
         project = request.app.state.projects.set_market_baseline_selection(
             project.id, enabled=bool(enabled and key), key=key,
         )
+        for node_id in selected_ids:
+            request.app.state.learning.adopt(project.id, node_id)
         return {**project.metadata, "path": str(project.path)}
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc

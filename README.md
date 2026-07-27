@@ -73,9 +73,9 @@ Content type controls purpose rather than project voice: `reference_work` yields
 
 Local mechanisms now require a located trigger excerpt, structural position, transfer guidance, incompatible conditions, and confidence. Low-confidence proposals must be confirmed before project adoption. Repetition remains a review-only finding; loop/recurrence anchors with nearby state-change signals are labeled as possible intentional repetition instead of receiving an unconditional deletion instruction.
 
-Rejected mechanisms disappear from the default candidate view immediately after rejection. The mechanism-status selector can show rejected items or all items for audit; rejected items remain read-only and cannot be confirmed, adopted, or rejected a second time.
+Rejected mechanisms disappear from the default candidate view immediately after rejection. The mechanism-status selector can show rejected items or all items for audit; rejected items show only deletion when removable, while mechanisms still active in a project offer an explicit removal step that rebuilds the creative blueprint without rewriting generated prose.
 
-Local extraction uses `learning-window-v2`: it scans the complete source in sentence/paragraph-safe 3,000-5,000 character windows, reports coverage, folds repeated mechanisms, and keeps every located evidence occurrence behind expandable details. Rejected mechanisms can be permanently deleted individually or in a batch only when no project has adopted them; adopted records and source TXT files are protected.
+Local extraction uses `learning-window-v2`: it scans the complete source in sentence/paragraph-safe 3,000-5,000 character windows, reports coverage, folds repeated mechanisms, and keeps every located evidence occurrence behind expandable details. Rejected mechanisms can be permanently deleted individually or in a batch when no project currently uses them; historical rejected links do not block deletion, while active adoptions and source TXT files remain protected.
 
 Reference metadata shows an explicit saved/dirty/saving/error state. A real change to platform, content type, or related project marks mechanisms already adopted from that source as requiring reconfirmation and marks the affected creative blueprint stale. Saving identical metadata is a no-op. Reconfirmation is explicit; metadata edits never rewrite formal prose.
 
@@ -87,7 +87,11 @@ Reference analysis also produces an evidence-backed narrative-attraction proposa
 
 **项目资料** and **学习库** render those same active or stale learning artifacts as readable Chinese sections, including versions and review status; they do not create another copy. Editing remains centralized in **学习库**. The new-book wizard lists every imported reference as a creation starting point. If a selected reference has not been locally distilled yet, the wizard performs that deterministic step first, then copies only the transferable mechanisms into editable premise and plot fields. The original “自己构思” path remains unchanged.
 
-Candidate outlines use the existing planning route and are stored below `<project>/learning/candidates/`. Targeted `line_edit` uses its own role and stores candidate JSON below `<project>/learning/line-edits/`. Neither path overwrites formal files. Optional LTP neural NLP is installed, enabled, disabled, or uninstalled explicitly from **模型与 API**; it runs in a separate CPU process and fails open to deterministic rules.
+Candidate outlines use the existing `planning` route and appear in **学习库 → 作品应用 → 大纲版本**. Users can read and edit the complete candidate, compare local story blocks, apply selected changes or the whole version, reject it, and restore a prior version. Local comparison never calls a model. The optional semantic review is called only after an explicit click and sends at most the uncertain changes with bounded context.
+
+The formal outline remains part of versioned StoryState; `<project>/plot/outline.md` is a readable copy, and `<project>/learning/candidates/` stores candidate files. Applying or restoring an outline creates a new StoryState revision, never rewrites `manuscript/story.md`, and marks only the latest scene briefs and short causal chain stale for regeneration. Existing projects may continue to read their latest completed `planning.md` until a candidate is formally applied. The new-book wizard can optionally apply up to 12 confirmed, non-competitor learning mechanisms; nothing is selected by default.
+
+Targeted `line_edit` uses its own role and stores candidate JSON below `<project>/learning/line-edits/`. It does not overwrite formal files. Optional LTP neural NLP is installed, enabled, disabled, or uninstalled explicitly from **模型与 API**; it runs in a separate CPU process and fails open to deterministic rules.
 
 The LTP installer pins compatible `transformers 4.x` and `huggingface-hub 0.x` dependencies. Its worker forces UTF-8 on Windows and uses `https://hf-mirror.com` for the first model download unless `HF_ENDPOINT` is already set. Cached analysis records `ltp-v2`; current and legacy LTP entity/SRL response shapes are both accepted. If the worker cannot load, the report explicitly marks LTP unavailable instead of presenting rule fallback as an LTP result.
 
@@ -167,6 +171,8 @@ Unknown initialization Skills receive a validated generated form cached by Skill
 - `generated`: the planning model may supply the value.
 
 Before confirmation, **检查关键缺口** adds required follow-ups for missing endings, character arcs, world rules, and long-form main arcs. Confirmation creates the Story Skills schema-v2 project layout and saves locks in SQLite and `continuity/locks.json`.
+
+The final step can show up to 12 globally confirmed writing methods. Rejected, unconfirmed, missing-source, and competitor-only methods are excluded. Every option starts unchecked; only explicit selections are adopted into the new project's creative blueprint.
 
 ## Controlled Skill Runtime
 

@@ -30,6 +30,24 @@ def test_analysis_creates_evidenced_mechanisms_and_reuses_windows(tmp_path) -> N
     assert second["cached_windows"] == second["window_count"]
 
 
+def test_local_mechanism_exposes_plain_provenance_and_source_title(tmp_path) -> None:
+    _db, library, _projects, system = setup_system(tmp_path)
+    source = library.import_text(
+        title="本地判断样本", source_type="paste", text="她决定离开，却在门口发现了真相。",
+    )
+
+    created = system.analyze_reference(source["id"])["mechanisms"][0]
+    listed = next(item for item in system.list_mechanisms() if item["id"] == created["id"])
+
+    assert listed["data"]["analysis_origin"] == "local"
+    assert listed["analysis"] == {
+        "state": "local_only",
+        "local": {"confidence": 0.68, "evidence_count": listed["data"]["occurrence_count"]},
+        "model": None,
+        "source_title": "本地判断样本",
+    }
+
+
 def test_cached_window_rebuilds_missing_mechanisms(tmp_path) -> None:
     db, library, _projects, system = setup_system(tmp_path)
     source = library.import_text(
@@ -121,7 +139,9 @@ def test_only_rejected_unadopted_mechanisms_can_be_deleted(tmp_path) -> None:
 
     blocked = system.delete_rejected_nodes([protected["id"]])
     assert blocked["deleted_ids"] == []
-    assert blocked["skipped"] == [{"id": protected["id"], "reason": "已被作品采纳"}]
+    assert blocked["skipped"] == [{
+        "id": protected["id"], "reason": "仍在作品中使用，取消应用后才能删除",
+    }]
 
 
 def test_adoption_requires_confirmation_and_never_overwrites_outline(tmp_path) -> None:
@@ -373,10 +393,12 @@ class FakeGateway:
         self.outputs = iter(outputs)
         self.roles = []
         self.users = []
+        self.requests = []
 
     async def complete(self, role, system, user, **kwargs):
         self.roles.append(role)
         self.users.append(user)
+        self.requests.append({"role": role, "system": system, "user": user, **kwargs})
         return SimpleNamespace(text=next(self.outputs), receipt={"model_id": "fake"})
 
 
@@ -400,6 +422,121 @@ async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_
     assert progress[0]["completed_windows"] == 0
     assert progress[-1]["phase"] == "synthesizing"
     assert progress[-1]["completed_windows"] == progress[-1]["total_windows"] == 1
+
+
+async def test_model_analysis_updates_matching_local_candidate_instead_of_duplicating(tmp_path) -> None:
+    db, library, projects, local_system = setup_system(tmp_path)
+    source = library.import_text(
+        title="合并判断样本", source_type="paste", text="她决定离开，却在门口发现了真相。",
+    )
+    local = local_system.analyze_reference(source["id"])["mechanisms"]
+    local_id = next(item["id"] for item in local if item["data"]["name"] == "通过状态变化推动下一步选择")
+    gateway = FakeGateway([
+        valid_window_result(),
+        json.dumps({
+            "mechanisms": [{
+                "name": "选择产生不可逆后果", "supporting_windows": [1],
+                "trigger_conditions": ["人物面临明确选择"], "structural_position": "故事前段",
+                "state_change": "人物失去退路", "emotional_effect": "增强紧迫感",
+                "required_preparation": ["提前交代可选退路"], "downstream_consequence": "迫使人物承担后果",
+                "transfer_guidance": "让选择改变人物之后能够采取的行动",
+                "incompatible_conditions": ["选择没有实际后果时不要使用"], "confidence": 0.86,
+                "local_match_id": local_id, "model_verdict": "confirmed",
+                "review_reason": "原文中的选择确实改变了后续行动范围",
+            }],
+            "attraction_map": {},
+        }, ensure_ascii=False),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+
+    result = await system.model_analyze_reference(source["id"])
+    listed = system.list_mechanisms(source["id"])
+
+    assert [item["id"] for item in result["mechanisms"]] == [local_id]
+    assert len([item for item in listed if item["id"] == local_id]) == 1
+    matched = next(item for item in listed if item["id"] == local_id)
+    assert matched["data"]["analysis_origin"] == "hybrid"
+    assert matched["data"]["model_review"]["verdict"] == "confirmed"
+    assert matched["analysis"]["state"] == "model_confirmed"
+    assert local_id in gateway.requests[1]["user"]
+    assert "先独立分析" in gateway.requests[0]["user"]
+    assert "所有面向用户的文字必须使用简体中文" in gateway.requests[1]["user"]
+
+
+async def test_model_analysis_keeps_independent_new_finding_as_model_only(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([
+        valid_window_result(),
+        json.dumps({
+            "mechanisms": [{
+                "name": "关系变化推动线索升级", "supporting_windows": [1],
+                "trigger_conditions": ["人物关系发生变化"], "structural_position": "故事中段",
+                "state_change": "盟友转为对立", "emotional_effect": "提高不确定感",
+                "required_preparation": ["提前建立合作关系"], "downstream_consequence": "旧线索获得新解释",
+                "transfer_guidance": "让关系变化同时改变人物能够获得的信息",
+                "incompatible_conditions": [], "confidence": 0.81,
+                "local_match_id": None, "model_verdict": "new",
+                "review_reason": "这是模型独立发现的关系变化，本地规则没有对应候选",
+            }],
+            "attraction_map": {},
+        }, ensure_ascii=False),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(title="模型新增样本", source_type="paste", text="盟友沉默地交出了主角的藏身处。")
+
+    result = await system.model_analyze_reference(source["id"])
+    created = result["mechanisms"][0]
+    listed = next(item for item in system.list_mechanisms(source["id"]) if item["id"] == created["id"])
+
+    assert created["data"]["analysis_origin"] == "model"
+    assert listed["analysis"]["state"] == "model_only"
+    assert listed["analysis"]["model"]["verdict"] == "new"
+
+
+async def test_model_analysis_rejects_english_user_facing_synthesis(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([
+        valid_window_result(),
+        json.dumps({
+            "mechanisms": [{
+                "name": "The Small Currency Covenant", "supporting_windows": [1],
+                "trigger_conditions": ["small payment"], "structural_position": "opening",
+                "state_change": "trust begins", "emotional_effect": "warmth",
+                "required_preparation": ["protector appears"], "downstream_consequence": "future rescue",
+                "transfer_guidance": "Use a small payment to establish trust",
+                "incompatible_conditions": [], "confidence": 0.9,
+                "local_match_id": None, "model_verdict": "new", "review_reason": "Found by model",
+            }],
+            "attraction_map": {},
+        }),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(title="英文输出样本", source_type="paste", text="他递出十元钱，约定以后再见。")
+
+    with pytest.raises(ValueError, match="简体中文"):
+        await system.model_analyze_reference(source["id"])
+
+
+async def test_model_analysis_limits_window_shape_to_avoid_truncated_json(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([valid_window_result(), valid_synthesis_result()])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="compact-window", source_type="paste", text="一段需要分析的正文。",
+    )
+
+    await system.model_analyze_reference(source["id"])
+
+    window_request = gateway.requests[0]
+    assert window_request["max_output_tokens"] == 4096
+    assert "Use at most 1 highest-value item in each list" in window_request["user"]
+    assert '{"events":[],"state_changes":[],"reader_questions":[],' in window_request["user"]
+    assert "Use [] when that category has no supported item" in window_request["user"]
+
+    synthesis_request = gateway.requests[1]
+    assert synthesis_request["role"] == "reference_synthesis"
+    assert '{"mechanisms":[],"attraction_map":{}}' in synthesis_request["user"]
+    assert "Use at most 3 mechanisms" in synthesis_request["user"]
 
 
 async def test_model_analysis_saves_proposed_attraction_map_with_local_evidence(tmp_path) -> None:
@@ -484,6 +621,57 @@ async def test_model_analysis_uses_configured_fallback_for_invalid_json(tmp_path
     assert any(item["phase"] == "fallback_window" for item in progress)
 
 
+async def test_model_analysis_reuses_valid_fallback_for_remaining_windows(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithReusableFallback(FakeGateway):
+        def __init__(self):
+            super().__init__(["", valid_synthesis_result()])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(text=valid_window_result(), receipt={"model_id": "fallback"})
+
+    gateway = GatewayWithReusableFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    text = ("甲" * 3400) + "。\n\n" + ("乙" * 3400) + "。"
+    source = library.import_text(title="two-windows", source_type="paste", text=text)
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["claims"] == 2
+    assert gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert gateway.fallback_roles == ["reference_analysis", "reference_analysis"]
+
+
+async def test_model_analysis_retries_one_transient_invalid_fallback_response(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithTransientFallback(FakeGateway):
+        def __init__(self):
+            super().__init__(["", valid_synthesis_result()])
+            self.fallback_outputs = iter(["not-json", valid_window_result()])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(
+                text=next(self.fallback_outputs), receipt={"model_id": "fallback"},
+            )
+
+    gateway = GatewayWithTransientFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="transient-fallback", source_type="paste", text="一段需要分析的正文。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["claims"] == 1
+    assert gateway.fallback_roles == ["reference_analysis", "reference_analysis"]
+
+
 def valid_window_result() -> str:
     return json.dumps({
         "events": [], "state_changes": [], "reader_questions": [],
@@ -493,6 +681,26 @@ def valid_window_result() -> str:
 
 def valid_synthesis_result() -> str:
     return json.dumps({"mechanisms": [], "attraction_map": {}})
+
+
+def test_synthesis_result_wraps_one_complete_mechanism_object() -> None:
+    mechanism = {
+        "name": "延迟揭示",
+        "trigger_conditions": ["存在待解释线索"],
+        "structural_position": "中段",
+        "state_change": "人物获得新信息",
+        "emotional_effect": "意外",
+        "required_preparation": ["前置信息"],
+        "downstream_consequence": "改变选择",
+        "transfer_guidance": "只迁移结构",
+        "incompatible_conditions": [],
+        "supporting_windows": [1, 2],
+        "confidence": 0.8,
+    }
+
+    result = LearningSystem._synthesis_result(json.dumps(mechanism, ensure_ascii=False))
+
+    assert result == {"mechanisms": [mechanism], "attraction_map": {}}
 
 
 async def test_model_analysis_uses_fallback_for_wrong_window_shape(tmp_path) -> None:
@@ -543,6 +751,33 @@ async def test_model_analysis_uses_fallback_for_wrong_synthesis_shape(tmp_path) 
 
     assert result["attraction_map"]["status"] == "proposed"
     assert gateway.fallback_roles == ["reference_synthesis"]
+
+
+async def test_model_analysis_retries_one_transient_invalid_synthesis_fallback(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithTransientSynthesisFallback(FakeGateway):
+        def __init__(self):
+            super().__init__([valid_window_result(), ""])
+            self.fallback_outputs = iter(["not-json", valid_synthesis_result()])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(
+                text=next(self.fallback_outputs), receipt={"model_id": "fallback"},
+            )
+
+    gateway = GatewayWithTransientSynthesisFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="transient-synthesis", source_type="paste", text="一段需要分析的正文。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["attraction_map"]["status"] == "proposed"
+    assert gateway.fallback_roles == ["reference_synthesis", "reference_synthesis"]
 
 
 async def test_model_line_edit_routes_to_line_edit_and_remains_candidate(tmp_path) -> None:
