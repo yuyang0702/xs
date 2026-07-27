@@ -58,6 +58,23 @@ class KimiThinkingProbeAdapter(ThinkingProbeAdapter):
     error = "tool_choice 'specified' is incompatible with thinking enabled"
 
 
+class UnsupportedForcedToolProbeAdapter(ThinkingProbeAdapter):
+    error = "tool_choice is not supported by this provider"
+
+
+class IgnoredForcedToolProbeAdapter(ProbeAdapter):
+    async def complete(self, request):
+        self.calls += 1
+        self.requests.append(request)
+        if self.calls == 1:
+            return ModelResponse(text="ok")
+        if self.calls == 2:
+            return ModelResponse(text='{"ok":true}')
+        if request.required_tool:
+            return ModelResponse(text="I cannot call tools")
+        return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+
+
 @pytest.mark.asyncio
 async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
     adapter = ProbeAdapter()
@@ -74,7 +91,7 @@ async def test_probe_can_report_partial_support() -> None:
     assert result.chat is True
     assert result.structured_output is True
     assert result.tool_calling is False
-    assert result.error == "tools: provider returned no probe_tool call"
+    assert result.error == "工具检测：供应商没有返回测试工具调用"
 
 
 @pytest.mark.asyncio
@@ -96,6 +113,26 @@ async def test_probe_retries_kimi_without_forced_tool_choice() -> None:
 
     assert result.tool_calling is True
     assert adapter.requests[-1].tools
+    assert adapter.requests[-1].required_tool is None
+
+
+@pytest.mark.asyncio
+async def test_probe_retries_when_provider_rejects_forced_tool_choice() -> None:
+    adapter = UnsupportedForcedToolProbeAdapter()
+
+    result = await CapabilityProbe(adapter).run("model")
+
+    assert result.tool_calling is True
+    assert adapter.requests[-1].required_tool is None
+
+
+@pytest.mark.asyncio
+async def test_probe_retries_when_provider_ignores_forced_tool_choice() -> None:
+    adapter = IgnoredForcedToolProbeAdapter()
+
+    result = await CapabilityProbe(adapter).run("model")
+
+    assert result.tool_calling is True
     assert adapter.requests[-1].required_tool is None
 
 

@@ -80,16 +80,21 @@ class CapabilityProbe:
                 error = str(exc).lower()
                 if not (
                     "tool_choice" in error
-                    and "thinking" in error
-                    and ("does not support" in error or "incompatible" in error)
+                    and any(term in error for term in (
+                        "does not support", "not supported", "unsupported", "incompatible",
+                    ))
                 ):
                     raise
+                tool_response = None
+            if not tool_response or not any(
+                call.name == "probe_tool" for call in tool_response.tool_calls
+            ):
                 tool_response = await self.adapter.complete(
                     tool_request.model_copy(update={"required_tool": None})
                 )
             tool_ok = any(call.name == "probe_tool" for call in tool_response.tool_calls)
             if not tool_ok:
-                errors.append("tools: provider returned no probe_tool call")
+                errors.append("工具检测：供应商没有返回测试工具调用")
         except Exception as exc:
             tool_ok = False
             errors.append(f"tools: {self._error(exc)}")

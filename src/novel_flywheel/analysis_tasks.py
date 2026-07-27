@@ -24,6 +24,7 @@ class ReferenceAnalysisTaskManager:
         state = {
             "id": task_id, "source_id": source_id, "status": "queued", "phase": "queued",
             "completed_windows": 0, "total_windows": 0, "result": None, "error": None,
+            "reused_windows": 0, "current_window": None,
             "started_at": self._now(), "finished_at": None,
         }
         self._states[task_id] = state
@@ -52,7 +53,7 @@ class ReferenceAnalysisTaskManager:
 
         def progress(update: dict) -> None:
             state.update({key: value for key, value in update.items() if key in {
-                "phase", "completed_windows", "total_windows",
+                "phase", "completed_windows", "total_windows", "reused_windows", "current_window",
             }})
 
         try:

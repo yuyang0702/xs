@@ -278,6 +278,35 @@ def test_reference_attraction_map_is_queryable(tmp_path) -> None:
     assert response.json()["data"]["uncertainties"] == ["结尾尚未出现"]
 
 
+def test_effective_rules_and_artifact_restore_are_available(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, _node_id = project_and_mechanism(client)
+    first = client.put(
+        f"/api/projects/{project_id}/learning/prose-baseline",
+        json={"data": {"dialogue": ["回应需要改变关系"]}},
+    )
+    second = client.put(
+        f"/api/projects/{project_id}/learning/prose-baseline",
+        json={"data": {"dialogue": ["对白保持简短"]}},
+    )
+    assert first.status_code == second.status_code == 200
+
+    history = client.get(
+        f"/api/projects/{project_id}/learning/artifacts/prose_baseline/history",
+    )
+    restored = client.post(
+        f"/api/projects/{project_id}/learning/artifacts/prose_baseline/restore",
+        json={"version": 1},
+    )
+    overview = client.get(f"/api/projects/{project_id}/learning/effective-rules")
+
+    assert [item["version"] for item in history.json()] == [2, 1]
+    assert restored.status_code == 200
+    assert restored.json()["version"] == 3
+    assert overview.status_code == 200
+    assert any(item["name"] == "基础文笔规则" for item in overview.json()["layers"])
+
+
 def test_learning_api_normalizes_legacy_single_incompatible_condition(tmp_path) -> None:
     client = client_for(tmp_path)
     source = client.post("/api/references", json={

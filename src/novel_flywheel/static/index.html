@@ -15,8 +15,8 @@
       <button class="nav-item" data-view="learning">学习库</button>
       <button class="nav-item" data-view="market">市场趋势</button>
       <button class="nav-item" data-view="projects">新建作品</button>
-      <button class="nav-item" data-view="models">模型与 API</button>
-      <button class="nav-item" data-view="skills">Skill 管理</button>
+      <button class="nav-item" data-view="models">模型设置</button>
+      <button class="nav-item" data-view="skills">写作能力管理</button>
       <button class="nav-item" data-view="trash">回收站</button>
     </nav>
     <div class="local-state"><span></span>仅本机运行</div>
@@ -43,7 +43,7 @@
         <div id="candidate-quality"><p class="skill-meta">请先选择作品</p></div>
       </section>
       <section class="writing-rules-band" aria-labelledby="writing-rules-title">
-        <div class="section-heading"><div><h2 id="writing-rules-title">当前文笔规则</h2><p class="skill-meta">展示当前作品已确认并正在使用的文笔基线</p></div><button id="open-learning-library" class="secondary">前往学习库</button></div>
+        <div class="section-heading"><div><h2 id="writing-rules-title">本次创作会使用什么</h2><p class="skill-meta">生成前确认正在生效的要求、补充写法和可能冲突</p></div><button id="open-learning-library" class="secondary">管理写法和版本</button></div>
         <div id="writing-rules-summary" class="writing-rules-summary"><p class="skill-meta">请先选择作品</p></div>
       </section>
       <section class="publication-band" aria-labelledby="publication-title">
@@ -108,7 +108,7 @@
           <div class="section-heading"><div><h2 id="story-state-title">动态项目状态</h2><p class="skill-meta">通常由程序自动维护，仅在纠错时编辑</p></div><button id="story-state-save" class="primary" disabled>保存为新版本</button></div>
           <div class="story-state-editor">
             <label>资料分区<select id="story-state-section"><option value="character_states">人物状态</option><option value="world_rules">世界规则</option><option value="timeline_events">时间线</option><option value="issue_ledger">伏笔与问题</option><option value="locked_facts">锁定事实</option><option value="confirmed_facts">确认事实</option><option value="provisional_facts">暂定事实</option></select></label>
-            <label>JSON 内容<textarea id="story-state-value" rows="10" spellcheck="false" placeholder="请先选择作品"></textarea></label>
+            <label>项目状态内容<textarea id="story-state-value" rows="10" spellcheck="false" placeholder="请先选择作品"></textarea></label>
             <pre id="story-state-diff" class="story-state-diff" hidden></pre>
           </div>
         </section>
@@ -127,7 +127,7 @@
         <div class="local-tools-guide reference-analysis-guide">
           <div><strong>本地诊断是找问题</strong><p>扫描全文，标出可能影响节奏、开头吸引力、重复和阅读体验的位置，由你决定是否修改。</p></div>
           <div><strong>本地提炼是找写法</strong><p>扫描全文，整理可借鉴的结构和叙事方法，形成候选写法，确认后才能用于作品。</p></div>
-          <div><strong>模型全文分析是复核和查漏</strong><p>阅读全文，复核本地候选并独立寻找遗漏内容。会消耗模型 Token，但不会修改原文。</p></div>
+          <div><strong>模型全文分析是复核和查漏</strong><p>阅读全文，复核本地候选并独立寻找遗漏内容。会产生模型用量，但不会修改原文。</p></div>
           <span>建议先运行本地工具；重要样本再使用模型全文分析。所有结果都需要你确认后才会用于作品。</span>
         </div>
         <div class="learning-layout">
@@ -200,6 +200,7 @@
           </details>
         </section>
         <div class="application-section-heading"><div><h3>正在使用的写法和规则</h3><p>需要确认的内容会排在前面；其他内容点击标题后展开查看。</p></div></div>
+        <section id="learning-effective-rules" class="learning-effective-rules" aria-live="polite"></section>
         <div id="learning-artifacts" class="learning-artifacts"></div>
         <details class="learning-editor"><summary>编辑高级学习资料</summary>
           <div class="learning-editor-grid">
@@ -214,7 +215,7 @@
 
     <section id="market" class="view">
       <div class="section-heading market-heading">
-        <div><p class="eyebrow">本地市场分析</p><h2>市场趋势</h2><p class="skill-meta">公开榜单快照、本地统计与 TXT 作品关联</p></div>
+        <div><p class="eyebrow">本地市场分析</p><h2>市场趋势</h2><p class="skill-meta">公开榜单快照、本地统计与文本作品关联</p></div>
         <button id="market-refresh" class="primary">更新当前平台</button>
       </div>
       <div class="market-toolbar">
@@ -247,7 +248,7 @@
       </section>
       <section class="market-panel market-work-panel">
         <div class="market-panel-title market-work-heading"><h3>榜单作品</h3><div><fieldset id="market-work-mode" class="segmented"><legend class="sr-only">作品排序方式</legend><label><input type="radio" name="market-work-mode" value="grouped" checked><span>按榜单</span></label><label><input type="radio" name="market-work-mode" value="combined"><span>综合浏览</span></label></fieldset><span id="market-work-count">0 条记录</span></div></div>
-        <div class="market-table-shell"><table class="market-table"><thead><tr><th id="market-rank-heading">榜内排名</th><th>作品</th><th>榜单</th><th>分类</th><th>篇幅类型</th><th>热度数据</th><th>TXT状态</th></tr></thead><tbody id="market-work-list"></tbody></table></div>
+        <div class="market-table-shell"><table class="market-table"><thead><tr><th id="market-rank-heading">榜内排名</th><th>作品</th><th>榜单</th><th>分类</th><th>篇幅类型</th><th>热度数据</th><th>文本关联</th></tr></thead><tbody id="market-work-list"></tbody></table></div>
         <div id="market-work-pagination" class="market-work-pagination" hidden></div>
       </section>
       <p id="market-boundary" class="market-boundary">数据边界：结果仅反映当前抓取到的平台榜单样本，不代表全网市场；页面推荐也可能受到平台运营和账号展示差异影响。</p>
@@ -261,6 +262,7 @@
           <label><input type="radio" name="wizard-mode" value="long"><span>长篇连载</span></label>
         </fieldset>
         <label>创作起点<select id="wizard-reference"><option value="">自己构思（原方式）</option></select></label>
+        <label class="wizard-auto-option"><input id="wizard-auto-outline" type="checkbox" checked><span>使用学习成果时，创建后生成候选大纲</span><small>会调用规划模型；大纲需要你确认后才生效</small></label>
         <button id="start-wizard" class="primary">开始新向导</button>
         <label>继续草稿<select id="wizard-drafts"><option value="">暂无草稿</option></select></label>
       </div>
@@ -297,28 +299,28 @@
         <form id="provider-form" class="plain-panel">
           <h3 id="provider-form-title">添加供应商</h3>
           <label>显示名称<input name="name" required></label>
-          <label>协议<select name="protocol"><option value="openai-chat">OpenAI Chat Completions</option><option value="openai-responses">OpenAI Responses</option><option value="anthropic">Anthropic Messages</option></select></label>
+          <label>接口类型<select name="protocol"><option value="openai-chat">通用对话接口</option><option value="openai-responses">响应式接口</option><option value="anthropic">消息接口</option></select></label>
           <label>Base URL<input name="base_url" type="url" required placeholder="https://relay.example/v1"></label>
-          <label>API Key<input name="api_key" type="password" autocomplete="new-password" required></label>
+          <label>接口密钥<input name="api_key" type="password" autocomplete="new-password" required></label>
           <div class="form-actions"><button id="provider-submit" class="primary" type="submit">保存供应商</button><button id="provider-cancel" class="secondary" type="button" hidden>取消编辑</button></div>
         </form>
         <form id="model-form" class="plain-panel">
           <h3>添加模型映射</h3>
           <label>供应商<select name="provider_id" id="model-provider"></select></label>
-          <label>显示名称<input name="display_name" required placeholder="Claude Sonnet"></label>
+          <label>显示名称<input name="display_name" required placeholder="例如：写作主模型"></label>
           <label>实际 model 值<input name="model_name" required placeholder="claude-sonnet-5"></label>
-          <label>Tool Calling<select name="tool_support"><option value="auto">自动检测</option><option value="enabled">必须支持</option><option value="disabled">提示模式</option></select></label>
+          <label>工具调用<select name="tool_support"><option value="auto">自动检测</option><option value="enabled">必须支持</option><option value="disabled">提示模式</option></select></label>
           <button class="primary" type="submit">保存模型</button>
         </form>
       </div>
       <section class="routing"><h3>角色绑定</h3><div id="role-bindings"></div></section>
-      <section class="routing"><div class="section-heading"><div><h3>可选本地中文 NLP</h3><p class="skill-meta">LTP 在独立 CPU 任务中运行；未安装或失败时自动使用标准规则</p></div><div class="form-actions"><button id="nlp-install" class="secondary">安装</button><button id="nlp-toggle" class="secondary">启用</button><button id="nlp-uninstall" class="secondary danger-text">卸载</button></div></div><div id="nlp-status" class="skill-meta">正在读取状态...</div></section>
+      <section class="routing"><div class="section-heading"><div><h3>可选本地中文语义分析</h3><p class="skill-meta">中文分析组件在本机独立运行；未安装或失败时自动使用标准规则</p></div><div class="form-actions"><button id="nlp-install" class="secondary">安装</button><button id="nlp-toggle" class="secondary">启用</button><button id="nlp-uninstall" class="secondary danger-text">卸载</button></div></div><div id="nlp-status" class="skill-meta">正在读取状态...</div></section>
       <section class="routing"><div class="section-heading"><div><h3>正文全文分析与增量终审</h3><p class="skill-meta">首次全文终审；返修后复核改动、相邻及关联窗口。分析不确定时自动恢复全文终审。</p></div><button id="workflow-analysis-toggle" class="secondary">为当前作品启用</button></div><div id="workflow-analysis-status" class="skill-meta">请选择作品</div></section>
       <section><h3>已配置供应商</h3><div id="provider-list" class="data-list"></div></section>
     </section>
 
     <section id="skills" class="view">
-      <div class="section-heading"><div><p class="eyebrow">执行检查</p><h2>Skill 管理</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">执行检查</p><h2>写作能力管理</h2></div></div>
       <div id="skill-list" class="data-list"></div>
     </section>
 

@@ -43,12 +43,12 @@ def normalize_attraction_map(value: dict, text_length: int) -> dict:
     level = fit.get("level") if fit.get("level") in {"strong", "partial", "not_applicable"} else "partial"
     result = {
         "fit": {"level": level, "explanation": _text(fit.get("explanation"))},
-        "opening": _mapping(value.get("opening")),
-        "core_goal": _mapping(value.get("core_goal")),
-        "cycles": [_mapping(item) for item in _list(value.get("cycles")) if isinstance(item, dict)],
-        "accidents": [_mapping(item) for item in _list(value.get("accidents")) if isinstance(item, dict)],
+        "opening": _normalize_opening(value.get("opening")),
+        "core_goal": _normalize_claim(value.get("core_goal")),
+        "cycles": [_normalize_claim(item) for item in _list(value.get("cycles")) if isinstance(item, dict)],
+        "accidents": [_normalize_claim(item) for item in _list(value.get("accidents")) if isinstance(item, dict)],
         "reversal": _mapping(value.get("reversal")),
-        "ending": _mapping(value.get("ending")),
+        "ending": _normalize_claim(value.get("ending")),
         "question_chain": [_mapping(item) for item in _list(value.get("question_chain")) if isinstance(item, dict)],
         "relationship_arc": [_mapping(item) for item in _list(value.get("relationship_arc")) if isinstance(item, dict)],
         "uncertainties": [_text(item) for item in _list(value.get("uncertainties")) if _text(item)],
@@ -58,9 +58,13 @@ def normalize_attraction_map(value: dict, text_length: int) -> dict:
     if reversal and not _list(reversal.get("prior_evidence")):
         result["reversal"] = None
         _append_once(result["uncertainties"], "反转缺少可回看的前置证据")
-    if not _goal_text(result.get("core_goal")):
+    if _goal_text(result.get("core_goal")):
+        _remove(result["uncertainties"], "未识别出有证据支持的核心目标")
+    elif level == "not_applicable" or "core_goal" in value:
         _append_once(result["uncertainties"], "未识别出有证据支持的核心目标")
-    if not _goal_text(result.get("ending")):
+    if _goal_text(result.get("ending")):
+        _remove(result["uncertainties"], "未识别出有证据支持的结局兑现")
+    elif level == "not_applicable" or "ending" in value:
         _append_once(result["uncertainties"], "未识别出有证据支持的结局兑现")
     return result
 
@@ -103,6 +107,32 @@ def _mapping(value: Any) -> dict | None:
     return dict(value) if isinstance(value, dict) and value else None
 
 
+def _normalize_claim(value: Any) -> dict | None:
+    result = _mapping(value)
+    if result and _text(result.get("claim")) and not _text(result.get("summary")):
+        result["summary"] = _text(result["claim"])
+    return result
+
+
+def _normalize_opening(value: Any) -> dict | None:
+    result = _normalize_claim(value)
+    if not result or _text(result.get("mechanism")) or _text(result.get("transfer_guidance")):
+        return result
+    claims = []
+    evidence = []
+    for key in ("title_promise", "hook"):
+        item = result.get(key)
+        if not isinstance(item, dict):
+            continue
+        if _text(item.get("claim")):
+            claims.append(_text(item["claim"]))
+        evidence.extend(_list(item.get("evidence")))
+    if claims:
+        result["summary"] = "；".join(claims)
+        result["evidence"] = evidence
+    return result
+
+
 def _list(value: Any) -> list:
     return value if isinstance(value, list) else []
 
@@ -115,7 +145,7 @@ def _goal_text(value: Any) -> str:
     if not isinstance(value, dict):
         return ""
     return next((_text(value.get(key)) for key in (
-        "surface", "emotional", "surface_payoff", "emotional_payoff", "content",
+        "surface", "emotional", "surface_payoff", "emotional_payoff", "content", "summary",
     ) if _text(value.get(key))), "")
 
 
@@ -146,6 +176,11 @@ def _clean_evidence(value: Any, text_length: int) -> Any:
 def _append_once(items: list[str], value: str) -> None:
     if value not in items:
         items.append(value)
+
+
+def _remove(items: list[str], value: str) -> None:
+    while value in items:
+        items.remove(value)
 
 
 def _unique(values) -> list[str]:

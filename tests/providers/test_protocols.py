@@ -114,6 +114,38 @@ async def test_openai_responses_adapter_normalizes_response() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_openai_responses_adapter_can_require_a_specific_tool() -> None:
+    route = respx.post("https://relay.test/v1/responses").mock(
+        return_value=httpx.Response(200, json={
+            "id": "resp-tool",
+            "output": [{
+                "type": "function_call",
+                "call_id": "call-1",
+                "name": "probe_tool",
+                "arguments": "{}",
+            }],
+            "status": "completed",
+            "usage": {},
+        }),
+    )
+    request = ModelRequest(
+        model="writer",
+        messages=[Message(role="user", content="Call probe_tool")],
+        tools=[ToolDefinition(
+            name="probe_tool", description="Probe", input_schema={"type": "object"},
+        )],
+        required_tool="probe_tool",
+    )
+
+    result = await OpenAIResponsesAdapter("https://relay.test/v1", "secret").complete(request)
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["tool_choice"] == {"type": "function", "name": "probe_tool"}
+    assert result.tool_calls[0].name == "probe_tool"
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_anthropic_adapter_normalizes_response() -> None:
     route = respx.post("https://relay.test/v1/messages").mock(return_value=httpx.Response(200, json={
         "id": "msg-1", "content": [{"type": "text", "text": "润色稿"}], "stop_reason": "end_turn",

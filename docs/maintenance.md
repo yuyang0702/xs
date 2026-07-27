@@ -128,7 +128,7 @@ Run context display is derived from existing events and receipts and stores no d
 
 ## Short-story model route
 
-Capability probing uses the provider's structured-output request for JSON and requests a specific probe tool for tools. Moonshot OpenAI Chat requests disable thinking when structured output or a specific tool is required, matching the provider's compatibility contract and the same requests used by real workflow stages. Other thinking models that explicitly reject forced `tool_choice` are retried once with automatic tool selection; unrelated tool errors remain visible.
+Capability probing uses the provider's structured-output request for JSON and requests a specific probe tool for tools. OpenAI Responses forwards that specific tool through its native `tool_choice` shape. Moonshot OpenAI Chat requests disable thinking when structured output or a specific tool is required, matching the provider's compatibility contract and the same requests used by real workflow stages. Providers that reject or ignore forced `tool_choice` are retried once with automatic tool selection, so lack of forced-choice support is not misreported as lack of tool support; unrelated tool errors remain visible.
 
 The short-story workflow reuses complete planning, draft, and valid review checkpoints after a failed or cancelled run.
 
@@ -196,6 +196,7 @@ The run detail context can expose manuscript coverage, reviewed window count, re
 ### Evidence-driven local analysis versions
 
 - `learning-window-v2` invalidates local extraction caches when windowing behavior changes. It records full-text coverage ranges and multiple evidence occurrences. Old confirmed/adopted nodes remain intact; operators must not bulk-delete them during cache maintenance.
+- `reference-model-window-v1` checkpoints every successful model-analysis window as a `model_claim`. Resume rebuilds the current dynamic window list and reuses only claims with the same content type, analysis version, exact window-text hash, and a still-valid Chinese result shape. A new source version can reuse unchanged windows; changed or newly split windows run again. Single-version legacy claims may be upgraded only when their index and boundaries exactly match, which preserves interrupted analyses created before checkpoint metadata existed.
 - `manuscript-analysis-v2` adds advisory market comparison and a hash-bound narrative ledger. A stale text hash cannot approve an incremental review.
 - Market cohorts count each confirmed linked work once per platform/ranking/category/length group. Missing or fewer than five samples disable guidance without blocking project creation.
 - Rejected-node deletion is intentionally narrow: only rejected nodes with no project adoption are eligible. The transaction cascades graph evidence, edges, and revisions but never source versions.
@@ -210,6 +211,18 @@ Outline candidates use the existing `story_candidates` table with kind `outline`
 Applying selected changes or a whole candidate validates the current StoryState revision and locked facts, commits a new revision, and writes the readable outline copy. Whole-version application requires a second confirmation after a manuscript exists. Neither application nor history restoration writes `manuscript/story.md`; restoration creates a new candidate and revision instead of deleting later history. The latest active `scene_briefs` and `short_causal_chain` artifacts become stale because they depend on the previous outline, while prose and character voice artifacts remain active. `ProjectStore.load_constraints()` includes the current confirmed outline with a 30,000-character cap.
 
 The new-project wizard lists no more than 12 confirmed learning mechanisms. Rejected, unconfirmed, missing-source, and `competitor_work` mechanisms are excluded. Options are unchecked by default, and the confirm API revalidates selected IDs before creating project adoptions.
+
+## Learning rules and recoverable versions
+
+Confirmed learning mechanisms remain global library records until the user adopts them into a project. Adoption updates only that project's `creative_blueprint`; it does not merge into or replace `prose_baseline`, formal outlines, or manuscripts. Removing an adoption regenerates the blueprint without deleting the source mechanism or changing existing prose.
+
+The effective-rules endpoint presents the order used by later generation: user locks, confirmed outline and project facts, platform requirements, prose baseline, adopted blueprint mechanisms, then advisory market data. Local checks report stale artifacts, explicit mode mismatches, similar adopted mechanisms, and recorded incompatible conditions. Post-generation usage status is deterministic and advisory; unsupported semantic mechanisms remain marked for human review rather than being reported as absent.
+
+Learning artifact restoration is append-only. Restoring an older prose, voice, or knowledge version creates a new latest version containing the historical data; it never deletes intervening history or rewrites existing manuscripts. The project-readable JSON file continues to contain only the latest version used by `ProjectStore.load_constraints()`.
+
+Legacy model attraction summaries that used a generic `claim` field are normalized when read so saved analysis remains visible without rerunning all text windows. New synthesis responses must use the displayable opening, goal, cycle, and ending fields. Invalid shapes retry through the configured synthesis fallback instead of being marked complete with empty-looking UI placeholders.
+
+Starting a wizard from a reference preselects only that reference's user-confirmed mechanisms. When requested, project creation uses the existing planning role to create a candidate outline after adoption. The result remains an outline candidate and requires explicit application before it becomes authoritative.
 
 ## Log interpretation
 

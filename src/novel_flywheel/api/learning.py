@@ -24,6 +24,10 @@ class ArtifactPayload(BaseModel):
     data: dict[str, Any]
 
 
+class ArtifactRestorePayload(BaseModel):
+    version: int = Field(ge=1)
+
+
 class SceneBriefPayload(BaseModel):
     outline: str = Field(min_length=1, max_length=500_000)
 
@@ -190,6 +194,25 @@ def project_learning(project_id: str, request: Request) -> dict:
             "legacy_style_migration": migration,
         }
     return _handle(result)
+
+
+@router.get("/projects/{project_id}/learning/effective-rules")
+def effective_rules(project_id: str, request: Request) -> dict:
+    return _handle(lambda: _learning(request).effective_rule_overview(project_id))
+
+
+@router.get("/projects/{project_id}/learning/artifacts/{artifact_type}/history")
+def artifact_history(project_id: str, artifact_type: str, request: Request) -> list[dict]:
+    return _handle(lambda: _learning(request).artifact_history(project_id, artifact_type))
+
+
+@router.post("/projects/{project_id}/learning/artifacts/{artifact_type}/restore")
+def restore_artifact(
+    project_id: str, artifact_type: str, payload: ArtifactRestorePayload, request: Request,
+) -> dict:
+    return _handle(lambda: _learning(request).restore_artifact(
+        project_id, artifact_type, payload.version,
+    ))
 
 
 @router.get("/projects/{project_id}/learning/workflow-analysis")

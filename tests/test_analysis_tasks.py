@@ -31,3 +31,25 @@ async def test_reference_analysis_task_can_be_cancelled() -> None:
 
     assert cancelled["status"] == "cancelled"
     assert manager.get_for_source("source-1")["phase"] == "cancelled"
+
+
+async def test_reference_analysis_task_exposes_resume_progress() -> None:
+    manager = ReferenceAnalysisTaskManager()
+    blocker = asyncio.Event()
+
+    async def resume(progress):
+        progress({
+            "phase": "analyzing_windows", "completed_windows": 9, "total_windows": 15,
+            "reused_windows": 9, "current_window": 10,
+        })
+        await blocker.wait()
+
+    manager.start("source-1", resume)
+    await asyncio.sleep(0)
+
+    state = manager.get_for_source("source-1")
+    assert state["reused_windows"] == 9
+    assert state["current_window"] == 10
+
+    blocker.set()
+    await asyncio.sleep(0)

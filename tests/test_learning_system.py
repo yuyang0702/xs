@@ -362,6 +362,70 @@ def test_adopted_attraction_map_adds_only_abstract_guidance(tmp_path) -> None:
     assert "excerpt" not in constraints
 
 
+def test_legacy_claim_attraction_map_is_readable_without_rerunning_model(tmp_path) -> None:
+    _db, library, _projects, system = setup_system(tmp_path)
+    source = library.import_text(title="旧汇总", source_type="paste", text="她决定离开。" * 20)
+    system._save_node("attraction_map", {
+        "fit": {"level": "partial", "explanation": ""},
+        "opening": {"hook": {"claim": "先给出长期结果，再隐藏实现过程", "evidence": []}},
+        "core_goal": {"claim": "从摆脱威胁升级为获得稳定归属"},
+        "cycles": [{"claim": "保护失效后，人物主动寻找新的支点"}],
+        "accidents": [], "reversal": None,
+        "ending": {"claim": "结尾同时兑现关系与公共意义"},
+        "question_chain": [], "relationship_arc": [],
+        "uncertainties": ["未识别出有证据支持的核心目标", "未识别出有证据支持的结局兑现"],
+    }, source_id=source["id"], status="proposed")
+
+    result = system.attraction_map(source["id"])["data"]
+
+    assert result["opening"]["summary"] == "先给出长期结果，再隐藏实现过程"
+    assert result["core_goal"]["summary"] == "从摆脱威胁升级为获得稳定归属"
+    assert result["cycles"][0]["summary"] == "保护失效后，人物主动寻找新的支点"
+    assert result["ending"]["summary"] == "结尾同时兑现关系与公共意义"
+    assert result["uncertainties"] == []
+
+
+def test_synthesis_rejects_generic_claim_shape_that_page_cannot_explain() -> None:
+    value = {
+        "mechanisms": [],
+        "attraction_map": {
+            "fit": {"level": "partial"}, "opening": {"hook": {"claim": "开头"}},
+            "core_goal": {"claim": "目标"}, "cycles": [{"claim": "推进"}],
+            "accidents": [], "reversal": None, "ending": {"claim": "结尾"},
+            "question_chain": [], "relationship_arc": [], "uncertainties": [],
+        },
+    }
+
+    with pytest.raises(ValueError, match="开头分析格式不完整"):
+        LearningSystem._synthesis_result(json.dumps(value, ensure_ascii=False))
+
+
+def test_artifact_restore_creates_new_version_and_effective_overview(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="版本恢复", mode="short", genre="悬疑", premise="寻找朋友", target_words=6000,
+    ))
+    source = library.import_text(title="参考样本", source_type="paste", text="他决定追查真相。")
+    mechanism = system._save_node("mechanism", {
+        "name": "长篇专用铺垫", "transfer_guidance": "分卷铺垫",
+        "confidence": 0.9, "applicable_modes": ["long"],
+        "incompatible_conditions": ["短篇篇幅不足时不要使用"],
+    }, source_id=source["id"], status="confirmed")
+    system.adopt(project.id, mechanism["id"])
+    system.build_prose_baseline(project.id, {"dialogue": ["版本一"]})
+    system.build_prose_baseline(project.id, {"dialogue": ["版本二"]})
+
+    restored = system.restore_artifact(project.id, "prose_baseline", 1)
+    overview = system.effective_rule_overview(project.id)
+
+    assert restored["version"] == 3
+    assert restored["data"]["dialogue"] == ["版本一"]
+    assert len(system.artifact_history(project.id, "prose_baseline")) == 3
+    assert any(item["name"] == "基础文笔规则" for item in overview["layers"])
+    assert any("没有标记为适合短篇" in item["message"] for item in overview["conflicts"])
+    assert overview["cautions"][0]["message"] == "短篇篇幅不足时不要使用"
+
+
 def test_legacy_style_sample_migrates_once_without_deleting_old_files(tmp_path) -> None:
     _db, _library, projects, system = setup_system(tmp_path)
     project = projects.create(ProjectCreate(
@@ -400,6 +464,123 @@ class FakeGateway:
         self.users.append(user)
         self.requests.append({"role": role, "system": system, "user": user, **kwargs})
         return SimpleNamespace(text=next(self.outputs), receipt={"model_id": "fake"})
+
+
+async def test_model_analysis_resumes_after_any_failed_window(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    source = library.import_text(
+        title="任意窗口续跑", source_type="paste", text="甲" * 12_000,
+    )
+
+    class FailsOnThirdWindow(FakeGateway):
+        async def complete(self, role, system, user, **kwargs):
+            if role == "reference_analysis" and self.roles.count(role) == 2:
+                self.roles.append(role)
+                raise RuntimeError("第三个窗口临时失败")
+            return await super().complete(role, system, user, **kwargs)
+
+    first_gateway = FailsOnThirdWindow([valid_window_result(), valid_window_result()])
+    first_system = LearningSystem(db, library, projects, first_gateway)
+    with pytest.raises(RuntimeError, match="第三个窗口临时失败"):
+        await first_system.model_analyze_reference(source["id"])
+
+    resumed_gateway = FakeGateway([
+        valid_window_result(),
+        valid_synthesis_result(),
+    ])
+    resumed_system = LearningSystem(db, library, projects, resumed_gateway)
+    progress = []
+
+    result = await resumed_system.model_analyze_reference(source["id"], progress.append)
+
+    assert result["claims"] == 3
+    assert resumed_gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert progress[0] == {
+        "phase": "analyzing_windows",
+        "completed_windows": 2,
+        "total_windows": 3,
+        "reused_windows": 2,
+        "current_window": 3,
+    }
+
+
+async def test_model_analysis_reuses_unchanged_dynamic_windows_after_new_version(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    original = "甲" * 12_000
+    source = library.import_text(title="动态分窗", source_type="paste", text=original)
+    first_gateway = FakeGateway([
+        valid_window_result(), valid_window_result(), valid_window_result(),
+        valid_synthesis_result(),
+    ])
+    await LearningSystem(db, library, projects, first_gateway).model_analyze_reference(source["id"])
+    library.add_version(source["id"], original[:-1] + "乙")
+
+    resumed_gateway = FakeGateway([valid_window_result(), valid_synthesis_result()])
+    progress = []
+    result = await LearningSystem(
+        db, library, projects, resumed_gateway,
+    ).model_analyze_reference(source["id"], progress.append)
+
+    assert result["claims"] == 3
+    assert resumed_gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert progress[0]["reused_windows"] == 2
+    assert progress[0]["current_window"] == 3
+
+
+async def test_model_analysis_reuses_all_windows_after_synthesis_failure(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    source = library.import_text(title="汇总续跑", source_type="paste", text="甲" * 7_000)
+
+    class FailsSynthesis(FakeGateway):
+        async def complete(self, role, system, user, **kwargs):
+            if role == "reference_synthesis":
+                self.roles.append(role)
+                raise RuntimeError("汇总接口临时失败")
+            return await super().complete(role, system, user, **kwargs)
+
+    first_gateway = FailsSynthesis([valid_window_result(), valid_window_result()])
+    with pytest.raises(RuntimeError, match="汇总接口临时失败"):
+        await LearningSystem(db, library, projects, first_gateway).model_analyze_reference(source["id"])
+
+    resumed_gateway = FakeGateway([valid_synthesis_result()])
+    progress = []
+    result = await LearningSystem(
+        db, library, projects, resumed_gateway,
+    ).model_analyze_reference(source["id"], progress.append)
+
+    assert result["claims"] == 2
+    assert resumed_gateway.roles == ["reference_synthesis"]
+    assert progress[0]["reused_windows"] == 2
+    assert progress[0]["current_window"] is None
+
+
+async def test_model_analysis_recovers_valid_legacy_claim_for_single_version_source(tmp_path) -> None:
+    db, library, projects, system = setup_system(tmp_path)
+    text = "甲" * 7_000
+    source = library.import_text(title="旧窗口恢复", source_type="paste", text=text)
+    first_window = system._windows(text)[0]
+    legacy = system._save_node("model_claim", {
+        "window": first_window["index"],
+        "window_start": first_window["start"],
+        "window_end": first_window["end"],
+        "result": json.loads(valid_window_result()),
+        "review_state": "proposal",
+        "model_receipt": {"model_id": "legacy"},
+    }, source_id=source["id"], status="proposed")
+    gateway = FakeGateway([valid_window_result(), valid_synthesis_result()])
+    progress = []
+
+    result = await LearningSystem(
+        db, library, projects, gateway,
+    ).model_analyze_reference(source["id"], progress.append)
+
+    migrated = system.get_node(legacy["id"])["data"]
+    assert result["claims"] == 2
+    assert gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert progress[0]["reused_windows"] == 1
+    assert migrated["analysis_version"]
+    assert migrated["window_hash"]
+    assert migrated["source_version_id"] == source["latest_version"]["id"]
 
 
 async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_path) -> None:

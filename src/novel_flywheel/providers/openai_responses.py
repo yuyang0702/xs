@@ -32,6 +32,8 @@ class OpenAIResponsesAdapter(HttpProvider):
                 "type": "function", "name": tool.name, "description": tool.description,
                 "parameters": tool.input_schema,
             } for tool in request.tools]
+        if request.required_tool:
+            payload["tool_choice"] = {"type": "function", "name": request.required_tool}
         payload["stream"] = True
         events, body = await self.post_stream(
             "responses", payload=payload,

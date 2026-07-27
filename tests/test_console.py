@@ -205,7 +205,8 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "renderReferences" in script
     assert "renderProjectLearningMaterials" in script
     assert "loadWorkflowAnalysis" in script
-    assert "local_corpus_only" in script
+    assert "原创检查仅限本地资料库" in script
+    assert "local_corpus_only" not in script
     assert "readableLearningValue(item.data)" in script
     assert "state.references.map(item=>" in script
     assert 'api("/api/learning/mechanisms")' in script
@@ -379,3 +380,33 @@ def test_learning_candidates_explain_local_and_model_sources_in_chinese(tmp_path
         "MARKET LINK", "MARKET MATCH", "CORE REQUIREMENTS",
     ):
         assert old_label not in html + script
+
+
+def test_reference_model_analysis_explains_resumed_windows(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    assert "已复用" in script
+    assert "正在分析第" in script
+    assert "再次运行会复用已经完成的窗口" in script
+
+
+def test_learning_rules_are_visible_removable_and_recoverable(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for label in (
+        "本次创作会使用什么", "从当前作品移除", "查看和恢复旧版本",
+        "恢复这个版本", "没有发现明确冲突", "检查已有正文是否体现补充写法",
+        "什么时候适合使用", "具体怎么使用", "来源资料",
+    ):
+        assert label in html + script
+    assert 'id="learning-effective-rules"' in html
+    assert 'id="wizard-auto-outline"' in html
+    assert "effectiveRulesMarkup" in script
+    assert "loadArtifactHistory" in script
+    assert "removeAdoption" in script
+    assert ".effective-rule-layers" in css
+    assert ".blueprint-rule-row" in css
