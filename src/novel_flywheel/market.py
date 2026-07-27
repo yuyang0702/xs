@@ -791,6 +791,20 @@ class MarketService:
             "candidates": candidates[:5],
         }
 
+    def auto_associate_reference(self, reference_id: str) -> dict[str, Any]:
+        match = self.match_reference(reference_id)
+        candidate = match["candidates"][0] if match["candidates"] else None
+        required = {"标题完全一致", "只有一个同名候选", "正文开头与榜单简介相似"}
+        if candidate and required.issubset(candidate["reasons"]):
+            confirmed = self.confirm_link(reference_id, candidate["work_id"])
+            return {**confirmed, "automatic": True, "match": match}
+        return {
+            "reference_id": reference_id,
+            "status": "needs_confirmation" if candidate else "no_match",
+            "automatic": False,
+            "match": match,
+        }
+
     def confirm_link(self, reference_id: str, work_id: str) -> dict[str, Any]:
         reference = self.references.get(reference_id)
         work = self.work_detail(work_id)

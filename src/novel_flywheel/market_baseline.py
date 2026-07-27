@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections import defaultdict
+from datetime import date
 from statistics import median
 from typing import Any
 
@@ -48,9 +49,11 @@ class MarketBaselineService:
             raise ValueError("市场基线范围不完整")
         with self.db.connect() as connection:
             rows = connection.execute(
-                """SELECT work.id work_id,link.reference_id,
+                """SELECT work.id work_id,work.title,work.latest_metrics_json,link.reference_id,
                 MIN(substr(snapshot.captured_at,1,10)) start_date,
-                MAX(substr(snapshot.captured_at,1,10)) end_date
+                MAX(substr(snapshot.captured_at,1,10)) end_date,
+                COUNT(DISTINCT substr(snapshot.captured_at,1,10)) observation_days,
+                MIN(entry.rank) best_rank
                 FROM reference_market_links link
                 JOIN market_works work ON work.id=link.work_id
                 JOIN market_entries entry ON entry.work_id=work.id
@@ -73,6 +76,9 @@ class MarketBaselineService:
                     references,
                 ).fetchall()
         sample_count = len(rows)
+        samples = self._weighted_samples(rows)
+        weights = {item["reference_id"]: item["weight"] for item in samples}
+        total_weight = sum(item["weight"] for item in samples)
         by_name: dict[str, dict[str, Any]] = defaultdict(lambda: {"sources": set(), "positions": []})
         for row in mechanisms:
             data = json.loads(row["data_json"])
@@ -92,6 +98,10 @@ class MarketBaselineService:
                 "name": name,
                 "work_count": work_count,
                 "prevalence_percent": round(work_count / max(1, sample_count) * 100, 1),
+                "weighted_prevalence_percent": round(
+                    sum(weights.get(source_id, 0) for source_id in data["sources"])
+                    / max(0.01, total_weight) * 100, 1,
+                ),
                 "position_median": round(median(positions), 1) if positions else None,
                 "position_range": {"start": positions[0], "end": positions[-1]} if positions else None,
             })
@@ -104,9 +114,43 @@ class MarketBaselineService:
             "confidence_level": self.confidence_level(sample_count),
             "date_range": {"start": min(dates), "end": max(dates)} if dates else None,
             "mechanisms": mechanism_summary,
+            "samples": samples,
             "opening": opening,
             "boundary": "仅描述已确认关联的当前本地榜单样本，不代表爆款原因或全网市场。",
         }
+
+    @staticmethod
+    def _weighted_samples(rows) -> list[dict[str, Any]]:
+        if not rows:
+            return []
+        newest = max(date.fromisoformat(row["end_date"]) for row in rows)
+        interactions = []
+        for row in rows:
+            metrics = json.loads(row["latest_metrics_json"] or "{}")
+            interactions.append(max(
+                float(metrics.get("likes") or 0),
+                float(metrics.get("black_horse_index") or 0),
+            ))
+        interaction_max = max(interactions) or 1
+        samples = []
+        for row, interaction in zip(rows, interactions):
+            age = (newest - date.fromisoformat(row["end_date"])).days
+            recency = max(0.4, 1 - age / 30)
+            observed = min(1.0, int(row["observation_days"]) / 7)
+            rank = max(0.2, 1 - (int(row["best_rank"]) - 1) / 99)
+            interaction_score = 0.4 + 0.6 * (interaction / interaction_max)
+            weight = round((recency + observed + rank + interaction_score) / 4, 3)
+            reasons = [
+                "近期仍在榜" if age <= 7 else "榜单记录较早",
+                f"已观察 {row['observation_days']} 天",
+                f"最高第 {row['best_rank']} 名",
+                "互动数据较强" if interaction and interaction == interaction_max else "互动数据有限",
+            ]
+            samples.append({
+                "work_id": row["work_id"], "reference_id": row["reference_id"],
+                "title": row["title"], "weight": weight, "weight_reasons": reasons,
+            })
+        return samples
 
     def _opening_summary(self, reference_ids: list[str]) -> dict[str, Any]:
         question_count = anomaly_count = 0

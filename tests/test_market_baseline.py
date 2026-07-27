@@ -84,3 +84,14 @@ def test_cohort_thresholds_and_dimensions_remain_isolated(tmp_path) -> None:
         "platform": "zhihu", "ranking_name": "推荐榜",
         "category": "悬疑", "length_type": "short",
     }
+
+
+def test_baseline_explains_sample_weights_and_keeps_raw_counts(tmp_path) -> None:
+    service = setup_cohort(tmp_path, 5)
+    baseline = service.build_baseline(service.list_cohorts()[0]["key"])
+
+    assert baseline["sample_count"] == 5
+    assert len(baseline["samples"]) == 5
+    assert all(0 < sample["weight"] <= 1 for sample in baseline["samples"])
+    assert all(sample["weight_reasons"] for sample in baseline["samples"])
+    assert baseline["mechanisms"][0]["weighted_prevalence_percent"] == 100.0

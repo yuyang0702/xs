@@ -251,6 +251,55 @@ def test_title_normalization_and_reference_matching(tmp_path) -> None:
     assert "正文开头与榜单简介相似" in result["candidates"][0]["reasons"]
 
 
+def test_auto_associate_only_confirms_unique_title_with_opening_evidence(tmp_path) -> None:
+    market = service(tmp_path, [ZHIHU_HTML])
+    market.refresh("zhihu-salt")
+    reference = market.references.import_text(
+        title="那年暗室逢月明",
+        text="我穿得奇奇怪怪，别人穿越风光潇洒。后续正文。",
+        source_type="txt",
+    )
+
+    result = market.auto_associate_reference(reference["id"])
+
+    assert result["status"] == "confirmed"
+    assert result["automatic"] is True
+    assert market.reference_context(reference["id"])["work_id"] == "zhihu:zh-1"
+
+
+def test_auto_associate_keeps_title_only_match_for_user_confirmation(tmp_path) -> None:
+    market = service(tmp_path, [ZHIHU_HTML])
+    market.refresh("zhihu-salt")
+    reference = market.references.import_text(
+        title="那年暗室逢月明", text="这段正文与榜单简介完全无关。", source_type="txt",
+    )
+
+    result = market.auto_associate_reference(reference["id"])
+
+    assert result["status"] == "needs_confirmation"
+    assert result["automatic"] is False
+    assert market.reference_context(reference["id"]) is None
+
+
+def test_auto_associate_does_not_guess_between_duplicate_titles(tmp_path) -> None:
+    duplicate = ZHIHU_HTML.replace(
+        '"id":"zh-2","title":"铜臭"',
+        '"id":"zh-2","title":"那年暗室逢月明"',
+    )
+    market = service(tmp_path, [duplicate])
+    market.refresh("zhihu-salt")
+    reference = market.references.import_text(
+        title="那年暗室逢月明",
+        text="我穿得奇奇怪怪，别人穿越风光潇洒。",
+        source_type="txt",
+    )
+
+    result = market.auto_associate_reference(reference["id"])
+
+    assert result["status"] == "needs_confirmation"
+    assert market.reference_context(reference["id"]) is None
+
+
 def test_confirmed_link_updates_market_context_without_changing_reference(tmp_path) -> None:
     market = service(tmp_path, [ZHIHU_HTML])
     market.refresh("zhihu-salt")
