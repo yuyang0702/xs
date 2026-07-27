@@ -100,6 +100,10 @@ class ZhihuPublicationPayload(BaseModel):
     expected_manuscript_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
+class PlatformProfilePayload(BaseModel):
+    profile_id: Literal["zhihu-salt-short"] | None = None
+
+
 def _style_sample_status(project: Project, request: Request) -> dict:
     return {
         **request.app.state.style_samples.status(project),
@@ -839,3 +843,27 @@ def create_zhihu_publication(
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail={"code": "publication_failed", "message": str(exc)}) from exc
+
+
+@router.post("/projects/{project_id}/platform-profile/preview")
+def preview_platform_profile(
+    project_id: str, payload: PlatformProfilePayload, request: Request,
+) -> dict:
+    try:
+        return get_store(request).preview_platform_profile(project_id, payload.profile_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "profile_not_available", "message": str(exc)}) from exc
+
+
+@router.put("/projects/{project_id}/platform-profile")
+def apply_platform_profile(
+    project_id: str, payload: PlatformProfilePayload, request: Request,
+) -> dict:
+    try:
+        return _public(get_store(request).apply_platform_profile(project_id, payload.profile_id))
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"code": "profile_not_available", "message": str(exc)}) from exc

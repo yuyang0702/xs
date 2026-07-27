@@ -137,6 +137,10 @@ After a formal manuscript passes final review, the project can preview and creat
 
 Ranking association is automatic only when there is one exact-title candidate and the imported opening also matches the ranking summary. Every other case stays unconfirmed for the user to decide. Market baselines keep the raw sample count and add an explainable local weight based on recency, observation days, best rank, and available interaction data.
 
+Every reference import now returns and displays a plain-language receipt: the inferred or confirmed type, the evidence used, allowed uses, excluded uses, next actions, and whether a model was called. Import saves the source first; a failed or missing market match does not discard the reference. Long operations show explicit working, success, or failure states, and failed forms keep the entered values for retry.
+
+The workbench **发布准备** section previews profile changes before applying them and states that manuscripts are not modified. For eligible Zhihu short projects it checks the formal manuscript and final-review result before showing a ready state, then keeps submission fields and specific retry guidance visible if export fails.
+
 Candidate quality now includes a hash-bound narrative ledger for explicit questions, promises, setup/payoff candidates, and scene state changes. Important unresolved semantic candidates are included in the existing final-review evidence; no new model role is introduced. Revision issues use stable content-derived IDs, revision tasks can carry those IDs, and incremental final review must reconcile every prior issue as `resolved`, `unresolved`, or `uncertain`. Changed relation endpoints are reviewed together; broad, ambiguous, structural, or uncertain changes retain the full-manuscript fallback.
 
 The feature only reads public ranking markup. It does not store credentials or cookies, read

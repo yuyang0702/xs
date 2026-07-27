@@ -69,6 +69,28 @@ def test_zhihu_publication_preview_and_create_api(tmp_path) -> None:
     assert built.json()["version"] == "v001"
 
 
+def test_platform_profile_preview_and_apply_api(tmp_path) -> None:
+    app = create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    project = client.post("/api/projects", json={
+        "title": "Profile", "mode": "short", "genre": "suspense",
+        "premise": "A friend returns.", "target_words": 6000,
+    }).json()
+
+    preview = client.post(f"/api/projects/{project['id']}/platform-profile/preview", json={
+        "profile_id": "zhihu-salt-short",
+    })
+    applied = client.put(f"/api/projects/{project['id']}/platform-profile", json={
+        "profile_id": "zhihu-salt-short",
+    })
+
+    assert preview.json()["will_change_manuscript"] is False
+    assert applied.json()["platform_profile_id"] == "zhihu-salt-short"
+
+
 def test_manuscript_falls_back_to_latest_run_candidate(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(

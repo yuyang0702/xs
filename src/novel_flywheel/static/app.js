@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -121,6 +121,24 @@ async function selectReference(sourceId) {
   state.referenceContent = "";
   renderReferences();
   loadReferenceAnalysisTask(sourceId);
+}
+
+function renderImportReceipt() {
+  const shell=$("#reference-import-receipt"), receipt=state.importReceipt;
+  if(!shell)return;
+  if(!receipt){shell.hidden=true;shell.innerHTML="";return;}
+  shell.hidden=false;
+  const list=items=>items?.length?`<ul>${items.map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>`:'<p>暂无</p>';
+  shell.innerHTML=`<header><div><span>资料已保存</span><h3>${escapeHtml(receipt.headline)}</h3></div><strong>${escapeHtml(receipt.trust_label)}</strong></header><div class="receipt-grid"><section><span>系统判断</span><p>${escapeHtml(receipt.market_message)}</p></section><section><span>判断依据</span>${list(receipt.reasons)}</section><section><span>可以用于</span>${list(receipt.recommended_for)}</section><section><span>不会用于</span>${list(receipt.not_used_for)}</section></div><footer><div><span>下一步</span><p>${escapeHtml(receipt.cost_message)}</p></div><div>${(receipt.next_steps||[]).map(item=>`<button type="button" class="secondary" data-receipt-action="${escapeHtml(item.action)}">${escapeHtml(item.label)}</button>`).join("")}</div></footer>`;
+  shell.querySelectorAll("[data-receipt-action]").forEach(button=>button.addEventListener("click",()=>runReceiptAction(button.dataset.receiptAction)));
+}
+
+async function runReceiptAction(action){
+  if(!state.activeReference)return;
+  if(action==="market_match")return matchReferenceMarket(state.activeReference.id);
+  if(action==="local_learn")return learnReference();
+  if(action==="local_analyze")return analyzeReference();
+  if(action==="popular_analysis")return analyzePopularReference();
 }
 
 async function loadReferenceContent(sourceId) {
@@ -406,19 +424,20 @@ $("#reference-form").addEventListener("submit", async event => {
   if (!file && !url && !text.trim()) return toast("请选择文档、输入网址或粘贴正文");
   const originalText = button.textContent;
   button.disabled = true;
-  button.textContent = "导入中...";
-  status.textContent = url ? "正在读取网页内容，公开网页最多等待约 20 秒；会员或动态页面可能无法直接提取。" : "正在导入学习库...";
+  button.textContent = "正在保存…";
+  status.className="operation-status busy";
+  status.textContent = url ? "正在读取网页内容并保存资料，公开网页最多等待约 20 秒。" : "正在保存资料，不会调用模型。";
   try {
     let source;
     if (url) source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:"url",source_uri:url,...metadata})});
     else if (file && extension !== "txt") source = await api("/api/references/import", {method:"POST", body:JSON.stringify({title,source_type:extension,source_uri:file.name,data_base64:await fileBase64(file),...metadata})});
     else source = await api("/api/references", {method:"POST", body:JSON.stringify({title, text, source_type:file ? "txt" : "paste",...metadata})});
-    event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null;
+    event.target.reset(); state.activeReference = source; state.referenceContent = ""; state.referenceAnalysis = null; state.importReceipt=source.import_receipt;
     state.marketMatch=await api(`/api/market/references/${source.id}/match`).catch(()=>null);
-    status.textContent = "";
-    await loadAll(); toast(state.marketMatch?.candidates?.length?"参考资料已导入，并发现榜单匹配候选":"参考资料已导入");
+    status.className="operation-status success";status.textContent = "资料已保存。下方结果单说明系统会怎样使用它。";
+    await loadAll(); renderImportReceipt(); toast("资料已保存");
   } catch(error) {
-    status.textContent = `导入失败：${error.message}`;
+    status.className="operation-status error";status.textContent = `保存失败：${error.message}。表单内容仍在，可以修改后重试。`;
     toast(error.message);
   } finally {
     button.disabled = false;
@@ -474,7 +493,8 @@ function renderMarketBaseline(){
   const data=state.marketBaseline;if(!data)return;
   const labels={insufficient:"样本不足，仅展示观察",preliminary:"初步基线",advisory:"可用于项目建议"};
   const mechanisms=data.mechanisms.slice(0,8);
-  $("#market-baseline-detail").innerHTML=`<div class="market-baseline-summary"><div><strong>${data.sample_count}</strong><span>有效作品</span></div><div><strong>${labels[data.confidence_level]}</strong><span>可信状态</span></div><div><strong>${escapeHtml(data.date_range?`${data.date_range.start} 至 ${data.date_range.end}`:"暂无")}</strong><span>样本日期</span></div></div><div class="market-baseline-opening"><span>前500字明确问题 <strong>${data.opening.question_percent}%</strong></span><span>前500字异常信号 <strong>${data.opening.anomaly_percent}%</strong></span></div>${mechanisms.length?`<div class="market-baseline-mechanisms">${mechanisms.map(item=>`<article><div><strong>${escapeHtml(item.name)}</strong><span>${item.work_count}/${data.sample_count}篇 · ${item.prevalence_percent}%</span></div><small>${item.position_median===null?"暂无稳定位置":`全文中位位置 ${item.position_median}%`}</small></article>`).join("")}</div>`:'<p class="market-empty">当前样本尚未完成本地提炼，暂无可汇总机制。</p>'}<p class="market-baseline-boundary">${escapeHtml(data.boundary)}</p>`;
+  const samples=data.samples||[];
+  $("#market-baseline-detail").innerHTML=`<div class="market-baseline-summary"><div><strong>${data.sample_count}</strong><span>原始有效作品数</span></div><div><strong>${labels[data.confidence_level]}</strong><span>可信状态</span></div><div><strong>${escapeHtml(data.date_range?`${data.date_range.start} 至 ${data.date_range.end}`:"暂无")}</strong><span>样本日期</span></div></div><div class="market-baseline-opening"><span>前500字明确问题 <strong>${data.opening.question_percent}%</strong></span><span>前500字异常信号 <strong>${data.opening.anomaly_percent}%</strong></span></div>${mechanisms.length?`<div class="market-baseline-mechanisms">${mechanisms.map(item=>`<article><div><strong>${escapeHtml(item.name)}</strong><span>${item.work_count}/${data.sample_count}篇 · 原始占比 ${item.prevalence_percent}% · 综合参考 ${item.weighted_prevalence_percent??item.prevalence_percent}%</span></div><small>${item.position_median===null?"暂无稳定位置":`全文中位位置 ${item.position_median}%`}</small></article>`).join("")}</div>`:'<p class="market-empty">当前样本尚未完成本地提炼，暂无可汇总机制。</p>'}${samples.length?`<details class="market-sample-weights"><summary>查看每份样本为什么有参考价值</summary>${samples.map(item=>`<p><strong>${escapeHtml(item.title)}</strong><span>参考强度 ${Math.round(item.weight*100)}% · ${item.weight_reasons.map(escapeHtml).join(" · ")}</span></p>`).join("")}</details>`:""}<p class="market-baseline-boundary">${escapeHtml(data.boundary)}</p>`;
 }
 
 function marketMetricText(metrics){
@@ -828,6 +848,31 @@ async function loadWritingRulesSummary(projectId) {
     shell.innerHTML = `<div><strong>${escapeHtml(baseline.data.summary || "已启用项目文笔基线")}</strong><span class="skill-meta">版本 ${baseline.version}${result.legacy_style_migration?.migrated ? " · 已迁移旧范文笔感" : ""}</span></div><div class="writing-rule-list">${entries.map(([key,label]) => `<p><strong>${label}</strong><span>${escapeHtml(Array.isArray(baseline.data[key]) ? baseline.data[key].join("；") : baseline.data[key])}</span></p>`).join("")}</div>`;
   } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
+async function loadPublicationPanel(projectId){
+  const panel=$("#platform-profile-panel"),form=$("#zhihu-publication-form"),status=$("#publication-status");state.publicationPreview=null;
+  if(!projectId){panel.innerHTML='<p class="skill-meta">请先选择作品</p>';form.hidden=true;return;}
+  const project=state.projects.find(item=>item.id===projectId);
+  if(project?.mode!=="short"){panel.innerHTML='<p class="skill-meta">知乎盐选短篇创作配置只用于短篇作品，长篇保持原有流程。</p>';form.hidden=true;return;}
+  const enabled=project.platform_profile_id==="zhihu-salt-short";
+  panel.innerHTML=`<div class="profile-row"><div><strong>${enabled?"已启用知乎盐选短篇创作配置":"尚未指定发布平台"}</strong><p>${enabled?"后续大纲、正文、返修和终审会区分平台要求与市场建议。":"启用后只调整后续创作检查和投稿设置，不会改动现有正文。"}</p></div><button type="button" class="${enabled?"secondary":"primary"}" data-profile-toggle>${enabled?"停用配置":"启用知乎盐选短篇"}</button></div>`;
+  panel.querySelector("[data-profile-toggle]").addEventListener("click",()=>changePlatformProfile(enabled?null:"zhihu-salt-short"));form.hidden=!enabled;if(!enabled)return;
+  form.elements.title.value ||= project.title||"";form.elements.content_type.value ||= project.genre||"";
+  status.className="operation-status busy";status.textContent="正在检查正式稿和终审结果…";
+  try{state.publicationPreview=await api(`/api/projects/${projectId}/publication/zhihu/preview`);status.className=`operation-status ${state.publicationPreview.ready?"success":"error"}`;status.textContent=`${state.publicationPreview.message} 正文 ${Number(state.publicationPreview.character_count).toLocaleString()} 字。`;}
+  catch(error){status.className="operation-status error";status.textContent=error.message;}
+}
+async function changePlatformProfile(profileId){
+  if(!state.activeProject)return;
+  try{const preview=await api(`/api/projects/${state.activeProject.id}/platform-profile/preview`,{method:"POST",body:JSON.stringify({profile_id:profileId})});if(!confirm(`${preview.message}\n\n${profileId?"确认启用知乎盐选短篇创作配置？":"确认停用平台创作配置？"}`))return;const changed=await api(`/api/projects/${state.activeProject.id}/platform-profile`,{method:"PUT",body:JSON.stringify({profile_id:profileId})});state.projects=state.projects.map(item=>item.id===changed.id?changed:item);state.activeProject=changed;await loadPublicationPanel(changed.id);toast(profileId?"知乎盐选短篇创作配置已启用":"平台创作配置已停用，正文没有改变");}
+  catch(error){toast(error.message);}
+}
+$("#zhihu-publication-form")?.addEventListener("submit",async event=>{
+  event.preventDefault();if(!state.activeProject)return;const form=event.target,button=form.querySelector('button[type="submit"]'),status=$("#publication-status");if(!state.publicationPreview?.manuscript_hash)return toast("请先完成正式稿和终审检查");
+  button.disabled=true;button.textContent="正在生成…";status.className="operation-status busy";status.textContent="正在整理投稿文件，不会调用模型或修改正文。";
+  try{const data=Object.fromEntries(new FormData(form));const result=await api(`/api/projects/${state.activeProject.id}/publication/zhihu`,{method:"POST",body:JSON.stringify({...data,alternate_titles:String(data.alternate_titles||"").split(/\r?\n/).map(item=>item.trim()).filter(Boolean),expected_manuscript_hash:state.publicationPreview.manuscript_hash})});status.className="operation-status success";status.textContent=`${result.message} 文件位置：${result.path}`;toast(`投稿包 ${result.version} 已生成`);await loadProjectLocations(state.activeProject.id);}
+  catch(error){status.className="operation-status error";status.textContent=`生成失败：${error.message}。已填写内容不会清空，可以直接重试。`;}
+  finally{button.disabled=false;button.textContent="生成知乎投稿包";}
+});
 $("#open-learning-library").addEventListener("click", async () => {
   showView("learning", "学习库");
   if (state.activeProject) { $("#learning-project").value = state.activeProject.id; state.projectLearning = null; await loadProjectLearning(); renderLearning(); }
@@ -1009,8 +1054,8 @@ async function renderActiveProject() {
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadWritingRulesSummary(null); await loadWorkflowAnalysis(); return; }
-  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadWritingRulesSummary(p.id), loadWorkflowAnalysis()]);
+  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadWritingRulesSummary(null); await loadPublicationPanel(null); await loadWorkflowAnalysis(); return; }
+  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadWritingRulesSummary(p.id), loadPublicationPanel(p.id), loadWorkflowAnalysis()]);
   const runs = await api(`/api/projects/${p.id}/runs`);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
@@ -1046,6 +1091,7 @@ function fieldControl(field, answer) {
   if (field.type === "textarea") return `<textarea class="field-value" rows="4">${escapeHtml(value)}</textarea>`;
   if (field.id === "market_baseline_enabled") return `<select class="field-value"><option value="enabled" ${value!=="disabled"?"selected":""}>启用市场建议</option><option value="disabled" ${value==="disabled"?"selected":""}>不使用市场建议</option></select>`;
   if (field.id === "market_baseline_key") return `<select class="field-value"><option value="">暂不选择</option>${state.marketBaselines.map(item=>{const serialized=JSON.stringify(item.key);const label={insufficient:"样本不足",preliminary:"初步",advisory:"可用于建议"}[item.confidence_level];return `<option value="${escapeHtml(serialized)}" ${serialized===value?"selected":""}>${escapeHtml(item.key.platform)} · ${escapeHtml(item.key.category)} · ${escapeHtml(item.key.ranking_name)} · ${escapeHtml(item.key.length_type)}（${item.sample_count}篇，${label}）</option>`;}).join("")}</select>`;
+  if (field.id === "platform_profile_id") return `<select class="field-value"><option value="none" ${value==="none"?"selected":""}>暂不指定发布平台</option><option value="zhihu-salt-short" ${value==="zhihu-salt-short"?"selected":""}>知乎盐选短篇</option></select>`;
   if (field.type === "select") return `<select class="field-value">${(field.options || []).map(option => `<option value="${escapeHtml(option)}" ${String(option) === String(value) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
   if (field.type === "boolean") return `<input class="field-value" type="checkbox" ${value ? "checked" : ""}>`;
   const list = field.id === "genre" ? ' list="genre-options"' : field.id === "sub_genre" ? ' list="subgenre-options"' : "";

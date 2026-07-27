@@ -46,6 +46,22 @@
         <div class="section-heading"><div><h2 id="writing-rules-title">当前文笔规则</h2><p class="skill-meta">展示当前作品已确认并正在使用的文笔基线</p></div><button id="open-learning-library" class="secondary">前往学习库</button></div>
         <div id="writing-rules-summary" class="writing-rules-summary"><p class="skill-meta">请先选择作品</p></div>
       </section>
+      <section class="publication-band" aria-labelledby="publication-title">
+        <div class="section-heading"><div><h2 id="publication-title">发布准备</h2><p class="skill-meta">选择平台创作配置，并从通过终审的正式稿生成投稿文件</p></div></div>
+        <div id="platform-profile-panel"><p class="skill-meta">请先选择作品</p></div>
+        <form id="zhihu-publication-form" hidden>
+          <div class="publication-fields">
+            <label>主标题<input name="title" maxlength="120" required></label>
+            <label>备选标题<input name="alternate_titles" maxlength="300" placeholder="多个标题用换行分开"></label>
+            <label class="wide">一句话卖点<input name="selling_point" maxlength="300" required placeholder="一句话说清最吸引人的冲突或意外"></label>
+            <label class="wide">投稿简介<textarea name="introduction" rows="4" maxlength="2000" required></textarea></label>
+            <label>内容类型<input name="content_type" maxlength="80" required placeholder="例如：悬疑"></label>
+            <label>目标读者<input name="audience" maxlength="200" required placeholder="例如：喜欢反转悬疑的读者"></label>
+          </div>
+          <div id="publication-status" class="operation-status" role="status" aria-live="polite"></div>
+          <button class="primary" type="submit">生成知乎投稿包</button>
+        </form>
+      </section>
       <div class="workspace-grid">
         <section class="action-panel">
           <h2>飞轮操作</h2>
@@ -114,6 +130,7 @@
             <p id="reference-import-status" class="skill-meta" role="status" aria-live="polite"></p>
             <button class="primary" type="submit">导入学习库</button>
           </form>
+          <section id="reference-import-receipt" class="reference-import-receipt" hidden aria-live="polite"></section>
           <div class="reference-filters">
             <label>搜索<input id="reference-search" type="search" placeholder="名称、平台或类型"></label>
             <label>平台筛选<select id="reference-filter-platform"><option value="">全部平台</option></select></label>

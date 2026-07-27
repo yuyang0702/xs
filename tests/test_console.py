@@ -225,6 +225,21 @@ def test_reference_metadata_save_action_only_appears_for_changes(tmp_path) -> No
     assert ".reference-save-state" in css
 
 
+def test_reference_import_receipt_uses_plain_language_and_direct_actions(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    assert 'id="reference-import-receipt"' in html
+    for label in ("系统判断", "判断依据", "可以用于", "不会用于", "下一步"):
+        assert label in script
+    assert "data-receipt-action" in script
+    assert ".reference-import-receipt" in css
+    assert "正在保存资料" in script
+    assert "资料已保存" in script
+
+
 def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
     client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
     script = client.get("/static/app.js").text

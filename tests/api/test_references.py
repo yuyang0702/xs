@@ -26,6 +26,10 @@ def test_reference_api_imports_lists_analyzes_and_deletes(tmp_path) -> None:
     assert created.status_code == 201
     source = created.json()
     assert "storage_path" not in str(source)
+    assert source["classification"]["trust"] == "inferred"
+    assert source["usage"]["trust_label"] == "系统推测"
+    assert source["import_receipt"]["cost_message"] == "本次导入没有调用模型，也不会修改任何作品"
+    assert source["import_receipt"]["next_steps"]
     assert client.get("/api/references").json()[0]["id"] == source["id"]
     assert client.get(f"/api/references/{source['id']}").status_code == 200
     assert client.get(f"/api/references/{source['id']}/content").json()["text"].startswith("血是")

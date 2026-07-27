@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from novel_flywheel.reference_extractors import extract_docx, extract_pdf, fetch_public_url
+from novel_flywheel.reference_policy import reference_receipt, reference_usage
 
 
 router = APIRouter(prefix="/api/references", tags=["references"])
@@ -61,7 +62,7 @@ def _public(value):
     return value
 
 
-def _with_market(request: Request, value):
+def _with_market(request: Request, value, market_match=None):
     public = _public(value)
     market = getattr(request.app.state, "market", None)
     if market is None:
@@ -69,8 +70,24 @@ def _with_market(request: Request, value):
     if isinstance(public, list):
         return [_with_market(request, item) for item in public]
     if isinstance(public, dict) and public.get("id"):
-        public["market_context"] = market.reference_context(public["id"])
+        context = market.reference_context(public["id"])
+        public["market_context"] = context
+        public["usage"] = reference_usage(public, context)
+        public["import_receipt"] = reference_receipt(
+            public, market_match=market_match, market_context=context,
+        )
     return public
+
+
+def _after_import(request: Request, source: dict) -> dict:
+    market = getattr(request.app.state, "market", None)
+    match = None
+    if market is not None and source.get("source_type") in {"txt", "paste"}:
+        try:
+            match = market.auto_associate_reference(source["id"])
+        except (LookupError, ValueError):
+            match = None
+    return _with_market(request, source, (match or {}).get("match"))
 
 
 def _not_found(exc: Exception) -> HTTPException:
@@ -86,7 +103,7 @@ def list_references(request: Request) -> list[dict]:
 def import_reference(payload: ReferenceImport, request: Request) -> dict:
     try:
         _validate_project(request, payload.project_id)
-        return _with_market(request, _library(request).import_text(
+        return _after_import(request, _library(request).import_text(
             title=payload.title, text=payload.text, source_type=payload.source_type,
             platform=payload.platform, content_type=payload.content_type, project_id=payload.project_id,
         ))
@@ -105,7 +122,7 @@ def import_extracted_reference(payload: ExtractedReferenceImport, request: Reque
         elif not text:
             raw = base64.b64decode(payload.data_base64 or "", validate=True)
             text = extract_docx(raw) if payload.source_type == "docx" else extract_pdf(raw)
-        return _with_market(request, _library(request).import_text(
+        return _after_import(request, _library(request).import_text(
             title=title, text=text or "", source_type=payload.source_type,
             source_uri=source_uri, warnings=payload.warnings, platform=payload.platform,
             content_type=payload.content_type, project_id=payload.project_id,
