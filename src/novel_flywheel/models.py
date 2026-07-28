@@ -16,6 +16,13 @@ class ModelResult:
     receipt: dict
 
 
+class ModelRoutesExhaustedError(RuntimeError):
+    def __init__(self, primary_error: Exception, fallback_error: Exception) -> None:
+        super().__init__(str(fallback_error))
+        self.primary_error = primary_error
+        self.fallback_error = fallback_error
+
+
 class ModelGateway:
     CONNECT_RETRY_DELAY = 2
 
@@ -24,16 +31,25 @@ class ModelGateway:
         self.registry = registry
 
     async def complete(self, role: str, system: str, user: str,
-                       max_output_tokens: int | None = None) -> ModelResult:
+                       max_output_tokens: int | None = None,
+                       fallback_max_output_tokens: int | None = None) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
+        primary_limit = self._route_output_limit(
+            binding.get("primary_model_id"), max_output_tokens,
+        )
+        fallback_limit = self._route_output_limit(
+            binding.get("fallback_model_id"),
+            fallback_max_output_tokens if fallback_max_output_tokens is not None
+            else max_output_tokens,
+        )
         try:
             resolved = self.registry.resolve(
                 binding["primary_provider_id"], binding["primary_model_id"],
             )
             return await self._complete_resolved(
-                role, system, user, resolved, max_output_tokens,
+                role, system, user, resolved, primary_limit,
             )
         except asyncio.CancelledError:
             raise
@@ -42,7 +58,7 @@ class ModelGateway:
                 await asyncio.sleep(self.CONNECT_RETRY_DELAY)
                 try:
                     return await self._complete_resolved(
-                        role, system, user, resolved, max_output_tokens,
+                        role, system, user, resolved, primary_limit,
                     )
                 except asyncio.CancelledError:
                     raise
@@ -51,9 +67,14 @@ class ModelGateway:
             fallback = self._resolve_configured_fallback(binding)
             if fallback is None:
                 raise
-            result = await self._complete_resolved(
-                role, system, user, fallback, max_output_tokens,
-            )
+            try:
+                result = await self._complete_resolved(
+                    role, system, user, fallback, fallback_limit,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as fallback_exc:
+                raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
             return self._mark_fallback(
                 result, binding["primary_provider_id"], binding["primary_model_id"], exc,
             )
@@ -69,7 +90,8 @@ class ModelGateway:
         if fallback is None:
             raise LookupError(f"Model role has no configured fallback: {role}")
         result = await self._complete_resolved(
-            role, system, user, fallback, max_output_tokens,
+            role, system, user, fallback,
+            self._route_output_limit(binding.get("fallback_model_id"), max_output_tokens),
         )
         return ModelResult(result.text, {
             **result.receipt, "configured_fallback_direct": True,
@@ -226,6 +248,16 @@ class ModelGateway:
         if not provider_id or not model_id:
             return None
         return self.registry.resolve(provider_id, model_id)
+
+    def _route_output_limit(self, model_id: str | None,
+                            requested: int | None) -> int | None:
+        if requested is None:
+            return None
+        model = self.db.get_model(model_id or "") or {}
+        ceiling = model.get("max_output_tokens")
+        if isinstance(ceiling, int) and ceiling > 0:
+            return min(requested, ceiling)
+        return requested
 
     @staticmethod
     def _mark_fallback(

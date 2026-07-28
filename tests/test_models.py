@@ -29,6 +29,18 @@ class SuccessfulFallbackAdapter:
         return ModelResponse(text="fallback result", input_tokens=4, output_tokens=6)
 
 
+class BudgetRecordingAdapter:
+    def __init__(self, *, fail: bool = False):
+        self.fail = fail
+        self.budgets = []
+
+    async def complete(self, request):
+        self.budgets.append(request.max_output_tokens)
+        if self.fail:
+            raise RuntimeError("route unavailable")
+        return ModelResponse(text="fallback result", input_tokens=4, output_tokens=6)
+
+
 class FlakyConnectAdapter:
     def __init__(self):
         self.calls = 0
@@ -95,6 +107,32 @@ async def test_gateway_uses_configured_fallback_for_plain_completion(tmp_path) -
         "fallback_from_provider_id": "primary-provider",
         "fallback_from_model_id": "primary-model",
     }
+
+
+@pytest.mark.asyncio
+async def test_gateway_uses_distinct_primary_and_fallback_output_limits(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "polish", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    primary = BudgetRecordingAdapter(fail=True)
+    fallback = BudgetRecordingAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            adapter = primary if provider_id == "primary-provider" else fallback
+            return ResolvedModel(provider_id, model_id, model_id, adapter)
+
+    result = await ModelGateway(db, Registry()).complete(
+        "polish", "rules", "polish", max_output_tokens=6144,
+        fallback_max_output_tokens=3072,
+    )
+
+    assert result.text == "fallback result"
+    assert primary.budgets == [6144]
+    assert fallback.budgets == [3072]
 
 
 @pytest.mark.asyncio

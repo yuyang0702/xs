@@ -23,7 +23,7 @@ from novel_flywheel.context_policy import (
 )
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
-from novel_flywheel.models import ModelGateway
+from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript, compact_analysis
 from novel_flywheel.incremental_review import (
@@ -96,6 +96,10 @@ class StageText(str):
 
 
 class RevisionPlanError(RuntimeError):
+    pass
+
+
+class TargetedGroupError(RuntimeError):
     pass
 
 
@@ -1589,11 +1593,13 @@ class WorkflowService:
                                      recovery_rule: str | None = None,
                                      prepared_revision_plan: dict | None = None,
                                      round_cap_override: int | None = None,
-                                     batch_number: int = 1) -> str:
+                                     batch_number: int = 1,
+                                     targeted_context: dict | None = None) -> str:
         original_parts = self._split_segments(text)
+        targeted = bool(structural or targeted_context)
         grouped_parts = (
             [(part, group) for group, part in enumerate(original_parts, 1)]
-            if structural else [
+            if targeted else [
                 (part, group)
                 for group, original in enumerate(original_parts, 1)
                 for part in self._split_polish_segments(original)
@@ -1606,7 +1612,7 @@ class WorkflowService:
         authoritative_state = self.story_states.ensure(project.id, project.path).data
         passage_service = PassageProtectionService(self.db)
         project_passage_locks = self.db.list_locks(project.id)
-        if structural and len(parts) > 1:
+        if structural and targeted_context is None and len(parts) > 1:
             if prepared_revision_plan is None:
                 revision_plan = await self._plan_structural_revision(
                     run_id, run_path, project, constraints, findings, story_map, suffix,
@@ -1621,14 +1627,14 @@ class WorkflowService:
                 full_plan, target_corrections = align_revision_plan_targets(
                     full_plan, original_parts,
                 )
-                revision_plan = normalize_revision_plan(
+                revision_plan = self._normalized_revision_plan(
                     full_plan, len(story_map), max_target_ratio=0.4,
                     require_checks=bool(full_plan.get("checks")),
                     defer_excess_targets=True,
                 )
             else:
                 target_corrections = []
-                revision_plan = normalize_revision_plan(
+                revision_plan = self._normalized_revision_plan(
                     prepared_revision_plan, len(story_map), max_target_ratio=0.4,
                     require_checks=bool(prepared_revision_plan.get("checks")),
                     defer_excess_targets=True,
@@ -1643,7 +1649,7 @@ class WorkflowService:
                     "Runtime corrected revision targets using exact manuscript search",
                     stage="revision_plan", metadata={"corrections": target_corrections},
                 )
-        elif not structural and recovery_rule is None:
+        elif not targeted and recovery_rule is None:
             try:
                 findings = json.dumps(
                     compact_polish_findings(json.loads(findings)), ensure_ascii=False,
@@ -1654,7 +1660,7 @@ class WorkflowService:
             "You may replace or remove implausible events and reorder material inside this segment "
             "to resolve the findings. Preserve the core premise, required ending, established facts, "
             "and approximate length."
-            if structural else
+            if targeted else
             "Preserve events and length; remove AI-like phrasing and apply the findings."
         )
         style_profile = ensure_style_profile(project)
@@ -1674,7 +1680,7 @@ class WorkflowService:
         )
         round_input_tokens = 0
         round_cap = (round_cap_override if round_cap_override is not None
-                     else self._polish_round_input_cap(structural, len(parts)))
+                     else self._polish_round_input_cap(targeted, len(parts)))
         for index, part in enumerate(parts, 1):
             group = part_groups[index - 1]
             if revision_plan and group not in revision_plan["target_segments"]:
@@ -1707,8 +1713,51 @@ class WorkflowService:
             next_head = parts[index][:800] if index < len(parts) else ""
             local_report = analyze_prose(part)
             passage_locks = applicable_passage_locks(project_passage_locks, part)
-            tasks = ([task["instruction"] for task in revision_plan["tasks"]
-                      if group in task["segments"]] if revision_plan else [])
+            if targeted_context:
+                tasks = targeted_context["tasks"]
+                linked_checks = targeted_context["checks"]
+                global_facts = targeted_context["global_facts"]
+                previous_context = (
+                    parts[index - 2] if index > 1
+                    else targeted_context["previous_paragraph"]
+                )
+                next_context = (
+                    parts[index] if index < len(parts)
+                    else targeted_context["next_paragraph"]
+                )
+            elif revision_plan:
+                tasks = [task for task in revision_plan["tasks"] if group in task["segments"]]
+                task_issue_ids = {
+                    issue_id for task in tasks for issue_id in task.get("issue_ids", [])
+                }
+                linked_checks = [
+                    check for check in revision_plan["checks"]
+                    if not check.get("issue_ids")
+                    or task_issue_ids.intersection(check["issue_ids"])
+                ]
+                global_facts = revision_plan["global_facts"]
+                previous_context = original_parts[group - 2] if group > 1 else ""
+                next_context = original_parts[group] if group < len(original_parts) else ""
+            else:
+                tasks = []
+                linked_checks = []
+                global_facts = []
+                previous_context = previous_tail
+                next_context = next_head
+            positions = list(dict.fromkeys(
+                task["seven_step_position"] for task in tasks
+                if task.get("seven_step_position")
+            ))
+            seven_step_position = "；".join(positions) if positions else "未标注"
+            current_targeted_context = {
+                "tasks": tasks,
+                "checks": linked_checks,
+                "global_facts": global_facts,
+                "previous_paragraph": previous_context,
+                "next_paragraph": next_context,
+                "seven_step_position": seven_step_position,
+                "segment": (targeted_context or {}).get("segment", group),
+            }
             plan_context = (
                 f"GLOBAL FACTS AND LOCKS:\n{json.dumps(revision_plan['global_facts'], ensure_ascii=False)}\n\n"
                 f"TASKS FOR THIS SEGMENT:\n{json.dumps(tasks, ensure_ascii=False)}\n\n"
@@ -1716,8 +1765,8 @@ class WorkflowService:
                 f"COMPACT FULL STORY MAP:\n{json.dumps(story_map, ensure_ascii=False)}\n\n"
                 if revision_plan else f"STRUCTURED FINDINGS:\n{findings}\n\n"
             )
-            preferred_minimum_ratio = 0.60 if structural else 0.70
-            minimum_ratio, maximum_ratio = ((0.50, 1.80) if structural else (0.70, 1.60))
+            preferred_minimum_ratio = 0.60 if targeted else 0.70
+            minimum_ratio, maximum_ratio = ((0.50, 1.80) if targeted else (0.70, 1.60))
             minimum_characters = math.floor(len(part) * preferred_minimum_ratio)
             maximum_characters = math.ceil(len(part) * maximum_ratio)
             length_contract = (
@@ -1725,27 +1774,25 @@ class WorkflowService:
                 "Do not repeat adjacent scenes, include analysis, or rewrite material outside "
                 "this manuscript segment."
             )
-            if structural and revision_plan:
+            if targeted and (revision_plan or targeted_context):
                 prompt = (
                     f"STYLE PROFILE:\n{style_profile}\n\n"
                     f"RELEVANT CHARACTER VOICES:\n"
                     f"{character_fingerprints(project.path, part)}\n\n"
                     + revision_patch_context(
                         issue={
-                            "instructions": tasks,
+                            "tasks": tasks,
                             "edit_rule": revision_rule + length_contract,
                         },
                         target_paragraph=part,
-                        previous_paragraph=previous_tail,
-                        next_paragraph=next_head,
-                        evidence_summaries=revision_plan["checks"],
-                        seven_step_position=json.dumps(
-                            story_map[group - 1], ensure_ascii=False,
-                        ),
+                        previous_paragraph=previous_context,
+                        next_paragraph=next_context,
+                        evidence_summaries=linked_checks,
+                        seven_step_position=seven_step_position,
                         authoritative_facts=[
                             *authoritative_state.get("locked_facts", []),
                             *authoritative_state.get("confirmed_facts", []),
-                            *revision_plan["global_facts"],
+                            *global_facts,
                         ],
                         protected_passages=[{
                             "id": lock.get("id"),
@@ -1754,7 +1801,7 @@ class WorkflowService:
                             "allow_next_change": bool(lock.get("allow_next_change")),
                         } for lock in passage_locks],
                         allowed_range={
-                            "segment": group,
+                            "segment": current_targeted_context["segment"],
                             "minimum_characters": minimum_characters,
                             "maximum_characters": maximum_characters,
                         },
@@ -1782,7 +1829,7 @@ class WorkflowService:
                     + passage_prompt_context(passage_locks)
                 )
             part_suffix = f"{suffix}-part-{index:02d}"
-            priority = bool(structural or index in {1, len(parts)} or local_report["findings"])
+            priority = bool(targeted or index in {1, len(parts)} or local_report["findings"])
             prefer_configured = bool(
                 configured_fallback and (primary_circuit_open or not priority)
             )
@@ -1798,13 +1845,14 @@ class WorkflowService:
                     "priority": priority, "characters": len(part),
                 },
             )
+            targeted_group_failed = False
             try:
                 polished_part = await self._stage(
                     run_id, run_path, project, "polish", constraints, prompt,
                     suffix=part_suffix, allow_tools=False,
                     prefer_configured_fallback=prefer_configured,
                     output_source_characters=len(part),
-                    targeted_retry=structural,
+                    targeted_retry=targeted,
                 )
                 if getattr(polished_part, "receipt", {}).get("fallback_used"):
                     primary_circuit_open = True
@@ -1815,6 +1863,17 @@ class WorkflowService:
                     )
             except asyncio.CancelledError:
                 raise
+            except TargetedGroupError as exc:
+                targeted_group_failed = True
+                polished_part = part
+                self.db.add_run_event(
+                    run_id, "warning", "targeted_group_failed",
+                    "当前定向修订片段的首选和备用模型均失败，已保留原文并继续其他片段",
+                    stage="polish", metadata={
+                        "segment": index, "characters": len(part),
+                        "error": describe_error(exc),
+                    },
+                )
             except Exception as exc:
                 children = self._split_failed_polish_segment(part)
                 if (not self._is_recoverable_polish_error(exc)
@@ -1822,7 +1881,7 @@ class WorkflowService:
                     raise
                 self.db.add_run_event(
                     run_id, "warning", "polish_segment_split",
-                    "润色中转请求失败，仅拆分当前片段后重试",
+                    "模型输出受限，正在拆分当前片段后重试",
                     stage="polish", metadata={
                         "segment": index, "characters": len(part),
                         "child_characters": [len(child) for child in children],
@@ -1836,6 +1895,7 @@ class WorkflowService:
                     suffix=f"{part_suffix}-split-{recovery_depth + 1}",
                     structural=False, recovery_depth=recovery_depth + 1,
                     recovery_rule=revision_rule,
+                    targeted_context=current_targeted_context if targeted else None,
                 )
                 polished_part = polished_part.replace(self.SHORT_SEGMENT_SEPARATOR, "\n\n")
             round_input_tokens += int(
@@ -1847,12 +1907,15 @@ class WorkflowService:
                 part, polished_part, required,
                 minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
             )
+            if targeted_group_failed:
+                assessment["accepted"] = False
+                assessment["reasons"].append("targeted_model_routes_failed")
             rhythm_reasons = {
                 "sentence_rhythm_not_improved",
                 "timestamp_scene_fragment_not_improved",
                 "dialogue_ping_pong_not_improved",
             }
-            if structural:
+            if targeted:
                 assessment["reasons"] = [
                     reason for reason in assessment["reasons"]
                     if reason not in rhythm_reasons
@@ -1871,7 +1934,7 @@ class WorkflowService:
                     f"passage_protection:{item['id']}"
                     for item in passage_validation["conflicts"]
                 )
-            if (not assessment["accepted"] and configured_fallback
+            if (not targeted_group_failed and not assessment["accepted"] and configured_fallback
                     and not prefer_configured):
                 self.db.add_run_event(
                     run_id, "warning", "polish_validation_fallback",
@@ -1886,6 +1949,7 @@ class WorkflowService:
                         suffix=f"{part_suffix}-validation-fallback", allow_tools=False,
                         prefer_configured_fallback=True,
                         output_source_characters=len(part),
+                        targeted_retry=targeted,
                     )
                 except asyncio.CancelledError:
                     raise
@@ -1905,7 +1969,7 @@ class WorkflowService:
                         part, polished_part, required,
                         minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
                     )
-                    if structural:
+                    if targeted:
                         assessment["reasons"] = [
                             reason for reason in assessment["reasons"]
                             if reason not in rhythm_reasons
@@ -1927,7 +1991,7 @@ class WorkflowService:
                             for item in passage_validation["conflicts"]
                         )
             rhythm_retried = False
-            if not structural and rhythm_reasons.intersection(assessment["reasons"]):
+            if not targeted and rhythm_reasons.intersection(assessment["reasons"]):
                 rhythm_retried = True
                 reason = next(item for item in (
                     "sentence_rhythm_not_improved",
@@ -1982,7 +2046,7 @@ class WorkflowService:
                     )
             accepted = bool(assessment["accepted"])
             conditional_length = bool(
-                accepted and structural and assessment["ratio"] < preferred_minimum_ratio
+                accepted and targeted and assessment["ratio"] < preferred_minimum_ratio
             )
             if conditional_length and revision_plan:
                 local_check_failures = check_source_local_constraints(
@@ -2093,7 +2157,7 @@ class WorkflowService:
                     "checks": revision_plan["checks"],
                     "tasks": deferred_tasks,
                 }
-                next_plan = normalize_revision_plan(
+                next_plan = self._normalized_revision_plan(
                     remaining_plan, len(original_parts), max_target_ratio=0.4,
                     require_checks=bool(remaining_plan["checks"]),
                     defer_excess_targets=True,
@@ -2172,8 +2236,9 @@ class WorkflowService:
             "change. Order tasks by urgency and never target unrelated scenes. The Runtime will "
             "apply at most 40% of scenes in the current batch and defer the rest. "
             "Return one JSON object only with: global_facts (string array), checks (array of objects "
-            "using kind required_text or forbidden_text and value), and tasks (array with segments as "
-            "integer array, instruction as text, and issue_ids as the exact related review issue IDs). "
+            "using kind required_text or forbidden_text, value, and issue_ids), and tasks (array with "
+            "segments as integer array, instruction as text, issue_ids as the exact related review "
+            "issue IDs, and optional seven_step_position only when the review evidence names it). "
             "Include at least one literal deterministic check "
             "for hard fact, canon, duplication, or required-content issues. Do not combine all review "
             "issues into one instruction. Checks must be unambiguous manuscript text constraints; "
@@ -2198,7 +2263,7 @@ class WorkflowService:
                         allow_tools=False, targeted_retry=True,
                     )
                     payload = self._json_object(output)
-                plan = normalize_revision_plan(
+                plan = self._normalized_revision_plan(
                     payload, len(story_map), max_target_ratio=0.4,
                     require_checks=require_checks, defer_excess_targets=True,
                 )
@@ -2217,7 +2282,7 @@ class WorkflowService:
                     suffix=f"{suffix}-revision-plan-fallback", model_role="review",
                     allow_tools=False, targeted_retry=True,
                 )
-                plan = normalize_revision_plan(
+                plan = self._normalized_revision_plan(
                     self._json_object(output), len(story_map),
                     max_target_ratio=0.4, require_checks=require_checks,
                     defer_excess_targets=True,
@@ -2404,40 +2469,100 @@ class WorkflowService:
             output_budget = self._output_budget_for_call(
                 stage, output_source_characters, gateway_role, prefer_configured_fallback,
             )
+            fallback_ceiling = self._provider_output_ceiling(gateway_role, True)
+            stage_budget = self._stage_output_budget(stage, output_source_characters)
+            effective_ceiling = provider_ceiling or output_budget
+            fallback_effective_ceiling = fallback_ceiling or stage_budget
+            fallback_budget = (
+                min(stage_budget, fallback_effective_ceiling)
+                if stage_budget is not None and fallback_effective_ceiling is not None
+                else stage_budget
+            )
             if targeted_retry and output_source_characters is not None:
                 output_budget = patch_output_budget(
-                    output_source_characters, provider_ceiling or output_budget or 8192,
+                    output_source_characters, effective_ceiling or 1,
                 )
-            if allow_tools and hasattr(self.gateway, "complete_with_tools"):
-                toolbox = StoryToolbox(project, self.memory)
-                result = await self.gateway.complete_with_tools(
-                    gateway_role, system, user, toolbox,
-                    fallback_context=lambda: json.dumps(
-                        self.memory.context(project.id, user[:500]), ensure_ascii=False,
-                    ),
-                    run_id=run_id,
-                    max_output_tokens=output_budget,
+                fallback_budget = patch_output_budget(
+                    output_source_characters, fallback_effective_ceiling or 1,
                 )
-            elif prefer_configured_fallback and hasattr(
-                self.gateway, "complete_configured_fallback"
-            ):
-                result = await self.gateway.complete_configured_fallback(
-                    gateway_role, system, user,
-                    max_output_tokens=output_budget,
+            try:
+                if allow_tools and hasattr(self.gateway, "complete_with_tools"):
+                    toolbox = StoryToolbox(project, self.memory)
+                    result = await self.gateway.complete_with_tools(
+                        gateway_role, system, user, toolbox,
+                        fallback_context=lambda: json.dumps(
+                            self.memory.context(project.id, user[:500]), ensure_ascii=False,
+                        ),
+                        run_id=run_id,
+                        max_output_tokens=output_budget,
+                    )
+                elif prefer_configured_fallback and hasattr(
+                    self.gateway, "complete_configured_fallback"
+                ):
+                    result = await self.gateway.complete_configured_fallback(
+                        gateway_role, system, user,
+                        max_output_tokens=output_budget,
+                    )
+                elif isinstance(self.gateway, ModelGateway):
+                    result = await self.gateway.complete(
+                        gateway_role, system, user,
+                        max_output_tokens=output_budget,
+                        fallback_max_output_tokens=fallback_budget,
+                    )
+                else:
+                    result = await self.gateway.complete(
+                        gateway_role, system, user,
+                        max_output_tokens=output_budget,
+                    )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if not targeted_retry:
+                    raise
+                attempt = 2 if isinstance(exc, ModelRoutesExhaustedError) else 1
+                decision = next_retry_action(
+                    failure_kind="execution", attempt=attempt,
+                    current_limit=output_budget or 1,
+                    provider_limit=effective_ceiling or output_budget or 1,
                 )
-            else:
-                result = await self.gateway.complete(
-                    gateway_role, system, user,
-                    max_output_tokens=output_budget,
-                )
+                if (decision["action"] == "fallback"
+                        and not prefer_configured_fallback
+                        and hasattr(self.gateway, "complete_configured_fallback")):
+                    try:
+                        result = await self.gateway.complete_configured_fallback(
+                            gateway_role, system, user,
+                            max_output_tokens=fallback_budget,
+                        )
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as fallback_exc:
+                        stop = next_retry_action(
+                            failure_kind="execution", attempt=2,
+                            current_limit=fallback_budget or 1,
+                            provider_limit=fallback_effective_ceiling or fallback_budget or 1,
+                        )
+                        assert stop["action"] == "stop"
+                        raise TargetedGroupError(str(fallback_exc)) from fallback_exc
+                else:
+                    raise TargetedGroupError(str(exc)) from exc
             if (stage == "review" and gateway_role == "review" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
+                used_fallback = bool(
+                    prefer_configured_fallback
+                    or result.receipt.get("fallback_used")
+                    or result.receipt.get("configured_fallback_direct")
+                )
+                review_retry_ceiling = (
+                    fallback_ceiling if used_fallback else provider_ceiling
+                )
+                review_retry_budget = min(8192, review_retry_ceiling or 8192)
                 self.db.add_run_event(
                     run_id, "warning", "review_max_tokens_retry",
                     "Review output hit its token limit; retrying the same route with full budget",
                     stage=stage, metadata={
-                        "previous_budget": output_budget, "retry_budget": 8192,
+                        "previous_budget": output_budget,
+                        "retry_budget": review_retry_budget,
                         "model_name": result.receipt.get("model_name"),
                     },
                 )
@@ -2445,18 +2570,15 @@ class WorkflowService:
                     "\n\nDo not expose reasoning. Return only the compact review JSON. "
                     "Keep at most five highest-severity issues per category."
                 )
-                used_fallback = bool(
-                    prefer_configured_fallback
-                    or result.receipt.get("fallback_used")
-                    or result.receipt.get("configured_fallback_direct")
-                )
                 if used_fallback and hasattr(self.gateway, "complete_configured_fallback"):
                     result = await self.gateway.complete_configured_fallback(
-                        gateway_role, retry_system, user, max_output_tokens=8192,
+                        gateway_role, retry_system, user,
+                        max_output_tokens=review_retry_budget,
                     )
                 else:
                     result = await self.gateway.complete(
-                        gateway_role, retry_system, user, max_output_tokens=8192,
+                        gateway_role, retry_system, user,
+                        max_output_tokens=review_retry_budget,
                     )
                 used_fallback = bool(
                     used_fallback
@@ -2471,30 +2593,46 @@ class WorkflowService:
                         stage=stage,
                     )
                     result = await self.gateway.complete_configured_fallback(
-                        gateway_role, retry_system, user, max_output_tokens=8192,
+                        gateway_role, retry_system, user,
+                        max_output_tokens=min(8192, fallback_ceiling or 8192),
                     )
             if (stage == "polish" and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
-                previous_budget = output_budget
+                used_fallback = bool(
+                    prefer_configured_fallback
+                    or result.receipt.get("fallback_used")
+                    or result.receipt.get("configured_fallback_direct")
+                )
+                previous_budget = fallback_budget if used_fallback else output_budget
+                if targeted_retry:
+                    retry_ceiling = (
+                        fallback_effective_ceiling if used_fallback else effective_ceiling
+                    ) or previous_budget
+                else:
+                    configured_retry_ceiling = (
+                        fallback_ceiling if used_fallback else provider_ceiling
+                    )
+                    retry_ceiling = configured_retry_ceiling or 8192
                 decision = next_retry_action(
                     failure_kind="output_limit", attempt=1,
-                    current_limit=previous_budget or 8192,
-                    provider_limit=provider_ceiling or 8192,
+                    current_limit=previous_budget or 1,
+                    provider_limit=retry_ceiling or 1,
                 )
                 retry_budget = (
-                    decision["next_limit"] if targeted_retry else 8192
+                    decision["next_limit"] if targeted_retry
+                    else min(8192, retry_ceiling or 8192)
                 )
                 if not targeted_retry or decision["action"] == "retry_larger":
                     self.db.add_run_event(
                         run_id, "warning", "polish_max_tokens_retry",
-                        "Polish output hit its token limit; retrying with a larger budget",
+                        "当前片段输出不完整，正在提高输出上限后重试",
                         stage=stage, metadata={
                             "previous_budget": previous_budget,
                             "retry_budget": retry_budget,
                         },
                     )
-                    if prefer_configured_fallback and hasattr(
+                    if used_fallback and hasattr(
                         self.gateway, "complete_configured_fallback"
                     ):
                         result = await self.gateway.complete_configured_fallback(
@@ -2757,6 +2895,29 @@ class WorkflowService:
         return value
 
     @staticmethod
+    def _normalized_revision_plan(value: dict, segment_count: int, **kwargs) -> dict:
+        plan = normalize_revision_plan(value, segment_count, **kwargs)
+        raw_checks = value.get("checks") if isinstance(value.get("checks"), list) else []
+        for check in plan["checks"]:
+            raw = next((item for item in raw_checks if isinstance(item, dict)
+                        and item.get("kind") == check["kind"]
+                        and str(item.get("value", "")).strip() == check["value"]), None)
+            issue_ids = [item.strip() for item in (raw or {}).get("issue_ids", [])
+                         if isinstance(item, str) and item.strip()]
+            if issue_ids:
+                check["issue_ids"] = sorted(set(issue_ids))
+        raw_tasks = value.get("tasks") if isinstance(value.get("tasks"), list) else []
+        for task_list in (plan["tasks"], plan.get("deferred_tasks", [])):
+            for task in task_list:
+                raw = next((item for item in raw_tasks if isinstance(item, dict)
+                            and str(item.get("instruction", "")).strip()
+                            == task["instruction"]), None)
+                position = (raw or {}).get("seven_step_position")
+                if isinstance(position, str) and position.strip():
+                    task["seven_step_position"] = position.strip()
+        return plan
+
+    @staticmethod
     def _reader_json_object(text: str) -> dict:
         cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
         start, end = cleaned.find("{"), cleaned.rfind("}")
@@ -2807,12 +2968,13 @@ class WorkflowService:
 
     def _output_budget_for_call(self, stage: str, source_characters: int | None,
                                 gateway_role: str, prefer_configured_fallback: bool) -> int | None:
+        default = self._stage_output_budget(stage, source_characters)
         ceiling = self._provider_output_ceiling(
             gateway_role, prefer_configured_fallback,
         )
-        if ceiling is not None:
-            return ceiling
-        return self._stage_output_budget(stage, source_characters)
+        if default is None or ceiling is None:
+            return default
+        return min(default, ceiling)
 
     def _provider_output_ceiling(self, gateway_role: str,
                                  prefer_configured_fallback: bool) -> int | None:

@@ -1668,6 +1668,191 @@ async def test_structural_revision_sends_each_target_scene_once(tmp_path) -> Non
 
 
 @pytest.mark.asyncio
+async def test_structural_patch_context_keeps_linked_local_evidence_and_full_neighbors(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Local patch context", mode="short", genre="romance",
+        premise="A relationship changes.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    previous = "PREVIOUS-FULL-START " + "P" * 1100 + " PREVIOUS-FULL-END"
+    target = "TARGET linked evidence " + "T" * 900
+    following = "NEXT-FULL-START " + "N" * 1100 + " NEXT-FULL-END"
+    plan = {
+        "global_facts": ["The promise is binding."],
+        "checks": [
+            {"kind": "required_text", "value": "linked evidence", "issue_ids": ["issue-1"]},
+            {"kind": "forbidden_text", "value": "UNRELATED CHECK", "issue_ids": ["issue-2"]},
+        ],
+        "tasks": [{
+            "segments": [2], "instruction": "Repair only the linked promise.",
+            "issue_ids": ["issue-1"], "seven_step_position": "承：压力升级",
+        }],
+    }
+
+    class Gateway:
+        def __init__(self):
+            self.users = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.users.append(user)
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "polisher", "input_tokens": 1000,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("local-context", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "local-context"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    await service._polish_short_segments(
+        "local-context", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join([previous, target, following]),
+        "{}", structural=True, prepared_revision_plan=plan,
+    )
+
+    prompt = gateway.users[0]
+    assert previous in prompt
+    assert following in prompt
+    assert '"issue_ids":["issue-1"]' in prompt
+    assert "linked evidence" in prompt
+    assert "UNRELATED CHECK" not in prompt
+    assert "承：压力升级" in prompt
+    assert '"scene_id"' not in prompt
+    assert prompt.count(target) == 1
+
+
+@pytest.mark.asyncio
+async def test_targeted_split_children_keep_local_context_and_chinese_events(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Targeted split", mode="short", genre="suspense",
+        premise="A witness repairs a statement.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    target = "\n\n".join(f"Target paragraph {index}. " + "X" * 520 for index in range(4))
+    plan = {
+        "checks": [{
+            "kind": "required_text", "value": "Target paragraph",
+            "issue_ids": ["issue-split"],
+        }],
+        "tasks": [{
+            "segments": [2], "instruction": "Repair this one issue.",
+            "issue_ids": ["issue-split"], "seven_step_position": "转：证词反转",
+        }],
+    }
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            source = user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+            self.calls.append((user, source, max_output_tokens))
+            if source == target:
+                return ModelResult("", {
+                    "model_name": "polisher", "output_tokens": max_output_tokens,
+                    "finish_reason": "max_tokens",
+                })
+            return ModelResult(source, {"model_name": "polisher", "input_tokens": 100})
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("targeted-split", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "targeted-split"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._polish_short_segments(
+        "targeted-split", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["Opening", target, "Ending"]),
+        "{}", structural=True, prepared_revision_plan=plan,
+    )
+
+    child_prompts = [user for user, source, _budget in gateway.calls if source != target]
+    assert target in result
+    assert child_prompts
+    assert all('"issue_ids":["issue-split"]' in prompt for prompt in child_prompts)
+    assert all("COMPACT FULL STORY MAP" not in prompt for prompt in child_prompts)
+    events = db.list_run_events("targeted-split")
+    assert any("提高输出上限" in event["message"] for event in events)
+    assert any("拆分当前片段" in event["message"] for event in events)
+
+
+@pytest.mark.asyncio
+async def test_targeted_route_failure_preserves_group_and_continues_next_group(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "polish", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Group isolation", mode="short", genre="suspense",
+        premise="Two independent corrections.", target_words=9000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    failed_source = "FAIL bad fact. " * 90
+    successful_source = "GOOD bad fact. " * 90
+    parts = ["Opening", failed_source, "Bridge", successful_source, "Ending"]
+    plan = {
+        "checks": [{"kind": "forbidden_text", "value": "bad fact"}],
+        "tasks": [
+            {"segments": [2], "instruction": "Repair first.", "issue_ids": ["issue-a"]},
+            {"segments": [4], "instruction": "Repair second.", "issue_ids": ["issue-b"]},
+        ],
+    }
+
+    class Gateway:
+        async def complete(self, role, system, user, max_output_tokens=None):
+            source = user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+            if "FAIL" in source:
+                raise RuntimeError("primary route failed")
+            return ModelResult(source.replace("bad fact", "fixed fact"), {
+                "model_name": "primary", "input_tokens": 100,
+            })
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            source = user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+            if "FAIL" in source:
+                raise RuntimeError("fallback route failed")
+            return ModelResult(source.replace("bad fact", "fixed fact"), {
+                "model_name": "fallback", "configured_fallback_direct": True,
+            })
+
+    service = WorkflowService(db, store, Gateway(), SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("group-isolation", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "group-isolation"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._polish_short_segments(
+        "group-isolation", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts), "{}",
+        structural=True, prepared_revision_plan=plan,
+    )
+
+    revised = WorkflowService._split_segments(result)
+    assert revised[1] == failed_source.strip()
+    assert "fixed fact" in revised[3]
+    event = next(item for item in db.list_run_events("group-isolation")
+                 if item["event_type"] == "targeted_group_failed")
+    assert "首选和备用模型均失败" in event["message"]
+
+
+@pytest.mark.asyncio
 async def test_structural_compression_in_gray_zone_reaches_final_review(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -2217,8 +2402,31 @@ def test_output_budget_uses_each_selected_route_model_ceiling(tmp_path) -> None:
     service = WorkflowService.__new__(WorkflowService)
     service.db = db
 
-    assert service._output_budget_for_call("polish", 2000, "polish", False) == 6144
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 3212
     assert service._output_budget_for_call("polish", 2000, "polish", True) == 3072
+
+
+def test_ordinary_stage_budgets_use_defaults_capped_by_selected_route_ceiling(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="model", provider_id="provider", display_name="Model",
+        model_name="custom-model", max_output_tokens=6000,
+    )
+    for role in ("planning", "draft", "review", "polish"):
+        db.save_role_binding(role, "provider", "model", None, None)
+    service = WorkflowService.__new__(WorkflowService)
+    service.db = db
+
+    assert service._output_budget_for_call("planning", None, "planning", False) == 6000
+    assert service._output_budget_for_call("draft", None, "draft", False) == 6000
+    assert service._output_budget_for_call("review", None, "review", False) == 4096
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 3212
 
 
 def test_output_budget_keeps_stage_default_without_configured_model_ceiling(tmp_path) -> None:
@@ -2288,6 +2496,47 @@ async def test_targeted_retry_at_provider_ceiling_does_not_repeat_same_request(t
         )
 
     assert gateway.budgets == [8192]
+
+
+@pytest.mark.asyncio
+async def test_targeted_retry_without_configured_ceiling_stops_at_stage_budget(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Legacy ceiling", mode="short", genre="suspense",
+        premise="A witness revisits the scene.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.budgets = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.budgets.append(max_output_tokens)
+            return ModelResult("", {
+                "model_name": "legacy", "output_tokens": max_output_tokens,
+                "finish_reason": "max_tokens",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("legacy-ceiling", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "legacy-ceiling"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    with pytest.raises(RuntimeError, match="polish model returned empty output"):
+        await service._stage(
+            "legacy-ceiling", run_path, project, "polish", "constraints",
+            "MANUSCRIPT SEGMENT:\n" + "A" * 1000, allow_tools=False,
+            output_source_characters=1000, targeted_retry=True,
+        )
+
+    assert gateway.budgets == [1606, 2048]
+    assert 8192 not in gateway.budgets
 
 
 @pytest.mark.asyncio
