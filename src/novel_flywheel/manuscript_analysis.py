@@ -10,7 +10,7 @@ from novel_flywheel.quality import review_windows
 from novel_flywheel.narrative_ledger import build_narrative_ledger
 
 
-ANALYSIS_VERSION = "manuscript-analysis-v2"
+ANALYSIS_VERSION = "manuscript-analysis-v3"
 _HAN = re.compile(r"[\u4e00-\u9fff]")
 _NAME = re.compile(r"[赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于傅皮卞齐康伍余元卜顾孟平黄和穆萧尹姚邵湛汪祁毛禹狄米贝明臧计伏成戴谈宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪干解应宗丁宣邓郁单杭洪包诸左石崔吉龚程嵇邢滑裴陆荣翁荀羊甄曲封芮储靳汲邴糜松井段富巫乌焦巴弓牧隗山谷车侯宓蓬全郗班仰秋仲伊宫宁仇栾暴甘钭厉戎祖武符刘景詹束龙叶幸司韶郜黎蓟薄印宿白怀蒲台从鄂索咸籍赖卓蔺屠蒙池乔阴胥能苍双闻莘党翟谭贡劳逄姬申扶堵冉宰郦雍璩桑桂濮牛寿通边扈燕冀浦尚农温别庄晏柴瞿阎充慕连茹习宦艾鱼容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄阙东欧利师巩聂晁勾敖融冷辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公]{1}[\u4e00-\u9fff]{1,2}")
 _TIME = re.compile(r"(?:第[一二三四五六七八九十\d]+天|当天|次日|翌日|清晨|傍晚|深夜|\d{1,2}[点时])")
@@ -27,22 +27,34 @@ def analyze_manuscript(
     comparison_sources: list[dict[str, str]] | None = None,
     market_baseline: dict | None = None,
 ) -> dict:
+    units = stable_text_units(text)
     windows = review_windows(text)
     nlp = nlp_analyze(text) if nlp_analyze else {
         "backend": "rules", "available": False, "backend_version": "rules-v1",
         "reason": "LTP analyzer was not supplied",
     }
     entities, events = _normalize_ltp(text, nlp)
+    entities = [_with_provenance(item, units, "ltp", 0.9) for item in entities]
+    events = [_with_provenance(item, units, "ltp", 0.86) for item in events]
     questions = [
-        {"text": match.group(), "start": match.start(), "end": match.end()}
+        _with_provenance(
+            {"text": match.group(), "start": match.start(), "end": match.end()},
+            units, "rules", 0.72,
+        )
         for match in _QUESTION.finditer(text)
     ]
     times = [
-        {"text": match.group(), "start": match.start(), "end": match.end()}
+        _with_provenance(
+            {"text": match.group(), "start": match.start(), "end": match.end()},
+            units, "rules", 0.68,
+        )
         for match in _TIME.finditer(text)
     ]
     conflicts = [
-        {"text": match.group(), "start": match.start(), "end": match.end()}
+        _with_provenance(
+            {"text": match.group(), "start": match.start(), "end": match.end()},
+            units, "rules", 0.65,
+        )
         for match in _CONFLICT.finditer(text)
     ]
     first_lines = [line.strip() for line in text.splitlines() if line.strip()][:3]
@@ -51,6 +63,7 @@ def analyze_manuscript(
     result = {
         "analysis_version": ANALYSIS_VERSION,
         "text_hash": _hash(text),
+        "units": units,
         "characters": len(text),
         "coverage": 1.0 if windows and windows[-1]["end"] == len(text) else (1.0 if not text else 0.0),
         "windows": [{**window, "hash": _hash(window["text"])} for window in windows],
@@ -76,12 +89,83 @@ def analyze_manuscript(
         "questions": questions,
         "promises": questions,
         "setups": conflicts,
-        "payoffs": [],
+        "payoffs": narrative_ledger.get("payoffs", []),
         "originality": _originality(text, entities, comparison_sources or []),
         "narrative_ledger": narrative_ledger,
     }
+    result["impact_index"] = build_impact_index(result)
     result["baseline_comparison"] = _compare_market_baseline(result, market_baseline)
     return result
+
+
+def stable_key(kind: str, text: str, occurrence: int) -> str:
+    normalized = re.sub(r"\s+", "", text)
+    digest = hashlib.sha256(
+        f"{kind}\0{normalized}\0{occurrence}".encode("utf-8")
+    ).hexdigest()[:16]
+    return f"{kind}-{digest}"
+
+
+def stable_text_units(text: str) -> dict:
+    paragraphs = _stable_records("paragraph", _paragraph_spans(text))
+    scenes = _stable_records("scene", _paragraph_spans(text))
+    return {"paragraphs": paragraphs, "scenes": scenes}
+
+
+def build_impact_index(report: dict) -> dict:
+    index: dict[str, dict[str, list[dict]]] = {
+        "entities": {}, "events": {}, "terms": {}, "relations": {},
+    }
+    for entity in report.get("entities", []):
+        _add_location(index["entities"], str(entity.get("text", "")), entity)
+    for event in report.get("events", []):
+        key = str(event.get("signature") or event.get("predicate") or "")
+        _add_location(index["events"], key, event)
+
+    paragraphs = report.get("units", {}).get("paragraphs", [])
+    occurrences: dict[str, list[dict]] = {}
+    for paragraph_number, paragraph in enumerate(paragraphs, 1):
+        content = str(paragraph.get("text", ""))
+        for match in re.finditer(r"[\u4e00-\u9fff]+", content):
+            run = match.group()
+            for width in range(2, min(6, len(run)) + 1):
+                for offset in range(len(run) - width + 1):
+                    term = run[offset:offset + width]
+                    start = int(paragraph["start"]) + match.start() + offset
+                    occurrences.setdefault(term, []).append({
+                        "start": start,
+                        "end": start + width,
+                        "unit_id": paragraph["stable_id"],
+                        "paragraph": paragraph_number,
+                        "source": "rules",
+                        "confidence": 0.62,
+                    })
+    for term, locations in occurrences.items():
+        if len({item["paragraph"] for item in locations}) >= 2:
+            index["terms"][term] = locations
+
+    for relation in report.get("narrative_ledger", {}).get("relations", []):
+        key = str(relation.get("id") or relation.get("kind") or "")
+        endpoints = [
+            {
+                "start": relation.get("from_start"),
+                "end": relation.get("from_end"),
+                "unit_id": relation.get("from_unit_id"),
+                "source": relation.get("source", "rules"),
+                "confidence": relation.get("confidence", 0.5),
+                "endpoint": "from",
+            },
+            {
+                "start": relation.get("to_start"),
+                "end": relation.get("to_end"),
+                "unit_id": relation.get("to_unit_id"),
+                "source": relation.get("source", "rules"),
+                "confidence": relation.get("confidence", 0.5),
+                "endpoint": "to",
+            },
+        ]
+        index["relations"].setdefault(key, []).extend(endpoints)
+    return index
 
 
 def analysis_matches(report: dict, text: str) -> bool:
@@ -147,6 +231,68 @@ def _compare_market_baseline(report: dict, baseline: dict | None) -> dict | None
         "advisory_only": True,
         "boundary": baseline.get("boundary"),
     }
+
+
+def _paragraph_spans(text: str) -> list[dict]:
+    spans = []
+    for match in re.finditer(
+        r"(?:^|\r?\n[ \t]*\r?\n)(.*?)(?=\r?\n[ \t]*\r?\n|\Z)",
+        text,
+        flags=re.DOTALL,
+    ):
+        raw = match.group(1)
+        content = raw.strip()
+        if not content:
+            continue
+        start = match.start(1) + len(raw) - len(raw.lstrip())
+        spans.append({"text": content, "start": start, "end": start + len(content)})
+    return spans
+
+
+def _stable_records(kind: str, spans: list[dict]) -> list[dict]:
+    occurrences: dict[str, int] = {}
+    records = []
+    for span in spans:
+        normalized = re.sub(r"\s+", "", span["text"])
+        occurrences[normalized] = occurrences.get(normalized, 0) + 1
+        occurrence = occurrences[normalized]
+        records.append({
+            **span,
+            "text_hash": _hash(span["text"]),
+            "stable_id": stable_key(kind, span["text"], occurrence),
+            "occurrence": occurrence,
+        })
+    return records
+
+
+def _with_provenance(
+    item: dict, units: dict, source: str, confidence: float,
+) -> dict:
+    start = int(item.get("start", 0))
+    paragraph_number, unit_id = _unit_at(units, start)
+    return {
+        **item,
+        "paragraph": paragraph_number,
+        "unit_id": unit_id,
+        "source": source,
+        "confidence": confidence,
+    }
+
+
+def _unit_at(units: dict, offset: int) -> tuple[int | None, str | None]:
+    for number, unit in enumerate(units.get("paragraphs", []), 1):
+        if unit["start"] <= offset < unit["end"]:
+            return number, unit["stable_id"]
+    return None, None
+
+
+def _add_location(target: dict[str, list[dict]], key: str, item: dict) -> None:
+    if not key:
+        return
+    target.setdefault(key, []).append({
+        name: item.get(name)
+        for name in ("start", "end", "unit_id", "paragraph", "source", "confidence")
+    })
 
 
 def _normalize_ltp(text: str, payload: dict) -> tuple[list[dict], list[dict]]:

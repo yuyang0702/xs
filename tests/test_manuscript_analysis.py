@@ -1,5 +1,6 @@
 import hashlib
 
+from novel_flywheel import manuscript_analysis
 from novel_flywheel.manuscript_analysis import (
     analysis_matches,
     analyze_manuscript,
@@ -19,6 +20,16 @@ def test_analysis_covers_complete_text_and_opening_zone():
     assert compact_analysis(report)["text_hash"] == report["text_hash"]
     assert report["narrative_ledger"]["text_hash"] == report["text_hash"]
     assert "narrative_ledger" in compact_analysis(report)
+
+
+def test_analysis_rejects_cached_report_without_stable_units() -> None:
+    text = "旧缓存正文。"
+    old_report = {
+        "analysis_version": "manuscript-analysis-v2",
+        "text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+    }
+
+    assert analysis_matches(old_report, text) is False
 
 
 def test_analysis_normalizes_ltp_entities_and_events():
@@ -122,3 +133,73 @@ def test_market_baseline_comparison_is_advisory_only():
     }
     assert all(item["blocking"] is False for item in report["baseline_comparison"]["deviations"])
     assert "baseline_comparison" in compact_analysis(report)
+
+
+def test_stable_unit_ids_survive_unrelated_prefix_insertion() -> None:
+    before = analyze_manuscript("甲段。\n\n父亲把银锁交给林晚。", nlp_analyze=None)
+    after = analyze_manuscript("新增开头。\n\n甲段。\n\n父亲把银锁交给林晚。", nlp_analyze=None)
+
+    before_unit = before["units"]["paragraphs"][1]
+    after_unit = after["units"]["paragraphs"][2]
+    assert before_unit["stable_id"] == after_unit["stable_id"]
+    assert before_unit["start"] == 5
+    assert after_unit["start"] == 12
+    assert before_unit["text_hash"] == hashlib.sha256(
+        "父亲把银锁交给林晚。".encode("utf-8")
+    ).hexdigest()
+
+
+def test_stable_text_units_distinguish_duplicate_occurrences() -> None:
+    units = manuscript_analysis.stable_text_units("证人看见银锁。\n\n证人看见银锁。")
+
+    first, second = units["paragraphs"]
+    assert [first["occurrence"], second["occurrence"]] == [1, 2]
+    assert first["stable_id"] == manuscript_analysis.stable_key("paragraph", first["text"], 1)
+    assert second["stable_id"] == manuscript_analysis.stable_key("paragraph", second["text"], 2)
+    assert first["stable_id"] != second["stable_id"]
+
+
+def test_impact_index_keeps_evidence_location_and_confidence() -> None:
+    report = analyze_manuscript("林晚拿到银锁。\n\n民警登记银锁。", nlp_analyze=None)
+
+    entries = report["impact_index"]["terms"]["银锁"]
+    assert [item["paragraph"] for item in entries] == [1, 2]
+    assert all(item["source"] in {"rules", "ltp"} for item in entries)
+    assert all(0 <= item["confidence"] <= 1 for item in entries)
+    assert all(item["unit_id"] for item in entries)
+    assert manuscript_analysis.build_impact_index(report) == report["impact_index"]
+
+
+def test_impact_index_includes_ltp_entities_and_events() -> None:
+    def fake(_text):
+        return {
+            "backend": "ltp", "available": True, "backend_version": "ltp-v2",
+            "result": {
+                "cws": [["林晚", "打开", "木盒"]],
+                "pos": [["nh", "v", "n"]],
+                "ner": [[["Nh", "林晚", 0, 0]]],
+                "srl": [[[(1, [("A0", 0, 0), ("A1", 2, 2)])]]],
+                "dep": [],
+            },
+        }
+
+    report = analyze_manuscript("林晚打开木盒。", nlp_analyze=fake)
+
+    entity = report["impact_index"]["entities"]["林晚"][0]
+    event = report["impact_index"]["events"]["打开|林晚|木盒"][0]
+    assert entity["source"] == event["source"] == "ltp"
+    assert entity["start"] == 0
+    assert event["start"] == 2
+
+
+def test_analysis_exposes_payoff_evidence_with_provenance() -> None:
+    report = analyze_manuscript(
+        "桌上有一张异常的照片。\n\n照片的真相终于揭晓。",
+        nlp_analyze=None,
+    )
+
+    payoff = report["payoffs"][0]
+    assert payoff["source"] == "rules"
+    assert payoff["unit_id"]
+    assert payoff["end"] > payoff["start"]
+    assert 0 <= payoff["confidence"] <= 1

@@ -39,3 +39,36 @@ def test_ledger_marks_important_unresolved_promise_for_review() -> None:
 
     assert ledger["promises"][0]["status"] == "unresolved"
     assert ledger["important_uncertainties"][0]["requires_model_review"] is True
+
+
+def test_stable_unit_relation_ids_survive_unrelated_prefix_insertion() -> None:
+    body = "朋友为什么主动赴死？\n\n真相是，他为了封印灾难才选择死亡。"
+    before = build_narrative_ledger(body)
+    after = build_narrative_ledger("无关开场。\n\n" + body)
+
+    assert before["questions"][0]["id"] == after["questions"][0]["id"]
+    assert before["relations"][0]["id"] == after["relations"][0]["id"]
+    assert before["relations"][0]["from_start"] != after["relations"][0]["from_start"]
+
+
+def test_ledger_evidence_records_source_confidence_and_unit_id() -> None:
+    text = (
+        "朋友为什么主动赴死？\n\n"
+        "我一定会让银锁回到林晚手里。\n\n"
+        "桌上有一把异常的银锁。\n\n"
+        "银锁的真相终于揭晓。"
+    )
+
+    ledger = build_narrative_ledger(text)
+
+    evidence = [
+        *ledger["questions"], *ledger["promises"], *ledger["setups"],
+    ]
+    assert evidence
+    assert all(item["source"] == "rules" for item in evidence)
+    assert all(0 <= item["confidence"] <= 1 for item in evidence)
+    assert all(item["unit_id"] for item in evidence)
+    assert all(item["end"] > item["start"] for item in evidence)
+    assert ledger["relations"]
+    assert all(relation["from_unit_id"] for relation in ledger["relations"])
+    assert all(relation["to_unit_id"] for relation in ledger["relations"])
