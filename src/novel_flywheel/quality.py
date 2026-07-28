@@ -21,7 +21,9 @@ TARGETED_CATEGORIES = {
 ALLOWED_ISSUE_STATUSES = {
     "resolved", "partially_resolved", "unresolved", "uncertain", "preserved",
 }
-LEGACY_ISSUE_STATUSES = {"open", "closed", "not_found"}
+LEGACY_ISSUE_STATUS_MAP = {
+    "closed": "resolved", "open": "unresolved", "not_found": "unresolved",
+}
 
 
 def issue_severity_class(issue: dict) -> str:
@@ -45,6 +47,13 @@ def issue_is_mandatory(issue: dict) -> bool:
 
 def issue_is_resolved(issue: dict) -> bool:
     return str(issue.get("status") or "unresolved").lower() in {"resolved", "closed"}
+
+
+def _canonical_issue_status(value: Any) -> str:
+    status = str(value or "").strip().lower()
+    if status in ALLOWED_ISSUE_STATUSES:
+        return status
+    return LEGACY_ISSUE_STATUS_MAP.get(status, "unresolved")
 
 
 def review_windows(text: str, target: int = 5000, overlap: int = 400) -> list[dict]:
@@ -83,7 +92,7 @@ def issue_ledger(issues: list[dict], source: str = "final_review") -> list[dict]
         normalized.append({
             **issue,
             "issue_id": issue.get("issue_id") or f"issue-{digest}",
-            "status": issue.get("status") or "unresolved",
+            "status": _canonical_issue_status(issue.get("status")),
             "repair_goal": issue.get("repair_goal") or issue.get("action", ""),
             "source": issue.get("source") or source,
         })
@@ -121,10 +130,15 @@ def apply_evidence_gate(review: dict, evidence: dict) -> tuple[dict, list[str]]:
         reasons.append("incomplete_manuscript_coverage")
     if evidence.get("evidence_count", 0) < evidence.get("window_count", 0):
         reasons.append("insufficient_review_evidence")
-    unresolved = [item for item in reconciliations
-                  if item.get("status") in {
-                      "unresolved", "partially_resolved", "uncertain", "not_found",
-                  }]
+    unresolved = [
+        item for item in reconciliations
+        if _canonical_issue_status(item.get("status")) in {
+            "unresolved", "partially_resolved", "uncertain",
+        }
+    ]
+    if any(issue_is_mandatory(item) and not issue_is_resolved(item)
+           for item in reconciliations):
+        reasons.append("unresolved_mandatory_issue")
     if any(str(item.get("severity", "")).lower() in {"major", "critical", "blocking"}
            for item in unresolved):
         reasons.append("unresolved_major_issue")
@@ -167,7 +181,7 @@ def _issues(values: Any) -> list[dict[str, str]]:
             "severity": value.get("severity", "medium"),
             "evidence": value.get("evidence", ""),
             "action": value.get("action", ""),
-            "status": value.get("status") or "unresolved",
+            "status": _canonical_issue_status(value.get("status")),
         }
         if any(not isinstance(issue[key], str) for key in (
             "category", "severity", "evidence", "action",

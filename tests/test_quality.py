@@ -9,6 +9,7 @@ from novel_flywheel.quality import (
     reader_sample,
     review_windows,
     issue_ledger,
+    issue_is_resolved,
     apply_evidence_gate,
     select_route,
     update_issue_status,
@@ -49,12 +50,43 @@ def test_update_issue_status_supports_new_states_without_mutating_input(status) 
     assert updated[0] is not ledger[0]
 
 
-@pytest.mark.parametrize("legacy_status", ["open", "closed", "not_found"])
+@pytest.mark.parametrize("legacy_status", ["open", "closed", "not_found", "unexpected"])
 def test_update_issue_status_rejects_legacy_states_for_new_writes(legacy_status) -> None:
     ledger = issue_ledger([{"category": "style", "severity": "low"}])
 
     with pytest.raises(ValueError, match="状态无效"):
         update_issue_status(ledger, ledger[0]["issue_id"], legacy_status)
+
+
+@pytest.mark.parametrize(
+    ("incoming", "expected"),
+    [
+        ("resolved", "resolved"),
+        ("partially_resolved", "partially_resolved"),
+        ("unresolved", "unresolved"),
+        ("uncertain", "uncertain"),
+        ("preserved", "preserved"),
+        ("closed", "resolved"),
+        ("open", "unresolved"),
+        ("not_found", "unresolved"),
+        ("unexpected", "unresolved"),
+    ],
+)
+def test_issue_ledger_emits_only_canonical_statuses(incoming, expected) -> None:
+    ledger = issue_ledger([{
+        "category": "style", "severity": "low", "status": incoming,
+    }])
+
+    assert ledger[0]["status"] == expected
+    assert ledger[0]["status"] in {
+        "resolved", "partially_resolved", "unresolved", "uncertain", "preserved",
+    }
+
+
+def test_legacy_issue_statuses_remain_readable() -> None:
+    assert issue_is_resolved({"status": "closed"}) is True
+    assert issue_is_resolved({"status": "open"}) is False
+    assert issue_is_resolved({"status": "not_found"}) is False
 
 
 @pytest.mark.parametrize(
@@ -167,6 +199,27 @@ def test_evidence_gate_caps_uncertain_major_issue() -> None:
     assert gated["score"] <= 74
     assert gated["decision"] == "revise"
     assert "unresolved_major_issue" in reasons
+
+
+def test_evidence_gate_caps_category_derived_mandatory_issue() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 95, "story": 95, "prose": 95},
+        "decision": "pass", "issues": [],
+    })
+
+    gated, reasons = apply_evidence_gate(review, {
+        "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
+        "prior_issue_ids": ["production-001"], "evidence_count": 1,
+        "reconciliations": [{
+            "issue_id": "production-001", "category": "production_text",
+            "status": "unresolved", "severity": "low",
+            "evidence": "Production text remains in the manuscript.",
+        }],
+    })
+
+    assert gated["score"] <= 74
+    assert gated["decision"] == "revise"
+    assert "unresolved_mandatory_issue" in reasons
 
 
 def test_normalize_review_computes_weighted_score() -> None:
@@ -355,6 +408,28 @@ def test_normalize_review_preserves_issue_identity_location_and_lifecycle() -> N
     assert review["issues"][0]["status"] == "partially_resolved"
     assert review["issues"][0]["location"] == "结尾前"
     assert review["issues"][0]["effect"] == "读者会觉得结尾欠账。"
+
+
+@pytest.mark.parametrize(
+    ("incoming", "expected"),
+    [
+        ("closed", "resolved"),
+        ("open", "unresolved"),
+        ("not_found", "unresolved"),
+        ("unexpected", "unresolved"),
+    ],
+)
+def test_normalize_review_canonicalizes_legacy_and_unknown_statuses(
+    incoming, expected,
+) -> None:
+    review = normalize_review({
+        "score": 86,
+        "issues": [{
+            "category": "style", "severity": "low", "status": incoming,
+        }],
+    })
+
+    assert review["issues"][0]["status"] == expected
 
 
 @pytest.mark.parametrize("score", [-1, 101, "high"])
