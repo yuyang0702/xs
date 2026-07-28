@@ -160,7 +160,10 @@ def test_stable_text_units_distinguish_duplicate_occurrences() -> None:
 
 
 def test_impact_index_keeps_evidence_location_and_confidence() -> None:
-    report = analyze_manuscript("林晚拿到银锁。\n\n民警登记银锁。", nlp_analyze=None)
+    report = analyze_manuscript(
+        "桌上有一把异常的银锁。\n\n银锁的真相终于揭晓。",
+        nlp_analyze=None,
+    )
 
     entries = report["impact_index"]["terms"]["银锁"]
     assert [item["paragraph"] for item in entries] == [1, 2]
@@ -168,6 +171,34 @@ def test_impact_index_keeps_evidence_location_and_confidence() -> None:
     assert all(0 <= item["confidence"] <= 1 for item in entries)
     assert all(item["unit_id"] for item in entries)
     assert manuscript_analysis.build_impact_index(report) == report["impact_index"]
+
+
+def test_impact_index_does_not_invent_terms_without_ledger_evidence() -> None:
+    report = analyze_manuscript(
+        "林晚今天回到房间。\n\n民警今天离开房间。",
+        nlp_analyze=None,
+    )
+
+    assert report["narrative_ledger"]["questions"] == []
+    assert report["narrative_ledger"]["promises"] == []
+    assert report["narrative_ledger"]["setups"] == []
+    assert report["impact_index"]["terms"] == {}
+
+
+def test_impact_index_skips_rule_term_fallback_when_ltp_is_available() -> None:
+    def fake(_text):
+        return {
+            "backend": "ltp", "available": True, "backend_version": "ltp-v2",
+            "result": {"cws": [], "pos": [], "ner": [], "srl": [], "dep": []},
+        }
+
+    report = analyze_manuscript(
+        "桌上有一把异常的银锁。\n\n银锁的真相终于揭晓。",
+        nlp_analyze=fake,
+    )
+
+    assert report["narrative_ledger"]["setups"]
+    assert report["impact_index"]["terms"] == {}
 
 
 def test_impact_index_includes_ltp_entities_and_events() -> None:

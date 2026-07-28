@@ -127,6 +127,9 @@ def _relation(kind: str, source: dict, target: dict, confidence: float) -> dict[
         "to_unit_id": target.get("unit_id"),
         "evidence": target["text"], "confidence": confidence,
         "source": "rules",
+        "anchors": list(dict.fromkeys([
+            *(source.get("anchors") or []), *(target.get("anchors") or []),
+        ])),
     }
 
 
@@ -233,6 +236,7 @@ def _target_item(
         "unit_id": _unit_id_at(units, target["start"]),
         "source": "rules",
         "confidence": confidence,
+        "anchors": _anchors(target["text"]),
     }
 
 

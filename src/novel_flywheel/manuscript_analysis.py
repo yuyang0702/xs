@@ -122,27 +122,24 @@ def build_impact_index(report: dict) -> dict:
         key = str(event.get("signature") or event.get("predicate") or "")
         _add_location(index["events"], key, event)
 
-    paragraphs = report.get("units", {}).get("paragraphs", [])
-    occurrences: dict[str, list[dict]] = {}
-    for paragraph_number, paragraph in enumerate(paragraphs, 1):
-        content = str(paragraph.get("text", ""))
-        for match in re.finditer(r"[\u4e00-\u9fff]+", content):
-            run = match.group()
-            for width in range(2, min(6, len(run)) + 1):
-                for offset in range(len(run) - width + 1):
-                    term = run[offset:offset + width]
-                    start = int(paragraph["start"]) + match.start() + offset
-                    occurrences.setdefault(term, []).append({
+    if not report.get("nlp", {}).get("available"):
+        paragraphs = report.get("units", {}).get("paragraphs", [])
+        for term in _ledger_term_anchors(report.get("narrative_ledger", {})):
+            locations = []
+            for paragraph_number, paragraph in enumerate(paragraphs, 1):
+                content = str(paragraph.get("text", ""))
+                for match in re.finditer(re.escape(term), content):
+                    start = int(paragraph["start"]) + match.start()
+                    locations.append({
                         "start": start,
-                        "end": start + width,
+                        "end": start + len(term),
                         "unit_id": paragraph["stable_id"],
                         "paragraph": paragraph_number,
                         "source": "rules",
                         "confidence": 0.62,
                     })
-    for term, locations in occurrences.items():
-        if len({item["paragraph"] for item in locations}) >= 2:
-            index["terms"][term] = locations
+            if len({item["paragraph"] for item in locations}) >= 2:
+                index["terms"][term] = locations
 
     for relation in report.get("narrative_ledger", {}).get("relations", []):
         key = str(relation.get("id") or relation.get("kind") or "")
@@ -293,6 +290,18 @@ def _add_location(target: dict[str, list[dict]], key: str, item: dict) -> None:
         name: item.get(name)
         for name in ("start", "end", "unit_id", "paragraph", "source", "confidence")
     })
+
+
+def _ledger_term_anchors(ledger: dict) -> list[str]:
+    anchors = []
+    for kind in ("questions", "promises", "setups", "payoffs", "relations"):
+        for item in ledger.get(kind, []):
+            anchors.extend(item.get("anchors") or [])
+    return list(dict.fromkeys(
+        str(anchor)
+        for anchor in anchors
+        if re.fullmatch(r"[\u4e00-\u9fff]{2,6}", str(anchor))
+    ))
 
 
 def _normalize_ltp(text: str, payload: dict) -> tuple[list[dict], list[dict]]:
