@@ -2657,19 +2657,19 @@ async def test_zhihu_v2_full_review_requests_criteria_evidence_and_runtime_score
         "summary": "人物作出选择并承担代价。", "events": [],
         "character_states": [], "timeline": [], "promises": [], "issues": [],
     }, ensure_ascii=False)
-    criterion_names = [
-        "opening_pull", "sustained_motivation", "escalation_density",
-        "climax_ending_payoff", "platform_fit", "causal_arc",
-        "character_agency", "continuity_logic", "promise_payoff",
-        "relationship_change", "clarity", "scene_dialogue", "voice_emotion",
-        "rhythm", "repetition_ai",
-    ]
+    criteria = {
+        "opening_pull": 89, "sustained_motivation": 66,
+        "escalation_density": 58, "climax_ending_payoff": 43,
+        "platform_fit": 69, "causal_arc": 53, "character_agency": 62,
+        "continuity_logic": 44, "promise_payoff": 49,
+        "relationship_change": 58, "clarity": 70, "scene_dialogue": 55,
+        "voice_emotion": 65, "rhythm": 60, "repetition_ai": 52,
+    }
     final = json.dumps({
-        "dimensions": {"commercial": 1, "story": 1, "prose": 1},
-        "criteria": {name: 80 for name in criterion_names},
+        "criteria": criteria,
         "criterion_evidence": {
             name: {"location": "正文", "excerpt": "证据", "effect": "说明评分"}
-            for name in criterion_names
+            for name in criteria
         },
         "hard_fail": False, "decision": "pass", "issues": [],
         "reconciliations": [],
@@ -2687,12 +2687,80 @@ async def test_zhihu_v2_full_review_requests_criteria_evidence_and_runtime_score
     adjudication = gateway.calls[-1]["user"]
     assert "opening_pull" in adjudication
     assert "criterion_evidence" in adjudication
-    assert review["score"] == 80
+    assert review["score"] == 58.84
     assert review["dimensions"] == {
-        "commercial": 80, "story": 80, "prose": 80,
+        "commercial": 63.62, "story": 52.95, "prose": 61.05,
     }
     assert review["scoring_profile_id"] == "zhihu-short-v2"
     assert review["judge_signature"].endswith("fake-final_review")
+
+
+@pytest.mark.parametrize(("failure", "report_status", "event_type", "message"), [
+    (
+        ValueError("终审返回缺少必要评分"),
+        "final_review_rejected",
+        "final_review_result_rejected",
+        "终审模型已返回，但结果未通过系统校验，已保留最佳稿",
+    ),
+    (
+        RuntimeError("provider unavailable"),
+        "final_review_incomplete",
+        "final_review_model_failed",
+        "终审模型调用失败，已保留最佳稿",
+    ),
+])
+@pytest.mark.asyncio
+async def test_quality_flow_distinguishes_final_review_validation_from_model_failure(
+    tmp_path, monkeypatch, failure, report_status, event_type, message,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Final review error", mode="short", genre="suspense",
+        premise="A final review must explain its failure.", target_words=8000,
+    ))
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    candidate = "正文" * 3200
+
+    async def polish(*args, **kwargs):
+        return candidate
+
+    async def reader(*args, **kwargs):
+        return service._review(quality_review())
+
+    async def final_review(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {
+        "coverage": 1.0, "windows": [], "nlp": {"available": True},
+        "prose": {"blocking_count": 0},
+    })
+
+    with pytest.raises(RuntimeError, match=message):
+        await service._quality_polish(
+            run_id, run_path, project, "constraints", candidate,
+            service._review(quality_review()),
+        )
+
+    event = next(
+        item for item in db.list_run_events(run_id)
+        if item["event_type"] == event_type
+    )
+    assert event["message"] == message
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(
+        encoding="utf-8",
+    ))
+    assert report["status"] == report_status
+    assert (run_path / "outputs" / "best-candidate.md").read_text(
+        encoding="utf-8",
+    ) == candidate
 
 
 @pytest.mark.asyncio

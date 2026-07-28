@@ -42,6 +42,7 @@ from novel_flywheel.quality_records import (
     write_quality_checkpoint,
 )
 from novel_flywheel.quality_profiles import (
+    ZHihu_SHORT_V2,
     compare_quality_candidates,
     judge_signature,
     profile_for_project,
@@ -892,19 +893,25 @@ class WorkflowService:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                report["status"] = "final_review_incomplete"
+                validation_failed = isinstance(exc, ValueError)
+                if validation_failed:
+                    report_status = "final_review_rejected"
+                    event_type = "final_review_result_rejected"
+                    message = "终审模型已返回，但结果未通过系统校验，已保留最佳稿"
+                else:
+                    report_status = "final_review_incomplete"
+                    event_type = "final_review_model_failed"
+                    message = "终审模型调用失败，已保留最佳稿"
+                report["status"] = report_status
                 report["terminal_review_complete"] = False
-                report["failure_reasons"] = [str(exc)]
+                report["failure_reasons"] = [message]
                 atomic_write(run_path / "outputs" / "best-candidate.md", best_polished)
                 self._write_quality_report(run_path, report)
                 self.db.add_run_event(
-                    run_id, "error", "final_review_incomplete",
-                    "Final review providers failed; preserved the best candidate",
+                    run_id, "error", event_type, message,
                     stage="final_review", metadata={"error": str(exc)},
                 )
-                raise RuntimeError(
-                    "Final review incomplete; preserved best candidate"
-                ) from exc
+                raise RuntimeError(message) from exc
             final_review["issues"] = issue_ledger(final_review.get("issues", []))
             outcome, reasons = quality_outcome_for_profile(final_review, active_profile)
             passed = (
@@ -2648,8 +2655,16 @@ class WorkflowService:
         cls, value: str | dict, project: Project, receipt: dict | None = None,
     ) -> dict:
         payload = cls._json_object(value) if isinstance(value, str) else value
+        profile_id = profile_for_project(project)
+        criteria = payload.get("criteria") if isinstance(payload.get("criteria"), dict) else {}
+        if (profile_id == ZHihu_SHORT_V2.id
+                and all(name in criteria for name in ZHihu_SHORT_V2.criterion_dimensions)):
+            payload = {
+                **payload,
+                "dimensions": {name: 0 for name in ZHihu_SHORT_V2.dimension_weights},
+            }
         review = score_review(
-            normalize_review(payload), profile_for_project(project),
+            normalize_review(payload), profile_id,
         )
         review["judge_signature"] = judge_signature(receipt)
         return review

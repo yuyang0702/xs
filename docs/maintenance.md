@@ -197,7 +197,7 @@ Short manuscripts up to one 6,000-character window are sent to `final_review` in
 
 Initial editorial issues receive content-derived stable IDs plus source, repair goal, and status. Revision-plan tasks preserve related `issue_ids`. Incremental adjudication must mark every prior issue exactly `resolved`, `unresolved`, or `uncertain` with evidence. Missing or invalid reconciliation, incomplete coverage, or insufficient evidence triggers the complete-review fallback. An unresolved or uncertain major issue cannot pass incrementally.
 
-Final review uses only the `final_review` role and its configured provider fallback. It never switches to `planning`. If both configured routes fail, Runtime writes `best-candidate.md`, reports `final_review_incomplete`, and leaves the formal manuscript unchanged. The output limit remains 8,192 tokens. A typical 20,000-character story uses several 6,000-12,000 input-token requests and roughly 40,000-70,000 cumulative input tokens.
+Final review uses only the `final_review` role and its configured provider fallback. It never switches to `planning`. A provider failure records `final_review_model_failed`; a model response rejected by local JSON or score validation records `final_review_result_rejected`. Both paths write `best-candidate.md` and leave the formal manuscript unchanged. A complete `zhihu-short-v2` criteria set is authoritative and is scored locally without requiring legacy `score` or `dimensions` fields. The output limit remains 8,192 tokens. A typical 20,000-character story uses several 6,000-12,000 input-token requests and roughly 40,000-70,000 cumulative input tokens.
 
 The run detail context can expose manuscript coverage, reviewed window count, reconciliation counts, and local gate reasons from `quality-report.json`.
 
@@ -268,7 +268,8 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 - `review_configured_fallback`: the same-route Review retry stayed empty and the Review role fallback is running.
 - `review_incomplete`: neither Review route produced usable output; no editorial score was fabricated.
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
-- `final_review_incomplete`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
+- `final_review_model_failed`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
+- `final_review_result_rejected`: a terminal-review response arrived but failed local format or score validation; the best candidate was preserved and the original validation detail remains in event metadata.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.
 - `failed`: the run stopped; formal files remain at their last committed revision.
 
