@@ -102,6 +102,48 @@ async def test_incremental_review_uses_fewer_than_all_windows_for_middle_prose_c
     assert audit["estimated_saved_input_characters"] > 0
 
 
+@pytest.mark.asyncio
+async def test_incremental_review_falls_back_for_stale_baseline_analysis_hash(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Stale baseline analysis", mode="short", genre="suspense",
+        premise="The saved analysis must match its source.", target_words=8000,
+    ))
+    before = "原始正文"
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(
+        before,
+        __import__(
+            "novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"],
+        ).analyze_manuscript("另一份正文", nlp_analyze=None),
+        [], {"issues": [], "score": 80},
+    )
+    current_text = "返修后的正文"
+    current = __import__(
+        "novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"],
+    ).analyze_manuscript(current_text, nlp_analyze=None)
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, current, baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"],
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert audit["fallback_reasons"] == ["baseline_analysis_hash_mismatch"]
+
+
 class FakeGateway:
     def __init__(self) -> None:
         self.roles = []

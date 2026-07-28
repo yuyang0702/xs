@@ -1,5 +1,8 @@
 import hashlib
 
+import pytest
+
+import novel_flywheel.incremental_review as incremental_review
 from novel_flywheel.incremental_review import (
     apply_incremental_gate,
     build_review_baseline,
@@ -63,6 +66,52 @@ def test_incremental_gate_rejects_stale_hash_and_missing_reconciliation():
     assert "missing_issue_reconciliation" in reasons
 
 
+def test_incremental_gate_rejects_valid_but_stale_analysis_hash() -> None:
+    current = "已经修改的正文"
+    analysis = _analysis("旧正文")
+    baseline = {"coverage": 1.0, "issue_ledger": []}
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False}, baseline, {"coverage": 1.0}, analysis,
+        current_manuscript=current, reconciliations=[],
+    )
+
+    assert review["hard_fail"] is True
+    assert "current_analysis_hash_mismatch" in reasons
+
+
+def test_incremental_gate_rejects_empty_scope_for_changed_manuscript() -> None:
+    before = "原正文"
+    current = "修改后的正文"
+    baseline = {
+        "coverage": 1.0,
+        "issue_ledger": [],
+        "manuscript_hash": hashlib.sha256(before.encode("utf-8")).hexdigest(),
+    }
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False}, baseline,
+        {"coverage": 1.0, "selected_windows": [], "reasons": {}},
+        _analysis(current), current_manuscript=current, reconciliations=[],
+    )
+
+    assert review["hard_fail"] is True
+    assert "empty_incremental_scope" in reasons
+
+
+def test_incremental_gate_rejects_selected_window_without_reason() -> None:
+    current = "修改后的正文"
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False}, {"coverage": 1.0, "issue_ledger": []},
+        {"coverage": 1.0, "selected_windows": [2], "reasons": {}},
+        _analysis(current), current_manuscript=current, reconciliations=[],
+    )
+
+    assert review["hard_fail"] is True
+    assert "unexplained_review_window" in reasons
+
+
 def test_incremental_gate_rejects_invalid_and_unresolved_reconciliation_states():
     text = "正文"
     analysis = _analysis(text)
@@ -111,6 +160,31 @@ def test_changed_narrative_relation_selects_both_linked_windows():
     assert "narrative_relation:relation-1" in scope["reasons"]["3"]
 
 
+def test_changed_relation_uses_impact_index_endpoints() -> None:
+    windows = [
+        {"index": index, "start": (index - 1) * 100, "end": index * 100,
+         "text": str(index)}
+        for index in range(1, 5)
+    ]
+    current = {
+        "windows": windows, "entities": [], "events": [],
+        "narrative_ledger": {"relations": []},
+        "impact_index": {"relations": {"relation-1": [
+            {"start": 20, "end": 30, "endpoint": "from"},
+            {"start": 340, "end": 350, "endpoint": "to"},
+        ]}},
+    }
+
+    scope = select_review_scope(
+        {"windows": windows}, current,
+        {"changed_windows": [1], "changed_entities": [], "changed_events": [],
+         "changed_narrative_relations": ["relation-1"]},
+    )
+
+    assert 4 in scope["selected_windows"]
+    assert "narrative_relation:relation-1" in scope["reasons"]["4"]
+
+
 def test_review_baseline_records_the_exact_revision_source_hash():
     source = "受保护最佳稿"
     baseline = build_review_baseline(source, _analysis(source), [], {"issues": []})
@@ -118,3 +192,80 @@ def test_review_baseline_records_the_exact_revision_source_hash():
     assert baseline["manuscript_hash"] == hashlib.sha256(
         source.encode("utf-8")
     ).hexdigest()
+
+
+@pytest.mark.parametrize("flag", [
+    "scene_inserted", "scene_deleted", "scene_moved", "scene_merged",
+    "opening_promise_changed", "climax_changed", "ending_changed",
+    "event_order_changed", "timeline_changed", "causal_relations_changed",
+    "seven_step_structure_changed", "principal_goal_changed",
+    "key_choice_changed", "life_death_changed", "identity_changed",
+    "relationship_changed", "knowledge_state_changed", "key_evidence_changed",
+    "setup_changed", "promise_changed", "question_changed", "payoff_changed",
+    "locked_fact_changed", "world_rule_changed", "protected_passage_changed",
+])
+def test_semantic_structure_flags_force_full_review(flag: str) -> None:
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.1, "ambiguous": [], "selected_windows": [2]},
+        {"changed_ratio": 0.01, flag: True},
+        {"nlp": {"available": True}, "prose": {"blocking_count": 0}},
+    )
+
+    assert required is True
+    assert flag in reasons
+
+
+def test_unavailable_ltp_allows_only_mechanical_patch_groups() -> None:
+    scope = {"selected_ratio": 0.1, "ambiguous": [], "selected_windows": [1]}
+    changes = {"changed_ratio": 0.01}
+    analysis = {"nlp": {"available": False}, "prose": {"blocking_count": 0}}
+
+    semantic_required, semantic_reasons = requires_full_review(
+        scope, changes, analysis, patch_groups=[{"mechanical": False}],
+    )
+    mechanical_required, mechanical_reasons = requires_full_review(
+        scope, changes, analysis, patch_groups=[{"mechanical": True}],
+    )
+
+    assert semantic_required is True
+    assert "ltp_unavailable" in semantic_reasons
+    assert mechanical_required is False
+    assert "ltp_unavailable" not in mechanical_reasons
+
+
+def test_partially_applied_patch_group_forces_full_review() -> None:
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.1, "ambiguous": [], "selected_windows": [1]},
+        {"changed_ratio": 0.01},
+        {"nlp": {"available": True}, "prose": {"blocking_count": 0}},
+        patch_groups=[{"mechanical": True, "partially_applied": True}],
+    )
+
+    assert required is True
+    assert "partially_applied_groups" in reasons
+
+
+def test_long_diff_never_runs_character_matcher_across_whole_manuscript(
+    monkeypatch,
+) -> None:
+    paragraphs = [f"段落{index}。" + chr(0x4e00 + index) * 1200 for index in range(8)]
+    before = "# 第一章\n\n" + "\n\n".join(paragraphs[:4])
+    before += "\n\n# 第二章\n\n" + "\n\n".join(paragraphs[4:])
+    after = before.replace("段落5。", "段落五。", 1)
+    old = _analysis(before)
+    current = _analysis(after)
+    real_matcher = incremental_review.SequenceMatcher
+    compared_sizes = []
+
+    def recording_matcher(*args, **kwargs):
+        left = args[1]
+        right = args[2]
+        compared_sizes.append((len(left), len(right)))
+        return real_matcher(*args, **kwargs)
+
+    monkeypatch.setattr(incremental_review, "SequenceMatcher", recording_matcher)
+
+    changes = diff_manuscripts(before, after, old, current, mode="long")
+
+    assert changes["ranges"]
+    assert max(max(pair) for pair in compared_sizes) < len(before) // 2

@@ -1306,23 +1306,39 @@ class WorkflowService:
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, analysis: dict, baseline: dict, initial_review: dict,
         suffix: str = "", revision_source_hash: str | None = None,
+        patch_groups=(),
     ) -> tuple[dict, dict]:
         constraints = self._constraints_with_platform_rules(project, constraints)
+        baseline_manuscript = baseline.get("manuscript", "")
+        baseline_hash = hashlib.sha256(
+            baseline_manuscript.encode("utf-8")
+        ).hexdigest()
+        baseline_reasons = []
         if (revision_source_hash is not None
                 and baseline.get("manuscript_hash") != revision_source_hash):
+            baseline_reasons.append("baseline_source_mismatch")
+        else:
+            if baseline.get("manuscript_hash") != baseline_hash:
+                baseline_reasons.append("baseline_manuscript_hash_mismatch")
+            if baseline.get("analysis", {}).get("text_hash") != baseline_hash:
+                baseline_reasons.append("baseline_analysis_hash_mismatch")
+        if baseline_reasons:
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
             )
             audit.update({
                 "review_mode": "full_fallback",
-                "fallback_reasons": ["baseline_source_mismatch"],
+                "fallback_reasons": baseline_reasons,
             })
             return review, audit
         changes = diff_manuscripts(
             baseline["manuscript"], manuscript, baseline["analysis"], analysis,
+            mode="long" if project.mode == "long" else "short",
         )
         scope = select_review_scope(baseline, analysis, changes)
-        full, fallback_reasons = requires_full_review(scope, changes, analysis)
+        full, fallback_reasons = requires_full_review(
+            scope, changes, analysis, patch_groups=patch_groups,
+        )
         if full:
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
@@ -1394,7 +1410,8 @@ class WorkflowService:
             payload, project, getattr(raw, "receipt", {}),
         )
         review, gate_reasons = apply_incremental_gate(
-            review, baseline, scope, analysis, payload.get("reconciliations", []),
+            review, baseline, scope, analysis, manuscript,
+            payload.get("reconciliations", []),
         )
         if gate_reasons:
             full_review, audit = await self._full_manuscript_review(
