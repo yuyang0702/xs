@@ -1596,6 +1596,11 @@ class WorkflowService:
                                      batch_number: int = 1,
                                      targeted_context: dict | None = None) -> str:
         original_parts = self._split_segments(text)
+
+        def boundary_paragraph(segment: str, *, first: bool) -> str:
+            paragraphs = [item.strip() for item in re.split(r"\n\s*\n", segment) if item.strip()]
+            return (paragraphs[0] if first else paragraphs[-1]) if paragraphs else ""
+
         targeted = bool(structural or targeted_context)
         grouped_parts = (
             [(part, group) for group, part in enumerate(original_parts, 1)]
@@ -1718,11 +1723,11 @@ class WorkflowService:
                 linked_checks = targeted_context["checks"]
                 global_facts = targeted_context["global_facts"]
                 previous_context = (
-                    parts[index - 2] if index > 1
+                    boundary_paragraph(parts[index - 2], first=False) if index > 1
                     else targeted_context["previous_paragraph"]
                 )
                 next_context = (
-                    parts[index] if index < len(parts)
+                    boundary_paragraph(parts[index], first=True) if index < len(parts)
                     else targeted_context["next_paragraph"]
                 )
             elif revision_plan:
@@ -1732,12 +1737,16 @@ class WorkflowService:
                 }
                 linked_checks = [
                     check for check in revision_plan["checks"]
-                    if not check.get("issue_ids")
-                    or task_issue_ids.intersection(check["issue_ids"])
+                    if task_issue_ids.intersection(check.get("issue_ids", []))
                 ]
                 global_facts = revision_plan["global_facts"]
-                previous_context = original_parts[group - 2] if group > 1 else ""
-                next_context = original_parts[group] if group < len(original_parts) else ""
+                previous_context = (
+                    boundary_paragraph(original_parts[group - 2], first=False) if group > 1 else ""
+                )
+                next_context = (
+                    boundary_paragraph(original_parts[group], first=True)
+                    if group < len(original_parts) else ""
+                )
             else:
                 tasks = []
                 linked_checks = []
@@ -2896,16 +2905,20 @@ class WorkflowService:
 
     @staticmethod
     def _normalized_revision_plan(value: dict, segment_count: int, **kwargs) -> dict:
+        def normalized_issue_ids(raw) -> list[str]:
+            values = [raw] if isinstance(raw, str) else raw if isinstance(raw, list) else []
+            return sorted({item.strip() for item in values
+                           if isinstance(item, str) and item.strip()})
+
         plan = normalize_revision_plan(value, segment_count, **kwargs)
         raw_checks = value.get("checks") if isinstance(value.get("checks"), list) else []
         for check in plan["checks"]:
             raw = next((item for item in raw_checks if isinstance(item, dict)
                         and item.get("kind") == check["kind"]
                         and str(item.get("value", "")).strip() == check["value"]), None)
-            issue_ids = [item.strip() for item in (raw or {}).get("issue_ids", [])
-                         if isinstance(item, str) and item.strip()]
+            issue_ids = normalized_issue_ids((raw or {}).get("issue_ids"))
             if issue_ids:
-                check["issue_ids"] = sorted(set(issue_ids))
+                check["issue_ids"] = issue_ids
         raw_tasks = value.get("tasks") if isinstance(value.get("tasks"), list) else []
         for task_list in (plan["tasks"], plan.get("deferred_tasks", [])):
             for task in task_list:
@@ -2915,6 +2928,11 @@ class WorkflowService:
                 position = (raw or {}).get("seven_step_position")
                 if isinstance(position, str) and position.strip():
                     task["seven_step_position"] = position.strip()
+                issue_ids = normalized_issue_ids((raw or {}).get("issue_ids"))
+                if issue_ids:
+                    task["issue_ids"] = issue_ids
+                else:
+                    task.pop("issue_ids", None)
         return plan
 
     @staticmethod

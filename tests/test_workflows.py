@@ -1728,6 +1728,116 @@ async def test_structural_patch_context_keeps_linked_local_evidence_and_full_nei
 
 
 @pytest.mark.asyncio
+async def test_structural_patch_context_requires_explicit_issue_id_intersection(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Explicit check links", mode="short", genre="suspense",
+        premise="A witness corrects one claim.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    target = ("TARGET-CONTENT " * 80).strip()
+    plan = {
+        "checks": [
+            {"kind": "forbidden_text", "value": "LINKED-SCALAR", "issue_ids": "task-alpha"},
+            {"kind": "forbidden_text", "value": "LINKED-LIST", "issue_ids": ["task-alpha"]},
+            {"kind": "forbidden_text", "value": "UNRELATED-SCALAR", "issue_ids": "task-beta"},
+            {"kind": "forbidden_text", "value": "UNSCOPED-CHECK"},
+        ],
+        "tasks": [{
+            "segments": [2], "instruction": "Repair only task alpha.",
+            "issue_ids": "task-alpha",
+        }],
+    }
+
+    class Gateway:
+        def __init__(self):
+            self.users = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.users.append(user)
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "polisher", "input_tokens": 1000,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("explicit-links", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "explicit-links"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    await service._polish_short_segments(
+        "explicit-links", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["Opening", target, "Ending"]),
+        "{}", structural=True, prepared_revision_plan=plan,
+    )
+
+    prompt = gateway.users[0]
+    assert "LINKED-SCALAR" in prompt
+    assert "LINKED-LIST" in prompt
+    assert "UNRELATED-SCALAR" not in prompt
+    assert "UNSCOPED-CHECK" not in prompt
+
+
+@pytest.mark.asyncio
+async def test_structural_patch_context_uses_only_adjacent_boundary_paragraphs(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Boundary paragraphs", mode="short", genre="suspense",
+        premise="A witness corrects one claim.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    previous = "PREVIOUS-FIRST\n\n   \n\nPREVIOUS-LAST"
+    target = ("TARGET-ONLY " * 90).strip()
+    following = "NEXT-FIRST\n\n\nNEXT-LAST"
+    plan = {
+        "checks": [{
+            "kind": "forbidden_text", "value": "ABSENT-TEXT", "issue_ids": ["issue-1"],
+        }],
+        "tasks": [{
+            "segments": [2], "instruction": "Repair only the target.",
+            "issue_ids": ["issue-1"],
+        }],
+    }
+
+    class Gateway:
+        def __init__(self):
+            self.users = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.users.append(user)
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "polisher", "input_tokens": 1000,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("boundary-context", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "boundary-context"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    await service._polish_short_segments(
+        "boundary-context", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join([previous, target, following]),
+        "{}", structural=True, prepared_revision_plan=plan,
+    )
+
+    prompt = gateway.users[0]
+    assert "PREVIOUS-LAST" in prompt
+    assert "NEXT-FIRST" in prompt
+    assert "PREVIOUS-FIRST" not in prompt
+    assert "NEXT-LAST" not in prompt
+    assert prompt.count(target) == 1
+
+
+@pytest.mark.asyncio
 async def test_targeted_split_children_keep_local_context_and_chinese_events(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
