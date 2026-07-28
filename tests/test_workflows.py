@@ -247,12 +247,14 @@ async def test_analysis_story_flag_forces_fallback_before_incremental_calls(
         title="Promise change", mode="short", genre="suspense",
         premise="Promise changes require complete review.", target_words=8000,
     ))
-    before = "开端。" + "甲" * 1000
-    current_text = before.replace("甲", "乙", 1)
+    parts = [f"段落{index}。" + chr(0x4e00 + index) * 4800 for index in range(10)]
+    parts[4] = "段落4。我发誓一定找到真相。" + chr(0x4e00 + 4) * 4785
+    before = "\n\n".join(parts)
+    current_text = before.replace("我发誓一定找到真相", "我打算以后寻找线索", 1)
     old = _ltp_analysis(before)
     current = _ltp_analysis(current_text)
-    old["promises"] = [{"stable_id": "promise-old"}]
-    current["promises"] = [{"stable_id": "promise-new"}]
+    assert old["narrative_ledger"]["promises"]
+    assert not current["narrative_ledger"]["promises"]
     baseline = __import__(
         "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
     ).build_review_baseline(before, old, [], {"issues": []})

@@ -11,20 +11,14 @@ from novel_flywheel.revision import apply_patch_group, repair_mechanical_text
 
 _MAX_LONG_CHARACTER_DIFF = 8192
 _ANALYSIS_TRIGGER_FIELDS = {
-    "principal_goal": "principal_goal_changed",
-    "knowledge_state": "knowledge_state_changed",
-    "key_evidence": "key_evidence_changed",
-    "protected_passages": "protected_passage_changed",
-    "climax": "climax_changed",
+    "time_candidates": "timeline_changed",
+}
+_LEDGER_TRIGGER_FIELDS = {
     "questions": "question_changed",
     "promises": "promise_changed",
     "setups": "setup_changed",
     "payoffs": "payoff_changed",
-    "time_candidates": "timeline_changed",
-    "locked_facts": "locked_fact_changed",
-    "world_rules": "world_rule_changed",
-    "relationships": "relationship_changed",
-    "seven_step_structure": "seven_step_structure_changed",
+    "relations": "causal_relations_changed",
 }
 
 
@@ -57,8 +51,6 @@ def diff_manuscripts(
     else:
         ranges = _exact_diff_ranges(before, after)
         structural = {}
-    for key, value in _scene_structure_flags(before_analysis, after_analysis).items():
-        structural[key] = structural.get(key, False) or value
     changed = sum(max(item["old_end"] - item["old_start"],
                       item["new_end"] - item["new_start"]) for item in ranges)
     before_events = [item.get("signature", item.get("predicate")) for item in before_analysis.get("events", [])]
@@ -77,6 +69,14 @@ def diff_manuscripts(
         if _story_value(before_analysis.get(field))
         != _story_value(after_analysis.get(field))
     }
+    before_ledger = before_analysis.get("narrative_ledger", {})
+    after_ledger = after_analysis.get("narrative_ledger", {})
+    ledger_flags = {
+        reason: True
+        for field, reason in _LEDGER_TRIGGER_FIELDS.items()
+        if _story_value(before_ledger.get(field))
+        != _story_value(after_ledger.get(field))
+    }
     patch_flags = _patch_group_flags(patch_groups)
     return {
         "ranges": ranges,
@@ -89,15 +89,10 @@ def diff_manuscripts(
         "changed_entities": changed_entities,
         "changed_events": changed_events,
         "changed_narrative_relations": changed_relations,
-        "principal_character_changed": bool(changed_entities),
-        "key_event_changed": bool(changed_events),
-        "causal_relations_changed": bool(changed_relations),
-        "event_order_changed": (
-            set(before_events) == set(after_events) and before_events != after_events
-        ),
         "opening_promise_changed": before[:500] != after[:500],
         "ending_changed": before[-500:] != after[-500:],
         **analysis_flags,
+        **ledger_flags,
         **patch_flags,
         **structural,
     }
@@ -332,7 +327,11 @@ def _story_value(value):
     if isinstance(value, dict):
         return tuple(sorted(
             (key, _story_value(item)) for key, item in value.items()
-            if key not in {"start", "end", "window", "paragraph", "unit_id"}
+            if key not in {
+                "start", "end", "window", "paragraph", "unit_id",
+                "from_start", "from_end", "from_unit_id",
+                "to_start", "to_end", "to_unit_id",
+            }
         ))
     return value
 
@@ -341,9 +340,16 @@ def _patch_group_flags(patch_groups: Sequence[dict]) -> dict:
     flags = {}
     known_flags = {
         *_ANALYSIS_TRIGGER_FIELDS.values(),
+        *_LEDGER_TRIGGER_FIELDS.values(),
         "scene_inserted", "scene_deleted", "scene_moved", "scene_merged",
         "event_order_changed", "key_event_changed", "causal_relations_changed",
         "key_choice_changed", "life_death_changed", "identity_changed",
+        "principal_character_changed", "opening_promise_changed",
+        "climax_changed", "ending_changed", "seven_step_structure_changed",
+        "principal_goal_changed", "relationship_changed",
+        "knowledge_state_changed", "key_evidence_changed",
+        "locked_fact_changed", "world_rule_changed",
+        "protected_passage_changed",
     }
     for group in patch_groups:
         if not isinstance(group, dict) or group.get("accepted") is not True:
@@ -356,29 +362,6 @@ def _patch_group_flags(patch_groups: Sequence[dict]) -> dict:
         for key in known_flags:
             if group.get(key) is True:
                 flags[key] = True
-    return flags
-
-
-def _scene_structure_flags(before_analysis: dict, after_analysis: dict) -> dict:
-    before_ids = [
-        item.get("stable_id")
-        for item in before_analysis.get("units", {}).get("scenes", [])
-    ]
-    after_ids = [
-        item.get("stable_id")
-        for item in after_analysis.get("units", {}).get("scenes", [])
-    ]
-    flags = {}
-    if len(after_ids) > len(before_ids):
-        flags["scene_inserted"] = True
-    if len(after_ids) < len(before_ids):
-        flags["scene_deleted"] = True
-    if (
-        len(before_ids) == len(after_ids)
-        and sorted(before_ids) == sorted(after_ids)
-        and before_ids != after_ids
-    ):
-        flags["scene_moved"] = True
     return flags
 
 
@@ -497,26 +480,6 @@ def _long_diff_ranges(
     old_chapters = _chapter_spans(before)
     new_chapters = _chapter_spans(after)
     ranges = []
-    structural = {
-        "scene_inserted": False,
-        "scene_deleted": False,
-        "scene_moved": False,
-        "scene_merged": False,
-    }
-    old_scene_ids = [
-        item.get("stable_id")
-        for item in before_analysis.get("units", {}).get("scenes", [])
-    ]
-    new_scene_ids = [
-        item.get("stable_id")
-        for item in after_analysis.get("units", {}).get("scenes", [])
-    ]
-    structural["scene_moved"] = (
-        len(old_scene_ids) == len(new_scene_ids)
-        and sorted(old_scene_ids) == sorted(new_scene_ids)
-        and old_scene_ids != new_scene_ids
-    )
-
     chapter_matcher = SequenceMatcher(
         None,
         [item["key"] for item in old_chapters],
@@ -528,14 +491,12 @@ def _long_diff_ranges(
             for old_chapter, new_chapter in zip(
                 old_chapters[old_start:old_end], new_chapters[new_start:new_end],
             ):
-                chapter_ranges, flags = _diff_changed_scenes(
+                chapter_ranges, _flags = _diff_changed_scenes(
                     before, after,
                     _units_for_chapter(before_analysis, old_chapter),
                     _units_for_chapter(after_analysis, new_chapter),
                 )
                 ranges.extend(chapter_ranges)
-                for key, value in flags.items():
-                    structural[key] = structural[key] or value
             continue
         old_span = old_chapters[old_start:old_end]
         new_span = new_chapters[new_start:new_end]
@@ -554,17 +515,13 @@ def _long_diff_ranges(
                 new_chapters[new_start - 1]["end"] if new_start else 0
             ),
         })
-        structural["scene_inserted"] = structural["scene_inserted"] or bool(new_span)
-        structural["scene_deleted"] = structural["scene_deleted"] or bool(old_span)
-    return ranges, {key: value for key, value in structural.items() if value}
+    return ranges, {}
 
 
 def _diff_changed_scenes(
     before: str, after: str, old_units: list[dict], new_units: list[dict],
 ) -> tuple[list[dict], dict]:
     ranges = []
-    flags = {"scene_inserted": False, "scene_deleted": False,
-             "scene_merged": False}
     matcher = SequenceMatcher(
         None,
         [item.get("stable_id") for item in old_units],
@@ -592,8 +549,6 @@ def _diff_changed_scenes(
             ranges.append({"kind": "delete", "old_start": first["start"],
                            "old_end": last["end"], "new_start": anchor,
                            "new_end": anchor})
-            flags["scene_deleted"] = True
-            flags["scene_merged"] = bool(new_changed)
         if len(new_changed) > paired:
             first, last = new_changed[paired], new_changed[-1]
             anchor = old_changed[-1]["end"] if old_changed else (
@@ -602,6 +557,5 @@ def _diff_changed_scenes(
             ranges.append({"kind": "insert", "old_start": anchor,
                            "old_end": anchor, "new_start": first["start"],
                            "new_end": last["end"]})
-            flags["scene_inserted"] = True
-    return ranges, flags
+    return ranges, {}
 

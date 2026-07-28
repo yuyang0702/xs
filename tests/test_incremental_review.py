@@ -25,6 +25,19 @@ def _analysis(text, entities=()):
     return report
 
 
+def _production_analysis(text: str, *, words=(), ner=(), srl=()) -> dict:
+    return analyze_manuscript(
+        text,
+        nlp_analyze=lambda _value: {
+            "backend": "ltp", "backend_version": "v", "available": True,
+            "result": {
+                "cws": [list(words)], "pos": [[]], "ner": [list(ner)],
+                "srl": [list(srl)], "dep": [[]],
+            },
+        },
+    )
+
+
 def test_small_change_selects_changed_adjacent_and_shared_entity_windows():
     before = "\n\n".join([("林晚进入仓库。" + "甲" * 4800), ("周衡等待。" + "乙" * 4800),
                            ("林晚打开木盒。" + "丙" * 4800), ("次日离开。" + "丁" * 4800)])
@@ -358,40 +371,121 @@ def test_full_review_thresholds_include_exact_boundaries(
     assert reason in reasons
 
 
-@pytest.mark.parametrize(("analysis_key", "reason"), [
-    ("principal_goal", "principal_goal_changed"),
-    ("knowledge_state", "knowledge_state_changed"),
-    ("protected_passages", "protected_passage_changed"),
-    ("climax", "climax_changed"),
-    ("promises", "promise_changed"),
-    ("payoffs", "payoff_changed"),
+@pytest.mark.parametrize(("ledger_key", "signal", "resolution", "reason"), [
+    ("questions", "为什么银锁会在门后？", "原来父亲把银锁藏在门后。", "question_changed"),
+    ("promises", "我发誓一定找到银锁。", "原来银锁就在门后。", "promise_changed"),
+    ("setups", "桌上放着一张照片。", "原来照片证明了真相。", "setup_changed"),
 ])
-def test_analysis_diff_derives_high_risk_story_flags(
-    analysis_key: str, reason: str,
+def test_production_ledger_diff_derives_high_risk_story_flags(
+    ledger_key: str, signal: str, resolution: str, reason: str,
 ) -> None:
-    before = "开端。\n\n中段。\n\n结尾。"
-    after = before.replace("中段", "转折")
-    old = _analysis(before)
-    current = _analysis(after)
-    old[analysis_key] = [{"stable_id": "old"}]
-    current[analysis_key] = [{"stable_id": "new"}]
+    prefix = "甲。" * 300
+    middle = signal + "丙。" * 30
+    before = prefix + middle + resolution + "乙。" * 300
+    after = prefix + middle + "后来他回到房间。" + "乙。" * 300
+    old = _production_analysis(before)
+    current = _production_analysis(after)
+
+    assert old["narrative_ledger"][ledger_key]
+    assert old["narrative_ledger"][ledger_key] != current["narrative_ledger"][ledger_key]
 
     changes = diff_manuscripts(before, after, old, current)
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.3, "ambiguous": [], "selected_windows": [4, 5, 6]},
+        changes, current,
+    )
 
     assert changes[reason] is True
+    assert required is True
+    assert reason in reasons
 
 
-def test_analysis_diff_detects_content_change_with_stable_identity() -> None:
-    before = "开端。\n\n中段。\n\n结尾。"
-    after = before.replace("中段", "转折")
-    old = _analysis(before)
-    current = _analysis(after)
-    old["promises"] = [{"stable_id": "promise-1", "text": "门后有人"}]
-    current["promises"] = [{"stable_id": "promise-1", "text": "门后无人"}]
+def test_production_ledger_payoff_and_relation_changes_force_full_review() -> None:
+    prefix = "甲。" * 300
+    middle = "桌上放着一张照片。" + "丙。" * 30
+    before = prefix + middle + "原来照片证明了真相。" + "乙。" * 300
+    after = prefix + middle + "后来照片被收进抽屉。" + "乙。" * 300
+    old = _production_analysis(before)
+    current = _production_analysis(after)
+
+    assert old["narrative_ledger"]["payoffs"]
+    assert old["narrative_ledger"]["relations"]
 
     changes = diff_manuscripts(before, after, old, current)
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.3, "ambiguous": [], "selected_windows": [4, 5, 6]},
+        changes, current,
+    )
 
-    assert changes["promise_changed"] is True
+    assert changes["payoff_changed"] is True
+    assert changes["causal_relations_changed"] is True
+    assert required is True
+    assert {"payoff_changed", "causal_relations_changed"}.issubset(reasons)
+
+
+def test_ordinary_entity_change_does_not_imply_principal_character_change() -> None:
+    prefix, suffix = "甲" * 600, "乙" * 600
+    before = prefix + "林晚" + suffix
+    after = prefix + "周宁" + suffix
+    old = _production_analysis(
+        before, words=(prefix, "林晚", suffix), ner=(("Nh", 1, 1),),
+    )
+    current = _production_analysis(
+        after, words=(prefix, "周宁", suffix), ner=(("Nh", 1, 1),),
+    )
+
+    changes = diff_manuscripts(before, after, old, current)
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.1, "ambiguous": [], "selected_windows": [1]},
+        changes, current,
+    )
+
+    assert changes["changed_entities"]
+    assert changes.get("principal_character_changed") is not True
+    assert "principal_character_changed" not in reasons
+    assert required is False
+
+
+def test_ordinary_event_change_does_not_imply_key_event_change() -> None:
+    prefix, suffix = "甲" * 600, "乙" * 600
+    before = prefix + "走进" + suffix
+    after = prefix + "进入" + suffix
+    old = _production_analysis(
+        before, words=(prefix, "走进", suffix), srl=((1, []),),
+    )
+    current = _production_analysis(
+        after, words=(prefix, "进入", suffix), srl=((1, []),),
+    )
+
+    changes = diff_manuscripts(before, after, old, current)
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.1, "ambiguous": [], "selected_windows": [1]},
+        changes, current,
+    )
+
+    assert changes["changed_events"]
+    assert changes.get("key_event_changed") is not True
+    assert "key_event_changed" not in reasons
+    assert required is False
+
+
+def test_paragraph_split_does_not_imply_scene_insertion() -> None:
+    before = "甲" * 800 + "\n\n" + "乙" * 1200
+    after = "甲" * 800 + "\n\n" + "乙" * 400 + "\n\n" + "乙" * 800
+    old = _production_analysis(before)
+    current = _production_analysis(after)
+
+    assert len(old["units"]["scenes"]) + 1 == len(current["units"]["scenes"])
+
+    changes = diff_manuscripts(before, after, old, current)
+    required, reasons = requires_full_review(
+        {"selected_ratio": 0.1, "ambiguous": [], "selected_windows": [1]},
+        changes, current,
+    )
+
+    assert changes.get("scene_inserted") is not True
+    assert "scene_inserted" not in reasons
+    assert required is False
 
 
 def test_applied_patch_group_contributes_high_risk_story_flag() -> None:
