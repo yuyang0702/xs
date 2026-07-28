@@ -353,6 +353,50 @@ def test_long_diff_caps_character_matcher_for_one_oversized_paragraph(
     assert max(max(pair) for pair in compared_sizes) <= 8192
 
 
+@pytest.mark.parametrize(("change_kind", "expected_reasons"), [
+    ("insert", {"scene_inserted"}),
+    ("delete", {"scene_deleted"}),
+    ("move", {"scene_moved"}),
+    ("replace", {"scene_inserted", "scene_deleted"}),
+])
+def test_long_chapter_marker_changes_force_full_review_below_thresholds(
+    change_kind: str, expected_reasons: set[str],
+) -> None:
+    chapters = [
+        f"# 第{index:02d}章\n\n" + f"本章记录第{index:02d}段普通经过。" * 20
+        for index in range(20)
+    ]
+    changed = list(chapters)
+    if change_kind == "insert":
+        changed.insert(10, "# 新增章\n\n这是一段很短的新章节。")
+    elif change_kind == "delete":
+        changed.pop(10)
+    elif change_kind == "move":
+        changed[9], changed[10] = changed[10], changed[9]
+    else:
+        changed[10] = changed[10].replace("# 第10章", "# 替换章", 1)
+    before = "\n\n".join(chapters)
+    after = "\n\n".join(changed)
+    old = _analysis(before)
+    current = _analysis(after)
+
+    changes = diff_manuscripts(before, after, old, current, mode="long")
+    scope = {
+        "selected_ratio": 0.2, "ambiguous": [],
+        "selected_windows": [2, 3],
+    }
+    required, reasons = requires_full_review(
+        scope, changes,
+        {"nlp": {"available": True}, "prose": {"blocking_count": 0}},
+    )
+
+    assert changes["changed_ratio"] < 0.2
+    assert scope["selected_ratio"] < 0.4
+    assert {reason for reason in expected_reasons if changes.get(reason)} == expected_reasons
+    assert required is True
+    assert set(reasons) == expected_reasons
+
+
 @pytest.mark.parametrize(("scope_ratio", "changed_ratio", "reason"), [
     (0.10, 0.20, "changed_ratio"),
     (0.40, 0.01, "selected_ratio"),

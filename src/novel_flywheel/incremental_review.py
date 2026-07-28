@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections import Counter
 from collections.abc import Sequence
 from difflib import SequenceMatcher
 
@@ -479,12 +480,13 @@ def _long_diff_ranges(
 ) -> tuple[list[dict], dict]:
     old_chapters = _chapter_spans(before)
     new_chapters = _chapter_spans(after)
+    old_keys = [item["key"] for item in old_chapters]
+    new_keys = [item["key"] for item in new_chapters]
+    chapter_moved = old_keys != new_keys and Counter(old_keys) == Counter(new_keys)
     ranges = []
+    structural = {"scene_moved": True} if chapter_moved else {}
     chapter_matcher = SequenceMatcher(
-        None,
-        [item["key"] for item in old_chapters],
-        [item["key"] for item in new_chapters],
-        autojunk=False,
+        None, old_keys, new_keys, autojunk=False,
     )
     for tag, old_start, old_end, new_start, new_end in chapter_matcher.get_opcodes():
         if tag == "equal":
@@ -515,7 +517,12 @@ def _long_diff_ranges(
                 new_chapters[new_start - 1]["end"] if new_start else 0
             ),
         })
-    return ranges, {}
+        if not chapter_moved:
+            if tag in {"insert", "replace"}:
+                structural["scene_inserted"] = True
+            if tag in {"delete", "replace"}:
+                structural["scene_deleted"] = True
+    return ranges, structural
 
 
 def _diff_changed_scenes(
