@@ -141,6 +141,48 @@ def test_normalize_repair_contract_rejects_unsafe_contracts(
         normalize_repair_contract(value, manuscript, {"issue-lock", "issue-other"})
 
 
+def test_normalize_repair_contract_rejects_unconfirmed_mechanical_disguise() -> None:
+    manuscript = "父亲交出银锁。"
+    value = {
+        "manuscript_hash": hashlib.sha256(manuscript.encode()).hexdigest(),
+        "groups": [{
+            "group_id": "issue-lock",
+            "issue_ids": ["issue-lock"],
+            "kind": "mechanical",
+            "requires_user_confirmation": False,
+            "patches": [{
+                "operation": "replace",
+                "old_text": manuscript,
+                "new_text": "父亲从未交出银锁。",
+            }],
+        }],
+    }
+
+    with pytest.raises(ValueError, match="confirmation"):
+        normalize_repair_contract(value, manuscript, {"issue-lock"})
+
+
+def test_normalize_repair_contract_rejects_unknown_group_kind() -> None:
+    manuscript = "父亲交出银锁。"
+    value = {
+        "manuscript_hash": hashlib.sha256(manuscript.encode()).hexdigest(),
+        "groups": [{
+            "group_id": "issue-lock",
+            "issue_ids": ["issue-lock"],
+            "kind": "automatic",
+            "requires_user_confirmation": True,
+            "patches": [{
+                "operation": "replace",
+                "old_text": manuscript,
+                "new_text": "父亲当面交出银锁。",
+            }],
+        }],
+    }
+
+    with pytest.raises(ValueError, match="kind"):
+        normalize_repair_contract(value, manuscript, {"issue-lock"})
+
+
 def test_compact_review_keeps_every_issue_without_arbitrary_truncation() -> None:
     review = {
         "dimensions": {"commercial": 60, "story": 50, "prose": 70},

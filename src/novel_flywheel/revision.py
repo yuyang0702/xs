@@ -11,6 +11,7 @@ CHECK_KINDS = {"required_text", "forbidden_text"}
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 CJK = r"\u3400-\u9fff"
 PATCH_OPERATIONS = {"replace", "insert_before", "insert_after"}
+REPAIR_KINDS = {"semantic", "mechanical"}
 REPAIR_LABELS = {
     "ascii_dialogue_quotes": "ASCII 对话引号",
     "cjk_spacing": "汉字间多余空格",
@@ -76,9 +77,11 @@ def normalize_repair_contract(value: dict, manuscript: str,
             raise ValueError("Repair contract references an unknown issue")
         if len(set(linked_ids)) != 1:
             raise ValueError("Repair contract group mixes unrelated issue IDs")
-        if group.get("kind", "semantic") == "semantic" and not group.get(
-                "requires_user_confirmation"):
-            raise ValueError("Semantic repair requires user confirmation")
+        kind = group.get("kind", "semantic")
+        if kind not in REPAIR_KINDS:
+            raise ValueError("Repair contract group kind is unsupported")
+        if not group.get("requires_user_confirmation"):
+            raise ValueError("Repair contract group requires user confirmation")
         patches = group.get("patches")
         if not isinstance(patches, list) or not patches:
             raise ValueError("Repair contract group must contain a patch")
