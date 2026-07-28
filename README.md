@@ -8,6 +8,18 @@
 
 原创候选只与本地项目稿件和导入参考资料比较，包括连续相似片段、人名近似、设定、关键情节和独特表达候选，不代表全网查重或法律结论。模型和 LTP 均不能直接覆盖正式稿；候选哈希、本地全文扫描和终审哈希一致后才允许发布。
 
+## 知乎短篇评分与发布控制
+
+短篇作品启用“知乎盐选短篇”创作配置后，终审使用“知乎短篇评分 v2”。终审模型提供 15 项分数、原文位置和判断理由，Runtime 再计算阅读吸引力、故事质量和文字表达三项结果，权重为 `40 / 40 / 20`。总分达到 80 分且三项分别达到 75、75、68 分，稿件才算通过。总分 75～79.99 分且三项不低于 72、70、65 分时，只记为“条件通过”：稿件继续保留为候选，不能设为正式稿，也不能生成投稿包。
+
+页面默认只显示总分、三项分数、有效正文汉字、最重要的问题和下一步。逐项评分、本地扫描、评分参考组、全文和保护片段按需展开。每个问题都说明影响、建议改法和原文位置；按钮操作会持续显示进行中、成功或失败，不需要从日志猜测结果。
+
+系统推荐评分参考资料，但不会自动采用，也不会为推荐和确认调用模型。只有用户确认的资料才进入当前作品的评分参考组，用于人工观察不同质量档位和评分标准变化。日常终审不会发送参考作品全文。移出参考组只生成一个新版本，原资料、分析结果和历史确认记录都保留。
+
+用户可在候选稿全文中选择一个或多个完整段落，设置“尽量不改文字”或“一个字也不改”。返修模型误改受保护段落时，Runtime 保留原文并记录冲突；“下次修改可变动一次”只放行一轮。取消保护不会修改现有正文。
+
+最佳稿、评分、评分标准、终审模型和稿件哈希保存在同一个质量检查点中。使用不同评分标准或不同终审模型得到的分数不会直接比较。可比较的新稿至少提高 2 分，且任一大项不能下降超过 3 分，才会替换受保护最佳稿。正式稿和投稿包继续使用同一套哈希、终审、篇幅和未解决问题检查。
+
 Local multi-model writing workflow for short stories and long serial novels.
 
 ## Start
@@ -23,6 +35,8 @@ Each model mapping has a Tool Calling mode:
 - `auto`: try native tool calling and fall back to an injected evidence package only when the provider explicitly rejects tools.
 - `enabled`: require native tool calling and fail the stage if the provider rejects it.
 - `disabled`: always use the injected evidence package.
+
+Configured role fallbacks also apply when the primary model cannot be resolved before a request starts, including a missing primary API key, a disabled provider, or an invalid primary mapping. The run records the primary failure and the fallback route. If the configured fallback is also unavailable, the stage still fails explicitly instead of hiding the configuration problem.
 
 Capability detection forces the provider to call a dedicated probe tool. OpenAI Chat and Anthropic requests both serialize the matching `tool_choice`. Thinking models that explicitly reject forced tool choice are retried once with normal tool selection. If a relay still ignores or strips the tool request, the result reports that no `probe_tool` call was returned instead of showing an unexplained failure.
 
@@ -95,7 +109,7 @@ Targeted `line_edit` uses its own role and stores candidate JSON below `<project
 
 The LTP installer pins compatible `transformers 4.x` and `huggingface-hub 0.x` dependencies. Its worker forces UTF-8 on Windows and uses `https://hf-mirror.com` for the first model download unless `HF_ENDPOINT` is already set. Cached analysis records `ltp-v2`; current and legacy LTP entity/SRL response shapes are both accepted. If the worker cannot load, the report explicitly marks LTP unavailable instead of presenting rule fallback as an LTP result.
 
-Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks and may target at most 40% of scenes. Invalid or truncated plans stop the correction pass and preserve `best-candidate.md` instead of rewriting the whole manuscript. Exact consecutive duplicate paragraph blocks are removed locally before review.
+Structural correction is scene-targeted. Every scene has a stable `scene-NN` id; a valid correction plan must include deterministic checks. Each batch may change at most 40% of scenes; when a valid plan covers more, Runtime keeps the model's priority order and completes the remaining batches under the same correction-round token budget before final review. Invalid or truncated plans still stop correction and preserve `best-candidate.md` instead of rewriting the whole manuscript. A resumed run loads the previous `best_score` and `best-candidate.md` before resetting its current-attempt report, so a lower-scoring retry cannot replace the earlier winner. Exact consecutive duplicate paragraph blocks are removed locally before review.
 
 Revision planning uses compact Skill/constraint prompts. If the planning role returns empty, truncated, or invalid JSON, the Runtime retries the plan once with the review role; a second invalid result fails closed and preserves the best candidate.
 

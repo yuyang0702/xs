@@ -1,8 +1,12 @@
+import hashlib
+import json
+
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
 
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
+from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.secrets import MemorySecretStore
 
 
@@ -51,10 +55,16 @@ def test_zhihu_publication_preview_and_create_api(tmp_path) -> None:
         "premise": "A friend returns.", "target_words": 6000,
     }).json()
     project = app.state.projects.apply_platform_profile(created["id"], "zhihu-salt-short")
-    (project.path / "manuscript" / "story.md").write_text("正式正文", encoding="utf-8")
+    text = "正式正文" * 1350
+    (project.path / "manuscript" / "story.md").write_text(text, encoding="utf-8")
     output = project.path / "runs" / "done" / "outputs"
     output.mkdir(parents=True)
-    (output / "quality-report.json").write_text('{"status":"passed"}', encoding="utf-8")
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    (output / "quality-report.json").write_text(json.dumps({
+        "status": "passed", "terminal_reviewed_hash": digest,
+        "scoring_profile_id": "zhihu-short-v2",
+        "review": {"score": 88, "scoring_profile_id": "zhihu-short-v2"},
+    }, ensure_ascii=False), encoding="utf-8")
 
     preview = client.get(f"/api/projects/{project.id}/publication/zhihu/preview")
     built = client.post(f"/api/projects/{project.id}/publication/zhihu", json={
@@ -196,11 +206,45 @@ def test_candidate_diagnostics_and_controlled_publication(tmp_path) -> None:
     assert diagnostics.status_code == 200
     assert diagnostics.json()["available"] is True
     assert diagnostics.json()["run_id"] == "candidate-run"
+    assert diagnostics.json()["content"] == '他说："回来。"\n她关上门。'
     assert diagnostics.json()["han_characters"] == 8
     assert diagnostics.json()["characters"] > diagnostics.json()["han_characters"]
     assert published.status_code == 201
     assert (root / "manuscript" / "story.md").read_text(encoding="utf-8") == "他说：“回来。”\n她关上门。"
     assert (root / "chapters" / "chapter-01.md").is_file()
+
+
+def test_candidate_api_reconciles_and_returns_higher_historical_best(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Historical best", "mode": "short", "genre": "suspense",
+        "premise": "A protected version exists.", "target_words": 9000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("quality-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "quality-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "best-candidate.md").write_text("lower candidate", encoding="utf-8")
+    (outputs / "historical-best-64.75.md").write_text(
+        "protected historical best", encoding="utf-8",
+    )
+    (outputs / "quality-report.json").write_text(json.dumps({
+        "best_score": 58.35,
+        "best_attempt": 1,
+        "final_attempts": [],
+    }), encoding="utf-8")
+
+    manuscript = client.get(f"/api/projects/{project.id}/manuscript").json()
+    candidate = client.get(f"/api/projects/{project.id}/candidate").json()
+
+    assert manuscript["content"] == "protected historical best"
+    assert candidate["path"].endswith("historical-best-64.75.md")
+    assert candidate["characters"] == len("protected historical best")
 
 
 def test_candidate_publication_rejects_process_text(tmp_path) -> None:
@@ -269,8 +313,139 @@ def test_candidate_reports_effective_word_count(tmp_path) -> None:
 
     result = client.get(f"/api/projects/{project['id']}/candidate").json()
 
-    assert result["han_characters"] == 6
+    assert result["han_characters"] == 4
     assert result["effective_words"] == 8
+
+
+def test_zhihu_candidate_exposes_one_quality_summary_and_blocks_stale_review(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+        reference_library=ReferenceLibrary(db, tmp_path / "references"),
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "One authority", "mode": "short", "genre": "test",
+        "premise": "The current text must own its review.", "target_words": 1000,
+    }).json()
+    project = app.state.projects.apply_platform_profile(
+        created["id"], "zhihu-salt-short",
+    )
+    db.create_run("quality-run", project.id, "short-story", status="failed")
+    output = project.path / "runs" / "quality-run" / "outputs"
+    output.mkdir(parents=True)
+    text = "正文" * 450
+    (output / "best-candidate.md").write_text(text, encoding="utf-8")
+    (output / "quality-report.json").write_text(json.dumps({
+        "status": "passed",
+        "terminal_reviewed_hash": hashlib.sha256("旧稿".encode("utf-8")).hexdigest(),
+        "scoring_profile_id": "zhihu-short-v2",
+        "final_attempts": [{
+            "attempt": 1,
+            "review": {
+                "score": 82,
+                "scoring_profile_id": "zhihu-short-v2",
+                "dimensions": {"commercial": 82, "story": 82, "prose": 82},
+                "issues": [],
+            },
+        }],
+    }, ensure_ascii=False), encoding="utf-8")
+
+    result = client.get(f"/api/projects/{project.id}/candidate").json()
+    published = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert result["han_characters"] == 900
+    assert result["quality_summary"]["word_count"]["current"] == 900
+    authority = result["quality_summary"]["publication_authority"]
+    assert authority["can_set_formal"] is False
+    assert any("内容不一致" in reason for reason in authority["blocking_reasons"])
+    assert published.status_code == 409
+    assert published.json()["detail"]["code"] == "candidate_quality_blocked"
+    assert published.json()["detail"]["reasons"] == authority["blocking_reasons"]
+
+
+def test_quality_reference_group_api_requires_confirmation_and_keeps_history(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+        reference_library=ReferenceLibrary(db, tmp_path / "references"),
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Reference controls", "mode": "short", "genre": "test",
+        "premise": "References require consent.", "target_words": 8000,
+    }).json()
+    project = app.state.projects.apply_platform_profile(
+        created["id"], "zhihu-salt-short",
+    )
+    source = app.state.references.import_text(
+        title="已确认佳作", text="样本文本", source_type="paste",
+        platform="zhihu", content_type="popular_sample",
+    )
+
+    recommendations = client.get(
+        f"/api/projects/{project.id}/quality-references/recommendations",
+    ).json()
+    before = client.get(f"/api/projects/{project.id}/quality-references").json()
+    item_id = next(
+        item["id"] for item in recommendations["recommendations"]
+        if item["source_id"] == source["id"]
+    )
+    confirmed = client.post(
+        f"/api/projects/{project.id}/quality-references/confirm",
+        json={"accepted_ids": [item_id], "rejected_ids": []},
+    )
+    removed = client.delete(
+        f"/api/projects/{project.id}/quality-references/{item_id}",
+    )
+    history = client.get(
+        f"/api/projects/{project.id}/quality-references/history",
+    ).json()
+
+    assert before["items"] == []
+    assert confirmed.status_code == 200
+    assert confirmed.json()["items"][0]["title"] == "已确认佳作"
+    assert removed.json()["items"] == []
+    assert [item["action"] for item in history["versions"]] == [
+        "removed", "confirmed",
+    ]
+
+
+def test_passage_protection_api_uses_current_candidate_and_plain_chinese_states(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Protect prose", "mode": "short", "genre": "test",
+        "premise": "Keep a favorite paragraph.", "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate", project.id, "short-story", status="failed")
+    output = project.path / "runs" / "candidate" / "outputs"
+    output.mkdir(parents=True)
+    (output / "best-candidate.md").write_text(
+        "我最喜欢这一段。\n\n下一段可以修改。", encoding="utf-8",
+    )
+
+    created_lock = client.post(
+        f"/api/projects/{project.id}/passage-protections",
+        json={"excerpt": "我最喜欢这一段。", "mode": "exact", "label": "喜欢的开头"},
+    )
+    lock_id = created_lock.json()["id"]
+    listed = client.get(f"/api/projects/{project.id}/passage-protections")
+    allowed = client.post(
+        f"/api/projects/{project.id}/passage-protections/{lock_id}/allow-next-change",
+    )
+    removed = client.delete(
+        f"/api/projects/{project.id}/passage-protections/{lock_id}",
+    )
+
+    assert created_lock.status_code == 201
+    assert listed.json()["items"][0]["mode_label"] == "一个字也不改"
+    assert allowed.json()["status_label"] == "下次修改可变动一次"
+    assert removed.json()["status_label"] == "已取消保护"
 
 
 def test_material_documents_are_editable_and_sync_story_state(tmp_path) -> None:

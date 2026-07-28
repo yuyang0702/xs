@@ -28,6 +28,7 @@ from novel_flywheel.interviews import WizardInterviewService
 from novel_flywheel.style_samples import StyleSampleService
 from novel_flywheel.material_impacts import MaterialImpactService
 from novel_flywheel.reference_library import ReferenceLibrary
+from novel_flywheel.quality_references import QualityReferenceService
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.nlp_backend import LocalNLPManager
 from novel_flywheel.market import MarketService
@@ -66,6 +67,9 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.market_baselines = MarketBaselineService(db, app.state.references)
     app.state.projects = ProjectStore(
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
+    )
+    app.state.quality_references = QualityReferenceService(
+        db, app.state.references, app.state.projects,
     )
     roots = skill_roots or [Path.home() / ".codex" / "skills", Path.cwd() / ".agents" / "skills"]
     app.state.skill_gate = SkillGate(db, SkillScanner(roots))

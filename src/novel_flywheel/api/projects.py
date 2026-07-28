@@ -15,6 +15,10 @@ from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.publication import build_zhihu_package, preview_zhihu_package
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript
 from novel_flywheel.prose_quality import analyze_prose
+from novel_flywheel.quality_records import reconcile_legacy_checkpoint
+from novel_flywheel.quality_summary import build_quality_summary, effective_han_characters
+from novel_flywheel.quality_profiles import profile_for_project
+from novel_flywheel.passage_protection import PassageProtectionService
 from novel_flywheel.revision import normalize_chinese_prose
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StaleStoryState, StoryStateStore
@@ -104,6 +108,17 @@ class PlatformProfilePayload(BaseModel):
     profile_id: Literal["zhihu-salt-short"] | None = None
 
 
+class QualityReferenceConfirmationPayload(BaseModel):
+    accepted_ids: list[str] = Field(default_factory=list, max_length=20)
+    rejected_ids: list[str] = Field(default_factory=list, max_length=20)
+
+
+class PassageProtectionPayload(BaseModel):
+    excerpt: str = Field(min_length=1, max_length=30_000)
+    mode: Literal["soft", "exact"]
+    label: str = Field(default="保护片段", max_length=80)
+
+
 def _style_sample_status(project: Project, request: Request) -> dict:
     return {
         **request.app.state.style_samples.status(project),
@@ -144,6 +159,12 @@ def resolve_project_locations(project: Project, store: ProjectStore) -> list[dic
         if resolved["draft"] is None and (outputs / "draft.md").is_file():
             resolved["draft"] = outputs / "draft.md"
         if resolved["best_candidate"] is None:
+            checkpoint = reconcile_legacy_checkpoint(project.path / "runs" / run["id"])
+            if checkpoint:
+                candidate = project.path / "runs" / run["id"] / checkpoint["manuscript_path"]
+                if candidate.is_file():
+                    resolved["best_candidate"] = candidate
+                    continue
             for name in ("best-candidate.md", "polish.md"):
                 candidate = outputs / name
                 if candidate.is_file():
@@ -176,7 +197,13 @@ def _location(project: Project, store: ProjectStore, kind: str) -> dict:
 def _candidate(project: Project, store: ProjectStore) -> tuple[Path, str] | None:
     root = project.path.resolve()
     for run in store.db.list_runs(project.id):
-        outputs = project.path / "runs" / run["id"] / "outputs"
+        run_path = project.path / "runs" / run["id"]
+        outputs = run_path / "outputs"
+        checkpoint = reconcile_legacy_checkpoint(run_path)
+        if checkpoint:
+            path = run_path / checkpoint["manuscript_path"]
+            if path.is_file() and path.resolve().is_relative_to(root):
+                return path, run["id"]
         for name in ("best-candidate.md", "polish.md"):
             path = outputs / name
             if path.is_file() and path.resolve().is_relative_to(root):
@@ -208,6 +235,23 @@ def _candidate_analysis(request: Request, project: Project, run_id: str, text: s
     )
     atomic_write(path, json.dumps(report, ensure_ascii=False, indent=2))
     return report
+
+
+def _quality_report(project: Project, run_id: str) -> dict:
+    path = project.path / "runs" / run_id / "outputs" / "quality-report.json"
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _candidate_quality_summary(project: Project, run_id: str, text: str) -> dict:
+    run_path = project.path / "runs" / run_id
+    return build_quality_summary(
+        project, run_id, text, _quality_report(project, run_id),
+        reconcile_legacy_checkpoint(run_path),
+    )
 
 
 @router.get("/projects")
@@ -657,19 +701,17 @@ def get_manuscript(project_id: str, request: Request) -> dict:
     if content.strip() or project.mode != "short":
         return {"project_id": project.id, "content": content, "source": "formal", "run_id": None}
 
-    for run in get_store(request).db.list_runs(project.id):
-        outputs = project.path / "runs" / run["id"] / "outputs"
-        for name in ("best-candidate.md", "polish.md", "draft.md"):
-            candidate = outputs / name
-            if candidate.is_file():
-                content = candidate.read_text(encoding="utf-8")
-                if content.strip():
-                    return {
-                        "project_id": project.id,
-                        "content": content,
-                        "source": "run_candidate",
-                        "run_id": run["id"],
-                    }
+    resolved = _candidate(project, get_store(request))
+    if resolved:
+        candidate, run_id = resolved
+        content = candidate.read_text(encoding="utf-8")
+        if content.strip():
+            return {
+                "project_id": project.id,
+                "content": content,
+                "source": "run_candidate",
+                "run_id": run_id,
+            }
     return {"project_id": project.id, "content": "", "source": "none", "run_id": None}
 
 
@@ -695,13 +737,15 @@ def get_candidate(project_id: str, request: Request) -> dict:
     path, run_id = resolved
     text = path.read_text(encoding="utf-8")
     analysis = _candidate_analysis(request, project, run_id, text)
+    quality_summary = _candidate_quality_summary(project, run_id, text)
     return {"project_id": project.id, "available": bool(text.strip()), "run_id": run_id,
-            "path": str(path.resolve()), "characters": len(text),
-            "han_characters": len(HAN_CHARACTER.findall(text)),
+            "path": str(path.resolve()), "content": text, "characters": len(text),
+            "han_characters": effective_han_characters(text),
             "effective_words": len(WORD_TOKEN.findall(text)),
             "diagnostics": analyze_prose(text), "analysis": analysis,
             "analysis_status": "complete" if analysis.get("coverage") == 1.0 else "incomplete",
-            "review_scope": analysis.get("originality", {}).get("scope")}
+            "review_scope": analysis.get("originality", {}).get("scope"),
+            "quality_summary": quality_summary}
 
 
 @router.post("/projects/{project_id}/candidate/publish", status_code=status.HTTP_201_CREATED)
@@ -725,14 +769,14 @@ def publish_candidate(project_id: str, request: Request) -> dict:
     expected_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
     if analysis.get("coverage") != 1.0 or analysis.get("text_hash") != expected_hash:
         raise HTTPException(status_code=409, detail={"code": "candidate_analysis_stale"})
-    if project.metadata.get("optimized_local_review_enabled"):
-        quality_path = project.path / "runs" / run_id / "outputs" / "quality-report.json"
-        try:
-            quality = json.loads(quality_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            quality = {}
-        if quality.get("terminal_reviewed_hash") != expected_hash:
-            raise HTTPException(status_code=409, detail={"code": "terminal_review_stale"})
+    quality_summary = _candidate_quality_summary(project, run_id, text)
+    authority = quality_summary["publication_authority"]
+    if not authority["can_set_formal"]:
+        raise HTTPException(status_code=409, detail={
+            "code": "candidate_quality_blocked",
+            "message": "当前候选稿还不能设为正式稿",
+            "reasons": authority["blocking_reasons"],
+        })
     formal = project.path / "manuscript" / "story.md"
     chapter = project.path / "chapters" / "chapter-01.md"
     atomic_write(formal, text)
@@ -744,6 +788,143 @@ def publish_candidate(project_id: str, request: Request) -> dict:
     ))
     return {"status": "published", "project_id": project.id, "run_id": run_id,
             "path": str(formal.resolve()), "diagnostics": diagnostics}
+
+
+def _quality_reference_scope(project_id: str, request: Request) -> tuple[Project, str]:
+    project = get_store(request).get(project_id)
+    return project, profile_for_project(project)
+
+
+@router.get("/projects/{project_id}/quality-references/recommendations")
+def recommend_quality_references(project_id: str, request: Request) -> dict:
+    try:
+        project, profile_id = _quality_reference_scope(project_id, request)
+        return request.app.state.quality_references.recommend(project.id, profile_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.get("/projects/{project_id}/quality-references")
+def get_quality_reference_group(project_id: str, request: Request) -> dict:
+    try:
+        project, profile_id = _quality_reference_scope(project_id, request)
+        return request.app.state.quality_references.list_group(project.id, profile_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.post("/projects/{project_id}/quality-references/confirm")
+def confirm_quality_references(
+    project_id: str, payload: QualityReferenceConfirmationPayload, request: Request,
+) -> dict:
+    try:
+        project, profile_id = _quality_reference_scope(project_id, request)
+        return request.app.state.quality_references.confirm(
+            project.id, profile_id,
+            accepted_ids=payload.accepted_ids, rejected_ids=payload.rejected_ids,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "quality_references_changed", "message": str(exc),
+        }) from exc
+
+
+@router.delete("/projects/{project_id}/quality-references/{item_id:path}")
+def remove_quality_reference(project_id: str, item_id: str, request: Request) -> dict:
+    try:
+        project, profile_id = _quality_reference_scope(project_id, request)
+        return request.app.state.quality_references.remove(project.id, profile_id, item_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={
+            "code": "quality_reference_not_found", "message": str(exc),
+        }) from exc
+
+
+@router.get("/projects/{project_id}/quality-references/history")
+def get_quality_reference_history(project_id: str, request: Request) -> dict:
+    try:
+        project, profile_id = _quality_reference_scope(project_id, request)
+        return {
+            "project_id": project.id, "profile_id": profile_id,
+            "versions": request.app.state.quality_references.history(
+                project.id, profile_id,
+            ),
+        }
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.get("/projects/{project_id}/passage-protections")
+def list_passage_protections(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    return {
+        "project_id": project.id,
+        "items": PassageProtectionService(get_store(request).db).list(project.id),
+    }
+
+
+@router.post(
+    "/projects/{project_id}/passage-protections",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_passage_protection(
+    project_id: str, payload: PassageProtectionPayload, request: Request,
+) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        resolved = _candidate(project, get_store(request))
+        if resolved is None:
+            raise ValueError("还没有候选稿，暂时不能保护片段")
+        text = resolved[0].read_text(encoding="utf-8")
+        return PassageProtectionService(get_store(request).db).create(
+            project.id, text, excerpt=payload.excerpt,
+            mode=payload.mode, label=payload.label,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "passage_selection_invalid", "message": str(exc),
+        }) from exc
+
+
+@router.post("/projects/{project_id}/passage-protections/{protection_id}/allow-next-change")
+def allow_protected_passage_change(
+    project_id: str, protection_id: str, request: Request,
+) -> dict:
+    try:
+        get_store(request).get(project_id)
+        return PassageProtectionService(get_store(request).db).allow_next_change(
+            project_id, protection_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={
+            "code": "passage_protection_not_found", "message": str(exc),
+        }) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "passage_protection_inactive", "message": str(exc),
+        }) from exc
+
+
+@router.delete("/projects/{project_id}/passage-protections/{protection_id}")
+def remove_passage_protection(
+    project_id: str, protection_id: str, request: Request,
+) -> dict:
+    try:
+        get_store(request).get(project_id)
+        return PassageProtectionService(get_store(request).db).remove(
+            project_id, protection_id,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={
+            "code": "passage_protection_not_found", "message": str(exc),
+        }) from exc
 
 
 @router.post("/projects/{project_id}/locations/{kind}/open")

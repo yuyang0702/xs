@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 from types import SimpleNamespace
 
@@ -8,6 +9,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.quality import review_windows
+from novel_flywheel.quality_profiles import score_review
+from novel_flywheel.quality_records import load_quality_checkpoint
 from novel_flywheel.revision import segment_map
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
@@ -920,6 +923,63 @@ async def test_segment_polish_rejects_truncated_output_and_keeps_original(tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_structural_polish_retries_invalid_primary_output_with_configured_fallback(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Fallback repair", mode="short", genre="suspense",
+        premise="A witness changes the case.", target_words=10_000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            return ModelResult("too short", {"model_name": "claude"})
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            self.routes.append("configured_fallback")
+            return ModelResult("B" * 1000, {
+                "model_name": "ernie", "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("fallback-repair", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "fallback-repair"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["A" * 1000, "C" * 1000])
+    plan = {
+        "global_facts": [],
+        "checks": [{"kind": "forbidden_text", "value": "never present"}],
+        "tasks": [{"segments": [1], "instruction": "Repair the first scene."}],
+    }
+
+    polished = await service._polish_short_segments(
+        "fallback-repair", run_path, project, "constraints", manuscript, "{}",
+        structural=True, prepared_revision_plan=plan,
+    )
+
+    assert WorkflowService._split_segments(polished) == ["B" * 1000, "C" * 1000]
+    assert gateway.routes == ["primary", "configured_fallback"]
+    assert any(
+        event["event_type"] == "polish_validation_fallback"
+        for event in db.list_run_events("fallback-repair")
+    )
+
+
+@pytest.mark.asyncio
 async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -960,6 +1020,138 @@ async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_pat
                for item in events)
     corrective_calls = [call for call in gateway.calls if call["role"] == "polish"][1:]
     assert all("replace or remove implausible events" in call["user"] for call in corrective_calls)
+
+
+@pytest.mark.asyncio
+async def test_resumed_quality_flow_keeps_previous_higher_scoring_candidate(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Resume the best", mode="short", genre="suspense",
+        premise="A second revision scores lower than the first.", target_words=10_000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    previous = "previous higher-scoring candidate"
+    (run_path / "outputs" / "best-candidate.md").write_text(previous, encoding="utf-8")
+    (run_path / "outputs" / "quality-report.json").write_text(json.dumps({
+        "best_score": 90,
+        "best_attempt": 2,
+        "status": "failed",
+    }), encoding="utf-8")
+    reviews = iter([
+        quality_review(commercial=70, story=70, prose=70, decision="revise"),
+        quality_review(commercial=65, story=65, prose=65, decision="revise"),
+        quality_review(commercial=60, story=60, prose=60, decision="revise"),
+    ])
+    lower_candidate = "new lower-scoring candidate\n" * 300
+
+    async def polish(*args, **kwargs):
+        return lower_candidate
+
+    async def reader(*args, **kwargs):
+        return service._review(quality_review())
+
+    async def final_review(*args, **kwargs):
+        return service._review(next(reviews)), {
+            "coverage": 1.0,
+            "windows": [],
+            "review_mode": "full",
+            "reviewed_windows": 1,
+            "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {})
+
+    with pytest.raises(RuntimeError, match="quality gate"):
+        await service._quality_polish(
+            run_id, run_path, project, "constraints", "resumed draft",
+            service._review(quality_review()),
+        )
+
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(
+        encoding="utf-8",
+    ))
+    assert report["best_score"] == 90
+    assert (run_path / "outputs" / "best-candidate.md").read_text(
+        encoding="utf-8",
+    ) == previous
+
+
+@pytest.mark.asyncio
+async def test_lower_conditional_pass_returns_matching_protected_best(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Keep the better pass", mode="short", genre="suspense",
+        premise="A weaker revision still reaches the minimum gate.", target_words=10_000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    previous = "P" * 7000
+    lower = "L" * 7000
+    previous_review = service._review(quality_review(
+        commercial=92, story=90, prose=88, decision="pass",
+    ))
+    (run_path / "outputs" / "best-candidate.md").write_text(previous, encoding="utf-8")
+    (run_path / "outputs" / "quality-report.json").write_text(json.dumps({
+        "best_score": previous_review["score"],
+        "best_attempt": 1,
+        "status": "passed",
+        "terminal_reviewed_hash": hashlib.sha256(previous.encode("utf-8")).hexdigest(),
+        "final_attempts": [{"attempt": 1, "review": previous_review}],
+    }), encoding="utf-8")
+
+    async def polish(*args, **kwargs):
+        return lower
+
+    async def reader(*args, **kwargs):
+        return service._review(quality_review())
+
+    async def final_review(*args, **kwargs):
+        return service._review(quality_review(
+            commercial=78, story=78, prose=78, decision="revise",
+        )), {
+            "coverage": 1.0,
+            "windows": [],
+            "review_mode": "full",
+            "reviewed_windows": 1,
+            "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {})
+
+    selected, report = await service._quality_polish(
+        run_id, run_path, project, "constraints", "resumed draft",
+        service._review(quality_review()),
+    )
+
+    assert selected == previous
+    assert report["best_score"] == previous_review["score"]
+    assert report["status"] == "passed"
+    assert report["terminal_reviewed_hash"] == hashlib.sha256(
+        previous.encode("utf-8"),
+    ).hexdigest()
 
 
 @pytest.mark.asyncio
@@ -1252,6 +1444,113 @@ async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> No
 
 
 @pytest.mark.asyncio
+async def test_oversized_revision_plan_is_deferred_instead_of_falling_back(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Batched plan", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=10000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    plan = json.dumps({
+        "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+        "tasks": [
+            {"segments": [1], "instruction": "Repair the opening."},
+            {"segments": [4], "instruction": "Repair the ending."},
+            {"segments": [2], "instruction": "Repair the investigation."},
+        ],
+    })
+    gateway = RecordingGateway([plan])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("batched-plan", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "batched-plan"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._plan_structural_revision(
+        "batched-plan", run_path, project, "constraints",
+        json.dumps({"issues": [{
+            "category": "canon", "severity": "critical", "action": "Repair canon.",
+        }]}),
+        segment_map(["A" * 300] * 4), "-2",
+    )
+
+    assert result["target_segments"] == [1, 4]
+    assert result["deferred_segments"] == [2]
+    assert gateway.roles == ["planning"]
+    deferred = next(item for item in db.list_run_events("batched-plan")
+                    if item["event_type"] == "revision_plan_deferred")
+    assert deferred["metadata"] == {
+        "current_segments": [1, 4], "deferred_segments": [2],
+    }
+
+
+@pytest.mark.asyncio
+async def test_structural_polish_executes_every_deferred_batch(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Complete batches", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=10000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    plan = json.dumps({
+        "checks": [
+            {"kind": "forbidden_text", "value": "bad-one"},
+            {"kind": "forbidden_text", "value": "bad-two"},
+            {"kind": "forbidden_text", "value": "bad-four"},
+        ],
+        "tasks": [
+            {"segments": [1], "instruction": "Repair scene one."},
+            {"segments": [4], "instruction": "Repair scene four."},
+            {"segments": [2], "instruction": "Repair scene two."},
+        ],
+    })
+    parts = [
+        "bad-one " * 100,
+        "bad-two " * 100,
+        "clean-three " * 80,
+        "bad-four " * 100,
+    ]
+    gateway = RecordingGateway([
+        plan,
+        "fixed-one " * 100,
+        "fixed-four " * 100,
+        "fixed-two " * 100,
+    ])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("complete-batches", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "complete-batches"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    revised = await service._polish_short_segments(
+        "complete-batches", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts),
+        json.dumps({"issues": [{
+            "category": "canon", "severity": "critical", "action": "Repair all facts.",
+        }]}),
+        suffix="-2", structural=True,
+    )
+
+    revised_parts = WorkflowService._split_segments(revised)
+    assert "fixed-one" in revised_parts[0]
+    assert "fixed-two" in revised_parts[1]
+    assert revised_parts[2] == parts[2].strip()
+    assert "fixed-four" in revised_parts[3]
+    assert gateway.roles == ["planning", "polish", "polish", "polish"]
+    continued = next(item for item in db.list_run_events("complete-batches")
+                     if item["event_type"] == "revision_batch_continued")
+    assert continued["metadata"] == {
+        "completed_segments": [1, 4], "next_segments": [2], "remaining_segments": [],
+    }
+
+
+@pytest.mark.asyncio
 async def test_structural_polish_stops_at_round_input_budget(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -1369,6 +1668,58 @@ async def test_quality_flow_preserves_best_candidate_when_polish_is_blocked(
     ))
     assert report["status"] == "halted"
     assert report["halt_reason"] == "token_budget_exhausted"
+
+
+@pytest.mark.asyncio
+async def test_quality_final_review_hides_internal_segment_markers(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Clean review", mode="short", genre="suspense",
+        premise="A hidden fact surfaces.", target_words=10_000,
+    ))
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([])),
+    )
+    db.create_run("clean-review", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "clean-review"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    parts = [f"scene-{index}-" + "x" * 2100 for index in range(4)]
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts)
+    clean_manuscript = "\n\n".join(parts)
+    reviewed = []
+
+    async def unchanged_polish(*args, **kwargs):
+        return manuscript
+
+    async def reader(*args, **kwargs):
+        return service._review(quality_review())
+
+    async def full_review(run_id, path, current_project, constraints, text, initial, suffix=""):
+        reviewed.append(text)
+        return service._review(quality_review()), {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 1, "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", unchanged_polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+
+    polished, report = await service._quality_polish(
+        "clean-review", run_path, project, "constraints", manuscript,
+        service._review(quality_review()),
+    )
+
+    assert polished == manuscript
+    assert reviewed == [clean_manuscript]
+    assert report["terminal_reviewed_hash"] == hashlib.sha256(
+        clean_manuscript.encode("utf-8")
+    ).hexdigest()
 
 
 def test_stage_output_budgets_cover_each_model_role() -> None:
@@ -2191,3 +2542,314 @@ async def test_final_review_accepts_structured_window_summary(tmp_path) -> None:
     saved = json.loads((run_path / "outputs" / "final-review-evidence.json").read_text(encoding="utf-8"))
     assert json.loads(saved["windows"][0]["summary"]) == {"setting": "castle", "survivors": 7}
     assert audit["reviewed_windows"] == 1
+
+
+@pytest.mark.asyncio
+async def test_final_review_retries_malformed_window_with_configured_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("final_review", "primary", "reviewer", "backup", "reviewer-2")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Review fallback", mode="short", genre="suspense",
+        premise="A record is incomplete.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    evidence = json.dumps({
+        "summary": "The fallback recovered the complete window.",
+        "events": [], "issues": [], "character_states": [], "timeline": [],
+        "promises": [],
+    })
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [], "reconciliations": [],
+    })
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+            self.primary_responses = iter(['{"summary":"truncated', final])
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            return ModelResult(next(self.primary_responses), {"model_name": "reviewer"})
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            self.routes.append("configured_fallback")
+            return ModelResult(evidence, {
+                "model_name": "reviewer-2", "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+    )
+
+    assert review["score"] > 80
+    assert audit["reviewed_windows"] == 1
+    assert gateway.routes == ["primary", "configured_fallback", "primary"]
+    assert any(
+        event["event_type"] == "final_review_json_fallback"
+        for event in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_rejects_model_change_to_exact_protected_passage(tmp_path) -> None:
+    from novel_flywheel.passage_protection import PassageProtectionService
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Protected paragraph", mode="short", genre="suspense",
+        premise="A promise must survive editing.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    protected = "他把钥匙放在我手里，说这次一定会回来。" * 12
+    source = protected + "\n\n" + "我站在门口等到天亮，始终没有离开。" * 12
+    changed = protected.replace("钥匙", "信封") + "\n\n" + "我站在门口等到天亮，始终没有离开。" * 12
+    PassageProtectionService(db).create(
+        project.id, source, excerpt=protected, mode="exact", label="关键承诺",
+    )
+    service = WorkflowService(
+        db, store, RecordingGateway([changed]),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("protected-polish", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "protected-polish"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._polish_short_segments(
+        "protected-polish", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source
+    conflict = next(
+        item for item in db.list_run_events("protected-polish")
+        if item["event_type"] == "passage_protection_conflict"
+    )
+    assert conflict["message"] == "模型修改了受保护片段，已保留原文"
+    assert conflict["metadata"]["labels"] == ["关键承诺"]
+
+
+@pytest.mark.asyncio
+async def test_zhihu_v2_full_review_requests_criteria_evidence_and_runtime_scores(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="V2 review", mode="short", genre="suspense",
+        premise="A promise is tested.", target_words=8000,
+    ))
+    project = store.apply_platform_profile(project.id, "zhihu-salt-short")
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    evidence = json.dumps({
+        "summary": "人物作出选择并承担代价。", "events": [],
+        "character_states": [], "timeline": [], "promises": [], "issues": [],
+    }, ensure_ascii=False)
+    criterion_names = [
+        "opening_pull", "sustained_motivation", "escalation_density",
+        "climax_ending_payoff", "platform_fit", "causal_arc",
+        "character_agency", "continuity_logic", "promise_payoff",
+        "relationship_change", "clarity", "scene_dialogue", "voice_emotion",
+        "rhythm", "repetition_ai",
+    ]
+    final = json.dumps({
+        "dimensions": {"commercial": 1, "story": 1, "prose": 1},
+        "criteria": {name: 80 for name in criterion_names},
+        "criterion_evidence": {
+            name: {"location": "正文", "excerpt": "证据", "effect": "说明评分"}
+            for name in criterion_names
+        },
+        "hard_fail": False, "decision": "pass", "issues": [],
+        "reconciliations": [],
+    }, ensure_ascii=False)
+    gateway = RecordingGateway([evidence, final])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, _audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "正文" * 450, {"issues": []},
+    )
+
+    adjudication = gateway.calls[-1]["user"]
+    assert "opening_pull" in adjudication
+    assert "criterion_evidence" in adjudication
+    assert review["score"] == 80
+    assert review["dimensions"] == {
+        "commercial": 80, "story": 80, "prose": 80,
+    }
+    assert review["scoring_profile_id"] == "zhihu-short-v2"
+    assert review["judge_signature"].endswith("fake-final_review")
+
+
+@pytest.mark.asyncio
+async def test_v2_passing_candidate_writes_hash_bound_quality_checkpoint(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Checkpoint V2", mode="short", genre="suspense",
+        premise="A candidate passes.", target_words=8000,
+    ))
+    project = store.apply_platform_profile(project.id, "zhihu-salt-short")
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    candidate = "正文" * 3600
+    review = score_review({
+        "dimensions": {"commercial": 84, "story": 82, "prose": 75},
+        "hard_fail": False, "decision": "pass", "issues": [],
+        "judge_signature": "provider/final-model",
+    }, "zhihu-short-v2")
+
+    async def polish(*args, **kwargs):
+        return candidate
+
+    async def reader(*args, **kwargs):
+        return review
+
+    async def final_review(*args, **kwargs):
+        return review, {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 2, "window_count": 2,
+            "adjudication_receipt": {
+                "provider_id": "provider", "model_id": "final-model",
+            },
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {
+        "coverage": 1.0, "windows": [], "nlp": {"available": True},
+        "prose": {"blocking_count": 0}, "text_hash": hashlib.sha256(
+            candidate.encode("utf-8")
+        ).hexdigest(),
+    })
+
+    selected, report = await service._quality_polish(
+        run_id, run_path, project, "constraints", candidate, review,
+    )
+
+    checkpoint = load_quality_checkpoint(run_path)
+    assert selected == candidate
+    assert report["status"] == "passed"
+    assert checkpoint is not None
+    assert checkpoint["manuscript_hash"] == hashlib.sha256(
+        candidate.encode("utf-8")
+    ).hexdigest()
+    assert checkpoint["scoring_profile_id"] == "zhihu-short-v2"
+    assert checkpoint["judge_signature"] == "provider/final-model"
+
+
+@pytest.mark.asyncio
+async def test_incremental_review_falls_back_when_baseline_is_not_revision_source(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Baseline mismatch", mode="short", genre="suspense",
+        premise="Do not compare the wrong texts.", target_words=8000,
+    ))
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([])),
+    )
+    baseline = {
+        "manuscript": "旧基线", "manuscript_hash": hashlib.sha256(
+            "旧基线".encode("utf-8")
+        ).hexdigest(),
+        "analysis": {}, "windows": [], "evidence": [], "issue_ledger": [],
+        "review": {"issues": []}, "coverage": 1.0,
+    }
+    expected_hash = hashlib.sha256("实际返修来源".encode("utf-8")).hexdigest()
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        "当前稿", {"windows": []}, baseline, {"issues": []},
+        revision_source_hash=expected_hash,
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert audit["fallback_reasons"] == ["baseline_source_mismatch"]
+
+
+@pytest.mark.asyncio
+async def test_v2_conditional_pass_remains_candidate_instead_of_formal_success(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Conditional V2", mode="short", genre="suspense",
+        premise="A candidate needs one more repair.", target_words=8000,
+    ))
+    project = store.apply_platform_profile(project.id, "zhihu-salt-short")
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    candidate = "正文" * 3600
+    conditional = score_review({
+        "dimensions": {"commercial": 79, "story": 75, "prose": 68},
+        "hard_fail": False, "decision": "revise", "issues": [],
+        "judge_signature": "provider/final-model",
+    }, "zhihu-short-v2")
+
+    async def polish(*args, **kwargs):
+        return candidate
+
+    async def reader(*args, **kwargs):
+        return conditional
+
+    async def final_review(*args, **kwargs):
+        return conditional, {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 2, "window_count": 2,
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {
+        "coverage": 1.0, "windows": [], "nlp": {"available": True},
+        "prose": {"blocking_count": 0}, "text_hash": hashlib.sha256(
+            candidate.encode("utf-8")
+        ).hexdigest(),
+    })
+
+    with pytest.raises(RuntimeError, match="quality gate"):
+        await service._quality_polish(
+            run_id, run_path, project, "constraints", candidate, conditional,
+        )
+
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(
+        encoding="utf-8",
+    ))
+    checkpoint = load_quality_checkpoint(run_path)
+    assert report["status"] == "conditional_pass"
+    assert checkpoint is not None
+    assert checkpoint["outcome"] == "conditional_pass"

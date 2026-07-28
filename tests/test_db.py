@@ -25,10 +25,14 @@ def test_database_creates_foundation_tables(tmp_path) -> None:
     assert {
         "providers", "models", "role_bindings", "schema_version", "run_events",
         "reference_sources", "reference_versions", "reference_analyses",
+        "quality_reference_groups",
     } <= db.table_names()
 
     db.migrate()
-    assert {"reference_sources", "reference_versions", "reference_analyses"} <= db.table_names()
+    assert {
+        "reference_sources", "reference_versions", "reference_analyses",
+        "quality_reference_groups",
+    } <= db.table_names()
 
 
 def test_reference_metadata_migration_is_idempotent(tmp_path) -> None:

@@ -114,6 +114,12 @@ No local generative model is installed or supported by this feature. A later opt
 
 `materials-audit` compares paragraph-aligned manuscript windows against the current project materials through the configured final-review route. Each completed window writes a source-hashed checkpoint. Restarting the check resumes the latest failed or cancelled audit, reuses unchanged windows, and rechecks windows whose manuscript, constraints, or project reference changed. If the primary route fails and its configured fallback completes a window, the remaining windows in that audit use the fallback directly; that circuit state survives a resume and resets for the next new audit. It records evidenced contradictions in `conflict-report.json` and the versioned issue ledger, but never edits prose. `materials-repair` consumes the latest completed audit, uses structural targeted polish, runs the full-manuscript terminal review, and writes `best-candidate.md`. It never replaces the formal manuscript; publication remains an explicit user action.
 
+Short-story scene separators remain internal to drafting and targeted revision. Local manuscript analysis, full or incremental final review, and the terminal reviewed hash use the clean reader-visible text, so workflow markers cannot enter editorial findings or publication eligibility.
+
+When a primary polish response fails local length, prose, or locked-fact validation, Runtime tries the configured polish fallback once before preserving the source segment. Both the retry and a failed retry are visible run events; an invalid fallback can never replace the source text.
+
+Every full-review window, incremental-review window, and final adjudication is parsed locally before it is accepted. A malformed or truncated JSON response retries only that request through the final-review role's configured fallback and records `final_review_json_fallback`; completed windows and the preserved best candidate are not discarded.
+
 Candidate quality displays `effective_words` as its primary count: each Han character, contiguous Latin word, or contiguous numeric token counts once; punctuation, whitespace, and Markdown punctuation are excluded. Pure `han_characters` and total Unicode-code-point `characters` remain visible as secondary metrics and remain available in the API for compatibility.
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
@@ -171,9 +177,11 @@ The `maintenance` role compares the change with project material files only. Can
 
 The initial-polish input circuit breaker is the larger of 120,000 or 20,000 per generated segment, so smaller adaptive segments can complete the manuscript. Structural correction remains capped at 60,000 per round, and correction count remains bounded by the quality route. There is no conflicting fixed cumulative cap across resumed and corrective rounds. Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.
 
-Structural plans must target no more than 40% of stable `scene-NN` scenes and contain literal checks for hard issues. A truncated/invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.
+Structural plans contain literal checks for hard issues and preserve the model's task priority. Runtime applies no more than 40% of stable `scene-NN` scenes in one batch; valid targets beyond that limit retain their tasks and continue in later batches under the same correction-round token budget before final review. A truncated or otherwise invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.
 
-Revision planning compacts its Skill and constraint prompts. Empty, truncated, invalid-JSON, over-scoped, or checkless hard-issue plans retry once through the `review` role. If that result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
+Before a resumed quality pass rewrites `quality-report.json`, Runtime reads the existing `best_score` together with `best-candidate.md`. That pair becomes the new pass's minimum checkpoint. Lower-scoring retries may be recorded for diagnosis, but failure, provider interruption, or invalid revision planning restores the earlier higher-scoring text. The `quality_best_restored` event tells the UI which score is protected.
+
+Revision planning compacts its Skill and constraint prompts. Empty, truncated, invalid-JSON, or checkless hard-issue plans retry once through the `review` role. A valid plan that covers too many scenes is batched locally and does not spend a fallback model call. If the fallback result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
 
 Ordinary polish targets about 1,400 characters and normally stays below 1,800, splitting only at existing paragraph boundaries. A single oversized paragraph is preserved instead of being cut mechanically. Before each provider call, Runtime estimates the complete system and user input; if it is unusually large, repeated Skill and constraint context is compacted further while manuscript prose, locked facts, relevant character state, and the current task remain intact. Structural correction does not reuse ordinary prose chunks: each targeted `scene-NN` is sent exactly once unless a recoverable relay failure requires safe paragraph splitting. Structural candidates use a 60%-180% length contract; ordinary candidates use 70%-160%. Rejection metadata includes absolute bounds and a short candidate preview. Prompt metadata always appears before `MANUSCRIPT SEGMENT`; source prose is last.
 
@@ -192,6 +200,22 @@ Initial editorial issues receive content-derived stable IDs plus source, repair 
 Final review uses only the `final_review` role and its configured provider fallback. It never switches to `planning`. If both configured routes fail, Runtime writes `best-candidate.md`, reports `final_review_incomplete`, and leaves the formal manuscript unchanged. The output limit remains 8,192 tokens. A typical 20,000-character story uses several 6,000-12,000 input-token requests and roughly 40,000-70,000 cumulative input tokens.
 
 The run detail context can expose manuscript coverage, reviewed window count, reconciliation counts, and local gate reasons from `quality-report.json`.
+
+### Zhihu short quality v2 and protected checkpoints
+
+`profile_for_project()` selects `zhihu-short-v2` only when the project is short and its platform profile is `zhihu-salt-short`. Other projects keep `legacy-v1`. The v2 profile contains 15 literal criteria. Runtime calculates the commercial, story, and prose dimensions and the `40 / 40 / 20` total; provider-supplied aggregate scores cannot override that calculation. A pass requires total `>= 80` and dimension minimums `75 / 75 / 68`. A conditional pass requires total `>= 75` and minimums `72 / 70 / 65`, but remains a candidate and has no formal-manuscript or package authority.
+
+`outputs/quality-checkpoint.json` binds one manuscript path and SHA-256 hash to its score, profile, judge signature, matching review, outcome, and terminal-reviewed hash. A valid explicit checkpoint is authoritative. When it is absent, reconciliation inspects the legacy `best-candidate.md` report and every `historical-best-<score>.md`, writes one idempotent checkpoint for the highest valid legacy candidate, and leaves every source file unchanged. Promotion is allowed only between the same profile and judge. A comparable candidate needs a gain of at least two points, no dimension regression below minus three points, and no new unresolved major issue.
+
+The candidate summary reads the review stored with the hash-matched checkpoint instead of the latest failed attempt. Its official publication count is the number of Han characters after removing internal workflow comments and Markdown heading lines. For a Zhihu short project, the allowed range is 90%-110% of `target_words`. Candidate formalization and Zhihu package generation both consume the same publication-authority result: a passed v2 review, matching manuscript and terminal-review hashes, allowed length, and no unresolved major issue.
+
+The first terminal review remains full-manuscript. A later incremental review may run only when its saved baseline hash matches the manuscript actually sent into revision. A mismatch triggers `full_fallback` with `baseline_source_mismatch`. Broad or structural changes, incomplete issue reconciliation, uncertain NLP/window mapping, and the existing scope rules continue to force a complete review.
+
+Quality reference groups are append-only rows in `quality_reference_groups`, scoped by project and profile. Recommendation reads only active, user-confirmed learning sources plus the project's protected historical best; recommendation, confirmation, removal, and history reads make no model request. Confirmation creates a new version. Removal creates another version and does not delete the reference source, its text, analysis, or prior group versions.
+
+Protected passages use versioned `passage.<id>` StoryState locks. Creation accepts complete contiguous paragraphs from the current candidate only. Soft protection tolerates punctuation and spacing changes; exact protection requires the original text. Runtime includes active locks in polish context and validates the returned segment locally. An unapproved change keeps the source segment and records conflict metadata. `allow_next_change` is consumed once and then deactivates that lock; removal also deactivates it without editing prose.
+
+Rollback does not require deleting project data. Disable the Zhihu platform profile to return future reviews to `legacy-v1`; v2 checkpoints and reference-group history remain on disk and are ignored by the legacy comparison path. Remove or deactivate passage locks separately if revisions should stop enforcing them. Do not delete `quality-checkpoint.json` merely to lower a protected score: restore a prior manuscript through the existing candidate/revision flow so the new content receives its own hash-bound review.
 
 ### Evidence-driven local analysis versions
 
@@ -233,7 +257,9 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 - `polish_input_sized`: estimated complete input size recorded before a provider call.
 - `polish_segment_split`: a recoverable relay or repeated `max_tokens` failure caused only the failed segment to be split and retried.
 - `polish_output_rejected`: local validation kept the original segment.
-- `revision_plan_blocked`: the plan was invalid, truncated, over the 40% scope, or lacked deterministic checks; no scene rewrite started.
+- `revision_plan_deferred`: a valid plan exceeded the per-batch 40% limit; current and deferred scene IDs are recorded separately.
+- `revision_batch_continued`: the current batch passed local handling and the next saved batch is starting under the remaining round token budget.
+- `revision_plan_blocked`: the plan was invalid, truncated, or lacked deterministic checks; no scene rewrite started.
 - `token_budget_exhausted`: the next polish request was blocked by the round or cumulative input-token cap.
 - `quality_revision_halted`: correction stopped and `best-candidate.md` was preserved.
 - `polish_checkpoint_reused`: an interrupted pass reused an identical source segment from its own checkpoint.

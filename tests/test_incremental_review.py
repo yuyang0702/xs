@@ -109,3 +109,12 @@ def test_changed_narrative_relation_selects_both_linked_windows():
 
     assert scope["selected_windows"] == [1, 2, 3]
     assert "narrative_relation:relation-1" in scope["reasons"]["3"]
+
+
+def test_review_baseline_records_the_exact_revision_source_hash():
+    source = "受保护最佳稿"
+    baseline = build_review_baseline(source, _analysis(source), [], {"issues": []})
+
+    assert baseline["manuscript_hash"] == hashlib.sha256(
+        source.encode("utf-8")
+    ).hexdigest()

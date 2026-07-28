@@ -59,6 +59,15 @@ class ConfiguredFallbackRegistry:
         raise AssertionError((provider_id, model_id))
 
 
+class MissingPrimaryKeyRegistry:
+    def resolve(self, provider_id, model_id):
+        if (provider_id, model_id) == ("primary-provider", "primary-model"):
+            raise ValueError("missing_api_key")
+        if (provider_id, model_id) == ("fallback-provider", "fallback-model"):
+            return ResolvedModel(provider_id, model_id, "fallback", SuccessfulFallbackAdapter())
+        raise AssertionError((provider_id, model_id))
+
+
 def fallback_receipt_fields(result):
     return {
         key: result.receipt[key]
@@ -81,6 +90,29 @@ async def test_gateway_uses_configured_fallback_for_plain_completion(tmp_path) -
 
     assert result.text == "fallback result"
     assert result.receipt["provider_id"] == "fallback-provider"
+    assert fallback_receipt_fields(result) == {
+        "fallback_used": True,
+        "fallback_from_provider_id": "primary-provider",
+        "fallback_from_model_id": "primary-model",
+    }
+
+
+@pytest.mark.asyncio
+async def test_gateway_uses_fallback_when_primary_key_is_missing(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+
+    result = await ModelGateway(db, MissingPrimaryKeyRegistry()).complete(
+        "planning", "rules", "plan",
+    )
+
+    assert result.text == "fallback result"
+    assert result.receipt["provider_id"] == "fallback-provider"
+    assert result.receipt["primary_error"] == "missing_api_key"
     assert fallback_receipt_fields(result) == {
         "fallback_used": True,
         "fallback_from_provider_id": "primary-provider",
@@ -168,6 +200,30 @@ async def test_gateway_uses_configured_fallback_for_tool_completion(tmp_path) ->
     assert result.text == "fallback result"
     assert result.receipt["provider_id"] == "fallback-provider"
     assert result.receipt["fallback_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_tool_gateway_uses_fallback_when_primary_key_is_missing(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+
+    result = await ModelGateway(db, MissingPrimaryKeyRegistry()).complete_with_tools(
+        "planning", "rules", "plan", Toolbox(),
+        fallback_context=lambda: "evidence", run_id="run-1",
+    )
+
+    assert result.text == "fallback result"
+    assert result.receipt["provider_id"] == "fallback-provider"
+    assert result.receipt["primary_error"] == "missing_api_key"
+    assert fallback_receipt_fields(result) == {
+        "fallback_used": True,
+        "fallback_from_provider_id": "primary-provider",
+        "fallback_from_model_id": "primary-model",
+    }
 
 
 @pytest.mark.asyncio

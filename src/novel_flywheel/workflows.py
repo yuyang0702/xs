@@ -36,6 +36,25 @@ from novel_flywheel.quality import (
     review_windows,
     select_route,
 )
+from novel_flywheel.quality_records import (
+    checkpoint_manuscript,
+    reconcile_legacy_checkpoint,
+    write_quality_checkpoint,
+)
+from novel_flywheel.quality_profiles import (
+    compare_quality_candidates,
+    judge_signature,
+    profile_for_project,
+    quality_outcome_for_profile,
+    quality_profile_prompt,
+    score_review,
+)
+from novel_flywheel.passage_protection import (
+    PassageProtectionService,
+    applicable_passage_locks,
+    passage_prompt_context,
+    validate_passage_protections,
+)
 from novel_flywheel.revision import (
     align_revision_plan_targets,
     assess_polish_candidate,
@@ -699,6 +718,7 @@ class WorkflowService:
         route = select_route(
             project.mode, chapter_number, chapter_goal, volume_end, review,
         )
+        previous_best = self._previous_quality_best(run_path)
         report = {
             "route": route,
             "initial_review": review,
@@ -706,10 +726,16 @@ class WorkflowService:
             "final_attempts": [],
             "status": "running",
             "failure_reasons": [],
-            "best_attempt": None,
-            "best_score": None,
+            "best_attempt": previous_best["best_attempt"] if previous_best else None,
+            "best_score": previous_best["score"] if previous_best else None,
         }
         self._write_quality_report(run_path, report)
+        if previous_best:
+            self.db.add_run_event(
+                run_id, "success", "quality_best_restored",
+                "已保留上次运行的最高分稿，本轮只有更高分版本才会替换它",
+                stage="quality", metadata={"best_score": previous_best["score"]},
+            )
         self.db.add_run_event(
             run_id, "info", "quality_route",
             "已选择重点质量流程" if route["enhanced"] else "已选择标准质量流程",
@@ -766,19 +792,32 @@ class WorkflowService:
                 json.dumps(findings, ensure_ascii=False),
             )
         except (RevisionPlanError, PolishTokenBudgetError) as exc:
-            self._halt_quality_revision(run_id, run_path, report, draft, exc)
+            self._halt_quality_revision(
+                run_id, run_path, report,
+                previous_best["text"] if previous_best else draft, exc,
+            )
+        review_text = "\n\n".join(self._split_segments(polished))
         current_analysis = self._analyze_manuscript(
-            polished, run_path, project, "polish",
+            review_text, run_path, project, "polish",
         )
         baseline: dict | None = None
+        revision_source_hash: str | None = None
+        active_profile = profile_for_project(project)
 
         reasons: list[str] = []
-        best_polished = polished
-        best_review: dict | None = None
-        best_attempt: int | None = None
+        best_polished = previous_best["text"] if previous_best else polished
+        best_review: dict | None = (
+            previous_best.get("review") or {"score": previous_best["score"]}
+            if previous_best else None
+        )
+        best_attempt: int | None = (
+            previous_best["best_attempt"] if previous_best else None
+        )
+        best_outcome = str(previous_best.get("outcome") or "") if previous_best else ""
         for attempt in range(route["max_corrections"] + 1):
             reviewed_polished = polished
-            final_input = polished
+            review_text = "\n\n".join(self._split_segments(polished))
+            final_input = review_text
             if attempt:
                 checks_path = run_path / "outputs" / f"revision-checks-{attempt + 1}.json"
                 if checks_path.is_file():
@@ -792,9 +831,10 @@ class WorkflowService:
                 optimized = bool(project.metadata.get("optimized_local_review_enabled", False))
                 if attempt and optimized and baseline is not None:
                     final_review, evidence_audit = await self._incremental_manuscript_review(
-                        run_id, run_path, project, constraints, polished,
+                        run_id, run_path, project, constraints, review_text,
                         current_analysis, baseline, review,
                         suffix=f"-{attempt + 1}",
+                        revision_source_hash=revision_source_hash,
                     )
                     report["final_review_evidence"] = evidence_audit
                 elif project.mode == "short" and len(final_input) > 6000:
@@ -804,11 +844,19 @@ class WorkflowService:
                     )
                     report["final_review_evidence"] = evidence_audit
                 else:
-                    final_input = self._causal_chain_review_checks(constraints) + final_input
-                    final_review = self._review(await self._stage(
+                    final_input = (
+                        quality_profile_prompt(active_profile)
+                        + self._causal_chain_review_checks(constraints)
+                        + final_input
+                    )
+                    raw_final_review = await self._stage(
                         run_id, run_path, project, "final_review", constraints, final_input,
                         suffix=f"-{attempt + 1}" if attempt else "", allow_tools=False,
-                    ))
+                    )
+                    final_review = self._review_for_project(
+                        raw_final_review, project,
+                        getattr(raw_final_review, "receipt", {}),
+                    )
                     evidence_audit = {
                         "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
                         "windows": [{"index": 1, "start": 0, "end": len(polished),
@@ -823,7 +871,7 @@ class WorkflowService:
                         ],
                     }
                     baseline = build_review_baseline(
-                        polished, current_analysis,
+                        review_text, current_analysis,
                         evidence_audit.get("windows", []), baseline_review,
                     )
                     atomic_write(
@@ -858,8 +906,12 @@ class WorkflowService:
                     "Final review incomplete; preserved best candidate"
                 ) from exc
             final_review["issues"] = issue_ledger(final_review.get("issues", []))
-            outcome, reasons = quality_outcome(final_review)
-            passed = outcome != "failed"
+            outcome, reasons = quality_outcome_for_profile(final_review, active_profile)
+            passed = (
+                outcome == "passed"
+                if active_profile == "zhihu-short-v2"
+                else outcome != "failed"
+            )
             report["final_attempts"].append({
                 "attempt": attempt + 1,
                 "review": final_review,
@@ -868,10 +920,27 @@ class WorkflowService:
                 "reasons": reasons,
             })
             report["terminal_review_complete"] = True
-            if best_review is None or final_review["score"] > best_review["score"]:
+            comparison = None
+            if best_review is not None and active_profile == "zhihu-short-v2":
+                comparison = compare_quality_candidates(best_review, final_review)
+            promote = (
+                best_review is None
+                or (
+                    active_profile != "zhihu-short-v2"
+                    and final_review["score"] > best_review["score"]
+                )
+                or bool(comparison and comparison["promote"])
+                or bool(
+                    comparison and not comparison["comparable"]
+                    and outcome == "passed"
+                    and final_review.get("scoring_profile_id") == active_profile
+                )
+            )
+            if promote:
                 best_review = final_review
                 best_polished = reviewed_polished
                 best_attempt = attempt + 1
+                best_outcome = outcome
                 report["best_attempt"] = best_attempt
                 report["best_score"] = final_review["score"]
             elif final_review["score"] < best_review["score"]:
@@ -888,11 +957,47 @@ class WorkflowService:
             self._quality_assessed_event(run_id, "chief_editor", final_review, attempt + 1)
             self._write_quality_report(run_path, report)
             if passed:
-                report["status"] = outcome
+                retained_previous = bool(
+                    previous_best
+                    and final_review["score"] < float(previous_best["score"])
+                )
+                selected = best_polished if retained_previous else polished
+                selected_review = best_review if retained_previous else final_review
+                selected_outcome = (
+                    str(previous_best.get("outcome") or "passed")
+                    if retained_previous else outcome
+                )
+                if selected_outcome not in {"passed", "conditional_pass"}:
+                    selected_outcome = "passed" if float(
+                        (selected_review or {}).get("score", 0)
+                    ) >= 80 else "conditional_pass"
+                selected_review_text = "\n\n".join(self._split_segments(selected))
+                report["status"] = selected_outcome
                 report["failure_reasons"] = []
                 report["terminal_reviewed_hash"] = hashlib.sha256(
-                    polished.encode("utf-8")
+                    selected_review_text.encode("utf-8")
                 ).hexdigest()
+                if retained_previous:
+                    self.db.add_run_event(
+                        run_id, "success", "quality_best_retained",
+                        "本轮候选达到最低门槛，但没有超过受保护最佳稿，已继续保留最佳稿",
+                        stage="quality", metadata={
+                            "candidate_score": final_review["score"],
+                            "best_score": previous_best["score"],
+                        },
+                    )
+                report["scoring_profile_id"] = str(
+                    (selected_review or {}).get("scoring_profile_id") or "legacy-v1"
+                )
+                report["judge_signature"] = str(
+                    (selected_review or {}).get("judge_signature") or "legacy-unknown"
+                )
+                report["terminal_review"] = selected_review
+                if not retained_previous and selected_review:
+                    self._save_quality_checkpoint(
+                        run_path, selected_review_text, selected_review,
+                        best_attempt, selected_outcome,
+                    )
                 self._write_quality_report(run_path, report)
                 self.db.add_run_event(
                     run_id, "success", "quality_gate",
@@ -904,7 +1009,7 @@ class WorkflowService:
                         "dimensions": final_review["dimensions"],
                     },
                 )
-                return polished, report
+                return selected, report
             if attempt < route["max_corrections"]:
                 self.db.add_run_event(
                     run_id, "warning", "quality_revision",
@@ -914,19 +1019,51 @@ class WorkflowService:
                     },
                 )
                 try:
+                    revision_source_hash = hashlib.sha256(
+                        best_polished.encode("utf-8")
+                    ).hexdigest()
                     polished = await self._polish_short_segments(
                         run_id, run_path, project, constraints, best_polished,
                         json.dumps(final_review, ensure_ascii=False),
                         suffix=f"-{attempt + 2}", structural=True,
                     )
                     current_analysis = self._analyze_manuscript(
-                        polished, run_path, project, f"polish-{attempt + 2}",
+                        "\n\n".join(self._split_segments(polished)),
+                        run_path, project, f"polish-{attempt + 2}",
                     )
                 except (RevisionPlanError, PolishTokenBudgetError) as exc:
                     self._halt_quality_revision(
                         run_id, run_path, report, best_polished, exc,
                     )
 
+        if (active_profile == "zhihu-short-v2"
+                and best_outcome == "conditional_pass" and best_review):
+            clean_best = "\n\n".join(self._split_segments(best_polished))
+            report["status"] = "conditional_pass"
+            report["failure_reasons"] = []
+            report["terminal_review"] = best_review
+            report["scoring_profile_id"] = "zhihu-short-v2"
+            report["judge_signature"] = str(
+                best_review.get("judge_signature") or "legacy-unknown"
+            )
+            report["terminal_reviewed_hash"] = hashlib.sha256(
+                clean_best.encode("utf-8")
+            ).hexdigest()
+            self._save_quality_checkpoint(
+                run_path, clean_best, best_review, best_attempt, "conditional_pass",
+            )
+            self._write_quality_report(run_path, report)
+            self.db.add_run_event(
+                run_id, "warning", "quality_conditional_pass",
+                "候选稿达到条件通过，但还不能设为正式稿",
+                stage="quality", metadata={
+                    "score": best_review["score"],
+                    "dimensions": best_review["dimensions"],
+                },
+            )
+            raise RuntimeError(
+                "Editorial quality gate requires a full pass; preserved conditional candidate"
+            )
         report["status"] = "failed"
         report["failure_reasons"] = reasons
         atomic_write(run_path / "outputs" / "best-candidate.md", best_polished)
@@ -936,6 +1073,62 @@ class WorkflowService:
             stage="quality", metadata={"reasons": reasons},
         )
         raise RuntimeError("Editorial quality gate did not pass within the correction limit")
+
+    @staticmethod
+    def _save_quality_checkpoint(
+        run_path: Path, manuscript: str, review: dict,
+        attempt: int | None, outcome: str,
+    ) -> None:
+        atomic_write(run_path / "outputs" / "best-candidate.md", manuscript)
+        digest = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
+        write_quality_checkpoint(run_path, {
+            "manuscript_path": "outputs/best-candidate.md",
+            "manuscript_hash": digest,
+            "score": float(review["score"]),
+            "scoring_profile_id": str(
+                review.get("scoring_profile_id") or "legacy-v1"
+            ),
+            "judge_signature": str(
+                review.get("judge_signature") or "legacy-unknown"
+            ),
+            "best_attempt": attempt,
+            "review": review,
+            "issue_ledger": issue_ledger(review.get("issues", [])),
+            "outcome": outcome,
+            "terminal_reviewed_hash": digest,
+        })
+
+    async def _final_review_json(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        prompt: str, suffix: str,
+    ) -> tuple[str, dict]:
+        raw = await self._stage(
+            run_id, run_path, project, "final_review", constraints, prompt,
+            suffix=suffix, allow_tools=False,
+        )
+        try:
+            return raw, self._json_object(raw)
+        except (json.JSONDecodeError, ValueError) as exc:
+            binding = self.db.get_role_binding("final_review") or {}
+            configured_fallback = bool(
+                binding.get("fallback_provider_id") and binding.get("fallback_model_id")
+                and hasattr(self.gateway, "complete_configured_fallback")
+            )
+            if not configured_fallback:
+                raise
+            self.db.add_run_event(
+                run_id, "warning", "final_review_json_fallback",
+                "终审模型返回内容不完整，正在用备用模型重做当前检查",
+                stage="final_review", metadata={
+                    "suffix": suffix, "error": str(exc)[:300],
+                },
+            )
+            raw = await self._stage(
+                run_id, run_path, project, "final_review", constraints, prompt,
+                suffix=f"{suffix}-json-fallback", allow_tools=False,
+                prefer_configured_fallback=True,
+            )
+            return raw, self._json_object(raw)
 
     async def _full_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
@@ -961,11 +1154,10 @@ class WorkflowService:
                 f"{causal_checks}"
                 f"MANUSCRIPT WINDOW:\n{window['text']}"
             )
-            raw = await self._stage(
-                run_id, run_path, project, "final_review", constraints, prompt,
-                suffix=f"{suffix}-window-{window['index']}", allow_tools=False,
+            raw, item = await self._final_review_json(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"{suffix}-window-{window['index']}",
             )
-            item = self._json_object(raw)
             summary = item.get("summary")
             if isinstance(summary, (dict, list)) and summary:
                 summary = json.dumps(summary, ensure_ascii=False, separators=(",", ":"))
@@ -980,6 +1172,8 @@ class WorkflowService:
             previous_summary = item["summary"]
 
         adjudication_prompt = (
+            quality_profile_prompt(profile_for_project(project))
+            +
             "FULL MANUSCRIPT FINAL ADJUDICATION. Use the ordered window evidence as a global story "
             "map and perform cross-window checks for timeline, character state and knowledge, causal "
             "authority/evidence, relationship transitions, setup/payoff, and premise follow-through. "
@@ -990,12 +1184,13 @@ class WorkflowService:
             f"{causal_checks}"
             f"ORDERED WINDOW EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
         )
-        raw_final = await self._stage(
-            run_id, run_path, project, "final_review", constraints, adjudication_prompt,
-            suffix=f"{suffix}-adjudication", allow_tools=False,
+        raw_final, payload = await self._final_review_json(
+            run_id, run_path, project, constraints, adjudication_prompt,
+            suffix=f"{suffix}-adjudication",
         )
-        payload = self._json_object(raw_final)
-        review = normalize_review(payload)
+        review = self._review_for_project(
+            payload, project, getattr(raw_final, "receipt", {}),
+        )
         audit = {
             "coverage": 1.0 if windows and evidence[-1]["end"] == len(manuscript) else 0.0,
             "window_count": len(windows),
@@ -1075,9 +1270,19 @@ class WorkflowService:
     async def _incremental_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, analysis: dict, baseline: dict, initial_review: dict,
-        suffix: str = "",
+        suffix: str = "", revision_source_hash: str | None = None,
     ) -> tuple[dict, dict]:
         constraints = self._constraints_with_platform_rules(project, constraints)
+        if (revision_source_hash is not None
+                and baseline.get("manuscript_hash") != revision_source_hash):
+            review, audit = await self._full_manuscript_review(
+                run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+            )
+            audit.update({
+                "review_mode": "full_fallback",
+                "fallback_reasons": ["baseline_source_mismatch"],
+            })
+            return review, audit
         changes = diff_manuscripts(
             baseline["manuscript"], manuscript, baseline["analysis"], analysis,
         )
@@ -1113,11 +1318,10 @@ class WorkflowService:
                 f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
                 f"CURRENT WINDOW:\n{window['text']}"
             )
-            raw = await self._stage(
-                run_id, run_path, project, "final_review", constraints, prompt,
-                suffix=f"{suffix}-incremental-window-{window['index']}", allow_tools=False,
+            raw, item = await self._final_review_json(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"{suffix}-incremental-window-{window['index']}",
             )
-            item = self._json_object(raw)
             summary = item.get("summary")
             if not isinstance(summary, str) or not summary.strip():
                 raise ValueError(f"Incremental review window {window['index']} has no summary")
@@ -1128,6 +1332,8 @@ class WorkflowService:
             evidence.append(item)
 
         prompt = (
+            quality_profile_prompt(profile_for_project(project))
+            +
             "INCREMENTAL FINAL ADJUDICATION. Reconcile every prior issue and judge only whether "
             "the correction remains globally safe. Return strict quality-review JSON plus "
             "reconciliations. Every reconciliation status must be exactly resolved, unresolved, "
@@ -1137,11 +1343,10 @@ class WorkflowService:
             f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
             f"SELECTED EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
         )
-        raw = await self._stage(
-            run_id, run_path, project, "final_review", constraints, prompt,
-            suffix=f"{suffix}-incremental-adjudication", allow_tools=False,
+        raw, payload = await self._final_review_json(
+            run_id, run_path, project, constraints, prompt,
+            suffix=f"{suffix}-incremental-adjudication",
         )
-        payload = self._json_object(raw)
         if payload.get("request_full_review"):
             changes["reviewer_requested_full"] = True
             review, audit = await self._full_manuscript_review(
@@ -1150,7 +1355,9 @@ class WorkflowService:
             audit.update({"review_mode": "full_fallback",
                           "fallback_reasons": ["reviewer_requested_full"]})
             return review, audit
-        review = normalize_review(payload)
+        review = self._review_for_project(
+            payload, project, getattr(raw, "receipt", {}),
+        )
         review, gate_reasons = apply_incremental_gate(
             review, baseline, scope, analysis, payload.get("reconciliations", []),
         )
@@ -1308,7 +1515,10 @@ class WorkflowService:
                                      constraints: str, text: str, findings: str,
                                      suffix: str = "", structural: bool = False,
                                      recovery_depth: int = 0,
-                                     recovery_rule: str | None = None) -> str:
+                                     recovery_rule: str | None = None,
+                                     prepared_revision_plan: dict | None = None,
+                                     round_cap_override: int | None = None,
+                                     batch_number: int = 1) -> str:
         original_parts = self._split_segments(text)
         grouped_parts = (
             [(part, group) for group, part in enumerate(original_parts, 1)]
@@ -1323,13 +1533,35 @@ class WorkflowService:
         revision_plan = None
         story_map = segment_map(original_parts)
         authoritative_state = self.story_states.ensure(project.id, project.path).data
+        passage_service = PassageProtectionService(self.db)
+        project_passage_locks = self.db.list_locks(project.id)
         if structural and len(parts) > 1:
-            revision_plan = await self._plan_structural_revision(
-                run_id, run_path, project, constraints, findings, story_map, suffix,
-            )
-            revision_plan, target_corrections = align_revision_plan_targets(
-                revision_plan, original_parts,
-            )
+            if prepared_revision_plan is None:
+                revision_plan = await self._plan_structural_revision(
+                    run_id, run_path, project, constraints, findings, story_map, suffix,
+                )
+                full_plan = {
+                    **revision_plan,
+                    "tasks": [
+                        *revision_plan["tasks"],
+                        *revision_plan.get("deferred_tasks", []),
+                    ],
+                }
+                full_plan, target_corrections = align_revision_plan_targets(
+                    full_plan, original_parts,
+                )
+                revision_plan = normalize_revision_plan(
+                    full_plan, len(story_map), max_target_ratio=0.4,
+                    require_checks=bool(full_plan.get("checks")),
+                    defer_excess_targets=True,
+                )
+            else:
+                target_corrections = []
+                revision_plan = normalize_revision_plan(
+                    prepared_revision_plan, len(story_map), max_target_ratio=0.4,
+                    require_checks=bool(prepared_revision_plan.get("checks")),
+                    defer_excess_targets=True,
+                )
             if target_corrections:
                 atomic_write(
                     run_path / "outputs" / f"revision-plan{suffix}.json",
@@ -1370,7 +1602,8 @@ class WorkflowService:
             run_path / "outputs" / "polish-checkpoints" / (suffix.strip("-") or "initial")
         )
         round_input_tokens = 0
-        round_cap = self._polish_round_input_cap(structural, len(parts))
+        round_cap = (round_cap_override if round_cap_override is not None
+                     else self._polish_round_input_cap(structural, len(parts)))
         for index, part in enumerate(parts, 1):
             group = part_groups[index - 1]
             if revision_plan and group not in revision_plan["target_segments"]:
@@ -1402,6 +1635,7 @@ class WorkflowService:
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             next_head = parts[index][:800] if index < len(parts) else ""
             local_report = analyze_prose(part)
+            passage_locks = applicable_passage_locks(project_passage_locks, part)
             tasks = ([task["instruction"] for task in revision_plan["tasks"]
                       if group in task["segments"]] if revision_plan else [])
             plan_context = (
@@ -1435,6 +1669,7 @@ class WorkflowService:
                     findings=plan_context,
                     edit_rule=revision_rule + length_contract,
                 )
+                + passage_prompt_context(passage_locks)
             )
             part_suffix = f"{suffix}-part-{index:02d}"
             priority = bool(structural or index in {1, len(parts)} or local_report["findings"])
@@ -1516,6 +1751,70 @@ class WorkflowService:
             if locked_failures:
                 assessment["accepted"] = False
                 assessment["reasons"].extend(locked_failures)
+            passage_validation = validate_passage_protections(
+                part, polished_part, passage_locks,
+            )
+            if passage_validation["conflicts"]:
+                assessment["accepted"] = False
+                assessment["reasons"].extend(
+                    f"passage_protection:{item['id']}"
+                    for item in passage_validation["conflicts"]
+                )
+            if (not assessment["accepted"] and configured_fallback
+                    and not prefer_configured):
+                self.db.add_run_event(
+                    run_id, "warning", "polish_validation_fallback",
+                    f"润色第 {index}/{len(parts)} 段未通过本地验收，正在改用备用模型重试",
+                    stage="polish", metadata={
+                        "segment": index, "reasons": assessment["reasons"],
+                    },
+                )
+                try:
+                    polished_part = await self._stage(
+                        run_id, run_path, project, "polish", constraints, prompt,
+                        suffix=f"{part_suffix}-validation-fallback", allow_tools=False,
+                        prefer_configured_fallback=True,
+                        output_source_characters=len(part),
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_validation_fallback_failed",
+                        f"润色第 {index}/{len(parts)} 段的备用模型重试失败，已保留原文",
+                        stage="polish", metadata={
+                            "segment": index, "error": describe_error(exc),
+                        },
+                    )
+                else:
+                    round_input_tokens += int(
+                        getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
+                    )
+                    assessment = assess_polish_candidate(
+                        part, polished_part, required,
+                        minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
+                    )
+                    if structural:
+                        assessment["reasons"] = [
+                            reason for reason in assessment["reasons"]
+                            if reason not in rhythm_reasons
+                        ]
+                        assessment["accepted"] = not assessment["reasons"]
+                    locked_failures = validate_locked_facts(
+                        part, polished_part, authoritative_state,
+                    )
+                    if locked_failures:
+                        assessment["accepted"] = False
+                        assessment["reasons"].extend(locked_failures)
+                    passage_validation = validate_passage_protections(
+                        part, polished_part, passage_locks,
+                    )
+                    if passage_validation["conflicts"]:
+                        assessment["accepted"] = False
+                        assessment["reasons"].extend(
+                            f"passage_protection:{item['id']}"
+                            for item in passage_validation["conflicts"]
+                        )
             rhythm_retried = False
             if not structural and rhythm_reasons.intersection(assessment["reasons"]):
                 rhythm_retried = True
@@ -1561,6 +1860,15 @@ class WorkflowService:
                 if locked_failures:
                     assessment["accepted"] = False
                     assessment["reasons"].extend(locked_failures)
+                passage_validation = validate_passage_protections(
+                    part, polished_part, passage_locks,
+                )
+                if passage_validation["conflicts"]:
+                    assessment["accepted"] = False
+                    assessment["reasons"].extend(
+                        f"passage_protection:{item['id']}"
+                        for item in passage_validation["conflicts"]
+                    )
             accepted = bool(assessment["accepted"])
             conditional_length = bool(
                 accepted and structural and assessment["ratio"] < preferred_minimum_ratio
@@ -1587,6 +1895,20 @@ class WorkflowService:
                     },
                 )
             if not assessment["accepted"]:
+                if passage_validation["conflicts"]:
+                    self.db.add_run_event(
+                        run_id, "warning", "passage_protection_conflict",
+                        "模型修改了受保护片段，已保留原文",
+                        stage="polish", metadata={
+                            "segment": index,
+                            "protection_ids": [
+                                item["id"] for item in passage_validation["conflicts"]
+                            ],
+                            "labels": [
+                                item["label"] for item in passage_validation["conflicts"]
+                            ],
+                        },
+                    )
                 self.db.add_run_event(
                     run_id, "warning", "polish_output_rejected",
                     f"润色第 {index}/{len(parts)} 段未通过本地验收，已保留原文",
@@ -1602,6 +1924,10 @@ class WorkflowService:
                     },
                 )
                 polished_part = part
+            elif passage_validation["consumed"]:
+                passage_service.consume_allowed_changes(
+                    project.id, passage_validation["consumed"],
+                )
             polished_part = polished_part.strip()
             polished_parts.append(polished_part)
             change_evidence = diff_manuscripts(
@@ -1648,6 +1974,39 @@ class WorkflowService:
                     run_id, "warning", "revision_checks_failed",
                     "Structural revision still violates deterministic checks",
                     stage="polish", metadata={"failures": failures},
+                )
+            deferred_tasks = revision_plan.get("deferred_tasks", [])
+            if deferred_tasks:
+                remaining_plan = {
+                    "global_facts": revision_plan["global_facts"],
+                    "checks": revision_plan["checks"],
+                    "tasks": deferred_tasks,
+                }
+                next_plan = normalize_revision_plan(
+                    remaining_plan, len(original_parts), max_target_ratio=0.4,
+                    require_checks=bool(remaining_plan["checks"]),
+                    defer_excess_targets=True,
+                )
+                self.db.add_run_event(
+                    run_id, "info", "revision_batch_continued",
+                    "当前批次已完成，正在继续处理同一返修计划的下一批场景",
+                    stage="polish", metadata={
+                        "completed_segments": revision_plan["target_segments"],
+                        "next_segments": next_plan["target_segments"],
+                        "remaining_segments": next_plan["deferred_segments"],
+                    },
+                )
+                polished = await self._polish_short_segments(
+                    run_id, run_path, project, constraints, polished, findings,
+                    suffix=f"{suffix}-batch-{batch_number + 1}", structural=True,
+                    prepared_revision_plan=remaining_plan,
+                    round_cap_override=max(0, round_cap - round_input_tokens),
+                    batch_number=batch_number + 1,
+                )
+                final_failures = check_revision_constraints(polished, revision_plan)
+                atomic_write(
+                    run_path / "outputs" / f"revision-checks{suffix}.json",
+                    json.dumps({"failures": final_failures}, ensure_ascii=False, indent=2),
                 )
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
         return polished
@@ -1699,7 +2058,8 @@ class WorkflowService:
         prompt = (
             "Create a minimal structural revision plan for this segmented manuscript. Map every "
             "review issue to one separate task and the exact scene_id/segment numbers that must "
-            "change. Target no more than 40% of scenes and never target unrelated scenes. "
+            "change. Order tasks by urgency and never target unrelated scenes. The Runtime will "
+            "apply at most 40% of scenes in the current batch and defer the rest. "
             "Return one JSON object only with: global_facts (string array), checks (array of objects "
             "using kind required_text or forbidden_text and value), and tasks (array with segments as "
             "integer array, instruction as text, and issue_ids as the exact related review issue IDs). "
@@ -1719,6 +2079,7 @@ class WorkflowService:
                 plan = normalize_revision_plan(
                     self._json_object(output), len(story_map),
                     max_target_ratio=0.4, require_checks=require_checks,
+                    defer_excess_targets=True,
                 )
             except asyncio.CancelledError:
                 raise
@@ -1738,6 +2099,7 @@ class WorkflowService:
                 plan = normalize_revision_plan(
                     self._json_object(output), len(story_map),
                     max_target_ratio=0.4, require_checks=require_checks,
+                    defer_excess_targets=True,
                 )
             event_type, severity = "revision_planned", "success"
         except asyncio.CancelledError:
@@ -1751,10 +2113,20 @@ class WorkflowService:
             )
             raise RevisionPlanError(f"Structural revision plan failed: {exc}") from exc
         else:
+            if plan.get("deferred_segments"):
+                self.db.add_run_event(
+                    run_id, "info", "revision_plan_deferred",
+                    "返修范围较大，已分批处理；其余场景将在下一轮复核后继续",
+                    stage="revision_plan", metadata={
+                        "current_segments": plan["target_segments"],
+                        "deferred_segments": plan["deferred_segments"],
+                    },
+                )
             self.db.add_run_event(
                 run_id, severity, event_type, "Structural revision plan created",
                 stage="revision_plan", metadata={
                     "target_segments": plan["target_segments"],
+                    "deferred_segments": plan.get("deferred_segments", []),
                     "task_count": len(plan["tasks"]),
                     "check_count": len(plan["checks"]),
                 },
@@ -1764,6 +2136,13 @@ class WorkflowService:
             json.dumps(plan, ensure_ascii=False, indent=2),
         )
         return plan
+
+    @staticmethod
+    def _previous_quality_best(run_path: Path) -> dict | None:
+        checkpoint = reconcile_legacy_checkpoint(run_path)
+        if checkpoint is None:
+            return None
+        return {**checkpoint, "text": checkpoint_manuscript(run_path, checkpoint)}
 
     @staticmethod
     def _write_quality_report(run_path: Path, report: dict) -> None:
@@ -2263,6 +2642,17 @@ class WorkflowService:
     @classmethod
     def _review(cls, text: str) -> dict:
         return normalize_review(cls._json_object(text))
+
+    @classmethod
+    def _review_for_project(
+        cls, value: str | dict, project: Project, receipt: dict | None = None,
+    ) -> dict:
+        payload = cls._json_object(value) if isinstance(value, str) else value
+        review = score_review(
+            normalize_review(payload), profile_for_project(project),
+        )
+        review["judge_signature"] = judge_signature(receipt)
+        return review
 
     @staticmethod
     def _stage_output_budget(stage: str, source_characters: int | None = None) -> int | None:

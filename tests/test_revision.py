@@ -229,6 +229,23 @@ def test_structural_revision_plan_limits_targets_to_forty_percent() -> None:
         }, segment_count=5, max_target_ratio=0.4, require_checks=True)
 
 
+def test_structural_revision_plan_defers_targets_beyond_current_batch() -> None:
+    plan = normalize_revision_plan({
+        "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+        "tasks": [
+            {"segments": [1], "instruction": "Repair the opening."},
+            {"segments": [4], "instruction": "Repair the ending."},
+            {"segments": [2], "instruction": "Repair the investigation."},
+        ],
+    }, segment_count=4, max_target_ratio=0.4, require_checks=True,
+       defer_excess_targets=True)
+
+    assert plan["target_segments"] == [1, 4]
+    assert plan["deferred_segments"] == [2]
+    assert [task["segments"] for task in plan["tasks"]] == [[1], [4]]
+    assert [task["segments"] for task in plan["deferred_tasks"]] == [[2]]
+
+
 def test_structural_revision_plan_requires_deterministic_checks() -> None:
     with pytest.raises(ValueError, match="deterministic check"):
         normalize_revision_plan({

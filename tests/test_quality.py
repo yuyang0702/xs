@@ -228,6 +228,29 @@ def test_normalize_review_accepts_flat_dimension_fields() -> None:
     assert review["score"] == 69.55
 
 
+def test_normalize_review_preserves_issue_identity_location_and_lifecycle() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+        "hard_fail": False,
+        "decision": "revise",
+        "issues": [{
+            "issue_id": "promise-1",
+            "category": "story",
+            "severity": "high",
+            "status": "partially_resolved",
+            "location": "结尾前",
+            "evidence": "承诺只兑现了一半。",
+            "effect": "读者会觉得结尾欠账。",
+            "action": "补足最终兑现。",
+        }],
+    })
+
+    assert review["issues"][0]["issue_id"] == "promise-1"
+    assert review["issues"][0]["status"] == "partially_resolved"
+    assert review["issues"][0]["location"] == "结尾前"
+    assert review["issues"][0]["effect"] == "读者会觉得结尾欠账。"
+
+
 @pytest.mark.parametrize("score", [-1, 101, "high"])
 def test_normalize_review_rejects_invalid_dimension(score) -> None:
     with pytest.raises(ValueError, match="between 0 and 100"):

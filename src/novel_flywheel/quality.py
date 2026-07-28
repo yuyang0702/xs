@@ -116,12 +116,15 @@ def _issues(values: Any) -> list[dict[str, str]]:
         if not isinstance(value, dict):
             raise ValueError("Each review issue must be text or an object")
         issue = {
+            **value,
             "category": value.get("category", "general"),
             "severity": value.get("severity", "medium"),
             "evidence": value.get("evidence", ""),
             "action": value.get("action", ""),
         }
-        if any(not isinstance(item, str) for item in issue.values()):
+        if any(not isinstance(issue[key], str) for key in (
+            "category", "severity", "evidence", "action",
+        )):
             raise ValueError("Each review issue field must be text")
         category = issue["category"].lower()
         if category in BLOCKING_CATEGORIES or (

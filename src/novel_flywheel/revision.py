@@ -140,7 +140,8 @@ def segment_map(parts: list[str], width: int = 320) -> list[dict[str, Any]]:
 
 def normalize_revision_plan(value: dict[str, Any], segment_count: int,
                             max_target_ratio: float | None = None,
-                            require_checks: bool = False) -> dict[str, Any]:
+                            require_checks: bool = False,
+                            defer_excess_targets: bool = False) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError("Revision plan must be an object")
     facts = [item.strip() for item in value.get("global_facts", [])
@@ -172,21 +173,44 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int,
             tasks.append(task)
     if not tasks:
         raise ValueError("Revision plan has no actionable task")
-    target_segments = sorted({number for task in tasks for number in task["segments"]})
+    ordered_targets = list(dict.fromkeys(
+        number for task in tasks for number in task["segments"]
+    ))
+    target_segments = sorted(ordered_targets)
+    deferred_segments: list[int] = []
+    deferred_tasks: list[dict[str, Any]] = []
     if require_checks and not checks:
         raise ValueError("Structural revision plan requires a deterministic check")
     if max_target_ratio is not None:
         limit = max(1, math.ceil(segment_count * max_target_ratio))
         if len(target_segments) > limit:
-            raise ValueError(
-                f"Structural revision plan targets more than {max_target_ratio:.0%} of scenes"
-            )
-    return {
+            if not defer_excess_targets:
+                raise ValueError(
+                    f"Structural revision plan targets more than {max_target_ratio:.0%} of scenes"
+                )
+            selected = set(ordered_targets[:limit])
+            deferred = set(ordered_targets[limit:])
+            deferred_segments = sorted(deferred)
+            current_tasks = []
+            for task in tasks:
+                current_segments = [number for number in task["segments"] if number in selected]
+                later_segments = [number for number in task["segments"] if number in deferred]
+                if current_segments:
+                    current_tasks.append({**task, "segments": current_segments})
+                if later_segments:
+                    deferred_tasks.append({**task, "segments": later_segments})
+            tasks = current_tasks
+            target_segments = sorted(selected)
+    plan = {
         "global_facts": facts,
         "checks": checks,
         "tasks": tasks,
         "target_segments": target_segments,
     }
+    if defer_excess_targets:
+        plan["deferred_segments"] = deferred_segments
+        plan["deferred_tasks"] = deferred_tasks
+    return plan
 
 
 def align_revision_plan_targets(plan: dict[str, Any],

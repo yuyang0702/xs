@@ -410,3 +410,43 @@ def test_learning_rules_are_visible_removable_and_recoverable(tmp_path) -> None:
     assert "removeAdoption" in script
     assert ".effective-rule-layers" in css
     assert ".blueprint-rule-row" in css
+
+
+def test_candidate_quality_is_one_plain_chinese_progressive_workspace(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for control in (
+        "candidate-quality", "candidate-operation-status", "publish-candidate",
+    ):
+        assert f'id="{control}"' in html
+    for label in (
+        "稿件质量与发布", "最需要处理的问题", "查看本地扫描",
+        "查看详细评分", "评分参考组", "查看完整正文与保护片段",
+        "下一步", "终审模型",
+    ):
+        assert label in html + script
+    for phrase in (
+        "系统只会推荐，确认后才用于人工评分校准",
+        "当前可推荐资料还缺", "不影响终审",
+        "一个字也不改", "尽量不改文字", "下次修改可变动一次",
+        "为什么现在不能设为正式稿",
+        "正在设为正式稿", "正式稿已更新", "设为正式稿失败",
+        "当前还不能生成投稿包",
+        "页面已更新",
+    ):
+        assert phrase in script
+    assert "renderCandidateQualityWorkspace" in script
+    assert "loadCandidateQualityControls" in script
+    assert "protectSelectedCandidatePassage" in script
+    assert "/quality-references/recommendations" in script
+    assert "/passage-protections" in script
+    assert "publish.disabled" in script
+    assert "publicationPreview.ready" in script
+    assert ".candidate-quality-workspace" in css
+    assert ".quality-score-strip" in css
+    assert ".quality-manuscript-preview" in css
+    assert ".quality-reference-list" in css
+    assert "@media (max-width:800px)" in css

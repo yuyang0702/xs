@@ -252,6 +252,19 @@ CREATE TABLE IF NOT EXISTS reference_analyses(
 );
 CREATE INDEX IF NOT EXISTS idx_reference_analyses_version
   ON reference_analyses(version_id, analyzer, analyzer_version);
+CREATE TABLE IF NOT EXISTS quality_reference_groups(
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  profile_id TEXT NOT NULL,
+  version INTEGER NOT NULL,
+  action TEXT NOT NULL,
+  items_json TEXT NOT NULL DEFAULT '[]',
+  decisions_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  UNIQUE(project_id, profile_id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_quality_reference_groups_scope
+  ON quality_reference_groups(project_id, profile_id, version DESC);
 CREATE TABLE IF NOT EXISTS learning_nodes(
   id TEXT PRIMARY KEY, node_type TEXT NOT NULL, source_id TEXT,
   project_id TEXT, status TEXT NOT NULL, data_json TEXT NOT NULL,
@@ -1011,6 +1024,54 @@ class Database:
             return [dict(row) for row in connection.execute(
                 "SELECT * FROM reference_sources ORDER BY updated_at DESC, rowid DESC",
             )]
+
+    def save_quality_reference_group(
+        self, group_id: str, project_id: str, profile_id: str, action: str,
+        items: list[dict[str, Any]], decisions: dict[str, str],
+    ) -> dict[str, Any]:
+        with self.connect() as connection:
+            version = int(connection.execute(
+                "SELECT COALESCE(MAX(version), 0) + 1 FROM quality_reference_groups "
+                "WHERE project_id=? AND profile_id=?",
+                (project_id, profile_id),
+            ).fetchone()[0])
+            connection.execute(
+                "INSERT INTO quality_reference_groups VALUES "
+                "(?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                (group_id, project_id, profile_id, version, action,
+                 json.dumps(items, ensure_ascii=False),
+                 json.dumps(decisions, ensure_ascii=False)),
+            )
+        return self.latest_quality_reference_group(project_id, profile_id) or {}
+
+    def latest_quality_reference_group(
+        self, project_id: str, profile_id: str,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM quality_reference_groups WHERE project_id=? "
+                "AND profile_id=? ORDER BY version DESC LIMIT 1",
+                (project_id, profile_id),
+            ).fetchone()
+        return self._public_quality_reference_group(row) if row else None
+
+    def list_quality_reference_group_history(
+        self, project_id: str, profile_id: str,
+    ) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM quality_reference_groups WHERE project_id=? "
+                "AND profile_id=? ORDER BY version DESC",
+                (project_id, profile_id),
+            ).fetchall()
+        return [self._public_quality_reference_group(row) for row in rows]
+
+    @staticmethod
+    def _public_quality_reference_group(row) -> dict[str, Any]:
+        item = dict(row)
+        item["items"] = json.loads(item.pop("items_json"))
+        item["decisions"] = json.loads(item.pop("decisions_json"))
+        return item
 
     def delete_reference_source(self, source_id: str) -> bool:
         with self.connect() as connection:
