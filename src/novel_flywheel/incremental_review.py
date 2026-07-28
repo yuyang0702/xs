@@ -2,9 +2,30 @@ from __future__ import annotations
 
 import hashlib
 import re
+from collections.abc import Sequence
 from difflib import SequenceMatcher
 
 from novel_flywheel.quality import issue_ledger
+from novel_flywheel.revision import apply_patch_group, repair_mechanical_text
+
+
+_MAX_LONG_CHARACTER_DIFF = 8192
+_ANALYSIS_TRIGGER_FIELDS = {
+    "principal_goal": "principal_goal_changed",
+    "knowledge_state": "knowledge_state_changed",
+    "key_evidence": "key_evidence_changed",
+    "protected_passages": "protected_passage_changed",
+    "climax": "climax_changed",
+    "questions": "question_changed",
+    "promises": "promise_changed",
+    "setups": "setup_changed",
+    "payoffs": "payoff_changed",
+    "time_candidates": "timeline_changed",
+    "locked_facts": "locked_fact_changed",
+    "world_rules": "world_rule_changed",
+    "relationships": "relationship_changed",
+    "seven_step_structure": "seven_step_structure_changed",
+}
 
 
 def build_review_baseline(
@@ -25,7 +46,7 @@ def build_review_baseline(
 
 def diff_manuscripts(
     before: str, after: str, before_analysis: dict, after_analysis: dict,
-    mode: str = "short",
+    mode: str = "short", patch_groups: Sequence[dict] = (),
 ) -> dict:
     if mode not in {"short", "long"}:
         raise ValueError("diff mode must be 'short' or 'long'")
@@ -36,12 +57,27 @@ def diff_manuscripts(
     else:
         ranges = _exact_diff_ranges(before, after)
         structural = {}
+    for key, value in _scene_structure_flags(before_analysis, after_analysis).items():
+        structural[key] = structural.get(key, False) or value
     changed = sum(max(item["old_end"] - item["old_start"],
                       item["new_end"] - item["new_start"]) for item in ranges)
     before_events = [item.get("signature", item.get("predicate")) for item in before_analysis.get("events", [])]
     after_events = [item.get("signature", item.get("predicate")) for item in after_analysis.get("events", [])]
     before_relations = {item.get("id") for item in before_analysis.get("narrative_ledger", {}).get("relations", []) if item.get("id")}
     after_relations = {item.get("id") for item in after_analysis.get("narrative_ledger", {}).get("relations", []) if item.get("id")}
+    changed_events = sorted(set(before_events) ^ set(after_events))
+    changed_entities = sorted(
+        {item.get("text") for item in before_analysis.get("entities", [])}
+        ^ {item.get("text") for item in after_analysis.get("entities", [])}
+    )
+    changed_relations = sorted(before_relations ^ after_relations)
+    analysis_flags = {
+        reason: True
+        for field, reason in _ANALYSIS_TRIGGER_FIELDS.items()
+        if _story_value(before_analysis.get(field))
+        != _story_value(after_analysis.get(field))
+    }
+    patch_flags = _patch_group_flags(patch_groups)
     return {
         "ranges": ranges,
         "changed_ratio": changed / max(1, len(before)),
@@ -50,17 +86,19 @@ def diff_manuscripts(
             for item in ranges for window in after_analysis.get("windows", [])
             if _overlaps(item["new_start"], item["new_end"], window["start"], window["end"])
         }),
-        "changed_entities": sorted(
-            {item.get("text") for item in before_analysis.get("entities", [])}
-            ^ {item.get("text") for item in after_analysis.get("entities", [])}
-        ),
-        "changed_events": sorted(set(before_events) ^ set(after_events)),
-        "changed_narrative_relations": sorted(before_relations ^ after_relations),
+        "changed_entities": changed_entities,
+        "changed_events": changed_events,
+        "changed_narrative_relations": changed_relations,
+        "principal_character_changed": bool(changed_entities),
+        "key_event_changed": bool(changed_events),
+        "causal_relations_changed": bool(changed_relations),
         "event_order_changed": (
             set(before_events) == set(after_events) and before_events != after_events
         ),
         "opening_promise_changed": before[:500] != after[:500],
         "ending_changed": before[-500:] != after[-500:],
+        **analysis_flags,
+        **patch_flags,
         **structural,
     }
 
@@ -130,12 +168,15 @@ def select_review_scope(baseline: dict, current_analysis: dict, changes: dict) -
 
 
 def requires_full_review(
-    scope: dict, changes: dict, current_analysis: dict, patch_groups=(),
+    scope: dict, changes: dict, current_analysis: dict,
+    patch_groups: Sequence[dict] = (), *,
+    source_manuscript: str | None = None,
+    current_manuscript: str | None = None,
 ) -> tuple[bool, list[str]]:
     reasons = []
-    if changes.get("changed_ratio", 0) > 0.20:
+    if changes.get("changed_ratio", 0) >= 0.20:
         reasons.append("changed_ratio")
-    if scope.get("selected_ratio", 0) > 0.40:
+    if scope.get("selected_ratio", 0) >= 0.40:
         reasons.append("selected_ratio")
     for key in (
         "scene_inserted", "scene_deleted", "scene_moved", "scene_merged",
@@ -148,6 +189,7 @@ def requires_full_review(
         "setup_changed", "promise_changed", "question_changed", "payoff_changed",
         "locked_fact_changed", "world_rule_changed", "protected_passage_changed",
         "reviewer_requested_full", "partially_applied_groups",
+        "semantic_patch_changed",
     ):
         if changes.get(key):
             reasons.append(key)
@@ -159,12 +201,18 @@ def requires_full_review(
         )
     ):
         reasons.append("partially_applied_groups")
-    only_mechanical = bool(patch_groups) and all(
-        isinstance(group, dict)
-        and (group.get("mechanical") is True or group.get("kind") == "mechanical")
+    claims_mechanical = bool(patch_groups) and all(
+        isinstance(group, dict) and (
+            group.get("mechanical") is True or group.get("kind") == "mechanical"
+        )
         for group in patch_groups
     )
-    if not current_analysis.get("nlp", {}).get("available") and not only_mechanical:
+    verified_mechanical = claims_mechanical and _verified_mechanical_groups(
+        patch_groups, source_manuscript, current_manuscript, current_analysis,
+    )
+    if claims_mechanical and not verified_mechanical:
+        reasons.append("unverified_mechanical_changes")
+    if not current_analysis.get("nlp", {}).get("available") and not verified_mechanical:
         reasons.append("ltp_unavailable")
     if scope.get("ambiguous"):
         reasons.append("ambiguous_mapping")
@@ -176,41 +224,21 @@ def requires_full_review(
 
 def apply_incremental_gate(
     review: dict, baseline: dict, scope: dict, current_analysis: dict,
-    current_manuscript: str | list[dict] | None = None,
-    reconciliations: list[dict] | None = None,
+    current_manuscript: str, reconciliations: list[dict],
 ) -> tuple[dict, list[str]]:
-    if isinstance(current_manuscript, list) and reconciliations is None:
-        reconciliations = current_manuscript
-        current_manuscript = None
-    reconciliations = reconciliations or []
-    reasons = []
+    reasons = incremental_precheck_reasons(
+        baseline, current_analysis, current_manuscript,
+        baseline.get("manuscript_hash"), scope=scope,
+        changes_present=baseline.get("manuscript_hash") != _hash(current_manuscript),
+        validate_revision_source=False,
+    )
     digest = current_analysis.get("text_hash", "")
-    if current_manuscript is not None:
-        expected_hash = _hash(current_manuscript)
-        if digest != expected_hash:
-            reasons.append("current_analysis_hash_mismatch")
-    elif len(digest) != 64 or any(
+    if digest != _hash(current_manuscript) and "current_analysis_hash_mismatch" not in reasons:
+        reasons.append("current_analysis_hash_mismatch")
+    if len(digest) != 64 or any(
         character not in "0123456789abcdef" for character in digest
     ):
         reasons.append("stale_analysis")
-    selected = set(scope.get("selected_windows", []))
-    changes_present = bool(selected)
-    if current_manuscript is not None and baseline.get("manuscript_hash"):
-        changes_present = changes_present or baseline["manuscript_hash"] != _hash(
-            current_manuscript
-        )
-    if changes_present and not selected:
-        reasons.append("empty_incremental_scope")
-    explained = set()
-    for key in scope.get("reasons", {}):
-        try:
-            explained.add(int(key))
-        except (TypeError, ValueError):
-            continue
-    if selected - explained:
-        reasons.append("unexplained_review_window")
-    if baseline.get("coverage") != 1.0 or scope.get("coverage") != 1.0:
-        reasons.append("incomplete_review_coverage")
     expected = {item.get("issue_id") for item in baseline.get("issue_ledger", [])}
     actual = {item.get("issue_id") for item in reconciliations}
     if expected - actual:
@@ -237,6 +265,49 @@ def apply_incremental_gate(
     return result, reasons
 
 
+def incremental_precheck_reasons(
+    baseline: dict, current_analysis: dict, current_manuscript: str,
+    revision_source_hash: str | None, *, scope: dict | None = None,
+    changes_present: bool = False, validate_revision_source: bool = True,
+) -> list[str]:
+    if validate_revision_source and not revision_source_hash:
+        return ["missing_revision_source_hash"]
+    baseline_manuscript = baseline.get("manuscript")
+    stored_hash = baseline.get("manuscript_hash")
+    if not isinstance(baseline_manuscript, str):
+        if validate_revision_source:
+            return ["baseline_manuscript_hash_mismatch"]
+        baseline_hash = stored_hash
+    else:
+        baseline_hash = _hash(baseline_manuscript)
+    if validate_revision_source and stored_hash != revision_source_hash:
+        return ["baseline_source_mismatch"]
+    reasons = []
+    if isinstance(baseline_manuscript, str) and stored_hash != baseline_hash:
+        reasons.append("baseline_manuscript_hash_mismatch")
+    if (isinstance(baseline_manuscript, str)
+            and baseline.get("analysis", {}).get("text_hash") != baseline_hash):
+        reasons.append("baseline_analysis_hash_mismatch")
+    if current_analysis.get("text_hash") != _hash(current_manuscript):
+        reasons.append("current_analysis_hash_mismatch")
+    if scope is not None:
+        selected = set(scope.get("selected_windows", []))
+        if changes_present and not selected:
+            reasons.append("empty_incremental_scope")
+        explained = set()
+        for key, values in scope.get("reasons", {}).items():
+            try:
+                if values:
+                    explained.add(int(key))
+            except (TypeError, ValueError):
+                continue
+        if selected - explained:
+            reasons.append("unexplained_review_window")
+        if baseline.get("coverage") != 1.0 or scope.get("coverage") != 1.0:
+            reasons.append("incomplete_review_coverage")
+    return reasons
+
+
 def _mapping_ambiguity(old_windows: list[dict], new_windows: list[dict]) -> list[int]:
     old_hashes = {item.get("hash") for item in old_windows}
     return [
@@ -255,6 +326,86 @@ def _hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _story_value(value):
+    if isinstance(value, list):
+        return tuple(_story_value(item) for item in value)
+    if isinstance(value, dict):
+        return tuple(sorted(
+            (key, _story_value(item)) for key, item in value.items()
+            if key not in {"start", "end", "window", "paragraph", "unit_id"}
+        ))
+    return value
+
+
+def _patch_group_flags(patch_groups: Sequence[dict]) -> dict:
+    flags = {}
+    known_flags = {
+        *_ANALYSIS_TRIGGER_FIELDS.values(),
+        "scene_inserted", "scene_deleted", "scene_moved", "scene_merged",
+        "event_order_changed", "key_event_changed", "causal_relations_changed",
+        "key_choice_changed", "life_death_changed", "identity_changed",
+    }
+    for group in patch_groups:
+        if not isinstance(group, dict) or group.get("accepted") is not True:
+            continue
+        if group.get("requires_full_review") is True:
+            flags["semantic_patch_changed"] = True
+        for key in group.get("impact_flags", []):
+            if key in known_flags:
+                flags[key] = True
+        for key in known_flags:
+            if group.get(key) is True:
+                flags[key] = True
+    return flags
+
+
+def _scene_structure_flags(before_analysis: dict, after_analysis: dict) -> dict:
+    before_ids = [
+        item.get("stable_id")
+        for item in before_analysis.get("units", {}).get("scenes", [])
+    ]
+    after_ids = [
+        item.get("stable_id")
+        for item in after_analysis.get("units", {}).get("scenes", [])
+    ]
+    flags = {}
+    if len(after_ids) > len(before_ids):
+        flags["scene_inserted"] = True
+    if len(after_ids) < len(before_ids):
+        flags["scene_deleted"] = True
+    if (
+        len(before_ids) == len(after_ids)
+        and sorted(before_ids) == sorted(after_ids)
+        and before_ids != after_ids
+    ):
+        flags["scene_moved"] = True
+    return flags
+
+
+def _verified_mechanical_groups(
+    patch_groups: Sequence[dict], source_manuscript: str | None,
+    current_manuscript: str | None, current_analysis: dict,
+) -> bool:
+    if (
+        not isinstance(source_manuscript, str)
+        or not isinstance(current_manuscript, str)
+        or current_analysis.get("coverage") != 1.0
+    ):
+        return False
+    replayed = source_manuscript
+    for group in patch_groups:
+        if not isinstance(group, dict) or group.get("accepted") is not True:
+            return False
+        result = apply_patch_group(replayed, group, _hash(replayed))
+        if not result.get("accepted"):
+            return False
+        replayed = result["text"]
+    return (
+        replayed == current_manuscript
+        and repair_mechanical_text(source_manuscript).get("text") == current_manuscript
+    )
+
+
 def _exact_diff_ranges(
     before: str, after: str, old_offset: int = 0, new_offset: int = 0,
 ) -> list[dict]:
@@ -271,6 +422,43 @@ def _exact_diff_ranges(
         ).get_opcodes()
         if tag != "equal"
     ]
+
+
+def _bounded_diff_ranges(
+    before: str, after: str, old_offset: int = 0, new_offset: int = 0,
+) -> list[dict]:
+    if max(len(before), len(after)) <= _MAX_LONG_CHARACTER_DIFF:
+        return _exact_diff_ranges(before, after, old_offset, new_offset)
+    prefix = 0
+    while prefix < min(len(before), len(after)) and before[prefix] == after[prefix]:
+        prefix += 1
+    suffix = 0
+    while (
+        suffix < len(before) - prefix
+        and suffix < len(after) - prefix
+        and before[len(before) - suffix - 1] == after[len(after) - suffix - 1]
+    ):
+        suffix += 1
+    old_end = len(before) - suffix
+    new_end = len(after) - suffix
+    old_middle = before[prefix:old_end]
+    new_middle = after[prefix:new_end]
+    if max(len(old_middle), len(new_middle)) <= _MAX_LONG_CHARACTER_DIFF:
+        return _exact_diff_ranges(
+            old_middle, new_middle, old_offset + prefix, new_offset + prefix,
+        )
+    kind = "replace"
+    if not old_middle:
+        kind = "insert"
+    elif not new_middle:
+        kind = "delete"
+    return [{
+        "kind": kind,
+        "old_start": old_offset + prefix,
+        "old_end": old_offset + old_end,
+        "new_start": new_offset + prefix,
+        "new_end": new_offset + new_end,
+    }]
 
 
 _CHAPTER_MARKER = re.compile(
@@ -391,7 +579,7 @@ def _diff_changed_scenes(
         paired = min(len(old_changed), len(new_changed))
         for index in range(paired):
             old_unit, new_unit = old_changed[index], new_changed[index]
-            ranges.extend(_exact_diff_ranges(
+            ranges.extend(_bounded_diff_ranges(
                 before[old_unit["start"]:old_unit["end"]],
                 after[new_unit["start"]:new_unit["end"]],
                 old_unit["start"], new_unit["start"],

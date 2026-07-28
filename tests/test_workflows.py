@@ -1,7 +1,9 @@
 import asyncio
 import hashlib
 import json
+from collections.abc import Sequence
 from types import SimpleNamespace
+from typing import get_type_hints
 
 import pytest
 
@@ -22,6 +24,13 @@ REQUIRED_SKILLS = {
     "chapter-writing", "novel-writing", "dialogue", "revision-continuity",
     "humanizer-zh", "story-maintenance",
 }
+
+
+def test_incremental_workflow_public_types_are_explicit() -> None:
+    hints = get_type_hints(WorkflowService._incremental_manuscript_review)
+
+    assert hints["revision_source_hash"] == str | None
+    assert hints["patch_groups"] == Sequence[dict]
 
 
 def test_workflow_analysis_writes_hash_matching_artifact_and_reuses_it(tmp_path) -> None:
@@ -96,10 +105,268 @@ async def test_incremental_review_uses_fewer_than_all_windows_for_middle_prose_c
     _, audit = await service._incremental_manuscript_review(
         "run", project.path / "runs" / "run", project, "constraints",
         after, current, baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=(),
     )
     assert audit["review_mode"] == "incremental"
     assert audit["reviewed_windows"] < audit["window_count"]
     assert audit["estimated_saved_input_characters"] > 0
+
+
+def _ltp_analysis(text: str) -> dict:
+    return __import__(
+        "novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"],
+    ).analyze_manuscript(
+        text, nlp_analyze=lambda value: {
+            "backend": "ltp", "backend_version": "v",
+            "available": True, "result": {},
+        },
+    )
+
+
+async def _forbid_incremental_call(*args, **kwargs):
+    raise AssertionError("incremental model call happened before local validation")
+
+
+@pytest.mark.asyncio
+async def test_incremental_review_missing_revision_source_falls_back_before_calls(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Missing source hash", mode="short", genre="suspense",
+        premise="Strict review fails closed.", target_words=8000,
+    ))
+    before = "甲" * 1000
+    current_text = "甲" * 500 + "乙" + "甲" * 499
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(before, _ltp_analysis(before), [], {"issues": []})
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+    monkeypatch.setattr(service, "_final_review_json", _forbid_incremental_call)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, _ltp_analysis(current_text), baseline, {"issues": []},
+        patch_groups=(),
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert audit["fallback_reasons"] == ["missing_revision_source_hash"]
+
+
+@pytest.mark.asyncio
+async def test_current_hash_precheck_runs_before_incremental_calls(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Precheck order", mode="short", genre="suspense",
+        premise="Invalid evidence never reaches a model.", target_words=8000,
+    ))
+    before = "甲" * 1000
+    current_text = "甲" * 500 + "乙" + "甲" * 499
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(before, _ltp_analysis(before), [], {"issues": []})
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+    monkeypatch.setattr(service, "_final_review_json", _forbid_incremental_call)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, _ltp_analysis(before), baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=(),
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert audit["fallback_reasons"] == ["current_analysis_hash_mismatch"]
+
+
+@pytest.mark.asyncio
+async def test_empty_scope_falls_back_before_incremental_calls(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Empty scope", mode="short", genre="suspense",
+        premise="A changed manuscript needs evidence.", target_words=8000,
+    ))
+    before = "甲" * 1000
+    current_text = "甲" * 500 + "乙" + "甲" * 499
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(before, _ltp_analysis(before), [], {"issues": []})
+    current = {
+        "text_hash": hashlib.sha256(current_text.encode("utf-8")).hexdigest(),
+        "coverage": 1.0, "windows": [], "entities": [], "events": [],
+        "units": {"scenes": [], "paragraphs": []},
+        "narrative_ledger": {"relations": []}, "impact_index": {"relations": {}},
+        "nlp": {"available": True}, "prose": {"blocking_count": 0},
+    }
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+    monkeypatch.setattr(service, "_final_review_json", _forbid_incremental_call)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, current, baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=(),
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert "empty_incremental_scope" in audit["fallback_reasons"]
+
+
+@pytest.mark.asyncio
+async def test_analysis_story_flag_forces_fallback_before_incremental_calls(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Promise change", mode="short", genre="suspense",
+        premise="Promise changes require complete review.", target_words=8000,
+    ))
+    before = "开端。" + "甲" * 1000
+    current_text = before.replace("甲", "乙", 1)
+    old = _ltp_analysis(before)
+    current = _ltp_analysis(current_text)
+    old["promises"] = [{"stable_id": "promise-old"}]
+    current["promises"] = [{"stable_id": "promise-new"}]
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(before, old, [], {"issues": []})
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+    monkeypatch.setattr(service, "_final_review_json", _forbid_incremental_call)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, current, baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=(),
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert "promise_changed" in audit["fallback_reasons"]
+
+
+@pytest.mark.asyncio
+async def test_claimed_mechanical_group_with_extra_change_falls_back_before_calls(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Mechanical coverage", mode="short", genre="suspense",
+        premise="Metadata cannot hide prose changes.", target_words=8000,
+    ))
+    before = "父 亲留下银锁。" + "甲" * 1000
+    current_text = "父亲留下银锁。他烧掉证据。" + "甲" * 1000
+    old = __import__(
+        "novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"],
+    ).analyze_manuscript(before, nlp_analyze=None)
+    current = __import__(
+        "novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"],
+    ).analyze_manuscript(current_text, nlp_analyze=None)
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(before, old, [], {"issues": []})
+    group = {"kind": "mechanical", "accepted": True, "patches": [{
+        "operation": "replace", "old_text": "父 亲", "new_text": "父亲",
+    }]}
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def full_review(*args, **kwargs):
+        return {"score": 80}, {"review_mode": "full", "windows": []}
+
+    monkeypatch.setattr(service, "_full_manuscript_review", full_review)
+    monkeypatch.setattr(service, "_final_review_json", _forbid_incremental_call)
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, current, baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=[group],
+    )
+
+    assert audit["review_mode"] == "full_fallback"
+    assert "unverified_mechanical_changes" in audit["fallback_reasons"]
+
+
+@pytest.mark.asyncio
+async def test_verified_mechanical_patch_group_uses_incremental_review_without_ltp(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Verified mechanical", mode="short", genre="suspense",
+        premise="Only a covered spacing repair changed.", target_words=50_000,
+    ))
+    parts = [f"场景{index}。" + chr(0x4e00 + index) * 4800 for index in range(10)]
+    parts[4] = "场景4。父 亲留下银锁。" + chr(0x4e00 + 4) * 4788
+    before = "\n\n".join(parts)
+    current_text = before.replace("父 亲", "父亲", 1)
+    analyze = __import__(
+        "novel_flywheel.manuscript_analysis", fromlist=["analyze_manuscript"],
+    ).analyze_manuscript
+    old = analyze(before, nlp_analyze=None)
+    current = analyze(current_text, nlp_analyze=None)
+    baseline = __import__(
+        "novel_flywheel.incremental_review", fromlist=["build_review_baseline"],
+    ).build_review_baseline(before, old, [], {"issues": [], "score": 80})
+    group = {"kind": "mechanical", "accepted": True, "patches": [{
+        "operation": "replace", "old_text": "父 亲", "new_text": "父亲",
+    }]}
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+
+    async def fake_stage(*args, **kwargs):
+        if "ADJUDICATION" in args[5]:
+            return json.dumps({
+                "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+                "hard_fail": False, "decision": "pass", "issues": [],
+                "reconciliations": [],
+            })
+        return json.dumps({
+            "summary": "局部证据", "events": [], "character_states": {},
+            "timeline": [], "promises": [], "issues": [],
+        })
+
+    service._stage = fake_stage
+
+    _review, audit = await service._incremental_manuscript_review(
+        "run", project.path / "runs" / "run", project, "constraints",
+        current_text, current, baseline, {"issues": []},
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=[group],
+    )
+
+    assert audit["review_mode"] == "incremental"
+    assert audit["reviewed_windows"] < audit["window_count"]
 
 
 @pytest.mark.asyncio
@@ -137,7 +404,7 @@ async def test_incremental_review_falls_back_for_stale_baseline_analysis_hash(
     _review, audit = await service._incremental_manuscript_review(
         "run", project.path / "runs" / "run", project, "constraints",
         current_text, current, baseline, {"issues": []},
-        revision_source_hash=baseline["manuscript_hash"],
+        revision_source_hash=baseline["manuscript_hash"], patch_groups=(),
     )
 
     assert audit["review_mode"] == "full_fallback"
@@ -2959,7 +3226,7 @@ async def test_incremental_review_falls_back_when_baseline_is_not_revision_sourc
     _review, audit = await service._incremental_manuscript_review(
         "run", project.path / "runs" / "run", project, "constraints",
         "当前稿", {"windows": []}, baseline, {"issues": []},
-        revision_source_hash=expected_hash,
+        revision_source_hash=expected_hash, patch_groups=(),
     )
 
     assert audit["review_mode"] == "full_fallback"

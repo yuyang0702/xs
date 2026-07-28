@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 from contextlib import contextmanager, nullcontext
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Iterator
 
@@ -21,6 +22,7 @@ from novel_flywheel.incremental_review import (
     apply_incremental_gate,
     build_review_baseline,
     diff_manuscripts,
+    incremental_precheck_reasons,
     requires_full_review,
     select_review_scope,
 )
@@ -803,6 +805,7 @@ class WorkflowService:
         )
         baseline: dict | None = None
         revision_source_hash: str | None = None
+        applied_patch_groups: tuple[dict, ...] = ()
         active_profile = profile_for_project(project)
 
         reasons: list[str] = []
@@ -836,6 +839,7 @@ class WorkflowService:
                         current_analysis, baseline, review,
                         suffix=f"-{attempt + 1}",
                         revision_source_hash=revision_source_hash,
+                        patch_groups=applied_patch_groups,
                     )
                     report["final_review_evidence"] = evidence_audit
                 elif project.mode == "short" and len(final_input) > 6000:
@@ -1038,6 +1042,7 @@ class WorkflowService:
                         "\n\n".join(self._split_segments(polished)),
                         run_path, project, f"polish-{attempt + 2}",
                     )
+                    applied_patch_groups = ()
                 except (RevisionPlanError, PolishTokenBudgetError) as exc:
                     self._halt_quality_revision(
                         run_id, run_path, report, best_polished, exc,
@@ -1306,22 +1311,12 @@ class WorkflowService:
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, analysis: dict, baseline: dict, initial_review: dict,
         suffix: str = "", revision_source_hash: str | None = None,
-        patch_groups=(),
+        patch_groups: Sequence[dict] = (),
     ) -> tuple[dict, dict]:
         constraints = self._constraints_with_platform_rules(project, constraints)
-        baseline_manuscript = baseline.get("manuscript", "")
-        baseline_hash = hashlib.sha256(
-            baseline_manuscript.encode("utf-8")
-        ).hexdigest()
-        baseline_reasons = []
-        if (revision_source_hash is not None
-                and baseline.get("manuscript_hash") != revision_source_hash):
-            baseline_reasons.append("baseline_source_mismatch")
-        else:
-            if baseline.get("manuscript_hash") != baseline_hash:
-                baseline_reasons.append("baseline_manuscript_hash_mismatch")
-            if baseline.get("analysis", {}).get("text_hash") != baseline_hash:
-                baseline_reasons.append("baseline_analysis_hash_mismatch")
+        baseline_reasons = incremental_precheck_reasons(
+            baseline, analysis, manuscript, revision_source_hash,
+        )
         if baseline_reasons:
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
@@ -1334,10 +1329,26 @@ class WorkflowService:
         changes = diff_manuscripts(
             baseline["manuscript"], manuscript, baseline["analysis"], analysis,
             mode="long" if project.mode == "long" else "short",
+            patch_groups=patch_groups,
         )
         scope = select_review_scope(baseline, analysis, changes)
+        scope_reasons = incremental_precheck_reasons(
+            baseline, analysis, manuscript, revision_source_hash,
+            scope=scope, changes_present=bool(changes.get("ranges")),
+        )
+        if scope_reasons:
+            review, audit = await self._full_manuscript_review(
+                run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+            )
+            audit.update({
+                "review_mode": "full_fallback",
+                "fallback_reasons": scope_reasons,
+                "incremental_scope": scope,
+            })
+            return review, audit
         full, fallback_reasons = requires_full_review(
             scope, changes, analysis, patch_groups=patch_groups,
+            source_manuscript=baseline["manuscript"], current_manuscript=manuscript,
         )
         if full:
             review, audit = await self._full_manuscript_review(
