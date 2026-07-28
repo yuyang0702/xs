@@ -1603,7 +1603,7 @@ async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path
             suffix="-2", structural=True,
         )
 
-    assert gateway.roles == ["planning", "review"]
+    assert gateway.roles == ["planning", "planning", "review"]
     event = next(item for item in db.list_run_events("blocked")
                  if item["event_type"] == "revision_plan_blocked")
     assert event["severity"] == "error"
@@ -1752,6 +1752,60 @@ async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> No
     assert gateway.roles == ["planning", "review"]
     assert any(event["event_type"] == "model_fallback"
                for event in db.list_run_events("plan-fallback"))
+
+
+@pytest.mark.asyncio
+async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Plan repair", mode="short", genre="romance",
+        premise="A relationship collapses.", target_words=12000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    malformed = '{"checks": [], "tasks": ['
+    plan = json.dumps({
+        "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
+        "tasks": [{"segments": [2], "instruction": "Repair the canon conflict."}],
+    })
+
+    class RepairGateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append({
+                "role": role, "user": user, "max_output_tokens": max_output_tokens,
+            })
+            return ModelResult(
+                malformed if len(self.calls) == 1 else plan,
+                {"model_name": "planner"},
+            )
+
+    gateway = RepairGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("plan-repair", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "plan-repair"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    result = await service._plan_structural_revision(
+        "plan-repair", run_path, project, "constraints",
+        json.dumps({"issues": [{
+            "category": "canon", "severity": "critical", "action": "Repair canon.",
+        }]}),
+        segment_map(["UNIQUE MANUSCRIPT MATERIAL " * 20] * 5), "-2",
+    )
+
+    assert result["target_segments"] == [2]
+    assert [call["role"] for call in gateway.calls] == ["planning", "planning"]
+    repair_prompt = gateway.calls[1]["user"]
+    assert malformed in repair_prompt
+    assert "repair_revision_plan_v1" in repair_prompt
+    assert "COMPACT SEGMENT MAP" not in repair_prompt
+    assert "UNIQUE MANUSCRIPT MATERIAL" not in repair_prompt
 
 
 @pytest.mark.asyncio
@@ -2143,7 +2197,7 @@ async def test_nonrecoverable_polish_failure_does_not_call_draft(tmp_path) -> No
     assert gateway.roles == ["polish"]
 
 
-def test_claude_primary_polish_uses_full_budget_while_other_routes_stay_dynamic(tmp_path) -> None:
+def test_output_budget_uses_each_selected_route_model_ceiling(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_provider(
@@ -2153,32 +2207,91 @@ def test_claude_primary_polish_uses_full_budget_while_other_routes_stay_dynamic(
     )
     db.save_model(
         model_id="claude", provider_id="provider", display_name="Claude",
-        model_name="claude-sonnet-5",
+        model_name="custom-primary", max_output_tokens=6144,
     )
     db.save_model(
         model_id="backup", provider_id="provider", display_name="Backup",
-        model_name="ernie-5.0",
+        model_name="custom-fallback", max_output_tokens=3072,
     )
     db.save_role_binding("polish", "provider", "claude", "provider", "backup")
     service = WorkflowService.__new__(WorkflowService)
     service.db = db
 
-    assert service._output_budget_for_call("polish", 2000, "polish", False) == 8192
-    assert service._output_budget_for_call("polish", 2000, "polish", True) < 8192
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 6144
+    assert service._output_budget_for_call("polish", 2000, "polish", True) == 3072
 
+
+def test_output_budget_keeps_stage_default_without_configured_model_ceiling(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
     db.save_model(
-        model_id="claude-backup", provider_id="provider", display_name="Claude Backup",
+        model_id="legacy", provider_id="provider", display_name="Legacy",
         model_name="claude-sonnet-5",
     )
-    db.save_role_binding("polish", "provider", "claude", "provider", "claude-backup")
-    assert service._output_budget_for_call("polish", 2000, "polish", True) == 8192
+    db.save_role_binding("polish", "provider", "legacy", None, None)
+    service = WorkflowService.__new__(WorkflowService)
+    service.db = db
 
-    db.save_role_binding("polish", "provider", "backup", None, None)
-    assert service._output_budget_for_call("polish", 2000, "polish", False) < 8192
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 3212
 
 
 @pytest.mark.asyncio
-async def test_polish_stage_adapts_large_rule_context_without_lowering_output_budget(tmp_path) -> None:
+async def test_targeted_retry_at_provider_ceiling_does_not_repeat_same_request(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="polisher", provider_id="provider", display_name="Polisher",
+        model_name="custom-polisher", max_output_tokens=8192,
+    )
+    db.save_role_binding("polish", "provider", "polisher", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Ceiling split", mode="short", genre="suspense",
+        premise="A witness revisits the scene.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.budgets = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.budgets.append(max_output_tokens)
+            return ModelResult("", {
+                "model_name": "custom-polisher", "output_tokens": max_output_tokens,
+                "finish_reason": "max_tokens",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("ceiling-split", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "ceiling-split"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    with pytest.raises(RuntimeError, match="polish model returned empty output"):
+        await service._stage(
+            "ceiling-split", run_path, project, "polish", "constraints",
+            "MANUSCRIPT SEGMENT:\nSource prose.", allow_tools=False,
+            targeted_retry=True,
+        )
+
+    assert gateway.budgets == [8192]
+
+
+@pytest.mark.asyncio
+async def test_polish_stage_adapts_large_rule_context_with_stage_default_budget(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_provider(
@@ -2227,7 +2340,7 @@ async def test_polish_stage_adapts_large_rule_context_without_lowering_output_bu
     system, user, budget = gateway.calls[0]
     from novel_flywheel.context_policy import estimate_input_tokens
     assert estimate_input_tokens(system + user) <= 12000
-    assert budget == 8192
+    assert budget == 2132
 
 
 def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:

@@ -14,6 +14,52 @@ def _json(value: Any, limit: int) -> str:
     return text if len(text) <= limit else text[:limit] + "..."
 
 
+def next_retry_action(*, failure_kind: str, attempt: int,
+                      current_limit: int, provider_limit: int) -> dict:
+    if failure_kind == "invalid_json":
+        return {"action": "schema_repair", "next_limit": min(current_limit, 4096)}
+    if failure_kind == "output_limit" and current_limit < provider_limit:
+        return {"action": "retry_larger", "next_limit": provider_limit}
+    if failure_kind == "output_limit":
+        return {"action": "split", "next_limit": current_limit}
+    if attempt == 1:
+        return {"action": "fallback", "next_limit": current_limit}
+    return {"action": "stop", "next_limit": current_limit}
+
+
+def patch_output_budget(allowed_characters: int, provider_limit: int) -> int:
+    desired = max(512, math.ceil(max(0, allowed_characters) * 1.35) + 256)
+    return min(max(1, provider_limit), desired)
+
+
+def schema_repair_prompt(malformed_output: str, schema_id: str) -> str:
+    return (
+        f"Repair this malformed JSON as schema {schema_id}. Return one JSON object only. "
+        "Preserve the supplied values; do not add prose or analysis.\n\n"
+        f"MALFORMED JSON:\n{malformed_output[:12000]}"
+    )
+
+
+def revision_patch_context(
+    *, issue: dict, target_paragraph: str, previous_paragraph: str,
+    next_paragraph: str, evidence_summaries: list,
+    seven_step_position: str, authoritative_facts: list,
+    protected_passages: list, allowed_range: dict, word_target: int,
+) -> str:
+    return (
+        f"ISSUE:\n{_json(issue, 1600)}\n\n"
+        f"PREVIOUS POLISHED END:\n{previous_paragraph}\n\n"
+        f"NEXT ORIGINAL START:\n{next_paragraph}\n\n"
+        f"LINKED EVIDENCE SUMMARIES:\n{_json(evidence_summaries, 1600)}\n\n"
+        f"SEVEN-STEP POSITION:\n{seven_step_position}\n\n"
+        f"AUTHORITATIVE FACTS:\n{_json(authoritative_facts, 1800)}\n\n"
+        f"PROTECTED PASSAGE SUMMARIES:\n{_json(protected_passages, 1200)}\n\n"
+        f"ALLOWED RANGE:\n{_json(allowed_range, 400)}\n\n"
+        f"WORD TARGET:\n{word_target}\n\n"
+        f"MANUSCRIPT SEGMENT:\n{target_paragraph}"
+    )
+
+
 def polish_context(*, state: dict[str, Any], story_map: list[dict[str, Any]],
                    segment_index: int, segment_count: int, segment: str,
                    previous_tail: str, next_head: str, findings: str,

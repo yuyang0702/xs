@@ -12,7 +12,15 @@ from typing import Iterator
 
 from novel_flywheel.db import Database
 from novel_flywheel.causal_chain import compact_causal_chain, extract_short_causal_chain
-from novel_flywheel.context_policy import estimate_input_tokens, polish_context, stage_output_budget
+from novel_flywheel.context_policy import (
+    estimate_input_tokens,
+    next_retry_action,
+    patch_output_budget,
+    polish_context,
+    revision_patch_context,
+    schema_repair_prompt,
+    stage_output_budget,
+)
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway
@@ -1717,23 +1725,62 @@ class WorkflowService:
                 "Do not repeat adjacent scenes, include analysis, or rewrite material outside "
                 "this manuscript segment."
             )
-            prompt = (
-                f"STYLE PROFILE:\n{style_profile}\n\n"
-                f"RELEVANT CHARACTER VOICES:\n{character_fingerprints(project.path, part)}\n\n"
-                f"LOCAL PROSE FINDINGS:\n{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
-                + polish_context(
-                    state=authoritative_state,
-                    story_map=story_map,
-                    segment_index=index,
-                    segment_count=len(parts),
-                    segment=part,
-                    previous_tail=previous_tail,
-                    next_head=next_head,
-                    findings=plan_context,
-                    edit_rule=revision_rule + length_contract,
+            if structural and revision_plan:
+                prompt = (
+                    f"STYLE PROFILE:\n{style_profile}\n\n"
+                    f"RELEVANT CHARACTER VOICES:\n"
+                    f"{character_fingerprints(project.path, part)}\n\n"
+                    + revision_patch_context(
+                        issue={
+                            "instructions": tasks,
+                            "edit_rule": revision_rule + length_contract,
+                        },
+                        target_paragraph=part,
+                        previous_paragraph=previous_tail,
+                        next_paragraph=next_head,
+                        evidence_summaries=revision_plan["checks"],
+                        seven_step_position=json.dumps(
+                            story_map[group - 1], ensure_ascii=False,
+                        ),
+                        authoritative_facts=[
+                            *authoritative_state.get("locked_facts", []),
+                            *authoritative_state.get("confirmed_facts", []),
+                            *revision_plan["global_facts"],
+                        ],
+                        protected_passages=[{
+                            "id": lock.get("id"),
+                            "label": lock.get("label"),
+                            "mode": lock.get("mode"),
+                            "allow_next_change": bool(lock.get("allow_next_change")),
+                        } for lock in passage_locks],
+                        allowed_range={
+                            "segment": group,
+                            "minimum_characters": minimum_characters,
+                            "maximum_characters": maximum_characters,
+                        },
+                        word_target=len(part),
+                    )
                 )
-                + passage_prompt_context(passage_locks)
-            )
+            else:
+                prompt = (
+                    f"STYLE PROFILE:\n{style_profile}\n\n"
+                    f"RELEVANT CHARACTER VOICES:\n"
+                    f"{character_fingerprints(project.path, part)}\n\n"
+                    f"LOCAL PROSE FINDINGS:\n"
+                    f"{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
+                    + polish_context(
+                        state=authoritative_state,
+                        story_map=story_map,
+                        segment_index=index,
+                        segment_count=len(parts),
+                        segment=part,
+                        previous_tail=previous_tail,
+                        next_head=next_head,
+                        findings=plan_context,
+                        edit_rule=revision_rule + length_contract,
+                    )
+                    + passage_prompt_context(passage_locks)
+                )
             part_suffix = f"{suffix}-part-{index:02d}"
             priority = bool(structural or index in {1, len(parts)} or local_report["findings"])
             prefer_configured = bool(
@@ -1757,6 +1804,7 @@ class WorkflowService:
                     suffix=part_suffix, allow_tools=False,
                     prefer_configured_fallback=prefer_configured,
                     output_source_characters=len(part),
+                    targeted_retry=structural,
                 )
                 if getattr(polished_part, "receipt", {}).get("fallback_used"):
                     primary_circuit_open = True
@@ -2138,11 +2186,21 @@ class WorkflowService:
                 output = await self._stage(
                     run_id, run_path, project, "revision_plan", constraints, prompt,
                     suffix=f"{suffix}-revision-plan", model_role="planning", allow_tools=False,
+                    targeted_retry=True,
                 )
+                try:
+                    payload = self._json_object(output)
+                except json.JSONDecodeError:
+                    repair = schema_repair_prompt(output, "repair_revision_plan_v1")
+                    output = await self._stage(
+                        run_id, run_path, project, "revision_plan", constraints, repair,
+                        suffix=f"{suffix}-revision-plan-repair", model_role="planning",
+                        allow_tools=False, targeted_retry=True,
+                    )
+                    payload = self._json_object(output)
                 plan = normalize_revision_plan(
-                    self._json_object(output), len(story_map),
-                    max_target_ratio=0.4, require_checks=require_checks,
-                    defer_excess_targets=True,
+                    payload, len(story_map), max_target_ratio=0.4,
+                    require_checks=require_checks, defer_excess_targets=True,
                 )
             except asyncio.CancelledError:
                 raise
@@ -2157,7 +2215,7 @@ class WorkflowService:
                 output = await self._stage(
                     run_id, run_path, project, "revision_plan", constraints, prompt,
                     suffix=f"{suffix}-revision-plan-fallback", model_role="review",
-                    allow_tools=False,
+                    allow_tools=False, targeted_retry=True,
                 )
                 plan = normalize_revision_plan(
                     self._json_object(output), len(story_map),
@@ -2255,7 +2313,8 @@ class WorkflowService:
                      constraints: str, user: str, suffix: str = "",
                      model_role: str | None = None, allow_tools: bool = True,
                      prefer_configured_fallback: bool = False,
-                     output_source_characters: int | None = None) -> str:
+                     output_source_characters: int | None = None,
+                     targeted_retry: bool = False) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -2339,9 +2398,16 @@ class WorkflowService:
                     },
                 )
             gateway_role = model_role or stage
+            provider_ceiling = self._provider_output_ceiling(
+                gateway_role, prefer_configured_fallback,
+            )
             output_budget = self._output_budget_for_call(
                 stage, output_source_characters, gateway_role, prefer_configured_fallback,
             )
+            if targeted_retry and output_source_characters is not None:
+                output_budget = patch_output_budget(
+                    output_source_characters, provider_ceiling or output_budget or 8192,
+                )
             if allow_tools and hasattr(self.gateway, "complete_with_tools"):
                 toolbox = StoryToolbox(project, self.memory)
                 result = await self.gateway.complete_with_tools(
@@ -2411,23 +2477,33 @@ class WorkflowService:
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
                 previous_budget = output_budget
-                self.db.add_run_event(
-                    run_id, "warning", "polish_max_tokens_retry",
-                    "Polish output hit its token limit; retrying with full budget",
-                    stage=stage, metadata={
-                        "previous_budget": previous_budget, "retry_budget": 8192,
-                    },
+                decision = next_retry_action(
+                    failure_kind="output_limit", attempt=1,
+                    current_limit=previous_budget or 8192,
+                    provider_limit=provider_ceiling or 8192,
                 )
-                if prefer_configured_fallback and hasattr(
-                    self.gateway, "complete_configured_fallback"
-                ):
-                    result = await self.gateway.complete_configured_fallback(
-                        gateway_role, system, user, max_output_tokens=8192,
+                retry_budget = (
+                    decision["next_limit"] if targeted_retry else 8192
+                )
+                if not targeted_retry or decision["action"] == "retry_larger":
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_max_tokens_retry",
+                        "Polish output hit its token limit; retrying with a larger budget",
+                        stage=stage, metadata={
+                            "previous_budget": previous_budget,
+                            "retry_budget": retry_budget,
+                        },
                     )
-                else:
-                    result = await self.gateway.complete(
-                        gateway_role, system, user, max_output_tokens=8192,
-                    )
+                    if prefer_configured_fallback and hasattr(
+                        self.gateway, "complete_configured_fallback"
+                    ):
+                        result = await self.gateway.complete_configured_fallback(
+                            gateway_role, system, user, max_output_tokens=retry_budget,
+                        )
+                    else:
+                        result = await self.gateway.complete(
+                            gateway_role, system, user, max_output_tokens=retry_budget,
+                        )
             if (stage == "polish" and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") in {"tool_use", "tool_calls"}):
@@ -2731,16 +2807,22 @@ class WorkflowService:
 
     def _output_budget_for_call(self, stage: str, source_characters: int | None,
                                 gateway_role: str, prefer_configured_fallback: bool) -> int | None:
-        if stage == "polish" and gateway_role == "polish":
-            binding = self.db.get_role_binding("polish") or {}
-            model_key = (
-                "fallback_model_id" if prefer_configured_fallback else "primary_model_id"
-            )
-            model = self.db.get_model(binding.get(model_key, "")) or {}
-            identity = f"{model.get('display_name', '')} {model.get('model_name', '')}".lower()
-            if "claude" in identity:
-                return 8192
+        ceiling = self._provider_output_ceiling(
+            gateway_role, prefer_configured_fallback,
+        )
+        if ceiling is not None:
+            return ceiling
         return self._stage_output_budget(stage, source_characters)
+
+    def _provider_output_ceiling(self, gateway_role: str,
+                                 prefer_configured_fallback: bool) -> int | None:
+        binding = self.db.get_role_binding(gateway_role) or {}
+        model_key = (
+            "fallback_model_id" if prefer_configured_fallback else "primary_model_id"
+        )
+        model = self.db.get_model(binding.get(model_key, "")) or {}
+        ceiling = model.get("max_output_tokens")
+        return ceiling if isinstance(ceiling, int) and ceiling > 0 else None
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:

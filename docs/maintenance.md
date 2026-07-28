@@ -156,14 +156,12 @@ Rhythm retry logs name the actual finding: narrative fragments, dialogue-only ex
 | Draft | 8,192 |
 | Review | 4,096 |
 | Revision plan | 8,192 |
-| Claude primary polish | 8,192 on the first request |
-| Other polish routes | Dynamic, 2,048-8,192 based on segment size |
+| Configured polish route | Selected model's `max_output_tokens` when present |
+| Legacy polish route without a ceiling | Dynamic, 2,048-8,192 based on segment size |
 | Final review | 8,192 |
 | Maintenance extraction | 4,096 |
 
-Configured Claude polish routes receive 8,192 immediately because observed relay responses repeatedly consumed the smaller dynamic allowance before returning visible prose. This applies to both the primary and configured Claude fallback; non-Claude routes retain dynamic budgets. A non-Claude polish response that is empty specifically because of `finish_reason=max_tokens` may retry once at 8,192.
-
-An empty polish response with `finish_reason=max_tokens` retries once even when the route already used the full 8,192 output budget. If that full-budget retry is also empty and token-limited, Runtime treats it as a recoverable segment failure and splits only the current paragraph-aligned segment under the existing depth limit. Some relays report 8,192 generated tokens while returning no visible text; this malformed response is never accepted as a completed segment.
+Output budgets use the selected primary or configured fallback model's numeric ceiling rather than its display name. Legacy model records without a ceiling retain the stage-derived default. A targeted patch that hits `finish_reason=max_tokens` may retry only when the next numeric limit is larger; at the provider ceiling Runtime raises into the existing current-segment split path instead of repeating an identical request. Ordinary polish and Review retain their established compatibility retries.
 
 Review starts with its normal 4,096 output limit. An empty Review response with `finish_reason=max_tokens` retries the same model route once at 8,192 with compact JSON-only instructions. If it remains empty, only the Review role's configured fallback is used. Planning is never used as an editorial-review substitute. If both Review routes fail, `review_incomplete` preserves the draft and existing polish checkpoints without creating an editorial score.
 
@@ -183,7 +181,7 @@ Structural plans contain literal checks for hard issues and preserve the model's
 
 Before a resumed quality pass rewrites `quality-report.json`, Runtime reads the existing `best_score` together with `best-candidate.md`. That pair becomes the new pass's minimum checkpoint. Lower-scoring retries may be recorded for diagnosis, but failure, provider interruption, or invalid revision planning restores the earlier higher-scoring text. The `quality_best_restored` event tells the UI which score is protected.
 
-Revision planning compacts its Skill and constraint prompts. Empty, truncated, invalid-JSON, or checkless hard-issue plans retry once through the `review` role. A valid plan that covers too many scenes is batched locally and does not spend a fallback model call. If the fallback result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
+Revision planning compacts its Skill and constraint prompts. Malformed JSON first receives a schema-only repair request containing only the malformed output and schema identifier. Empty, truncated, semantically invalid, or still-invalid repaired plans retry through the `review` role. A valid plan that covers too many scenes is batched locally and does not spend a fallback model call. If the fallback result is also invalid, `revision_plan_blocked` stops correction. This is a role fallback, not a full-manuscript rewrite retry.
 
 Ordinary polish targets about 1,400 characters and normally stays below 1,800, splitting only at existing paragraph boundaries. A single oversized paragraph is preserved instead of being cut mechanically. Before each provider call, Runtime estimates the complete system and user input; if it is unusually large, repeated Skill and constraint context is compacted further while manuscript prose, locked facts, relevant character state, and the current task remain intact. Structural correction does not reuse ordinary prose chunks: each targeted `scene-NN` is sent exactly once unless a recoverable relay failure requires safe paragraph splitting. Structural candidates use a 60%-180% length contract; ordinary candidates use 70%-160%. Rejection metadata includes absolute bounds and a short candidate preview. Prompt metadata always appears before `MANUSCRIPT SEGMENT`; source prose is last.
 
@@ -221,6 +219,10 @@ Quality reference groups are append-only rows in `quality_reference_groups`, sco
 
 Protected passages use versioned `passage.<id>` StoryState locks. Creation accepts complete contiguous paragraphs from the current candidate only. Soft protection tolerates punctuation and spacing changes; exact protection requires the original text. Runtime includes active locks in polish context and validates the returned segment locally. An unapproved change keeps the source segment and records conflict metadata. `allow_next_change` is consumed once and then deactivates that lock; removal also deactivates it without editing prose.
 
+### Targeted revision safety
+
+Targeted revision validates the assembled whole candidate before adoption; passing individual patches does not bypass full-candidate quality and protection gates. A protected passage's one-time `allow_next_change` permission is consumed only after that candidate is accepted. Issue ledgers use exactly `resolved`, `partially_resolved`, `unresolved`, `uncertain`, and `preserved`; mandatory issues may advance only to `resolved`, and every other mandatory state blocks promotion. Structural patch prompts contain only the linked issue, local target and neighboring context, evidence summaries, position, authoritative facts, protection summaries, allowed range, and target size. Retry decisions use the actual selected-route output ceiling: larger retries require a strictly larger numeric limit, a ceiling hit splits only the current patch, malformed JSON is repaired without resending manuscript context, execution falls through the configured role fallback, and failure of both routes stops that group without creating an alternative state or checkpoint authority.
+
 Rollback does not require deleting project data. Disable the Zhihu platform profile to return future reviews to `legacy-v1`; v2 checkpoints and reference-group history remain on disk and are ignored by the legacy comparison path. Remove or deactivate passage locks separately if revisions should stop enforcing them. Do not delete `quality-checkpoint.json` merely to lower a protected score: restore a prior manuscript through the existing candidate/revision flow so the new content receives its own hash-bound review.
 
 ### Evidence-driven local analysis versions
@@ -257,7 +259,7 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.
-- `polish_max_tokens_retry`: a dynamically-budgeted non-Claude polish output was empty and received one full-budget retry.
+- `polish_max_tokens_retry`: a token-limited polish output is retrying at a strictly larger permitted budget, or is using the legacy ordinary-polish compatibility retry.
 - `model_fallback`: the primary route failed and a configured model or role fallback is running.
 - `polish_circuit_opened`: a successful fallback is reused for later segments in the same pass.
 - `polish_input_sized`: estimated complete input size recorded before a provider call.
