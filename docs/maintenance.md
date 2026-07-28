@@ -120,6 +120,8 @@ When a primary polish response fails local length, prose, or locked-fact validat
 
 Every full-review window, incremental-review window, and final adjudication is parsed locally before it is accepted. A malformed or truncated JSON response retries only that request through the final-review role's configured fallback and records `final_review_json_fallback`; completed windows and the preserved best candidate are not discarded.
 
+If final adjudication returns a readable reconciliation summary object instead of the required item list, Runtime recovers only issue entries whose stable IDs match the prior ledger and records `final_review_reconciliation_recovered`. Missing IDs still trigger the existing conservative evidence cap; recovery never treats an omitted issue as resolved and does not call a model again.
+
 Candidate quality displays `effective_words` as its primary count: each Han character, contiguous Latin word, or contiguous numeric token counts once; punctuation, whitespace, and Markdown punctuation are excluded. Pure `han_characters` and total Unicode-code-point `characters` remain visible as secondary metrics and remain available in the API for compatibility.
 
 Wizard interviews persist the user's answer before calling the planning model. Retrying the same unanswered message resumes the model call without duplicating history, and provider connection failures are returned as readable `interview_model_failed` responses.
@@ -270,6 +272,7 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
 - `final_review_model_failed`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
 - `final_review_result_rejected`: a terminal-review response arrived but failed local format or score validation; the best candidate was preserved and the original validation detail remains in event metadata.
+- `final_review_reconciliation_recovered`: final adjudication returned a summary object instead of itemized reconciliation; matching stable issue IDs were recovered locally and any missing IDs remain unresolved.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.
 - `failed`: the run stopped; formal files remain at their last committed revision.
 

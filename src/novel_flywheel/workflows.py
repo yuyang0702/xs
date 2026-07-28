@@ -1198,17 +1198,45 @@ class WorkflowService:
         review = self._review_for_project(
             payload, project, getattr(raw_final, "receipt", {}),
         )
+        prior_issue_ids = [item["issue_id"] for item in ledger]
+        prior_issue_id_set = set(prior_issue_ids)
+        raw_reconciliations = payload.get("reconciliations", [])
+        valid_reconciliations = (
+            isinstance(raw_reconciliations, list)
+            and all(isinstance(item, dict) for item in raw_reconciliations)
+        )
+        reconciliation_summary = (
+            raw_reconciliations if isinstance(raw_reconciliations, dict) else None
+        )
+        if valid_reconciliations:
+            reconciliations = raw_reconciliations
+        else:
+            reconciliations = [
+                item for item in payload.get("issues", [])
+                if isinstance(item, dict) and item.get("issue_id") in prior_issue_id_set
+            ]
+            self.db.add_run_event(
+                run_id, "warning", "final_review_reconciliation_recovered",
+                "终审返回的逐项复核格式不标准，已从问题清单恢复可核对结果",
+                stage="final_review", metadata={
+                    "returned_type": type(raw_reconciliations).__name__,
+                    "recovered_count": len(reconciliations),
+                    "expected_count": len(prior_issue_ids),
+                },
+            )
         audit = {
             "coverage": 1.0 if windows and evidence[-1]["end"] == len(manuscript) else 0.0,
             "window_count": len(windows),
             "reviewed_windows": len(evidence),
             "evidence_count": sum(bool(item.get("summary")) for item in evidence),
-            "prior_issue_ids": [item["issue_id"] for item in ledger],
-            "reconciliations": payload.get("reconciliations", []),
+            "prior_issue_ids": prior_issue_ids,
+            "reconciliations": reconciliations,
             "windows": evidence,
             "adjudication_receipt": getattr(raw_final, "receipt", {}),
             "review_mode": "full",
         }
+        if reconciliation_summary is not None:
+            audit["reconciliation_summary"] = reconciliation_summary
         review, gate_reasons = apply_evidence_gate(review, audit)
         audit["gate_reasons"] = gate_reasons
         audit["reconciliation_counts"] = {

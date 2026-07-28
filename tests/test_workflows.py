@@ -2545,6 +2545,66 @@ async def test_final_review_accepts_structured_window_summary(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_final_review_recovers_issue_reconciliation_from_matching_issue_ids(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Reconciliation recovery", mode="short", genre="suspense",
+        premise="A review returns a readable summary object.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    evidence = json.dumps({
+        "summary": "The issue remains visible in the manuscript.",
+        "events": [], "issues": [], "character_states": [], "timeline": [],
+        "promises": [],
+    })
+    prior_issue = {
+        "category": "prose", "severity": "medium",
+        "evidence": "The sentence repeats.", "action": "Remove repetition.",
+    }
+    from novel_flywheel.quality import issue_ledger
+    stable_issue_id = issue_ledger([prior_issue])[0]["issue_id"]
+    reconciled_issue = {
+        **prior_issue, "issue_id": stable_issue_id, "status": "unresolved",
+    }
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "revise", "issues": [reconciled_issue],
+        "reconciliations": {
+            "cross_window_timeline": "The timeline is coherent.",
+            "issue_status": "The listed prose issue remains unresolved.",
+        },
+    })
+    gateway = RecordingGateway([evidence, final])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript",
+        {"issues": [prior_issue]},
+    )
+
+    assert review["score"] == 86.5
+    assert audit["reconciliations"] == [reconciled_issue]
+    assert audit["reconciliation_summary"] == {
+        "cross_window_timeline": "The timeline is coherent.",
+        "issue_status": "The listed prose issue remains unresolved.",
+    }
+    assert "missing_issue_reconciliation" not in audit["gate_reasons"]
+    assert gateway.roles == ["final_review", "final_review"]
+    assert any(
+        event["event_type"] == "final_review_reconciliation_recovered"
+        for event in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
 async def test_final_review_retries_malformed_window_with_configured_fallback(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
