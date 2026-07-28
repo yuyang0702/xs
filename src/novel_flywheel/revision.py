@@ -1,3 +1,5 @@
+import copy
+import hashlib
 import re
 import math
 from typing import Any
@@ -8,6 +10,131 @@ from novel_flywheel.prose_quality import analyze_prose
 CHECK_KINDS = {"required_text", "forbidden_text"}
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 CJK = r"\u3400-\u9fff"
+PATCH_OPERATIONS = {"replace", "insert_before", "insert_after"}
+REPAIR_LABELS = {
+    "ascii_dialogue_quotes": "ASCII 对话引号",
+    "cjk_spacing": "汉字间多余空格",
+    "duplicate_punctuation": "连续重复标点",
+    "c0_control": "C0 控制字符",
+    "consecutive_duplicate_blocks": "连续重复文本块",
+    "unpaired_quote": "未配对引号",
+    "non_unique_quote_pair": "非唯一引号对",
+    "truncated_sentence": "疑似句子截断",
+}
+
+
+def _repair_record(code: str) -> dict[str, str]:
+    return {"code": code, "label": REPAIR_LABELS[code]}
+
+
+def apply_patch_group(manuscript: str, group: dict, source_hash: str) -> dict:
+    if hashlib.sha256(manuscript.encode("utf-8")).hexdigest() != source_hash:
+        return {"accepted": False, "text": manuscript,
+                "failures": [{"patch": 0, "code": "source_hash_changed"}], "diffs": []}
+    candidate = manuscript
+    diffs = []
+    for number, patch in enumerate(group.get("patches", []), 1):
+        old = str(patch.get("old_text") or "")
+        new = str(patch.get("new_text") or "")
+        operation = patch.get("operation")
+        if not old or candidate.count(old) != 1:
+            return {"accepted": False, "text": manuscript,
+                    "failures": [{"patch": number, "code": "anchor_not_unique"}], "diffs": []}
+        if operation == "replace":
+            replacement = new
+        elif operation == "insert_before":
+            replacement = new + old
+        elif operation == "insert_after":
+            replacement = old + new
+        else:
+            return {"accepted": False, "text": manuscript,
+                    "failures": [{"patch": number, "code": "operation_invalid"}], "diffs": []}
+        start = candidate.index(old)
+        candidate = candidate[:start] + replacement + candidate[start + len(old):]
+        diffs.append({"patch": number, "start": start, "old_text": old, "new_text": replacement})
+    return {"accepted": True, "text": candidate, "failures": [], "diffs": diffs}
+
+
+def normalize_repair_contract(value: dict, manuscript: str,
+                              issue_ids: set[str]) -> dict:
+    if not isinstance(value, dict):
+        raise ValueError("Repair contract must be an object")
+    manuscript_hash = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
+    if value.get("manuscript_hash") != manuscript_hash:
+        raise ValueError("Repair contract manuscript_hash is stale")
+    groups = value.get("groups")
+    if not isinstance(groups, list) or not groups:
+        raise ValueError("Repair contract must contain a group")
+    for group in groups:
+        if not isinstance(group, dict):
+            raise ValueError("Repair contract group must be an object")
+        linked_ids = group.get("issue_ids")
+        if not isinstance(linked_ids, list) or not linked_ids:
+            raise ValueError("Repair contract group must reference an issue")
+        if any(not isinstance(issue_id, str) or issue_id not in issue_ids
+               for issue_id in linked_ids):
+            raise ValueError("Repair contract references an unknown issue")
+        if len(set(linked_ids)) != 1:
+            raise ValueError("Repair contract group mixes unrelated issue IDs")
+        if group.get("kind", "semantic") == "semantic" and not group.get(
+                "requires_user_confirmation"):
+            raise ValueError("Semantic repair requires user confirmation")
+        patches = group.get("patches")
+        if not isinstance(patches, list) or not patches:
+            raise ValueError("Repair contract group must contain a patch")
+        for patch in patches:
+            if not isinstance(patch, dict) or patch.get("operation") not in PATCH_OPERATIONS:
+                raise ValueError("Repair contract patch operation is unsupported")
+            old = patch.get("old_text")
+            if not isinstance(old, str) or not old or manuscript.count(old) != 1:
+                raise ValueError("Repair contract old_text must be unique")
+    return copy.deepcopy(value)
+
+
+def repair_mechanical_text(text: str) -> dict:
+    applied: list[dict[str, str]] = []
+    blocked: list[dict[str, str]] = []
+
+    def record(items: list[dict[str, str]], code: str) -> None:
+        if not any(item["code"] == code for item in items):
+            items.append(_repair_record(code))
+
+    normalized_lines = []
+    quote_repaired = False
+    for line in text.splitlines(keepends=True):
+        quote_count = line.count('"')
+        if quote_count == 2:
+            opening = line.index('"')
+            closing = line.index('"', opening + 1)
+            dialogue = line[opening + 1:closing]
+            if re.search(rf"[{CJK}]", dialogue):
+                line = line[:opening] + "“" + dialogue + "”" + line[closing + 1:]
+                quote_repaired = True
+        elif quote_count % 2:
+            record(blocked, "unpaired_quote")
+        elif quote_count > 2:
+            record(blocked, "non_unique_quote_pair")
+        normalized_lines.append(line)
+    normalized = "".join(normalized_lines)
+    if quote_repaired:
+        record(applied, "ascii_dialogue_quotes")
+
+    normalized, count = re.subn(rf"(?<=[{CJK}]) +(?=[{CJK}])", "", normalized)
+    if count:
+        record(applied, "cjk_spacing")
+    normalized, count = re.subn(r"([。！？；，])\1{2,}", r"\1", normalized)
+    if count:
+        record(applied, "duplicate_punctuation")
+    normalized, count = re.subn(r"[\x00-\x08\x0b-\x1f]", "", normalized)
+    if count:
+        record(applied, "c0_control")
+    normalized, removals = remove_consecutive_duplicate_blocks(normalized)
+    if removals:
+        record(applied, "consecutive_duplicate_blocks")
+
+    if re.search(rf"[{CJK}]\s*$", normalized):
+        record(blocked, "truncated_sentence")
+    return {"text": normalized, "applied": applied, "blocked": blocked}
 
 
 def normalize_chinese_prose(text: str) -> tuple[str, list[str]]:

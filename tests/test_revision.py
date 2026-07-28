@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 
 from novel_flywheel.revision import (
@@ -7,11 +9,136 @@ from novel_flywheel.revision import (
     check_source_local_constraints,
     compact_polish_findings,
     compact_review,
+    apply_patch_group,
     normalize_revision_plan,
     normalize_chinese_prose,
+    normalize_repair_contract,
+    repair_mechanical_text,
     remove_consecutive_duplicate_blocks,
     segment_map,
 )
+
+
+def test_mechanical_repairs_leave_ambiguous_quotes_and_report_them() -> None:
+    result = repair_mechanical_text('他说："门开了。\n她没有回答。')
+    assert result["text"] == '他说："门开了。\n她没有回答。'
+    assert result["applied"] == []
+    assert result["blocked"][0]["code"] == "unpaired_quote"
+
+
+def test_mechanical_repairs_apply_only_the_explicit_whitelist() -> None:
+    result = repair_mechanical_text(
+        '他说："门开了。"\n她 点头！！！\x00\n\n甲。\n\n乙。\n\n甲。\n\n乙。'
+    )
+
+    assert result["text"] == '他说：“门开了。”\n她点头！\n\n甲。\n\n乙。'
+    assert [item["code"] for item in result["applied"]] == [
+        "ascii_dialogue_quotes",
+        "cjk_spacing",
+        "duplicate_punctuation",
+        "c0_control",
+        "consecutive_duplicate_blocks",
+    ]
+    assert all(item["label"] for item in result["applied"])
+
+
+def test_mechanical_repairs_report_truncated_sentences_without_rewriting() -> None:
+    result = repair_mechanical_text("他推开门")
+
+    assert result["text"] == "他推开门"
+    assert result["applied"] == []
+    assert result["blocked"] == [{"code": "truncated_sentence", "label": "疑似句子截断"}]
+
+
+def test_patch_group_rolls_back_when_second_anchor_is_not_unique() -> None:
+    source = "银锁第一次出现。\n\n证人看见银锁。\n\n证人看见银锁。"
+    group = {
+        "group_id": "issue-lock",
+        "issue_ids": ["issue-lock"],
+        "patches": [
+            {"operation": "replace", "old_text": "银锁第一次出现。", "new_text": "父亲交出银锁。"},
+            {"operation": "replace", "old_text": "证人看见银锁。", "new_text": "民警登记了银锁。"},
+        ],
+    }
+    result = apply_patch_group(source, group, hashlib.sha256(source.encode()).hexdigest())
+    assert result["accepted"] is False
+    assert result["text"] == source
+    assert result["failures"] == [{"patch": 2, "code": "anchor_not_unique"}]
+
+
+def test_normalize_repair_contract_validates_and_preserves_review_fields() -> None:
+    manuscript = "父亲交出银锁。"
+    value = {
+        "manuscript_hash": hashlib.sha256(manuscript.encode()).hexdigest(),
+        "required_text": ["银锁"],
+        "forbidden_text": ["铜锁"],
+        "related_entities": ["entity-father"],
+        "related_events": ["event-handover"],
+        "related_relations": ["relation-owns"],
+        "target_word_delta": 12,
+        "requires_full_review": True,
+        "groups": [{
+            "group_id": "issue-lock",
+            "issue_ids": ["issue-lock"],
+            "kind": "semantic",
+            "requires_user_confirmation": True,
+            "patches": [{
+                "operation": "replace",
+                "old_text": "父亲交出银锁。",
+                "new_text": "父亲当面交出银锁。",
+            }],
+        }],
+    }
+
+    normalized = normalize_repair_contract(value, manuscript, {"issue-lock"})
+
+    for key in (
+        "required_text", "forbidden_text", "related_entities", "related_events",
+        "related_relations", "target_word_delta", "requires_full_review",
+    ):
+        assert normalized[key] == value[key]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ({"manuscript_hash": "stale"}, "manuscript_hash"),
+        ({"groups": []}, "group"),
+        ({"groups.0.patches": []}, "patch"),
+        ({"groups.0.patches.0.operation": "delete"}, "operation"),
+        ({"groups.0.patches.0.old_text": "不存在"}, "old_text"),
+        ({"groups.0.issue_ids": ["issue-unknown"]}, "issue"),
+        ({"groups.0.issue_ids": ["issue-lock", "issue-other"]}, "unrelated"),
+        ({"groups.0.requires_user_confirmation": False}, "confirmation"),
+    ],
+)
+def test_normalize_repair_contract_rejects_unsafe_contracts(
+    mutation: dict[str, object], message: str,
+) -> None:
+    manuscript = "父亲交出银锁。"
+    value = {
+        "manuscript_hash": hashlib.sha256(manuscript.encode()).hexdigest(),
+        "groups": [{
+            "group_id": "issue-lock",
+            "issue_ids": ["issue-lock"],
+            "kind": "semantic",
+            "requires_user_confirmation": True,
+            "patches": [{
+                "operation": "replace",
+                "old_text": manuscript,
+                "new_text": "父亲当面交出银锁。",
+            }],
+        }],
+    }
+    for path, replacement in mutation.items():
+        target = value
+        parts = path.split(".")
+        for part in parts[:-1]:
+            target = target[int(part)] if part.isdigit() else target[part]
+        target[parts[-1]] = replacement
+
+    with pytest.raises(ValueError, match=message):
+        normalize_repair_contract(value, manuscript, {"issue-lock", "issue-other"})
 
 
 def test_compact_review_keeps_every_issue_without_arbitrary_truncation() -> None:
@@ -100,6 +227,15 @@ def test_normalize_chinese_prose_repairs_safe_typography_only() -> None:
         "<!-- NOVEL_FLYWHEEL_SEGMENT -->"
     )
     assert repairs == ["ascii_dialogue_quotes", "cjk_spacing", "duplicate_punctuation"]
+
+
+def test_normalize_chinese_prose_keeps_legacy_scope() -> None:
+    text = "甲。\x00\n\n乙。\n\n甲。\n\n乙。"
+
+    normalized, repairs = normalize_chinese_prose(text)
+
+    assert normalized == text
+    assert repairs == []
 
 
 def test_polish_candidate_rejects_process_text_and_missing_locked_literal() -> None:
