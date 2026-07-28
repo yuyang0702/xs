@@ -184,3 +184,56 @@ def test_normalized_targeted_high_issue_still_blocks_v2_pass() -> None:
     assert quality_outcome_for_profile(review, "zhihu-short-v2") == (
         "failed", ["unresolved_major_issue"],
     )
+
+
+def test_same_unresolved_mandatory_issue_blocks_promotion_even_when_best_has_it() -> None:
+    mandatory = {
+        "issue_id": "hard-1", "category": "production_text",
+        "severity": "medium", "status": "unresolved",
+    }
+    best = {
+        "score": 80, "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+        "scoring_profile_id": "zhihu-short-v2", "judge_signature": "model-a",
+        "issues": [mandatory],
+    }
+    candidate = {
+        **best, "score": 84,
+        "dimensions": {"commercial": 85, "story": 82, "prose": 80},
+        "issues": [dict(mandatory)],
+    }
+
+    result = compare_quality_candidates(best, candidate)
+
+    assert result["promote"] is False
+    assert "unresolved_mandatory_issue" in result["reasons"]
+
+
+def test_resolved_blocking_issue_does_not_block_candidate_promotion() -> None:
+    best = {
+        "score": 80, "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+        "scoring_profile_id": "zhihu-short-v2", "judge_signature": "model-a",
+        "issues": [],
+    }
+    candidate = {
+        **best, "score": 84,
+        "dimensions": {"commercial": 85, "story": 82, "prose": 80},
+        "issues": [{
+            "issue_id": "hard-1", "severity_class": "blocking",
+            "status": "resolved",
+        }],
+    }
+
+    assert compare_quality_candidates(best, candidate)["promote"] is True
+
+
+def test_preserved_advisory_major_issue_does_not_block_v2_outcome() -> None:
+    review = score_review({
+        "dimensions": {"commercial": 85, "story": 85, "prose": 80},
+        "hard_fail": False, "decision": "pass",
+        "issues": [{
+            "issue_id": "style-1", "category": "style", "severity": "high",
+            "severity_class": "targeted_revision", "status": "preserved",
+        }],
+    }, "zhihu-short-v2")
+
+    assert quality_outcome_for_profile(review, "zhihu-short-v2") == ("passed", [])

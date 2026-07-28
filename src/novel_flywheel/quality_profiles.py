@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from novel_flywheel.quality import quality_outcome
+from novel_flywheel.quality import issue_is_mandatory, issue_is_resolved, quality_outcome
 
 
 @dataclass(frozen=True)
@@ -218,6 +218,8 @@ def compare_quality_candidates(best: dict, candidate: dict) -> dict:
     best_major_ids = _unresolved_major_ids(best)
     if _unresolved_major_ids(candidate) - best_major_ids:
         reasons.append("new_unresolved_major_issue")
+    if _unresolved_mandatory_ids(candidate):
+        reasons.append("unresolved_mandatory_issue")
     return {
         "promote": not reasons, "comparable": True,
         "score_delta": score_delta, "dimension_deltas": dimension_deltas,
@@ -233,6 +235,8 @@ def _blocker_reasons(review: dict) -> list[str]:
         reasons.append("rewrite")
     if _unresolved_major_ids(review):
         reasons.append("unresolved_major_issue")
+    if _unresolved_mandatory_ids(review):
+        reasons.append("unresolved_mandatory_issue")
     return reasons
 
 
@@ -249,10 +253,20 @@ def _unresolved_major_ids(review: dict) -> set[str]:
         )
         status = str(issue.get("status") or "unresolved").lower()
         if severity in {"major", "high", "critical", "blocking"} and status not in {
-            "resolved", "closed",
+            "resolved", "closed", "preserved",
         }:
             result.add(str(issue.get("issue_id") or f"issue-{index}"))
     return result
+
+
+def _unresolved_mandatory_ids(review: dict) -> set[str]:
+    return {
+        str(issue.get("issue_id") or f"issue-{index}")
+        for index, issue in enumerate(review.get("issues", []))
+        if isinstance(issue, dict)
+        and issue_is_mandatory(issue)
+        and not issue_is_resolved(issue)
+    }
 
 
 def _score(value: Any) -> float:

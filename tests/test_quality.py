@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from novel_flywheel.quality import (
@@ -9,6 +11,7 @@ from novel_flywheel.quality import (
     issue_ledger,
     apply_evidence_gate,
     select_route,
+    update_issue_status,
 )
 
 
@@ -21,9 +24,77 @@ def test_issue_ledger_ids_are_stable_when_issue_order_changes() -> None:
 
     assert original[0]["issue_id"] == reordered[1]["issue_id"]
     assert original[1]["issue_id"] == reordered[0]["issue_id"]
-    assert original[0]["status"] == "open"
+    assert original[0]["status"] == "unresolved"
     assert original[0]["repair_goal"] == "补足开门条件"
     assert original[0]["source"] == "final_review"
+
+
+@pytest.mark.parametrize(
+    "status",
+    ["resolved", "partially_resolved", "unresolved", "uncertain", "preserved"],
+)
+def test_update_issue_status_supports_new_states_without_mutating_input(status) -> None:
+    ledger = issue_ledger([{
+        "category": "style", "severity": "low", "action": "换一种表达",
+    }])
+    before = copy.deepcopy(ledger)
+
+    updated = update_issue_status(ledger, ledger[0]["issue_id"], status, "用户决定")
+
+    assert updated[0]["issue_id"] == ledger[0]["issue_id"]
+    assert updated[0]["status"] == status
+    assert updated[0]["reconciliation_evidence"] == "用户决定"
+    assert ledger == before
+    assert updated is not ledger
+    assert updated[0] is not ledger[0]
+
+
+@pytest.mark.parametrize("legacy_status", ["open", "closed", "not_found"])
+def test_update_issue_status_rejects_legacy_states_for_new_writes(legacy_status) -> None:
+    ledger = issue_ledger([{"category": "style", "severity": "low"}])
+
+    with pytest.raises(ValueError, match="状态无效"):
+        update_issue_status(ledger, ledger[0]["issue_id"], legacy_status)
+
+
+@pytest.mark.parametrize(
+    "issue",
+    [
+        {"category": "production_text", "severity": "low", "action": "删除残留"},
+        {"category": "general", "severity": "critical", "action": "修复硬伤"},
+    ],
+)
+def test_advisory_can_be_preserved_but_derived_mandatory_only_accepts_resolved(issue) -> None:
+    advisory = issue_ledger([{
+        "category": "style", "severity": "low", "action": "换一种表达",
+    }])
+    kept = update_issue_status(advisory, advisory[0]["issue_id"], "preserved")
+    assert kept[0]["status"] == "preserved"
+
+    mandatory = issue_ledger([issue])
+    before = copy.deepcopy(mandatory)
+    with pytest.raises(ValueError, match="必须处理"):
+        update_issue_status(mandatory, mandatory[0]["issue_id"], "preserved")
+    assert mandatory == before
+
+    resolved = update_issue_status(mandatory, mandatory[0]["issue_id"], "resolved")
+    assert resolved[0]["status"] == "resolved"
+
+
+def test_resolved_blocking_issue_no_longer_sets_hard_fail() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 85, "story": 82, "prose": 80},
+        "hard_fail": True,
+        "decision": "revise",
+        "issues": [{
+            "issue_id": "cleanup-1", "category": "production_text",
+            "severity": "critical", "status": "resolved", "action": "删除残留",
+        }],
+    })
+
+    assert review["issues"][0]["severity_class"] == "blocking"
+    assert review["hard_fail"] is False
+    assert quality_outcome(review) == ("passed", [])
 
 
 def test_review_windows_cover_full_text_with_overlap() -> None:
@@ -75,6 +146,26 @@ def test_evidence_gate_caps_unresolved_major_issue() -> None:
     })
 
     assert gated["score"] <= 74
+    assert "unresolved_major_issue" in reasons
+
+
+def test_evidence_gate_caps_uncertain_major_issue() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 95, "story": 95, "prose": 95},
+        "decision": "pass", "issues": [],
+    })
+
+    gated, reasons = apply_evidence_gate(review, {
+        "coverage": 1.0, "window_count": 3, "reviewed_windows": 3,
+        "prior_issue_ids": ["initial-001"], "evidence_count": 3,
+        "reconciliations": [{
+            "issue_id": "initial-001", "status": "uncertain",
+            "severity": "major", "evidence": "The timeline needs confirmation.",
+        }],
+    })
+
+    assert gated["score"] <= 74
+    assert gated["decision"] == "revise"
     assert "unresolved_major_issue" in reasons
 
 
@@ -208,13 +299,28 @@ def test_manuscript_corruption_remains_blocking() -> None:
     assert "hard_fail" in reasons
 
 
+def test_blocking_category_cannot_be_downgraded_by_explicit_class() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 85, "story": 80, "prose": 80},
+        "hard_fail": False,
+        "decision": "revise",
+        "issues": [{
+            "category": "production_text", "severity": "low",
+            "severity_class": "advisory", "action": "Remove leaked production text",
+        }],
+    })
+
+    assert review["issues"][0]["severity_class"] == "blocking"
+    assert review["hard_fail"] is True
+
+
 def test_normalize_review_accepts_legacy_score() -> None:
     review = normalize_review({"score": 86, "hard_fail": False, "issues": ["tighten prose"]})
 
     assert review["dimensions"] == {"commercial": 86.0, "story": 86.0, "prose": 86.0}
     assert review["issues"] == [{
         "category": "general", "severity": "medium",
-        "evidence": "", "action": "tighten prose",
+        "evidence": "", "action": "tighten prose", "status": "unresolved",
     }]
 
 

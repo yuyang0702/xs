@@ -5,6 +5,7 @@ import re
 from typing import Any
 
 from novel_flywheel.quality_profiles import profile_for_project
+from novel_flywheel.quality import issue_is_mandatory, issue_is_resolved
 
 
 HAN_CHARACTER = re.compile(r"[\u3400-\u9fff]")
@@ -16,7 +17,17 @@ SEVERITY_ORDER = {
 }
 STATUS_ORDER = {
     "unresolved": 3, "open": 3, "partially_resolved": 2,
-    "uncertain": 2, "resolved": 1, "closed": 1,
+    "uncertain": 2, "resolved": 1, "closed": 1, "preserved": 1,
+}
+STATUS_LABELS = {
+    "resolved": "已解决",
+    "partially_resolved": "部分解决",
+    "unresolved": "未解决",
+    "uncertain": "待确认",
+    "preserved": "保留原写法",
+    "open": "未解决（旧记录）",
+    "closed": "已解决（旧记录）",
+    "not_found": "未找到证据（旧记录）",
 }
 CATEGORY_LABELS = {
     "commercial": "阅读吸引力",
@@ -64,6 +75,8 @@ def merge_quality_issues(report: dict, review: dict | None = None) -> list[dict]
             "category": category,
             "severity": severity,
             "status": status,
+            "status_label": STATUS_LABELS.get(status, "状态未知"),
+            "mandatory": issue_is_mandatory(issue),
             "repair_direction": action,
             "effect": str(issue.get("effect") or "可能影响阅读理解或剧情可信度"),
             "evidence": [],
@@ -72,6 +85,8 @@ def merge_quality_issues(report: dict, review: dict | None = None) -> list[dict]
             item["severity"] = severity
         if STATUS_ORDER.get(status, 3) > STATUS_ORDER.get(item["status"], 3):
             item["status"] = status
+            item["status_label"] = STATUS_LABELS.get(status, "状态未知")
+        item["mandatory"] = item["mandatory"] or issue_is_mandatory(issue)
         evidence = {
             "location": str(issue.get("location") or "正文相关位置"),
             "excerpt": str(issue.get("evidence") or "未提供原文证据"),
@@ -153,8 +168,7 @@ def build_quality_summary(project: Any, run_id: str, text: str, report: dict,
             )
     issues = merge_quality_issues(report, review)
     if active_profile == "zhihu-short-v2" and any(
-        item["status"] not in {"resolved", "closed"}
-        and SEVERITY_ORDER.get(item["severity"], 2) >= 3 for item in issues
+        item["mandatory"] and not issue_is_resolved(item) for item in issues
     ):
         reasons.append("仍有必须解决的正文问题")
     can_set_formal = not reasons
@@ -195,7 +209,8 @@ def build_quality_summary(project: Any, run_id: str, text: str, report: dict,
         "issue_counts": {
             "total": len(issues),
             "unresolved": sum(
-                item["status"] not in {"resolved", "closed"} for item in issues
+                not issue_is_resolved(item) and item["status"] != "preserved"
+                for item in issues
             ),
         },
         "word_count": word_count,

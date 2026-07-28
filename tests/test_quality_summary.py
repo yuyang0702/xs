@@ -171,3 +171,36 @@ def test_quality_summary_labels_missing_legacy_judge_in_plain_chinese() -> None:
 
     assert summary["profile"]["judge_signature"] == "legacy-unknown"
     assert summary["profile"]["judge_label"] == "旧记录未保存模型名称"
+
+
+def test_quality_issue_summary_labels_all_new_states_in_plain_chinese() -> None:
+    statuses = {
+        "resolved": "已解决",
+        "partially_resolved": "部分解决",
+        "unresolved": "未解决",
+        "uncertain": "待确认",
+        "preserved": "保留原写法",
+    }
+    report = {"final_attempts": [{"review": {"issues": [
+        {
+            "issue_id": f"issue-{status}", "category": "style",
+            "severity": "low", "status": status, "action": status,
+        }
+        for status in statuses
+    ]}}]}
+
+    issues = merge_quality_issues(report)
+
+    assert {item["status"]: item["status_label"] for item in issues} == statuses
+
+
+def test_preserved_advisory_is_not_counted_as_waiting_for_action() -> None:
+    project = SimpleNamespace(mode="short", metadata={})
+    report = {"final_attempts": [{"review": {"issues": [{
+        "issue_id": "style-1", "category": "style", "severity": "high",
+        "status": "preserved", "action": "Keep the original wording",
+    }]}}]}
+
+    summary = build_quality_summary(project, "run", "", report, None)
+
+    assert summary["issue_counts"] == {"total": 1, "unresolved": 0}

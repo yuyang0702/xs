@@ -18,6 +18,33 @@ TARGETED_CATEGORIES = {
     "historical_realism", "procedural_realism", "ending", "ending_payoff",
     "format", "character_arc", "story", "story_structure", "logic_continuity",
 }
+ALLOWED_ISSUE_STATUSES = {
+    "resolved", "partially_resolved", "unresolved", "uncertain", "preserved",
+}
+LEGACY_ISSUE_STATUSES = {"open", "closed", "not_found"}
+
+
+def issue_severity_class(issue: dict) -> str:
+    category = str(issue.get("category") or "general").lower()
+    severity = str(issue.get("severity") or "medium").lower()
+    if category in BLOCKING_CATEGORIES or (
+        category == "general" and severity in {"critical", "blocking"}
+    ):
+        return "blocking"
+    explicit = str(issue.get("severity_class") or "").lower()
+    if explicit in {"blocking", "targeted_revision", "advisory"}:
+        return explicit
+    if category in TARGETED_CATEGORIES or severity == "critical":
+        return "targeted_revision"
+    return "advisory"
+
+
+def issue_is_mandatory(issue: dict) -> bool:
+    return issue_severity_class(issue) == "blocking"
+
+
+def issue_is_resolved(issue: dict) -> bool:
+    return str(issue.get("status") or "unresolved").lower() in {"resolved", "closed"}
 
 
 def review_windows(text: str, target: int = 5000, overlap: int = 400) -> list[dict]:
@@ -56,11 +83,28 @@ def issue_ledger(issues: list[dict], source: str = "final_review") -> list[dict]
         normalized.append({
             **issue,
             "issue_id": issue.get("issue_id") or f"issue-{digest}",
-            "status": issue.get("status") or "open",
+            "status": issue.get("status") or "unresolved",
             "repair_goal": issue.get("repair_goal") or issue.get("action", ""),
             "source": issue.get("source") or source,
         })
     return normalized
+
+
+def update_issue_status(ledger: list[dict], issue_id: str, status: str,
+                        evidence: str = "") -> list[dict]:
+    if status not in ALLOWED_ISSUE_STATUSES:
+        raise ValueError("问题状态无效")
+    result = []
+    for item in ledger:
+        if item.get("issue_id") != issue_id:
+            result.append(dict(item))
+            continue
+        if issue_is_mandatory(item) and status != "resolved":
+            raise ValueError("必须处理的问题只有解决后才能更新状态")
+        result.append({
+            **item, "status": status, "reconciliation_evidence": evidence,
+        })
+    return result
 
 
 def apply_evidence_gate(review: dict, evidence: dict) -> tuple[dict, list[str]]:
@@ -78,7 +122,9 @@ def apply_evidence_gate(review: dict, evidence: dict) -> tuple[dict, list[str]]:
     if evidence.get("evidence_count", 0) < evidence.get("window_count", 0):
         reasons.append("insufficient_review_evidence")
     unresolved = [item for item in reconciliations
-                  if item.get("status") in {"unresolved", "partially_resolved", "not_found"}]
+                  if item.get("status") in {
+                      "unresolved", "partially_resolved", "uncertain", "not_found",
+                  }]
     if any(str(item.get("severity", "")).lower() in {"major", "critical", "blocking"}
            for item in unresolved):
         reasons.append("unresolved_major_issue")
@@ -110,7 +156,7 @@ def _issues(values: Any) -> list[dict[str, str]]:
         if isinstance(value, str):
             normalized.append({
                 "category": "general", "severity": "medium",
-                "evidence": "", "action": value,
+                "evidence": "", "action": value, "status": "unresolved",
             })
             continue
         if not isinstance(value, dict):
@@ -121,20 +167,13 @@ def _issues(values: Any) -> list[dict[str, str]]:
             "severity": value.get("severity", "medium"),
             "evidence": value.get("evidence", ""),
             "action": value.get("action", ""),
+            "status": value.get("status") or "unresolved",
         }
         if any(not isinstance(issue[key], str) for key in (
             "category", "severity", "evidence", "action",
         )):
             raise ValueError("Each review issue field must be text")
-        category = issue["category"].lower()
-        if category in BLOCKING_CATEGORIES or (
-            category == "general" and issue["severity"].lower() == "critical"
-        ):
-            issue["severity_class"] = "blocking"
-        elif category in TARGETED_CATEGORIES or issue["severity"].lower() == "critical":
-            issue["severity_class"] = "targeted_revision"
-        else:
-            issue["severity_class"] = "advisory"
+        issue["severity_class"] = issue_severity_class(issue)
         normalized.append(issue)
     return normalized
 
@@ -166,7 +205,10 @@ def normalize_review(value: dict) -> dict:
         raise ValueError("Review decision must be pass, revise, or rewrite")
     result["decision"] = decision
     result["issues"] = _issues(result.get("issues", []))
-    blockers = [item for item in result["issues"] if item.get("severity_class") == "blocking"]
+    blockers = [
+        item for item in result["issues"]
+        if issue_is_mandatory(item) and not issue_is_resolved(item)
+    ]
     categorized = [item for item in result["issues"] if "severity_class" in item]
     result["hard_fail"] = bool(blockers) or (model_hard_fail and not categorized)
     if result["decision"] == "rewrite" and categorized and not blockers:
@@ -186,8 +228,7 @@ def quality_outcome(review: dict) -> tuple[str, list[str]]:
     if review.get("decision") == "rewrite":
         reasons.append("rewrite")
     if any(
-        issue.get("severity_class") == "blocking"
-        or ("severity_class" not in issue and issue.get("severity", "").lower() == "critical")
+        issue_is_mandatory(issue) and not issue_is_resolved(issue)
         for issue in review["issues"]
     ):
         reasons.append("critical")
