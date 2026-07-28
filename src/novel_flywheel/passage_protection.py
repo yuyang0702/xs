@@ -165,6 +165,67 @@ def validate_passage_protections(
     return {"conflicts": conflicts, "consumed": consumed}
 
 
+def validate_candidate_protections(candidate: str, locks: list[dict]) -> dict[str, Any]:
+    results = []
+    conflicts = []
+    allowed = []
+    normalized_candidate = _soft_normalize(candidate)
+    candidate_paragraphs = _paragraphs(candidate)
+    for envelope in locks:
+        value = envelope.get("value")
+        if (not envelope.get("key", "").startswith("passage.")
+                or not isinstance(value, dict) or not value.get("active")):
+            continue
+        excerpt = str(value.get("excerpt") or "")
+        normalized_excerpt = str(value.get("normalized_excerpt") or "")
+        invalid_reason = None
+        if not excerpt:
+            invalid_reason = "empty_excerpt"
+        elif not normalized_excerpt:
+            invalid_reason = "empty_normalized_excerpt"
+        exact_matches = candidate.count(excerpt) if excerpt else 0
+        soft_matches = (
+            normalized_candidate.count(normalized_excerpt)
+            if normalized_excerpt else 0
+        )
+        if invalid_reason:
+            status = "missing"
+        elif value.get("mode") == "exact" and exact_matches:
+            status = "unchanged" if exact_matches == 1 else "ambiguous"
+        elif soft_matches:
+            if soft_matches > 1:
+                status = "ambiguous"
+            else:
+                status = "unchanged" if value.get("mode") == "soft" else "mutated"
+        else:
+            paragraph_end = value.get("paragraph_end")
+            status = (
+                "missing"
+                if not isinstance(paragraph_end, int) or paragraph_end > len(candidate_paragraphs)
+                else "mutated"
+            )
+        item = {
+            "id": str(value.get("id") or envelope["key"].removeprefix("passage.")),
+            "label": str(value.get("label") or "保护片段"),
+            "mode": str(value.get("mode") or "soft"),
+            "status": status,
+        }
+        if invalid_reason:
+            item["reason"] = invalid_reason
+        results.append(item)
+        if (not invalid_reason and status in {"missing", "mutated"}
+                and value.get("allow_next_change")):
+            allowed.append(item)
+        elif status != "unchanged":
+            conflicts.append(item)
+    return {
+        "passed": not conflicts,
+        "conflicts": conflicts,
+        "allowed": allowed,
+        "results": results,
+    }
+
+
 def passage_prompt_context(locks: list[dict]) -> str:
     if not locks:
         return ""

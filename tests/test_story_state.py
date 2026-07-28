@@ -3,7 +3,12 @@ import json
 import pytest
 
 from novel_flywheel.db import Database
-from novel_flywheel.story_state import StaleStoryState, StoryStateStore, validate_locked_facts
+from novel_flywheel.story_state import (
+    StaleStoryState,
+    StoryStateStore,
+    authoritative_fact_snapshot,
+    validate_locked_facts,
+)
 
 
 def make_project(db, root, project_id="book"):
@@ -16,6 +21,30 @@ def make_project(db, root, project_id="book"):
     }), encoding="utf-8")
     (root / "manuscript" / "story.md").write_text("Existing manuscript", encoding="utf-8")
     db.save_project(project_id, project_id, "short", root)
+
+
+def test_authoritative_fact_snapshot_is_deep_and_excludes_runtime_fields() -> None:
+    state = {
+        "locked_facts": [{"key": "ending", "value": {"place": "station"}}],
+        "confirmed_facts": [{"key": "name", "value": "Lin"}],
+        "world_rules": ["Doors open once."],
+        "character_states": {"Lin": {"location": "station"}},
+        "timeline_events": [{"when": "dawn", "event": "Lin leaves"}],
+        "issue_ledger": [{"issue_id": "runtime-only"}],
+        "manuscript_revision": 9,
+    }
+
+    snapshot = authoritative_fact_snapshot(state)
+    snapshot["locked_facts"][0]["value"]["place"] = "harbor"
+
+    assert list(snapshot) == [
+        "locked_facts",
+        "confirmed_facts",
+        "world_rules",
+        "character_states",
+        "timeline_events",
+    ]
+    assert state["locked_facts"][0]["value"]["place"] == "station"
 
 
 def test_story_state_migrates_existing_project_without_rewriting_files(tmp_path) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import re
 import uuid
@@ -11,6 +12,17 @@ from novel_flywheel.db import Database
 
 
 STORY_STATE_SCHEMA = 2
+AUTHORITATIVE_FACT_FIELDS = (
+    "locked_facts",
+    "confirmed_facts",
+    "world_rules",
+    "character_states",
+    "timeline_events",
+)
+
+
+def authoritative_fact_snapshot(state: dict[str, Any]) -> dict[str, Any]:
+    return copy.deepcopy({key: state.get(key) for key in AUTHORITATIVE_FACT_FIELDS})
 
 
 def validate_locked_facts(source: str, candidate: str,
