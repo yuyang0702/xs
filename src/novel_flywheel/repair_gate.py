@@ -5,6 +5,7 @@ from typing import Any
 
 from novel_flywheel.passage_protection import validate_candidate_protections
 from novel_flywheel.quality_summary import effective_han_characters
+from novel_flywheel.revision import apply_patch_group
 from novel_flywheel.story_state import (
     authoritative_fact_snapshot,
     validate_locked_facts,
@@ -33,47 +34,65 @@ def _literal_checks(candidate: str, contract: dict) -> list[dict[str, Any]]:
 
 
 def _patch_group_checks(
-    source: str, candidate: str, patch_results: list[dict],
+    source: str, candidate: str, source_hash: str,
+    contract: dict, patch_results: list[dict],
 ) -> list[dict[str, Any]]:
-    complete = True
-    evidence_valid = True
-    replayed = source
+    contract_hash_matches = contract.get("manuscript_hash") == source_hash
+    expected_groups = contract.get("groups")
+    complete = isinstance(expected_groups, list)
+    expected_groups = expected_groups if isinstance(expected_groups, list) else []
+
+    expected_by_id = {}
+    for group in expected_groups:
+        group_id = group.get("group_id") if isinstance(group, dict) else None
+        if (not isinstance(group_id, str) or not group_id
+                or group_id in expected_by_id):
+            complete = False
+            continue
+        expected_by_id[group_id] = group
+
+    results_by_id = {}
     for result in patch_results:
-        if (not isinstance(result, dict)
+        group_id = result.get("group_id") if isinstance(result, dict) else None
+        if (not isinstance(group_id, str) or not group_id
+                or group_id in results_by_id or group_id not in expected_by_id):
+            complete = False
+            continue
+        results_by_id[group_id] = result
+
+    if (len(expected_by_id) != len(expected_groups)
+            or len(results_by_id) != len(patch_results)
+            or set(results_by_id) != set(expected_by_id)):
+        complete = False
+
+    evidence_valid = complete
+    replayed = source
+    for group in expected_groups:
+        if not isinstance(group, dict):
+            continue
+        group_id = group.get("group_id")
+        result = results_by_id.get(group_id)
+        if result is None:
+            evidence_valid = False
+            continue
+        expected = apply_patch_group(
+            replayed, group, hashlib.sha256(replayed.encode("utf-8")).hexdigest(),
+        )
+        if (expected.get("accepted") is not True
                 or result.get("accepted") is not True
-                or result.get("failures") != []
-                or not isinstance(result.get("text"), str)
-                or not isinstance(result.get("diffs"), list)
-                or not result["diffs"]):
+                or result.get("text") != expected.get("text")
+                or result.get("failures") != expected.get("failures")
+                or result.get("diffs") != expected.get("diffs")):
             complete = False
             evidence_valid = False
             continue
-        group_text = replayed
-        for diff in result["diffs"]:
-            if not isinstance(diff, dict):
-                complete = False
-                evidence_valid = False
-                break
-            start = diff.get("start")
-            old_text = diff.get("old_text")
-            new_text = diff.get("new_text")
-            if (not isinstance(start, int) or start < 0
-                    or not isinstance(old_text, str) or not old_text
-                    or not isinstance(new_text, str)
-                    or group_text[start:start + len(old_text)] != old_text):
-                complete = False
-                evidence_valid = False
-                break
-            group_text = (
-                group_text[:start] + new_text + group_text[start + len(old_text):]
-            )
-        if not evidence_valid or group_text != result["text"]:
-            complete = False
-            evidence_valid = False
-            continue
-        replayed = group_text
+        replayed = expected["text"]
     external_diff_absent = evidence_valid and replayed == candidate
     return [
+        _check(
+            "contract_source_hash_matches", contract_hash_matches,
+            "修改合同绑定当前来源正文哈希。",
+        ),
         _check(
             "patch_groups_complete", complete,
             "所有修改组均已原子完成，且补丁证据完整。",
@@ -180,7 +199,9 @@ def evaluate_candidate_gate(
         ),
     ]
     checks.extend(_literal_checks(candidate, contract))
-    checks.extend(_patch_group_checks(source, candidate, patch_results))
+    checks.extend(_patch_group_checks(
+        source, candidate, source_hash, contract, patch_results,
+    ))
     checks.extend(_story_state_checks(source, candidate, story_state))
     checks.extend(_protection_checks(candidate, passage_locks))
     checks.extend(_length_and_prose_checks(

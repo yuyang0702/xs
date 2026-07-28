@@ -8,9 +8,20 @@ def _hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _contract_group(group_id: str, patches: list[dict]) -> dict:
+    return {"group_id": group_id, "patches": patches}
+
+
+def _contract(source: str, groups: list[dict] | None = None, **values) -> dict:
+    return {"manuscript_hash": _hash(source), "groups": groups or [], **values}
+
+
 def test_candidate_gate_reports_all_blockers_without_mutating_source() -> None:
     source = "父亲留下银锁。\n\n必须删除这句话。"
     candidate = source
+    group = _contract_group("g1", [{
+        "operation": "replace", "old_text": "必须删除这句话。", "new_text": "",
+    }])
 
     result = evaluate_candidate_gate(
         source=source,
@@ -21,11 +32,12 @@ def test_candidate_gate_reports_all_blockers_without_mutating_source() -> None:
             "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={
-            "required_text": ["必须保留但不存在"],
-            "forbidden_text": ["必须删除这句话"],
-        },
-        patch_results=[{"accepted": True}],
+        contract=_contract(
+            source, [group],
+            required_text=["必须保留但不存在"],
+            forbidden_text=["必须删除这句话"],
+        ),
+        patch_results=[{"group_id": "g1", "accepted": True}],
         story_state={"locked_facts": []},
         passage_locks=[],
         minimum_han=1,
@@ -52,7 +64,7 @@ def test_candidate_gate_blocks_stale_source_and_analysis_hashes_together() -> No
             "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract("其他来源。"),
         patch_results=[],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -83,7 +95,7 @@ def test_candidate_gate_accepts_empty_patch_evidence_only_when_text_is_unchanged
             "text_hash": _hash(source), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(source),
         patch_results=[],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -99,13 +111,12 @@ def test_candidate_gate_accepts_empty_patch_evidence_only_when_text_is_unchanged
 def test_candidate_gate_replays_real_patch_evidence_to_the_candidate() -> None:
     source = "父亲留下铜锁。"
     candidate = "父亲留下银锁。"
-    patch_result = apply_patch_group(
-        source,
-        {"patches": [{
-            "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
-        }]},
-        _hash(source),
-    )
+    group = _contract_group("g1", [{
+        "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
+    }])
+    patch_result = {
+        **apply_patch_group(source, group, _hash(source)), "group_id": "g1",
+    }
 
     result = evaluate_candidate_gate(
         source=source,
@@ -115,7 +126,9 @@ def test_candidate_gate_replays_real_patch_evidence_to_the_candidate() -> None:
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={"required_text": ["银锁"], "forbidden_text": ["铜锁"]},
+        contract=_contract(
+            source, [group], required_text=["银锁"], forbidden_text=["铜锁"],
+        ),
         patch_results=[patch_result],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -131,6 +144,9 @@ def test_candidate_gate_replays_real_patch_evidence_to_the_candidate() -> None:
 
 def test_candidate_gate_rejects_accepted_boolean_without_patch_evidence() -> None:
     source = "正文没有变化。"
+    group = _contract_group("g1", [{
+        "operation": "replace", "old_text": "正文", "new_text": "正文",
+    }])
 
     result = evaluate_candidate_gate(
         source=source,
@@ -140,8 +156,8 @@ def test_candidate_gate_rejects_accepted_boolean_without_patch_evidence() -> Non
             "text_hash": _hash(source), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
-        patch_results=[{"accepted": True}],
+        contract=_contract(source, [group]),
+        patch_results=[{"group_id": "g1", "accepted": True}],
         story_state={"locked_facts": []},
         passage_locks=[],
         minimum_han=1,
@@ -158,13 +174,12 @@ def test_candidate_gate_blocks_diff_outside_replayed_patch_evidence() -> None:
     source = "父亲留下铜锁。"
     patched = "父亲留下银锁。"
     candidate = patched + "额外改动。"
-    patch_result = apply_patch_group(
-        source,
-        {"patches": [{
-            "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
-        }]},
-        _hash(source),
-    )
+    group = _contract_group("g1", [{
+        "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
+    }])
+    patch_result = {
+        **apply_patch_group(source, group, _hash(source)), "group_id": "g1",
+    }
 
     result = evaluate_candidate_gate(
         source=source,
@@ -174,7 +189,7 @@ def test_candidate_gate_blocks_diff_outside_replayed_patch_evidence() -> None:
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(source, [group]),
         patch_results=[patch_result],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -190,7 +205,11 @@ def test_candidate_gate_blocks_diff_outside_replayed_patch_evidence() -> None:
 def test_candidate_gate_rejects_patch_group_with_forged_diff_anchor() -> None:
     source = "父亲留下铜锁。"
     candidate = "父亲留下银锁。"
+    group = _contract_group("g1", [{
+        "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
+    }])
     forged = {
+        "group_id": "g1",
         "accepted": True,
         "text": candidate,
         "failures": [],
@@ -208,7 +227,7 @@ def test_candidate_gate_rejects_patch_group_with_forged_diff_anchor() -> None:
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(source, [group]),
         patch_results=[forged],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -226,7 +245,11 @@ def test_candidate_gate_rejects_patch_group_with_forged_diff_anchor() -> None:
 def test_candidate_gate_rejects_empty_patch_anchor_as_insufficient_evidence() -> None:
     source = "原始正文。"
     candidate = "伪造插入。" + source
+    group = _contract_group("g1", [{
+        "operation": "insert_before", "old_text": source, "new_text": "伪造插入。",
+    }])
     forged = {
+        "group_id": "g1",
         "accepted": True,
         "text": candidate,
         "failures": [],
@@ -243,7 +266,7 @@ def test_candidate_gate_rejects_empty_patch_anchor_as_insufficient_evidence() ->
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(source, [group]),
         patch_results=[forged],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -259,14 +282,11 @@ def test_candidate_gate_rejects_empty_patch_anchor_as_insufficient_evidence() ->
 def test_candidate_gate_rejects_partial_group_even_with_replayable_diffs() -> None:
     source = "父亲留下铜锁。"
     candidate = "父亲留下银锁。"
-    patch_result = apply_patch_group(
-        source,
-        {"patches": [{
-            "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
-        }]},
-        _hash(source),
-    )
-    partial = {**patch_result, "accepted": False}
+    group = _contract_group("g1", [{
+        "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
+    }])
+    patch_result = apply_patch_group(source, group, _hash(source))
+    partial = {**patch_result, "group_id": "g1", "accepted": False}
 
     result = evaluate_candidate_gate(
         source=source,
@@ -276,7 +296,7 @@ def test_candidate_gate_rejects_partial_group_even_with_replayable_diffs() -> No
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(source, [group]),
         patch_results=[partial],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -301,7 +321,7 @@ def test_candidate_gate_blocks_removal_of_authoritative_locked_fact() -> None:
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(source),
         patch_results=[],
         story_state={
             "locked_facts": [{"key": "keepsake", "value": "银锁"}],
@@ -345,7 +365,7 @@ def test_candidate_gate_blocks_conflicts_but_reports_allowed_passage_change() ->
             "text_hash": _hash(candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(candidate),
         patch_results=[],
         story_state={"locked_facts": []},
         passage_locks=locks,
@@ -373,7 +393,7 @@ def test_candidate_gate_uses_complete_analysis_and_effective_han_bounds() -> Non
             "text_hash": _hash(short_candidate), "coverage": 0.5,
             "prose": {"blocking_count": 1},
         },
-        contract={},
+        contract=_contract(short_candidate),
         patch_results=[],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -389,7 +409,7 @@ def test_candidate_gate_uses_complete_analysis_and_effective_han_bounds() -> Non
             "text_hash": _hash(long_candidate), "coverage": 1.0,
             "prose": {"blocking_count": 0},
         },
-        contract={},
+        contract=_contract(long_candidate),
         patch_results=[],
         story_state={"locked_facts": []},
         passage_locks=[],
@@ -405,3 +425,102 @@ def test_candidate_gate_uses_complete_analysis_and_effective_han_bounds() -> Non
     assert [item["code"] for item in long_result["blocking"]] == [
         "maximum_han_not_exceeded",
     ]
+
+
+def _passing_gate(source: str, candidate: str, contract: dict,
+                  patch_results: list[dict]) -> dict:
+    return evaluate_candidate_gate(
+        source=source,
+        candidate=candidate,
+        source_hash=_hash(source),
+        analysis={
+            "text_hash": _hash(candidate), "coverage": 1.0,
+            "prose": {"blocking_count": 0},
+        },
+        contract=contract,
+        patch_results=patch_results,
+        story_state={"locked_facts": []},
+        passage_locks=[],
+        minimum_han=0,
+        maximum_han=100,
+    )
+
+
+def test_candidate_gate_rejects_omitted_contract_group() -> None:
+    source = "父亲留下铜锁。"
+    contract = {
+        "manuscript_hash": _hash(source),
+        "groups": [_contract_group("g1", [{
+            "operation": "replace", "old_text": "铜锁", "new_text": "银锁",
+        }])],
+    }
+
+    result = _passing_gate(source, source, contract, [])
+
+    assert result["passed"] is False
+    assert "patch_groups_complete" in {item["code"] for item in result["blocking"]}
+
+
+def test_candidate_gate_rejects_stale_contract_hash() -> None:
+    source = "父亲留下铜锁。"
+    contract = {"manuscript_hash": _hash("过期正文。"), "groups": []}
+
+    result = _passing_gate(source, source, contract, [])
+
+    assert result["passed"] is False
+    assert "contract_source_hash_matches" in {
+        item["code"] for item in result["blocking"]
+    }
+
+
+def test_candidate_gate_rejects_extra_result_group() -> None:
+    source = "父亲留下铜锁。"
+    candidate = "父亲留下银锁。"
+    patches = [{"operation": "replace", "old_text": "铜锁", "new_text": "银锁"}]
+    extra = {
+        **apply_patch_group(source, {"patches": patches}, _hash(source)),
+        "group_id": "extra",
+    }
+    contract = {"manuscript_hash": _hash(source), "groups": []}
+
+    result = _passing_gate(source, candidate, contract, [extra])
+
+    assert result["passed"] is False
+    assert "patch_groups_complete" in {item["code"] for item in result["blocking"]}
+
+
+def test_candidate_gate_rejects_duplicate_result_group() -> None:
+    source = "父亲留下铜锁。"
+    patches = [{"operation": "replace", "old_text": "铜锁", "new_text": "铜锁"}]
+    result_group = {
+        **apply_patch_group(source, {"patches": patches}, _hash(source)),
+        "group_id": "g1",
+    }
+    contract = {
+        "manuscript_hash": _hash(source),
+        "groups": [_contract_group("g1", patches)],
+    }
+
+    result = _passing_gate(source, source, contract, [result_group, result_group])
+
+    assert result["passed"] is False
+    assert "patch_groups_complete" in {item["code"] for item in result["blocking"]}
+
+
+def test_candidate_gate_rejects_partial_result_for_multi_patch_group() -> None:
+    source = "父亲留下铜锁。母亲保留旧信。"
+    first_patch = {"operation": "replace", "old_text": "铜锁", "new_text": "银锁"}
+    second_patch = {"operation": "replace", "old_text": "旧信", "new_text": "照片"}
+    partial = {
+        **apply_patch_group(source, {"patches": [first_patch]}, _hash(source)),
+        "group_id": "g1",
+    }
+    contract = {
+        "manuscript_hash": _hash(source),
+        "groups": [_contract_group("g1", [first_patch, second_patch])],
+    }
+
+    result = _passing_gate(source, partial["text"], contract, [partial])
+
+    assert result["passed"] is False
+    assert "patch_groups_complete" in {item["code"] for item in result["blocking"]}
