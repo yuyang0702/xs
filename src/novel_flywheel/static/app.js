@@ -2,6 +2,15 @@ const state = { projects: [], trash: [], providers: [], skills: [], wizards: [],
 const creatableReferenceTypes = new Set(["reference_work", "popular_sample"]);
 const referenceCreationUnavailable = "这类资料只用于查阅，不能直接创建作品";
 const WIZARD_METHOD_LIMIT = 12;
+const VIEW_GROUPS = {
+  workbench:"creation", projects:"creation",
+  materials:"learning", learning:"learning",
+  market:"market",
+  models:"settings", skills:"settings", trash:"settings"
+};
+const desktopOpenViewGroups = new Set(["creation"]);
+let mobileOpenViewGroup = "creation";
+const mobileNavigation = window.matchMedia("(max-width: 800px)");
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -126,17 +135,62 @@ async function api(path, options = {}) {
 }
 function toast(message) { const el = $("#toast"); el.textContent = message; el.classList.add("show"); setTimeout(() => el.classList.remove("show"), 2600); }
 
-function showView(name, label) {
-  document.querySelectorAll(".nav-item,.view").forEach(el => el.classList.remove("active"));
-  const nav = document.querySelector(`.nav-item[data-view="${name}"]`); if (nav) nav.classList.add("active");
-  $(`#${name}`).classList.add("active"); $("#view-title").textContent = label || nav?.textContent || "小说飞轮";
+function syncNavigationGroups() {
+  document.querySelectorAll(".sidebar .nav-group").forEach(group => {
+    const name=group.dataset.navGroup;
+    const expanded=mobileNavigation.matches
+      ? name===mobileOpenViewGroup
+      : desktopOpenViewGroups.has(name);
+    group.classList.toggle("expanded",expanded);
+    group.querySelector(".nav-group-toggle").setAttribute("aria-expanded",String(expanded));
+    group.querySelector(".nav-group-items").hidden=!expanded;
+  });
 }
-document.querySelectorAll(".nav-item").forEach(button => button.addEventListener("click", async () => {
-  showView(button.dataset.view, button.textContent);
-  if (button.dataset.view === "materials") await renderMaterials();
-  if (button.dataset.view === "market") await loadMarketDashboard();
+function showView(name, label) {
+  const groupName=VIEW_GROUPS[name];
+  const nav=document.querySelector(`.sidebar .nav-item[data-view="${name}"]`);
+  const view=document.getElementById(name);
+  if(!groupName||!nav||!view?.classList.contains("view"))return false;
+  mobileOpenViewGroup=groupName;
+  desktopOpenViewGroups.add(groupName);
+  syncNavigationGroups();
+  document.querySelectorAll(".sidebar .nav-item").forEach(item=>{
+    item.classList.remove("active");
+    item.removeAttribute("aria-current");
+  });
+  document.querySelectorAll(".sidebar .nav-group").forEach(group=>group.classList.remove("active"));
+  document.querySelectorAll(".view").forEach(item=>item.classList.remove("active"));
+  nav.classList.add("active");
+  nav.setAttribute("aria-current","page");
+  nav.closest(".nav-group").classList.add("active");
+  view.classList.add("active");
+  $("#view-title").textContent=label||nav.textContent.trim()||"小说飞轮";
+  return true;
+}
+async function navigateToView(name, label) {
+  if(!showView(name,label))return false;
+  if(name==="materials")await renderMaterials();
+  if(name==="market")await loadMarketDashboard();
+  return true;
+}
+document.querySelectorAll(".nav-group-toggle").forEach(button=>button.addEventListener("click",()=>{
+  const name=button.closest(".nav-group").dataset.navGroup;
+  if(mobileNavigation.matches)mobileOpenViewGroup=button.getAttribute("aria-expanded")==="true"?null:name;
+  else if(desktopOpenViewGroups.has(name))desktopOpenViewGroups.delete(name);
+  else desktopOpenViewGroups.add(name);
+  syncNavigationGroups();
 }));
-document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
+mobileNavigation.addEventListener("change",()=>{
+  mobileOpenViewGroup=VIEW_GROUPS[document.querySelector(".sidebar .nav-item.active")?.dataset.view]||"creation";
+  syncNavigationGroups();
+});
+document.querySelectorAll(".nav-item").forEach(button=>button.addEventListener("click",()=>{
+  navigateToView(button.dataset.view,button.textContent.trim()).catch(()=>toast("页面数据读取失败，请稍后重试。"));
+}));
+document.querySelectorAll("[data-view-target]").forEach(button=>button.addEventListener("click",()=>{
+  navigateToView(button.dataset.viewTarget).catch(()=>toast("页面数据读取失败，请稍后重试。"));
+}));
+syncNavigationGroups();
 
 async function loadReferences() {
   const references=await api("/api/references");
@@ -1179,7 +1233,7 @@ async function continueProject(projectId) {
   if (!project) return toast("作品不存在");
   state.activeProject = project;
   renderProjects();
-  showView("workbench");
+  await navigateToView("workbench");
   await renderActiveProject();
   if (project.mode !== "short") return;
   const runs = await api(`/api/projects/${project.id}/runs`);
@@ -1684,7 +1738,7 @@ $("#zhihu-publication-form")?.addEventListener("submit",async event=>{
   finally{button.disabled=!state.publicationPreview?.ready;button.textContent="生成知乎投稿包";}
 });
 $("#open-learning-library").addEventListener("click", async () => {
-  showView("learning", "学习库");
+  await navigateToView("learning", "学习库");
   if (state.activeProject) { $("#learning-project").value = state.activeProject.id; state.projectLearning = null; await loadProjectLearning(); renderLearning(); }
 });
 function renderStoryStateSection() {
@@ -1904,7 +1958,7 @@ $("#active-project").addEventListener("change", event => { resetRevisionWorkspac
 $("#materials-project").addEventListener("change", async event => { resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
 $("#edit-project-learning").addEventListener("click", async () => {
   if(!state.activeProject)return toast("请先选择作品");
-  showView("learning"); $("#learning-project").value=state.activeProject.id; state.projectLearning=null;
+  await navigateToView("learning"); $("#learning-project").value=state.activeProject.id; state.projectLearning=null;
   await loadProjectLearning(); renderLearning();
 });
 
@@ -2080,7 +2134,7 @@ async function refreshProjectsAfterConfirmation(project){
   renderProjects();
 }
 async function openProjectOutlineGenerator(projectId){
-  showView("learning");
+  await navigateToView("learning");
   switchLearningView("application");
   const project=state.projects.find(item=>item.id===projectId);
   if(project)state.activeProject=project;
@@ -2172,7 +2226,7 @@ async function startWizardFromReference(referenceIds=[]) {
         setReferenceSelectionStatus("waiting","还需要确认这些资料的候选写法",`${state.referenceSelectionPendingTitles.map(title=>`《${title}》`).join("、")}。所选资料会继续保留。确认完成后，可以继续用刚才选择的资料创建作品。`);
         renderLearning();
         switchLearningView("mechanisms");
-        showView("learning");
+        await navigateToView("learning");
         return;
       }
     }
@@ -2184,7 +2238,7 @@ async function startWizardFromReference(referenceIds=[]) {
       clearReferenceReadinessNotice();
       setReferenceSelectionStatus("success","已完成",confirmedFromSources.length>WIZARD_METHOD_LIMIT?`建书向导已创建，共有 ${confirmedFromSources.length} 条确认写法；请在确认页明确选择最多 12 条。`:`建书向导已创建，确认页会保留这 ${confirmedFromSources.length} 条确认写法。`);
     }
-    showView("projects");
+    await navigateToView("projects");
     renderWizard();
     if(referenceIds.length)toast(confirmedFromSources.length>WIZARD_METHOD_LIMIT?`共有 ${confirmedFromSources.length} 条确认写法，请在确认页自行选择`:`确认页会保留 ${confirmedFromSources.length} 条写法；请补充新故事的基本信息`);
   } catch(error) {
@@ -2226,7 +2280,7 @@ $("#wizard-confirm").addEventListener("click", async () => {
   }
   clearConfirmedWizard(wizardId);
   await refreshProjectsAfterConfirmation(project);
-  if(autoOutline)await generateInitialOutline(project.id);else showView("workbench");
+  if(autoOutline)await generateInitialOutline(project.id);else await navigateToView("workbench");
   try{
     const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"});
     monitorRun(initialized);

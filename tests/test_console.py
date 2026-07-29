@@ -39,6 +39,49 @@ def test_console_stylesheet_has_visual_system_and_accessible_motion(tmp_path) ->
     assert "@media (prefers-reduced-motion:reduce)" in css
 
 
+def test_console_navigation_has_four_groups_without_removing_old_views(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    assert html.count('class="nav-group"') == 4
+    for group in ("创作", "资料与学习", "市场", "设置"):
+        assert f">{group}<" in html
+    for group_id in ("creation", "learning", "market", "settings"):
+        assert f'data-nav-group="{group_id}"' in html
+        assert f'aria-controls="nav-group-{group_id}"' in html
+        assert f'id="nav-group-{group_id}"' in html
+    for view in (
+        "workbench",
+        "projects",
+        "materials",
+        "learning",
+        "market",
+        "models",
+        "skills",
+        "trash",
+    ):
+        assert f'id="{view}"' in html
+        assert f'data-view="{view}"' in html
+
+    compact_script = script.replace(" ", "")
+    assert 'workbench:"creation"' in compact_script
+    assert 'projects:"creation"' in compact_script
+    assert 'materials:"learning"' in compact_script
+    assert 'learning:"learning"' in compact_script
+    assert 'market:"market"' in compact_script
+    assert 'models:"settings"' in compact_script
+    assert 'skills:"settings"' in compact_script
+    assert 'trash:"settings"' in compact_script
+    assert "async function navigateToView" in script
+    assert 'setAttribute("aria-current","page")' in compact_script
+    assert ".sidebar-nav" in css
+    assert ".nav-group-toggle:focus-visible" in css
+
+
 def test_console_contains_skill_wizard_controls(tmp_path) -> None:
     client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
     html = client.get("/").text
@@ -477,14 +520,14 @@ def test_reference_created_outline_failure_keeps_project_and_offers_retry_path(
         "async function generateInitialOutline", 1,
     )[0]
     for call in (
-        'showView("learning")',
+        'await navigateToView("learning")',
         'switchLearningView("application")',
         "select.value=projectId",
         "await loadProjectLearning()",
         "form.focus",
     ):
         assert call in helper
-    assert helper.index('showView("learning")') < helper.index(
+    assert helper.index('await navigateToView("learning")') < helper.index(
         'switchLearningView("application")'
     ) < helper.index("select.value=projectId") < helper.index(
         "await loadProjectLearning()"

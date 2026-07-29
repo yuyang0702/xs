@@ -9,15 +9,43 @@
 <body>
   <aside class="sidebar">
     <div class="brand"><span class="brand-mark">N</span><strong>小说飞轮</strong></div>
-    <nav aria-label="主导航">
-      <button class="nav-item active" data-view="workbench">创作工作台</button>
-      <button class="nav-item" data-view="materials">项目资料</button>
-      <button class="nav-item" data-view="learning">学习库</button>
-      <button class="nav-item" data-view="market">市场趋势</button>
-      <button class="nav-item" data-view="projects">新建作品</button>
-      <button class="nav-item" data-view="models">模型设置</button>
-      <button class="nav-item" data-view="skills">写作能力管理</button>
-      <button class="nav-item" data-view="trash">回收站</button>
+    <nav class="sidebar-nav" aria-label="主导航">
+      <div class="nav-group" data-nav-group="creation">
+        <button type="button" class="nav-group-toggle" aria-expanded="true" aria-controls="nav-group-creation">
+          <span class="nav-group-icon" aria-hidden="true">✦</span><span class="nav-group-label">创作</span><span class="nav-group-caret" aria-hidden="true">⌄</span>
+        </button>
+        <div id="nav-group-creation" class="nav-group-items">
+          <button type="button" class="nav-item active" data-view="workbench" aria-current="page"><span>创作工作台</span></button>
+          <button type="button" class="nav-item" data-view="projects"><span>新建作品</span></button>
+        </div>
+      </div>
+      <div class="nav-group" data-nav-group="learning">
+        <button type="button" class="nav-group-toggle" aria-expanded="false" aria-controls="nav-group-learning">
+          <span class="nav-group-icon" aria-hidden="true">书</span><span class="nav-group-label">资料与学习</span><span class="nav-group-caret" aria-hidden="true">⌄</span>
+        </button>
+        <div id="nav-group-learning" class="nav-group-items" hidden>
+          <button type="button" class="nav-item" data-view="materials"><span>项目资料</span></button>
+          <button type="button" class="nav-item" data-view="learning"><span>学习库</span></button>
+        </div>
+      </div>
+      <div class="nav-group" data-nav-group="market">
+        <button type="button" class="nav-group-toggle" aria-expanded="false" aria-controls="nav-group-market">
+          <span class="nav-group-icon" aria-hidden="true">趋</span><span class="nav-group-label">市场</span><span class="nav-group-caret" aria-hidden="true">⌄</span>
+        </button>
+        <div id="nav-group-market" class="nav-group-items" hidden>
+          <button type="button" class="nav-item" data-view="market"><span>市场趋势</span></button>
+        </div>
+      </div>
+      <div class="nav-group" data-nav-group="settings">
+        <button type="button" class="nav-group-toggle" aria-expanded="false" aria-controls="nav-group-settings">
+          <span class="nav-group-icon" aria-hidden="true">设</span><span class="nav-group-label">设置</span><span class="nav-group-caret" aria-hidden="true">⌄</span>
+        </button>
+        <div id="nav-group-settings" class="nav-group-items" hidden>
+          <button type="button" class="nav-item" data-view="models"><span>模型设置</span></button>
+          <button type="button" class="nav-item" data-view="skills"><span>写作能力管理</span></button>
+          <button type="button" class="nav-item" data-view="trash"><span>回收站</span></button>
+        </div>
+      </div>
     </nav>
     <div class="local-state"><span></span>仅本机运行</div>
   </aside>
