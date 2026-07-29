@@ -35,7 +35,12 @@ from novel_flywheel.incremental_review import (
     select_review_scope,
 )
 from novel_flywheel.projects import Project, ProjectStore
-from novel_flywheel.prompts import OPTIONAL_PROMPT_SKILLS, REQUIRED_SKILLS, STAGE_SYSTEM
+from novel_flywheel.prompts import (
+    EXPANSION_CONTRACT,
+    OPTIONAL_PROMPT_SKILLS,
+    REQUIRED_SKILLS,
+    STAGE_SYSTEM,
+)
 from novel_flywheel.quality import (
     apply_evidence_gate,
     issue_ledger,
@@ -52,6 +57,7 @@ from novel_flywheel.quality_records import (
     reconcile_legacy_checkpoint,
     write_quality_checkpoint,
 )
+from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_gate import evaluate_candidate_gate
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.quality_profiles import (
@@ -107,6 +113,13 @@ class RevisionPlanError(RuntimeError):
 
 class TargetedGroupError(RuntimeError):
     pass
+
+
+class ExpansionRejectedError(ValueError):
+    def __init__(self, code: str, category: str, message: str):
+        super().__init__(message)
+        self.code = code
+        self.category = category
 
 
 class PolishTokenBudgetError(RuntimeError):
@@ -239,11 +252,25 @@ class WorkflowService:
                     self._json_copy(ledger_by_id[issue_id])
                     for issue_id in selected_ids
                 ]
+                minimum_han, maximum_han = self._short_revision_target_range(
+                    project,
+                )
+                current_han = effective_han_characters(protected["source"])
+                deficit_han = max(0, minimum_han - current_han)
+                causal_chain_artifact = LearningSystem(
+                    self.db, self.references, self.projects, self.gateway,
+                ).get_artifact(project.id, "short_causal_chain")
+                expansion_issue_id = next((
+                    issue["issue_id"] for issue in selected_issues
+                    if deficit_han and self._is_length_deficit_issue(issue)
+                ), None)
                 groups = [{
                     "group_id": issue_id,
                     "issue_ids": [issue_id],
                     "kind": (
-                        "mechanical"
+                        "expansion"
+                        if issue_id == expansion_issue_id
+                        else "mechanical"
                         if self._mechanical_issue_code(ledger_by_id[issue_id])
                         else "semantic"
                     ),
@@ -264,6 +291,14 @@ class WorkflowService:
                         "revision": story_state.revision,
                         "data": self._json_copy(story_state.data),
                     },
+                    "seven_step_causal_chain": (
+                        self._json_copy(causal_chain_artifact["data"])
+                        if (
+                            causal_chain_artifact is not None
+                            and causal_chain_artifact.get("status") == "active"
+                        )
+                        else None
+                    ),
                     "passage_locks": self._json_copy(
                         self.db.list_locks(project.id),
                     ),
@@ -274,6 +309,12 @@ class WorkflowService:
                     "forbidden_text": self._repair_literals(
                         selected_issues, "forbidden_text",
                     ),
+                    "length_budget": {
+                        "current_han": current_han,
+                        "minimum_han": minimum_han,
+                        "maximum_han": maximum_han,
+                        "deficit_han": deficit_han,
+                    },
                     "groups": groups,
                 }
                 store.write_contract(contract)
@@ -333,6 +374,19 @@ class WorkflowService:
                                     self._text_hash(candidate),
                                 ),
                             }
+                    elif group["kind"] == "expansion":
+                        patch_group = await self._expansion_patch_group(
+                            run_id, run_path, project, constraints,
+                            contract, issue, group_id, candidate,
+                            record, store, records, completed,
+                        )
+                        result = {
+                            "group_id": group_id,
+                            **apply_patch_group(
+                                candidate, patch_group,
+                                self._text_hash(candidate),
+                            ),
+                        }
                     else:
                         request = self._semantic_patch_request(
                             contract, issue, group_id, candidate,
@@ -405,6 +459,36 @@ class WorkflowService:
                                 self._text_hash(candidate),
                             ),
                         }
+                except ExpansionRejectedError as exc:
+                    record.update({
+                        "status": "rejected",
+                        "message": str(exc),
+                    })
+                    record.pop("patch_group", None)
+                    record["patch_result"] = {
+                        "group_id": group_id,
+                        "accepted": False,
+                        "text": candidate,
+                        "failures": [{
+                            "patch": 0,
+                            "code": exc.code,
+                        }],
+                        "diffs": [],
+                    }
+                    self._save_short_revision_state(
+                        store, contract, run_id, records, candidate,
+                        completed, None, "running",
+                    )
+                    self.db.add_run_event(
+                        run_id, "warning",
+                        "short_revision_group_rejected", str(exc),
+                        stage="repair_groups",
+                        metadata={
+                            "group_id": group_id,
+                            "category": exc.category,
+                        },
+                    )
+                    continue
                 except asyncio.CancelledError:
                     record.update({
                         "status": "cancelled",
@@ -708,6 +792,226 @@ class WorkflowService:
                 return value
         return None
 
+    @staticmethod
+    def _is_length_deficit_issue(issue: dict) -> bool:
+        codes = {
+            "length", "length_deficit", "word_count",
+            "minimum_han_not_met",
+        }
+        return any(
+            issue.get(key) in codes
+            for key in ("category", "code", "issue_type")
+        )
+
+    async def _expansion_patch_group(
+        self, run_id: str, run_path: Path, project: Project,
+        constraints: str, contract: dict, issue: dict,
+        group_id: str, candidate: str,
+        record: dict, store: RepairRunStore, records: list[dict],
+        completed: set[str],
+    ) -> dict:
+        budget = contract["length_budget"]
+        scene_records = record.get("expansion_plan")
+        if not isinstance(scene_records, list):
+            request = {
+                "schema": "short-expansion-plan-v1",
+                "group_id": group_id,
+                "candidate_hash": self._text_hash(candidate),
+                "issue": issue,
+                "current_han": budget["current_han"],
+                "minimum_han": budget["minimum_han"],
+                "maximum_han": budget["maximum_han"],
+                "deficit_han": budget["deficit_han"],
+                "story_state": contract["story_state"]["data"],
+                "seven_step_causal_chain": contract.get(
+                    "seven_step_causal_chain",
+                ),
+                "instructions": EXPANSION_CONTRACT,
+            }
+            raw_plan = await self._stage(
+                run_id, run_path, project, "revision_plan", constraints,
+                json.dumps(request, ensure_ascii=False),
+                suffix=f"-expand-plan-{group_id}", allow_tools=False,
+                output_source_characters=budget["deficit_han"],
+                targeted_retry=True,
+            )
+            try:
+                scenes = self._normalize_expansion_plan(
+                    self._json_object(raw_plan), candidate,
+                    budget["deficit_han"],
+                )
+            except ValueError:
+                raise ExpansionRejectedError(
+                    "expansion_contract_rejected",
+                    "expansion_contract_validation",
+                    "扩写规划未通过本地验收，当前修改组未应用",
+                ) from None
+            scene_records = [{
+                "scene_index": index,
+                "contract": scene,
+                "status": "pending",
+            } for index, scene in enumerate(scenes, 1)]
+            record["expansion_plan"] = scene_records
+            self._save_short_revision_state(
+                store, contract, run_id, records, candidate,
+                completed, None, "running",
+            )
+        try:
+            scenes = self._normalize_expansion_plan(
+                {
+                    "scenes": [
+                        scene_record["contract"]
+                        for scene_record in scene_records
+                    ],
+                },
+                candidate,
+                budget["deficit_han"],
+            )
+        except (KeyError, TypeError, ValueError):
+            raise ExpansionRejectedError(
+                "expansion_contract_rejected",
+                "expansion_contract_validation",
+                "扩写规划未通过本地验收，当前修改组未应用",
+            ) from None
+        patches = []
+        for index, (scene, scene_record) in enumerate(
+            zip(scenes, scene_records, strict=True), 1,
+        ):
+            draft = scene_record.get("draft")
+            if scene_record.get("status") != "drafted" or not isinstance(
+                draft, dict,
+            ):
+                draft_request = {
+                    "schema": "short-expansion-scene-v1",
+                    "group_id": group_id,
+                    "scene_index": index,
+                    "scene_count": len(scenes),
+                    "contract": scene,
+                    "authoritative_facts": [
+                        *contract["story_state"]["data"].get(
+                            "locked_facts", [],
+                        ),
+                        *contract["story_state"]["data"].get(
+                            "confirmed_facts", [],
+                        ),
+                    ],
+                    "seven_step_causal_chain": contract.get(
+                        "seven_step_causal_chain",
+                    ),
+                    "instructions": (
+                        "只返回严格 JSON，不得改写锚点或其他正文。"
+                        "text 必须是可直接插入的场景正文，"
+                        "并逐项回报合同中的状态字段。"
+                    ),
+                }
+                raw_scene = await self._stage(
+                    run_id, run_path, project, "draft", constraints,
+                    json.dumps(draft_request, ensure_ascii=False),
+                    suffix=f"-expand-draft-{group_id}-{index}",
+                    allow_tools=False,
+                    output_source_characters=scene["target_han"],
+                    targeted_retry=True,
+                )
+                try:
+                    draft = self._json_object(raw_scene)
+                    self._validate_expansion_draft(draft, scene)
+                except ValueError:
+                    raise ExpansionRejectedError(
+                        "expansion_draft_rejected",
+                        "expansion_draft_validation",
+                        "扩写场景未通过本地验收，当前修改组未应用",
+                    ) from None
+                scene_record["draft"] = draft
+                scene_record["status"] = "drafted"
+                self._save_short_revision_state(
+                    store, contract, run_id, records, candidate,
+                    completed, None, "running",
+                )
+            try:
+                scene_text = self._validate_expansion_draft(draft, scene)
+            except ValueError:
+                raise ExpansionRejectedError(
+                    "expansion_draft_rejected",
+                    "expansion_draft_validation",
+                    "扩写场景未通过本地验收，当前修改组未应用",
+                ) from None
+            patches.append({
+                "operation": scene["operation"],
+                "old_text": scene["anchor"],
+                "new_text": (
+                    f"\n\n{scene_text}"
+                    if scene["operation"] == "insert_after"
+                    else f"{scene_text}\n\n"
+                ),
+            })
+        return {
+            "group_id": group_id,
+            "issue_ids": [group_id],
+            "kind": "semantic",
+            "requires_user_confirmation": True,
+            "requires_full_review": True,
+            "impact_flags": ["scene_inserted"],
+            "expansion_contracts": scenes,
+            "patches": patches,
+        }
+
+    @staticmethod
+    def _normalize_expansion_plan(
+        value: dict, candidate: str, deficit_han: int,
+    ) -> list[dict]:
+        scenes = value.get("scenes")
+        if not isinstance(scenes, list) or not scenes:
+            raise ValueError("扩写计划必须包含至少一个场景")
+        normalized = []
+        anchors = set()
+        for scene in scenes:
+            if not isinstance(scene, dict):
+                raise ValueError("扩写场景合同格式无效")
+            for key in (
+                "purpose", "entry_state", "exit_state", "anchor",
+                "time", "evidence_source", "transition",
+            ):
+                if not isinstance(scene.get(key), str) or not scene[key].strip():
+                    raise ValueError("扩写场景合同缺少必要状态")
+            target_han = scene.get("target_han")
+            if (
+                not isinstance(target_han, int)
+                or isinstance(target_han, bool)
+                or target_han <= 0
+            ):
+                raise ValueError("扩写场景目标汉字数无效")
+            anchor = scene["anchor"]
+            if anchor in anchors or candidate.count(anchor) != 1:
+                raise ValueError("扩写场景锚点必须唯一")
+            if scene.get("operation") not in {"insert_before", "insert_after"}:
+                raise ValueError("扩写场景只能使用插入操作")
+            if scene.get("requires_full_review") is not True:
+                raise ValueError("扩写场景必须要求全文复核")
+            if not isinstance(scene.get("new_facts"), list):
+                raise ValueError("扩写场景新增事实必须是列表")
+            anchors.add(anchor)
+            normalized.append(dict(scene))
+        if sum(scene["target_han"] for scene in normalized) != deficit_han:
+            raise ValueError("扩写场景目标汉字数总和必须等于本地缺口")
+        return normalized
+
+    @staticmethod
+    def _validate_expansion_draft(value: dict, contract: dict) -> str:
+        text = value.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("扩写场景正文为空")
+        target_han = contract["target_han"]
+        actual_han = effective_han_characters(text)
+        if actual_han < target_han or actual_han > math.ceil(target_han * 1.1):
+            raise ValueError("扩写场景有效汉字数超出本地允许范围")
+        for key in (
+            "entry_state", "exit_state", "time",
+            "evidence_source", "transition", "new_facts",
+        ):
+            if value.get(key) != contract.get(key):
+                raise ValueError("扩写场景状态与规划合同不一致")
+        return text.strip()
+
     def _mechanical_patch_group(
         self, issue: dict, candidate: str, group_id: str,
     ) -> dict | None:
@@ -917,6 +1221,23 @@ class WorkflowService:
             "next_action": next_action,
             "protected_best_unchanged": True,
         }
+        full_review_reasons = []
+        for record in records:
+            patch_group = record.get("patch_group")
+            patch_result = record.get("patch_result")
+            if (
+                not isinstance(patch_group, dict)
+                or not isinstance(patch_result, dict)
+                or patch_result.get("accepted") is not True
+            ):
+                continue
+            for reason in patch_group.get("impact_flags", []):
+                if reason not in full_review_reasons:
+                    full_review_reasons.append(reason)
+        report["review_mode"] = (
+            "full" if full_review_reasons else "incremental"
+        )
+        report["full_review_reasons"] = full_review_reasons
         store.write_report(report)
         return report
 

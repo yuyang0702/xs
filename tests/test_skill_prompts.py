@@ -1,11 +1,28 @@
 from dataclasses import dataclass
 
+from novel_flywheel.prompts import EXPANSION_CONTRACT, REQUIRED_SKILLS
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 
 
 @dataclass(frozen=True)
 class Receipt:
     content_hash: str
+
+
+def test_expansion_contract_requires_scene_state_and_full_review() -> None:
+    for field in (
+        "purpose", "target_han", "entry_state", "exit_state", "anchor",
+        "operation", "requires_full_review", "time", "evidence_source",
+        "transition", "new_facts",
+    ):
+        assert field in EXPANSION_CONTRACT
+    assert "背景说明" in EXPANSION_CONTRACT
+    assert REQUIRED_SKILLS["revision_plan"] == [
+        "revision-continuity", "plot-structure",
+    ]
+    assert REQUIRED_SKILLS["draft"] == [
+        "chapter-writing", "novel-writing", "dialogue",
+    ]
 
 
 def test_compactor_keeps_hard_rules_and_removes_examples() -> None:

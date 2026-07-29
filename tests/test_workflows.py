@@ -8,6 +8,7 @@ from typing import get_type_hints
 import pytest
 
 from novel_flywheel.db import Database
+from novel_flywheel.learning import LearningSystem
 from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.quality import issue_ledger, review_windows
@@ -3774,25 +3775,36 @@ async def test_v2_conditional_pass_remains_candidate_instead_of_formal_success(
     assert checkpoint["outcome"] == "conditional_pass"
 
 
-def _short_revision_service(tmp_path, issues):
-    filler = (
-        "雨落在旧城的石阶上，林晚握着钥匙走进档案馆。"
-        "值班员核对了登记簿，她沿着昏暗走廊寻找那份证词。"
-        "窗外的钟声敲过三次，纸页上的墨迹仍然清晰。"
-        "她把每个时间点重新排好，确认门锁和证物都没有变化。"
-    ) * 9
-    source = (
-        filler + "林 晚核对记录，值 班员没有离开。"
-        + "甲问题原句。" + filler + "乙问题原句。" + filler
-    )
+def _short_revision_service(
+    tmp_path, issues, *, source=None, target_words=None,
+    platform_profile_id=None,
+):
+    if source is None:
+        filler = (
+            "雨落在旧城的石阶上，林晚握着钥匙走进档案馆。"
+            "值班员核对了登记簿，她沿着昏暗走廊寻找那份证词。"
+            "窗外的钟声敲过三次，纸页上的墨迹仍然清晰。"
+            "她把每个时间点重新排好，确认门锁和证物都没有变化。"
+        ) * 9
+        source = (
+            filler + "林 晚核对记录，值 班员没有离开。"
+            + "甲问题原句。" + filler + "乙问题原句。" + filler
+        )
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Targeted repair", mode="short", genre="suspense",
         premise="Two independent local issues.",
-        target_words=effective_han_characters(source),
+        target_words=(
+            effective_han_characters(source)
+            if target_words is None else target_words
+        ),
     ))
+    if platform_profile_id is not None:
+        project = store.apply_platform_profile(
+            project.id, platform_profile_id,
+        )
     state = StoryStateStore(db).ensure(project.id, project.path)
     gateway = FakeGateway()
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([])))
@@ -3845,6 +3857,423 @@ def _short_revision_patch(request, old_text, new_text):
             }],
         }],
     }, ensure_ascii=False)
+
+
+@pytest.mark.asyncio
+async def test_length_deficit_routes_to_draft_scene_patch_and_full_review(
+    tmp_path, monkeypatch,
+) -> None:
+    sentence = "林晚沿走廊核对证词，确认时间和证物来源。"
+    anchor = "档案员合上记录簿。"
+    source = sentence * 388 + "值班记录仍然清楚。" + anchor
+    scene = sentence * 111 + "线索。"
+    assert effective_han_characters(source) == 7000
+    assert effective_han_characters(scene) == 2000
+    service, project, protected, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "length",
+            "severity": "high",
+            "evidence": anchor,
+            "action": "补足平台最低有效汉字数。",
+        }],
+        source=source,
+        target_words=10_000,
+        platform_profile_id="zhihu-salt-short",
+    )
+    causal_chain = {
+        "core_goal": "确认值班记录来源",
+        "cycles": [{"result": "第一次核验受阻"}],
+    }
+    learning = LearningSystem(
+        service.db, None, service.projects, service.gateway,
+    )
+    learning.save_artifact(
+        project.id, "short_causal_chain", causal_chain,
+    )
+    issue_id = ledger[0]["issue_id"]
+    calls = []
+    plan = {
+        "purpose": "增加证据核验受阻与人物选择代价",
+        "target_han": 2000,
+        "entry_state": "林晚拿到值班记录但尚未确认来源",
+        "exit_state": "林晚确认记录来源并决定继续追查",
+        "anchor": anchor,
+        "operation": "insert_after",
+        "requires_full_review": True,
+        "time": "当夜",
+        "evidence_source": "值班记录",
+        "transition": "档案员离开后，林晚继续核验记录",
+        "new_facts": [],
+    }
+
+    async def stage(*args, **kwargs):
+        stage_name = args[3]
+        request = json.loads(args[5])
+        calls.append(stage_name)
+        if stage_name == "revision_plan":
+            assert request["current_han"] == 7000
+            assert request["minimum_han"] == 9000
+            assert request["deficit_han"] == 2000
+            assert request["seven_step_causal_chain"] == causal_chain
+            learning.save_artifact(
+                project.id, "short_causal_chain",
+                {"core_goal": "运行中被修改，不应进入冻结合同"},
+            )
+            return json.dumps({"scenes": [plan]}, ensure_ascii=False)
+        if stage_name == "draft":
+            assert request["seven_step_causal_chain"] == causal_chain
+            return json.dumps({
+                "text": scene,
+                "entry_state": plan["entry_state"],
+                "exit_state": plan["exit_state"],
+                "time": plan["time"],
+                "evidence_source": plan["evidence_source"],
+                "transition": plan["transition"],
+                "new_facts": plan["new_facts"],
+            }, ensure_ascii=False)
+        raise AssertionError(f"unexpected stage: {stage_name}")
+
+    quality_output = (
+        project.path / "runs" / "quality-source" / "outputs"
+    )
+    best_path = quality_output / "best-candidate.md"
+    quality_checkpoint = quality_output / "quality-checkpoint.json"
+    formal_path = project.path / "manuscript" / "story.md"
+    best_before = best_path.read_bytes()
+    checkpoint_before = quality_checkpoint.read_bytes()
+    formal_before = formal_path.read_bytes()
+    monkeypatch.setattr(service, "_stage", stage)
+
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="expand-length",
+    )
+
+    report = json.loads((
+        project.path / "runs" / "expand-length"
+        / "outputs" / "repair-report.json"
+    ).read_text(encoding="utf-8"))
+    assert calls[:2] == ["revision_plan", "draft"]
+    assert "polish" not in calls
+    assert "final_review" not in calls
+    assert result["status"] == "waiting_confirmation"
+    assert effective_han_characters(result["candidate"]) == 9000
+    assert report["review_mode"] == "full"
+    assert "scene_inserted" in report["full_review_reasons"]
+    assert best_path.read_bytes() == best_before
+    assert quality_checkpoint.read_bytes() == checkpoint_before
+    assert formal_path.read_bytes() == formal_before
+    assert protected == source
+
+
+def _expansion_test_source(*, two_anchors: bool = False) -> tuple[str, list[str]]:
+    sentence = "林晚沿走廊核对证词，确认时间和证物来源。"
+    anchors = ["档案员合上记录簿。"]
+    if two_anchors:
+        anchors.append("管理员锁好侧门。")
+        source = sentence * 388 + "夜。" + "".join(anchors)
+    else:
+        source = sentence * 388 + "值班记录仍然清楚。" + anchors[0]
+    assert effective_han_characters(source) == 7000
+    return source, anchors
+
+
+def _expansion_scene_text(target_han: int) -> str:
+    sentence = "林晚沿走廊核对证词，确认时间和证物来源。"
+    count, remainder = divmod(target_han, 18)
+    text = sentence * count + "线" * remainder + "。"
+    assert effective_han_characters(text) == target_han
+    return text
+
+
+def _expansion_plan(anchor: str, target_han: int = 2000) -> dict:
+    return {
+        "purpose": "增加证据核验受阻与人物选择代价",
+        "target_han": target_han,
+        "entry_state": "林晚拿到值班记录但尚未确认来源",
+        "exit_state": "林晚确认记录来源并决定继续追查",
+        "anchor": anchor,
+        "operation": "insert_after",
+        "requires_full_review": True,
+        "time": "当夜",
+        "evidence_source": "值班记录",
+        "transition": "档案员离开后，林晚继续核验记录",
+        "new_facts": [],
+    }
+
+
+def _expansion_draft(plan: dict, text: str) -> dict:
+    return {
+        "text": text,
+        "entry_state": plan["entry_state"],
+        "exit_state": plan["exit_state"],
+        "time": plan["time"],
+        "evidence_source": plan["evidence_source"],
+        "transition": plan["transition"],
+        "new_facts": plan["new_facts"],
+    }
+
+
+def _expansion_service(tmp_path, *, two_anchors: bool = False):
+    source, anchors = _expansion_test_source(two_anchors=two_anchors)
+    service, project, protected, ledger, state = _short_revision_service(
+        tmp_path, [{
+            "category": "length",
+            "severity": "high",
+            "evidence": anchors[0],
+            "action": "补足平台最低有效汉字数。",
+        }],
+        source=source,
+        target_words=10_000,
+        platform_profile_id="zhihu-salt-short",
+    )
+    return service, project, protected, ledger, state, anchors
+
+
+@pytest.mark.parametrize("invalid_case", [
+    "missing_purpose",
+    "missing_entry_state",
+    "missing_exit_state",
+    "missing_anchor",
+    "duplicate_anchor",
+    "zero_target",
+    "changed_total",
+])
+@pytest.mark.asyncio
+async def test_expansion_plan_contract_rejection_stays_local(
+    tmp_path, monkeypatch, invalid_case,
+) -> None:
+    service, project, _source, ledger, _state, anchors = _expansion_service(
+        tmp_path,
+    )
+    plan = _expansion_plan(anchors[0])
+    scenes = [plan]
+    if invalid_case.startswith("missing_"):
+        plan.pop(invalid_case.removeprefix("missing_"))
+    elif invalid_case == "duplicate_anchor":
+        plan["target_han"] = 1000
+        scenes = [plan, dict(plan)]
+    elif invalid_case == "zero_target":
+        plan["target_han"] = 0
+    elif invalid_case == "changed_total":
+        plan["target_han"] = 1999
+    calls = []
+
+    async def stage(*args, **kwargs):
+        calls.append(args[3])
+        return json.dumps({"scenes": scenes}, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]],
+        run_id=f"expand-invalid-{invalid_case}",
+    )
+
+    group = result["groups"][ledger[0]["issue_id"]]
+    assert calls == ["revision_plan"]
+    assert result["status"] == "waiting_local_fix"
+    assert group["status"] == "rejected"
+    assert group["failures"] == [{
+        "patch": 0,
+        "code": "expansion_contract_rejected",
+    }]
+    assert "final_review" not in calls
+
+
+@pytest.mark.parametrize("invalid_case", [
+    "too_short",
+    "too_long",
+    "state_mismatch",
+])
+@pytest.mark.asyncio
+async def test_expansion_draft_rejection_stays_local_without_final_review(
+    tmp_path, monkeypatch, invalid_case,
+) -> None:
+    service, project, _source, ledger, _state, anchors = _expansion_service(
+        tmp_path,
+    )
+    plan = _expansion_plan(anchors[0])
+    target = {
+        "too_short": 1999,
+        "too_long": 2201,
+        "state_mismatch": 2000,
+    }[invalid_case]
+    draft = _expansion_draft(plan, _expansion_scene_text(target))
+    if invalid_case == "state_mismatch":
+        draft["exit_state"] = "人物状态与规划不一致"
+    calls = []
+
+    async def stage(*args, **kwargs):
+        calls.append(args[3])
+        if args[3] == "revision_plan":
+            return json.dumps({"scenes": [plan]}, ensure_ascii=False)
+        return json.dumps(draft, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]],
+        run_id=f"expand-draft-{invalid_case}",
+    )
+
+    group = result["groups"][ledger[0]["issue_id"]]
+    assert calls == ["revision_plan", "draft"]
+    assert result["status"] == "waiting_local_fix"
+    assert group["status"] == "rejected"
+    assert group["failures"] == [{
+        "patch": 0,
+        "code": "expansion_draft_rejected",
+    }]
+    assert "final_review" not in calls
+
+
+@pytest.mark.asyncio
+async def test_non_length_issue_below_minimum_does_not_route_to_draft(
+    tmp_path, monkeypatch,
+) -> None:
+    source, anchors = _expansion_test_source()
+    service, project, _protected, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": anchors[0],
+            "action": "澄清档案员为何离开。",
+        }],
+        source=source,
+        target_words=10_000,
+        platform_profile_id="zhihu-salt-short",
+    )
+    calls = []
+
+    async def stage(*args, **kwargs):
+        calls.append(args[3])
+        request = json.loads(args[5])
+        return _short_revision_patch(
+            request, anchors[0], "档案员确认记录后合上簿册。",
+        )
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]],
+        run_id="expand-non-length",
+    )
+
+    assert calls == ["revision_plan"]
+    assert "draft" not in calls
+    assert result["status"] == "waiting_local_fix"
+
+
+@pytest.mark.asyncio
+async def test_expansion_multiple_scenes_use_exact_local_deficit_and_unique_anchors(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state, anchors = _expansion_service(
+        tmp_path, two_anchors=True,
+    )
+    plans = [
+        _expansion_plan(anchors[0], 700),
+        _expansion_plan(anchors[1], 1300),
+    ]
+    calls = []
+
+    async def stage(*args, **kwargs):
+        request = json.loads(args[5])
+        calls.append((args[3], request.get("scene_index")))
+        if args[3] == "revision_plan":
+            return json.dumps({"scenes": plans}, ensure_ascii=False)
+        plan = plans[request["scene_index"] - 1]
+        return json.dumps(
+            _expansion_draft(
+                plan, _expansion_scene_text(plan["target_han"]),
+            ),
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]],
+        run_id="expand-multiple",
+    )
+
+    records = json.loads((
+        project.path / "runs" / "expand-multiple"
+        / "outputs" / "patch-groups.json"
+    ).read_text(encoding="utf-8"))["groups"]
+    contracts = records[0]["patch_group"]["expansion_contracts"]
+    assert calls == [
+        ("revision_plan", None), ("draft", 1), ("draft", 2),
+    ]
+    assert sum(item["target_han"] for item in contracts) == 2000
+    assert len({item["anchor"] for item in contracts}) == 2
+    assert effective_han_characters(result["candidate"]) == 9000
+    assert result["status"] == "waiting_confirmation"
+
+
+@pytest.mark.parametrize("failure_kind", ["provider", "cancel"])
+@pytest.mark.asyncio
+async def test_expansion_resume_retries_only_unfinished_scene(
+    tmp_path, monkeypatch, failure_kind,
+) -> None:
+    service, project, _source, ledger, _state, anchors = _expansion_service(
+        tmp_path, two_anchors=True,
+    )
+    plans = [
+        _expansion_plan(anchors[0], 1000),
+        _expansion_plan(anchors[1], 1000),
+    ]
+    first_calls = []
+
+    async def interrupted_stage(*args, **kwargs):
+        request = json.loads(args[5])
+        first_calls.append((args[3], request.get("scene_index")))
+        if args[3] == "revision_plan":
+            return json.dumps({"scenes": plans}, ensure_ascii=False)
+        if request["scene_index"] == 1:
+            return json.dumps(
+                _expansion_draft(plans[0], _expansion_scene_text(1000)),
+                ensure_ascii=False,
+            )
+        if failure_kind == "provider":
+            raise TargetedGroupError("provider unavailable")
+        raise asyncio.CancelledError
+
+    run_id = f"expand-resume-{failure_kind}"
+    monkeypatch.setattr(service, "_stage", interrupted_stage)
+    if failure_kind == "provider":
+        with pytest.raises(RuntimeError, match="返修组"):
+            await service.run_short_revision(
+                project.id, [ledger[0]["issue_id"]], run_id=run_id,
+            )
+    else:
+        with pytest.raises(asyncio.CancelledError):
+            await service.run_short_revision(
+                project.id, [ledger[0]["issue_id"]], run_id=run_id,
+            )
+    records = json.loads((
+        project.path / "runs" / run_id / "outputs" / "patch-groups.json"
+    ).read_text(encoding="utf-8"))["groups"]
+    assert records[0]["expansion_plan"][0]["status"] == "drafted"
+
+    resumed_calls = []
+
+    async def resume_stage(*args, **kwargs):
+        request = json.loads(args[5])
+        resumed_calls.append((args[3], request.get("scene_index")))
+        if args[3] == "revision_plan" or request.get("scene_index") != 2:
+            raise AssertionError("completed expansion work was repeated")
+        return json.dumps(
+            _expansion_draft(plans[1], _expansion_scene_text(1000)),
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(service, "_stage", resume_stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]], run_id=run_id,
+    )
+
+    assert first_calls == [
+        ("revision_plan", None), ("draft", 1), ("draft", 2),
+    ]
+    assert resumed_calls == [("draft", 2)]
+    assert result["status"] == "waiting_confirmation"
 
 
 @pytest.mark.asyncio
