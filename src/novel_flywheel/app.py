@@ -33,6 +33,7 @@ from novel_flywheel.material_impacts import MaterialImpactService
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.quality_references import QualityReferenceService
 from novel_flywheel.learning import LearningSystem
+from novel_flywheel.launcher import data_dir_fingerprint
 from novel_flywheel.nlp_backend import LocalNLPManager
 from novel_flywheel.market import MarketService
 from novel_flywheel.market_baseline import MarketBaselineService
@@ -74,6 +75,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         return response
     if db is None:
         db = Database(default_settings().database_path)
+    health_fingerprint = data_dir_fingerprint(db.path.parent)
     db.migrate()
     db.interrupt_active_runs()
     app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
@@ -134,7 +136,11 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {
+            "status": "ok",
+            "service": "novel-flywheel-console",
+            "data_dir_fingerprint": health_fingerprint,
+        }
 
     return app
 
