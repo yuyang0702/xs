@@ -160,6 +160,13 @@
               <label>类型<select id="reference-filter-type"><option value="">全部类型</option><option value="reference_work">参考作品</option><option value="platform_rule">平台规则</option><option value="popular_sample">爆款样本</option><option value="writing_tutorial">写作教程</option><option value="competitor_work">竞品作品</option></select></label>
               <label>作品<select id="reference-filter-project"><option value="">全部作品</option><option value="unlinked">未关联作品</option></select></label>
             </div>
+            <section class="reference-selection-bar" aria-label="用参考资料创建作品">
+              <div id="reference-selection-status" class="reference-selection-status" role="status" aria-live="polite"><strong>已选择 0 篇资料</strong><span>请选择参考作品或爆款样本</span></div>
+              <div class="reference-selection-actions">
+                <button id="clear-reference-selection" class="secondary" type="button" disabled>清除选择</button>
+                <button id="create-from-selected-references" class="primary" type="button" disabled>用所选资料创建新作品</button>
+              </div>
+            </section>
             <nav id="reference-list" class="reference-list" aria-label="参考资料列表"><p class="skill-meta">尚未导入参考资料</p></nav>
           </aside>
           <article id="reference-detail" class="reference-detail"><p class="skill-meta">选择参考资料后查看分析和原文</p></article>

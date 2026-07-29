@@ -209,7 +209,7 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "local_corpus_only" not in script
     assert "readableLearningValue(item.data)" in script
     assert "state.references.map(item=>" in script
-    assert 'api("/api/learning/mechanisms")' in script
+    assert 'api("/api/learning/mechanisms?view=all")' in script
     assert "startWizardFromReference" in script
     assert "data-reference-create" in script
 
@@ -255,6 +255,66 @@ def test_learning_library_is_split_into_plain_language_task_views(tmp_path) -> N
     assert "本地诊断是找问题" in html
     assert "本地提炼是找写法" in html
     assert "switchLearningView" in script
+
+
+def test_learning_library_supports_multi_reference_creation_with_readable_states(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for control in (
+        'id="reference-selection-status"',
+        'id="create-from-selected-references"',
+        "data-reference-select",
+    ):
+        assert control in html + script
+    for phrase in (
+        "已选择 0 篇资料",
+        "用所选资料创建新作品",
+        "正在检查所选资料",
+        "正在完成本地提炼",
+        "还需要确认这些资料的候选写法",
+        "所选资料会继续保留",
+    ):
+        assert phrase in script
+    compact_script = script.replace(" ", "")
+    assert "selectedReferenceIds:newSet()" in compact_script
+    assert "reference_source_ids:referenceIds" in compact_script
+    assert "startWizardFromReference([source.id])" in script
+    assert "startWizardFromReference([...state.selectedReferenceIds])" in script
+    assert "reference_work" in script and "popular_sample" in script
+    assert "这类资料只用于查阅，不能直接创建作品" in script
+    assert 'api("/api/learning/mechanisms?view=all")' in script
+    assert 'rejectedView?item.status==="rejected":item.status!=="rejected"' in script
+    creation = script.split("async function startWizardFromReference", 1)[1].split(
+        '$("#start-wizard")', 1,
+    )[0]
+    mechanism_assignments = [
+        line for line in script.splitlines() if "state.mechanisms=await api" in line
+    ]
+    assert mechanism_assignments
+    assert all("?view=all" in line for line in mechanism_assignments)
+    assert '(item.data.analysis_origin||"local")!=="model"' in creation
+    assert creation.count("/learn`") == 1
+    assert "/model-learn" not in creation
+    assert "Promise.allSettled" in creation
+    assert creation.index("Promise.allSettled") < creation.index(
+        'state.mechanisms=await api("/api/learning/mechanisms?view=all")'
+    ) < creation.index("if(localPreparationFailed)")
+    assert creation.index('api("/api/wizards"') < creation.index(
+        "referenceIds.forEach(id=>state.selectedReferenceIds.delete(id))"
+    )
+    assert "finally" in creation
+    assert "state.referenceSelectionBusy=false" in creation
+    assert '基于《${source' not in script
+    assert "const guidance=" not in script
+    assert ".reference-selection-bar" in css
+    assert ".reference-select-control" in css
+    assert ".reference-selection-status.success" in css
+    assert ".reference-selection-status.error" in css
 
 
 def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:

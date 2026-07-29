@@ -1,4 +1,6 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], selectedReferenceIds:new Set(), referenceSelectionBusy:false, referenceSelectionStatus:null, referenceSelectionPendingIds:[], referenceSelectionPendingTitles:[], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const creatableReferenceTypes = new Set(["reference_work", "popular_sample"]);
+const referenceCreationUnavailable = "这类资料只用于查阅，不能直接创建作品";
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -135,9 +137,43 @@ document.querySelectorAll(".nav-item").forEach(button => button.addEventListener
 }));
 document.querySelectorAll("[data-view-target]").forEach(button => button.addEventListener("click", () => showView(button.dataset.viewTarget)));
 
+async function loadReferences() {
+  const references=await api("/api/references");
+  const existingIds=new Set(references.map(item=>item.id));
+  let selectionChanged=false;
+  for(const id of state.selectedReferenceIds)if(!existingIds.has(id)){state.selectedReferenceIds.delete(id);selectionChanged=true;}
+  if(selectionChanged){state.referenceSelectionStatus=null;state.referenceSelectionPendingIds=[];state.referenceSelectionPendingTitles=[];}
+  state.references=references;
+  return references;
+}
+
 async function loadAll() {
-  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), api("/api/references"), api("/api/learning/mechanisms"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
+  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), loadReferences(), api("/api/learning/mechanisms?view=all"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
   renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences(); renderLearning(); renderNlpStatus();
+}
+
+function renderReferenceSelectionBar() {
+  const shell=$("#reference-selection-status"),create=$("#create-from-selected-references"),clear=$("#clear-reference-selection");
+  if(!shell||!create||!clear)return;
+  const count=state.selectedReferenceIds.size;
+  const fallbackTitle=count?`已选择 ${count} 篇资料`:"已选择 0 篇资料";
+  const status=state.referenceSelectionStatus;
+  shell.className=`reference-selection-status ${status?.kind||""}`.trim();
+  shell.innerHTML=`<strong>${escapeHtml(status?.title?`${status.title} · ${fallbackTitle}`:fallbackTitle)}</strong><span>${escapeHtml(status?.detail||"只可选择参考作品和爆款样本；检查和本地提炼不会调用模型。")}</span>`;
+  create.textContent="用所选资料创建新作品";
+  create.disabled=!count||state.referenceSelectionBusy;
+  clear.disabled=!count||state.referenceSelectionBusy;
+}
+
+function setReferenceSelectionStatus(kind,title,detail) {
+  state.referenceSelectionStatus={kind,title,detail};
+  renderReferenceSelectionBar();
+}
+
+function clearReferenceReadinessNotice() {
+  state.referenceSelectionPendingIds=[];
+  state.referenceSelectionPendingTitles=[];
+  $("#learning-mechanisms .reference-readiness-notice")?.remove();
 }
 
 function renderReferences() {
@@ -156,6 +192,7 @@ function renderReferences() {
     $("#reference-filter-platform").innerHTML='<option value="">全部平台</option>'+platforms.map(item=>`<option>${escapeHtml(item)}</option>`).join("");
     $("#reference-filter-platform").value=selected;
   }
+  renderReferenceSelectionBar();
   if (!state.references.length) {
     state.activeReference = null;
     list.innerHTML = '<p class="skill-meta reference-empty">尚未导入参考资料</p>';
@@ -175,9 +212,18 @@ function renderReferences() {
   });
   list.innerHTML = filtered.length ? filtered.map(item => {
     const linked=state.projects.find(project=>project.id===item.project_id);
-    return `<button class="reference-list-item ${item.id === state.activeReference.id ? "active" : ""}" data-reference-id="${item.id}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(platformLabel(item.platform||"未指定平台"))} · ${escapeHtml(typeLabels[item.content_type]||"参考作品")}${linked?` · 关联《${escapeHtml(linked.title)}》`:""}</span><span>${Number(item.latest_version?.character_count || 0).toLocaleString()} 字符 · ${item.versions.length} 个版本</span></button>`;
+    const selectable=creatableReferenceTypes.has(item.content_type);
+    const title=selectable?`选择《${item.title}》用于创建作品`:referenceCreationUnavailable;
+    return `<div class="reference-list-item ${item.id === state.activeReference.id ? "active" : ""}"><label class="reference-select-control ${selectable?"":"unsupported"}" title="${escapeHtml(title)}"><input type="checkbox" data-reference-select="${escapeHtml(item.id)}" aria-label="${escapeHtml(title)}" ${state.selectedReferenceIds.has(item.id)?"checked":""} ${selectable&&!state.referenceSelectionBusy?"":"disabled"}></label><button type="button" class="reference-list-open" data-reference-id="${escapeHtml(item.id)}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(platformLabel(item.platform||"未指定平台"))} · ${escapeHtml(typeLabels[item.content_type]||"参考作品")}${linked?` · 关联《${escapeHtml(linked.title)}》`:""}</span><span>${Number(item.latest_version?.character_count || 0).toLocaleString()} 字符 · ${item.versions.length} 个版本</span></button></div>`;
   }).join("") : '<p class="skill-meta reference-empty">没有符合筛选条件的资料</p>';
   list.querySelectorAll("[data-reference-id]").forEach(button => button.addEventListener("click", () => selectReference(button.dataset.referenceId)));
+  list.querySelectorAll("[data-reference-select]").forEach(input=>input.addEventListener("change",()=>{
+    if(input.checked)state.selectedReferenceIds.add(input.dataset.referenceSelect);
+    else state.selectedReferenceIds.delete(input.dataset.referenceSelect);
+    state.referenceSelectionStatus=null;
+    clearReferenceReadinessNotice();
+    renderReferenceSelectionBar();
+  }));
   if (!state.referenceContent) loadReferenceContent(state.activeReference.id);
   else renderReferenceDetail();
 }
@@ -304,18 +350,20 @@ function renderReferenceDetail() {
   if (!source) return;
   const typeLabels={reference_work:"参考作品",platform_rule:"平台规则",popular_sample:"爆款样本",writing_tutorial:"写作教程",competitor_work:"竞品作品"};
   const sourceTypeLabels={paste:"粘贴文本",txt:"文本文件",docx:"文字文档",pdf:"电子文档",url:"网页资料"};
+  const canCreate=creatableReferenceTypes.has(source.content_type);
+  const createAction=`<button class="primary" data-reference-create ${canCreate&&!state.referenceSelectionBusy?"":"disabled"} title="${canCreate?"从这篇资料开始创建作品":referenceCreationUnavailable}">${canCreate?"从此资料创建作品":"仅供查阅，不能创建"}</button>`;
   const report = state.referenceAnalysis?.result;
   const metrics = report?.metrics;
   const findings = report?.findings || [];
   const learning=state.learningReport?.source_id===source.id?state.learningReport:null;
   const learningSummary=learning?`<section class="reference-learning-summary"><div><strong>${learning.analyzed_windows} / ${learning.window_count}</strong><span>窗口已扫描</span></div><div><strong>${learning.coverage_percent}%</strong><span>全文覆盖率</span></div><div><strong>${learning.mechanisms.length}</strong><span>合并后候选机制</span></div><p>本地规则已覆盖全文；候选机制的多处证据已合并，可在下方项目学习区查看。</p></section>`:"";
   const diagnosticsHtml=metrics?`<section class="reference-metrics"><div><strong>${metrics.sentence_count}</strong><span>句子</span></div><div><strong>${metrics.paragraph_count}</strong><span>段落</span></div><div><strong>${metrics.average_sentence_length}</strong><span>平均句长</span></div><div><strong>${findings.length}</strong><span>需要你复核</span></div></section><section class="reference-findings"><h3>本地诊断</h3><p class="section-intro">这些是本地规则找到的疑似位置，不代表文章一定有错。请结合原文决定是否修改。</p>${findings.length?findings.map(renderDiagnosticFinding).join(""):'<p class="skill-meta">当前没有发现需要你复核的问题。</p>'}</section>`:'<section><p class="skill-meta">尚未运行本地诊断。点击后会扫描全文，并说明每个疑似问题为什么值得检查。</p></section>';
-  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(sourceTypeLabels[source.source_type]||"参考资料")}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions"><button class="primary" data-reference-create>从此资料创建作品</button><button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型全文分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header><section class="reference-task-status" data-reference-task-status></section>${learningSummary}${renderLocalAttractionCandidates(learning?.attraction_candidates)}${renderAttractionMap()}${diagnosticsHtml}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
+  $("#reference-detail").innerHTML = `<header><div><p class="eyebrow">${escapeHtml(sourceTypeLabels[source.source_type]||"参考资料")}</p><h2>${escapeHtml(source.title)}</h2><p class="skill-meta">${Number(source.latest_version?.character_count || 0).toLocaleString()} 字符 · 版本 ${source.latest_version?.version || 1}</p></div><div class="reference-actions">${createAction}<button class="secondary" data-reference-analyze>本地诊断</button><button class="secondary" data-reference-learn>本地提炼</button><button class="secondary" data-reference-model-learn>模型全文分析</button><button class="secondary danger-text" data-reference-delete>删除</button></div></header><section class="reference-task-status" data-reference-task-status></section>${learningSummary}${renderLocalAttractionCandidates(learning?.attraction_candidates)}${renderAttractionMap()}${diagnosticsHtml}<details class="reference-source"><summary>查看原文</summary><pre>${escapeHtml(state.referenceContent)}</pre></details>`;
   renderReferenceTaskStatus();
   $("#reference-detail [data-reference-analyze]").addEventListener("click", analyzeReference);
   $("#reference-detail [data-reference-learn]").addEventListener("click", learnReference);
   $("#reference-detail [data-reference-model-learn]").addEventListener("click", modelLearnReference);
-  $("#reference-detail [data-reference-create]").addEventListener("click", startWizardFromReference);
+  $("#reference-detail [data-reference-create]").addEventListener("click",()=>startWizardFromReference([source.id]));
   $("#reference-detail [data-reference-delete]").addEventListener("click", deleteReference);
   $("#reference-detail [data-attraction-confirm]")?.addEventListener("click",()=>reviseAttractionMap("confirm"));
   $("#reference-detail [data-attraction-reject]")?.addEventListener("click",()=>reviseAttractionMap("reject"));
@@ -366,7 +414,7 @@ async function linkReferenceMarket(referenceId,workId){
   try{
     await api(`/api/market/references/${referenceId}/link`,{method:"PUT",body:JSON.stringify({work_id:workId})});
     state.activeReference=await api(`/api/references/${referenceId}`);
-    state.references=await api("/api/references");
+    await loadReferences();
     state.marketMatch=null; renderReferences(); toast("榜单作品关联已确认");
   }catch(error){toast(error.message);}
 }
@@ -376,7 +424,7 @@ async function unlinkReferenceMarket(referenceId){
   try{
     await api(`/api/market/references/${referenceId}/link`,{method:"DELETE"});
     state.activeReference=await api(`/api/references/${referenceId}`);
-    state.references=await api("/api/references");
+    await loadReferences();
     state.marketMatch=null; renderReferences(); toast("已解除榜单关联");
   }catch(error){toast(error.message);}
 }
@@ -448,7 +496,7 @@ async function pollReferenceAnalysisTask(sourceId){
     if(state.activeReference?.id!==sourceId)return;
     state.referenceTask=task;
     if(task.status==="completed"&&previous!=="completed"){
-      state.mechanisms=await api("/api/learning/mechanisms");
+      state.mechanisms=await api("/api/learning/mechanisms?view=all");
       state.attractionMap=task.result?.attraction_map||await api(`/api/references/${sourceId}/attraction-map`);
       const count=task.result?.mechanisms?.length||0;
       task.summary=count?`全文模型分析完成，得到 ${count} 个候选写法`:"全文模型分析完成；模型未形成可逐条采纳的候选写法，剧情吸引力报告仍可查看";
@@ -528,6 +576,13 @@ $("#reference-form").addEventListener("submit", async event => {
 });
 const fileBase64 = file => new Promise((resolve,reject) => { const reader=new FileReader(); reader.onload=()=>resolve(String(reader.result).split(",")[1]); reader.onerror=reject; reader.readAsDataURL(file); });
 ["reference-search","reference-filter-platform","reference-filter-type","reference-filter-project"].forEach(id=>$("#"+id)?.addEventListener(id==="reference-search"?"input":"change",renderReferences));
+$("#clear-reference-selection").addEventListener("click",()=>{
+  state.selectedReferenceIds.clear();
+  state.referenceSelectionStatus=null;
+  clearReferenceReadinessNotice();
+  renderReferences();
+});
+$("#create-from-selected-references").addEventListener("click",()=>startWizardFromReference([...state.selectedReferenceIds]));
 
 function marketQuery(){
   const params=new URLSearchParams();
@@ -730,7 +785,7 @@ function renderMarketWorks(works){
 
 $("#market-refresh")?.addEventListener("click",async()=>{
   const button=$("#market-refresh");button.disabled=true;button.textContent="更新中…";
-  try{await api("/api/market/refresh",{method:"POST",body:JSON.stringify({source_id:"zhihu-salt"})});await loadMarketDashboard();state.references=await api("/api/references");renderReferences();toast("榜单快照已保存，本地市场分析已同步更新");}
+  try{await api("/api/market/refresh",{method:"POST",body:JSON.stringify({source_id:"zhihu-salt"})});await loadMarketDashboard();await loadReferences();renderReferences();toast("榜单快照已保存，本地市场分析已同步更新");}
   catch(error){await loadMarketDashboard();toast(error.message);}
   finally{button.disabled=false;button.textContent="更新当前平台";}
 });
@@ -751,7 +806,7 @@ $("#market-work-list")?.addEventListener("change",async event=>{
 async function learnReference() {
   if (!state.activeReference) return;
   state.referenceTask={status:"running",phase:"local_learning",started_at:new Date().toISOString(),completed_windows:0,total_windows:0};renderReferenceTaskStatus();
-  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.learningReport=result; state.mechanisms=await api("/api/learning/mechanisms");state.referenceTask={...state.referenceTask,status:"completed",phase:"completed",finished_at:new Date().toISOString(),completed_windows:result.analyzed_windows,total_windows:result.window_count,summary:`全文覆盖 ${result.coverage_percent}%，整理出 ${result.mechanisms.length} 个候选写法`}; renderReferenceDetail(); renderLearning(); toast(`全文覆盖 ${result.coverage_percent}% · 已提炼 ${result.mechanisms.length} 个候选机制`); }
+  try { const result=await api(`/api/references/${state.activeReference.id}/learn`,{method:"POST"}); state.learningReport=result; state.mechanisms=await api("/api/learning/mechanisms?view=all");state.referenceTask={...state.referenceTask,status:"completed",phase:"completed",finished_at:new Date().toISOString(),completed_windows:result.analyzed_windows,total_windows:result.window_count,summary:`全文覆盖 ${result.coverage_percent}%，整理出 ${result.mechanisms.length} 个候选写法`}; renderReferenceDetail(); renderLearning(); toast(`全文覆盖 ${result.coverage_percent}% · 已提炼 ${result.mechanisms.length} 个候选机制`); }
   catch(error) { state.referenceTask={...state.referenceTask,status:"failed",phase:"failed",finished_at:new Date().toISOString(),error:error.message};renderReferenceTaskStatus();toast(error.message); }
 }
 async function modelLearnReference() {
@@ -964,13 +1019,15 @@ function renderLearning() {
   select.innerHTML=state.projects.length ? state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("") : '<option value="">请先创建作品</option>';
   if (state.activeProject) select.value=state.activeProject.id;
   const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
-  const rejectedView=$("#learning-mechanism-view")?.value==="rejected";
+  const view=mechanismView(),rejectedView=view==="rejected";
   const origin=$("#learning-mechanism-origin")?.value||"all";
-  const visible=state.mechanisms.filter(item=>origin==="all"||(item.data.analysis_origin||"local")===origin);
+  const visible=state.mechanisms.filter(item=>(view==="all"||(rejectedView?item.status==="rejected":item.status!=="rejected"))&&(origin==="all"||(item.data.analysis_origin||"local")===origin));
   const deletableCount=visible.filter(item=>item.deletable!==false).length;
   const batch=rejectedView&&deletableCount?`<div class="mechanism-batch-actions"><label><input type="checkbox" data-mechanism-select-all> 全选可删除的 ${deletableCount} 条</label><button class="secondary danger-text" data-mechanism-delete-selected>删除所选</button></div>`:"";
   const cards=visible.length?visible.map(item=>renderMechanismCard(item,adopted,rejectedView)).join(""):`<p class="skill-meta">${rejectedView?"当前筛选下没有已拒绝写法":"当前筛选下没有候选写法"}</p>`;
-  $("#learning-mechanisms").innerHTML=batch+cards;
+  const pending=state.referenceSelectionPendingTitles;
+  const readiness=pending.length?`<section class="reference-readiness-notice"><strong>还需要确认这些资料的候选写法</strong><ul>${pending.map(title=>`<li>《${escapeHtml(title)}》</li>`).join("")}</ul><p>所选资料会继续保留。确认完成后，可以继续用刚才选择的资料创建作品。</p><button class="primary" type="button" data-reference-selection-retry>重新检查并创建</button></section>`:"";
+  $("#learning-mechanisms").innerHTML=readiness+batch+cards;
   document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
   document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));
   document.querySelectorAll("[data-mechanism-reject]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismReject,"reject")));
@@ -978,10 +1035,11 @@ function renderLearning() {
   document.querySelectorAll("[data-mechanism-release]").forEach(button=>button.addEventListener("click",()=>releaseMechanism(button.dataset.mechanismRelease)));
   $("[data-mechanism-delete-selected]")?.addEventListener("click",()=>deleteRejectedMechanisms([...document.querySelectorAll("[data-mechanism-select]:checked")].map(item=>item.dataset.mechanismSelect)));
   $("[data-mechanism-select-all]")?.addEventListener("change",event=>document.querySelectorAll("[data-mechanism-select]").forEach(item=>item.checked=event.target.checked));
+  $("[data-reference-selection-retry]")?.addEventListener("click",()=>startWizardFromReference([...state.referenceSelectionPendingIds]));
   if (select.value && !state.projectLearning) loadProjectLearning(); else renderLearningArtifacts();
 }
 const mechanismView=()=>$("#learning-mechanism-view")?.value||"active";
-async function reloadMechanisms(){state.mechanisms=await api(`/api/learning/mechanisms?view=${encodeURIComponent(mechanismView())}`);renderLearning();}
+async function reloadMechanisms(){state.mechanisms=await api("/api/learning/mechanisms?view=all");renderLearning();}
 async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); await reloadMechanisms(); toast(action==="confirm"?"分析已确认":"分析已拒绝，可在“已拒绝”中查看"); } catch(error){toast(error.message);} }
 async function deleteRejectedMechanisms(ids){if(!ids.length)return toast("请先选择要删除的记录");if(!confirm(`永久删除 ${ids.length} 条已拒绝机制及其证据？此操作不可撤销。`))return;try{const result=await api("/api/learning/mechanisms",{method:"DELETE",body:JSON.stringify({node_ids:ids})});await reloadMechanisms();const skipped=result.skipped.length?`；未删除：${result.skipped.map(item=>item.reason).join("；")}`:"";toast(`已删除 ${result.deleted_ids.length} 条${skipped}`);}catch(error){toast(error.message);}}
 async function releaseMechanism(id){const item=state.mechanisms.find(value=>value.id===id);const projectIds=item?.active_project_ids||[];if(!projectIds.length)return reloadMechanisms();if(!confirm(`这条写法仍在 ${projectIds.length} 个作品中使用。确认从这些作品的创作蓝图中移除？不会修改已经生成的正文。`))return;try{for(const projectId of projectIds)await api(`/api/projects/${projectId}/learning/rejections/${id}`,{method:"POST",body:JSON.stringify({reason:"用户从已拒绝列表中取消应用"})});state.projectLearning=null;await reloadMechanisms();toast("已从作品中移除，现在可以永久删除");}catch(error){toast(error.message);}}
@@ -1853,7 +1911,9 @@ function renderWizardDrafts() {
   const drafts = state.wizards.filter(item => item.status === "draft");
   $("#wizard-drafts").innerHTML = '<option value="">选择草稿</option>' + drafts.map(item => `<option value="${item.id}">${escapeHtml(item.answers?.title?.value || (item.mode === "long" ? "未命名长篇" : "未命名短篇"))}</option>`).join("");
   const learnedSourceIds=new Set(state.mechanisms.map(item=>item.source_id));
-  $("#wizard-reference").innerHTML='<option value="">自己构思（原方式）</option>'+state.references.map(item=>`<option value="${item.id}">从《${escapeHtml(item.title)}》${learnedSourceIds.has(item.id)?"的学习成果":"开始学习并"}创建</option>`).join("");
+  $("#wizard-reference").innerHTML='<option value="">自己构思（原方式）</option>'+state.references.map(item=>creatableReferenceTypes.has(item.content_type)
+    ? `<option value="${item.id}">从《${escapeHtml(item.title)}》${learnedSourceIds.has(item.id)?"的学习成果":"开始学习并"}创建</option>`
+    : `<option value="${item.id}" disabled>《${escapeHtml(item.title)}》（仅供查阅，不能创建）</option>`).join("");
 }
 function fieldControl(field, answer) {
   const value = answer?.value ?? field.default ?? "";
@@ -1983,37 +2043,82 @@ async function applyInterviewSuggestions() {
 $("#interview-start").addEventListener("click", () => sendInterview(null));
 $("#interview-form").addEventListener("submit", event => { event.preventDefault(); const message=$("#interview-input").value.trim(); if (!message) return toast("请先输入你的想法"); sendInterview(message); });
 $("#interview-apply").addEventListener("click", applyInterviewSuggestions);
-async function startWizardFromReference() {
-  const referenceId=this?.dataset?.referenceCreate!==undefined ? state.activeReference?.id : $("#wizard-reference").value;
+async function startWizardFromReference(referenceIds=[]) {
+  if(state.referenceSelectionBusy)return;
+  referenceIds=[...new Set(referenceIds.filter(Boolean))];
+  const sources=referenceIds.map(id=>state.references.find(item=>item.id===id));
+  if(sources.some(item=>!item)){
+    setReferenceSelectionStatus("error","失败","有一篇所选资料不存在。所选资料会继续保留，请刷新后重新选择。");
+    toast("有一篇所选资料不存在，请刷新后重新选择。");
+    return;
+  }
+  if(sources.some(item=>!creatableReferenceTypes.has(item.content_type))){
+    setReferenceSelectionStatus("error","不能创建作品",`${referenceCreationUnavailable}。所选资料会继续保留，请清除后重新选择。`);
+    toast(referenceCreationUnavailable);
+    return;
+  }
   const mode=document.querySelector('input[name="wizard-mode"]:checked').value;
+  if(referenceIds.length){
+    referenceIds.forEach(id=>state.selectedReferenceIds.add(id));
+    state.referenceSelectionBusy=true;
+    setReferenceSelectionStatus("busy","正在检查所选资料","只检查本地写法，不会调用模型。");
+    renderReferences();
+  }
   try {
-    if(referenceId&&!state.mechanisms.some(item=>item.source_id===referenceId)){
-      toast("正在先提炼参考小说的写作机制...");
-      await api(`/api/references/${referenceId}/learn`,{method:"POST"});
-      state.mechanisms=await api("/api/learning/mechanisms");
-      renderWizardDrafts(); renderLearning();
+    const missingLocalIds=referenceIds.filter(id=>!state.mechanisms.some(item=>item.source_id===id&&(item.data.analysis_origin||"local")!=="model"));
+    let localPreparationFailed=false;
+    if(missingLocalIds.length){
+      const titles=sources.filter(item=>missingLocalIds.includes(item.id)).map(item=>`《${item.title}》`).join("、");
+      setReferenceSelectionStatus("busy","正在完成本地提炼",`${titles}还没有本地写法，正在逐篇提炼；不会调用模型。`);
+      const results=await Promise.allSettled(missingLocalIds.map(id=>api(`/api/references/${id}/learn`,{method:"POST"})));
+      localPreparationFailed=results.some(item=>item.status==="rejected");
     }
-    const confirmedFromSource=referenceId?state.mechanisms.filter(item=>item.source_id===referenceId&&item.status==="confirmed").map(item=>item.id):[];
-    if(referenceId&&!confirmedFromSource.length){
-      switchLearningView("mechanisms");showView("learning");
-      toast("这份资料还没有已确认写法。请先在候选写法中保留需要的内容，再创建新作品。");
-      return;
+    if(referenceIds.length){
+      state.mechanisms=await api("/api/learning/mechanisms?view=all");
+      renderWizardDrafts();
+      if(localPreparationFailed){
+        setReferenceSelectionStatus("error","失败","部分资料没有完成本地提炼。已经完成的结果已保留，所选资料会继续保留；可以稍后重试。");
+        toast("部分资料没有完成本地提炼，已经完成的结果已保留。");
+        return;
+      }
+      const waiting=sources.filter(source=>!state.mechanisms.some(item=>item.source_id===source.id&&item.status==="confirmed"));
+      if(waiting.length){
+        state.referenceSelectionPendingIds=[...referenceIds];
+        state.referenceSelectionPendingTitles=waiting.map(item=>item.title);
+        setReferenceSelectionStatus("waiting","还需要确认这些资料的候选写法",`${state.referenceSelectionPendingTitles.map(title=>`《${title}》`).join("、")}。所选资料会继续保留。确认完成后，可以继续用刚才选择的资料创建作品。`);
+        renderLearning();
+        switchLearningView("mechanisms");
+        showView("learning");
+        return;
+      }
     }
-    let wizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode})});
-    if(referenceId){
-      const source=state.references.find(item=>item.id===referenceId);
-      const mechanisms=state.mechanisms.filter(item=>item.source_id===referenceId).map(item=>item.data);
-      const guidance=mechanisms.map(item=>`${item.name||"创作机制"}：${item.transfer_guidance||item.interpretation||item.fact||""}`).filter(Boolean).join("\n");
-      const answers={premise:{value:`基于《${source?.title||"参考资料"}》提炼的可迁移机制进行原创构思：\n${guidance}`,policy:"suggestible"}};
-      const fieldIds=new Set(wizard.schema.steps.flatMap(step=>step.fields.map(field=>field.id)));
-      if(fieldIds.has("plot.main_arc")) answers["plot.main_arc"]={value:`待在此基础上补充原创人物、冲突、转折与结局。\n${guidance}`,policy:"suggestible"};
-      wizard=await api(`/api/wizards/${wizard.id}/answers`,{method:"PUT",body:JSON.stringify({answers})});
+    const wizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode,reference_source_ids:referenceIds})});
+    const confirmedFromSources=state.mechanisms.filter(item=>referenceIds.includes(item.source_id)&&item.status==="confirmed").map(item=>item.id);
+    state.activeWizard=wizard;state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(confirmedFromSources);state.wizardSourceReferenceId=referenceIds[0]||null;state.wizardAutoOutline=Boolean(referenceIds.length&&$("#wizard-auto-outline")?.checked);state.wizards.unshift(wizard);
+    if(referenceIds.length){
+      referenceIds.forEach(id=>state.selectedReferenceIds.delete(id));
+      clearReferenceReadinessNotice();
+      setReferenceSelectionStatus("success","已完成",`建书向导已创建，并已选择 ${confirmedFromSources.length} 条确认写法。`);
     }
-    state.activeWizard=wizard; state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(confirmedFromSource);state.wizardSourceReferenceId=referenceId||null;state.wizardAutoOutline=Boolean(referenceId&&$("#wizard-auto-outline")?.checked); state.wizards.unshift(wizard); showView("projects"); renderWizard();
-    if(referenceId) toast(`已带入 ${confirmedFromSource.length} 条确认写法；只需补充新故事的基本信息`);
-  } catch(error) { toast(error.message); }
+    showView("projects");
+    renderWizard();
+    if(referenceIds.length)toast(`已带入 ${confirmedFromSources.length} 条确认写法；只需补充新故事的基本信息`);
+  } catch(error) {
+    console.error("Reference wizard preparation failed",error);
+    if(referenceIds.length){
+      setReferenceSelectionStatus("error","失败","资料准备或建书向导创建没有完成。所选资料会继续保留，可以稍后重试。");
+      toast("资料准备或建书向导创建没有完成，所选资料已保留。");
+    }
+    else toast("建书向导创建失败，请稍后重试。");
+  } finally {
+    state.referenceSelectionBusy=false;
+    renderReferences();
+  }
 }
-$("#start-wizard").addEventListener("click", startWizardFromReference);
+$("#start-wizard").addEventListener("click",()=>{
+  const referenceId=$("#wizard-reference").value;
+  startWizardFromReference(referenceId?[referenceId]:[]);
+});
 $("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(); renderWizard(); });
 $("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });
 $("#wizard-next").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep++; renderWizard(); });
