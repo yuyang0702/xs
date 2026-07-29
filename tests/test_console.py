@@ -404,9 +404,125 @@ def test_outline_workspace_uses_plain_language_and_visible_operation_states(tmp_
     assert "outline-layout { grid-template-columns:1fr" in css
     assert 'id="wizard-confirmed-methods"' in html
     assert "可选：带入已确认写法" in html
-    assert "默认不选，只有勾选的写法才会用于新作品" in html
+    assert "只有最终勾选的写法才会用于新作品" in html
     assert "loadWizardConfirmedMethods" in script
     assert "selected_mechanism_ids" in script
+
+
+def test_reference_wizard_groups_methods_and_enforces_explicit_twelve_limit(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    assert 'id="wizard-method-count"' in html
+    assert 'id="wizard-method-selection-status"' in html
+    assert "已选 0/12 条写法" in html
+    for phrase in (
+        "一次最多带入 12 条写法，可以取消一条后再选。",
+        "请明确选择最多 12 条",
+    ):
+        assert phrase in script
+
+    renderer = script.split("function renderWizardConfirmedMethods", 1)[1].split(
+        "function updateMarketBaselineWizardState", 1,
+    )[0]
+    assert "item.source_id" in renderer
+    assert "item.source_title" in renderer
+    assert 'class="wizard-method-group"' in renderer
+    assert "<details" in renderer
+    assert "state.selectedWizardMethods.size" in renderer
+    assert "input.disabled=atLimit&&!input.checked" in renderer
+    assert ".slice(" not in renderer
+
+    loader = script.split("async function loadWizardConfirmedMethods", 1)[1].split(
+        "function renderWizardConfirmedMethods", 1,
+    )[0]
+    assert "methods.length<=12" in loader
+    assert "new Set(methods.map(item=>item.id))" in loader
+    assert "读取写法失败，请稍后重试。" in loader
+    assert "error.message" not in loader
+
+    creation = script.split("async function startWizardFromReference", 1)[1].split(
+        '$("#start-wizard")', 1,
+    )[0]
+    assert "selectedWizardMethods=new Set(confirmedFromSources)" not in creation
+    assert "selectedWizardMethods=new Set()" in creation
+    draft_resume = script.split(
+        '$("#wizard-drafts").addEventListener("change"', 1,
+    )[1].split('$("#wizard-back")', 1)[0]
+    assert "creation_context?.reference_source_ids?.[0]" in draft_resume
+    assert 'item.use||"用于后续创作安排"' in renderer
+    assert ".wizard-method-group" in css
+    assert ".wizard-method-selection" in css
+    assert "overflow-wrap:anywhere" in css
+
+
+def test_reference_created_outline_failure_keeps_project_and_offers_retry_path(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    assert 'id="outline-generate-form"' in html
+    assert 'tabindex="-1"' in html
+    assert "作品已经创建，可以稍后重试" in script
+    assert "前往作品应用重新生成" in script
+    assert "openProjectOutlineGenerator" in script
+    helper = script.split("async function openProjectOutlineGenerator", 1)[1].split(
+        "async function generateInitialOutline", 1,
+    )[0]
+    for call in (
+        'showView("learning")',
+        'switchLearningView("application")',
+        "select.value=projectId",
+        "await loadProjectLearning()",
+        "form.focus",
+    ):
+        assert call in helper
+    assert helper.index('showView("learning")') < helper.index(
+        'switchLearningView("application")'
+    ) < helper.index("select.value=projectId") < helper.index(
+        "await loadProjectLearning()"
+    ) < helper.index("form.focus")
+
+    generation = script.split("async function generateInitialOutline", 1)[1].split(
+        "function clearConfirmedWizard", 1,
+    )[0]
+    assert "error.message" not in generation
+    assert "showInitialOutlineFailure(projectId)" in generation
+    manual_generation = script.split(
+        '$("#outline-generate-form").addEventListener("submit"', 1,
+    )[1].split('$("#outline-save")', 1)[0]
+    assert "error.message" not in manual_generation
+    assert "请稍后重试；现有作品、大纲和正文不会改变。" in manual_generation
+
+    confirmation = script.split(
+        '$("#wizard-confirm").addEventListener("click"', 1,
+    )[1].split("async function run", 1)[0]
+    assert confirmation.index("clearConfirmedWizard") < confirmation.index(
+        "await refreshProjectsAfterConfirmation"
+    ) < confirmation.index("await generateInitialOutline")
+    assert "new Map" in script.split(
+        "async function refreshProjectsAfterConfirmation", 1,
+    )[1].split("async function openProjectOutlineGenerator", 1)[0]
+    assert "wizardSelectionErrorMessage(error)" in confirmation
+    assert 'setWizardMethodSelectionStatus(message,"error")' in confirmation
+    assert "error.message" not in confirmation
+    safe_error = script.split("function wizardSelectionErrorMessage", 1)[1].split(
+        "async function startWizardFromReference", 1,
+    )[0]
+    assert "invalid_learning_selection" in safe_error
+    assert "作品创建没有完成，请稍后重试。" in safe_error
+    assert "!/[A-Za-z]/.test(message)" in safe_error
+    assert ".outline-retry-action" in css
+    assert "animation:" not in css.split(".outline-retry-action", 1)[1].split(
+        "\n", 1,
+    )[0]
 
 
 def test_legacy_outline_does_not_render_as_numbered_old_version(tmp_path) -> None:

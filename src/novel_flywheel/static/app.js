@@ -1,6 +1,7 @@
 const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], selectedReferenceIds:new Set(), referenceSelectionBusy:false, referenceSelectionStatus:null, referenceSelectionPendingIds:[], referenceSelectionPendingTitles:[], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const creatableReferenceTypes = new Set(["reference_work", "popular_sample"]);
 const referenceCreationUnavailable = "这类资料只用于查阅，不能直接创建作品";
+const WIZARD_METHOD_LIMIT = 12;
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -1135,7 +1136,7 @@ $("#outline-generate-form").addEventListener("submit",async event=>{
   if(!confirm("生成候选会调用规划模型，可能产生费用。结果只进入候选区，不会覆盖正式大纲或正文。继续？"))return;
   const button=event.currentTarget.querySelector("button");button.disabled=true;setOutlineOperationStatus("busy","正在生成候选大纲","规划模型正在整理新版本，完成前请不要重复点击。");
   try{await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:new FormData(event.currentTarget).get("brief")})});await loadOutlineWorkspace();setOutlineOperationStatus("success","候选大纲已生成","请在下方打开全文，编辑或比较后再决定是否应用。");}
-  catch(error){setOutlineOperationStatus("error","生成失败",error.message);}
+  catch{setOutlineOperationStatus("error","生成失败","请稍后重试；现有作品、大纲和正文不会改变。");}
   finally{button.disabled=false;}
 });
 $("#outline-save").addEventListener("click",saveOutlineCandidate);
@@ -1959,19 +1960,44 @@ async function loadWizardConfirmedMethods(){
   try{
     const methods=await api(`/api/wizards/${wizard.id}/confirmed-mechanisms`);
     if(state.activeWizard?.id!==wizard.id)return;
+    if(state.wizardSourceReferenceId&&!state.selectedWizardMethods.size&&methods.length<=12)state.selectedWizardMethods=new Set(methods.map(item=>item.id));
     state.wizardConfirmedMethods=methods;renderWizardConfirmedMethods(true);
-  }catch(error){
+  }catch{
     if(state.activeWizard?.id!==wizard.id)return;
-    $("#wizard-confirmed-method-list").innerHTML=`<p class="error-text">读取失败：${escapeHtml(error.message)}</p>`;
+    $("#wizard-confirmed-method-list").innerHTML='<p class="error-text">读取写法失败，请稍后重试。</p>';
   }
 }
 function renderWizardConfirmedMethods(show){
   const shell=$("#wizard-confirmed-methods"),list=$("#wizard-confirmed-method-list");if(!shell||!list)return;
   shell.hidden=!show;if(!show||!state.activeWizard)return;
   if(state.wizardMethodsFor!==state.activeWizard.id){loadWizardConfirmedMethods();return;}
-  if(!state.wizardConfirmedMethods){list.innerHTML='<p class="skill-meta">正在读取已确认写法</p>';return;}
-  list.innerHTML=state.wizardConfirmedMethods.length?state.wizardConfirmedMethods.map(item=>`<label class="wizard-method-item"><input type="checkbox" value="${item.id}" ${state.selectedWizardMethods.has(item.id)?"checked":""}><span><strong>${escapeHtml(item.name)}</strong><small>来自《${escapeHtml(item.source_title)}》</small><p>${escapeHtml(item.use)}</p></span></label>`).join(""):'<p class="skill-meta">学习库里还没有可直接带入的已确认写法。</p>';
-  list.querySelectorAll("input").forEach(input=>input.addEventListener("change",()=>input.checked?state.selectedWizardMethods.add(input.value):state.selectedWizardMethods.delete(input.value)));
+  if(!state.wizardConfirmedMethods){list.innerHTML='<p class="skill-meta">正在读取已确认写法</p>';updateWizardMethodSelection();return;}
+  const groups=new Map();
+  state.wizardConfirmedMethods.forEach(item=>{
+    if(!groups.has(item.source_id))groups.set(item.source_id,{title:item.source_title||"参考资料",items:[]});
+    groups.get(item.source_id).items.push(item);
+  });
+  list.innerHTML=groups.size?[...groups.values()].map((group,index)=>`<details class="wizard-method-group" ${index===0?"open":""}><summary><span>《${escapeHtml(group.title)}》</span><small>${group.items.length} 条已确认写法</small></summary><div>${group.items.map(item=>`<label class="wizard-method-item"><input type="checkbox" value="${escapeHtml(item.id)}" ${state.selectedWizardMethods.has(item.id)?"checked":""}><span><strong>${escapeHtml(item.name)}</strong><p>${escapeHtml(item.use||"用于后续创作安排")}</p></span></label>`).join("")}</div></details>`).join(""):'<p class="skill-meta">学习库里还没有可直接带入的已确认写法。</p>';
+  list.querySelectorAll("input").forEach(input=>input.addEventListener("change",()=>{
+    if(input.checked&&state.selectedWizardMethods.size>=WIZARD_METHOD_LIMIT){input.checked=false;updateWizardMethodSelection();return;}
+    if(input.checked)state.selectedWizardMethods.add(input.value);else state.selectedWizardMethods.delete(input.value);
+    updateWizardMethodSelection();
+  }));
+  updateWizardMethodSelection();
+}
+function setWizardMethodSelectionStatus(message,kind=""){
+  const status=$("#wizard-method-selection-status");if(!status)return;
+  status.className=`wizard-method-selection-status ${kind}`.trim();
+  status.textContent=message;
+}
+function updateWizardMethodSelection(){
+  const count=state.selectedWizardMethods.size,total=state.wizardConfirmedMethods?.length||0,atLimit=count>=WIZARD_METHOD_LIMIT;
+  const counter=$("#wizard-method-count");if(counter)counter.textContent=`已选 ${count}/12 条写法`;
+  $("#wizard-confirmed-method-list")?.querySelectorAll('input[type="checkbox"]').forEach(input=>{input.disabled=atLimit&&!input.checked;});
+  if(count>WIZARD_METHOD_LIMIT)setWizardMethodSelectionStatus("已选写法超过 12 条，请取消多余写法后再创建作品。","error");
+  else if(atLimit)setWizardMethodSelectionStatus("一次最多带入 12 条写法，可以取消一条后再选。","limit");
+  else if(total>WIZARD_METHOD_LIMIT)setWizardMethodSelectionStatus(`共有 ${total} 条已确认写法，请明确选择最多 12 条。`);
+  else setWizardMethodSelectionStatus(count?`已保留 ${count} 条写法，创建时只会提交这些选择。`:"可以继续选择要用于新作品的写法。");
 }
 function updateMarketBaselineWizardState(){const enabled=document.querySelector('[data-field="market_baseline_enabled"] .field-value')?.value!=="disabled";const select=document.querySelector('[data-field="market_baseline_key"] .field-value');if(select)select.disabled=!enabled;}
 function recommendMarketBaseline(){
@@ -2043,6 +2069,64 @@ async function applyInterviewSuggestions() {
 $("#interview-start").addEventListener("click", () => sendInterview(null));
 $("#interview-form").addEventListener("submit", event => { event.preventDefault(); const message=$("#interview-input").value.trim(); if (!message) return toast("请先输入你的想法"); sendInterview(message); });
 $("#interview-apply").addEventListener("click", applyInterviewSuggestions);
+async function refreshProjectsAfterConfirmation(project){
+  let refreshed;
+  try{refreshed=await api("/api/projects");}
+  catch{refreshed=state.projects;}
+  const unique=new Map();
+  [project,...refreshed,...state.projects].forEach(item=>{if(item&&!unique.has(item.id))unique.set(item.id,item);});
+  state.projects=[...unique.values()];
+  state.activeProject=state.projects.find(item=>item.id===project.id)||project;
+  renderProjects();
+}
+async function openProjectOutlineGenerator(projectId){
+  showView("learning");
+  switchLearningView("application");
+  const project=state.projects.find(item=>item.id===projectId);
+  if(project)state.activeProject=project;
+  const select=$("#learning-project");
+  select.innerHTML=state.projects.length?state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join(""):'<option value="">请先创建作品</option>';
+  select.value=projectId;
+  state.projectLearning=null;state.effectiveRules=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
+  await loadProjectLearning();
+  renderLearning();
+  select.value=projectId;
+  const form=$("#outline-generate-form");
+  form.focus({preventScroll:true});
+  form.scrollIntoView({block:"start"});
+}
+async function generateInitialOutline(projectId){
+  try{await openProjectOutlineGenerator(projectId);}
+  catch{showInitialOutlineFailure(projectId);return;}
+  setOutlineOperationStatus("busy","正在生成第一版候选大纲","规划模型正在把已确认写法整理成原创大纲，完成后由你决定是否采用。");
+  try{
+    await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:"根据已确认写法和当前新故事设定，生成第一版原创候选大纲；不得复用来源作品的人物、设定、独特表达和具体情节。"})});
+    await loadProjectLearning();
+    setOutlineOperationStatus("success","第一版候选大纲已生成","打开全文查看，确认后才会成为正式大纲。");
+  }catch{showInitialOutlineFailure(projectId);}
+}
+function showInitialOutlineFailure(projectId){
+  const shell=$("#outline-operation-status");if(!shell)return;
+  shell.className="outline-operation-status error";
+  shell.innerHTML='<strong>作品已经创建，可以稍后重试</strong><span>作品资料和已选写法都已保留；候选大纲不会覆盖正式大纲或正文。</span><button class="secondary outline-retry-action" type="button">前往作品应用重新生成</button>';
+  shell.querySelector(".outline-retry-action").addEventListener("click",async()=>{
+    try{await openProjectOutlineGenerator(projectId);}
+    catch{showInitialOutlineFailure(projectId);}
+  });
+}
+function clearConfirmedWizard(wizardId){
+  state.activeWizard=null;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=null;state.wizardAutoOutline=false;
+  state.wizards=state.wizards.filter(item=>item.id!==wizardId);
+  $("#wizard-shell").hidden=true;$("#wizard-launcher").hidden=false;$("#wizard-confirm").disabled=false;
+  renderWizardDrafts();
+}
+function wizardSelectionErrorMessage(error){
+  const readableCodes=new Set(["invalid_learning_selection","reference_learning_not_ready","wizard_confirmation_changed","wizard_incomplete","invalid_market_baseline"]);
+  const message=String(error?.message||"").trim();
+  return readableCodes.has(error?.code)&&/[\u3400-\u9fff]/.test(message)&&!/[A-Za-z]/.test(message)
+    ? message
+    : "作品创建没有完成，请稍后重试。";
+}
 async function startWizardFromReference(referenceIds=[]) {
   if(state.referenceSelectionBusy)return;
   referenceIds=[...new Set(referenceIds.filter(Boolean))];
@@ -2094,15 +2178,15 @@ async function startWizardFromReference(referenceIds=[]) {
     }
     const wizard=await api("/api/wizards",{method:"POST",body:JSON.stringify({mode,reference_source_ids:referenceIds})});
     const confirmedFromSources=state.mechanisms.filter(item=>referenceIds.includes(item.source_id)&&item.status==="confirmed").map(item=>item.id);
-    state.activeWizard=wizard;state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(confirmedFromSources);state.wizardSourceReferenceId=referenceIds[0]||null;state.wizardAutoOutline=Boolean(referenceIds.length&&$("#wizard-auto-outline")?.checked);state.wizards.unshift(wizard);
+    state.activeWizard=wizard;state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=referenceIds[0]||null;state.wizardAutoOutline=Boolean(referenceIds.length&&$("#wizard-auto-outline")?.checked);state.wizards.unshift(wizard);
     if(referenceIds.length){
       referenceIds.forEach(id=>state.selectedReferenceIds.delete(id));
       clearReferenceReadinessNotice();
-      setReferenceSelectionStatus("success","已完成",`建书向导已创建，并已选择 ${confirmedFromSources.length} 条确认写法。`);
+      setReferenceSelectionStatus("success","已完成",confirmedFromSources.length>WIZARD_METHOD_LIMIT?`建书向导已创建，共有 ${confirmedFromSources.length} 条确认写法；请在确认页明确选择最多 12 条。`:`建书向导已创建，确认页会保留这 ${confirmedFromSources.length} 条确认写法。`);
     }
     showView("projects");
     renderWizard();
-    if(referenceIds.length)toast(`已带入 ${confirmedFromSources.length} 条确认写法；只需补充新故事的基本信息`);
+    if(referenceIds.length)toast(confirmedFromSources.length>WIZARD_METHOD_LIMIT?`共有 ${confirmedFromSources.length} 条确认写法，请在确认页自行选择`:`确认页会保留 ${confirmedFromSources.length} 条写法；请补充新故事的基本信息`);
   } catch(error) {
     console.error("Reference wizard preparation failed",error);
     if(referenceIds.length){
@@ -2119,22 +2203,34 @@ $("#start-wizard").addEventListener("click",()=>{
   const referenceId=$("#wizard-reference").value;
   startWizardFromReference(referenceId?[referenceId]:[]);
 });
-$("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set(); renderWizard(); });
+$("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=state.activeWizard.schema?.creation_context?.reference_source_ids?.[0]||null; renderWizard(); });
 $("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });
 $("#wizard-next").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep++; renderWizard(); });
 $("#wizard-analyze").addEventListener("click", async () => { try { await saveWizardStep(); state.activeWizard=await api(`/api/wizards/${state.activeWizard.id}/analyze`,{method:"POST"}); state.wizardStep=state.activeWizard.schema.steps.length-1; renderWizard(); toast(state.activeWizard.status === "ready" ? "关键资料完整" : "已生成必要追问"); } catch(error) { toast(error.message); } });
 $("#wizard-confirm").addEventListener("click", async () => {
+  const button=$("#wizard-confirm"),wizardId=state.activeWizard?.id;
+  if(!wizardId)return;
+  button.disabled=true;
+  let project,autoOutline=false;
   try {
     await saveWizardStep();
-    const selected=[...state.selectedWizardMethods],autoOutline=state.wizardAutoOutline&&selected.length;
-    const project=await api(`/api/wizards/${state.activeWizard.id}/confirm`,{method:"POST",body:JSON.stringify({selected_mechanism_ids:selected})});
-    state.projects.unshift(project);state.activeProject=project;state.activeWizard=null;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=null;state.wizardAutoOutline=false;$("#wizard-shell").hidden=true;$("#wizard-launcher").hidden=false;renderProjects();
-    if(autoOutline){
-      showView("learning");$("#learning-project").value=project.id;switchLearningView("application");setOutlineOperationStatus("busy","正在生成第一版候选大纲","规划模型正在把已确认写法整理成原创大纲，完成后由你决定是否采用。");
-      try{await api(`/api/projects/${project.id}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:"根据已确认写法和当前新故事设定，生成第一版原创候选大纲；不得复用来源作品的人物、设定、独特表达和具体情节。"})});await loadProjectLearning();setOutlineOperationStatus("success","第一版候选大纲已生成","打开全文查看，确认后才会成为正式大纲。");}catch(error){setOutlineOperationStatus("error","候选大纲生成失败",`${error.message}。作品已经创建，可以稍后重试。`);}
-    }else showView("workbench");
-    const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"});monitorRun(initialized);
-  } catch(error) { toast(error.message); }
+    const selected=[...state.selectedWizardMethods];
+    autoOutline=Boolean(state.wizardAutoOutline&&selected.length);
+    project=await api(`/api/wizards/${wizardId}/confirm`,{method:"POST",body:JSON.stringify({selected_mechanism_ids:selected})});
+  }catch(error){
+    const message=wizardSelectionErrorMessage(error);
+    setWizardMethodSelectionStatus(message,"error");
+    toast(message);
+    button.disabled=false;
+    return;
+  }
+  clearConfirmedWizard(wizardId);
+  await refreshProjectsAfterConfirmation(project);
+  if(autoOutline)await generateInitialOutline(project.id);else showView("workbench");
+  try{
+    const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"});
+    monitorRun(initialized);
+  }catch{toast("作品已经创建，但初始化没有完成，可以稍后继续初始化。");}
 });
 
 async function run(path, body) {

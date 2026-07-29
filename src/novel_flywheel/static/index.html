@@ -185,7 +185,7 @@
             <div><h3 id="outline-workspace-title">大纲版本</h3><p>候选版本只有经过你确认才会生效，也不会修改已经写好的正文。</p></div>
             <div id="outline-current" class="outline-current"><strong>正在读取当前大纲</strong><span>请稍候</span></div>
           </header>
-          <form id="outline-generate-form" class="outline-generate-form">
+          <form id="outline-generate-form" class="outline-generate-form" tabindex="-1">
             <label><span>想让大纲怎么调整</span><textarea name="brief" rows="3" placeholder="例如：保留结局，把中段阻碍增加到两轮"></textarea></label>
             <button class="primary" type="submit">生成候选大纲</button>
           </form>
@@ -287,8 +287,12 @@
           <div class="section-heading"><div><p id="wizard-source" class="eyebrow"></p><h3 id="wizard-title"></h3></div><span id="wizard-save-state" class="skill-meta">已保存</span></div>
           <div id="wizard-fields" class="wizard-fields"></div>
           <section id="wizard-confirmed-methods" class="wizard-confirmed-methods" hidden>
-            <header><h4>可选：带入已确认写法</h4><p>默认不选，只有勾选的写法才会用于新作品。以后也可以在学习库里添加或移除。</p></header>
+            <header><h4>可选：带入已确认写法</h4><p>从参考资料创建时，12 条以内会保持勾选；写法更多时请自己选择。只有最终勾选的写法才会用于新作品。</p></header>
             <div id="wizard-confirmed-method-list"><p class="skill-meta">正在读取已确认写法</p></div>
+            <div class="wizard-method-selection">
+              <strong id="wizard-method-count">已选 0/12 条写法</strong>
+              <p id="wizard-method-selection-status" role="status" aria-live="polite">可以继续选择要用于新作品的写法。</p>
+            </div>
           </section>
           <div class="wizard-actions"><button id="wizard-back" class="secondary">上一步</button><button id="wizard-next" class="primary">下一步</button><button id="wizard-analyze" class="secondary" hidden>检查关键缺口</button><button id="wizard-confirm" class="primary" hidden>确认并创建项目</button></div>
         </section>
