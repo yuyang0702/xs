@@ -5,7 +5,7 @@ import shutil
 import uuid
 from pathlib import Path
 
-from novel_flywheel.db import Database
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.local_editorial import ANALYZER, VERSION, analyze_prose
 from novel_flywheel.reference_classification import CONTENT_TYPES, classify_reference
 from novel_flywheel.reference_policy import build_classification_snapshot
@@ -57,6 +57,14 @@ class ReferenceLibrary:
         return result
 
     def update_metadata(
+        self, source_id: str, *, platform: str | None, content_type: str, project_id: str | None,
+    ) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            return self._update_metadata(
+                source_id, platform=platform, content_type=content_type, project_id=project_id,
+            )
+
+    def _update_metadata(
         self, source_id: str, *, platform: str | None, content_type: str, project_id: str | None,
     ) -> dict:
         self._validate_id(source_id)
@@ -158,6 +166,10 @@ class ReferenceLibrary:
         return path.read_text(encoding="utf-8")
 
     def delete(self, source_id: str) -> None:
+        with WIZARD_MUTATION_LOCK:
+            self._delete(source_id)
+
+    def _delete(self, source_id: str) -> None:
         self._validate_id(source_id)
         with self.db.connect() as connection:
             connection.execute(

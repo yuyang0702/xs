@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
-from novel_flywheel.db import Database
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
 from novel_flywheel.narrative_attraction import (
     compact_attraction_guidance,
@@ -390,7 +390,7 @@ class LearningSystem:
             query += " AND status!='rejected'"
         elif view == "rejected":
             query += " AND status='rejected'"
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY created_at DESC, rowid ASC"
         with self.db.connect() as connection:
             rows = connection.execute(query, params).fetchall()
             result = []
@@ -420,6 +420,10 @@ class LearningSystem:
         return result
 
     def revise_node(self, node_id: str, action: str, data: dict) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            return self._revise_node(node_id, action, data)
+
+    def _revise_node(self, node_id: str, action: str, data: dict) -> dict:
         if action not in {"confirm", "reject", "correct", "note"}:
             raise ValueError("Unsupported revision action")
         with self.db.connect() as connection:
@@ -438,6 +442,10 @@ class LearningSystem:
         return self.get_node(node_id)
 
     def delete_rejected_nodes(self, node_ids: list[str]) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            return self._delete_rejected_nodes(node_ids)
+
+    def _delete_rejected_nodes(self, node_ids: list[str]) -> dict:
         unique_ids = list(dict.fromkeys(node_ids))
         if not unique_ids:
             raise ValueError("至少选择一条已拒绝机制")
@@ -492,8 +500,57 @@ class LearningSystem:
         return {"project_id": project_id, "node_id": node_id, "status": "proposed", **data}
 
     def adopt(self, project_id: str, node_id: str, edits: dict | None = None) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            return self._adopt(project_id, node_id, edits)
+
+    def ensure_adoptions(self, project_id: str, node_ids: list[str]) -> list[dict]:
+        with WIZARD_MUTATION_LOCK:
+            self.projects.get(project_id)
+            selected_ids = list(dict.fromkeys(node_ids))
+            if not selected_ids:
+                return []
+            for node_id in selected_ids:
+                try:
+                    node = self.get_node(node_id)
+                    source = self.references.get(node["source_id"])
+                except (LookupError, ValueError) as exc:
+                    raise ValueError("首次选择的写法或来源已经变化") from exc
+                if (
+                    node["node_type"] != "mechanism"
+                    or node["status"] != "confirmed"
+                    or source.get("content_type") not in {"reference_work", "popular_sample"}
+                ):
+                    raise ValueError("首次选择的写法或来源已经变化")
+            with self.db.connect() as connection:
+                adopted_ids = {
+                    row["node_id"] for row in connection.execute(
+                        "SELECT node_id FROM project_adoptions "
+                        "WHERE project_id=? AND status='adopted'",
+                        (project_id,),
+                    )
+                }
+            for node_id in selected_ids:
+                if node_id not in adopted_ids:
+                    self._adopt(project_id, node_id)
+            for node_id in selected_ids:
+                with self.db.connect() as connection:
+                    feedback_exists = connection.execute(
+                        "SELECT 1 FROM learning_feedback "
+                        "WHERE project_id=? AND subject_type='mechanism' "
+                        "AND subject_id=? AND action='adopted' LIMIT 1",
+                        (project_id, node_id),
+                    ).fetchone()
+                if not feedback_exists:
+                    self.record_feedback(project_id, "mechanism", node_id, "adopted", {})
+            self._save_creative_blueprint(project_id)
+            by_id = {item["node_id"]: item for item in self.list_adoptions(project_id)}
+            return [by_id[node_id] for node_id in selected_ids]
+
+    def _adopt(self, project_id: str, node_id: str, edits: dict | None = None) -> dict:
         self.projects.get(project_id)
         node = self.get_node(node_id)
+        if node["status"] not in {"proposed", "confirmed"}:
+            raise ValueError("这条写法已失效，重新确认后才能应用到作品")
         if float(node["data"].get("confidence", 0)) < 0.7 and node["status"] != "confirmed":
             raise ValueError("低置信度候选必须先确认分析，才能采纳到作品")
         adoption_id = uuid.uuid4().hex
@@ -550,6 +607,22 @@ class LearningSystem:
                 if item["data"].get("transfer_guidance")
             ] + attraction_rules,
         }
+        current = self.get_artifact(project_id, "creative_blueprint")
+        if current and current["status"] == "active" and current["data"] == blueprint:
+            path = self.projects.get(project_id).path / "learning" / "creative_blueprint.json"
+            try:
+                saved = json.loads(path.read_text(encoding="utf-8"))
+                if not isinstance(saved, dict):
+                    saved = {}
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                saved = {}
+            if (
+                saved.get("id") == current["id"]
+                and saved.get("version") == current["version"]
+                and saved.get("status") == "active"
+                and saved.get("data") == blueprint
+            ):
+                return
         self.save_artifact(project_id, "creative_blueprint", blueprint)
 
     def reject_adoption(self, project_id: str, node_id: str, reason: str = "") -> dict:
@@ -571,7 +644,8 @@ class LearningSystem:
     def list_adoptions(self, project_id: str) -> list[dict]:
         with self.db.connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM project_adoptions WHERE project_id=? AND status='adopted' ORDER BY created_at", (project_id,),
+                "SELECT * FROM project_adoptions WHERE project_id=? AND status='adopted' "
+                "ORDER BY created_at, rowid", (project_id,),
             ).fetchall()
         result = []
         for row in rows:

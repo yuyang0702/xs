@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Literal
 import json
 
+from novel_flywheel.db import WIZARD_MUTATION_LOCK
 from novel_flywheel.errors import describe_error
 
 
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/api", tags=["wizards"])
 class WizardCreate(BaseModel):
     mode: Literal["short", "long"]
     skills: list[str] | None = None
+    reference_source_ids: list[str] = Field(default_factory=list)
 
 
 class WizardAnswers(BaseModel):
@@ -34,6 +36,34 @@ def _service(request: Request):
     return request.app.state.wizards
 
 
+def _wizard_or_404(request: Request, wizard_id: str) -> dict:
+    try:
+        return _service(request).get(wizard_id)
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404, detail={"code": "wizard_not_found"},
+        ) from exc
+
+
+def _reference_creation_sources(request: Request, source_ids: list[str]) -> list[dict]:
+    sources = []
+    for source_id in dict.fromkeys(source_ids):
+        try:
+            source = request.app.state.references.get(source_id)
+        except (LookupError, ValueError) as exc:
+            raise HTTPException(status_code=400, detail={
+                "code": "reference_not_found",
+                "message": "有一篇所选资料不存在，请重新选择。",
+            }) from exc
+        if source.get("content_type") not in {"reference_work", "popular_sample"}:
+            raise HTTPException(status_code=400, detail={
+                "code": "reference_type_not_supported",
+                "message": "所选资料不能用于创建作品，请选择参考作品或爆款样本。",
+            })
+        sources.append(source)
+    return sources
+
+
 @router.get("/wizards")
 def list_wizards(request: Request) -> list[dict]:
     return _service(request).list()
@@ -41,7 +71,11 @@ def list_wizards(request: Request) -> list[dict]:
 
 @router.post("/wizards", status_code=status.HTTP_201_CREATED)
 def create_wizard(payload: WizardCreate, request: Request) -> dict:
-    return _service(request).create(payload.mode, payload.skills)
+    with WIZARD_MUTATION_LOCK:
+        source_ids = [source["id"] for source in _reference_creation_sources(
+            request, payload.reference_source_ids,
+        )]
+        return _service(request).create(payload.mode, payload.skills, source_ids)
 
 
 @router.get("/wizards/{wizard_id}")
@@ -78,79 +112,141 @@ def save_answers(wizard_id: str, payload: WizardAnswers, request: Request) -> di
         raise HTTPException(status_code=400, detail={"code": "invalid_answers", "message": str(exc)}) from exc
 
 
-def _confirmed_mechanisms(request: Request) -> list[dict]:
+def _confirmed_mechanisms(request: Request, wizard: dict) -> list[dict]:
+    source_ids = wizard.get("schema", {}).get("creation_context", {}).get(
+        "reference_source_ids", [],
+    )
+    scoped_sources = _reference_creation_sources(request, source_ids)
+    scoped_by_id = {source["id"]: source for source in scoped_sources}
+    mechanisms_by_source = {source_id: [] for source_id in scoped_by_id}
     result = []
     for item in request.app.state.learning.list_mechanisms(view="active"):
         if item.get("status") != "confirmed" or item.get("node_type") != "mechanism":
             continue
-        try:
-            source = request.app.state.references.get(item["source_id"])
-        except LookupError:
+        if scoped_sources:
+            source = scoped_by_id.get(item.get("source_id"))
+            if source is None:
+                continue
+        else:
+            try:
+                source = request.app.state.references.get(item["source_id"])
+            except (LookupError, ValueError):
+                continue
+        if not scoped_sources and source.get("content_type") == "competitor_work":
             continue
-        if source.get("content_type") == "competitor_work":
-            continue
-        result.append({
+        choice = {
             "id": item["id"],
             "name": item.get("data", {}).get("name") or "已确认写法",
             "use": item.get("data", {}).get("transfer_guidance") or "用于后续创作规则",
             "confidence": item.get("data", {}).get("confidence"),
+            "source_id": source["id"],
             "source_title": source.get("title") or "参考资料",
-        })
-        if len(result) == 12:
+        }
+        if scoped_sources:
+            mechanisms_by_source[source["id"]].append(choice)
+            continue
+        result.append(choice)
+        if len(result) >= 12:
             break
+    if scoped_sources:
+        return [
+            item
+            for source in scoped_sources
+            for item in mechanisms_by_source[source["id"]]
+        ]
     return result
 
 
 @router.get("/wizards/{wizard_id}/confirmed-mechanisms")
 def confirmed_wizard_mechanisms(wizard_id: str, request: Request) -> list[dict]:
-    try:
-        _service(request).get(wizard_id)
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
-    return _confirmed_mechanisms(request)
+    with WIZARD_MUTATION_LOCK:
+        return _confirmed_mechanisms(request, _wizard_or_404(request, wizard_id))
 
 
 @router.post("/wizards/{wizard_id}/confirm", status_code=status.HTTP_201_CREATED)
 def confirm_wizard(wizard_id: str, request: Request, payload: WizardConfirm | None = None) -> dict:
     try:
-        wizard = _service(request).get(wizard_id)
-        values = {key: item.get("value") for key, item in wizard.get("answers", {}).items()}
-        enabled = values.get("market_baseline_enabled") != "disabled"
-        raw_key = values.get("market_baseline_key")
-        try:
-            key = json.loads(raw_key) if enabled and raw_key else None
-        except (json.JSONDecodeError, TypeError) as exc:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
-            }) from exc
-        if key is not None and not isinstance(key, dict):
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
-            })
-        selected_ids = list(dict.fromkeys((payload or WizardConfirm()).selected_mechanism_ids))
-        if len(selected_ids) > 12:
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_learning_selection", "message": "一次最多选择 12 条已确认写法。",
-            })
-        allowed = {item["id"] for item in _confirmed_mechanisms(request)}
-        if any(node_id not in allowed for node_id in selected_ids):
-            raise HTTPException(status_code=400, detail={
-                "code": "invalid_learning_selection", "message": "所选写法已失效，请返回确认页重新选择。",
-            })
-        project = _service(request).confirm(wizard_id)
-        if key:
-            baseline = request.app.state.market_baselines.build_baseline(key)
-            request.app.state.learning.save_artifact(project.id, "market_baseline", baseline)
-        project = request.app.state.projects.set_market_baseline_selection(
-            project.id, enabled=bool(enabled and key), key=key,
-        )
-        for node_id in selected_ids:
-            request.app.state.learning.adopt(project.id, node_id)
-        return {**project.metadata, "path": str(project.path)}
+        with WIZARD_MUTATION_LOCK:
+            wizard = _wizard_or_404(request, wizard_id)
+            context = wizard.get("schema", {}).get("creation_context", {})
+            recovering = bool(wizard.get("project_id"))
+            if recovering and context.get("confirmation_effects_completed") is True:
+                project = request.app.state.projects.get(wizard["project_id"])
+                return {**project.metadata, "path": str(project.path)}
+            values = {key: item.get("value") for key, item in wizard.get("answers", {}).items()}
+            enabled = values.get("market_baseline_enabled") != "disabled"
+            raw_key = values.get("market_baseline_key")
+            try:
+                key = json.loads(raw_key) if enabled and raw_key else None
+            except (json.JSONDecodeError, TypeError) as exc:
+                raise HTTPException(status_code=400, detail={
+                    "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
+                }) from exc
+            if key is not None and not isinstance(key, dict):
+                raise HTTPException(status_code=400, detail={
+                    "code": "invalid_market_baseline", "message": "市场基线选择无效，请重新选择。",
+                })
+            if recovering:
+                selected_ids = list(dict.fromkeys(
+                    context.get("selected_mechanism_ids", []),
+                ))
+                project = request.app.state.projects.get(wizard["project_id"])
+            else:
+                selected_ids = list(dict.fromkeys(
+                    (payload or WizardConfirm()).selected_mechanism_ids,
+                ))
+                if len(selected_ids) > 12:
+                    raise HTTPException(status_code=400, detail={
+                        "code": "invalid_learning_selection",
+                        "message": "一次最多选择 12 条已确认写法。",
+                    })
+                choices = _confirmed_mechanisms(request, wizard)
+                source_ids = context.get("reference_source_ids", [])
+                confirmed_source_ids = {item["source_id"] for item in choices}
+                if any(source_id not in confirmed_source_ids for source_id in source_ids):
+                    raise HTTPException(status_code=400, detail={
+                        "code": "reference_learning_not_ready",
+                        "message": "有一篇所选资料还没有已确认写法，请先确认候选写法。",
+                    })
+                allowed = {item["id"] for item in choices}
+                if any(node_id not in allowed for node_id in selected_ids):
+                    raise HTTPException(status_code=400, detail={
+                        "code": "invalid_learning_selection",
+                        "message": "所选写法已失效，请返回确认页重新选择。",
+                    })
+                project = _service(request).confirm(wizard_id, selected_ids)
+            learning = request.app.state.learning
+            if key:
+                baseline = request.app.state.market_baselines.build_baseline(key)
+                current = learning.get_artifact(project.id, "market_baseline")
+                if not current or current["status"] != "active" or current["data"] != baseline:
+                    learning.save_artifact(project.id, "market_baseline", baseline)
+            project = request.app.state.projects.set_market_baseline_selection(
+                project.id, enabled=bool(enabled and key), key=key,
+            )
+            try:
+                learning.ensure_adoptions(project.id, selected_ids)
+            except (LookupError, ValueError) as exc:
+                raise HTTPException(status_code=409, detail={
+                    "code": "wizard_confirmation_recovery_blocked",
+                    "message": "作品和已落地写法已保留；请前往学习库为该作品重新选择补充写法。",
+                }) from exc
+            _service(request).mark_confirmation_effects_completed(wizard_id)
+            return {**project.metadata, "path": str(project.path)}
+    except HTTPException:
+        raise
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
+        raise HTTPException(status_code=400, detail={
+            "code": "wizard_confirmation_changed",
+            "message": "创建作品所需的数据已发生变化，请返回检查后重试。",
+        }) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": "wizard_incomplete", "message": str(exc)}) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail={
+            "code": "wizard_confirmation_incomplete",
+            "message": "作品已经保留，但创建收尾还没有完成。请再次点击确认继续。",
+        }) from exc
 
 
 @router.post("/wizards/{wizard_id}/analyze")

@@ -164,11 +164,19 @@ class WizardService:
         self.projects = projects
         self.catalog = catalog
 
-    def create(self, mode: str, skill_names: list[str] | None = None) -> dict:
+    def create(
+        self,
+        mode: str,
+        skill_names: list[str] | None = None,
+        reference_source_ids: list[str] | None = None,
+    ) -> dict:
         if mode not in {"short", "long"}:
             raise ValueError("Invalid project mode")
         wizard_id = uuid.uuid4().hex
         schema = self.catalog.build(mode, skill_names)
+        schema["creation_context"] = {
+            "reference_source_ids": list(dict.fromkeys(reference_source_ids or [])),
+        }
         answers = {}
         for step in schema["steps"]:
             for field in step["fields"]:
@@ -233,7 +241,9 @@ class WizardService:
             self.db.save_wizard(wizard_id, status, wizard["mode"], schema, wizard["answers"])
             return self.get(wizard_id)
 
-    def confirm(self, wizard_id: str) -> Project:
+    def confirm(
+        self, wizard_id: str, selected_mechanism_ids: "list[str] | None" = None,
+    ) -> Project:
         with WIZARD_MUTATION_LOCK:
             wizard = self.get(wizard_id)
             if wizard.get("project_id"):
@@ -246,6 +256,16 @@ class WizardService:
                         missing.append(field["id"])
             if missing:
                 raise ValueError(f"Missing required answers: {', '.join(missing)}")
+            if selected_mechanism_ids is not None:
+                context = wizard["schema"].setdefault("creation_context", {})
+                context["selected_mechanism_ids"] = list(
+                    dict.fromkeys(selected_mechanism_ids),
+                )
+                context["confirmation_effects_completed"] = False
+                self.db.save_wizard(
+                    wizard_id, wizard["status"], wizard["mode"],
+                    wizard["schema"], wizard["answers"],
+                )
             values = {key: item.get("value") for key, item in wizard["answers"].items()}
             project = self.projects.create(ProjectCreate(
                 title=str(values["title"]), mode=wizard["mode"], genre=str(values["genre"]),
@@ -281,3 +301,16 @@ class WizardService:
             self.db.save_wizard(wizard_id, "completed", wizard["mode"], wizard["schema"],
                                 wizard["answers"], project.id)
             return self.projects.get(project.id)
+
+    def mark_confirmation_effects_completed(self, wizard_id: str) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            wizard = self.get(wizard_id)
+            if not wizard.get("project_id"):
+                raise ValueError("作品尚未创建，不能完成创建收尾。")
+            context = wizard["schema"].setdefault("creation_context", {})
+            context["confirmation_effects_completed"] = True
+            self.db.save_wizard(
+                wizard_id, "completed", wizard["mode"], wizard["schema"],
+                wizard["answers"], wizard["project_id"],
+            )
+            return self.get(wizard_id)

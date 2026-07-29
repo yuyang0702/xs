@@ -87,6 +87,19 @@ def test_initialization_skill_is_auto_discovered(tmp_path) -> None:
     assert any(step.get("skill_name") == "genre-init" for step in schema["steps"])
 
 
+def test_wizard_persists_reference_creation_context_in_schema(tmp_path) -> None:
+    service = wizard_service_for(tmp_path)
+
+    wizard = service.create(
+        "short",
+        reference_source_ids=["source-b", "source-a", "source-b"],
+    )
+
+    assert wizard["schema"]["creation_context"] == {
+        "reference_source_ids": ["source-b", "source-a"],
+    }
+
+
 def test_wizard_autosaves_and_confirms_locked_canonical_project(tmp_path) -> None:
     root = tmp_path / "skills"
     for name in ("story-init", "character-management", "worldbuilding", "plot-structure"):
