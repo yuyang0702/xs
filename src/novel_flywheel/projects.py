@@ -47,7 +47,9 @@ class ProjectStore:
         self.root_constraints = [path.resolve() for path in (root_constraints or []) if path.is_file()]
         states = StoryStateStore(self.db)
         for row in self.db.list_projects():
-            path = Path(row["path"])
+            path = Path(row["path"]).resolve()
+            if not path.is_relative_to(self.workspace_root):
+                raise ValueError("项目路径不在工作区内，无法加载")
             if path.is_dir():
                 self._migrate_optimized_local_review(row, path)
                 states.ensure(row["id"], path)
@@ -122,6 +124,13 @@ class ProjectStore:
         if not isinstance(metadata, dict):
             raise ValueError(
                 "optimized review migration requires a JSON object"
+            )
+        if (
+            metadata.get("id") != row.get("id")
+            or metadata.get("mode") != row.get("mode")
+        ):
+            raise ValueError(
+                "项目元数据与登记信息不一致，无法执行默认设置迁移"
             )
         if "optimized_local_review_enabled" in metadata:
             return

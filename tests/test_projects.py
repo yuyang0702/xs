@@ -217,6 +217,73 @@ def test_optimized_review_migration_refuses_damaged_interrupted_state(
     assert snapshot_json.read_bytes() == snapshot_before
 
 
+def test_project_store_rejects_registered_path_outside_workspace_before_migration(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    path, project_json, original = _register_existing_project(
+        db, tmp_path / "outside", "outside-short", "short",
+    )
+    before_mtime = project_json.stat().st_mtime_ns
+
+    with pytest.raises(ValueError, match="项目路径不在工作区内") as error:
+        ProjectStore(db, workspace)
+
+    assert str(path.resolve()) not in str(error.value)
+    assert project_json.read_bytes() == original
+    assert project_json.stat().st_mtime_ns == before_mtime
+    assert not (
+        path / "snapshots" / "optimized-review-default"
+    ).exists()
+    assert StoryStateStore(db).get("outside-short") is None
+
+
+@pytest.mark.parametrize(
+    ("project_id", "metadata_override"),
+    [
+        pytest.param(
+            "wrong-id",
+            {
+                "id": "another-project",
+                "optimized_local_review_enabled": False,
+            },
+            id="explicit-flag-with-wrong-id",
+        ),
+        pytest.param(
+            "wrong-mode",
+            {"mode": "long"},
+            id="database-short-with-json-long",
+        ),
+    ],
+)
+def test_project_store_rejects_mismatched_metadata_before_migration(
+    tmp_path, project_id, metadata_override,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    path, project_json, original = _register_existing_project(
+        db, workspace, project_id, "short", metadata_override,
+    )
+    before_mtime = project_json.stat().st_mtime_ns
+
+    with pytest.raises(
+        ValueError, match="项目元数据与登记信息不一致",
+    ) as error:
+        ProjectStore(db, workspace)
+
+    assert str(path.resolve()) not in str(error.value)
+    assert project_json.read_bytes() == original
+    assert project_json.stat().st_mtime_ns == before_mtime
+    assert not (
+        path / "snapshots" / "optimized-review-default"
+    ).exists()
+    assert StoryStateStore(db).get(project_id) is None
+
+
 def test_project_store_imports_story_state_for_existing_projects(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
