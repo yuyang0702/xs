@@ -6,7 +6,7 @@ from typing import Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from novel_flywheel.db import Database
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.skills import Skill, SkillGate
 from novel_flywheel.storage import atomic_write
@@ -186,83 +186,98 @@ class WizardService:
     def list(self) -> list[dict]:
         return self.db.list_wizards()
 
+    def delete(self, wizard_id: str) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            wizard = self.get(wizard_id)
+            if wizard.get("project_id") or wizard["status"] == "completed":
+                raise ValueError("这份开书资料已经创建作品，不能从草稿列表删除。")
+            if not self.db.delete_wizard(wizard_id):
+                raise LookupError("Wizard not found")
+            return {"id": wizard_id, "deleted": True}
+
     def save_answers(self, wizard_id: str, answers: dict) -> dict:
-        wizard = self.get(wizard_id)
-        if wizard["status"] == "completed":
-            raise ValueError("Completed wizard cannot be modified")
-        valid_ids = {field["id"] for step in wizard["schema"]["steps"] for field in step["fields"]}
-        unknown = set(answers) - valid_ids
-        if unknown:
-            raise ValueError(f"Unknown wizard fields: {', '.join(sorted(unknown))}")
-        merged = {**wizard["answers"], **answers}
-        for key, answer in merged.items():
-            if not isinstance(answer, dict) or answer.get("policy") not in {"locked", "suggestible", "generated"}:
-                raise ValueError(f"Invalid answer policy: {key}")
-        self.db.save_wizard(wizard_id, wizard["status"], wizard["mode"], wizard["schema"], merged)
-        return self.get(wizard_id)
+        with WIZARD_MUTATION_LOCK:
+            wizard = self.get(wizard_id)
+            if wizard["status"] == "completed":
+                raise ValueError("Completed wizard cannot be modified")
+            valid_ids = {field["id"] for step in wizard["schema"]["steps"] for field in step["fields"]}
+            unknown = set(answers) - valid_ids
+            if unknown:
+                raise ValueError(f"Unknown wizard fields: {', '.join(sorted(unknown))}")
+            merged = {**wizard["answers"], **answers}
+            for key, answer in merged.items():
+                if not isinstance(answer, dict) or answer.get("policy") not in {"locked", "suggestible", "generated"}:
+                    raise ValueError(f"Invalid answer policy: {key}")
+            self.db.save_wizard(wizard_id, wizard["status"], wizard["mode"], wizard["schema"], merged)
+            return self.get(wizard_id)
 
     def analyze_gaps(self, wizard_id: str) -> dict:
-        wizard = self.get(wizard_id)
-        important = ["ending", "protagonist.arc"]
-        if wizard["mode"] == "long":
-            important += ["world.rules", "plot.main_arc"]
-        fields = {field["id"]: field for step in wizard["schema"]["steps"] for field in step["fields"]}
-        missing = [key for key in important if not wizard["answers"].get(key, {}).get("value") and key in fields]
-        schema = wizard["schema"]
-        schema["steps"] = [step for step in schema["steps"] if step.get("skill_name") != "runtime-followup"]
-        if missing:
-            followup = FormStep(
-                title="必要追问", skill_name="runtime-followup", skill_hash="deterministic",
-                fields=[FormField.model_validate({**fields[key], "required": True}) for key in missing],
-            )
-            schema["steps"].append(followup.model_dump())
-            status = "gathering_input"
-        else:
-            status = "ready"
-        self.db.save_wizard(wizard_id, status, wizard["mode"], schema, wizard["answers"])
-        return self.get(wizard_id)
+        with WIZARD_MUTATION_LOCK:
+            wizard = self.get(wizard_id)
+            important = ["ending", "protagonist.arc"]
+            if wizard["mode"] == "long":
+                important += ["world.rules", "plot.main_arc"]
+            fields = {field["id"]: field for step in wizard["schema"]["steps"] for field in step["fields"]}
+            missing = [key for key in important if not wizard["answers"].get(key, {}).get("value") and key in fields]
+            schema = wizard["schema"]
+            schema["steps"] = [step for step in schema["steps"] if step.get("skill_name") != "runtime-followup"]
+            if missing:
+                followup = FormStep(
+                    title="必要追问", skill_name="runtime-followup", skill_hash="deterministic",
+                    fields=[FormField.model_validate({**fields[key], "required": True}) for key in missing],
+                )
+                schema["steps"].append(followup.model_dump())
+                status = "gathering_input"
+            else:
+                status = "ready"
+            self.db.save_wizard(wizard_id, status, wizard["mode"], schema, wizard["answers"])
+            return self.get(wizard_id)
 
     def confirm(self, wizard_id: str) -> Project:
-        wizard = self.get(wizard_id)
-        if wizard.get("project_id"):
-            return self.projects.get(wizard["project_id"])
-        missing = []
-        for step in wizard["schema"]["steps"]:
-            for field in step["fields"]:
-                value = wizard["answers"].get(field["id"], {}).get("value")
-                if field.get("required") and (value is None or value == ""):
-                    missing.append(field["id"])
-        if missing:
-            raise ValueError(f"Missing required answers: {', '.join(missing)}")
-        values = {key: item.get("value") for key, item in wizard["answers"].items()}
-        project = self.projects.create(ProjectCreate(
-            title=str(values["title"]), mode=wizard["mode"], genre=str(values["genre"]),
-            premise=str(values["premise"]), target_words=int(values["target_words"]),
-            pov=str(values.get("pov") or "third-limited"), tone=str(values.get("tone") or "natural"),
-            must_include=str(values.get("must_include") or ""), must_avoid=str(values.get("must_avoid") or ""),
-        ))
-        locked = []
-        for key, item in wizard["answers"].items():
-            if item.get("policy") == "locked":
-                self.db.save_lock(project.id, key, item.get("value"), f"wizard:{wizard_id}")
-                locked.append({"key": key, "value": item.get("value"), "source": f"wizard:{wizard_id}", "revision": 1})
-        atomic_write(project.path / "continuity" / "locks.json",
-                     json.dumps({"locks": locked}, ensure_ascii=False, indent=2))
-        details = "\n\n## Confirmed Story Requirements\n\n" + "\n".join(
-            f"- **{key}**: {value}" for key, value in values.items() if value not in (None, "")
-        )
-        atomic_write(project.path / "story.md", project.path.joinpath("story.md").read_text(encoding="utf-8") + details)
-        metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
-        metadata["wizard_id"] = wizard_id
-        metadata["story_requirements"] = values
-        metadata["initialization_skills"] = [
-            step["skill_name"] for step in wizard["schema"]["steps"]
-            if step.get("skill_name") and step["skill_name"] != "runtime-followup"
-        ]
-        atomic_write(project.path / "project.json", json.dumps(metadata, ensure_ascii=False, indent=2))
-        profile_id = values.get("platform_profile_id")
-        if profile_id and profile_id != "none":
-            project = self.projects.apply_platform_profile(project.id, str(profile_id))
-        self.db.save_wizard(wizard_id, "completed", wizard["mode"], wizard["schema"],
-                            wizard["answers"], project.id)
-        return self.projects.get(project.id)
+        with WIZARD_MUTATION_LOCK:
+            wizard = self.get(wizard_id)
+            if wizard.get("project_id"):
+                return self.projects.get(wizard["project_id"])
+            missing = []
+            for step in wizard["schema"]["steps"]:
+                for field in step["fields"]:
+                    value = wizard["answers"].get(field["id"], {}).get("value")
+                    if field.get("required") and (value is None or value == ""):
+                        missing.append(field["id"])
+            if missing:
+                raise ValueError(f"Missing required answers: {', '.join(missing)}")
+            values = {key: item.get("value") for key, item in wizard["answers"].items()}
+            project = self.projects.create(ProjectCreate(
+                title=str(values["title"]), mode=wizard["mode"], genre=str(values["genre"]),
+                premise=str(values["premise"]), target_words=int(values["target_words"]),
+                pov=str(values.get("pov") or "third-limited"), tone=str(values.get("tone") or "natural"),
+                must_include=str(values.get("must_include") or ""), must_avoid=str(values.get("must_avoid") or ""),
+            ))
+            locked = []
+            for key, item in wizard["answers"].items():
+                if item.get("policy") == "locked":
+                    self.db.save_lock(project.id, key, item.get("value"), f"wizard:{wizard_id}")
+                    locked.append({"key": key, "value": item.get("value"), "source": f"wizard:{wizard_id}", "revision": 1})
+            atomic_write(project.path / "continuity" / "locks.json",
+                         json.dumps({"locks": locked}, ensure_ascii=False, indent=2))
+            details = "\n\n## Confirmed Story Requirements\n\n" + "\n".join(
+                f"- **{key}**: {value}" for key, value in values.items() if value not in (None, "")
+            )
+            atomic_write(
+                project.path / "story.md",
+                project.path.joinpath("story.md").read_text(encoding="utf-8") + details,
+            )
+            metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
+            metadata["wizard_id"] = wizard_id
+            metadata["story_requirements"] = values
+            metadata["initialization_skills"] = [
+                step["skill_name"] for step in wizard["schema"]["steps"]
+                if step.get("skill_name") and step["skill_name"] != "runtime-followup"
+            ]
+            atomic_write(project.path / "project.json", json.dumps(metadata, ensure_ascii=False, indent=2))
+            profile_id = values.get("platform_profile_id")
+            if profile_id and profile_id != "none":
+                project = self.projects.apply_platform_profile(project.id, str(profile_id))
+            self.db.save_wizard(wizard_id, "completed", wizard["mode"], wizard["schema"],
+                                wizard["answers"], project.id)
+            return self.projects.get(project.id)

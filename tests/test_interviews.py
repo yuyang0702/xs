@@ -1,8 +1,11 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
 
-from novel_flywheel.db import Database
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.interviews import WizardInterviewService
 
 
@@ -48,6 +51,25 @@ class DisconnectOnceGateway(FakeGateway):
         if len(self.calls) == 1:
             raise ConnectionError("client disconnected")
         return SimpleNamespace(text=self.text, receipt={"model_name": "planner"})
+
+
+class PausedGateway(FakeGateway):
+    def __init__(self, texts, pause_call=1):
+        super().__init__(texts[0])
+        self.texts = texts
+        self.pause_call = pause_call
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.calls.append({"role": role, "system": system, "user": user})
+        if len(self.calls) == self.pause_call:
+            self.started.set()
+            await self.release.wait()
+        return SimpleNamespace(
+            text=self.texts[len(self.calls) - 1],
+            receipt={"model_name": "planner"},
+        )
 
 
 def make_service(tmp_path, output, *, locked=False):
@@ -176,3 +198,79 @@ async def test_interview_retry_does_not_duplicate_orphaned_user_message(tmp_path
 
     assert result["content"] == "Continue."
     assert [item["role"] for item in service.history("wizard")] == ["user", "assistant"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("model_outputs", "pause_call"),
+    [
+        (['{"message":"继续。","suggestions":[]}'], 1),
+        (["not json", '{"message":"继续。","suggestions":[]}'], 2),
+    ],
+)
+async def test_interview_turn_does_not_save_model_reply_after_wizard_is_deleted(
+    tmp_path, model_outputs, pause_call,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_wizard("wizard", "draft", "long", SCHEMA, {})
+    gateway = PausedGateway(model_outputs, pause_call)
+    service = WizardInterviewService(db, gateway)
+
+    turn = asyncio.create_task(service.turn("wizard", "先说说主角"))
+    await asyncio.wait_for(gateway.started.wait(), timeout=5)
+    assert await asyncio.wait_for(asyncio.to_thread(db.delete_wizard, "wizard"), timeout=5)
+    gateway.release.set()
+
+    with pytest.raises(LookupError, match="Wizard not found"):
+        await turn
+    assert db.get_wizard("wizard") is None
+    assert db.list_interview_messages("wizard") == []
+
+
+def test_interview_apply_waits_for_delete_and_does_not_restore_wizard(
+    tmp_path, monkeypatch,
+) -> None:
+    db, _, service = make_service(
+        tmp_path,
+        '{"message":"继续。","suggestions":[]}',
+    )
+    db.save_interview_message(
+        "assistant", "wizard", "assistant", "可以改成社会派悬疑。", [
+            {"field_id": "genre", "value": "社会派悬疑", "reason": "方向更明确"},
+        ],
+    )
+    delete_paused = Event()
+    release_delete = Event()
+    apply_attempted = Event()
+    apply_finished = Event()
+    original_delete = db.delete_wizard
+
+    def paused_delete(wizard_id):
+        with WIZARD_MUTATION_LOCK:
+            delete_paused.set()
+            assert release_delete.wait(5)
+            return original_delete(wizard_id)
+
+    def apply():
+        apply_attempted.set()
+        try:
+            return service.apply("wizard", "assistant", ["genre"])
+        finally:
+            apply_finished.set()
+
+    monkeypatch.setattr(db, "delete_wizard", paused_delete)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        deleted = executor.submit(db.delete_wizard, "wizard")
+        assert delete_paused.wait(5)
+        applied = executor.submit(apply)
+        assert apply_attempted.wait(5)
+        assert not apply_finished.wait(0.1)
+        release_delete.set()
+        assert deleted.result(timeout=5) is True
+        with pytest.raises(LookupError, match="Wizard not found"):
+            applied.result(timeout=5)
+
+    assert apply_finished.is_set()
+    assert db.get_wizard("wizard") is None
+    assert db.get_interview_message("assistant") is None

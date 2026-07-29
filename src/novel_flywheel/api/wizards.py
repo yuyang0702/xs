@@ -52,6 +52,22 @@ def get_wizard(wizard_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
 
 
+@router.delete("/wizards/{wizard_id}")
+def delete_wizard(wizard_id: str, request: Request) -> dict:
+    try:
+        return _service(request).delete(wizard_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={
+            "code": "wizard_not_found",
+            "message": "草稿不存在或已经删除。",
+        }) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "wizard_has_project",
+            "message": "这份开书资料已经创建作品，不能从草稿列表删除。",
+        }) from exc
+
+
 @router.put("/wizards/{wizard_id}/answers")
 def save_answers(wizard_id: str, payload: WizardAnswers, request: Request) -> dict:
     try:

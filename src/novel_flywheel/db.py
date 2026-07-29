@@ -1,9 +1,13 @@
 import json
 import hashlib
 import sqlite3
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
+
+
+WIZARD_MUTATION_LOCK = threading.RLock()
 
 
 SCHEMA = """
@@ -813,7 +817,7 @@ class Database:
 
     def save_wizard(self, wizard_id: str, status: str, mode: str,
                     schema: dict, answers: dict, project_id: str | None = None) -> None:
-        with self.connect() as connection:
+        with WIZARD_MUTATION_LOCK, self.connect() as connection:
             connection.execute(
                 """INSERT INTO wizard_sessions VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
                 ON CONFLICT(id) DO UPDATE SET status=excluded.status, mode=excluded.mode,
@@ -833,6 +837,15 @@ class Database:
         result["schema"] = json.loads(result.pop("schema_json"))
         result["answers"] = json.loads(result.pop("answers_json"))
         return result
+
+    def delete_wizard(self, wizard_id: str) -> bool:
+        with WIZARD_MUTATION_LOCK, self.connect() as connection:
+            cursor = connection.execute(
+                "DELETE FROM wizard_sessions WHERE id = ? AND project_id IS NULL "
+                "AND status IN (?, ?, ?)",
+                (wizard_id, "draft", "gathering_input", "ready"),
+            )
+        return cursor.rowcount == 1
 
     def list_wizards(self, status: str | None = None) -> list[dict[str, Any]]:
         with self.connect() as connection:

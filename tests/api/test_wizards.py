@@ -29,6 +29,79 @@ class FailingInterviews(FakeInterviews):
         raise ConnectionError("planning provider disconnected")
 
 
+class MissingWizardInterviews(FakeInterviews):
+    async def turn(self, wizard_id, message=None):
+        raise LookupError("Wizard not found")
+
+
+def wizard_client(tmp_path) -> TestClient:
+    return TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+
+
+def create_completed_wizard(client: TestClient) -> tuple[dict, dict]:
+    wizard = client.post("/api/wizards", json={"mode": "short"}).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "已创建作品", "policy": "locked"},
+        "genre": {"value": "悬疑", "policy": "locked"},
+        "premise": {"value": "一封来信。", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+    }})
+    project = client.post(f"/api/wizards/{wizard['id']}/confirm").json()
+    return wizard, project
+
+
+def test_delete_unfinished_wizard_api_does_not_delete_projects(tmp_path) -> None:
+    client = wizard_client(tmp_path)
+    project = client.post("/api/projects", json={
+        "title": "保留的作品", "mode": "short", "genre": "悬疑",
+        "premise": "一扇门打开。", "target_words": 6000,
+    }).json()
+    keep = client.post("/api/wizards", json={"mode": "long"}).json()
+    removed = client.post("/api/wizards", json={"mode": "short"}).json()
+    projects_before = client.get("/api/projects").json()
+
+    response = client.delete(f"/api/wizards/{removed['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == {"id": removed["id"], "deleted": True}
+    assert [item["id"] for item in client.get("/api/wizards").json()] == [keep["id"]]
+    assert client.get("/api/projects").json() == projects_before
+    assert client.get(f"/api/projects/{project['id']}").status_code == 200
+
+
+def test_delete_missing_wizard_api_returns_chinese_not_found(tmp_path) -> None:
+    response = wizard_client(tmp_path).delete("/api/wizards/missing")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == {
+        "code": "wizard_not_found",
+        "message": "草稿不存在或已经删除。",
+    }
+
+
+def test_delete_completed_wizard_api_returns_chinese_conflict(tmp_path) -> None:
+    client = wizard_client(tmp_path)
+    unrelated = client.post("/api/wizards", json={"mode": "long"}).json()
+    wizard, project = create_completed_wizard(client)
+    project_count = len(client.get("/api/projects").json())
+    wizard_count = len(client.get("/api/wizards").json())
+
+    response = client.delete(f"/api/wizards/{wizard['id']}")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == {
+        "code": "wizard_has_project",
+        "message": "这份开书资料已经创建作品，不能从草稿列表删除。",
+    }
+    assert client.get(f"/api/projects/{project['id']}").status_code == 200
+    assert len(client.get("/api/projects").json()) == project_count
+    assert len(client.get("/api/wizards").json()) == wizard_count
+    assert client.get(f"/api/wizards/{unrelated['id']}").status_code == 200
+
+
 def test_wizard_create_autosave_resume_and_confirm(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
@@ -137,6 +210,18 @@ def test_wizard_interview_returns_provider_connection_error(tmp_path) -> None:
     assert response.json()["detail"] == {
         "code": "interview_model_failed", "message": "planning provider disconnected",
     }
+
+
+def test_wizard_interview_returns_not_found_when_draft_was_deleted(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", interview_service=MissingWizardInterviews(),
+    ))
+
+    response = client.post("/api/wizards/deleted/interview", json={"message": "outline"})
+
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "wizard_not_found"
 
 
 def test_wizard_lists_safe_confirmed_methods_and_adopts_only_selected_items(tmp_path) -> None:

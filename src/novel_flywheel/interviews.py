@@ -5,7 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
-from novel_flywheel.db import Database
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 
 
 class InterviewSuggestion(BaseModel):
@@ -36,21 +36,23 @@ class WizardInterviewService:
         return self.db.list_interview_messages(wizard_id)
 
     async def turn(self, wizard_id: str, user_message: str | None = None) -> dict:
-        wizard = self._editable_wizard(wizard_id)
-        message = (user_message or "").strip()
-        if len(message) > 4000:
-            raise ValueError("Interview message is too long")
-        if message:
-            history = self.db.list_interview_messages(wizard_id)
-            if not (history and history[-1]["role"] == "user"
-                    and history[-1]["content"] == message):
-                self.db.save_interview_message(uuid.uuid4().hex, wizard_id, "user", message, [])
-        elif self.db.list_interview_messages(wizard_id):
-            raise ValueError("Interview message is required")
+        with WIZARD_MUTATION_LOCK:
+            wizard = self._editable_wizard(wizard_id)
+            message = (user_message or "").strip()
+            if len(message) > 4000:
+                raise ValueError("Interview message is too long")
+            if message:
+                history = self.db.list_interview_messages(wizard_id)
+                if not (history and history[-1]["role"] == "user"
+                        and history[-1]["content"] == message):
+                    self.db.save_interview_message(uuid.uuid4().hex, wizard_id, "user", message, [])
+            elif self.db.list_interview_messages(wizard_id):
+                raise ValueError("Interview message is required")
+            context = self._context(wizard_id, wizard)
 
         try:
             result = await self.gateway.complete(
-                "planning", self.SYSTEM, self._context(wizard_id, wizard),
+                "planning", self.SYSTEM, context,
                 max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )
         except LookupError as exc:
@@ -69,37 +71,40 @@ class WizardInterviewService:
                 max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )
             output = self._parse_output(repaired.text)
-        suggestions = self._valid_suggestions(wizard, output.suggestions)
-        message_id = uuid.uuid4().hex
-        self.db.save_interview_message(
-            message_id, wizard_id, "assistant", output.message,
-            [item.model_dump() for item in suggestions],
-        )
-        return self.db.get_interview_message(message_id)
+        with WIZARD_MUTATION_LOCK:
+            wizard = self._editable_wizard(wizard_id)
+            suggestions = self._valid_suggestions(wizard, output.suggestions)
+            message_id = uuid.uuid4().hex
+            self.db.save_interview_message(
+                message_id, wizard_id, "assistant", output.message,
+                [item.model_dump() for item in suggestions],
+            )
+            return self.db.get_interview_message(message_id)
 
     def apply(self, wizard_id: str, message_id: str, field_ids: list[str]) -> dict:
-        wizard = self._editable_wizard(wizard_id)
-        message = self.db.get_interview_message(message_id)
-        if message is None or message["wizard_id"] != wizard_id or message["role"] != "assistant":
-            raise LookupError("Interview message not found")
-        selected = set(field_ids)
-        fields = self._field_map(wizard)
-        answers = dict(wizard["answers"])
-        applied = []
-        for suggestion in message["suggestions"]:
-            field_id = suggestion["field_id"]
-            if (field_id not in selected or field_id not in fields
-                    or answers.get(field_id, {}).get("policy") == "locked"):
-                continue
-            answers[field_id] = {"value": suggestion["value"], "policy": "suggestible"}
-            applied.append(field_id)
-        if applied:
-            self.db.save_wizard(
-                wizard_id, wizard["status"], wizard["mode"], wizard["schema"], answers,
-                wizard.get("project_id"),
-            )
-        self.db.update_interview_message_status(message_id, "applied" if applied else "dismissed")
-        return {"wizard": self.db.get_wizard(wizard_id), "applied_fields": applied}
+        with WIZARD_MUTATION_LOCK:
+            wizard = self._editable_wizard(wizard_id)
+            message = self.db.get_interview_message(message_id)
+            if message is None or message["wizard_id"] != wizard_id or message["role"] != "assistant":
+                raise LookupError("Interview message not found")
+            selected = set(field_ids)
+            fields = self._field_map(wizard)
+            answers = dict(wizard["answers"])
+            applied = []
+            for suggestion in message["suggestions"]:
+                field_id = suggestion["field_id"]
+                if (field_id not in selected or field_id not in fields
+                        or answers.get(field_id, {}).get("policy") == "locked"):
+                    continue
+                answers[field_id] = {"value": suggestion["value"], "policy": "suggestible"}
+                applied.append(field_id)
+            if applied:
+                self.db.save_wizard(
+                    wizard_id, wizard["status"], wizard["mode"], wizard["schema"], answers,
+                    wizard.get("project_id"),
+                )
+            self.db.update_interview_message_status(message_id, "applied" if applied else "dismissed")
+            return {"wizard": self.db.get_wizard(wizard_id), "applied_fields": applied}
 
     def _wizard(self, wizard_id: str) -> dict:
         wizard = self.db.get_wizard(wizard_id)

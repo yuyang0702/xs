@@ -106,6 +106,37 @@ def test_interview_messages_round_trip_in_order(tmp_path) -> None:
     assert messages[1]["suggestion_status"] == "applied"
 
 
+def test_delete_wizard_cascades_interview_messages(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_wizard("draft-1", "draft", "short", {"steps": []}, {})
+    db.save_interview_message(
+        "message-1", "draft-1", "assistant", "先确定主角目标。", [],
+    )
+
+    assert db.delete_wizard("draft-1") is True
+    assert db.get_wizard("draft-1") is None
+    assert db.list_interview_messages("draft-1") == []
+    assert db.delete_wizard("draft-1") is False
+
+
+def test_delete_wizard_only_removes_unfinished_projectless_sessions(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    for status in ("draft", "gathering_input", "ready"):
+        db.save_wizard(status, status, "short", {"steps": []}, {})
+        assert db.delete_wizard(status) is True
+    db.save_wizard("completed", "completed", "short", {"steps": []}, {})
+    db.save_wizard(
+        "linked", "draft", "short", {"steps": []}, {}, project_id="project-1",
+    )
+
+    assert db.delete_wizard("completed") is False
+    assert db.delete_wizard("linked") is False
+    assert db.get_wizard("completed") is not None
+    assert db.get_wizard("linked") is not None
+
+
 def test_locks_are_revisioned_and_proposals_are_persisted(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
