@@ -66,3 +66,38 @@ class ProjectSnapshot:
             source = self.snapshot_root / "files" / entry["path"]
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, destination)
+
+    @classmethod
+    def load(cls, project_root: Path, snapshot_root: Path) -> "ProjectSnapshot":
+        project_root = project_root.resolve()
+        snapshot_root = snapshot_root.resolve()
+        if not snapshot_root.is_relative_to(project_root):
+            raise ValueError("Snapshot must be inside the project")
+        try:
+            entries = json.loads(
+                (snapshot_root / "manifest.json").read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError("Snapshot manifest is invalid") from exc
+        if not isinstance(entries, list):
+            raise ValueError("Snapshot manifest is invalid")
+        for entry in entries:
+            if not isinstance(entry, dict) or not isinstance(entry.get("path"), str):
+                raise ValueError("Snapshot manifest is invalid")
+            destination = (project_root / entry["path"]).resolve()
+            if not destination.is_relative_to(project_root):
+                raise ValueError("Snapshot path is outside the project")
+            if entry.get("existed") is not True:
+                if entry.get("existed") is not False:
+                    raise ValueError("Snapshot manifest is invalid")
+                continue
+            source = (snapshot_root / "files" / entry["path"]).resolve()
+            if not source.is_relative_to(snapshot_root) or not source.is_file():
+                raise ValueError("Snapshot file is invalid")
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            if digest != entry.get("sha256"):
+                raise ValueError("Snapshot file hash is invalid")
+        return cls(project_root, snapshot_root, entries)
+
+    def discard(self) -> None:
+        shutil.rmtree(self.snapshot_root)

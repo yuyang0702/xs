@@ -27,8 +27,8 @@ class RunTaskManager:
         run = self.db.get_run(run_id)
         if run is None:
             raise LookupError("Run not found")
-        if run["status"] not in {"failed", "cancelled"}:
-            raise ValueError("Only a failed or cancelled run can be resumed")
+        if run["status"] not in {"failed", "cancelled", "interrupted"}:
+            raise ValueError("Only a failed, cancelled, or interrupted run can be resumed")
         if run_id in self.tasks:
             raise ValueError("Run is already active")
         self.db.update_run(run_id, "queued")
@@ -56,9 +56,17 @@ class RunTaskManager:
                 self.db.add_run_event(run_id, "warning", "cancelled", "任务已由用户终止")
             raise
         except Exception as exc:
-            error = describe_error(exc)
+            run = self.db.get_run(run_id) or {}
+            is_revision = run.get("workflow") == "short-revision"
+            error = (
+                "定向返修未完成，已保留可恢复进度。"
+                if is_revision else describe_error(exc)
+            )
             self.db.update_run(run_id, "failed", error=error)
-            self.db.add_run_event(run_id, "error", "failed", error)
+            self.db.add_run_event(
+                run_id, "error",
+                "short_revision_failed" if is_revision else "failed", error,
+            )
         else:
             run = self.db.get_run(run_id)
             if run and run["status"] in {"queued", "running"}:

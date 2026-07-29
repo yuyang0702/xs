@@ -108,12 +108,14 @@ async def resume_run(run_id: str, request: Request) -> dict:
             request.app.state.workflows,
         )
         try:
-            _validated_run, revision_issue_ids = operations.validate_resume(run_id)
+            validated_run, revision_issue_ids = operations.validate_resume(run_id)
         except RevisionOperationError as exc:
             raise HTTPException(
                 status_code=exc.status_code,
                 detail={"code": exc.code, "message": exc.message},
             ) from None
+        if validated_run.get("status") == "completed":
+            return validated_run
 
     async def operation(existing_run_id: str) -> object:
         if run["workflow"] == "short-revision":

@@ -131,6 +131,11 @@ class PolishTokenBudgetError(RuntimeError):
     pass
 
 
+# ponytail: one local console process needs serialization, not a lock registry.
+_SHORT_REVISION_LOCK = threading.Lock()
+_QUALITY_PROMOTION_LOCK = threading.Lock()
+
+
 class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
     INITIAL_POLISH_INPUT_CAP = 120_000
@@ -152,14 +157,9 @@ class WorkflowService:
         self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
         self.local_nlp = local_nlp
         self.references = references
-        self._short_revision_locks: dict[str, threading.Lock] = {}
-        self._short_revision_locks_guard = threading.Lock()
 
     def _short_revision_lock(self, run_id: str) -> threading.Lock:
-        with self._short_revision_locks_guard:
-            return self._short_revision_locks.setdefault(
-                run_id, threading.Lock(),
-            )
+        return _SHORT_REVISION_LOCK
 
     def _analyze_manuscript(
         self, text: str, run_path: Path, project: Project, label: str,
@@ -373,20 +373,13 @@ class WorkflowService:
 
         project = self.projects.get(str(run["project_id"]))
         run_path = project.path / "runs" / run_id
-        promoted = load_quality_checkpoint(run_path)
-        if (
-            promoted is not None
-            and promoted.get("manuscript_path") == "outputs/candidate.md"
-            and promoted.get("terminal_reviewed_hash")
-            == promoted.get("manuscript_hash")
-        ):
-            self.db.update_run(run_id, "completed", "revision_completed")
+        if self.recover_short_revision_promotion(run_id):
             return operations.read(run_id)
 
         authority = operations.load_state(run_id)
         run = authority["run"]
         if run.get("status") not in {
-            "waiting_confirmation", "waiting_local_fix", "failed",
+            "waiting_confirmation", "waiting_local_fix", "failed", "interrupted",
         }:
             raise RevisionOperationError(
                 409, "revision_run_invalid", "当前返修任务不能进入终审。",
@@ -474,7 +467,7 @@ class WorkflowService:
 
         if not self.db.claim_run_status(
             run_id,
-            {"waiting_confirmation", "waiting_local_fix", "failed"},
+            {"waiting_confirmation", "waiting_local_fix", "failed", "interrupted"},
             "running",
             "revision_gate",
         ):
@@ -607,125 +600,176 @@ class WorkflowService:
                 "终审暂时不可用，已保留修改决定，请稍后重试。",
             ) from None
 
-        try:
-            refreshed = operations.load_state(run_id)
-        except RevisionOperationError:
-            self.db.update_run(run_id, "failed", "revision_authority")
-            raise
-        refreshed_state = refreshed["state"]
-        if refreshed_state.get("contract_hash") != state.get("contract_hash"):
-            self.db.update_run(run_id, "failed", "revision_authority")
-            raise RevisionOperationError(
-                409, "revision_source_changed",
-                "终审期间受保护原稿已经变化，请重新开始本次返修。",
-            )
-        if any(
-            refreshed_state.get(key) != state.get(key)
-            for key in ("groups_hash", "candidate_hash")
-        ):
-            self.db.update_run(run_id, "failed", "revision_authority")
-            raise RevisionOperationError(
-                409, "revision_candidate_changed",
-                "终审期间返修决定或候选稿已经变化，请刷新后重试。",
-            )
-        authority = refreshed
-        state = refreshed_state
+        return self._commit_short_revision_promotion(
+            operations, run_id, run_path, project, candidate, contract,
+            records, gate, state, report, review, review_audit,
+            rejected_issue_ids,
+        )
 
-        review = self._force_rejected_revision_issues(
-            review, contract.get("issue_ledger", []), rejected_issue_ids,
-        )
-        comparison = compare_quality_candidates(baseline_review, review)
-        review_mode = str(review_audit.get("review_mode") or "full")
-        full_review_reasons = list(
-            review_audit.get("fallback_reasons") or []
-        )
-        if not comparison["promote"]:
-            report.update({
-                "status": "waiting_confirmation",
-                "gate": gate,
-                "review_mode": review_mode,
-                "full_review_reasons": full_review_reasons,
-                "comparison": comparison,
-                "next_action": "候选稿没有超过当前受保护最佳稿，请调整决定后再试。",
-            })
-            authority["store"].write_report(report)
-            self.db.update_run(
-                run_id, "waiting_confirmation", "quality_comparison",
+    def recover_short_revision_promotion(self, run_id: str) -> bool:
+        with _QUALITY_PROMOTION_LOCK:
+            run = self.db.get_run(run_id)
+            if run is None or run.get("workflow") != "short-revision":
+                return False
+            project = self.projects.get(str(run["project_id"]))
+            run_path = project.path / "runs" / run_id
+            journal_path = (
+                project.path / "snapshots" / f"revision-promotion-{run_id}"
             )
-            raise RevisionOperationError(
-                409, "revision_not_improved",
-                "候选稿没有达到替换当前受保护最佳稿的条件。",
+            marker = load_quality_checkpoint(run_path)
+            promoted = bool(
+                marker is not None
+                and marker.get("manuscript_path") == "outputs/candidate.md"
+                and marker.get("terminal_reviewed_hash")
+                == marker.get("manuscript_hash")
             )
+            if journal_path.is_dir():
+                journal = ProjectSnapshot.load(project.path, journal_path)
+                if not promoted:
+                    journal.restore()
+                journal.discard()
+            if promoted:
+                was_completed = run.get("status") == "completed"
+                self.db.update_run(run_id, "completed", "revision_completed")
+                if not was_completed:
+                    self.db.add_run_event(
+                        run_id, "success", "short_revision_completed",
+                        "返修候选稿已通过检查并成为新的受保护最佳稿。",
+                        stage="revision_completed",
+                    )
+                return True
+            return False
 
-        outcome, _outcome_reasons = quality_outcome_for_profile(
-            review, str(review.get("scoring_profile_id") or "legacy-v1"),
-        )
-        store = authority["store"]
-        repair_checkpoint = {
-            key: value
-            for key, value in state.items()
-            if key not in {"contract", "groups", "candidate", "report"}
-        }
-        repair_checkpoint.update({
-            "status": "completed",
-            "candidate_hash": repair_artifact_hash(candidate),
-        })
-        promotion_files = [
-            store.output / store.CANDIDATE,
-            store.output / store.CHECKPOINT,
-            store.output / store.REPORT,
-            store.output / "quality-checkpoint.json",
-        ]
-        snapshot = ProjectSnapshot.create(
-            project.path,
-            project.path / "snapshots"
-            / f"revision-promotion-{uuid.uuid4().hex[:12]}",
-            promotion_files,
-        )
-        try:
-            store.write_candidate(candidate)
-            store.write_checkpoint(repair_checkpoint)
-            promoted_report = self._write_short_revision_report(
-                store, run_id, records, candidate, gate, "completed", contract,
-            )
-            promoted_report.update({
-                "review_mode": review_mode,
-                "full_review_reasons": full_review_reasons,
-                "comparison": comparison,
-                "next_action": "返修候选稿已成为新的受保护最佳稿。",
-            })
-            store.write_report(promoted_report)
-            digest = self._text_hash(candidate)
-            write_quality_checkpoint(run_path, {
-                "manuscript_path": "outputs/candidate.md",
-                "manuscript_hash": digest,
-                "score": float(review["score"]),
-                "scoring_profile_id": str(
-                    review.get("scoring_profile_id") or "legacy-v1"
+    def _commit_short_revision_promotion(
+        self, operations: RevisionOperations, run_id: str, run_path: Path,
+        project: Project, candidate: str, contract: dict, records: list[dict],
+        gate: dict, state: dict, report: dict, review: dict,
+        review_audit: dict, rejected_issue_ids: set[str],
+    ) -> dict:
+        with _QUALITY_PROMOTION_LOCK:
+            try:
+                authority = operations.load_state(run_id)
+            except RevisionOperationError:
+                self.db.update_run(run_id, "failed", "revision_authority")
+                raise
+            current_state = authority["state"]
+            if current_state.get("contract_hash") != state.get("contract_hash"):
+                self.db.update_run(run_id, "failed", "revision_authority")
+                raise RevisionOperationError(
+                    409, "revision_source_changed",
+                    "终审期间受保护原稿已经变化，请重新开始本次返修。",
+                )
+            if any(
+                current_state.get(key) != state.get(key)
+                for key in ("groups_hash", "candidate_hash")
+            ):
+                self.db.update_run(run_id, "failed", "revision_authority")
+                raise RevisionOperationError(
+                    409, "revision_candidate_changed",
+                    "终审期间返修决定或候选稿已经变化，请刷新后重试。",
+                )
+
+            current_protected = authority["protected"]
+            current_review = {
+                **current_protected["review"],
+                "scoring_profile_id": current_protected["checkpoint"].get(
+                    "scoring_profile_id", "legacy-v1",
                 ),
-                "judge_signature": str(
-                    review.get("judge_signature") or "legacy-unknown"
+                "judge_signature": current_protected["checkpoint"].get(
+                    "judge_signature", "legacy-unknown",
                 ),
-                "best_attempt": 1,
-                "review": review,
-                "issue_ledger": issue_ledger(review.get("issues", [])),
-                "outcome": outcome,
-                "terminal_reviewed_hash": digest,
-            })
-        except Exception:
-            snapshot.restore()
-            self.db.update_run(
-                run_id, "failed", "revision_promotion",
-                error="返修结果保存失败，可以保留决定后重试。",
+            }
+            review = self._force_rejected_revision_issues(
+                review, contract.get("issue_ledger", []), rejected_issue_ids,
             )
-            raise
-        self.db.update_run(run_id, "completed", "revision_completed")
-        self.db.add_run_event(
-            run_id, "success", "short_revision_completed",
-            "返修候选稿已通过检查并成为新的受保护最佳稿。",
-            stage="revision_completed",
-        )
-        return operations.read(run_id)
+            comparison = compare_quality_candidates(current_review, review)
+            review_mode = str(review_audit.get("review_mode") or "full")
+            full_review_reasons = list(review_audit.get("fallback_reasons") or [])
+            if not comparison["promote"]:
+                report.update({
+                    "status": "waiting_confirmation",
+                    "gate": gate,
+                    "review_mode": review_mode,
+                    "full_review_reasons": full_review_reasons,
+                    "comparison": comparison,
+                    "next_action": "候选稿没有超过当前受保护最佳稿，请调整决定后再试。",
+                })
+                authority["store"].write_report(report)
+                self.db.update_run(
+                    run_id, "waiting_confirmation", "quality_comparison",
+                )
+                raise RevisionOperationError(
+                    409, "revision_not_improved",
+                    "候选稿没有达到替换当前受保护最佳稿的条件。",
+                )
+
+            outcome, _reasons = quality_outcome_for_profile(
+                review, str(review.get("scoring_profile_id") or "legacy-v1"),
+            )
+            store = authority["store"]
+            repair_checkpoint = {
+                key: value for key, value in current_state.items()
+                if key not in {"contract", "groups", "candidate", "report"}
+            }
+            repair_checkpoint.update({
+                "status": "completed",
+                "candidate_hash": repair_artifact_hash(candidate),
+            })
+            journal_path = (
+                project.path / "snapshots" / f"revision-promotion-{run_id}"
+            )
+            snapshot = ProjectSnapshot.create(project.path, journal_path, [
+                store.output / store.CANDIDATE,
+                store.output / store.CHECKPOINT,
+                store.output / store.REPORT,
+                store.output / "quality-checkpoint.json",
+            ])
+            try:
+                store.write_candidate(candidate)
+                store.write_checkpoint(repair_checkpoint)
+                promoted_report = self._write_short_revision_report(
+                    store, run_id, records, candidate, gate, "completed", contract,
+                )
+                promoted_report.update({
+                    "review_mode": review_mode,
+                    "full_review_reasons": full_review_reasons,
+                    "comparison": comparison,
+                    "next_action": "返修候选稿已成为新的受保护最佳稿。",
+                })
+                store.write_report(promoted_report)
+                digest = self._text_hash(candidate)
+                write_quality_checkpoint(run_path, {
+                    "manuscript_path": "outputs/candidate.md",
+                    "manuscript_hash": digest,
+                    "score": float(review["score"]),
+                    "scoring_profile_id": str(
+                        review.get("scoring_profile_id") or "legacy-v1"
+                    ),
+                    "judge_signature": str(
+                        review.get("judge_signature") or "legacy-unknown"
+                    ),
+                    "best_attempt": 1,
+                    "review": review,
+                    "issue_ledger": issue_ledger(review.get("issues", [])),
+                    "outcome": outcome,
+                    "terminal_reviewed_hash": digest,
+                })
+            except Exception:
+                snapshot.restore()
+                snapshot.discard()
+                self.db.update_run(
+                    run_id, "failed", "revision_promotion",
+                    error="返修结果保存失败，可以保留决定后重试。",
+                )
+                raise
+            self.db.update_run(run_id, "completed", "revision_completed")
+            self.db.add_run_event(
+                run_id, "success", "short_revision_completed",
+                "返修候选稿已通过检查并成为新的受保护最佳稿。",
+                stage="revision_completed",
+            )
+            snapshot.discard()
+            return operations.read(run_id)
 
     @staticmethod
     def _force_rejected_revision_issues(
@@ -2892,24 +2936,25 @@ class WorkflowService:
         run_path: Path, manuscript: str, review: dict,
         attempt: int | None, outcome: str,
     ) -> None:
-        atomic_write(run_path / "outputs" / "best-candidate.md", manuscript)
-        digest = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
-        write_quality_checkpoint(run_path, {
-            "manuscript_path": "outputs/best-candidate.md",
-            "manuscript_hash": digest,
-            "score": float(review["score"]),
-            "scoring_profile_id": str(
-                review.get("scoring_profile_id") or "legacy-v1"
-            ),
-            "judge_signature": str(
-                review.get("judge_signature") or "legacy-unknown"
-            ),
-            "best_attempt": attempt,
-            "review": review,
-            "issue_ledger": issue_ledger(review.get("issues", [])),
-            "outcome": outcome,
-            "terminal_reviewed_hash": digest,
-        })
+        with _QUALITY_PROMOTION_LOCK:
+            atomic_write(run_path / "outputs" / "best-candidate.md", manuscript)
+            digest = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
+            write_quality_checkpoint(run_path, {
+                "manuscript_path": "outputs/best-candidate.md",
+                "manuscript_hash": digest,
+                "score": float(review["score"]),
+                "scoring_profile_id": str(
+                    review.get("scoring_profile_id") or "legacy-v1"
+                ),
+                "judge_signature": str(
+                    review.get("judge_signature") or "legacy-unknown"
+                ),
+                "best_attempt": attempt,
+                "review": review,
+                "issue_ledger": issue_ledger(review.get("issues", [])),
+                "outcome": outcome,
+                "terminal_reviewed_hash": digest,
+            })
 
     async def _final_review_json(
         self, run_id: str, run_path: Path, project: Project, constraints: str,

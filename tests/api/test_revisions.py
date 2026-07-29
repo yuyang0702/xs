@@ -1,6 +1,8 @@
 import hashlib
 import json
 import threading
+import asyncio
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
@@ -21,6 +23,7 @@ from novel_flywheel.quality_records import (
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.revision import apply_patch_group
 from novel_flywheel.secrets import MemorySecretStore
+from novel_flywheel.storage import ProjectSnapshot
 from novel_flywheel.story_state import StoryStateStore
 
 
@@ -338,6 +341,139 @@ def test_read_revision_returns_only_public_summary_fields(
     }
     assert "secret upstream failure" not in response.text
     assert str(project.path) not in response.text
+
+
+def test_read_revision_recursively_projects_nested_public_fields(
+    tmp_path, monkeypatch,
+) -> None:
+    app, db, project, _source, source_hash, _ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    run_id = "repair-nested-read"
+    db.create_run(
+        run_id, project.id, "short-revision", status="waiting_confirmation",
+    )
+    sentinel = f"PRIVATE_PROVIDER C:\\secret\\provider.log {project.path}"
+    RepairRunStore(project.path / "runs" / run_id).write_report({
+        "candidate_hash": source_hash,
+        "groups": [{
+            "group_id": "group-1",
+            "kind": "semantic",
+            "status": "ready_for_confirmation",
+            "decision": None,
+            "message": "等待确认",
+            "issue": {
+                "issue_id": "issue-time", "status": "unresolved",
+                "mandatory": True, "category": "logic", "title": "时间",
+                "impact": "结尾", "evidence": "十点", "suggestion": "九点",
+                "provider_error": sentinel, "prompt": sentinel,
+            },
+            "failures": [{
+                "code": "anchor_not_unique", "message": "锚点重复",
+                "patch": 2, "provider_error": sentinel, "path": sentinel,
+            }],
+            "related_positions": [{
+                "stable_id": "paragraph-2", "start": 10, "end": 20,
+                "label": "第二段", "absolute_path": sentinel,
+            }],
+            "local_checks": {
+                "code": "whole_candidate", "passed": True,
+                "message": "通过", "prompt": sentinel,
+            },
+        }],
+    })
+    response = TestClient(app).get(f"/api/runs/{run_id}/revision")
+
+    assert response.status_code == 200
+    group = response.json()["groups"][0]
+    assert group["issue"] == {
+        "issue_id": "issue-time", "status": "unresolved",
+        "mandatory": True, "category": "logic", "title": "时间",
+        "impact": "结尾", "evidence": "十点", "suggestion": "九点",
+    }
+    assert group["failures"] == [{
+        "code": "anchor_not_unique", "message": "锚点重复", "patch": 2,
+    }]
+    assert group["related_positions"] == [{
+        "stable_id": "paragraph-2", "start": 10, "end": 20,
+        "label": "第二段",
+    }]
+    assert group["local_checks"] == {
+        "code": "whole_candidate", "passed": True, "message": "通过",
+    }
+    assert sentinel not in response.text
+
+
+def test_background_revision_failure_exposes_only_safe_error(
+    tmp_path, monkeypatch,
+) -> None:
+    app, _db, project, *_rest = _revision_app(tmp_path, monkeypatch)
+    sentinel = f"PROVIDER_SECRET C:\\private\\model.log {project.path}"
+
+    async def fail_revision(*args, **kwargs):
+        raise RuntimeError(sentinel)
+
+    monkeypatch.setattr(
+        app.state.workflows, "run_short_revision", fail_revision,
+    )
+    with TestClient(app) as client:
+        started = client.post(
+            f"/api/projects/{project.id}/revisions",
+            json={"issue_ids": ["issue-time"]},
+        )
+        assert started.status_code == 202
+        run_id = started.json()["id"]
+        detail = None
+        for _ in range(100):
+            detail = client.get(f"/api/runs/{run_id}").json()
+            if detail["status"] == "failed":
+                break
+            time.sleep(0.01)
+
+    assert detail is not None
+    assert detail["status"] == "failed"
+    assert detail["error"] == "定向返修未完成，已保留可恢复进度。"
+    assert sentinel not in json.dumps(detail, ensure_ascii=False)
+
+
+@pytest.mark.parametrize(
+    ("endpoint", "payload"),
+    [
+        ("start", {"issue_ids": []}),
+        ("start", {}),
+        ("decision", {"candidate_hash": "not-a-hash"}),
+    ],
+)
+def test_revision_validation_errors_use_fixed_chinese_detail(
+    tmp_path, monkeypatch, endpoint, payload,
+) -> None:
+    app, _db, project, *_rest = _revision_app(tmp_path, monkeypatch)
+    path = (
+        f"/api/projects/{project.id}/revisions"
+        if endpoint == "start" else
+        "/api/runs/any/revision/groups/group/adopt"
+    )
+
+    response = TestClient(app).post(path, json=payload)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": {
+        "code": "revision_payload_invalid",
+        "message": "返修请求格式不正确，请检查后重试。",
+    }}
+
+
+def test_non_revision_validation_error_keeps_fastapi_default(
+    tmp_path, monkeypatch,
+) -> None:
+    app, _db, project, *_rest = _revision_app(tmp_path, monkeypatch)
+
+    response = TestClient(app).post(
+        f"/api/projects/{project.id}/runs/chapter", json={},
+    )
+
+    assert response.status_code == 422
+    assert isinstance(response.json()["detail"], list)
 
 
 def test_read_revision_rejects_non_revision_run(tmp_path, monkeypatch) -> None:
@@ -1029,6 +1165,140 @@ def test_finalize_quality_checkpoint_failure_rolls_back_and_can_retry(
     assert db.get_run(run_id)["status"] == "completed"
 
 
+@pytest.mark.parametrize(
+    ("owner", "method"),
+    [
+        (RepairRunStore, "write_candidate"),
+        (RepairRunStore, "write_checkpoint"),
+        (RepairRunStore, "write_report"),
+        ("workflows", "write_quality_checkpoint"),
+    ],
+)
+def test_hard_stop_during_promotion_recovers_and_resumes_same_run(
+    tmp_path, monkeypatch, owner, method,
+) -> None:
+    app, db, project, source, source_hash, ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    run_id, candidate_hash, _store = _write_decision_records(
+        app, db, project, source, source_hash, ledger,
+    )
+    client = TestClient(app)
+    assert client.post(
+        f"/api/runs/{run_id}/revision/groups/issue-time/adopt",
+        json={"candidate_hash": candidate_hash},
+    ).status_code == 200
+    protected_path = (
+        project.path / "runs" / "quality-source" / "outputs"
+        / "best-candidate.md"
+    )
+    formal_path = project.path / "manuscript" / "story.md"
+    protected_before = protected_path.read_bytes()
+    formal_before = formal_path.read_bytes()
+    story_before = StoryStateStore(db).get(project.id)
+    locks_before = db.list_locks(project.id)
+
+    async def review(*args, **kwargs):
+        return _passing_revision_review(ledger), {
+            "review_mode": "incremental", "fallback_reasons": [],
+        }
+
+    monkeypatch.setattr(
+        app.state.workflows, "_incremental_manuscript_review", review,
+    )
+
+    class HardStop(BaseException):
+        pass
+
+    if owner == "workflows":
+        module = __import__("novel_flywheel.workflows", fromlist=[method])
+        original = getattr(module, method)
+
+        def hard_stop(*args, **kwargs):
+            original(*args, **kwargs)
+            raise HardStop
+
+        monkeypatch.setattr(module, method, hard_stop)
+    else:
+        original = getattr(owner, method)
+
+        def hard_stop(instance, *args, **kwargs):
+            original(instance, *args, **kwargs)
+            raise HardStop
+
+        monkeypatch.setattr(owner, method, hard_stop)
+
+    with pytest.raises(HardStop):
+        asyncio.run(app.state.workflows.finalize_short_revision(run_id))
+    monkeypatch.setattr(
+        __import__("novel_flywheel.workflows", fromlist=[method])
+        if owner == "workflows" else owner,
+        method, original,
+    )
+    assert db.get_run(run_id)["status"] == "running"
+
+    fresh = create_app(
+        db, MemorySecretStore(), skill_roots=[],
+        workspace_root=tmp_path / "workspace",
+    )
+    fresh_client = TestClient(fresh)
+
+    resumed = fresh_client.post(f"/api/runs/{run_id}/resume")
+
+    assert resumed.status_code == 202
+    assert resumed.json()["id"] == run_id
+    assert protected_path.read_bytes() == protected_before
+    assert formal_path.read_bytes() == formal_before
+    assert StoryStateStore(db).get(project.id) == story_before
+    assert db.list_locks(project.id) == locks_before
+
+
+def test_promotion_recovery_waits_for_active_promotion(
+    tmp_path, monkeypatch,
+) -> None:
+    app, db, project, source, source_hash, ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    run_id, _candidate_hash, store = _write_decision_records(
+        app, db, project, source, source_hash, ledger,
+    )
+    candidate_path = store.output / store.CANDIDATE
+    original = candidate_path.read_text(encoding="utf-8")
+    journal_path = (
+        project.path / "snapshots" / f"revision-promotion-{run_id}"
+    )
+    ProjectSnapshot.create(
+        project.path, journal_path, [candidate_path],
+    )
+    candidate_path.write_text("partial promotion", encoding="utf-8")
+    module = __import__(
+        "novel_flywheel.workflows", fromlist=["_QUALITY_PROMOTION_LOCK"],
+    )
+    started = threading.Event()
+
+    def recover():
+        started.set()
+        return app.state.workflows.recover_short_revision_promotion(run_id)
+
+    module._QUALITY_PROMOTION_LOCK.acquire()
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(recover)
+            assert started.wait(timeout=5)
+            time.sleep(0.05)
+            assert not future.done()
+            assert candidate_path.read_text(encoding="utf-8") == "partial promotion"
+            assert journal_path.is_dir()
+            module._QUALITY_PROMOTION_LOCK.release()
+            assert future.result(timeout=5) is False
+    finally:
+        if module._QUALITY_PROMOTION_LOCK.locked():
+            module._QUALITY_PROMOTION_LOCK.release()
+
+    assert candidate_path.read_text(encoding="utf-8") == original
+    assert not journal_path.exists()
+
+
 def test_finalize_rejects_decision_bound_to_another_candidate_before_review(
     tmp_path, monkeypatch,
 ) -> None:
@@ -1245,6 +1515,96 @@ def test_protected_revision_source_keeps_higher_scoring_checkpoint(
     assert protected["run_id"] == "quality-source"
     assert protected["source"] == source
     assert protected["checkpoint"]["score"] == 82
+
+
+def test_regular_quality_checkpoint_uses_shared_promotion_lock(
+    tmp_path, monkeypatch,
+) -> None:
+    app, _db, project, _source, _source_hash, ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    module = __import__(
+        "novel_flywheel.workflows", fromlist=["_QUALITY_PROMOTION_LOCK"],
+    )
+    run_path = project.path / "runs" / "other-quality"
+    started = threading.Event()
+
+    def write_checkpoint():
+        started.set()
+        app.state.workflows._save_quality_checkpoint(
+            run_path, "另一份终审稿", _passing_revision_review(ledger),
+            1, "passed",
+        )
+
+    module._QUALITY_PROMOTION_LOCK.acquire()
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(write_checkpoint)
+            assert started.wait(timeout=5)
+            assert not future.done()
+            module._QUALITY_PROMOTION_LOCK.release()
+            future.result(timeout=5)
+    finally:
+        if module._QUALITY_PROMOTION_LOCK.locked():
+            module._QUALITY_PROMOTION_LOCK.release()
+
+    assert load_quality_checkpoint(run_path) is not None
+
+
+def test_finalize_reselects_protected_checkpoint_inside_promotion_lock(
+    tmp_path, monkeypatch,
+) -> None:
+    app, db, project, source, source_hash, ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    run_id, candidate_hash, _store = _write_decision_records(
+        app, db, project, source, source_hash, ledger,
+    )
+    client = TestClient(app)
+    assert client.post(
+        f"/api/runs/{run_id}/revision/groups/issue-time/adopt",
+        json={"candidate_hash": candidate_hash},
+    ).status_code == 200
+
+    async def review(*args, **kwargs):
+        return _passing_revision_review(ledger), {
+            "review_mode": "incremental", "fallback_reasons": [],
+        }
+
+    monkeypatch.setattr(
+        app.state.workflows, "_incremental_manuscript_review", review,
+    )
+    original_commit = app.state.workflows._commit_short_revision_promotion
+    inserted = False
+
+    def interleaved_commit(*args, **kwargs):
+        nonlocal inserted
+        assert not inserted
+        inserted = True
+        other_run = "quality-before-promotion-lock"
+        db.create_run(other_run, project.id, "short-story", status="completed")
+        other_path = project.path / "runs" / other_run
+        higher = {
+            **_passing_revision_review(ledger),
+            "score": 90,
+            "dimensions": {"commercial": 90, "story": 90, "prose": 90},
+        }
+        app.state.workflows._save_quality_checkpoint(
+            other_path, source + "更高分终审稿", higher, 1, "passed",
+        )
+        return original_commit(*args, **kwargs)
+
+    monkeypatch.setattr(
+        app.state.workflows, "_commit_short_revision_promotion",
+        interleaved_commit,
+    )
+
+    response = client.post(f"/api/runs/{run_id}/revision/finalize")
+
+    assert inserted is True
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "revision_source_changed"
+    assert load_quality_checkpoint(project.path / "runs" / run_id) is None
 
 
 def test_finalize_losing_concurrent_claim_calls_zero_review_models(

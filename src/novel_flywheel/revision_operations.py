@@ -30,6 +30,16 @@ PUBLIC_GROUP_FIELDS = (
     "related_positions",
     "local_checks",
 )
+ISSUE_TEXT_FIELDS = (
+    "issue_id", "status", "category", "title", "impact", "evidence",
+    "suggestion",
+)
+FAILURE_TEXT_FIELDS = ("code", "message")
+POSITION_TEXT_FIELDS = (
+    "id", "stable_id", "paragraph_id", "scene_id", "label",
+)
+POSITION_INT_FIELDS = ("paragraph", "sentence", "start", "end")
+LOCAL_CHECK_TEXT_FIELDS = ("code", "message")
 
 
 @dataclass(frozen=True)
@@ -71,6 +81,8 @@ class RevisionOperations:
         return selected
 
     def validate_resume(self, run_id: str) -> tuple[dict[str, Any], list[str]]:
+        if self.workflows.recover_short_revision_promotion(run_id):
+            return self._run(run_id), []
         authority = self.load_state(run_id)
         run = authority["run"]
         contract = authority["state"]["contract"]
@@ -205,6 +217,20 @@ class RevisionOperations:
             key: item.get(key)
             for key in PUBLIC_GROUP_FIELDS
         }
+        result["issue"] = RevisionOperations._public_record(
+            result["issue"], ISSUE_TEXT_FIELDS, bool_fields=("mandatory",),
+        )
+        result["failures"] = RevisionOperations._public_records(
+            result["failures"], FAILURE_TEXT_FIELDS, int_fields=("patch",),
+        )
+        result["related_positions"] = RevisionOperations._public_records(
+            result["related_positions"], POSITION_TEXT_FIELDS,
+            int_fields=POSITION_INT_FIELDS,
+        )
+        result["local_checks"] = RevisionOperations._public_record(
+            result["local_checks"], LOCAL_CHECK_TEXT_FIELDS,
+            bool_fields=("passed",),
+        )
         if (
             result["decision"] is None
             and result["kind"] == "mechanical"
@@ -212,6 +238,47 @@ class RevisionOperations:
         ):
             result["decision"] = "adopted"
         return result
+
+    @staticmethod
+    def _public_record(
+        value: Any, text_fields: tuple[str, ...],
+        *, bool_fields: tuple[str, ...] = (), int_fields: tuple[str, ...] = (),
+    ) -> dict[str, Any] | None:
+        if not isinstance(value, dict):
+            return None
+        result = {
+            key: value[key]
+            for key in text_fields
+            if isinstance(value.get(key), str)
+        }
+        result.update({
+            key: value[key]
+            for key in bool_fields
+            if isinstance(value.get(key), bool)
+        })
+        result.update({
+            key: value[key]
+            for key in int_fields
+            if isinstance(value.get(key), int)
+            and not isinstance(value.get(key), bool)
+        })
+        return result
+
+    @staticmethod
+    def _public_records(
+        value: Any, text_fields: tuple[str, ...],
+        *, bool_fields: tuple[str, ...] = (), int_fields: tuple[str, ...] = (),
+    ) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        return [
+            projected
+            for item in value
+            if (projected := RevisionOperations._public_record(
+                item, text_fields, bool_fields=bool_fields,
+                int_fields=int_fields,
+            )) is not None
+        ]
 
     def _project(self, project_id: str):
         try:

@@ -1,7 +1,9 @@
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from novel_flywheel.api.providers import router as providers_router
@@ -47,6 +49,22 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                reference_library: object | None = None,
                market_service: object | None = None) -> FastAPI:
     app = FastAPI(title="Novel Flywheel Console")
+
+    @app.exception_handler(RequestValidationError)
+    async def revision_validation_error(
+        request: Request, exc: RequestValidationError,
+    ):
+        route = request.scope.get("route")
+        if getattr(route, "path", None) in {
+            "/api/projects/{project_id}/revisions",
+            "/api/runs/{run_id}/revision/groups/{group_id}/adopt",
+            "/api/runs/{run_id}/revision/groups/{group_id}/reject",
+        }:
+            return JSONResponse(status_code=422, content={"detail": {
+                "code": "revision_payload_invalid",
+                "message": "返修请求格式不正确，请检查后重试。",
+            }})
+        return await request_validation_exception_handler(request, exc)
 
     @app.middleware("http")
     async def disable_local_asset_cache(request: Request, call_next):

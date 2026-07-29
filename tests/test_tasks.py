@@ -158,5 +158,7 @@ def test_task_manager_rejects_resuming_completed_run(tmp_path) -> None:
     db, manager = make_manager(tmp_path)
     db.create_run("completed-run", "book", "short-story", status="completed")
 
-    with pytest.raises(ValueError, match="failed or cancelled run"):
+    with pytest.raises(
+        ValueError, match="failed, cancelled, or interrupted run",
+    ):
         manager.resume("completed-run", lambda run_id: None)
