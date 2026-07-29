@@ -61,8 +61,11 @@ class RunTaskManager:
             self.db.add_run_event(run_id, "error", "failed", error)
         else:
             run = self.db.get_run(run_id)
-            if run and run["status"] not in {"completed", "failed", "cancelled"}:
+            if run and run["status"] in {"queued", "running"}:
                 self.db.update_run(run_id, "completed", "archive")
+                run = self.db.get_run(run_id)
+            if not run or run["status"] != "completed":
+                return
             self.db.add_run_event(run_id, "success", "completed", "任务执行完成", stage="archive")
 
     def cancel(self, run_id: str) -> dict:

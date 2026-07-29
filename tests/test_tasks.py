@@ -34,6 +34,25 @@ async def test_task_manager_returns_immediately_and_records_completion(tmp_path)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["waiting_confirmation", "waiting_local_fix"])
+async def test_task_manager_preserves_revision_waiting_status_without_completed_event(
+    tmp_path, status,
+) -> None:
+    db, manager = make_manager(tmp_path)
+
+    async def operation(run_id):
+        db.update_run(run_id, status, "repair_gate")
+
+    run = manager.start("book", "short-revision", operation)
+    await manager.wait(run["id"])
+
+    assert db.get_run(run["id"])["status"] == status
+    assert "completed" not in {
+        item["event_type"] for item in db.list_run_events(run["id"])
+    }
+
+
+@pytest.mark.asyncio
 async def test_task_manager_cancels_active_task_idempotently(tmp_path) -> None:
     db, manager = make_manager(tmp_path)
     started = asyncio.Event()

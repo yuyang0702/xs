@@ -10,9 +10,11 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate, ProjectStore
-from novel_flywheel.quality import review_windows
+from novel_flywheel.quality import issue_ledger, review_windows
 from novel_flywheel.quality_profiles import score_review
-from novel_flywheel.quality_records import load_quality_checkpoint
+from novel_flywheel.quality_records import load_quality_checkpoint, write_quality_checkpoint
+from novel_flywheel.quality_summary import effective_han_characters
+from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.revision import segment_map
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
@@ -3764,3 +3766,488 @@ async def test_v2_conditional_pass_remains_candidate_instead_of_formal_success(
     assert report["status"] == "conditional_pass"
     assert checkpoint is not None
     assert checkpoint["outcome"] == "conditional_pass"
+
+
+def _short_revision_service(tmp_path, issues):
+    filler = (
+        "雨落在旧城的石阶上，林晚握着钥匙走进档案馆。"
+        "值班员核对了登记簿，她沿着昏暗走廊寻找那份证词。"
+        "窗外的钟声敲过三次，纸页上的墨迹仍然清晰。"
+        "她把每个时间点重新排好，确认门锁和证物都没有变化。"
+    ) * 9
+    source = (
+        filler + "林 晚核对记录，值 班员没有离开。"
+        + "甲问题原句。" + filler + "乙问题原句。" + filler
+    )
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Targeted repair", mode="short", genre="suspense",
+        premise="Two independent local issues.",
+        target_words=effective_han_characters(source),
+    ))
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    gateway = FakeGateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([])))
+    quality_run = "quality-source"
+    db.create_run(quality_run, project.id, "short-story", status="completed")
+    quality_path = project.path / "runs" / quality_run
+    outputs = quality_path / "outputs"
+    outputs.mkdir(parents=True)
+    best_path = outputs / "best-candidate.md"
+    best_path.write_text(source, encoding="utf-8")
+    digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    ledger = issue_ledger(issues)
+    review = {
+        "score": 82,
+        "dimensions": {"commercial": 82, "story": 82, "prose": 82},
+        "decision": "revise",
+        "hard_fail": False,
+        "issues": ledger,
+    }
+    write_quality_checkpoint(quality_path, {
+        "manuscript_path": "outputs/best-candidate.md",
+        "manuscript_hash": digest,
+        "score": 82,
+        "scoring_profile_id": "legacy-v1",
+        "judge_signature": "fake/reviewer",
+        "best_attempt": 1,
+        "review": review,
+        "issue_ledger": ledger,
+        "outcome": "conditional_pass",
+        "terminal_reviewed_hash": digest,
+    })
+    formal = project.path / "manuscript" / "story.md"
+    formal.parent.mkdir(parents=True, exist_ok=True)
+    formal.write_text("正式稿不得修改。", encoding="utf-8")
+    return service, project, source, ledger, state
+
+
+def _short_revision_patch(request, old_text, new_text):
+    return json.dumps({
+        "manuscript_hash": request["candidate_hash"],
+        "groups": [{
+            "group_id": request["group_id"],
+            "issue_ids": [request["issue"]["issue_id"]],
+            "kind": "semantic",
+            "requires_user_confirmation": True,
+            "patches": [{
+                "operation": "replace",
+                "old_text": old_text,
+                "new_text": new_text,
+            }],
+        }],
+    }, ensure_ascii=False)
+
+
+@pytest.mark.asyncio
+async def test_short_revision_writes_contract_before_model_and_waits_without_final_review(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, ledger, state = _short_revision_service(tmp_path, [{
+        "category": "logic_continuity",
+        "severity": "medium",
+        "evidence": "甲问题原句。",
+        "action": "把甲问题改成清楚的证据说明",
+    }])
+    issue_id = ledger[0]["issue_id"]
+    calls = []
+    contract_bytes = None
+
+    async def stage(*args, **kwargs):
+        nonlocal contract_bytes
+        stage_name, prompt = args[3], args[5]
+        calls.append(stage_name)
+        contract_path = (
+            project.path / "runs" / "repair-contract-first"
+            / "outputs" / "repair-contract.json"
+        )
+        assert contract_path.is_file()
+        contract_bytes = contract_path.read_bytes()
+        request = json.loads(prompt)
+        return _short_revision_patch(
+            request, "甲问题原句。", "甲问题说明。",
+        )
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-contract-first",
+    )
+
+    contract_path = (
+        project.path / "runs" / result["id"] / "outputs" / "repair-contract.json"
+    )
+    assert result["status"] == "waiting_confirmation"
+    assert calls == ["revision_plan"]
+    assert "final_review" not in calls
+    assert contract_path.read_bytes() == contract_bytes
+    output = contract_path.parent
+    contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    groups = json.loads((output / "patch-groups.json").read_text(encoding="utf-8"))
+    checkpoint = json.loads((output / "repair-checkpoint.json").read_text(
+        encoding="utf-8",
+    ))
+    candidate = (output / "candidate.md").read_text(encoding="utf-8")
+    assert checkpoint["contract_hash"] == repair_artifact_hash(contract)
+    assert checkpoint["groups_hash"] == repair_artifact_hash(groups)
+    assert checkpoint["candidate_hash"] == repair_artifact_hash(candidate)
+    assert (project.path / "runs" / "quality-source" / "outputs"
+            / "best-candidate.md").read_text(encoding="utf-8") == source
+    assert (project.path / "manuscript" / "story.md").read_text(
+        encoding="utf-8",
+    ) == "正式稿不得修改。"
+    assert StoryStateStore(service.db).get(project.id) == state
+
+
+@pytest.mark.asyncio
+async def test_short_revision_preserves_later_group_and_resumes_only_failed_group(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(tmp_path, [
+        {
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "甲问题原句。",
+            "action": "修复甲问题",
+        },
+        {
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "乙问题原句。",
+            "action": "修复乙问题",
+        },
+    ])
+    issue_by_evidence = {item["evidence"]: item["issue_id"] for item in ledger}
+    issue_a = issue_by_evidence["甲问题原句。"]
+    issue_b = issue_by_evidence["乙问题原句。"]
+    first_calls = []
+
+    async def fail_a_once(*args, **kwargs):
+        request = json.loads(args[5])
+        issue_id = request["issue"]["issue_id"]
+        first_calls.append(issue_id)
+        if issue_id == issue_a:
+            raise RuntimeError("provider unavailable")
+        return _short_revision_patch(
+            request, "乙问题原句。", "乙问题说明。",
+        )
+
+    monkeypatch.setattr(service, "_stage", fail_a_once)
+    with pytest.raises(RuntimeError, match="返修组"):
+        await service.run_short_revision(
+            project.id, [issue_a, issue_b], run_id="repair-resume",
+        )
+
+    output = project.path / "runs" / "repair-resume" / "outputs"
+    checkpoint = json.loads((output / "repair-checkpoint.json").read_text(
+        encoding="utf-8",
+    ))
+    candidate = (output / "candidate.md").read_text(encoding="utf-8")
+    assert first_calls == [issue_a, issue_b]
+    assert checkpoint["completed_groups"] == [issue_b]
+    assert "乙问题说明。" in candidate
+    assert service.db.get_run("repair-resume")["status"] == "failed"
+    assert "completed" not in {
+        item["event_type"] for item in service.db.list_run_events("repair-resume")
+    }
+
+    resumed_calls = []
+
+    async def resume_a(*args, **kwargs):
+        request = json.loads(args[5])
+        issue_id = request["issue"]["issue_id"]
+        resumed_calls.append(issue_id)
+        assert issue_id == issue_a
+        return _short_revision_patch(
+            request, "甲问题原句。", "甲问题说明。",
+        )
+
+    monkeypatch.setattr(service, "_stage", resume_a)
+    result = await service.run_short_revision(
+        project.id, [issue_b, issue_a], run_id="repair-resume",
+    )
+
+    assert resumed_calls == [issue_a]
+    assert result["status"] == "waiting_confirmation"
+    assert "甲问题说明。" in result["candidate"]
+    assert "乙问题说明。" in result["candidate"]
+
+
+@pytest.mark.asyncio
+async def test_short_revision_rejects_issue_ledger_not_bound_to_terminal_review_before_model(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(tmp_path, [{
+        "category": "logic_continuity",
+        "severity": "medium",
+        "evidence": "甲问题原句。",
+        "action": "修复甲问题",
+    }])
+    issue_id = ledger[0]["issue_id"]
+    quality_path = project.path / "runs" / "quality-source"
+    checkpoint = load_quality_checkpoint(quality_path)
+    checkpoint["review"] = {
+        **checkpoint["review"],
+        "issues": issue_ledger([{
+            "category": "style",
+            "severity": "low",
+            "evidence": "另一项问题。",
+            "action": "处理另一项问题",
+        }]),
+    }
+    write_quality_checkpoint(quality_path, checkpoint)
+    calls = []
+
+    async def forbidden_stage(*args, **kwargs):
+        calls.append(args[3])
+        raise AssertionError("model call must not happen")
+
+    monkeypatch.setattr(service, "_stage", forbidden_stage)
+    with pytest.raises(ValueError, match="终审"):
+        await service.run_short_revision(
+            project.id, [issue_id], run_id="repair-ledger-mismatch",
+        )
+
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_short_revision_rejects_invalid_selection_and_mode_before_model(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [],
+    )
+    calls = []
+
+    async def forbidden_stage(*args, **kwargs):
+        calls.append(args[3])
+        raise AssertionError("model call must not happen")
+
+    monkeypatch.setattr(service, "_stage", forbidden_stage)
+    with pytest.raises(ValueError, match="至少选择"):
+        await service.run_short_revision(project.id, [], run_id="repair-empty")
+    with pytest.raises(ValueError, match="所选问题"):
+        await service.run_short_revision(
+            project.id, ["missing-issue"], run_id="repair-unknown",
+        )
+    long_project = service.projects.create(ProjectCreate(
+        title="Long repair", mode="long", genre="suspense",
+        premise="Long projects are not in this workflow.", target_words=1000,
+    ))
+    with pytest.raises(ValueError, match="只支持短篇"):
+        await service.run_short_revision(
+            long_project.id, ["missing-issue"], run_id="repair-long",
+        )
+
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_short_revision_failed_gate_makes_zero_final_review_calls(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, ledger, _state = _short_revision_service(tmp_path, [{
+        "category": "logic_continuity",
+        "severity": "medium",
+        "evidence": "甲问题原句。",
+        "action": "必须删除甲问题原句",
+        "forbidden_text": ["甲问题原句。"],
+    }])
+    issue_id = ledger[0]["issue_id"]
+    calls = []
+
+    async def stage(*args, **kwargs):
+        calls.append(args[3])
+        request = json.loads(args[5])
+        return _short_revision_patch(
+            request, "乙问题原句。", "乙问题说明。",
+        )
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-gate-fail",
+    )
+
+    assert result["status"] == "waiting_local_fix"
+    assert calls == ["revision_plan"]
+    assert "final_review" not in calls
+    assert result["gate"]["passed"] is False
+    assert "甲问题原句。" in result["candidate"]
+    assert (project.path / "runs" / "quality-source" / "outputs"
+            / "best-candidate.md").read_text(encoding="utf-8") == source
+
+
+@pytest.mark.asyncio
+async def test_short_revision_mechanical_group_changes_only_selected_evidence(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "cjk_spacing",
+            "severity": "low",
+            "evidence": "林 晚",
+            "action": "删除姓名中的多余空格",
+        }],
+    )
+    calls = []
+
+    async def forbidden_stage(*args, **kwargs):
+        calls.append(args[3])
+        raise AssertionError("mechanical repair must stay local")
+
+    monkeypatch.setattr(service, "_stage", forbidden_stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]], run_id="repair-mechanical",
+    )
+
+    assert result["status"] == "waiting_confirmation"
+    assert calls == []
+    assert "林晚核对记录" in result["candidate"]
+    assert "值 班员没有离开" in result["candidate"]
+
+
+@pytest.mark.asyncio
+async def test_short_revision_resume_rejects_stale_protected_best_before_model(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, ledger, _state = _short_revision_service(tmp_path, [{
+        "category": "logic_continuity",
+        "severity": "medium",
+        "evidence": "甲问题原句。",
+        "action": "修复甲问题",
+    }])
+    issue_id = ledger[0]["issue_id"]
+
+    async def fail_stage(*args, **kwargs):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(service, "_stage", fail_stage)
+    with pytest.raises(RuntimeError, match="返修组"):
+        await service.run_short_revision(
+            project.id, [issue_id], run_id="repair-stale",
+        )
+    best = (
+        project.path / "runs" / "quality-source"
+        / "outputs" / "best-candidate.md"
+    )
+    best.write_text(source + "最佳稿已经变化。", encoding="utf-8")
+    resume_calls = []
+
+    async def forbidden_stage(*args, **kwargs):
+        resume_calls.append(args[3])
+        raise AssertionError("stale resume must not call a model")
+
+    monkeypatch.setattr(service, "_stage", forbidden_stage)
+    with pytest.raises(ValueError, match="受保护最佳稿"):
+        await service.run_short_revision(
+            project.id, [issue_id], run_id="repair-stale",
+        )
+
+    assert resume_calls == []
+
+
+@pytest.mark.asyncio
+async def test_short_revision_cancellation_keeps_completed_group_and_resumes_same_run(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(tmp_path, [
+        {
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "甲问题原句。",
+            "action": "修复甲问题",
+        },
+        {
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "乙问题原句。",
+            "action": "修复乙问题",
+        },
+    ])
+    issue_by_evidence = {item["evidence"]: item["issue_id"] for item in ledger}
+    issue_a = issue_by_evidence["甲问题原句。"]
+    issue_b = issue_by_evidence["乙问题原句。"]
+
+    async def cancel_b(*args, **kwargs):
+        request = json.loads(args[5])
+        if request["group_id"] == issue_b:
+            raise asyncio.CancelledError
+        return _short_revision_patch(
+            request, "甲问题原句。", "甲问题说明。",
+        )
+
+    monkeypatch.setattr(service, "_stage", cancel_b)
+    with pytest.raises(asyncio.CancelledError):
+        await service.run_short_revision(
+            project.id, [issue_a, issue_b], run_id="repair-cancel",
+        )
+    output = project.path / "runs" / "repair-cancel" / "outputs"
+    checkpoint = json.loads((output / "repair-checkpoint.json").read_text(
+        encoding="utf-8",
+    ))
+    assert checkpoint["completed_groups"] == [issue_a]
+    assert service.db.get_run("repair-cancel")["status"] == "cancelled"
+    assert "甲问题说明。" in (output / "candidate.md").read_text(encoding="utf-8")
+    resumed_calls = []
+
+    async def finish_b(*args, **kwargs):
+        request = json.loads(args[5])
+        resumed_calls.append(request["group_id"])
+        return _short_revision_patch(
+            request, "乙问题原句。", "乙问题说明。",
+        )
+
+    monkeypatch.setattr(service, "_stage", finish_b)
+    result = await service.run_short_revision(
+        project.id, [issue_a, issue_b], run_id="repair-cancel",
+    )
+
+    assert resumed_calls == [issue_b]
+    assert result["status"] == "waiting_confirmation"
+
+
+@pytest.mark.asyncio
+async def test_short_revision_checkpoint_failure_cannot_authorize_new_progress(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, ledger, state = _short_revision_service(tmp_path, [{
+        "category": "logic_continuity",
+        "severity": "medium",
+        "evidence": "甲问题原句。",
+        "action": "修复甲问题",
+    }])
+    issue_id = ledger[0]["issue_id"]
+
+    async def stage(*args, **kwargs):
+        request = json.loads(args[5])
+        return _short_revision_patch(
+            request, "甲问题原句。", "甲问题说明。",
+        )
+
+    original = RepairRunStore.write_checkpoint
+    writes = 0
+
+    def fail_second_checkpoint(store, value):
+        nonlocal writes
+        writes += 1
+        if writes == 2:
+            raise OSError("disk full")
+        return original(store, value)
+
+    monkeypatch.setattr(service, "_stage", stage)
+    monkeypatch.setattr(RepairRunStore, "write_checkpoint", fail_second_checkpoint)
+    with pytest.raises(OSError, match="disk full"):
+        await service.run_short_revision(
+            project.id, [issue_id], run_id="repair-checkpoint-fail",
+        )
+
+    run_path = project.path / "runs" / "repair-checkpoint-fail"
+    with pytest.raises(ValueError):
+        RepairRunStore(run_path).load_resume_state(
+            hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        )
+    assert (project.path / "runs" / "quality-source" / "outputs"
+            / "best-candidate.md").read_text(encoding="utf-8") == source
+    assert StoryStateStore(service.db).get(project.id) == state

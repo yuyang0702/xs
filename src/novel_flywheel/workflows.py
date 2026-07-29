@@ -48,9 +48,12 @@ from novel_flywheel.quality import (
 )
 from novel_flywheel.quality_records import (
     checkpoint_manuscript,
+    load_quality_checkpoint,
     reconcile_legacy_checkpoint,
     write_quality_checkpoint,
 )
+from novel_flywheel.repair_gate import evaluate_candidate_gate
+from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.quality_profiles import (
     ZHihu_SHORT_V2,
     compare_quality_candidates,
@@ -67,14 +70,17 @@ from novel_flywheel.passage_protection import (
     validate_passage_protections,
 )
 from novel_flywheel.revision import (
+    apply_patch_group,
     align_revision_plan_targets,
     assess_polish_candidate,
     check_revision_constraints,
     check_source_local_constraints,
     compact_polish_findings,
     compact_review,
+    normalize_repair_contract,
     normalize_chinese_prose,
     normalize_revision_plan,
+    repair_mechanical_text,
     remove_consecutive_duplicate_blocks,
     segment_map,
 )
@@ -174,6 +180,660 @@ class WorkflowService:
         if use_crewai:
             return await self._run_in_crewai(lambda: self._short_pipeline(project, run_id))
         return await self._short_pipeline(project, run_id)
+
+    async def run_short_revision(
+        self, project_id: str, issue_ids: list[str],
+        run_id: str | None = None,
+    ) -> dict:
+        project = self.projects.get(project_id)
+        if project.mode != "short":
+            raise ValueError("定向返修目前只支持短篇作品")
+        return await self._short_revision_pipeline(project, issue_ids, run_id)
+
+    async def _short_revision_pipeline(
+        self, project: Project, issue_ids: list[str],
+        run_id: str | None = None,
+    ) -> dict:
+        selected_ids = self._selected_repair_issue_ids(issue_ids)
+        protected = self._protected_short_revision_source(project)
+        ledger_by_id = {
+            item.get("issue_id"): item
+            for item in protected["issue_ledger"]
+            if isinstance(item, dict) and isinstance(item.get("issue_id"), str)
+        }
+        unknown = [issue_id for issue_id in selected_ids if issue_id not in ledger_by_id]
+        if unknown:
+            raise ValueError("所选问题已不属于当前受保护最佳稿，请重新确认")
+        story_state = self.story_states.get(project.id)
+        if story_state is None:
+            raise ValueError("当前作品缺少可校验的 StoryState，不能开始定向返修")
+
+        run_id, run_path = self._begin_run(project, "short-revision", run_id)
+        store = RepairRunStore(run_path)
+        try:
+            resume = (store.output / store.CHECKPOINT).is_file()
+            if not resume and any(
+                (store.output / name).is_file()
+                for name in (store.CONTRACT, store.GROUPS, store.CANDIDATE)
+            ):
+                resume = True
+            if resume:
+                state = store.load_resume_state(protected["source_hash"])
+                contract = state["contract"]
+                frozen_ids = contract.get("selected_issue_ids")
+                if (
+                    not isinstance(frozen_ids, list)
+                    or set(frozen_ids) != set(selected_ids)
+                    or len(frozen_ids) != len(selected_ids)
+                ):
+                    raise ValueError("继续返修时所选问题必须与原返修合同一致")
+                selected_ids = list(frozen_ids)
+                records = state["groups"]["groups"]
+                candidate = state["candidate"]
+                completed = set(state["completed_groups"])
+            else:
+                analysis = self._analyze_manuscript(
+                    protected["source"], run_path, project, "repair-source",
+                )
+                selected_issues = [
+                    self._json_copy(ledger_by_id[issue_id])
+                    for issue_id in selected_ids
+                ]
+                groups = [{
+                    "group_id": issue_id,
+                    "issue_ids": [issue_id],
+                    "kind": (
+                        "mechanical"
+                        if self._mechanical_issue_code(ledger_by_id[issue_id])
+                        else "semantic"
+                    ),
+                    "requires_user_confirmation": True,
+                } for issue_id in selected_ids]
+                contract = {
+                    "version": 1,
+                    "manuscript_hash": protected["source_hash"],
+                    "source_run_id": protected["run_id"],
+                    "terminal_reviewed_hash": protected["checkpoint"][
+                        "terminal_reviewed_hash"
+                    ],
+                    "selected_issue_ids": selected_ids,
+                    "selected_issues": selected_issues,
+                    "issue_ledger": self._json_copy(protected["issue_ledger"]),
+                    "review": self._json_copy(protected["review"]),
+                    "story_state": {
+                        "revision": story_state.revision,
+                        "data": self._json_copy(story_state.data),
+                    },
+                    "passage_locks": self._json_copy(
+                        self.db.list_locks(project.id),
+                    ),
+                    "analysis": analysis,
+                    "required_text": self._repair_literals(
+                        selected_issues, "required_text",
+                    ),
+                    "forbidden_text": self._repair_literals(
+                        selected_issues, "forbidden_text",
+                    ),
+                    "groups": groups,
+                }
+                store.write_contract(contract)
+                records = [{
+                    **group,
+                    "status": "pending",
+                    "attempts": 0,
+                    "message": "等待处理",
+                } for group in groups]
+                candidate = protected["source"]
+                completed: set[str] = set()
+                self._write_short_revision_progress(
+                    store, contract, records, candidate, completed, "running",
+                )
+
+            issues = {
+                item["issue_id"]: item
+                for item in contract["selected_issues"]
+            }
+            constraints = (project.path / "constraints.md").read_text(
+                encoding="utf-8",
+            )
+            provider_failures = False
+            for group in contract["groups"]:
+                group_id = group["group_id"]
+                if group_id in completed:
+                    continue
+                record = next(
+                    item for item in records if item["group_id"] == group_id
+                )
+                issue = issues[group_id]
+                record["attempts"] = int(record.get("attempts", 0)) + 1
+                record["status"] = "processing"
+                record["message"] = "正在生成安全补丁"
+                try:
+                    if group["kind"] == "mechanical":
+                        patch_group = self._mechanical_patch_group(
+                            issue, candidate, group_id,
+                        )
+                        if patch_group is None:
+                            result = {
+                                "group_id": group_id,
+                                "accepted": False,
+                                "text": candidate,
+                                "failures": [{
+                                    "patch": 0,
+                                    "code": "mechanical_scope_not_unique",
+                                }],
+                                "diffs": [],
+                            }
+                        else:
+                            result = {
+                                "group_id": group_id,
+                                **apply_patch_group(
+                                    candidate, patch_group,
+                                    self._text_hash(candidate),
+                                ),
+                            }
+                    else:
+                        request = self._semantic_patch_request(
+                            contract, issue, group_id, candidate,
+                        )
+                        raw = await self._stage(
+                            run_id, run_path, project, "revision_plan",
+                            constraints,
+                            json.dumps(request, ensure_ascii=False),
+                            suffix=f"-repair-{group_id}",
+                            allow_tools=False,
+                            output_source_characters=len(
+                                request.get("target_excerpt", ""),
+                            ),
+                            targeted_retry=True,
+                        )
+                        value = normalize_repair_contract(
+                            self._json_object(raw), candidate, {group_id},
+                        )
+                        if len(value["groups"]) != 1:
+                            raise ValueError("模型必须一次只返回一个修改组")
+                        patch_group = value["groups"][0]
+                        if (
+                            patch_group.get("group_id") != group_id
+                            or patch_group.get("issue_ids") != [group_id]
+                            or patch_group.get("kind") != "semantic"
+                        ):
+                            raise ValueError("模型返回的修改组与当前问题不一致")
+                        result = {
+                            "group_id": group_id,
+                            **apply_patch_group(
+                                candidate, patch_group,
+                                self._text_hash(candidate),
+                            ),
+                        }
+                except asyncio.CancelledError:
+                    record.update({
+                        "status": "cancelled",
+                        "message": "当前修改组已取消，之前完成的修改仍已保留",
+                    })
+                    self._save_short_revision_state(
+                        store, contract, run_id, records, candidate, completed,
+                        None, "cancelled",
+                    )
+                    self.db.update_run(
+                        run_id, "cancelled", "repair_groups",
+                        error="用户取消了当前返修",
+                    )
+                    self.db.add_run_event(
+                        run_id, "warning", "short_revision_cancelled",
+                        "当前返修已取消，已完成的修改组和检查点均已保留",
+                        stage="repair_groups", metadata={"group_id": group_id},
+                    )
+                    raise
+                except Exception:
+                    provider_failures = True
+                    record.update({
+                        "status": "failed",
+                        "message": "首选和备用模型均失败，可从本修改组继续",
+                    })
+                    record.pop("patch_group", None)
+                    record["patch_result"] = {
+                        "group_id": group_id,
+                        "accepted": False,
+                        "text": candidate,
+                        "failures": [{
+                            "patch": 0, "code": "model_routes_failed",
+                        }],
+                        "diffs": [],
+                    }
+                    self._save_short_revision_state(
+                        store, contract, run_id, records, candidate, completed,
+                        None, "running",
+                    )
+                    self.db.add_run_event(
+                        run_id, "warning", "short_revision_group_failed",
+                        "当前修改组生成失败，已保留其他完成结果并继续处理独立问题",
+                        stage="repair_groups", metadata={"group_id": group_id},
+                    )
+                    continue
+
+                if patch_group is not None:
+                    record["patch_group"] = patch_group
+                record["patch_result"] = result
+                if result["accepted"]:
+                    completed.add(group_id)
+                    replayed, replay_failure = self._replay_repair_records(
+                        protected["source"], records, completed,
+                    )
+                    if replay_failure is None:
+                        candidate = replayed
+                        record.update({
+                            "status": "ready_for_confirmation",
+                            "message": (
+                                "机械修复已应用到候选稿"
+                                if group["kind"] == "mechanical"
+                                else "修改已通过本地补丁检查，等待用户确认"
+                            ),
+                        })
+                    else:
+                        completed.discard(group_id)
+                        candidate, _ = self._replay_repair_records(
+                            protected["source"], records, completed,
+                        )
+                        record.update({
+                            "status": "failed",
+                            "message": "当前修改与已完成修改冲突，未应用到候选稿",
+                        })
+                else:
+                    record.update({
+                        "status": "failed",
+                        "message": "补丁锚点已变化或不唯一，当前修改组未应用",
+                    })
+                self._save_short_revision_state(
+                    store, contract, run_id, records, candidate, completed,
+                    None, "running",
+                )
+
+            analysis = self._analyze_manuscript(
+                candidate, run_path, project, "repair-candidate",
+            )
+            gate_contract, patch_results = self._repair_gate_evidence(
+                contract, records,
+            )
+            minimum_han, maximum_han = self._short_revision_target_range(project)
+            gate = evaluate_candidate_gate(
+                source=protected["source"],
+                candidate=candidate,
+                source_hash=protected["source_hash"],
+                analysis=analysis,
+                contract=gate_contract,
+                patch_results=patch_results,
+                story_state=contract["story_state"]["data"],
+                passage_locks=contract["passage_locks"],
+                minimum_han=minimum_han,
+                maximum_han=maximum_han,
+            )
+            if provider_failures:
+                status = "failed"
+                message = "部分返修组生成失败，已保留其他完成结果，可从失败组继续"
+                self._save_short_revision_state(
+                    store, contract, run_id, records, candidate, completed,
+                    gate, status,
+                )
+                self.db.update_run(
+                    run_id, status, "repair_groups", error=message,
+                )
+                self.db.add_run_event(
+                    run_id, "error", "short_revision_failed", message,
+                    stage="repair_groups",
+                )
+                raise RuntimeError(message)
+
+            status = (
+                "waiting_confirmation"
+                if gate["passed"] else "waiting_local_fix"
+            )
+            report = self._save_short_revision_state(
+                store, contract, run_id, records, candidate, completed,
+                gate, status,
+            )
+            self.db.update_run(run_id, status, "repair_gate")
+            if gate["passed"]:
+                self.db.add_run_event(
+                    run_id, "info", "short_revision_waiting_confirmation",
+                    "候选稿已通过本地检查，等待你确认各修改组",
+                    stage="repair_gate",
+                )
+            else:
+                self.db.add_run_event(
+                    run_id, "warning", "short_revision_gate_rejected",
+                    "候选稿未通过本地检查，终审尚未调用，请先处理列出的问题",
+                    stage="repair_gate",
+                    metadata={
+                        "blocking_codes": [
+                            item["code"] for item in gate["blocking"]
+                        ],
+                    },
+                )
+            return {
+                **report,
+                "candidate": candidate,
+                "protected_best_unchanged": True,
+            }
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            run = self.db.get_run(run_id)
+            if run and run["status"] not in {"failed", "cancelled"}:
+                message = (
+                    str(exc)
+                    if str(exc) and all(ord(char) > 127 for char in str(exc))
+                    else "定向返修未完成，已保留可恢复的检查点"
+                )
+                self.db.update_run(
+                    run_id, "failed", run.get("current_stage"), error=message,
+                )
+                self.db.add_run_event(
+                    run_id, "error", "short_revision_failed", message,
+                    stage=run.get("current_stage"),
+                )
+            raise
+
+    def _protected_short_revision_source(self, project: Project) -> dict:
+        for run in self.db.list_runs(project.id):
+            run_path = project.path / "runs" / run["id"]
+            checkpoint = load_quality_checkpoint(run_path)
+            if checkpoint is None:
+                continue
+            source_hash = checkpoint.get("manuscript_hash")
+            if checkpoint.get("terminal_reviewed_hash") != source_hash:
+                continue
+            source = checkpoint_manuscript(run_path, checkpoint)
+            if self._text_hash(source) != source_hash:
+                continue
+            review = checkpoint.get("review")
+            if not isinstance(review, dict):
+                continue
+            terminal_ledger = issue_ledger(review.get("issues", []))
+            ledger = checkpoint.get("issue_ledger")
+            if not isinstance(ledger, list):
+                ledger = terminal_ledger
+            if {
+                item.get("issue_id") for item in ledger
+                if isinstance(item, dict)
+            } != {
+                item.get("issue_id") for item in terminal_ledger
+                if isinstance(item, dict)
+            }:
+                continue
+            return {
+                "run_id": run["id"],
+                "checkpoint": checkpoint,
+                "source": source,
+                "source_hash": source_hash,
+                "review": review,
+                "issue_ledger": ledger,
+            }
+        raise ValueError("当前项目没有与终审结果绑定的受保护最佳稿")
+
+    @staticmethod
+    def _selected_repair_issue_ids(issue_ids: list[str]) -> list[str]:
+        if not isinstance(issue_ids, list):
+            raise ValueError("请选择需要返修的问题")
+        result = []
+        for issue_id in issue_ids:
+            if (
+                not isinstance(issue_id, str)
+                or not issue_id.strip()
+                or issue_id != issue_id.strip()
+            ):
+                raise ValueError("所选问题编号无效")
+            if issue_id not in result:
+                result.append(issue_id)
+        if not result:
+            raise ValueError("请至少选择一个需要返修的问题")
+        return result
+
+    @staticmethod
+    def _json_copy(value):
+        return json.loads(json.dumps(value, ensure_ascii=False))
+
+    @staticmethod
+    def _text_hash(text: str) -> str:
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _repair_literals(issues: list[dict], key: str) -> list[str]:
+        result = []
+        for issue in issues:
+            values = issue.get(key)
+            values = [values] if isinstance(values, str) else values
+            for value in values if isinstance(values, list) else []:
+                if isinstance(value, str) and value and value not in result:
+                    result.append(value)
+        return result
+
+    @staticmethod
+    def _mechanical_issue_code(issue: dict) -> str | None:
+        allowed = {
+            "ascii_dialogue_quotes",
+            "cjk_spacing",
+            "duplicate_punctuation",
+            "c0_control",
+            "consecutive_duplicate_blocks",
+        }
+        for key in ("mechanical_code", "code", "category"):
+            value = issue.get(key)
+            if isinstance(value, str) and value in allowed:
+                return value
+        return None
+
+    def _mechanical_patch_group(
+        self, issue: dict, candidate: str, group_id: str,
+    ) -> dict | None:
+        code = self._mechanical_issue_code(issue)
+        evidence = issue.get("evidence")
+        if (
+            code is None
+            or not isinstance(evidence, str)
+            or not evidence
+            or candidate.count(evidence) != 1
+        ):
+            return None
+        repaired = repair_mechanical_text(evidence)
+        applied = {
+            item.get("code")
+            for item in repaired.get("applied", [])
+            if isinstance(item, dict)
+        }
+        if applied != {code} or repaired["text"] == evidence:
+            return None
+        return {
+            "group_id": group_id,
+            "issue_ids": [group_id],
+            "kind": "mechanical",
+            "requires_user_confirmation": True,
+            "patches": [{
+                "operation": "replace",
+                "old_text": evidence,
+                "new_text": repaired["text"],
+            }],
+        }
+
+    def _semantic_patch_request(
+        self, contract: dict, issue: dict, group_id: str, candidate: str,
+    ) -> dict:
+        evidence = issue.get("evidence")
+        evidence = evidence if isinstance(evidence, str) else ""
+        offset = candidate.find(evidence) if evidence else -1
+        if offset < 0:
+            target = evidence
+            before = after = ""
+        else:
+            target = evidence
+            before = candidate[max(0, offset - 1200):offset]
+            after = candidate[offset + len(evidence):offset + len(evidence) + 1200]
+        state = contract["story_state"]["data"]
+        return {
+            "schema": "targeted-repair-group-v1",
+            "group_id": group_id,
+            "candidate_hash": self._text_hash(candidate),
+            "issue": issue,
+            "target_excerpt": target,
+            "previous_context": before,
+            "next_context": after,
+            "authoritative_facts": [
+                *state.get("locked_facts", []),
+                *state.get("confirmed_facts", []),
+            ],
+            "passage_locks": [{
+                "id": item.get("id"),
+                "label": item.get("label"),
+                "mode": item.get("mode"),
+            } for item in contract["passage_locks"]],
+            "instructions": (
+                "只返回一个 JSON 修改合同。只处理当前 issue_id；old_text 必须在候选稿中"
+                "唯一出现；不得改动上下文或未选问题；语义修改必须要求用户确认。"
+            ),
+        }
+
+    def _write_short_revision_progress(
+        self, store: RepairRunStore, contract: dict, records: list[dict],
+        candidate: str, completed: set[str], status: str,
+    ) -> None:
+        groups = {"groups": records}
+        ordered_completed = [
+            group["group_id"]
+            for group in contract["groups"]
+            if group["group_id"] in completed
+        ]
+        store.write_groups(groups)
+        store.write_candidate(candidate)
+        store.write_checkpoint({
+            "version": 1,
+            "status": status,
+            "source_hash": contract["manuscript_hash"],
+            "contract_hash": repair_artifact_hash(contract),
+            "groups_hash": repair_artifact_hash(groups),
+            "candidate_hash": repair_artifact_hash(candidate),
+            "completed_groups": ordered_completed,
+        })
+
+    def _save_short_revision_state(
+        self, store: RepairRunStore, contract: dict, run_id: str,
+        records: list[dict], candidate: str, completed: set[str],
+        gate: dict | None, status: str,
+    ) -> dict:
+        self._write_short_revision_progress(
+            store, contract, records, candidate, completed, status,
+        )
+        return self._write_short_revision_report(
+            store, run_id, records, candidate, gate, status,
+        )
+
+    def _replay_repair_records(
+        self, source: str, records: list[dict], completed: set[str],
+    ) -> tuple[str, str | None]:
+        candidate = source
+        for record in records:
+            group_id = record["group_id"]
+            if group_id not in completed:
+                continue
+            patch_group = record.get("patch_group")
+            if not isinstance(patch_group, dict):
+                return candidate, group_id
+            result = {
+                "group_id": group_id,
+                **apply_patch_group(
+                    candidate, patch_group, self._text_hash(candidate),
+                ),
+            }
+            record["patch_result"] = result
+            if not result["accepted"]:
+                return candidate, group_id
+            candidate = result["text"]
+        return candidate, None
+
+    @staticmethod
+    def _repair_gate_evidence(
+        contract: dict, records: list[dict],
+    ) -> tuple[dict, list[dict]]:
+        record_by_id = {record["group_id"]: record for record in records}
+        groups = []
+        results = []
+        for group in contract["groups"]:
+            record = record_by_id[group["group_id"]]
+            patch_group = record.get("patch_group")
+            groups.append(
+                patch_group
+                if isinstance(patch_group, dict)
+                else {**group, "patches": []}
+            )
+            result = record.get("patch_result")
+            results.append(
+                result
+                if isinstance(result, dict)
+                else {
+                    "group_id": group["group_id"],
+                    "accepted": False,
+                    "text": "",
+                    "failures": [{
+                        "patch": 0, "code": "group_incomplete",
+                    }],
+                    "diffs": [],
+                }
+            )
+        return {
+            "manuscript_hash": contract["manuscript_hash"],
+            "required_text": contract.get("required_text", []),
+            "forbidden_text": contract.get("forbidden_text", []),
+            "groups": groups,
+        }, results
+
+    @staticmethod
+    def _short_revision_target_range(project: Project) -> tuple[int, int]:
+        target = max(0, int(project.metadata.get("target_words") or 0))
+        if project.metadata.get("platform_profile_id") == "zhihu-salt-short":
+            return int(target * 0.9), int(target * 1.1)
+        return target, target
+
+    def _write_short_revision_report(
+        self, store: RepairRunStore, run_id: str, records: list[dict],
+        candidate: str, gate: dict | None, status: str,
+    ) -> dict:
+        groups = {
+            record["group_id"]: {
+                "group_id": record["group_id"],
+                "issue_ids": record.get("issue_ids", []),
+                "kind": record.get("kind"),
+                "status": record.get("status"),
+                "message": record.get("message"),
+                "attempts": record.get("attempts", 0),
+                "patches": (
+                    record.get("patch_group", {}).get("patches", [])
+                    if isinstance(record.get("patch_group"), dict) else []
+                ),
+                "failures": (
+                    record.get("patch_result", {}).get("failures", [])
+                    if isinstance(record.get("patch_result"), dict) else []
+                ),
+            }
+            for record in records
+        }
+        next_action = {
+            "waiting_confirmation": "请查看每个语义修改组并决定采用或拒绝",
+            "waiting_local_fix": "请先处理未通过的本地检查或失败修改组",
+            "failed": "可从失败的修改组继续运行",
+            "cancelled": "可继续本次返修，已完成结果不会丢失",
+            "running": "正在继续处理其他独立修改组",
+        }.get(status, "请查看返修结果")
+        report = {
+            "id": run_id,
+            "status": status,
+            "candidate_path": "outputs/candidate.md",
+            "candidate_hash": repair_artifact_hash(candidate),
+            "groups": groups,
+            "gate": gate,
+            "next_action": next_action,
+            "protected_best_unchanged": True,
+        }
+        store.write_report(report)
+        return report
 
     async def run_chapter(self, project_id: str, chapter_goal: str,
                           use_crewai: bool = True, run_id: str | None = None) -> dict:
