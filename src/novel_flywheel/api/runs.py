@@ -4,6 +4,10 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from novel_flywheel.revision_operations import (
+    RevisionOperationError,
+    RevisionOperations,
+)
 
 router = APIRouter(prefix="/api", tags=["runs"])
 
@@ -91,10 +95,31 @@ async def resume_run(run_id: str, request: Request) -> dict:
     run = request.app.state.registry.db.get_run(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"})
-    if run["workflow"] not in {"short-story", "materials-audit"}:
+    if run["workflow"] not in {
+        "short-story", "materials-audit", "short-revision",
+    }:
         raise HTTPException(status_code=409, detail={"code": "run_not_resumable"})
 
+    revision_issue_ids = None
+    if run["workflow"] == "short-revision":
+        operations = RevisionOperations(
+            request.app.state.registry.db,
+            request.app.state.projects,
+            request.app.state.workflows,
+        )
+        try:
+            _validated_run, revision_issue_ids = operations.validate_resume(run_id)
+        except RevisionOperationError as exc:
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={"code": exc.code, "message": exc.message},
+            ) from None
+
     async def operation(existing_run_id: str) -> object:
+        if run["workflow"] == "short-revision":
+            return await request.app.state.workflows.run_short_revision(
+                run["project_id"], revision_issue_ids, run_id=existing_run_id,
+            )
         if run["workflow"] == "materials-audit":
             return await request.app.state.workflows.run_materials_audit(
                 run["project_id"], run_id=existing_run_id,

@@ -356,7 +356,9 @@ LTP和叙事账本只负责寻找可能相关的位置。自动提取结果必�
 - 新增短篇返修运行类型，继续使用现有 `runs`、运行事件和候选机制。
 - 修改合同、补丁组和验收结果写入当前运行输出目录，分别保存为 `repair-contract.json`、`patch-groups.json`、`repair-checkpoint.json`、`candidate.md` 和 `repair-report.json`，不新增第二份权威数据库。
 - 每个修改组完成后保存检查点；API失败后从未完成组继续。
-- 继续运行前重新核对最佳稿哈希，最佳稿发生变化时停止并要求重新规划。
+- 继续运行和终审发布前都重新核对最高分有效保护稿哈希、StoryState revision、保护锁以及合同、分组、候选稿哈希；任一权威状态变化时停止并要求重新规划。
+- 用户决定写回 `patch-groups.json` 的 `decision`、`decision_candidate_hash` 和拒绝组的 `issue_status`，随后按 groups、candidate、checkpoint 的既有顺序原子保存；同一运行的决定操作串行化，避免并发读改写丢失。
+- 终审通过现有 `running` 活跃状态执行原子 claim。同步检查、模型终审或质量检查点写入失败时运行回到可恢复的 `failed` 或 `waiting_local_fix`，不留下额外状态值，也不提升候选稿。
 
 ### 启动器
 
@@ -367,7 +369,8 @@ LTP和叙事账本只负责寻找可能相关的位置。自动提取结果必�
 ### `src/novel_flywheel/api/revisions.py`、`api/runs.py` 和 `app.py`
 
 - 新增独立的返修API模块，避免继续扩大现有项目接口文件。
-- 提供开始返修、查询进度、读取修改组、采用、拒绝和继续失败任务的接口。
+- 提供 `POST /api/projects/{project_id}/revisions`、`GET /api/runs/{run_id}/revision`、修改组 `adopt`/`reject`、`POST /api/runs/{run_id}/revision/finalize` 和现有运行 `resume` 接口。
+- 查询只返回公开的 run 状态、候选哈希、本地 gate、终审模式/全文回退原因、下一步和修改组摘要；不返回内部提示词或原始 provider 错误。
 - `api/runs.py` 允许 `short-revision` 从未完成修改组继续。
 - `app.py` 只负责注册新路由，不创建第二套工作流或状态存储。
 

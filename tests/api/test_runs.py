@@ -23,6 +23,12 @@ class FakeWorkflows:
     async def run_materials_repair(self, project_id, run_id=None):
         return {"id": run_id, "project_id": project_id, "status": "completed", "workflow": "materials-repair"}
 
+    async def run_short_revision(self, project_id, issue_ids, run_id=None):
+        return {
+            "id": run_id, "project_id": project_id, "status": "waiting_confirmation",
+            "workflow": "short-revision", "issue_ids": issue_ids,
+        }
+
 
 def test_start_short_run_and_list_history(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -94,11 +100,15 @@ def test_start_material_audit_resumes_latest_interrupted_audit(tmp_path) -> None
 def test_run_detail_includes_tool_receipts(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_project("book", "Book", "long", tmp_path / "book")
+    workspace = tmp_path / "workspace"
+    db.save_project("book", "Book", "long", workspace / "book")
     db.create_run("run", "book", "long-chapter", status="completed")
     db.save_tool_receipt(run_id="run", stage="review", model_id="model",
                          execution_mode="degraded_prompt_mode", fallback_reason="unsupported")
-    client = TestClient(create_app(db, MemorySecretStore(), workflow_service=FakeWorkflows()))
+    client = TestClient(create_app(
+        db, MemorySecretStore(), workflow_service=FakeWorkflows(),
+        workspace_root=workspace,
+    ))
     detail = client.get("/api/runs/run").json()
     assert detail["tool_receipts"][0]["execution_mode"] == "degraded_prompt_mode"
     assert detail["events"] == []
@@ -107,7 +117,8 @@ def test_run_detail_includes_tool_receipts(tmp_path) -> None:
 def test_run_detail_includes_quality_report_when_present(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    project_path = tmp_path / "book"
+    workspace = tmp_path / "workspace"
+    project_path = workspace / "book"
     report_path = project_path / "runs" / "run" / "outputs" / "quality-report.json"
     report_path.parent.mkdir(parents=True)
     report_path.write_text(json.dumps({
@@ -116,7 +127,10 @@ def test_run_detail_includes_quality_report_when_present(tmp_path) -> None:
     }), encoding="utf-8")
     db.save_project("book", "Book", "short", project_path)
     db.create_run("run", "book", "short-story", status="failed")
-    client = TestClient(create_app(db, MemorySecretStore(), workflow_service=FakeWorkflows()))
+    client = TestClient(create_app(
+        db, MemorySecretStore(), workflow_service=FakeWorkflows(),
+        workspace_root=workspace,
+    ))
 
     detail = client.get("/api/runs/run").json()
 
@@ -126,9 +140,13 @@ def test_run_detail_includes_quality_report_when_present(tmp_path) -> None:
 def test_cancel_run_endpoint_is_idempotent(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_project("book", "Book", "long", tmp_path / "book")
+    workspace = tmp_path / "workspace"
+    db.save_project("book", "Book", "long", workspace / "book")
     db.create_run("run", "book", "long-chapter", status="completed")
-    client = TestClient(create_app(db, MemorySecretStore(), workflow_service=FakeWorkflows()))
+    client = TestClient(create_app(
+        db, MemorySecretStore(), workflow_service=FakeWorkflows(),
+        workspace_root=workspace,
+    ))
 
     response = client.post("/api/runs/run/cancel")
 
@@ -139,11 +157,12 @@ def test_cancel_run_endpoint_is_idempotent(tmp_path) -> None:
 def test_resume_failed_short_run_keeps_original_run_id(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_project("book", "Book", "short", tmp_path / "book")
+    workspace = tmp_path / "workspace"
+    db.save_project("book", "Book", "short", workspace / "book")
     db.create_run("failed-run", "book", "short-story", status="failed")
     client = TestClient(create_app(
         db, MemorySecretStore(), workflow_service=FakeWorkflows(),
-        workspace_root=tmp_path / "workspace",
+        workspace_root=workspace,
     ))
 
     response = client.post("/api/runs/failed-run/resume")

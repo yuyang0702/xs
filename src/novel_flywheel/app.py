@@ -9,6 +9,7 @@ from novel_flywheel.api.references import router as references_router
 from novel_flywheel.api.learning import router as learning_router
 from novel_flywheel.api.market import router as market_router
 from novel_flywheel.api.projects import router as projects_router
+from novel_flywheel.api.revisions import router as revisions_router
 from novel_flywheel.api.runs import router as runs_router
 from novel_flywheel.api.skills import router as skills_router
 from novel_flywheel.api.wizards import router as wizards_router
@@ -102,6 +103,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.include_router(market_router)
     app.include_router(learning_router)
     app.include_router(projects_router)
+    app.include_router(revisions_router)
     app.include_router(runs_router)
     app.include_router(skills_router)
     app.include_router(wizards_router)

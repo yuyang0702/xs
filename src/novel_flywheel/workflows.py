@@ -4,6 +4,7 @@ import json
 import math
 import os
 import re
+import threading
 import uuid
 from contextlib import contextmanager, nullcontext
 from collections.abc import Sequence
@@ -60,6 +61,10 @@ from novel_flywheel.quality_records import (
 from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_gate import evaluate_candidate_gate
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
+from novel_flywheel.revision_operations import (
+    RevisionOperationError,
+    RevisionOperations,
+)
 from novel_flywheel.quality_profiles import (
     ZHihu_SHORT_V2,
     compare_quality_candidates,
@@ -147,6 +152,14 @@ class WorkflowService:
         self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
         self.local_nlp = local_nlp
         self.references = references
+        self._short_revision_locks: dict[str, threading.Lock] = {}
+        self._short_revision_locks_guard = threading.Lock()
+
+    def _short_revision_lock(self, run_id: str) -> threading.Lock:
+        with self._short_revision_locks_guard:
+            return self._short_revision_locks.setdefault(
+                run_id, threading.Lock(),
+            )
 
     def _analyze_manuscript(
         self, text: str, run_path: Path, project: Project, label: str,
@@ -202,6 +215,543 @@ class WorkflowService:
         if project.mode != "short":
             raise ValueError("定向返修目前只支持短篇作品")
         return await self._short_revision_pipeline(project, issue_ids, run_id)
+
+    def decide_short_revision_group(
+        self, run_id: str, group_id: str, decision: str,
+        candidate_hash: str,
+    ) -> dict:
+        with self._short_revision_lock(run_id):
+            return self._decide_short_revision_group(
+                run_id, group_id, decision, candidate_hash,
+            )
+
+    def _decide_short_revision_group(
+        self, run_id: str, group_id: str, decision: str,
+        candidate_hash: str,
+    ) -> dict:
+        if decision not in {"adopted", "rejected"}:
+            raise ValueError("Unsupported revision decision")
+        operations = RevisionOperations(self.db, self.projects, self)
+        authority = operations.load_state(run_id)
+        run = authority["run"]
+        if run.get("status") not in {
+            "waiting_confirmation", "waiting_local_fix",
+        }:
+            raise RevisionOperationError(
+                409, "revision_run_invalid",
+                "当前返修任务不在可确认修改的阶段。",
+            )
+        state = authority["state"]
+        if candidate_hash != state.get("candidate_hash"):
+            raise RevisionOperationError(
+                409, "revision_candidate_changed",
+                "返修候选稿已经变化，请刷新后重试。",
+            )
+        records_value = state["groups"].get("groups")
+        if not isinstance(records_value, list):
+            raise RevisionOperationError(
+                409, "revision_run_invalid",
+                "返修记录不完整或已经损坏，请重新开始本次返修。",
+            )
+        record = next(
+            (
+                item for item in records_value
+                if isinstance(item, dict) and item.get("group_id") == group_id
+            ),
+            None,
+        )
+        if record is None:
+            raise RevisionOperationError(
+                404, "revision_group_not_found", "没有找到这个修改组。",
+            )
+        automatic_decision = (
+            "adopted"
+            if (
+                record.get("kind") == "mechanical"
+                and record.get("status") == "ready_for_confirmation"
+                and record.get("patch_result", {}).get("accepted") is True
+            )
+            else None
+        )
+        existing = record.get("decision") or automatic_decision
+        if existing is not None:
+            if existing == decision:
+                return self._short_revision_public_group(
+                    operations.read(run_id), group_id,
+                )
+            raise RevisionOperationError(
+                409, "revision_group_already_decided",
+                "这个修改组已经作出相反决定，不能重复更改。",
+            )
+        if (
+            record.get("kind") not in {"semantic", "expansion"}
+            or record.get("status") != "ready_for_confirmation"
+            or record.get("patch_result", {}).get("accepted") is not True
+        ):
+            raise RevisionOperationError(
+                409, "revision_group_not_ready",
+                "这个修改组尚未通过本地检查，不能确认。",
+            )
+        record["decision"] = decision
+        record["decision_candidate_hash"] = candidate_hash
+        if decision == "rejected":
+            record["issue_status"] = "unresolved"
+
+        contract = state["contract"]
+        completed = set(state.get("completed_groups", []))
+        report = state.get("report")
+        gate = report.get("gate") if isinstance(report, dict) else None
+        store = authority["store"]
+        files = [
+            store.output / name
+            for name in (
+                store.GROUPS, store.CANDIDATE, store.CHECKPOINT, store.REPORT,
+            )
+        ]
+        snapshot = ProjectSnapshot.create(
+            authority["project"].path,
+            (
+                authority["project"].path
+                / "snapshots"
+                / f"revision-decision-{uuid.uuid4().hex[:12]}"
+            ),
+            files,
+        )
+        try:
+            self._save_short_revision_state(
+                store, contract, run_id, records_value, state["candidate"],
+                completed, gate, str(run["status"]),
+            )
+        except Exception:
+            snapshot.restore()
+            raise
+        return self._short_revision_public_group(
+            operations.read(run_id), group_id,
+        )
+
+    @staticmethod
+    def _short_revision_public_group(summary: dict, group_id: str) -> dict:
+        for group in summary["groups"]:
+            if group.get("group_id") == group_id:
+                return group
+        raise RevisionOperationError(
+            404, "revision_group_not_found", "没有找到这个修改组。",
+        )
+
+    async def finalize_short_revision(self, run_id: str) -> dict:
+        try:
+            return await self._finalize_short_revision(run_id)
+        except RevisionOperationError:
+            raise
+        except asyncio.CancelledError:
+            self.db.update_run(run_id, "failed", "revision_finalize")
+            raise
+        except Exception:
+            run = self.db.get_run(run_id)
+            if run is not None and run.get("status") != "completed":
+                self.db.update_run(
+                    run_id, "failed", "revision_finalize",
+                    error="返修终审未完成，已保留修改决定，可以稍后重试。",
+                )
+            raise
+
+    async def _finalize_short_revision(self, run_id: str) -> dict:
+        operations = RevisionOperations(self.db, self.projects, self)
+        run = self.db.get_run(run_id)
+        if run is None:
+            raise RevisionOperationError(
+                404, "run_not_found", "没有找到这次运行。",
+            )
+        if run.get("workflow") != "short-revision":
+            raise RevisionOperationError(
+                409, "revision_run_invalid", "该任务不是定向返修任务。",
+            )
+        if run.get("status") == "completed":
+            raise RevisionOperationError(
+                409, "revision_already_finalized", "这次返修已经完成终审。",
+            )
+
+        project = self.projects.get(str(run["project_id"]))
+        run_path = project.path / "runs" / run_id
+        promoted = load_quality_checkpoint(run_path)
+        if (
+            promoted is not None
+            and promoted.get("manuscript_path") == "outputs/candidate.md"
+            and promoted.get("terminal_reviewed_hash")
+            == promoted.get("manuscript_hash")
+        ):
+            self.db.update_run(run_id, "completed", "revision_completed")
+            return operations.read(run_id)
+
+        authority = operations.load_state(run_id)
+        run = authority["run"]
+        if run.get("status") not in {
+            "waiting_confirmation", "waiting_local_fix", "failed",
+        }:
+            raise RevisionOperationError(
+                409, "revision_run_invalid", "当前返修任务不能进入终审。",
+            )
+        state = authority["state"]
+        contract = state["contract"]
+        records = state["groups"].get("groups")
+        if not isinstance(records, list):
+            raise RevisionOperationError(
+                409, "revision_run_invalid",
+                "返修记录不完整或已经损坏，请重新开始本次返修。",
+            )
+
+        adopted_records: list[dict] = []
+        rejected_issue_ids: set[str] = set()
+        for record in records:
+            if not isinstance(record, dict):
+                raise RevisionOperationError(
+                    409, "revision_run_invalid",
+                    "返修记录不完整或已经损坏，请重新开始本次返修。",
+                )
+            kind = record.get("kind")
+            patch_result = record.get("patch_result")
+            ready = (
+                record.get("status") == "ready_for_confirmation"
+                and isinstance(patch_result, dict)
+                and patch_result.get("accepted") is True
+                and isinstance(record.get("patch_group"), dict)
+            )
+            if kind == "mechanical":
+                if not ready:
+                    raise RevisionOperationError(
+                        409, "revision_group_not_ready",
+                        "仍有机械修改未通过本地检查，不能开始终审。",
+                    )
+                adopted_records.append(record)
+                continue
+            if kind not in {"semantic", "expansion"}:
+                raise RevisionOperationError(
+                    409, "revision_run_invalid",
+                    "返修记录包含不支持的修改组。",
+                )
+            if not ready:
+                raise RevisionOperationError(
+                    409, "revision_group_not_ready",
+                    "仍有语义修改未通过本地检查，不能开始终审。",
+                )
+            decision = record.get("decision")
+            if decision not in {"adopted", "rejected"}:
+                raise RevisionOperationError(
+                    409, "revision_decisions_incomplete",
+                    "请先确认或拒绝每一个语义修改组。",
+                )
+            if record.get("decision_candidate_hash") != state.get(
+                "candidate_hash"
+            ):
+                raise RevisionOperationError(
+                    409, "revision_candidate_changed",
+                    "修改决定对应的候选稿已经变化，请刷新后重试。",
+                )
+            if decision == "adopted":
+                adopted_records.append(record)
+            else:
+                rejected_issue_ids.update(record.get("issue_ids", []))
+
+        candidate = authority["protected"]["source"]
+        adopted_groups = []
+        patch_results = []
+        for record in adopted_records:
+            patch_group = record["patch_group"]
+            result = {
+                "group_id": record["group_id"],
+                **apply_patch_group(
+                    candidate, patch_group, self._text_hash(candidate),
+                ),
+            }
+            if result["accepted"] is not True:
+                raise RevisionOperationError(
+                    409, "revision_group_not_ready",
+                    "已确认修改无法按冻结原稿完整重放，请重新开始本次返修。",
+                )
+            candidate = result["text"]
+            adopted_groups.append(patch_group)
+            patch_results.append(result)
+
+        if not self.db.claim_run_status(
+            run_id,
+            {"waiting_confirmation", "waiting_local_fix", "failed"},
+            "running",
+            "revision_gate",
+        ):
+            current = self.db.get_run(run_id) or {}
+            if current.get("status") == "completed":
+                raise RevisionOperationError(
+                    409, "revision_already_finalized", "这次返修已经完成终审。",
+                )
+            raise RevisionOperationError(
+                409, "revision_run_invalid", "这次返修正在由另一个请求处理。",
+            )
+
+        analysis = self._analyze_manuscript(
+            candidate, run_path, project, "repair-final",
+        )
+        adopted_issue_ids = {
+            issue_id
+            for record in adopted_records
+            for issue_id in record.get("issue_ids", [])
+        }
+        adopted_issues = [
+            item
+            for item in contract.get("selected_issues", [])
+            if (
+                isinstance(item, dict)
+                and item.get("issue_id") in adopted_issue_ids
+            )
+        ]
+        gate_contract = {
+            "manuscript_hash": contract["manuscript_hash"],
+            "required_text": self._repair_literals(
+                adopted_issues, "required_text",
+            ),
+            "forbidden_text": self._repair_literals(
+                adopted_issues, "forbidden_text",
+            ),
+            "groups": adopted_groups,
+        }
+        minimum_han, maximum_han = self._short_revision_target_range(project)
+        gate = evaluate_candidate_gate(
+            source=authority["protected"]["source"],
+            candidate=candidate,
+            source_hash=authority["protected"]["source_hash"],
+            analysis=analysis,
+            contract=gate_contract,
+            patch_results=patch_results,
+            story_state=contract["story_state"]["data"],
+            passage_locks=contract["passage_locks"],
+            minimum_han=minimum_han,
+            maximum_han=maximum_han,
+        )
+        report = (
+            dict(state.get("report"))
+            if isinstance(state.get("report"), dict) else {}
+        )
+        if not gate["passed"]:
+            report.update({
+                "status": "waiting_local_fix",
+                "gate": gate,
+                "next_action": "请先处理未通过的本地检查，再重新终审。",
+            })
+            authority["store"].write_report(report)
+            self.db.update_run(
+                run_id, "waiting_local_fix", "revision_gate",
+            )
+            raise RevisionOperationError(
+                409, "revision_gate_failed",
+                "候选稿未通过整篇本地检查，尚未调用终审模型。",
+            )
+
+        protected = authority["protected"]
+        baseline_review = {
+            **protected["review"],
+            "scoring_profile_id": protected["checkpoint"].get(
+                "scoring_profile_id", "legacy-v1",
+            ),
+            "judge_signature": protected["checkpoint"].get(
+                "judge_signature", "legacy-unknown",
+            ),
+        }
+        baseline = build_review_baseline(
+            protected["source"],
+            contract["analysis"],
+            [],
+            baseline_review,
+        )
+        initial_review = {
+            **baseline_review,
+            "issues": [
+                (
+                    {**item, "status": "unresolved"}
+                    if item.get("issue_id") in rejected_issue_ids else dict(item)
+                )
+                for item in contract.get("issue_ledger", [])
+                if isinstance(item, dict)
+            ],
+        }
+        constraints = (project.path / "constraints.md").read_text(
+            encoding="utf-8",
+        )
+        try:
+            review, review_audit = await self._incremental_manuscript_review(
+                run_id, run_path, project, constraints,
+                candidate, analysis, baseline, initial_review,
+                suffix="-revision-final",
+                revision_source_hash=protected["source_hash"],
+                patch_groups=adopted_groups,
+            )
+        except asyncio.CancelledError:
+            self.db.update_run(run_id, "failed", "final_review")
+            raise
+        except Exception:
+            report.update({
+                "status": "failed",
+                "gate": gate,
+                "next_action": "终审暂时不可用，可以保留现有决定后重试。",
+            })
+            authority["store"].write_report(report)
+            self.db.update_run(
+                run_id, "failed", "final_review",
+                error="终审暂时不可用，可以稍后重试。",
+            )
+            self.db.add_run_event(
+                run_id, "error", "short_revision_review_unavailable",
+                "终审暂时不可用，已保留所有修改决定，可以稍后重试。",
+                stage="final_review",
+            )
+            raise RevisionOperationError(
+                502, "revision_review_unavailable",
+                "终审暂时不可用，已保留修改决定，请稍后重试。",
+            ) from None
+
+        try:
+            refreshed = operations.load_state(run_id)
+        except RevisionOperationError:
+            self.db.update_run(run_id, "failed", "revision_authority")
+            raise
+        refreshed_state = refreshed["state"]
+        if refreshed_state.get("contract_hash") != state.get("contract_hash"):
+            self.db.update_run(run_id, "failed", "revision_authority")
+            raise RevisionOperationError(
+                409, "revision_source_changed",
+                "终审期间受保护原稿已经变化，请重新开始本次返修。",
+            )
+        if any(
+            refreshed_state.get(key) != state.get(key)
+            for key in ("groups_hash", "candidate_hash")
+        ):
+            self.db.update_run(run_id, "failed", "revision_authority")
+            raise RevisionOperationError(
+                409, "revision_candidate_changed",
+                "终审期间返修决定或候选稿已经变化，请刷新后重试。",
+            )
+        authority = refreshed
+        state = refreshed_state
+
+        review = self._force_rejected_revision_issues(
+            review, contract.get("issue_ledger", []), rejected_issue_ids,
+        )
+        comparison = compare_quality_candidates(baseline_review, review)
+        review_mode = str(review_audit.get("review_mode") or "full")
+        full_review_reasons = list(
+            review_audit.get("fallback_reasons") or []
+        )
+        if not comparison["promote"]:
+            report.update({
+                "status": "waiting_confirmation",
+                "gate": gate,
+                "review_mode": review_mode,
+                "full_review_reasons": full_review_reasons,
+                "comparison": comparison,
+                "next_action": "候选稿没有超过当前受保护最佳稿，请调整决定后再试。",
+            })
+            authority["store"].write_report(report)
+            self.db.update_run(
+                run_id, "waiting_confirmation", "quality_comparison",
+            )
+            raise RevisionOperationError(
+                409, "revision_not_improved",
+                "候选稿没有达到替换当前受保护最佳稿的条件。",
+            )
+
+        outcome, _outcome_reasons = quality_outcome_for_profile(
+            review, str(review.get("scoring_profile_id") or "legacy-v1"),
+        )
+        store = authority["store"]
+        repair_checkpoint = {
+            key: value
+            for key, value in state.items()
+            if key not in {"contract", "groups", "candidate", "report"}
+        }
+        repair_checkpoint.update({
+            "status": "completed",
+            "candidate_hash": repair_artifact_hash(candidate),
+        })
+        promotion_files = [
+            store.output / store.CANDIDATE,
+            store.output / store.CHECKPOINT,
+            store.output / store.REPORT,
+            store.output / "quality-checkpoint.json",
+        ]
+        snapshot = ProjectSnapshot.create(
+            project.path,
+            project.path / "snapshots"
+            / f"revision-promotion-{uuid.uuid4().hex[:12]}",
+            promotion_files,
+        )
+        try:
+            store.write_candidate(candidate)
+            store.write_checkpoint(repair_checkpoint)
+            promoted_report = self._write_short_revision_report(
+                store, run_id, records, candidate, gate, "completed", contract,
+            )
+            promoted_report.update({
+                "review_mode": review_mode,
+                "full_review_reasons": full_review_reasons,
+                "comparison": comparison,
+                "next_action": "返修候选稿已成为新的受保护最佳稿。",
+            })
+            store.write_report(promoted_report)
+            digest = self._text_hash(candidate)
+            write_quality_checkpoint(run_path, {
+                "manuscript_path": "outputs/candidate.md",
+                "manuscript_hash": digest,
+                "score": float(review["score"]),
+                "scoring_profile_id": str(
+                    review.get("scoring_profile_id") or "legacy-v1"
+                ),
+                "judge_signature": str(
+                    review.get("judge_signature") or "legacy-unknown"
+                ),
+                "best_attempt": 1,
+                "review": review,
+                "issue_ledger": issue_ledger(review.get("issues", [])),
+                "outcome": outcome,
+                "terminal_reviewed_hash": digest,
+            })
+        except Exception:
+            snapshot.restore()
+            self.db.update_run(
+                run_id, "failed", "revision_promotion",
+                error="返修结果保存失败，可以保留决定后重试。",
+            )
+            raise
+        self.db.update_run(run_id, "completed", "revision_completed")
+        self.db.add_run_event(
+            run_id, "success", "short_revision_completed",
+            "返修候选稿已通过检查并成为新的受保护最佳稿。",
+            stage="revision_completed",
+        )
+        return operations.read(run_id)
+
+    @staticmethod
+    def _force_rejected_revision_issues(
+        review: dict, frozen_ledger: list[dict],
+        rejected_issue_ids: set[str],
+    ) -> dict:
+        result = dict(review)
+        issues = issue_ledger(result.get("issues", []))
+        by_id = {
+            item.get("issue_id"): index
+            for index, item in enumerate(issues)
+            if isinstance(item, dict)
+        }
+        frozen = {
+            item.get("issue_id"): item
+            for item in frozen_ledger
+            if isinstance(item, dict)
+        }
+        for issue_id in rejected_issue_ids:
+            if issue_id in by_id:
+                index = by_id[issue_id]
+                issues[index] = {**issues[index], "status": "unresolved"}
+            elif issue_id in frozen:
+                issues.append({**frozen[issue_id], "status": "unresolved"})
+        result["issues"] = issues
+        return result
 
     async def _short_revision_pipeline(
         self, project: Project, issue_ids: list[str],
@@ -704,6 +1254,7 @@ class WorkflowService:
             raise
 
     def _protected_short_revision_source(self, project: Project) -> dict:
+        best = None
         for run in self.db.list_runs(project.id):
             run_path = project.path / "runs" / run["id"]
             checkpoint = load_quality_checkpoint(run_path)
@@ -730,7 +1281,7 @@ class WorkflowService:
                 if isinstance(item, dict)
             }:
                 continue
-            return {
+            candidate = {
                 "run_id": run["id"],
                 "checkpoint": checkpoint,
                 "source": source,
@@ -738,6 +1289,13 @@ class WorkflowService:
                 "review": review,
                 "issue_ledger": ledger,
             }
+            if (
+                best is None
+                or checkpoint["score"] > best["checkpoint"]["score"]
+            ):
+                best = candidate
+        if best is not None:
+            return best
         raise ValueError("当前项目没有与终审结果绑定的受保护最佳稿")
 
     @staticmethod
@@ -1217,7 +1775,7 @@ class WorkflowService:
             store, contract, records, candidate, completed, status,
         )
         return self._write_short_revision_report(
-            store, run_id, records, candidate, gate, status,
+            store, run_id, records, candidate, gate, status, contract,
         )
 
     def _replay_repair_records(
@@ -1289,24 +1847,84 @@ class WorkflowService:
     def _write_short_revision_report(
         self, store: RepairRunStore, run_id: str, records: list[dict],
         candidate: str, gate: dict | None, status: str,
+        contract: dict | None = None,
     ) -> dict:
-        groups = {
-            record["group_id"]: {
+        issues = {
+            item.get("issue_id"): item
+            for item in (contract or {}).get("selected_issues", [])
+            if isinstance(item, dict) and isinstance(item.get("issue_id"), str)
+        }
+
+        def public_group(record: dict) -> dict:
+            patch_group = record.get("patch_group")
+            patch_result = record.get("patch_result")
+            patches = (
+                patch_group.get("patches", [])
+                if isinstance(patch_group, dict) else []
+            )
+            failures = (
+                patch_result.get("failures", [])
+                if isinstance(patch_result, dict) else []
+            )
+            issue_ids = record.get("issue_ids", [])
+            issue = (
+                issues.get(issue_ids[0])
+                if isinstance(issue_ids, list) and issue_ids else None
+            )
+            if isinstance(issue, dict):
+                issue = dict(issue)
+                if record.get("issue_status"):
+                    issue["status"] = record["issue_status"]
+            decision = record.get("decision")
+            if (
+                decision is None
+                and record.get("kind") == "mechanical"
+                and isinstance(patch_result, dict)
+                and patch_result.get("accepted") is True
+            ):
+                decision = "adopted"
+            before = [
+                patch.get("old_text")
+                for patch in patches
+                if isinstance(patch, dict) and isinstance(
+                    patch.get("old_text"), str,
+                )
+            ]
+            after = [
+                patch.get("new_text")
+                for patch in patches
+                if isinstance(patch, dict) and isinstance(
+                    patch.get("new_text"), str,
+                )
+            ]
+            return {
                 "group_id": record["group_id"],
-                "issue_ids": record.get("issue_ids", []),
+                "issue_ids": issue_ids,
                 "kind": record.get("kind"),
                 "status": record.get("status"),
+                "decision": decision,
                 "message": record.get("message"),
                 "attempts": record.get("attempts", 0),
-                "patches": (
-                    record.get("patch_group", {}).get("patches", [])
-                    if isinstance(record.get("patch_group"), dict) else []
+                "patches": patches,
+                "failures": failures,
+                "issue": issue,
+                "before": before,
+                "after": after,
+                "related_positions": (
+                    patch_group.get("related_positions", [])
+                    if isinstance(patch_group, dict) else []
                 ),
-                "failures": (
-                    record.get("patch_result", {}).get("failures", [])
-                    if isinstance(record.get("patch_result"), dict) else []
-                ),
+                "local_checks": {
+                    "passed": (
+                        patch_result.get("accepted") is True
+                        if isinstance(patch_result, dict) else False
+                    ),
+                    "failures": failures,
+                },
             }
+
+        groups = {
+            record["group_id"]: public_group(record)
             for record in records
         }
         next_action = {

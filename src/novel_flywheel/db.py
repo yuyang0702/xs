@@ -713,6 +713,23 @@ class Database:
                 (status, current_stage, error, run_id),
             )
 
+    def claim_run_status(
+        self, run_id: str, expected_statuses: set[str],
+        status: str, current_stage: str | None = None,
+    ) -> bool:
+        if not expected_statuses:
+            return False
+        ordered = sorted(expected_statuses)
+        placeholders = ", ".join("?" for _ in ordered)
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "UPDATE runs SET status=?, current_stage=?, error=NULL, "
+                "updated_at=datetime('now') "
+                f"WHERE id=? AND status IN ({placeholders})",
+                (status, current_stage, run_id, *ordered),
+            )
+        return cursor.rowcount == 1
+
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self.connect() as connection:
             row = connection.execute("SELECT * FROM runs WHERE id = ?", (run_id,)).fetchone()
