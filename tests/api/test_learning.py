@@ -1,3 +1,4 @@
+import json
 import time
 from types import SimpleNamespace
 
@@ -5,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
+from novel_flywheel.learning import OutlineGenerationNotReady
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.secrets import MemorySecretStore
 
@@ -456,3 +458,303 @@ def test_outline_semantic_review_sends_only_uncertain_changes_to_planning_model(
     assert gateway.calls[0][3] == 2048
     assert '"type": "uncertain"' in gateway.calls[0][2]
     assert len(gateway.calls[0][2]) <= 30_000
+
+
+def test_outline_generation_prompt_uses_only_confirmed_abstract_allowlist(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project = client.post("/api/projects", json={
+        "title": "允许的标题", "mode": "short", "genre": "允许的题材",
+        "premise": "允许的前提", "target_words": 12_345,
+        "pov": "允许的视角", "tone": "允许的语气",
+        "must_include": "允许的必须包含", "must_avoid": "允许的必须避开",
+    }).json()
+    project_id = project["id"]
+    stored_project = client.app.state.projects.get(project_id)
+    project_metadata = {
+        **stored_project.metadata,
+        "private_metadata": "FORBIDDEN_PROJECT_METADATA",
+        "creative_blueprint": "FORBIDDEN_PROJECT_BLUEPRINT_COPY",
+    }
+    (stored_project.path / "project.json").write_text(
+        json.dumps(project_metadata, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    source = client.post("/api/references", json={
+        "title": "FORBIDDEN_SOURCE_TITLE",
+        "source_type": "paste",
+        "text": "FORBIDDEN_SOURCE_PROSE",
+    }).json()
+    learning = client.app.state.learning
+    confirmed = learning._save_node(
+        "mechanism",
+        {
+            "name": "允许的抽象写法",
+            "transfer_guidance": "允许的迁移规则",
+            "confidence": 0.9,
+            "source_title": "FORBIDDEN_SOURCE_TITLE_FIELD",
+            "source_path": "FORBIDDEN_SOURCE_PATH",
+            "evidence": "FORBIDDEN_EVIDENCE",
+            "fact": "FORBIDDEN_FACT",
+            "interpretation": "FORBIDDEN_INTERPRETATION",
+            "model_review": "FORBIDDEN_MODEL_REVIEW",
+            "receipt": "FORBIDDEN_RECEIPT",
+            "supporting_windows": "FORBIDDEN_SUPPORTING_WINDOWS",
+            "character_name": "FORBIDDEN_CHARACTER_NAME",
+            "setting": "FORBIDDEN_SETTING",
+            "plot": "FORBIDDEN_CONCRETE_PLOT",
+            "unique_expression": "FORBIDDEN_UNIQUE_EXPRESSION",
+        },
+        source_id=source["id"],
+        status="confirmed",
+    )
+    unadopted = learning._save_node(
+        "mechanism",
+        {
+            "name": "FORBIDDEN_UNADOPTED_NAME",
+            "transfer_guidance": "FORBIDDEN_UNADOPTED_GUIDANCE",
+            "confidence": 0.9,
+        },
+        source_id=source["id"],
+        status="confirmed",
+    )
+    attraction = learning._save_node(
+        "attraction_map",
+        {
+            "confidence": 0.9,
+            "fit": {"level": "strong", "explanation": "FORBIDDEN_ATTRACTION_REVIEW"},
+            "opening": {
+                "mechanism": "FORBIDDEN_ATTRACTION_PACKAGING",
+                "transfer_guidance": "允许的开场规则",
+                "evidence": "FORBIDDEN_ATTRACTION_EVIDENCE",
+            },
+            "cycles": [{
+                "transfer_guidance": "允许的循环规则",
+                "fact": "FORBIDDEN_ATTRACTION_FACT",
+            }],
+            "question_chain": [{"transfer_guidance": "允许的悬念规则"}],
+            "relationship_arc": [{"transfer_guidance": "允许的关系规则"}],
+            "reversal": {"transfer_guidance": "允许的反转规则"},
+            "ending": {"transfer_guidance": "允许的收束规则"},
+        },
+        source_id=source["id"],
+        status="confirmed",
+    )
+    for node in (confirmed, attraction):
+        adopted = client.post(
+            f"/api/projects/{project_id}/learning/adoptions/{node['id']}",
+            json={"edits": {}},
+        )
+        assert adopted.status_code == 201
+    assert client.post(
+        f"/api/learning/nodes/{confirmed['id']}/revisions",
+        json={"action": "reject", "data": {}},
+    ).status_code == 200
+    blueprint = learning.get_artifact(project_id, "creative_blueprint")
+    learning.save_artifact(project_id, "creative_blueprint", {
+        **blueprint["data"],
+        "private_blueprint_data": "FORBIDDEN_CREATIVE_BLUEPRINT",
+    })
+
+    class RecordingGateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append((role, system, user, max_output_tokens))
+            return SimpleNamespace(
+                text="# 全新原创大纲\n\n## 开头\n一封没有署名的信抵达。",
+                receipt={"private": "FORBIDDEN_RESPONSE_RECEIPT"},
+            )
+
+    gateway = RecordingGateway()
+    client.app.state.learning.gateway = gateway
+    response = client.post(
+        f"/api/projects/{project_id}/learning/generate-outline",
+        json={"brief": "允许的用户补充"},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "pending"
+    assert len(gateway.calls) == 1
+    assert gateway.calls[0][0] == "planning"
+    assert gateway.calls[0][3] == 8192
+    assert json.loads(gateway.calls[0][2]) == {
+        "project_brief": {
+            "title": "允许的标题",
+            "mode": "short",
+            "genre": "允许的题材",
+            "premise": "允许的前提",
+            "target_words": 12_345,
+            "pov": "允许的视角",
+            "tone": "允许的语气",
+            "must_include": "允许的必须包含",
+            "must_avoid": "允许的必须避开",
+        },
+        "writing_methods": [{
+            "name": "允许的抽象写法",
+            "transfer_guidance": "允许的迁移规则",
+        }],
+        "attraction_rules": [
+            "允许的开场规则",
+            "允许的循环规则",
+            "允许的悬念规则",
+            "允许的关系规则",
+            "允许的反转规则",
+            "允许的收束规则",
+        ],
+        "user_brief": "允许的用户补充",
+    }
+    sent = "\n".join(str(part) for part in gateway.calls[0])
+    forbidden = {
+        "FORBIDDEN_PROJECT_METADATA",
+        "FORBIDDEN_PROJECT_BLUEPRINT_COPY",
+        "FORBIDDEN_SOURCE_TITLE",
+        "FORBIDDEN_SOURCE_PROSE",
+        "FORBIDDEN_SOURCE_TITLE_FIELD",
+        "FORBIDDEN_SOURCE_PATH",
+        "FORBIDDEN_EVIDENCE",
+        "FORBIDDEN_FACT",
+        "FORBIDDEN_INTERPRETATION",
+        "FORBIDDEN_MODEL_REVIEW",
+        "FORBIDDEN_RECEIPT",
+        "FORBIDDEN_SUPPORTING_WINDOWS",
+        "FORBIDDEN_CHARACTER_NAME",
+        "FORBIDDEN_SETTING",
+        "FORBIDDEN_CONCRETE_PLOT",
+        "FORBIDDEN_UNIQUE_EXPRESSION",
+        "FORBIDDEN_UNADOPTED_NAME",
+        "FORBIDDEN_UNADOPTED_GUIDANCE",
+        "FORBIDDEN_ATTRACTION_REVIEW",
+        "FORBIDDEN_ATTRACTION_PACKAGING",
+        "FORBIDDEN_ATTRACTION_EVIDENCE",
+        "FORBIDDEN_ATTRACTION_FACT",
+        "FORBIDDEN_CREATIVE_BLUEPRINT",
+        "FORBIDDEN_RESPONSE_RECEIPT",
+        source["id"],
+        client.app.state.references.get(source["id"])["latest_version"]["storage_path"],
+        confirmed["id"],
+        unadopted["id"],
+        attraction["id"],
+    }
+    assert not [marker for marker in forbidden if marker in sent]
+
+
+def test_outline_generation_failure_is_recoverable_without_mutating_project_state(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, node_id = project_and_mechanism(client)
+    client.post(
+        f"/api/learning/nodes/{node_id}/revisions",
+        json={"action": "confirm", "data": {}},
+    )
+    client.post(
+        f"/api/projects/{project_id}/learning/adoptions/{node_id}",
+        json={"edits": {}},
+    )
+    formal_candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "正式版", "outline": "# 正式大纲\n\n## 开头\n原有开头。"},
+    ).json()
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{formal_candidate['id']}/apply",
+        json={"apply_whole": True},
+    )
+    learning = client.app.state.learning
+    snapshots = {
+        "project": client.get(f"/api/projects/{project_id}").json(),
+        "adoptions": learning.list_adoptions(project_id),
+        "blueprint": learning.get_artifact(project_id, "creative_blueprint"),
+        "outline": client.app.state.outlines.current(project_id),
+    }
+    assert client.app.state.outlines.list_candidates(project_id) == []
+
+    class FailingGateway:
+        def __init__(self, error):
+            self.error = error
+
+        async def complete(self, *args, **kwargs):
+            raise self.error
+
+    for error in (
+        RuntimeError("PROVIDER_PRIVATE_RUNTIME_FAILURE"),
+        ConnectionError("PROVIDER_PRIVATE_CONNECTION_FAILURE"),
+        LookupError("PROVIDER_PRIVATE_LOOKUP_FAILURE"),
+        OutlineGenerationNotReady("SECRET_GATEWAY_NOT_READY"),
+    ):
+        client.app.state.learning.gateway = FailingGateway(error)
+        failed = client.post(
+            f"/api/projects/{project_id}/learning/generate-outline",
+            json={"brief": "沿用同一入口"},
+        )
+
+        assert failed.status_code == 502
+        assert failed.json()["detail"] == {
+            "code": "outline_generation_failed",
+            "message": "大纲生成失败，作品已经创建，可以稍后重试。",
+        }
+        assert "PROVIDER_PRIVATE" not in failed.text
+        assert "SECRET_GATEWAY_NOT_READY" not in failed.text
+        assert client.get(f"/api/projects/{project_id}").json() == snapshots["project"]
+        assert learning.list_adoptions(project_id) == snapshots["adoptions"]
+        assert learning.get_artifact(project_id, "creative_blueprint") == snapshots["blueprint"]
+        assert client.app.state.outlines.current(project_id) == snapshots["outline"]
+        assert client.app.state.outlines.list_candidates(project_id) == []
+
+    class SuccessfulGateway:
+        async def complete(self, *args, **kwargs):
+            return SimpleNamespace(
+                text="# 重试候选\n\n## 开头\n新的危机出现。",
+                receipt={"role": "planning"},
+            )
+
+    client.app.state.learning.gateway = SuccessfulGateway()
+    retried = client.post(
+        f"/api/projects/{project_id}/learning/generate-outline",
+        json={"brief": "沿用同一入口"},
+    )
+
+    assert retried.status_code == 201
+    assert retried.json()["status"] == "pending"
+    assert retried.json()["content"].startswith("# 重试候选")
+    assert [item["id"] for item in client.app.state.outlines.list_candidates(project_id)] == [
+        retried.json()["id"],
+    ]
+    assert client.app.state.outlines.current(project_id) == snapshots["outline"]
+    assert client.get(f"/api/projects/{project_id}").json() == snapshots["project"]
+    assert learning.list_adoptions(project_id) == snapshots["adoptions"]
+    assert learning.get_artifact(project_id, "creative_blueprint") == snapshots["blueprint"]
+
+
+def test_outline_generation_not_ready_errors_are_fixed_chinese(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, node_id = project_and_mechanism(client)
+
+    no_adoption = client.post(
+        f"/api/projects/{project_id}/learning/generate-outline",
+        json={"brief": ""},
+    )
+
+    assert no_adoption.status_code == 422
+    assert no_adoption.json()["detail"] == {
+        "code": "outline_generation_not_ready",
+        "message": "请先确认并采用至少一条写法，再生成大纲。",
+    }
+
+    client.post(
+        f"/api/learning/nodes/{node_id}/revisions",
+        json={"action": "confirm", "data": {}},
+    )
+    client.post(
+        f"/api/projects/{project_id}/learning/adoptions/{node_id}",
+        json={"edits": {}},
+    )
+    client.app.state.learning.gateway = None
+    no_model = client.post(
+        f"/api/projects/{project_id}/learning/generate-outline",
+        json={"brief": ""},
+    )
+
+    assert no_model.status_code == 422
+    assert no_model.json()["detail"] == {
+        "code": "outline_generation_not_ready",
+        "message": "规划模型当前不可用，请先检查模型配置。",
+    }

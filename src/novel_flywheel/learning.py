@@ -26,6 +26,18 @@ WINDOW_RESULT_FIELDS = (
     "relationship_changes", "style_evidence",
 )
 WINDOW_MODEL_OUTPUT_TOKENS = 4096
+OUTLINE_PROJECT_FIELDS = (
+    "title", "mode", "genre", "premise", "target_words",
+    "pov", "tone", "must_include", "must_avoid",
+)
+OUTLINE_ATTRACTION_RULE_FIELDS = (
+    "opening_rule", "cycle_rules", "question_rules",
+    "relationship_rules", "reversal_rule", "ending_rule",
+)
+
+
+class OutlineGenerationNotReady(ValueError):
+    pass
 
 
 class LearningSystem:
@@ -957,18 +969,56 @@ class LearningSystem:
 
     async def generate_outline_candidate(self, project_id: str, brief: str = "") -> dict:
         if self.gateway is None:
-            raise ValueError("Planning model gateway is unavailable")
-        project = self.projects.get(project_id)
-        blueprint = self.get_artifact(project_id, "creative_blueprint")
-        if not blueprint:
-            raise ValueError("Confirm at least one learning mechanism before generating an outline")
-        response = await self.gateway.complete(
-            "planning", "Create a candidate novel outline. Preserve authoritative project constraints and avoid copying source plots.",
-            f"PROJECT:\n{json.dumps(project.metadata, ensure_ascii=False)}\n\nCONFIRMED BLUEPRINT:\n"
-            f"{json.dumps(blueprint['data'], ensure_ascii=False)}\n\nUSER ADJUSTMENT:\n{brief}",
-            max_output_tokens=8192,
-        )
+            raise OutlineGenerationNotReady("规划模型当前不可用，请先检查模型配置。")
+        try:
+            project = self.projects.get(project_id)
+        except LookupError as exc:
+            raise OutlineGenerationNotReady("作品不存在或已删除，无法生成大纲。") from exc
+        context = self._outline_generation_context(project_id, project.metadata, brief)
+        if not context["writing_methods"] and not context["attraction_rules"]:
+            raise OutlineGenerationNotReady("请先确认并采用至少一条写法，再生成大纲。")
+        try:
+            response = await self.gateway.complete(
+                "planning",
+                "只根据原创作品简报、用户补充和人工确认的抽象写法生成候选小说大纲。"
+                "不得复现参考资料的人名、设定、具体情节或独特表达。返回 Markdown 大纲。",
+                json.dumps(context, ensure_ascii=False, indent=2),
+                max_output_tokens=8192,
+            )
+        except Exception as exc:
+            raise RuntimeError("outline generation gateway failed") from exc
         return self.create_outline_candidate(project_id, response.text)
+
+    def _outline_generation_context(
+        self, project_id: str, metadata: dict, brief: str,
+    ) -> dict:
+        methods = []
+        attraction_rules = []
+        for adoption in self.list_adoptions(project_id):
+            data = adoption["data"]
+            if data.get("mechanism_type") == "attraction_guidance":
+                for field in OUTLINE_ATTRACTION_RULE_FIELDS:
+                    value = data.get(field)
+                    values = value if isinstance(value, list) else [value]
+                    for rule in values:
+                        if isinstance(rule, str) and (rule := rule.strip()) and rule not in attraction_rules:
+                            attraction_rules.append(rule)
+            else:
+                method = {
+                    field: data[field].strip()
+                    for field in ("name", "transfer_guidance")
+                    if isinstance(data.get(field), str) and data[field].strip()
+                }
+                if method:
+                    methods.append(method)
+        return {
+            "project_brief": {
+                field: metadata.get(field) for field in OUTLINE_PROJECT_FIELDS
+            },
+            "writing_methods": methods,
+            "attraction_rules": attraction_rules,
+            "user_brief": brief,
+        }
 
     def create_line_edit_candidate(self, project_id: str, source: str, candidate: str,
                                    *, issues: list[str], locked_facts: list[str]) -> dict:

@@ -3,6 +3,8 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from novel_flywheel.learning import OutlineGenerationNotReady
+
 
 router = APIRouter(prefix="/api", tags=["learning"])
 
@@ -330,8 +332,16 @@ def restore_outline(project_id: str, payload: OutlineRestorePayload, request: Re
 async def generate_outline(project_id: str, payload: OutlineGeneratePayload, request: Request) -> dict:
     try:
         return await _learning(request).generate_outline_candidate(project_id, payload.brief)
-    except (LookupError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except OutlineGenerationNotReady as exc:
+        raise HTTPException(status_code=422, detail={
+            "code": "outline_generation_not_ready",
+            "message": str(exc),
+        }) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail={
+            "code": "outline_generation_failed",
+            "message": "大纲生成失败，作品已经创建，可以稍后重试。",
+        }) from exc
 
 
 @router.post("/projects/{project_id}/learning/line-edits", status_code=status.HTTP_201_CREATED)

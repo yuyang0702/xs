@@ -346,6 +346,39 @@ def test_scoped_wizard_lists_all_confirmed_methods_from_selected_sources(tmp_pat
     assert ignored_nodes[0]["id"] not in {item["id"] for item in choices}
 
 
+def test_wizard_selection_order_survives_deduplication_adoptions_and_blueprint(tmp_path) -> None:
+    client = wizard_client(tmp_path)
+    source, nodes = confirmed_source(client, "乱序写法", "reference_work", count=3)
+    wizard = client.post("/api/wizards", json={
+        "mode": "short", "reference_source_ids": [source["id"]],
+    }).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "保持选择顺序", "policy": "locked"},
+        "genre": {"value": "悬疑", "policy": "locked"},
+        "premise": {"value": "一封来信。", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+    }})
+    selected = [
+        nodes[2]["id"], nodes[0]["id"], nodes[2]["id"],
+        nodes[1]["id"], nodes[0]["id"],
+    ]
+    expected = [nodes[2]["id"], nodes[0]["id"], nodes[1]["id"]]
+
+    response = client.post(
+        f"/api/wizards/{wizard['id']}/confirm",
+        json={"selected_mechanism_ids": selected},
+    )
+
+    assert response.status_code == 201
+    project_id = response.json()["id"]
+    completed = client.get(f"/api/wizards/{wizard['id']}").json()
+    assert completed["schema"]["creation_context"]["selected_mechanism_ids"] == expected
+    learning = client.app.state.learning
+    assert [item["node_id"] for item in learning.list_adoptions(project_id)] == expected
+    blueprint = learning.get_artifact(project_id, "creative_blueprint")
+    assert [item["provenance"]["node_id"] for item in blueprint["data"]["mechanisms"]] == expected
+
+
 def test_wizard_rejects_missing_reference_creation_source(tmp_path) -> None:
     response = wizard_client(tmp_path).post("/api/wizards", json={
         "mode": "short",
