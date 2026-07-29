@@ -44,6 +44,7 @@ EXPANSION_CONTRACT = (
     "只返回严格 JSON。为每个新增场景提供 purpose、正整数 target_han、entry_state、"
     "exit_state、在当前候选稿中唯一出现的 anchor、insert_before 或 insert_after operation，"
     "以及 requires_full_review=true；同时说明 time、evidence_source、transition 和 new_facts。"
+    "anchor 只能从 anchor_candidates 选择；new_facts 必须是非空字符串列表，也可为空列表。"
     "所有场景 target_han 之和必须等于程序给出的本地篇幅缺口。优先补充调查受阻、选择代价、"
     "证据验证、关系变化和结尾兑现，不得用背景说明凑字数。"
 )

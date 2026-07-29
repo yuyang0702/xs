@@ -803,6 +803,85 @@ class WorkflowService:
             for key in ("category", "code", "issue_type")
         )
 
+    @staticmethod
+    def _expansion_anchor_candidates(candidate: str) -> list[dict]:
+        max_candidates = 24
+        max_anchor_characters = 120
+        max_preview_characters = 160
+        candidates = []
+        seen = set()
+
+        def add_anchor(raw: str, raw_start: int) -> bool:
+            anchor = raw.strip()
+            if (
+                len(anchor) < 4
+                or len(anchor) > max_anchor_characters
+                or anchor in seen
+                or candidate.count(anchor) != 1
+            ):
+                return False
+            position = raw_start + raw.index(anchor)
+            preview_start = max(0, position - 48)
+            preview_start = min(
+                preview_start,
+                max(0, len(candidate) - max_preview_characters),
+            )
+            candidates.append({
+                "anchor": anchor,
+                "position": position,
+                "preview": candidate[
+                    preview_start:preview_start + max_preview_characters
+                ],
+            })
+            seen.add(anchor)
+            return True
+
+        paragraph_start = 0
+        separators = [
+            *re.finditer(r"(?:\r?\n){2,}", candidate),
+            None,
+        ]
+        for separator in separators:
+            paragraph_end = (
+                separator.start() if separator is not None else len(candidate)
+            )
+            paragraph = candidate[paragraph_start:paragraph_end]
+            if paragraph.strip():
+                added = False
+                if len(paragraph.strip()) <= max_anchor_characters:
+                    added = add_anchor(paragraph, paragraph_start)
+                if not added:
+                    for sentence in re.finditer(
+                        r"[^。！？!?；;\r\n]+"
+                        r"(?:[。！？!?；;]+[”’」』]?|$)",
+                        paragraph,
+                    ):
+                        add_anchor(
+                            sentence.group(0),
+                            paragraph_start + sentence.start(),
+                        )
+            if separator is not None:
+                paragraph_start = separator.end()
+
+        candidates.sort(key=lambda item: item["position"])
+        if len(candidates) <= max_candidates:
+            return candidates
+        selected = []
+        available = list(candidates)
+        text_end = max(0, len(candidate) - 1)
+        for index in range(max_candidates):
+            target = text_end * index / (max_candidates - 1)
+            closest = min(
+                available,
+                key=lambda item: (
+                    abs(item["position"] - target),
+                    item["position"],
+                ),
+            )
+            selected.append(closest)
+            available.remove(closest)
+        return sorted(selected, key=lambda item: item["position"])
+
     async def _expansion_patch_group(
         self, run_id: str, run_path: Path, project: Project,
         constraints: str, contract: dict, issue: dict,
@@ -811,6 +890,12 @@ class WorkflowService:
         completed: set[str],
     ) -> dict:
         budget = contract["length_budget"]
+        anchor_candidates = self._expansion_anchor_candidates(candidate)
+        if not anchor_candidates:
+            raise ValueError("候选稿缺少可安全定位的扩写锚点")
+        allowed_anchors = {
+            item["anchor"] for item in anchor_candidates
+        }
         scene_records = record.get("expansion_plan")
         if not isinstance(scene_records, list):
             request = {
@@ -826,6 +911,7 @@ class WorkflowService:
                 "seven_step_causal_chain": contract.get(
                     "seven_step_causal_chain",
                 ),
+                "anchor_candidates": anchor_candidates,
                 "instructions": EXPANSION_CONTRACT,
             }
             raw_plan = await self._stage(
@@ -838,7 +924,7 @@ class WorkflowService:
             try:
                 scenes = self._normalize_expansion_plan(
                     self._json_object(raw_plan), candidate,
-                    budget["deficit_han"],
+                    budget["deficit_han"], allowed_anchors,
                 )
             except ValueError:
                 raise ExpansionRejectedError(
@@ -866,6 +952,7 @@ class WorkflowService:
                 },
                 candidate,
                 budget["deficit_han"],
+                allowed_anchors,
             )
         except (KeyError, TypeError, ValueError):
             raise ExpansionRejectedError(
@@ -958,6 +1045,7 @@ class WorkflowService:
     @staticmethod
     def _normalize_expansion_plan(
         value: dict, candidate: str, deficit_han: int,
+        allowed_anchors: set[str] | None = None,
     ) -> list[dict]:
         scenes = value.get("scenes")
         if not isinstance(scenes, list) or not scenes:
@@ -981,16 +1069,33 @@ class WorkflowService:
             ):
                 raise ValueError("扩写场景目标汉字数无效")
             anchor = scene["anchor"]
-            if anchor in anchors or candidate.count(anchor) != 1:
+            if (
+                anchor in anchors
+                or candidate.count(anchor) != 1
+                or (
+                    allowed_anchors is not None
+                    and anchor not in allowed_anchors
+                )
+            ):
                 raise ValueError("扩写场景锚点必须唯一")
             if scene.get("operation") not in {"insert_before", "insert_after"}:
                 raise ValueError("扩写场景只能使用插入操作")
             if scene.get("requires_full_review") is not True:
                 raise ValueError("扩写场景必须要求全文复核")
-            if not isinstance(scene.get("new_facts"), list):
-                raise ValueError("扩写场景新增事实必须是列表")
+            new_facts = scene.get("new_facts")
+            if (
+                not isinstance(new_facts, list)
+                or any(
+                    not isinstance(fact, str) or not fact.strip()
+                    for fact in new_facts
+                )
+            ):
+                raise ValueError("扩写场景新增事实必须是非空字符串列表")
             anchors.add(anchor)
-            normalized.append(dict(scene))
+            normalized.append({
+                **scene,
+                "new_facts": [fact.strip() for fact in new_facts],
+            })
         if sum(scene["target_han"] for scene in normalized) != deficit_han:
             raise ValueError("扩写场景目标汉字数总和必须等于本地缺口")
         return normalized

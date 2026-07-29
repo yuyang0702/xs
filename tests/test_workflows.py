@@ -4029,12 +4029,41 @@ def _expansion_service(tmp_path, *, two_anchors: bool = False):
     return service, project, protected, ledger, state, anchors
 
 
+def test_expansion_anchor_catalogue_is_bounded_unique_and_distributed() -> None:
+    candidate = "".join(
+        f"第{index:02d}处线索由不同证人核实，时间记录完整。"
+        for index in range(60)
+    )
+
+    catalogue = WorkflowService._expansion_anchor_candidates(candidate)
+
+    assert 3 <= len(catalogue) <= 24
+    positions = [item["position"] for item in catalogue]
+    assert positions == sorted(positions)
+    assert positions[0] < len(candidate) * 0.1
+    assert any(
+        len(candidate) * 0.4 <= position <= len(candidate) * 0.6
+        for position in positions
+    )
+    assert positions[-1] > len(candidate) * 0.9
+    for item in catalogue:
+        anchor = item["anchor"]
+        position = item["position"]
+        assert candidate.count(anchor) == 1
+        assert candidate[position:position + len(anchor)] == anchor
+        assert item["preview"] in candidate
+        assert len(item["preview"]) <= 160
+
+
 @pytest.mark.parametrize("invalid_case", [
     "missing_purpose",
     "missing_entry_state",
     "missing_exit_state",
     "missing_anchor",
     "duplicate_anchor",
+    "uncatalogued_anchor",
+    "object_new_fact",
+    "blank_new_fact",
     "zero_target",
     "changed_total",
 ])
@@ -4052,6 +4081,12 @@ async def test_expansion_plan_contract_rejection_stays_local(
     elif invalid_case == "duplicate_anchor":
         plan["target_han"] = 1000
         scenes = [plan, dict(plan)]
+    elif invalid_case == "uncatalogued_anchor":
+        plan["anchor"] = "清楚。档案员"
+    elif invalid_case == "object_new_fact":
+        plan["new_facts"] = [{"fact": "门锁未被破坏"}]
+    elif invalid_case == "blank_new_fact":
+        plan["new_facts"] = ["   "]
     elif invalid_case == "zero_target":
         plan["target_han"] = 0
     elif invalid_case == "changed_total":
@@ -4168,18 +4203,26 @@ async def test_expansion_multiple_scenes_use_exact_local_deficit_and_unique_anch
     service, project, _source, ledger, _state, anchors = _expansion_service(
         tmp_path, two_anchors=True,
     )
-    plans = [
-        _expansion_plan(anchors[0], 700),
-        _expansion_plan(anchors[1], 1300),
-    ]
+    planned_scenes = []
     calls = []
 
     async def stage(*args, **kwargs):
         request = json.loads(args[5])
         calls.append((args[3], request.get("scene_index")))
         if args[3] == "revision_plan":
-            return json.dumps({"scenes": plans}, ensure_ascii=False)
-        plan = plans[request["scene_index"] - 1]
+            assert "anchor_candidates" in request
+            selected = [
+                item["anchor"] for item in request["anchor_candidates"][-2:]
+            ]
+            planned_scenes.extend([
+                _expansion_plan(selected[0], 700),
+                _expansion_plan(selected[1], 1300),
+            ])
+            planned_scenes[0]["new_facts"] = ["  档案门锁未被破坏  "]
+            return json.dumps(
+                {"scenes": planned_scenes}, ensure_ascii=False,
+            )
+        plan = request["contract"]
         return json.dumps(
             _expansion_draft(
                 plan, _expansion_scene_text(plan["target_han"]),
@@ -4203,6 +4246,8 @@ async def test_expansion_multiple_scenes_use_exact_local_deficit_and_unique_anch
     ]
     assert sum(item["target_han"] for item in contracts) == 2000
     assert len({item["anchor"] for item in contracts}) == 2
+    assert [item["anchor"] for item in contracts] == anchors
+    assert contracts[0]["new_facts"] == ["档案门锁未被破坏"]
     assert effective_han_characters(result["candidate"]) == 9000
     assert result["status"] == "waiting_confirmation"
 

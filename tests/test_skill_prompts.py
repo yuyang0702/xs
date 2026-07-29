@@ -16,6 +16,8 @@ def test_expansion_contract_requires_scene_state_and_full_review() -> None:
         "transition", "new_facts",
     ):
         assert field in EXPANSION_CONTRACT
+    assert "只能从 anchor_candidates" in EXPANSION_CONTRACT
+    assert "非空字符串列表" in EXPANSION_CONTRACT
     assert "背景说明" in EXPANSION_CONTRACT
     assert REQUIRED_SKILLS["revision_plan"] == [
         "revision-continuity", "plot-structure",
