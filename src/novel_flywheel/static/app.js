@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const genres = {
   "玄幻奇幻": ["东方玄幻", "西方奇幻", "仙侠", "魔法学院"],
   "科幻": ["硬科幻", "赛博朋克", "星际", "末世"],
@@ -22,7 +22,7 @@ const roles = {
 const workflowLabels = {
   "initialize-skills":"作品初始化", "short-story":"短篇完整创作", "long-setup":"长篇准备",
   "long-chapter":"长篇章节创作", "materials-audit":"资料检查", "materials-repair":"资料修复",
-  archive:"归档", primary:"主模型", circuit_fallback:"备用模型"
+  "short-revision":"安全定向返修", archive:"归档", primary:"主模型", circuit_fallback:"备用模型"
 };
 const findingLabels = {
   timestamp_scene_fragment:"时间与场景切换过于模板化", epiphany_formula:"顿悟表达过于公式化",
@@ -106,14 +106,17 @@ const formatLocalTimestamp = (value, timeOnly = false) => {
 const isQualityRejected = run => run.status === "failed" && String(run.error || "").includes("quality gate");
 const runStatusLabel = run => isQualityRejected(run) ? "质量未通过" : ({
   queued:"排队中", running:"执行中", cancelling:"终止中", completed:"已完成",
-  cancelled:"已终止", failed:"失败"
-}[run.status] || run.status);
+  cancelled:"已终止", failed:"失败", waiting_confirmation:"等待你确认",
+  waiting_local_fix:"需要人工处理", interrupted:"意外中断，可继续"
+}[run.status] || "状态待确认");
 
 async function api(path, options = {}) {
   const response = await fetch(path, {headers:{"Content-Type":"application/json"}, ...options});
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));
-    throw new Error(typeof body.detail === "string" ? body.detail : (body.detail?.message || body.detail?.code || `HTTP ${response.status}`));
+    const error = new Error(typeof body.detail === "string" ? body.detail : (body.detail?.message || body.detail?.code || `HTTP ${response.status}`));
+    error.code = body.detail?.code || "";
+    throw error;
   }
   if (response.status === 204) return null;
   return response.json();
@@ -1149,11 +1152,101 @@ function qualityScore(value) {
   return Number.isFinite(Number(value)) ? Number(value).toFixed(1).replace(/\.0$/,"") : "待终审";
 }
 function qualityIssueStatus(value) {
-  return ({resolved:"已解决",closed:"已解决",partially_resolved:"部分解决",uncertain:"需要复核",unresolved:"待处理",open:"待处理"})[value]||"待处理";
+  return ({resolved:"已解决",closed:"已解决",partially_resolved:"部分解决",uncertain:"需要复核",unresolved:"待处理",open:"待处理",preserved:"保留原写法"})[value]||"待处理";
 }
 function qualitySeverity(value) {
   return ({critical:"必须处理",blocking:"必须处理",major:"优先处理",high:"优先处理",medium:"建议处理",low:"可选优化"})[value]||"建议处理";
 }
+const revisionPhaseLabels = [
+  "正在确认修改位置", "正在修改第N项", "正在检查是否影响其他剧情",
+  "正在进行局部复核或全文复核", "已完成、部分完成或需要你确认",
+];
+const revisionErrorLabels = {
+  revision_selection_invalid:"所选问题已经变化，请刷新后重新选择。",
+  revision_candidate_changed:"返修候选稿已经变化，请刷新后重试。",
+  revision_source_changed:"当前最佳稿已经变化，请重新选择问题。",
+  revision_story_state_changed:"作品设定已经变化，请重新开始这次返修。",
+  revision_locks_changed:"保护片段已经变化，请重新开始这次返修。",
+  revision_run_invalid:"这次返修的记录不可继续，请重新开始。",
+  revision_group_not_found:"没有找到这组修改，请刷新页面。",
+  revision_group_already_decided:"这组修改已经作出决定，页面即将刷新。",
+  revision_group_not_ready:"这组修改还没有通过本地检查。",
+  revision_decisions_incomplete:"请先决定每一组内容修改是否采用。",
+  revision_gate_failed:"整篇本地检查没有通过，尚未调用终审模型。",
+  revision_review_unavailable:"终审暂时不可用，修改决定和当前最佳稿都已保留。",
+  revision_not_improved:"这版没有超过当前最佳稿，当前最佳稿继续保留。",
+  revision_already_finalized:"这次返修已经完成。",
+  run_not_found:"没有找到这次返修记录。",
+  project_not_found:"没有找到当前作品。",
+  run_not_resumable:"这次返修目前不能继续运行。",
+};
+const revisionFailureLabels = {
+  source_hash_changed:"开始返修后原稿发生了变化，这组修改没有应用。",
+  anchor_not_unique:"修改位置在正文中出现多次，系统无法安全确定要改哪一处。",
+  mechanical_scope_not_unique:"需要自动修复的位置不够明确，系统没有改动正文。",
+  operation_invalid:"这组修改的操作方式未通过本地检查。",
+  repair_contract_rejected:"模型给出的修改格式未通过本地检查。",
+  model_routes_failed:"首选和备用模型都没有完成这一项。",
+  unexpected_group_error:"处理这一项时发生意外，其他已完成结果仍然保留。",
+  expansion_contract_rejected:"补写场景的安排未通过本地检查。",
+  expansion_draft_rejected:"补写场景未满足约定，系统没有应用。",
+};
+const revisionReasonLabels = {
+  changed_ratio:"改动文字较多", selected_ratio:"需要连带检查的位置较多",
+  scene_inserted:"增加了场景", scene_deleted:"删除了场景", scene_moved:"移动了场景",
+  scene_merged:"合并了场景", event_order_changed:"事件顺序发生变化",
+  scene_order_changed:"场景顺序发生变化", principal_character_changed:"主要人物发生变化",
+  key_event_changed:"关键事件发生变化", opening_promise_changed:"开头承诺发生变化",
+  climax_changed:"高潮发生变化", ending_changed:"结尾发生变化",
+  timeline_changed:"时间线发生变化", causal_relations_changed:"因果关系发生变化",
+  seven_step_structure_changed:"七步剧情结构发生变化", principal_goal_changed:"主角目标发生变化",
+  key_choice_changed:"关键选择发生变化", life_death_changed:"人物生死状态发生变化",
+  identity_changed:"人物身份发生变化", relationship_changed:"人物关系发生变化",
+  knowledge_state_changed:"人物知道的信息发生变化", key_evidence_changed:"关键证据发生变化",
+  setup_changed:"伏笔发生变化", promise_changed:"故事承诺发生变化",
+  question_changed:"显式问题发生变化", payoff_changed:"兑现内容发生变化",
+  locked_fact_changed:"锁定事实发生变化", world_rule_changed:"世界规则发生变化",
+  protected_passage_changed:"保护片段受到影响", reviewer_requested_full:"复核结果存在不确定之处",
+  partially_applied_groups:"有修改没有完整应用", semantic_patch_changed:"内容含义发生变化",
+  unverified_mechanical_changes:"自动修复需要再次核对", ltp_unavailable:"语义关联无法在本地确认",
+  ambiguous_mapping:"关联位置不够明确", new_blocking_issue:"本地扫描发现新的必须处理问题",
+  current_analysis_hash_mismatch:"本地分析与当前正文不一致", stale_analysis:"本地分析需要刷新",
+  missing_issue_reconciliation:"有问题尚未逐项复核", invalid_issue_reconciliation:"逐项复核结果不完整",
+  unresolved_major_issue:"仍有重要问题没有解决", baseline_manuscript_hash_mismatch:"返修依据的原稿已经变化",
+  baseline_analysis_hash_mismatch:"返修依据的本地分析已经变化", empty_incremental_scope:"没有找到足够可靠的局部复核范围",
+  unexplained_review_window:"有受影响位置尚未说明原因", incomplete_review_coverage:"关联位置没有全部检查",
+};
+const revisionGateLabels = {
+  source_hash_matches:"返修依据的原稿已经变化",
+  analysis_hash_matches:"本地分析与当前候选稿不一致",
+  required_text_missing:"需要保留的指定原句缺失",
+  forbidden_text_remains:"要求删除的文字仍然存在",
+  contract_source_hash_matches:"修改记录与当前原稿不一致",
+  patch_groups_complete:"有修改组没有完整应用",
+  plan_external_diff_absent:"候选稿出现了计划外改动",
+  locked_facts_preserved:"候选稿遗漏了已经锁定的事实",
+  passage_protection_missing:"受保护片段缺失",
+  passage_protection_mutated:"受保护片段被改动",
+  passage_protection_ambiguous:"受保护片段出现多处，无法确定位置",
+  analysis_coverage_complete:"本地分析没有覆盖全文",
+  local_prose_blockers_clear:"本地扫描仍发现必须处理的文字问题",
+  minimum_han_met:"正文有效字数低于当前作品下限",
+  maximum_han_not_exceeded:"正文有效字数超过当前作品上限",
+};
+const revisionCategoryLabel = value => ({story:"剧情",logic:"逻辑",character:"人物",structure:"结构",pacing:"节奏",prose:"文字",style:"表达",production_text:"正文完整性",manuscript_corruption:"正文完整性",canon:"设定",compliance:"投稿要求",length:"篇幅"})[value]||"正文";
+const revisionSafeText = (value,fallback) => {
+  const text=String(value??"").trim();
+  return text&&/[\u3400-\u9fff]/.test(text)&&!/(?:https?:\/\/|[A-Za-z]:\\)/.test(text)?text:fallback;
+};
+const revisionSafeError = (error,fallback="操作没有完成，请稍后重试。") => revisionErrorLabels[error?.code]||fallback;
+const revisionFailureLabel = value => revisionFailureLabels[String(value||"")]||"本地检查没有通过，这组修改没有应用。";
+const revisionReasonLabel = value => revisionReasonLabels[String(value||"")]||"改动影响范围需要更完整地复核";
+const revisionGateLabel = value => revisionGateLabels[String(value||"")]||"有一项整篇检查没有通过";
+const revisionGroupStatusLabel = group => {
+  if(group.decision==="adopted")return group.kind==="mechanical"?"已自动修复":"已采用";
+  if(group.decision==="rejected")return "已拒绝，保留原写法";
+  return ({pending:"等待处理",processing:"正在修改",ready_for_confirmation:"等待你确认",failed:"处理失败",rejected:"未通过本地检查",cancelled:"已停止"})[group.status]||"等待处理";
+};
 function setCandidateOperationStatus(kind,title,detail="") {
   const shell=$("#candidate-operation-status");
   shell.className=`operation-status ${kind}`;
@@ -1170,9 +1263,231 @@ async function loadCandidateQualityControls(projectId) {
   const value=index=>results[index].status==="fulfilled"?results[index].value:null;
   return {group:value(0),recommendations:value(1),history:value(2),protections:value(3),hasError:results.some(item=>item.status==="rejected")};
 }
-function qualityIssuesMarkup(issues) {
+function revisionIssueRowMarkup(item) {
+  const evidence=Array.isArray(item.evidence)?item.evidence:[];
+  const mandatory=Boolean(item.mandatory)||["critical","blocking"].includes(item.severity);
+  const actionable=!["resolved","closed","preserved"].includes(item.status);
+  const issueId=String(item.issue_id||"");
+  const title=revisionSafeText(item.title,"正文问题");
+  return `<article class="revision-issue-row ${mandatory?"mandatory":"advisory"}"><div class="revision-issue-choice"><label><input type="checkbox" data-revision-issue="${escapeHtml(issueId)}" ${mandatory&&actionable?"checked":""} ${!actionable||!issueId?"disabled":""}><span><b>${escapeHtml(mandatory?"必须处理":qualitySeverity(item.severity))}</b><strong>${escapeHtml(title)}</strong><small>${escapeHtml(qualityIssueStatus(item.status))}</small></span></label><em>会检查 ${evidence.length||1} 处相关位置</em></div><details><summary>查看原因、建议和位置</summary><div><p><strong>为什么需要处理</strong>${escapeHtml(revisionSafeText(item.effect,"可能影响理解、可信度或继续阅读的意愿。"))}</p><p><strong>建议怎么改</strong>${escapeHtml(revisionSafeText(item.repair_direction,"结合上下文复核并修改。"))}</p><p><strong>问题类型</strong>${escapeHtml(revisionCategoryLabel(item.category))}</p>${evidence.map(value=>`<blockquote><span>${escapeHtml(revisionSafeText(value.location,"正文相关位置"))}</span>${escapeHtml(revisionSafeText(value.excerpt,"这处原文需要结合上下文复核"))}</blockquote>`).join("")||'<p><strong>出现位置</strong>正文相关位置</p>'}</div></details></article>`;
+}
+function revisionIssuesMarkup(issues) {
+  const actionable=issues.filter(item=>!["resolved","closed","preserved"].includes(item.status));
+  if(!actionable.length)return '<div class="quality-empty"><strong>终审没有留下待处理问题</strong><p>仍可展开本地扫描，查看措辞和节奏方面的可选优化。</p></div>';
+  const first=actionable.slice(0,5).map(revisionIssueRowMarkup).join("");
+  const rest=actionable.slice(5).map(revisionIssueRowMarkup).join("");
+  return `<div class="revision-issue-list">${first}</div>${rest?`<details class="revision-more-issues"><summary>查看其余 ${actionable.length-5} 项</summary><div class="revision-issue-list">${rest}</div></details>`:""}<div class="revision-selection-actions"><span data-revision-selection-hint>必须处理项已选中；建议项由你决定。</span><button class="primary" type="button" data-revision-start>修复已选问题（0项）</button></div>`;
+}
+function revisionWorkspaceEnabled(project=state.activeProject) {
+  return project?.mode==="short"&&(project?.optimized_local_review_enabled===true||project?.metadata?.optimized_local_review_enabled===true);
+}
+function revisionRunBlocksNewRound(run) {
+  return Boolean(run&&run.projectId===state.activeProject?.id&&!["completed","waiting_local_fix"].includes(run.status));
+}
+function revisionContextMatches(projectId,runId,generation) {
+  return state.activeProject?.id===projectId&&(!runId||state.revisionRun?.id===runId)&&(generation===undefined||generation===state.revisionRefreshGeneration);
+}
+function qualityReadOnlyIssuesMarkup(issues) {
   if(!issues.length)return '<div class="quality-empty"><strong>终审没有留下待处理问题</strong><p>仍可展开本地扫描，查看措辞和节奏方面的可选优化。</p></div>';
-  return issues.slice(0,5).map(item=>`<details class="quality-issue-row"><summary><span><b>${escapeHtml(qualitySeverity(item.severity))}</b><strong>${escapeHtml(item.title||"正文问题")}</strong></span><small>${escapeHtml(qualityIssueStatus(item.status))}</small></summary><div><p><strong>为什么影响阅读</strong>${escapeHtml(item.effect||"可能影响理解、可信度或继续阅读的意愿。")}</p><p><strong>建议怎么改</strong>${escapeHtml(item.repair_direction||"结合上下文复核并修改。")}</p>${(item.evidence||[]).map(evidence=>`<blockquote><span>${escapeHtml(evidence.location||"正文相关位置")}</span>${escapeHtml(evidence.excerpt||"没有保留原文证据")}</blockquote>`).join("")}</div></details>`).join("");
+  return issues.slice(0,5).map(item=>`<details class="quality-issue-row"><summary><span><b>${escapeHtml(qualitySeverity(item.severity))}</b><strong>${escapeHtml(revisionSafeText(item.title,"正文问题"))}</strong></span><small>${escapeHtml(qualityIssueStatus(item.status))}</small></summary><div><p><strong>为什么影响阅读</strong>${escapeHtml(revisionSafeText(item.effect,"可能影响理解、可信度或继续阅读的意愿。"))}</p><p><strong>建议怎么改</strong>${escapeHtml(revisionSafeText(item.repair_direction,"结合上下文复核并修改。"))}</p>${(item.evidence||[]).map(evidence=>`<blockquote><span>${escapeHtml(revisionSafeText(evidence.location,"正文相关位置"))}</span>${escapeHtml(revisionSafeText(evidence.excerpt,"没有保留原文证据"))}</blockquote>`).join("")}</div></details>`).join("");
+}
+function qualityIssuesMarkup(issues) {
+  state.revisionIssues=issues;
+  return revisionWorkspaceEnabled()?$("#quality-revision-template").innerHTML:qualityReadOnlyIssuesMarkup(issues);
+}
+function renderRevisionIssueSelection(issues) {
+  const workspace=$("#quality-revision-workspace"),shell=$("#revision-issue-selection");
+  if(!workspace||!shell||!revisionWorkspaceEnabled())return;
+  state.revisionIssues=issues;
+  shell.innerHTML=revisionIssuesMarkup(issues);
+  workspace.hidden=!(issues.length||state.revisionRun);
+  shell.querySelectorAll("[data-revision-issue]").forEach(box=>box.addEventListener("change",updateRevisionSelectionCount));
+  shell.querySelector("[data-revision-start]")?.addEventListener("click",startTargetedRevision);
+  updateRevisionSelectionCount();
+}
+function updateRevisionSelectionCount() {
+  const shell=$("#revision-issue-selection");if(!shell)return;
+  const selected=[...shell.querySelectorAll("[data-revision-issue]:checked")];
+  const button=shell.querySelector("[data-revision-start]");
+  const openRun=revisionRunBlocksNewRound(state.revisionRun);
+  if(button){button.textContent=`修复已选问题（${selected.length}项）`;button.disabled=!selected.length||openRun;}
+  const hint=shell.querySelector("[data-revision-selection-hint]");
+  if(hint)hint.textContent=openRun?"当前返修结束或继续完成后，才能开始新一轮。":selected.length?`已选择 ${selected.length} 项，只会处理这些问题。`:"至少选择一项；未选建议会保留原写法。";
+}
+function setRevisionOperationStatus(kind,title,detail,phase=1,settled=false) {
+  const shell=$("#revision-operation-status");if(!shell)return;
+  shell.className=`operation-status revision-operation-status ${kind}`;
+  const success=kind==="success"&&settled;
+  const settledKind=kind==="error"?"failed":"waiting";
+  const progressKind=success?"complete":settled?settledKind:"";
+  const groupCount=Math.max(1,state.revisionReport?.groups?.filter(item=>["ready_for_confirmation","failed","rejected"].includes(item.status)).length||1);
+  const progress=revisionPhaseLabels.map((label,index)=>{
+    const step=index+1,status=step<phase||success&&step===phase?"done":step===phase?"active":"";
+    return `<li class="${status}"><span>${step}</span><b>${escapeHtml(label.replace("N",String(groupCount)))}</b></li>`;
+  }).join("");
+  shell.innerHTML=`<div class="revision-status-copy"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></div><ol class="revision-progress ${settled?"settled":""} ${progressKind}">${progress}</ol>`;
+}
+function revisionPhase(detail,report) {
+  if(["completed","waiting_confirmation","waiting_local_fix","failed","cancelled","interrupted"].includes(detail.status))return 5;
+  if(["final_review","revision_finalize"].includes(detail.current_stage))return 4;
+  if(detail.current_stage==="revision_gate")return 3;
+  if(detail.status==="queued"||detail.current_stage==="starting")return 1;
+  return 2;
+}
+function revisionPositionLabel(item) {
+  if(!item||typeof item!=="object")return "关联位置";
+  if(item.label)return revisionSafeText(item.label,"关联位置");
+  if(Number.isInteger(item.paragraph))return `第 ${item.paragraph} 段`;
+  if(Number.isInteger(item.sentence))return `第 ${item.sentence} 句`;
+  return "关联位置";
+}
+function revisionGroupMarkup(group,candidateHash) {
+  const issue=group.issue||{},decision=group.decision;
+  const title=revisionSafeText(issue.title,"正文问题");
+  const kindLabel=group.kind==="mechanical"?"自动修复":group.kind==="expansion"?"补充场景":"内容修改";
+  const ready=["semantic","expansion"].includes(group.kind)&&group.status==="ready_for_confirmation"&&!decision&&/^[0-9a-f]{64}$/.test(String(candidateHash||""));
+  const failures=(group.failures||[]).map(item=>`<li>${escapeHtml(revisionFailureLabel(item.code))}</li>`).join("");
+  const positions=(group.related_positions||[]).map(item=>`<li>${escapeHtml(revisionPositionLabel(item))}</li>`).join("");
+  const checks=group.local_checks?.passed===true?"已通过整篇本地检查":"本地检查没有通过";
+  const actions=ready?`<div class="revision-group-actions"><button class="primary" type="button" data-revision-adopt="${escapeHtml(group.group_id)}">采用这组修改</button><button class="secondary" type="button" data-revision-reject="${escapeHtml(group.group_id)}">拒绝这组修改</button><span>拒绝后会保留原写法，问题仍会留在待处理清单。</span></div>`:decision==="rejected"?'<p class="revision-decision rejected">已拒绝这组修改，保留原写法。</p>':decision==="adopted"?`<p class="revision-decision adopted">${group.kind==="mechanical"?"已自动采用这项机械修复。":"已采用这组修改。"}</p>`:"";
+  return `<details class="revision-group ${escapeHtml(group.status||"pending")}"><summary><span><b>${kindLabel}</b><strong>${escapeHtml(title)}</strong></span><small>${escapeHtml(revisionGroupStatusLabel(group))}</small></summary><div class="revision-group-body"><p class="revision-solved"><strong>解决的问题</strong>${escapeHtml(revisionSafeText(issue.impact||issue.suggestion,"按终审要求处理这处正文问题。"))}</p><div class="revision-comparison"><section><span>修改前</span><p>${escapeHtml(revisionSafeText(group.before,"没有可展示的原文片段"))}</p></section><section><span>修改后</span><p>${escapeHtml(revisionSafeText(group.after,"没有生成可用修改"))}</p></section></div><details class="revision-check-details"><summary>查看检查详情</summary><div><p><strong>本地检查</strong>${checks}</p>${positions?`<div><strong>同时检查的关联位置</strong><ul>${positions}</ul></div>`:'<p><strong>关联位置</strong>没有发现需要额外核对的位置</p>'}${failures?`<div><strong>未通过原因</strong><ul>${failures}</ul></div>`:""}</div></details>${actions}</div></details>`;
+}
+function revisionReviewMarkup(report) {
+  const reasons=Array.isArray(report.full_review_reasons)?report.full_review_reasons:[];
+  if(report.review_mode==="full"||report.review_mode==="full_fallback"||reasons.length)return `<div class="revision-review-plan full"><strong>需要全文复核</strong><span>${escapeHtml(reasons.map(revisionReasonLabel).join("；")||"改动影响故事整体，系统会重新阅读全文。")}</span></div>`;
+  if(report.review_mode==="incremental")return '<div class="revision-review-plan incremental"><strong>只复核改动及关联位置</strong><span>整篇本地检查已通过，且没有发现会改变整体剧情的高风险改动。</span></div>';
+  return '<div class="revision-review-plan"><strong>终审方式待确定</strong><span>确认修改后，系统会根据实际影响决定局部复核还是全文复核。</span></div>';
+}
+function revisionGateMarkup(report) {
+  const blocking=Array.isArray(report.gate?.blocking)?report.gate.blocking:[];
+  if(!blocking.length)return "";
+  const reasons=[...new Set(blocking.map(item=>revisionGateLabel(item?.code)))];
+  return `<section class="revision-gate-blockers"><strong>整篇检查发现 ${reasons.length} 项需要先处理</strong><ul>${reasons.map(reason=>`<li>${escapeHtml(reason)}</li>`).join("")}</ul></section>`;
+}
+function revisionActionsMarkup(detail,report) {
+  if(detail.status==="waiting_local_fix")return '<div class="revision-next-actions local-fix"><button class="secondary" type="button" data-revision-return>返回问题清单</button><span>这次任务不能直接续跑。请按上面的清单人工处理正文；重新终审后，再选择仍需返修的问题。</span></div>';
+  if(["failed","cancelled","interrupted"].includes(detail.status))return '<div class="revision-next-actions"><button class="primary" type="button" data-revision-resume>继续这次返修</button><span>可以从失败的问题继续，已完成结果不会重做。</span></div>';
+  if(detail.status!=="waiting_confirmation")return "";
+  const groups=report.groups||[];
+  const blocked=groups.some(item=>["failed","rejected","cancelled"].includes(item.status)&&!item.decision);
+  const undecided=groups.some(item=>["semantic","expansion"].includes(item.kind)&&item.status==="ready_for_confirmation"&&!item.decision);
+  if(blocked)return '<div class="revision-next-actions local-fix"><button class="secondary" type="button" data-revision-return>返回问题清单</button><span>有修改没有通过本地检查，当前最佳稿已保留。请按问题清单人工处理后重新终审。</span></div>';
+  if(undecided)return '<p class="revision-next-note">逐组查看修改前后，全部决定后才能开始终审。</p>';
+  const button=state.revisionFinalizing?'<button class="primary" type="button" data-revision-finalize disabled>正在检查已确认的修改…</button>':'<button class="primary" type="button" data-revision-finalize>检查已确认的修改</button>';
+  return `<div class="revision-next-actions">${button}<span>终审通过后才会成为新的受保护最佳稿，正式稿不会自动替换。</span></div>`;
+}
+function renderRevisionWorkspace(detail,report) {
+  const workspace=$("#quality-revision-workspace"),results=$("#revision-group-results");
+  if(!workspace||!results)return;
+  state.revisionRun={...detail,projectId:detail.project_id||state.activeProject?.id};state.revisionReport=report;
+  workspace.hidden=false;
+  const phase=revisionPhase(detail,report),complete=detail.status==="completed";
+  const active=["queued","running","cancelling"].includes(detail.status);
+  const failed=["failed","cancelled","interrupted"].includes(detail.status);
+  const title=complete?"返修已经完成":detail.status==="waiting_confirmation"?"修改建议已生成，需要你确认":detail.status==="waiting_local_fix"?"本地检查没有通过":failed?"本次返修没有完成":phase===1?"正在确认修改位置":phase===2?`正在修改第 ${Math.max(1,(report.groups||[]).filter(item=>["ready_for_confirmation","failed","rejected"].includes(item.status)).length+1)} 项`:phase===3?"正在检查是否影响其他剧情":"正在进行局部复核或全文复核";
+  const detailText=complete?"返修结果已通过检查，正式稿仍需由你单独确认。":detail.status==="waiting_confirmation"?"请逐组查看修改前后，再决定采用或拒绝。":detail.status==="waiting_local_fix"?"已保留当前最佳稿。请先查看没有通过的项目。":failed?"已保留当前最佳稿，可以从失败的问题继续。":active?"页面会自动更新进度，请保持当前页面打开。":"已保留当前最佳稿。";
+  setRevisionOperationStatus(complete?"success":failed?"error":active?"busy":"warning",title,detailText,phase,phase===5);
+  const groups=Array.isArray(report.groups)?report.groups:[];
+  results.innerHTML=`${revisionReviewMarkup(report)}${revisionGateMarkup(report)}<div class="revision-groups">${groups.length?groups.map(item=>revisionGroupMarkup(item,report.candidate_hash)).join(""):'<p class="skill-meta">正在准备修改内容，暂时还没有可确认的结果。</p>'}</div>${revisionActionsMarkup(detail,report)}`;
+  results.querySelectorAll("[data-revision-adopt]").forEach(button=>button.addEventListener("click",()=>decideRevisionGroup(button.dataset.revisionAdopt,"adopt")));
+  results.querySelectorAll("[data-revision-reject]").forEach(button=>button.addEventListener("click",()=>decideRevisionGroup(button.dataset.revisionReject,"reject")));
+  results.querySelector("[data-revision-resume]")?.addEventListener("click",resumeTargetedRevision);
+  results.querySelector("[data-revision-finalize]")?.addEventListener("click",finalizeTargetedRevision);
+  results.querySelector("[data-revision-return]")?.addEventListener("click",()=>$("#revision-issue-selection")?.scrollIntoView({behavior:"smooth",block:"start"}));
+  $("#revision-issue-selection")?.querySelectorAll("input,button").forEach(control=>control.disabled=revisionRunBlocksNewRound(state.revisionRun)||state.revisionFinalizing);
+  updateRevisionSelectionCount();
+}
+async function startTargetedRevision() {
+  const projectId=state.activeProject?.id;
+  if(!projectId||!revisionWorkspaceEnabled())return;
+  const requestGeneration=state.revisionRefreshGeneration;
+  const issue_ids=[...$("#revision-issue-selection").querySelectorAll("[data-revision-issue]:checked")].map(item=>item.dataset.revisionIssue);
+  if(!issue_ids.length)return setRevisionOperationStatus("error","还没有选择问题","至少选择一项后再开始。",1,true);
+  const button=$("#revision-issue-selection").querySelector("[data-revision-start]");if(button)button.disabled=true;
+  setRevisionOperationStatus("busy","正在确认修改位置","只会处理你勾选的问题，当前最佳稿不会被覆盖。",1,false);
+  try{
+    const run=await api(`/api/projects/${projectId}/revisions`,{method:"POST",body:JSON.stringify({issue_ids})});
+    if(!revisionContextMatches(projectId,null,requestGeneration))return;
+    state.revisionRun={...run,projectId};state.revisionReport={groups:[]};
+    const generation=++state.revisionRefreshGeneration;
+    await refreshRevisionRun(run.id,true,projectId,generation);
+  }catch(error){if(!revisionContextMatches(projectId,null,requestGeneration))return;setRevisionOperationStatus("error","返修没有开始",revisionSafeError(error,"系统暂时没有开始返修，请稍后重试。"),1,true);updateRevisionSelectionCount();}
+}
+async function refreshRevisionRun(runId,schedule=true,projectId=state.revisionRun?.projectId,generation=state.revisionRefreshGeneration) {
+  if(!runId||!projectId||!revisionContextMatches(projectId,runId,generation))return;
+  clearTimeout(state.revisionPollTimer);
+  try{
+    const detail=await api(`/api/runs/${runId}`);
+    if(detail.project_id!==projectId||!revisionContextMatches(projectId,runId,generation))return;
+    const report=await api(`/api/runs/${runId}/revision`);
+    if(!revisionContextMatches(projectId,runId,generation))return;
+    renderRevisionWorkspace(detail,report);
+    if(schedule&&["queued","running","cancelling"].includes(detail.status))state.revisionPollTimer=setTimeout(()=>refreshRevisionRun(runId,true,projectId,generation),900);
+  }catch(error){if(!revisionContextMatches(projectId,runId,generation))return;setRevisionOperationStatus("error","返修状态读取失败",revisionSafeError(error,"暂时无法读取返修进度，请刷新页面。"),5,true);}
+}
+async function decideRevisionGroup(groupId,decision) {
+  const runId=state.revisionRun?.id,projectId=state.activeProject?.id,candidate_hash=state.revisionReport?.candidate_hash;
+  if(!runId||!projectId||!revisionContextMatches(projectId,runId)||!/^[0-9a-f]{64}$/.test(String(candidate_hash||"")))return;
+  setRevisionOperationStatus("busy",decision==="adopt"?"正在采用这组修改":"正在拒绝这组修改","正在保存你的决定，正文和最佳稿暂时不会改变。",5,false);
+  try{
+    await api(`/api/runs/${runId}/revision/groups/${encodeURIComponent(groupId)}/${decision}`,{method:"POST",body:JSON.stringify({candidate_hash})});
+    if(!revisionContextMatches(projectId,runId))return;
+    await refreshRevisionRun(runId,false,projectId);
+  }catch(error){if(!revisionContextMatches(projectId,runId))return;await refreshRevisionRun(runId,false,projectId);if(!revisionContextMatches(projectId,runId))return;setRevisionOperationStatus("error","决定没有保存",revisionSafeError(error,"这组修改暂时无法确认，请刷新后重试。"),5,true);}
+}
+async function resumeTargetedRevision() {
+  const runId=state.revisionRun?.id,projectId=state.activeProject?.id;if(!runId||!projectId||!revisionContextMatches(projectId,runId))return;
+  setRevisionOperationStatus("busy","正在继续这次返修","会从第一个失败的问题继续，已完成结果不会重做。",2,false);
+  try{await api(`/api/runs/${runId}/resume`,{method:"POST"});if(!revisionContextMatches(projectId,runId))return;await refreshRevisionRun(runId,true,projectId);}
+  catch(error){if(!revisionContextMatches(projectId,runId))return;setRevisionOperationStatus("error","没有继续运行",revisionSafeError(error,"这次返修暂时不能继续，请刷新页面。"),5,true);}
+}
+async function finalizeTargetedRevision() {
+  const runId=state.revisionRun?.id,projectId=state.activeProject?.id;if(!runId||!projectId||!revisionContextMatches(projectId,runId))return;
+  if(state.revisionFinalizing)return;
+  const mode=state.revisionReport?.review_mode;
+  const generation=++state.revisionRefreshGeneration;
+  state.revisionFinalizing=true;
+  const button=$("#revision-group-results")?.querySelector("[data-revision-finalize]");if(button){button.disabled=true;button.textContent="正在检查已确认的修改…";}
+  setRevisionOperationStatus("busy","正在进行局部复核或全文复核",mode==="full"?"本次改动可能影响整体剧情，正在重新阅读全文。":"正在复核改动位置、相邻位置和关联剧情。",4,false);
+  state.revisionPollTimer=setTimeout(()=>refreshRevisionRun(runId,true,projectId,generation),900);
+  try{
+    const report=await api(`/api/runs/${runId}/revision/finalize`,{method:"POST"});
+    if(!revisionContextMatches(projectId,runId,generation))return;
+    clearTimeout(state.revisionPollTimer);
+    const detail=await api(`/api/runs/${runId}`);
+    if(!revisionContextMatches(projectId,runId,generation))return;
+    await loadCandidateQuality(projectId);
+    if(!revisionContextMatches(projectId,runId,generation))return;
+    state.revisionRefreshGeneration+=1;
+    state.revisionFinalizing=false;
+    renderRevisionWorkspace(detail,report);
+  }catch(error){
+    if(!revisionContextMatches(projectId,runId,generation))return;
+    clearTimeout(state.revisionPollTimer);
+    await refreshRevisionRun(runId,false,projectId,generation);
+    if(!revisionContextMatches(projectId,runId,generation))return;
+    state.revisionRefreshGeneration+=1;
+    if(state.revisionRun?.status==="completed"){state.revisionFinalizing=false;renderRevisionWorkspace(state.revisionRun,state.revisionReport);return;}
+    setRevisionOperationStatus("error","终审没有完成",`${revisionSafeError(error,"终审暂时不可用，请稍后重试。")} 已保留当前最佳稿和你的修改决定。`,5,true);
+  }finally{
+    if(revisionContextMatches(projectId,runId)){state.revisionFinalizing=false;const button=$("#revision-group-results")?.querySelector("[data-revision-finalize]");if(button){button.disabled=false;button.textContent="检查已确认的修改";}}
+  }
+}
+function resetRevisionWorkspace() {
+  clearTimeout(state.revisionPollTimer);
+  state.revisionRefreshGeneration+=1;
+  state.revisionRun=null;state.revisionReport=null;state.revisionFinalizing=false;state.revisionIssues=[];
+}
+async function loadLatestRevisionWorkspace(projectId,runs) {
+  if(state.activeProject?.id!==projectId)return;
+  clearTimeout(state.revisionPollTimer);
+  const generation=++state.revisionRefreshGeneration;
+  const project=state.projects.find(item=>item.id===projectId)||state.activeProject;
+  if(!revisionWorkspaceEnabled(project)){resetRevisionWorkspace();return;}
+  const latest=(runs||[]).find(item=>item.workflow==="short-revision");
+  if(!latest){state.revisionRun=null;state.revisionReport=null;state.revisionFinalizing=false;renderRevisionIssueSelection(state.revisionIssues);return;}
+  state.revisionRun={...latest,projectId};
+  await refreshRevisionRun(latest.id,true,projectId,generation);
 }
 function qualityCriteriaMarkup(score) {
   const entries=Object.entries(score.criteria||{});
@@ -1210,6 +1525,8 @@ function renderCandidateQualityWorkspace(result,controls) {
   return authority;
 }
 function bindCandidateQualityActions(projectId) {
+  renderRevisionIssueSelection(state.revisionIssues);
+  if(state.revisionReport&&state.revisionRun?.projectId===projectId)renderRevisionWorkspace(state.revisionRun,state.revisionReport);
   $("#candidate-quality").querySelector("[data-quality-reference-confirm]")?.addEventListener("click",()=>confirmQualityReferences(projectId));
   $("#candidate-quality").querySelectorAll("[data-quality-reference-remove]").forEach(button=>button.addEventListener("click",()=>removeQualityReference(projectId,button.dataset.qualityReferenceRemove)));
   $("#candidate-quality").querySelector("[data-protect-selection]")?.addEventListener("click",()=>protectSelectedCandidatePassage(projectId));
@@ -1501,12 +1818,14 @@ $("#publish-candidate").addEventListener("click", async () => {
 });
 async function renderActiveProject() {
   const p = state.activeProject;
+  if(!revisionWorkspaceEnabled(p)||state.revisionRun?.projectId&&state.revisionRun.projectId!==p.id)resetRevisionWorkspace();
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
   if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadWritingRulesSummary(null); await loadPublicationPanel(null); await loadWorkflowAnalysis(); return; }
   await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadWritingRulesSummary(p.id), loadPublicationPanel(p.id), loadWorkflowAnalysis()]);
   const runs = await api(`/api/projects/${p.id}/runs`);
+  await loadLatestRevisionWorkspace(p.id,runs);
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
   const initialized = initialization?.status === "completed";
@@ -1522,8 +1841,8 @@ async function renderActiveProject() {
     else { $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”"; }
   }
 }
-$("#active-project").addEventListener("change", event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
-$("#materials-project").addEventListener("change", async event => { state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
+$("#active-project").addEventListener("change", event => { resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
+$("#materials-project").addEventListener("change", async event => { resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
 $("#edit-project-learning").addEventListener("click", async () => {
   if(!state.activeProject)return toast("请先选择作品");
   showView("learning"); $("#learning-project").value=state.activeProject.id; state.projectLearning=null;

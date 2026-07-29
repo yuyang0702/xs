@@ -42,6 +42,13 @@
         <div class="section-heading"><div><h2 id="candidate-title">稿件质量与发布</h2><p class="skill-meta">先看最重要的问题；评分依据、全文和版本记录需要时再展开</p></div><button id="publish-candidate" class="primary" disabled hidden>设为正式稿</button></div>
         <div id="candidate-operation-status" class="operation-status" role="status" aria-live="polite">请先选择作品</div>
         <div id="candidate-quality"><p class="skill-meta">请先选择作品</p></div>
+        <template id="quality-revision-template">
+          <section id="quality-revision-workspace" class="quality-revision-workspace" aria-live="polite" hidden>
+            <div id="revision-issue-selection"></div>
+            <div id="revision-operation-status" class="operation-status revision-operation-status" role="status"></div>
+            <div id="revision-group-results"></div>
+          </section>
+        </template>
       </section>
       <section class="writing-rules-band" aria-labelledby="writing-rules-title">
         <div class="section-heading"><div><h2 id="writing-rules-title">本次创作会使用什么</h2><p class="skill-meta">生成前确认正在生效的要求、补充写法和可能冲突</p></div><button id="open-learning-library" class="secondary">管理写法和版本</button></div>

@@ -450,3 +450,140 @@ def test_candidate_quality_is_one_plain_chinese_progressive_workspace(tmp_path) 
     assert ".quality-manuscript-preview" in css
     assert ".quality-reference-list" in css
     assert "@media (max-width:800px)" in css
+
+
+def test_revision_workspace_has_plain_chinese_controls(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+
+    for control in (
+        "quality-revision-template", "quality-revision-workspace",
+        "revision-issue-selection", "revision-operation-status",
+        "revision-group-results",
+    ):
+        assert f'id="{control}"' in html
+    for label in (
+        "修复已选问题", "正在确认修改位置", "正在修改第",
+        "正在检查是否影响其他剧情", "正在进行局部复核或全文复核",
+        "采用这组修改", "拒绝这组修改", "保留原写法",
+        "修改前", "修改后", "查看检查详情",
+    ):
+        assert label in script
+    for forbidden in ("RAG", "补丁事务", "状态图", "哈希"):
+        assert forbidden not in html
+    assert "/revisions`" in script
+    assert "/revision/groups/${encodeURIComponent(groupId)}/" in script
+    assert "/revision/finalize" in script
+
+
+def test_revision_progress_keeps_failure_and_next_action_visible(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for label in (
+        "已保留当前最佳稿", "可以从失败的问题继续", "继续这次返修",
+        "需要全文复核", "只复核改动及关联位置", "本地检查没有通过",
+        "等待你确认", "需要人工处理", "意外中断，可继续",
+    ):
+        assert label in script
+    assert "revisionSafeError" in script
+    assert "revisionReasonLabel" in script
+    assert '}[run.status] || run.status' not in script
+    assert "clearTimeout(state.revisionPollTimer)" in script
+    assert ".revision-comparison" in css
+    assert ".revision-progress.complete" in css
+    assert "grid-template-columns:1fr" in css
+
+
+def test_revision_local_gate_lists_plain_reasons_without_false_resume(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    actions = script.split("function revisionActionsMarkup", 1)[1].split(
+        "function renderRevisionWorkspace", 1,
+    )[0]
+    assert actions.index('detail.status==="waiting_local_fix"') < actions.index(
+        '["failed","cancelled","interrupted"]'
+    )
+    assert "这次任务不能直接续跑" in actions
+    assert "返回问题清单" in actions
+    assert "data-revision-return" in actions
+    for label in (
+        "本地分析没有覆盖全文", "受保护片段被改动",
+        "本地扫描仍发现必须处理的文字问题",
+        "正文有效字数低于当前作品下限",
+    ):
+        assert label in script
+    revision_handlers = script.split("async function startTargetedRevision", 1)[1].split(
+        "function qualityCriteriaMarkup", 1,
+    )[0]
+    assert "error.message" not in revision_handlers
+
+
+def test_revision_progress_distinguishes_stopped_from_success(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    progress = script.split("function setRevisionOperationStatus", 1)[1].split(
+        "function revisionPhase", 1,
+    )[0]
+    assert 'const success=kind==="success"&&settled' in progress
+    assert 'success&&step===phase?"done"' in progress
+    assert 'settled?"settled":""' in progress
+    assert 'kind==="error"?"failed":"waiting"' in progress
+    assert ".revision-progress.settled li.active > span" in css
+    assert ".revision-progress.failed li.active > span" in css
+
+
+def test_revision_async_updates_stay_with_their_project_and_run(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    handlers = script.split("async function startTargetedRevision", 1)[1].split(
+        "function qualityCriteriaMarkup", 1,
+    )[0]
+
+    assert "function revisionContextMatches" in script
+    assert handlers.count("revisionContextMatches(projectId,runId)") >= 8
+    assert "state.revisionFinalizing=true" in handlers
+    assert "if(state.revisionFinalizing)return" in handlers
+    assert "state.revisionFinalizing=false" in handlers
+    assert 'data-revision-finalize disabled' in script
+    assert 'button.textContent="检查已确认的修改"' in handlers
+    assert 'revisionRefreshGeneration:0' in script
+    refresh = handlers.split("async function refreshRevisionRun", 1)[1].split(
+        "async function decideRevisionGroup", 1,
+    )[0]
+    assert "generation=state.revisionRefreshGeneration" in refresh
+    assert refresh.count("revisionContextMatches(projectId,runId,generation)") >= 4
+    assert "refreshRevisionRun(runId,true,projectId,generation)" in refresh
+    assert "const generation=++state.revisionRefreshGeneration" in handlers
+    assert "state.revisionRefreshGeneration+=1" in handlers
+    assert '"正在保存你的决定，正文和最佳稿暂时不会改变。",5,false' in handlers
+    assert script.count("resetRevisionWorkspace(); state.activeProject") >= 2
+    finalize_catch = handlers.split("async function finalizeTargetedRevision", 1)[1].split(
+        "}finally{", 1,
+    )[0].split("}catch(error){", 1)[1]
+    assert finalize_catch.index("await refreshRevisionRun") < finalize_catch.index(
+        'if(state.revisionRun?.status==="completed"){'
+    ) < finalize_catch.index(
+        'setRevisionOperationStatus("error","终审没有完成"'
+    )
+    assert "state.revisionFinalizing=false;renderRevisionWorkspace(state.revisionRun,state.revisionReport);return;" in finalize_catch
+
+
+def test_revision_workspace_requires_enabled_short_project_and_local_fix_can_restart(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    assert "function revisionWorkspaceEnabled" in script
+    assert 'project?.mode==="short"' in script
+    assert "project?.optimized_local_review_enabled===true" in script
+    assert "project?.metadata?.optimized_local_review_enabled===true" in script
+    assert "if(!revisionWorkspaceEnabled(project))" in script
+    assert '["completed","waiting_local_fix"].includes(run.status)' in script
+    assert "qualityReadOnlyIssuesMarkup" in script
