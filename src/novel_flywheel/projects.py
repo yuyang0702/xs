@@ -112,7 +112,10 @@ class ProjectStore:
     def _migrate_optimized_local_review(row: dict, project_path: Path) -> None:
         if row.get("mode") != "short":
             return
-        project_json = project_path / "project.json"
+        project_root = project_path.resolve()
+        project_json = ProjectStore._resolve_migration_path(
+            project_root / "project.json", project_root, direct_child=True,
+        )
         if not project_json.is_file():
             return
         try:
@@ -135,8 +138,11 @@ class ProjectStore:
         if "optimized_local_review_enabled" in metadata:
             return
 
-        snapshot_root = (
-            project_path / "snapshots" / "optimized-review-default"
+        snapshot_parent = ProjectStore._resolve_migration_path(
+            project_root / "snapshots", project_root, direct_child=True,
+        )
+        snapshot_root = ProjectStore._resolve_migration_path(
+            snapshot_parent / "optimized-review-default", project_root,
         )
         if snapshot_root.exists():
             ProjectStore._validate_optimized_review_snapshot(
@@ -144,7 +150,7 @@ class ProjectStore:
             )
         else:
             ProjectSnapshot.create(
-                project_path, snapshot_root, [project_json],
+                project_root, snapshot_root, [project_json],
             )
         migrated = {
             **metadata,
@@ -156,11 +162,36 @@ class ProjectStore:
         )
 
     @staticmethod
+    def _resolve_migration_path(
+        path: Path, root: Path, *, direct_child: bool = False,
+    ) -> Path:
+        resolved = path.resolve(strict=False)
+        if (
+            resolved == root
+            or not resolved.is_relative_to(root)
+            or direct_child and resolved.parent != root
+        ):
+            raise ValueError("项目迁移路径不在项目目录内，无法继续")
+        return resolved
+
+    @staticmethod
     def _validate_optimized_review_snapshot(
         project_json: Path, snapshot_root: Path,
     ) -> None:
-        snapshot_json = snapshot_root / "files" / "project.json"
-        manifest_path = snapshot_root / "manifest.json"
+        project_root = project_json.parent
+        snapshot_root = ProjectStore._resolve_migration_path(
+            snapshot_root, project_root,
+        )
+        manifest_path = ProjectStore._resolve_migration_path(
+            snapshot_root / "manifest.json",
+            snapshot_root,
+            direct_child=True,
+        )
+        snapshot_json = ProjectStore._resolve_migration_path(
+            snapshot_root / "files" / "project.json", snapshot_root,
+        )
+        if not snapshot_json.is_relative_to(project_root):
+            raise ValueError("项目迁移路径不在项目目录内，无法继续")
         try:
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             snapshot_bytes = snapshot_json.read_bytes()

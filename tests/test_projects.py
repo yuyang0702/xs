@@ -1,4 +1,6 @@
 import json
+import os
+import subprocess
 
 import pytest
 
@@ -32,6 +34,27 @@ def _register_existing_project(
     project_json.write_bytes(original)
     db.save_project(project_id, project_id, mode, path)
     return path, project_json, original
+
+
+def _link_directory(link, target) -> None:
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except OSError as exc:
+        if os.name != "nt" or getattr(exc, "winerror", None) != 1314:
+            raise
+        subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", "/J", str(link), str(target)],
+            check=True, capture_output=True, text=True,
+        )
+
+
+def _link_file_or_skip(link, target) -> None:
+    try:
+        link.symlink_to(target)
+    except OSError as exc:
+        if os.name == "nt" and getattr(exc, "winerror", None) == 1314:
+            pytest.skip("Windows file symlink privilege is unavailable (WinError 1314)")
+        raise
 
 
 def test_create_short_project_writes_durable_structure(tmp_path) -> None:
@@ -239,6 +262,93 @@ def test_project_store_rejects_registered_path_outside_workspace_before_migratio
         path / "snapshots" / "optimized-review-default"
     ).exists()
     assert StoryStateStore(db).get("outside-short") is None
+
+
+def test_project_store_rejects_project_root_symlink_outside_workspace(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    path, project_json, original = _register_existing_project(
+        db, tmp_path / "outside", "root-symlink", "short",
+    )
+    linked_path = workspace / "root-symlink"
+    _link_directory(linked_path, path)
+    db.update_project_path("root-symlink", linked_path)
+    before_mtime = project_json.stat().st_mtime_ns
+
+    with pytest.raises(ValueError, match="项目路径不在工作区内") as error:
+        ProjectStore(db, workspace)
+
+    assert str(path.resolve()) not in str(error.value)
+    assert project_json.read_bytes() == original
+    assert project_json.stat().st_mtime_ns == before_mtime
+    assert {item.name for item in path.iterdir()} == {
+        "memory", "manuscript", "project.json",
+    }
+    assert StoryStateStore(db).get("root-symlink") is None
+
+
+def test_optimized_review_migration_rejects_project_json_symlink_outside_project(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    path, project_json, original = _register_existing_project(
+        db, workspace, "json-symlink", "short",
+    )
+    outside_json = tmp_path / "outside-project.json"
+    outside_json.write_bytes(original)
+    project_json.unlink()
+    _link_file_or_skip(project_json, outside_json)
+    before_mtime = outside_json.stat().st_mtime_ns
+
+    with pytest.raises(ValueError) as error:
+        ProjectStore(db, workspace)
+
+    assert outside_json.read_bytes() == original
+    assert outside_json.stat().st_mtime_ns == before_mtime
+    assert not (path / "snapshots").exists()
+    assert StoryStateStore(db).get("json-symlink") is None
+    assert "项目迁移路径不在项目目录内" in str(error.value)
+    assert str(outside_json.resolve()) not in str(error.value)
+
+
+def test_optimized_review_migration_rejects_snapshots_symlink_outside_project(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    path, project_json, original = _register_existing_project(
+        db, workspace, "snapshots-symlink", "short",
+    )
+    outside_snapshots = tmp_path / "outside-snapshots"
+    outside_snapshots.mkdir()
+    sentinel = outside_snapshots / "keep.txt"
+    sentinel.write_bytes(b"unchanged")
+    _link_directory(path / "snapshots", outside_snapshots)
+    project_mtime = project_json.stat().st_mtime_ns
+    sentinel_mtime = sentinel.stat().st_mtime_ns
+    directory_mtime = outside_snapshots.stat().st_mtime_ns
+
+    with pytest.raises(ValueError) as error:
+        ProjectStore(db, workspace)
+
+    assert project_json.read_bytes() == original
+    assert project_json.stat().st_mtime_ns == project_mtime
+    assert sentinel.read_bytes() == b"unchanged"
+    assert sentinel.stat().st_mtime_ns == sentinel_mtime
+    assert outside_snapshots.stat().st_mtime_ns == directory_mtime
+    assert {item.name for item in outside_snapshots.iterdir()} == {
+        "keep.txt",
+    }
+    assert StoryStateStore(db).get("snapshots-symlink") is None
+    assert "项目迁移路径不在项目目录内" in str(error.value)
+    assert str(outside_snapshots.resolve()) not in str(error.value)
 
 
 @pytest.mark.parametrize(
