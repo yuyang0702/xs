@@ -308,6 +308,7 @@ class WorkflowService:
                 record["attempts"] = int(record.get("attempts", 0)) + 1
                 record["status"] = "processing"
                 record["message"] = "正在生成安全补丁"
+                patch_group = None
                 try:
                     if group["kind"] == "mechanical":
                         patch_group = self._mechanical_patch_group(
@@ -347,18 +348,56 @@ class WorkflowService:
                             ),
                             targeted_retry=True,
                         )
-                        value = normalize_repair_contract(
-                            self._json_object(raw), candidate, {group_id},
-                        )
-                        if len(value["groups"]) != 1:
-                            raise ValueError("模型必须一次只返回一个修改组")
-                        patch_group = value["groups"][0]
-                        if (
-                            patch_group.get("group_id") != group_id
-                            or patch_group.get("issue_ids") != [group_id]
-                            or patch_group.get("kind") != "semantic"
-                        ):
-                            raise ValueError("模型返回的修改组与当前问题不一致")
+                        try:
+                            value = normalize_repair_contract(
+                                self._json_object(raw), candidate, {group_id},
+                            )
+                            if len(value["groups"]) != 1:
+                                raise ValueError("模型必须一次只返回一个修改组")
+                            patch_group = value["groups"][0]
+                            if (
+                                patch_group.get("group_id") != group_id
+                                or patch_group.get("issue_ids") != [group_id]
+                                or patch_group.get("kind") != "semantic"
+                            ):
+                                raise ValueError("模型返回的修改组与当前问题不一致")
+                        except ValueError:
+                            record.update({
+                                "status": "rejected",
+                                "message": (
+                                    "模型返回的修改格式未通过本地验收，"
+                                    "当前修改组未应用"
+                                ),
+                            })
+                            record.pop("patch_group", None)
+                            record["patch_result"] = {
+                                "group_id": group_id,
+                                "accepted": False,
+                                "text": candidate,
+                                "failures": [{
+                                    "patch": 0,
+                                    "code": "repair_contract_rejected",
+                                }],
+                                "diffs": [],
+                            }
+                            self._save_short_revision_state(
+                                store, contract, run_id, records, candidate,
+                                completed, None, "running",
+                            )
+                            self.db.add_run_event(
+                                run_id, "warning",
+                                "short_revision_group_rejected",
+                                (
+                                    "模型返回的修改格式未通过本地验收，"
+                                    "当前修改组未应用"
+                                ),
+                                stage="repair_groups",
+                                metadata={
+                                    "group_id": group_id,
+                                    "category": "contract_validation",
+                                },
+                            )
+                            continue
                         result = {
                             "group_id": group_id,
                             **apply_patch_group(
@@ -385,7 +424,7 @@ class WorkflowService:
                         stage="repair_groups", metadata={"group_id": group_id},
                     )
                     raise
-                except Exception:
+                except TargetedGroupError:
                     provider_failures = True
                     record.update({
                         "status": "failed",
@@ -411,6 +450,42 @@ class WorkflowService:
                         stage="repair_groups", metadata={"group_id": group_id},
                     )
                     continue
+                except Exception:
+                    message = (
+                        "当前修改组发生意外错误，"
+                        "运行已停止并保留安全检查点"
+                    )
+                    record.update({
+                        "status": "failed",
+                        "message": message,
+                    })
+                    record.pop("patch_group", None)
+                    record["patch_result"] = {
+                        "group_id": group_id,
+                        "accepted": False,
+                        "text": candidate,
+                        "failures": [{
+                            "patch": 0,
+                            "code": "unexpected_group_error",
+                        }],
+                        "diffs": [],
+                    }
+                    self._save_short_revision_state(
+                        store, contract, run_id, records, candidate, completed,
+                        None, "failed",
+                    )
+                    self.db.update_run(
+                        run_id, "failed", "repair_groups", error=message,
+                    )
+                    self.db.add_run_event(
+                        run_id, "error", "short_revision_group_error",
+                        message, stage="repair_groups",
+                        metadata={
+                            "group_id": group_id,
+                            "category": "unexpected_local_error",
+                        },
+                    )
+                    raise
 
                 if patch_group is not None:
                     record["patch_group"] = patch_group
@@ -441,13 +516,23 @@ class WorkflowService:
                         })
                 else:
                     record.update({
-                        "status": "failed",
-                        "message": "补丁锚点已变化或不唯一，当前修改组未应用",
+                        "status": "rejected",
+                        "message": "修改锚点未通过本地验收，当前修改组未应用",
                     })
                 self._save_short_revision_state(
                     store, contract, run_id, records, candidate, completed,
                     None, "running",
                 )
+                if not result["accepted"]:
+                    self.db.add_run_event(
+                        run_id, "warning", "short_revision_group_rejected",
+                        "修改锚点未通过本地验收，当前修改组未应用",
+                        stage="repair_groups",
+                        metadata={
+                            "group_id": group_id,
+                            "category": "patch_validation",
+                        },
+                    )
 
             analysis = self._analyze_manuscript(
                 candidate, run_path, project, "repair-candidate",

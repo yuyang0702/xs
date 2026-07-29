@@ -18,7 +18,13 @@ from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.revision import segment_map
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
-from novel_flywheel.workflows import PolishTokenBudgetError, RevisionPlanError, StageText, WorkflowService
+from novel_flywheel.workflows import (
+    PolishTokenBudgetError,
+    RevisionPlanError,
+    StageText,
+    TargetedGroupError,
+    WorkflowService,
+)
 
 
 REQUIRED_SKILLS = {
@@ -3928,7 +3934,7 @@ async def test_short_revision_preserves_later_group_and_resumes_only_failed_grou
         issue_id = request["issue"]["issue_id"]
         first_calls.append(issue_id)
         if issue_id == issue_a:
-            raise RuntimeError("provider unavailable")
+            raise TargetedGroupError("provider unavailable")
         return _short_revision_patch(
             request, "乙问题原句。", "乙问题说明。",
         )
@@ -3943,9 +3949,26 @@ async def test_short_revision_preserves_later_group_and_resumes_only_failed_grou
     checkpoint = json.loads((output / "repair-checkpoint.json").read_text(
         encoding="utf-8",
     ))
+    groups = json.loads((output / "patch-groups.json").read_text(
+        encoding="utf-8",
+    ))
     candidate = (output / "candidate.md").read_text(encoding="utf-8")
+    failed_group = next(
+        item for item in groups["groups"] if item["group_id"] == issue_a
+    )
+    provider_event = next(
+        item for item in service.db.list_run_events("repair-resume")
+        if item["event_type"] == "short_revision_group_failed"
+    )
     assert first_calls == [issue_a, issue_b]
     assert checkpoint["completed_groups"] == [issue_b]
+    assert failed_group["patch_result"]["failures"] == [{
+        "patch": 0,
+        "code": "model_routes_failed",
+    }]
+    assert provider_event["metadata"] == {"group_id": issue_a}
+    assert "provider unavailable" not in failed_group["message"]
+    assert "provider unavailable" not in provider_event["message"]
     assert "乙问题说明。" in candidate
     assert service.db.get_run("repair-resume")["status"] == "failed"
     assert "completed" not in {
@@ -4121,7 +4144,7 @@ async def test_short_revision_resume_rejects_stale_protected_best_before_model(
     issue_id = ledger[0]["issue_id"]
 
     async def fail_stage(*args, **kwargs):
-        raise RuntimeError("provider unavailable")
+        raise TargetedGroupError("provider unavailable")
 
     monkeypatch.setattr(service, "_stage", fail_stage)
     with pytest.raises(RuntimeError, match="返修组"):
@@ -4251,3 +4274,178 @@ async def test_short_revision_checkpoint_failure_cannot_authorize_new_progress(
     assert (project.path / "runs" / "quality-source" / "outputs"
             / "best-candidate.md").read_text(encoding="utf-8") == source
     assert StoryStateStore(service.db).get(project.id) == state
+
+
+@pytest.mark.parametrize("model_output", [
+    "not-json",
+    json.dumps({"groups": []}),
+])
+@pytest.mark.asyncio
+async def test_short_revision_marks_invalid_model_contract_as_local_rejection(
+    tmp_path, monkeypatch, model_output,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "甲问题原句。",
+            "action": "修复甲问题。",
+        }],
+    )
+    issue_id = ledger[0]["issue_id"]
+
+    async def invalid_contract(*args, **kwargs):
+        return model_output
+
+    monkeypatch.setattr(service, "_stage", invalid_contract)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id=f"repair-rejected-{len(model_output)}",
+    )
+
+    group = result["groups"][issue_id]
+    events = service.db.list_run_events(result["id"])
+    event_types = {item["event_type"] for item in events}
+    rejected_event = next(
+        item for item in events
+        if item["event_type"] == "short_revision_group_rejected"
+    )
+    assert result["status"] == "waiting_local_fix"
+    assert group["status"] == "rejected"
+    assert group["message"] == "模型返回的修改格式未通过本地验收，当前修改组未应用"
+    assert group["failures"] == [{
+        "patch": 0,
+        "code": "repair_contract_rejected",
+    }]
+    assert rejected_event["metadata"] == {
+        "group_id": issue_id,
+        "category": "contract_validation",
+    }
+    assert model_output not in rejected_event["message"]
+    assert "short_revision_group_rejected" in event_types
+    assert "short_revision_group_failed" not in event_types
+
+
+@pytest.mark.asyncio
+async def test_short_revision_propagates_unexpected_local_group_error(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [
+            {
+                "category": "logic_continuity",
+                "severity": "medium",
+                "evidence": "甲问题原句。",
+                "action": "修复甲问题。",
+            },
+            {
+                "category": "logic_continuity",
+                "severity": "medium",
+                "evidence": "乙问题原句。",
+                "action": "修复乙问题。",
+            },
+        ],
+    )
+    calls = []
+
+    async def valid_contract(*args, **kwargs):
+        request = json.loads(args[5])
+        calls.append(request["group_id"])
+        return _short_revision_patch(
+            request, request["target_excerpt"], "已修复的候选句。",
+        )
+
+    def explode_locally(*args, **kwargs):
+        raise OSError("local validation exploded")
+
+    monkeypatch.setattr(service, "_stage", valid_contract)
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.normalize_repair_contract",
+        explode_locally,
+    )
+    with pytest.raises(OSError, match="local validation exploded"):
+        await service.run_short_revision(
+            project.id,
+            [item["issue_id"] for item in ledger],
+            run_id="repair-local-error",
+        )
+
+    report = json.loads((
+        project.path / "runs" / "repair-local-error"
+        / "outputs" / "repair-report.json"
+    ).read_text(encoding="utf-8"))
+    events = service.db.list_run_events("repair-local-error")
+    assert calls == [ledger[0]["issue_id"]]
+    assert service.db.get_run("repair-local-error")["status"] == "failed"
+    assert report["status"] == "failed"
+    assert report["groups"][ledger[0]["issue_id"]]["message"] == (
+        "当前修改组发生意外错误，运行已停止并保留安全检查点"
+    )
+    assert "short_revision_group_error" in {
+        item["event_type"] for item in events
+    }
+    assert "short_revision_group_failed" not in {
+        item["event_type"] for item in events
+    }
+    error_event = next(
+        item for item in events
+        if item["event_type"] == "short_revision_group_error"
+    )
+    assert error_event["metadata"] == {
+        "group_id": ledger[0]["issue_id"],
+        "category": "unexpected_local_error",
+    }
+
+
+@pytest.mark.asyncio
+async def test_short_revision_reports_atomic_patch_rejection_separately(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "甲问题原句。",
+            "action": "修复甲问题。",
+        }],
+    )
+    issue_id = ledger[0]["issue_id"]
+
+    async def valid_contract(*args, **kwargs):
+        request = json.loads(args[5])
+        return _short_revision_patch(
+            request, request["target_excerpt"], "已修复的候选句。",
+        )
+
+    def reject_patch(manuscript, group, source_hash):
+        return {
+            "accepted": False,
+            "text": manuscript,
+            "failures": [{"patch": 1, "code": "old_text_not_unique"}],
+            "diffs": [],
+        }
+
+    monkeypatch.setattr(service, "_stage", valid_contract)
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.apply_patch_group",
+        reject_patch,
+    )
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-patch-rejected",
+    )
+
+    group = result["groups"][issue_id]
+    rejected = [
+        item for item in service.db.list_run_events(result["id"])
+        if item["event_type"] == "short_revision_group_rejected"
+    ]
+    assert result["status"] == "waiting_local_fix"
+    assert group["status"] == "rejected"
+    assert group["message"] == "修改锚点未通过本地验收，当前修改组未应用"
+    assert group["failures"] == [{
+        "patch": 1,
+        "code": "old_text_not_unique",
+    }]
+    assert rejected[-1]["metadata"] == {
+        "group_id": issue_id,
+        "category": "patch_validation",
+    }
