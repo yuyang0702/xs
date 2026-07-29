@@ -4519,18 +4519,28 @@ class WorkflowService:
                     f"finish_reason={result.receipt.get('finish_reason', 'unknown')})"
                 )
             if result.receipt.get("fallback_used"):
+                fallback_metadata = {
+                    "fallback_type": "configured",
+                    "provider_id": result.receipt.get("provider_id"),
+                    "model_id": result.receipt.get("model_id"),
+                    "model_name": result.receipt.get("model_name"),
+                    "primary_provider_id": result.receipt.get(
+                        "fallback_from_provider_id"
+                    ),
+                    "primary_model_id": result.receipt.get(
+                        "fallback_from_model_id"
+                    ),
+                }
+                if (self.db.get_run(run_id) or {}).get(
+                    "workflow"
+                ) != "short-revision":
+                    fallback_metadata["primary_error"] = result.receipt.get(
+                        "primary_error"
+                    )
                 self.db.add_run_event(
                     run_id, "warning", "model_fallback",
                     f"{stage} 首选模型失败，已使用该角色配置的备用模型",
-                    stage=stage, metadata={
-                        "fallback_type": "configured",
-                        "provider_id": result.receipt.get("provider_id"),
-                        "model_id": result.receipt.get("model_id"),
-                        "model_name": result.receipt.get("model_name"),
-                        "primary_provider_id": result.receipt.get("fallback_from_provider_id"),
-                        "primary_model_id": result.receipt.get("fallback_from_model_id"),
-                        "primary_error": result.receipt.get("primary_error"),
-                    },
+                    stage=stage, metadata=fallback_metadata,
                 )
             name = f"{stage}{suffix}"
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
@@ -4552,14 +4562,27 @@ class WorkflowService:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
         except Exception as exc:
+            short_revision = (self.db.get_run(run_id) or {}).get(
+                "workflow"
+            ) == "short-revision"
             if stage == "review":
                 self.db.add_run_event(
                     run_id, "error", "review_incomplete",
-                    "Review primary and configured fallback did not produce usable output",
-                    stage=stage, metadata={"error": str(exc)},
+                    (
+                        "终审模型未返回可用结果。"
+                        if short_revision else
+                        "Review primary and configured fallback did not produce usable output"
+                    ),
+                    stage=stage,
+                    metadata={} if short_revision else {"error": str(exc)},
                 )
             self.db.add_run_event(
-                run_id, "error", "stage_failed", describe_error(exc), stage=stage,
+                run_id, "error", "stage_failed",
+                (
+                    "定向返修模型阶段未完成，已保留可恢复进度。"
+                    if short_revision else describe_error(exc)
+                ),
+                stage=stage,
             )
             raise
 
@@ -4576,10 +4599,16 @@ class WorkflowService:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            short_revision = (self.db.get_run(run_id) or {}).get(
+                "workflow"
+            ) == "short-revision"
             self.db.add_run_event(
                 run_id, "warning", "model_fallback",
                 f"{stage} 首选模型失败，已切换到 {fallback_role} 角色模型",
-                stage=stage, metadata={"fallback_role": fallback_role, "error": str(exc)},
+                stage=stage, metadata={
+                    "fallback_role": fallback_role,
+                    **({} if short_revision else {"error": str(exc)}),
+                },
             )
             return await self._stage(
                 run_id, run_path, project, stage, constraints, user,

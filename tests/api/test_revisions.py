@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
 from novel_flywheel.manuscript_analysis import analyze_manuscript
+from novel_flywheel.models import ModelResult
 from novel_flywheel.projects import ProjectCreate
 from novel_flywheel.quality import issue_ledger
 from novel_flywheel.quality_summary import effective_han_characters
@@ -1449,6 +1450,151 @@ def test_recovery_discards_partial_snapshot_creation_without_marker(
     assert (store.output / store.CANDIDATE).read_text(encoding="utf-8") == before
     assert db.get_run(run_id)["status"] == "waiting_confirmation"
     assert not journal.exists()
+
+
+def test_recovery_discards_truncated_unicode_manifest_and_resumes(
+    tmp_path, monkeypatch,
+) -> None:
+    app, db, project, source, source_hash, ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    run_id, _candidate_hash, store = _write_decision_records(
+        app, db, project, source, source_hash, ledger,
+    )
+    tracked = [
+        store.output / name for name in (
+            store.CONTRACT, store.GROUPS, store.CHECKPOINT,
+            store.CANDIDATE, store.REPORT,
+        )
+    ]
+    before = {path: path.read_bytes() for path in tracked}
+    db.update_run(run_id, "interrupted", "revision_promotion")
+    journal = project.path / "snapshots" / f"revision-promotion-{run_id}"
+    journal.mkdir(parents=True)
+    (journal / "manifest.json").write_bytes(b'["\xe4')
+
+    with pytest.raises(ValueError, match="Snapshot manifest is invalid"):
+        ProjectSnapshot.load(project.path, journal)
+    assert app.state.workflows.recover_short_revision_promotion(run_id) is False
+    assert {path: path.read_bytes() for path in tracked} == before
+    assert not journal.exists()
+
+    with TestClient(app) as client:
+        response = client.post(f"/api/runs/{run_id}/resume")
+        assert response.status_code == 202
+        detail = None
+        for _ in range(100):
+            detail = client.get(f"/api/runs/{run_id}").json()
+            if detail["status"] in {"waiting_confirmation", "completed"}:
+                break
+            time.sleep(0.01)
+
+    assert detail is not None
+    assert detail["status"] in {"waiting_confirmation", "completed"}
+
+
+def _stub_stage_skills(monkeypatch, workflows) -> None:
+    empty = SimpleNamespace(prompt="", receipts=[])
+    monkeypatch.setattr(
+        workflows.skills, "run_required", lambda *args, **kwargs: empty,
+    )
+    if hasattr(workflows.skills, "load_optional_prompts"):
+        monkeypatch.setattr(
+            workflows.skills, "load_optional_prompts",
+            lambda *args, **kwargs: empty,
+        )
+
+
+def test_semantic_revision_stage_failure_exposes_no_raw_error(
+    tmp_path, monkeypatch,
+) -> None:
+    app, _db, project, *_rest = _revision_app(tmp_path, monkeypatch)
+    sentinel = "秘密路径：某盘＼私密＼供应商日志；提示词：不得公开的模型提示"
+    real_pipeline = app.state.workflows.__class__.run_short_revision.__get__(
+        app.state.workflows,
+    )
+
+    class FailingGateway:
+        async def complete(self, *args, **kwargs):
+            raise RuntimeError(sentinel)
+
+    monkeypatch.setattr(app.state.workflows, "run_short_revision", real_pipeline)
+    monkeypatch.setattr(app.state.workflows, "gateway", FailingGateway())
+    _stub_stage_skills(monkeypatch, app.state.workflows)
+    with TestClient(app) as client:
+        started = client.post(
+            f"/api/projects/{project.id}/revisions",
+            json={"issue_ids": ["issue-time"]},
+        )
+        assert started.status_code == 202
+        run_id = started.json()["id"]
+        detail = None
+        for _ in range(100):
+            detail = client.get(f"/api/runs/{run_id}").json()
+            if detail["status"] == "failed":
+                break
+            time.sleep(0.01)
+
+    assert detail is not None
+    assert detail["status"] == "failed"
+    assert sentinel not in str(detail.get("error"))
+    assert all(
+        sentinel not in event["message"]
+        and sentinel not in json.dumps(event["metadata"], ensure_ascii=False)
+        for event in detail["events"]
+    )
+    assert sentinel not in json.dumps(detail["tool_receipts"], ensure_ascii=False)
+
+
+@pytest.mark.parametrize("role_fallback", [False, True])
+def test_revision_stage_fallback_events_omit_raw_primary_error(
+    tmp_path, monkeypatch, role_fallback,
+) -> None:
+    app, db, project, *_rest = _revision_app(tmp_path, monkeypatch)
+    sentinel = "秘密路径：某盘＼私密＼供应商日志；提示词：不得公开的模型提示"
+    run_id = f"repair-stage-fallback-{role_fallback}"
+    db.create_run(run_id, project.id, "short-revision", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    _stub_stage_skills(monkeypatch, app.state.workflows)
+
+    class FallbackGateway:
+        calls = 0
+
+        async def complete(self, *args, **kwargs):
+            self.calls += 1
+            if role_fallback and self.calls == 1:
+                raise RuntimeError(sentinel)
+            return ModelResult("safe output", {
+                "provider_id": "backup-provider",
+                "model_id": "backup-model",
+                "model_name": "backup-name",
+                "fallback_used": not role_fallback,
+                "fallback_from_provider_id": "primary-provider",
+                "fallback_from_model_id": "primary-model",
+                "primary_error": sentinel,
+            })
+
+    monkeypatch.setattr(app.state.workflows, "gateway", FallbackGateway())
+    if role_fallback:
+        asyncio.run(app.state.workflows._stage_with_role_fallback(
+            run_id, run_path, project, "revision_plan", "constraints", "request",
+            fallback_role="review", allow_tools=False,
+        ))
+    else:
+        asyncio.run(app.state.workflows._stage(
+            run_id, run_path, project, "revision_plan", "constraints", "request",
+            allow_tools=False,
+        ))
+    detail = TestClient(app).get(f"/api/runs/{run_id}").json()
+
+    assert all(
+        sentinel not in event["message"]
+        and sentinel not in json.dumps(event["metadata"], ensure_ascii=False)
+        for event in detail["events"]
+    )
+    assert sentinel not in json.dumps(detail["tool_receipts"], ensure_ascii=False)
 
 
 def test_finalize_rejects_decision_bound_to_another_candidate_before_review(

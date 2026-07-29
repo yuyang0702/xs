@@ -78,7 +78,7 @@ class ProjectSnapshot:
             entries = json.loads(
                 (snapshot_root / "manifest.json").read_text(encoding="utf-8")
             )
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             raise ValueError("Snapshot manifest is invalid") from exc
         if not isinstance(entries, list):
             raise ValueError("Snapshot manifest is invalid")
