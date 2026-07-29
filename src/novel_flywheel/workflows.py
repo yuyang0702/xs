@@ -53,6 +53,7 @@ from novel_flywheel.quality import (
     select_route,
 )
 from novel_flywheel.quality_records import (
+    QUALITY_CHECKPOINT_LOCK,
     checkpoint_manuscript,
     load_quality_checkpoint,
     reconcile_legacy_checkpoint,
@@ -133,7 +134,6 @@ class PolishTokenBudgetError(RuntimeError):
 
 # ponytail: one local console process needs serialization, not a lock registry.
 _SHORT_REVISION_LOCK = threading.Lock()
-_QUALITY_PROMOTION_LOCK = threading.Lock()
 
 
 class WorkflowService:
@@ -607,7 +607,7 @@ class WorkflowService:
         )
 
     def recover_short_revision_promotion(self, run_id: str) -> bool:
-        with _QUALITY_PROMOTION_LOCK:
+        with QUALITY_CHECKPOINT_LOCK:
             run = self.db.get_run(run_id)
             if run is None or run.get("workflow") != "short-revision":
                 return False
@@ -623,11 +623,6 @@ class WorkflowService:
                 and marker.get("terminal_reviewed_hash")
                 == marker.get("manuscript_hash")
             )
-            if journal_path.is_dir():
-                journal = ProjectSnapshot.load(project.path, journal_path)
-                if not promoted:
-                    journal.restore()
-                journal.discard()
             if promoted:
                 was_completed = run.get("status") == "completed"
                 self.db.update_run(run_id, "completed", "revision_completed")
@@ -637,7 +632,18 @@ class WorkflowService:
                         "返修候选稿已通过检查并成为新的受保护最佳稿。",
                         stage="revision_completed",
                     )
+                ProjectSnapshot(
+                    project.path, journal_path, [],
+                ).discard()
                 return True
+            if journal_path.is_dir():
+                try:
+                    journal = ProjectSnapshot.load(project.path, journal_path)
+                except ValueError:
+                    ProjectSnapshot(project.path, journal_path, []).discard()
+                    return False
+                journal.restore()
+                journal.discard()
             return False
 
     def _commit_short_revision_promotion(
@@ -646,7 +652,7 @@ class WorkflowService:
         gate: dict, state: dict, report: dict, review: dict,
         review_audit: dict, rejected_issue_ids: set[str],
     ) -> dict:
-        with _QUALITY_PROMOTION_LOCK:
+        with QUALITY_CHECKPOINT_LOCK:
             try:
                 authority = operations.load_state(run_id)
             except RevisionOperationError:
@@ -1280,14 +1286,10 @@ class WorkflowService:
             }
         except asyncio.CancelledError:
             raise
-        except Exception as exc:
+        except Exception:
             run = self.db.get_run(run_id)
             if run and run["status"] not in {"failed", "cancelled"}:
-                message = (
-                    str(exc)
-                    if str(exc) and all(ord(char) > 127 for char in str(exc))
-                    else "定向返修未完成，已保留可恢复的检查点"
-                )
+                message = "定向返修未完成，已保留可恢复的检查点"
                 self.db.update_run(
                     run_id, "failed", run.get("current_stage"), error=message,
                 )
@@ -2936,7 +2938,7 @@ class WorkflowService:
         run_path: Path, manuscript: str, review: dict,
         attempt: int | None, outcome: str,
     ) -> None:
-        with _QUALITY_PROMOTION_LOCK:
+        with QUALITY_CHECKPOINT_LOCK:
             atomic_write(run_path / "outputs" / "best-candidate.md", manuscript)
             digest = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
             write_quality_checkpoint(run_path, {

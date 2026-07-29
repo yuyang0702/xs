@@ -129,7 +129,10 @@ async def resume_run(run_id: str, request: Request) -> dict:
         return await request.app.state.workflows.run_short(run["project_id"], run_id=existing_run_id)
 
     try:
-        return request.app.state.run_tasks.resume(run_id, operation)
+        return request.app.state.run_tasks.resume(
+            run_id, operation,
+            allow_interrupted=run["workflow"] == "short-revision",
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail={"code": "run_not_resumable"}) from exc
 

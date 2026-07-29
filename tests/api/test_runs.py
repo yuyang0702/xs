@@ -45,6 +45,26 @@ def test_start_short_run_and_list_history(tmp_path) -> None:
     assert response.json()["status"] in {"queued", "running"}
 
 
+def test_resume_rejects_interrupted_short_story(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", workflow_service=FakeWorkflows(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Interrupted", "mode": "short", "genre": "suspense",
+        "premise": "Someone vanishes.", "target_words": 5000,
+    }).json()
+    db.create_run(
+        "interrupted-short", project["id"], "short-story", status="interrupted",
+    )
+
+    response = client.post("/api/runs/interrupted-short/resume")
+
+    assert response.status_code == 409
+    assert db.get_run("interrupted-short")["status"] == "interrupted"
+
+
 def test_start_long_setup_and_chapter(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(), skill_roots=[tmp_path / "skills"],

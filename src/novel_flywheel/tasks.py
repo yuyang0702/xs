@@ -23,12 +23,18 @@ class RunTaskManager:
         task.add_done_callback(lambda finished, rid=run_id: self._task_done(rid, finished))
         return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
 
-    def resume(self, run_id: str, operation: RunOperation) -> dict:
+    def resume(
+        self, run_id: str, operation: RunOperation,
+        *, allow_interrupted: bool = False,
+    ) -> dict:
         run = self.db.get_run(run_id)
         if run is None:
             raise LookupError("Run not found")
-        if run["status"] not in {"failed", "cancelled", "interrupted"}:
-            raise ValueError("Only a failed, cancelled, or interrupted run can be resumed")
+        allowed = {"failed", "cancelled"}
+        if allow_interrupted:
+            allowed.add("interrupted")
+        if run["status"] not in allowed:
+            raise ValueError("Only a failed or cancelled run can be resumed")
         if run_id in self.tasks:
             raise ValueError("Run is already active")
         self.db.update_run(run_id, "queued")

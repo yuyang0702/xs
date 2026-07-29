@@ -158,7 +158,28 @@ def test_task_manager_rejects_resuming_completed_run(tmp_path) -> None:
     db, manager = make_manager(tmp_path)
     db.create_run("completed-run", "book", "short-story", status="completed")
 
-    with pytest.raises(
-        ValueError, match="failed, cancelled, or interrupted run",
-    ):
+    with pytest.raises(ValueError, match="failed or cancelled run"):
         manager.resume("completed-run", lambda run_id: None)
+
+
+def test_task_manager_rejects_interrupted_run_without_opt_in(tmp_path) -> None:
+    db, manager = make_manager(tmp_path)
+    db.create_run("interrupted-run", "book", "short-story", status="interrupted")
+
+    with pytest.raises(ValueError, match="failed or cancelled run"):
+        manager.resume("interrupted-run", lambda run_id: None)
+
+
+@pytest.mark.asyncio
+async def test_task_manager_resumes_interrupted_run_with_opt_in(tmp_path) -> None:
+    db, manager = make_manager(tmp_path)
+    db.create_run("interrupted-run", "book", "short-revision", status="interrupted")
+
+    resumed = manager.resume(
+        "interrupted-run", lambda run_id: asyncio.sleep(0),
+        allow_interrupted=True,
+    )
+    await manager.wait("interrupted-run")
+
+    assert resumed["id"] == "interrupted-run"
+    assert db.get_run("interrupted-run")["status"] == "completed"

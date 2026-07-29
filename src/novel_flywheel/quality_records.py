@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ from novel_flywheel.storage import atomic_write
 
 CHECKPOINT_VERSION = 1
 HISTORICAL_BEST = re.compile(r"^historical-best-(\d+(?:\.\d+)?)\.md$")
+QUALITY_CHECKPOINT_LOCK = threading.RLock()
 
 
 def load_quality_checkpoint(run_path: Path) -> dict | None:
@@ -37,6 +39,11 @@ def load_quality_checkpoint(run_path: Path) -> dict | None:
 
 
 def write_quality_checkpoint(run_path: Path, checkpoint: dict) -> None:
+    with QUALITY_CHECKPOINT_LOCK:
+        _write_quality_checkpoint(run_path, checkpoint)
+
+
+def _write_quality_checkpoint(run_path: Path, checkpoint: dict) -> None:
     value = dict(checkpoint)
     value["version"] = CHECKPOINT_VERSION
     manuscript = _manuscript_path(run_path, value.get("manuscript_path"))
@@ -55,6 +62,11 @@ def write_quality_checkpoint(run_path: Path, checkpoint: dict) -> None:
 
 
 def reconcile_legacy_checkpoint(run_path: Path) -> dict | None:
+    with QUALITY_CHECKPOINT_LOCK:
+        return _reconcile_legacy_checkpoint(run_path)
+
+
+def _reconcile_legacy_checkpoint(run_path: Path) -> dict | None:
     outputs = run_path / "outputs"
     candidates: list[tuple[float, int, dict]] = []
     existing = load_quality_checkpoint(run_path)

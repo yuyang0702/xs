@@ -52,8 +52,9 @@ class ProjectSnapshot:
                 shutil.copy2(source, destination)
                 entry["sha256"] = hashlib.sha256(source.read_bytes()).hexdigest()
             entries.append(entry)
-        (snapshot_root / "manifest.json").write_text(
-            json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8",
+        atomic_write(
+            snapshot_root / "manifest.json",
+            json.dumps(entries, ensure_ascii=False, indent=2),
         )
         return cls(project_root, snapshot_root, entries)
 
@@ -100,4 +101,4 @@ class ProjectSnapshot:
         return cls(project_root, snapshot_root, entries)
 
     def discard(self) -> None:
-        shutil.rmtree(self.snapshot_root)
+        shutil.rmtree(self.snapshot_root, ignore_errors=True)
