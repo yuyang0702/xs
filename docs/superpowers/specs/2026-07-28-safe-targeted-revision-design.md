@@ -335,10 +335,21 @@ LTP和叙事账本只负责寻找可能相关的位置。自动提取结果必�
 
 ### 项目配置和迁移
 
-- 新建短篇默认启用本地优化和增量终审。
-- 为缺少 `optimized_local_review_enabled` 字段的现有短篇执行幂等迁移并补为 `true`。
-- 已经明确保存为 `false` 的项目视为用户主动停用，迁移不得覆盖。
-- 如果用户明确停用该能力，保留原全文终审路径。
+- `optimized_local_review_enabled` 是 `project.json` 顶层布尔字段。新建短篇写入
+  `true`；新建长篇不强行加入该字段。
+- `ProjectStore` 初始化时只检查数据库登记为短篇、且 `project.json` 完全缺少该字段的
+  现有项目。已经明确保存为 `false` 或 `true` 的短篇、以及缺键长篇均不写文件。
+- 首次迁移写入前，使用 `ProjectSnapshot` 将原始 `project.json` 保存到固定目录
+  `snapshots/optimized-review-default/`，再用 `atomic_write` 仅补入默认值。固定快照一旦
+  存在便不覆盖或重建；二次初始化不改项目文件、快照字节或修改时间。
+- 若快照已生成而项目写入曾中断，只在 manifest、快照哈希、快照 JSON 和当前
+  `project.json` 原字节全部一致时继续。快照损坏或目标已变化时明确失败，不静默覆盖
+  快照或项目文件。
+- 用户回滚功能时通过现有 workflow-analysis 开关显式保存 `false`，继续使用原全文
+  终审路径。迁移快照用于审计和故障恢复；在当前版本直接恢复成“缺键”文件会再次触发
+  默认迁移。
+- 该变化不修改数据库或 StoryState schema，无需 DB migration；也不修改正文、
+  StoryState、模型配置、密钥、参考资料或运行历史。
 
 ### 运行任务和断点续跑
 

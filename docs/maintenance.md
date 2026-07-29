@@ -55,7 +55,9 @@ Provider secrets remain in the Windows credential store. Runtime startup and Cre
 
 ## Optimized local review artifacts
 
-The project-scoped `optimized_local_review_enabled` key is stored in `project.json`. It is reversible and does not migrate StoryState, role bindings, providers, credentials, references, run history, or manuscripts. The global LTP install/enable controls remain separate.
+The project-scoped `optimized_local_review_enabled` key is stored in `project.json`. New short projects store `true`; long projects do not receive the key. On `ProjectStore` initialization, an existing short project that completely lacks the key is migrated once. Before the atomic metadata write, Runtime creates `snapshots/optimized-review-default/` through `ProjectSnapshot`; explicit `false` or `true` values and long projects are never rewritten. A pre-existing interrupted snapshot is reused only when its manifest, hash, JSON content, and the current project file agree exactly. A damaged or mismatched snapshot stops startup migration without overwriting either side. Repeated initialization changes neither bytes nor modification times.
+
+Disable the workflow-analysis setting to store `false` and return that project to the complete-review path. The snapshot is an audit and recovery artifact, not the live feature toggle; restoring a missing-key file under the current version will run the default migration again. No database or StoryState schema migration is required, and this metadata migration does not alter StoryState, role bindings, providers, credentials, references, run history, or manuscripts. The global LTP install/enable controls remain separate.
 
 Run outputs may contain:
 

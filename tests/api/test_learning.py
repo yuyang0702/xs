@@ -80,21 +80,35 @@ def test_local_nlp_status_is_read_only_until_install_clicked(tmp_path) -> None:
     assert status["operation"] == "idle"
 
 
-def test_project_analysis_flag_is_reversible(tmp_path) -> None:
+def test_project_workflow_analysis_flag_is_reversible_across_restart(
+    tmp_path,
+) -> None:
     client = client_for(tmp_path)
     project_id, _ = project_and_mechanism(client)
     initial = client.get(f"/api/projects/{project_id}/learning/workflow-analysis")
-    assert initial.json() == {"enabled": False}
-    enabled = client.put(
+    assert initial.json() == {"enabled": True}
+    disabled = client.put(
+        f"/api/projects/{project_id}/learning/workflow-analysis",
+        json={"enabled": False},
+    )
+    assert disabled.json() == {"enabled": False}
+    client.close()
+
+    restarted = client_for(tmp_path)
+    assert restarted.get(
+        f"/api/projects/{project_id}/learning/workflow-analysis",
+    ).json() == {"enabled": False}
+    enabled = restarted.put(
         f"/api/projects/{project_id}/learning/workflow-analysis",
         json={"enabled": True},
     )
     assert enabled.json() == {"enabled": True}
-    assert client.get(f"/api/projects/{project_id}/learning/workflow-analysis").json()["enabled"] is True
-    assert client.put(
+    restarted.close()
+
+    restored = client_for(tmp_path)
+    assert restored.get(
         f"/api/projects/{project_id}/learning/workflow-analysis",
-        json={"enabled": False},
-    ).json() == {"enabled": False}
+    ).json() == {"enabled": True}
 
 
 def test_rejected_mechanisms_are_hidden_by_default_and_remain_reviewable(tmp_path) -> None:

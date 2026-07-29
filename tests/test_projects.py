@@ -2,10 +2,36 @@ import json
 
 import pytest
 
+import novel_flywheel.projects as projects_module
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.outlines import OutlineService
+from novel_flywheel.storage import ProjectSnapshot
 from novel_flywheel.story_state import StoryStateStore
+
+
+def _register_existing_project(
+    db, workspace, project_id, mode, extra_metadata=None,
+):
+    path = workspace / project_id
+    (path / "memory").mkdir(parents=True)
+    (path / "manuscript").mkdir()
+    payload = {
+        "id": project_id,
+        "title": project_id,
+        "mode": mode,
+        "genre": "suspense",
+        "premise": "legacy project",
+        "target_words": 8_000,
+        **(extra_metadata or {}),
+    }
+    original = json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":"),
+    ).encode("utf-8")
+    project_json = path / "project.json"
+    project_json.write_bytes(original)
+    db.save_project(project_id, project_id, mode, path)
+    return path, project_json, original
 
 
 def test_create_short_project_writes_durable_structure(tmp_path) -> None:
@@ -24,6 +50,7 @@ def test_create_short_project_writes_durable_structure(tmp_path) -> None:
     assert project.path.parent == tmp_path / "workspace"
     metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
     assert metadata["mode"] == "short"
+    assert metadata["optimized_local_review_enabled"] is True
     assert metadata["root_constraints"] == [str(constraint.resolve())]
     assert (project.path / "constraints.md").is_file()
     assert json.loads((project.path / "memory" / "canon.json").read_text(encoding="utf-8")) == {"facts": []}
@@ -51,6 +78,143 @@ def test_long_project_has_chapter_and_volume_folders(tmp_path) -> None:
     ))
     assert (project.path / "chapters").is_dir()
     assert (project.path / "volumes").is_dir()
+    assert "optimized_local_review_enabled" not in project.metadata
+
+
+def test_existing_short_missing_optimized_review_flag_migrates_once(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    path, project_json, original = _register_existing_project(
+        db, workspace, "missing-flag", "short",
+        {"custom": {"kept": ["原值", 7]}},
+    )
+
+    store = ProjectStore(db, workspace)
+
+    snapshot_root = path / "snapshots" / "optimized-review-default"
+    snapshot_json = snapshot_root / "files" / "project.json"
+    migrated = json.loads(project_json.read_text(encoding="utf-8"))
+    assert store.get("missing-flag").metadata == migrated
+    assert migrated["optimized_local_review_enabled"] is True
+    assert migrated["custom"] == {"kept": ["原值", 7]}
+    assert snapshot_json.read_bytes() == original
+    assert (snapshot_root / "manifest.json").is_file()
+    first_project = project_json.read_bytes()
+    first_snapshot = snapshot_json.read_bytes()
+    first_project_mtime = project_json.stat().st_mtime_ns
+    first_snapshot_mtime = snapshot_json.stat().st_mtime_ns
+
+    ProjectStore(db, workspace)
+
+    assert project_json.read_bytes() == first_project
+    assert snapshot_json.read_bytes() == first_snapshot
+    assert project_json.stat().st_mtime_ns == first_project_mtime
+    assert snapshot_json.stat().st_mtime_ns == first_snapshot_mtime
+
+
+@pytest.mark.parametrize(
+    ("mode", "stored_flag"),
+    [("short", False), ("short", True), ("long", None)],
+)
+def test_optimized_review_migration_preserves_explicit_and_long_values(
+    tmp_path, mode, stored_flag,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    extra = {"other": "preserved"}
+    if stored_flag is not None:
+        extra["optimized_local_review_enabled"] = stored_flag
+    path, project_json, original = _register_existing_project(
+        db, workspace, f"{mode}-{stored_flag}", mode, extra,
+    )
+    before_mtime = project_json.stat().st_mtime_ns
+
+    store = ProjectStore(db, workspace)
+
+    assert project_json.read_bytes() == original
+    assert project_json.stat().st_mtime_ns == before_mtime
+    assert not (
+        path / "snapshots" / "optimized-review-default"
+    ).exists()
+    metadata = store.get(f"{mode}-{stored_flag}").metadata
+    assert metadata["other"] == "preserved"
+    if stored_flag is None:
+        assert "optimized_local_review_enabled" not in metadata
+    else:
+        assert metadata["optimized_local_review_enabled"] is stored_flag
+
+
+def test_optimized_review_migration_resumes_after_atomic_write_interruption(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    path, project_json, original = _register_existing_project(
+        db, workspace, "interrupted", "short",
+    )
+    snapshot_json = (
+        path / "snapshots" / "optimized-review-default"
+        / "files" / "project.json"
+    )
+    real_atomic_write = projects_module.atomic_write
+
+    def interrupt_write(target, content):
+        assert target == project_json
+        assert snapshot_json.read_bytes() == original
+        raise OSError("simulated migration interruption")
+
+    monkeypatch.setattr(projects_module, "atomic_write", interrupt_write)
+    with pytest.raises(OSError, match="simulated migration interruption"):
+        ProjectStore(db, workspace)
+
+    assert project_json.read_bytes() == original
+    snapshot_before = snapshot_json.read_bytes()
+    snapshot_mtime = snapshot_json.stat().st_mtime_ns
+    monkeypatch.setattr(projects_module, "atomic_write", real_atomic_write)
+
+    recovered = ProjectStore(db, workspace)
+
+    assert recovered.get("interrupted").metadata[
+        "optimized_local_review_enabled"
+    ] is True
+    assert snapshot_json.read_bytes() == snapshot_before
+    assert snapshot_json.stat().st_mtime_ns == snapshot_mtime
+
+
+@pytest.mark.parametrize("damage", ["snapshot", "target"])
+def test_optimized_review_migration_refuses_damaged_interrupted_state(
+    tmp_path, damage,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    path, project_json, _original = _register_existing_project(
+        db, workspace, f"damaged-{damage}", "short",
+    )
+    snapshot_root = path / "snapshots" / "optimized-review-default"
+    ProjectSnapshot.create(path, snapshot_root, [project_json])
+    snapshot_json = snapshot_root / "files" / "project.json"
+    if damage == "snapshot":
+        snapshot_json.write_text("{broken", encoding="utf-8")
+    else:
+        changed = json.loads(project_json.read_text(encoding="utf-8"))
+        changed["edited_after_snapshot"] = True
+        project_json.write_text(
+            json.dumps(changed, ensure_ascii=False), encoding="utf-8",
+        )
+    project_before = project_json.read_bytes()
+    snapshot_before = snapshot_json.read_bytes()
+
+    with pytest.raises(ValueError, match="snapshot"):
+        ProjectStore(db, workspace)
+
+    assert project_json.read_bytes() == project_before
+    assert snapshot_json.read_bytes() == snapshot_before
 
 
 def test_project_store_imports_story_state_for_existing_projects(tmp_path) -> None:

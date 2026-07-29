@@ -1308,6 +1308,7 @@ async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_pat
         title="Failed", mode="short", genre="romance",
         premise="A relationship collapses.", target_words=6000,
     ))
+    project = store.set_optimized_local_review(project.id, False)
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     failed = quality_review(commercial=60, story=60, prose=60, decision="revise")

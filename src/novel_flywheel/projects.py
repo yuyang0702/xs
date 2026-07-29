@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -11,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from novel_flywheel.db import Database
+from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.platform_profiles import resolve_platform_profile
 
@@ -47,6 +49,7 @@ class ProjectStore:
         for row in self.db.list_projects():
             path = Path(row["path"])
             if path.is_dir():
+                self._migrate_optimized_local_review(row, path)
                 states.ensure(row["id"], path)
 
     def create(self, payload: ProjectCreate) -> Project:
@@ -72,6 +75,8 @@ class ProjectStore:
             **payload.model_dump(),
             "root_constraints": [str(item) for item in self.root_constraints],
         }
+        if payload.mode == "short":
+            metadata["optimized_local_review_enabled"] = True
         self._write_json(path / "project.json", metadata)
         self._write_json(path / "memory" / "canon.json", {"facts": []})
         (path / "constraints.md").write_text(
@@ -100,6 +105,81 @@ class ProjectStore:
         metadata = {**project.metadata, "optimized_local_review_enabled": bool(enabled)}
         self._write_json(project.path / "project.json", metadata)
         return Project(project.id, project.title, project.mode, project.path, metadata)
+
+    @staticmethod
+    def _migrate_optimized_local_review(row: dict, project_path: Path) -> None:
+        if row.get("mode") != "short":
+            return
+        project_json = project_path / "project.json"
+        if not project_json.is_file():
+            return
+        try:
+            metadata = json.loads(project_json.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            raise ValueError(
+                "optimized review migration could not read project.json"
+            ) from None
+        if not isinstance(metadata, dict):
+            raise ValueError(
+                "optimized review migration requires a JSON object"
+            )
+        if "optimized_local_review_enabled" in metadata:
+            return
+
+        snapshot_root = (
+            project_path / "snapshots" / "optimized-review-default"
+        )
+        if snapshot_root.exists():
+            ProjectStore._validate_optimized_review_snapshot(
+                project_json, snapshot_root,
+            )
+        else:
+            ProjectSnapshot.create(
+                project_path, snapshot_root, [project_json],
+            )
+        migrated = {
+            **metadata,
+            "optimized_local_review_enabled": True,
+        }
+        atomic_write(
+            project_json,
+            json.dumps(migrated, ensure_ascii=False, indent=2),
+        )
+
+    @staticmethod
+    def _validate_optimized_review_snapshot(
+        project_json: Path, snapshot_root: Path,
+    ) -> None:
+        snapshot_json = snapshot_root / "files" / "project.json"
+        manifest_path = snapshot_root / "manifest.json"
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            snapshot_bytes = snapshot_json.read_bytes()
+            current_bytes = project_json.read_bytes()
+            snapshot_metadata = json.loads(snapshot_bytes.decode("utf-8"))
+        except (
+            OSError, UnicodeError, json.JSONDecodeError,
+        ):
+            raise ValueError(
+                "optimized review migration snapshot is invalid"
+            ) from None
+        if (
+            not isinstance(manifest, list)
+            or len(manifest) != 1
+            or not isinstance(manifest[0], dict)
+            or manifest[0].get("path") != "project.json"
+            or manifest[0].get("existed") is not True
+            or not isinstance(snapshot_metadata, dict)
+            or hashlib.sha256(snapshot_bytes).hexdigest()
+            != manifest[0].get("sha256")
+        ):
+            raise ValueError(
+                "optimized review migration snapshot is invalid"
+            )
+        if snapshot_bytes != current_bytes:
+            raise ValueError(
+                "optimized review migration snapshot does not match project.json"
+            )
 
     def set_market_baseline_selection(
         self, project_id: str, *, enabled: bool, key: dict | None,
