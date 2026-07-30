@@ -57,8 +57,22 @@
     </header>
 
     <section id="workbench" class="view active">
-      <div class="toolbar">
+      <div class="toolbar workbench-project-toolbar">
         <label>当前作品<select id="active-project"></select></label>
+      </div>
+      <section class="workbench-task-summary" aria-labelledby="workbench-current-stage">
+        <div id="workbench-current-project" class="workbench-current-project">还没有选择作品</div>
+        <div id="workbench-current-stage" class="workbench-current-stage">正在读取作品状态</div>
+        <div id="workbench-priority-issues" class="workbench-priority-issues"></div>
+        <button id="workbench-primary-action" class="primary workbench-primary-action" type="button">新建作品</button>
+      </section>
+      <section id="workbench-task-progress" class="workbench-task-progress" aria-label="当前任务进度" hidden>
+        <div class="run-controls"><div id="run-state" class="run-state">等待任务</div><button id="run-cancel" class="stop-button" title="终止本次生成" aria-label="终止本次生成" hidden>■</button></div>
+      </section>
+      <details id="workbench-details" class="workbench-details">
+        <summary>查看详细信息</summary>
+        <div class="workbench-details-body">
+      <div class="toolbar workbench-detail-actions">
         <div><button id="migrate-project" class="secondary">迁移标准结构</button> <button id="open-manuscript" class="secondary">查看正文</button> <button id="trash-project" class="secondary danger-text">移入回收站</button></div>
       </div>
       <div id="project-summary" class="summary-band"></div>
@@ -108,7 +122,6 @@
             <label>本章目标<textarea id="chapter-goal" rows="4" placeholder="本章核心剧情、必须回收的伏笔、结尾钩子"></textarea></label>
             <button id="run-chapter" class="primary">生成下一章</button>
           </div>
-          <div class="run-controls"><div id="run-state" class="run-state">等待任务</div><button id="run-cancel" class="stop-button" title="终止本次生成" aria-label="终止本次生成" hidden>■</button></div>
         </section>
         <section class="history-panel"><div class="run-tabs"><button class="run-tab active" data-run-tab="log">执行日志</button><button class="run-tab" data-run-tab="context">上下文</button></div><div id="run-log" class="run-log"><p class="skill-meta">尚未开始任务</p></div><div id="run-context" class="run-context" hidden><p class="skill-meta">选择运行记录后查看上下文摘要</p></div><h2 class="history-title">运行记录</h2><div id="run-list" class="run-list"></div></section>
       </div>
@@ -117,6 +130,8 @@
         <div class="section-heading"><h2>正文</h2><button id="close-manuscript" class="icon-button" aria-label="关闭正文">×</button></div>
         <pre id="manuscript"></pre>
       </section>
+        </div>
+      </details>
     </section>
 
     <section id="materials" class="view">
@@ -307,7 +322,14 @@
         <label>创作起点<select id="wizard-reference"><option value="">自己构思（原方式）</option></select></label>
         <label class="wizard-auto-option"><input id="wizard-auto-outline" type="checkbox" checked><span>使用学习成果时，创建后生成候选大纲</span><small>会调用规划模型；大纲需要你确认后才生效</small></label>
         <button id="start-wizard" class="primary">开始新向导</button>
-        <label>继续草稿<select id="wizard-drafts"><option value="">暂无草稿</option></select></label>
+        <div class="wizard-draft-picker">
+          <label>继续草稿<select id="wizard-drafts"><option value="">暂无草稿</option></select></label>
+          <div class="wizard-draft-actions">
+            <button id="continue-wizard-draft" class="secondary" type="button" disabled>继续草稿</button>
+            <button id="delete-wizard-draft" class="secondary danger-text" type="button" disabled>删除草稿</button>
+          </div>
+          <p id="wizard-draft-status" class="skill-meta" role="status" aria-live="polite"></p>
+        </div>
       </div>
       <div id="wizard-shell" class="wizard-layout" hidden>
         <aside id="wizard-steps" class="wizard-steps" aria-label="建书步骤"></aside>

@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], selectedReferenceIds:new Set(), referenceSelectionBusy:false, referenceSelectionStatus:null, referenceSelectionPendingIds:[], referenceSelectionPendingTitles:[], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], selectedReferenceIds:new Set(), referenceSelectionBusy:false, referenceSelectionStatus:null, referenceSelectionPendingIds:[], referenceSelectionPendingTitles:[], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, candidateLoadState:"missing", workbenchManuscript:null, workbenchRuns:[], workbenchRunsLoadState:"loading", workbenchGeneration:0, workbenchTask:null, runStartingProjectId:null, activeRunProjectId:null, runMonitorGeneration:0, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const creatableReferenceTypes = new Set(["reference_work", "popular_sample"]);
 const referenceCreationUnavailable = "这类资料只用于查阅，不能直接创建作品";
 const WIZARD_METHOD_LIMIT = 12;
@@ -122,6 +122,114 @@ const runStatusLabel = run => isQualityRejected(run) ? "质量未通过" : ({
   waiting_local_fix:"需要人工处理", interrupted:"意外中断，可继续"
 }[run.status] || "状态待确认");
 
+function deriveWorkbenchTaskState(snapshot) {
+  const runs=snapshot.runs||[];
+  const activeRun=runs.find(item=>["queued","running","cancelling"].includes(item.status));
+  const latestRevision=runs.find(item=>item.workflow==="short-revision");
+  const resumableRevision=latestRevision&&snapshot.revisionRun?.id===latestRevision.id&&["failed","cancelled","interrupted"].includes(latestRevision.status);
+  const issues=(snapshot.issues||[]).filter(item=>!["resolved","closed","preserved"].includes(item.status));
+  const visibleIssues=issues.slice(0,3);
+  if(!snapshot.project)return {stage:"还没有作品",issues:[],action:{kind:"new",label:"新建作品"},detail:"先创建一部作品，再开始写作。"};
+  if(snapshot.runStarting)return {stage:"正在启动任务",issues:visibleIssues,action:{kind:"starting",label:"正在启动"},detail:"请求已经发出，请不要重复点击。",showProgress:true};
+  if(snapshot.runsLoadState==="loading")return {stage:"正在读取作品状态",issues:[],action:{kind:"loading",label:"正在读取"},detail:"读取完成后会自动显示下一步。"};
+  if(snapshot.runsLoadState==="error")return {stage:"暂时没有读到任务状态",issues:visibleIssues,action:{kind:"reload",label:"重新读取状态"},detail:"没有启动任何新任务，请重新读取当前作品。",showProgress:true};
+  if(!snapshot.initialized&&!activeRun)return {stage:"作品还没有准备好",issues:visibleIssues,action:{kind:"initialize",label:"继续初始化"},detail:"完成初始化后，系统才能按这部作品的要求写作。"};
+  if(activeRun)return {stage:`正在处理：${runLabel(activeRun.current_stage||activeRun.workflow)}`,issues:visibleIssues,action:{kind:"progress",label:"查看当前进度"},detail:"当前任务仍在进行，不会重复启动。",showProgress:true};
+  if(resumableRevision)return {stage:"上次返修没有完成",issues:visibleIssues,action:{kind:"resume-revision",label:"从失败项继续"},detail:"已完成的修改仍然保留，打开返修区后再确认继续。",showProgress:true};
+  if(snapshot.project?.mode==="short"&&snapshot.candidateLoadState==="missing")return {stage:"还没有正文",issues:[],action:{kind:"generate-short",label:"生成完整短篇"},detail:"将使用当前大纲、设定和写作要求生成候选稿。"};
+  if(snapshot.revisionRun?.status==="waiting_confirmation")return {stage:"修改已经准备好，等你确认",issues:visibleIssues,action:{kind:"confirm-revision",label:"继续确认修改"},detail:"请比较修改前后，再决定采用或保留原写法。"};
+  const hasBlockingIssues=Number(snapshot.blockingCount||0)>0||issues.some(item=>item.mandatory||["critical","blocking"].includes(item.severity));
+  if(hasBlockingIssues||snapshot.revisionRun?.status==="waiting_local_fix"){
+    const action=issues.length?{kind:"repair",label:"查看并选择问题"}:{kind:"local-scan",label:"查看本地扫描"};
+    return {stage:`有 ${issues.length||Number(snapshot.blockingCount||0)} 个问题需要处理`,issues:visibleIssues,action,detail:"先处理必须解决的问题，再继续终审或投稿。"};
+  }
+  if(snapshot.canSetFormal&&!snapshot.formalMatchesCandidate)return {stage:"候选稿已经通过检查",issues:visibleIssues,action:{kind:"formal",label:"设为正式稿"},detail:"确认后才会替换当前正式稿。"};
+  if(snapshot.publicationPreview?.ready)return {stage:"正式稿可以准备投稿",issues:visibleIssues,action:{kind:"publication",label:"准备投稿"},detail:"填写标题、卖点和简介后再生成投稿包。"};
+  if(snapshot.project?.mode==="long"&&snapshot.candidateLoadState==="missing")return {stage:"可以继续长篇创作",issues:visibleIssues,action:{kind:"long-writing",label:"继续长篇创作"},detail:"打开创作区，选择准备全书或生成下一章。"};
+  if(snapshot.candidateLoadState==="loading")return {stage:"正在读取稿件状态",issues:[],action:{kind:"quality",label:"查看稿件质量"},detail:"读取完成后会自动更新下一步。"};
+  if(snapshot.candidateLoadState==="error")return {stage:"暂时没有读到稿件状态",issues:[],action:{kind:"reload",label:"重新读取状态"},detail:"没有启动任何新任务，请重新读取当前作品。"};
+  return {stage:"稿件状态已更新",issues:visibleIssues,action:{kind:"quality",label:"查看稿件质量"},detail:"打开质量区查看完整检查结果和建议。"};
+}
+function workbenchFormalMatchesCandidate(candidate,publicationPreview,manuscript) {
+  if(!candidate?.available)return false;
+  const candidateHash=candidate.quality_summary?.manuscript_state?.manuscript_hash;
+  if(publicationPreview?.manuscript_hash&&candidateHash)return publicationPreview.manuscript_hash===candidateHash;
+  return manuscript?.source==="formal"&&String(manuscript.content||"").trim()===String(candidate.content||"").trim();
+}
+function currentWorkbenchSnapshot() {
+  const runs=state.workbenchRuns||[];
+  const initialization=runs.find(item=>item.workflow==="initialize-skills");
+  const summary=state.candidateQuality?.quality_summary||{};
+  return {
+    project:state.activeProject,
+    initialized:initialization?.status==="completed",
+    runs,
+    runsLoadState:state.workbenchRunsLoadState,
+    runStarting:state.runStartingProjectId===state.activeProject?.id,
+    issues:summary.issues||[],
+    blockingCount:state.candidateQuality?.diagnostics?.blocking_count||0,
+    candidateLoadState:state.candidateLoadState,
+    canSetFormal:Boolean(summary.publication_authority?.can_set_formal),
+    formalMatchesCandidate:workbenchFormalMatchesCandidate(state.candidateQuality,state.publicationPreview,state.workbenchManuscript),
+    publicationPreview:state.publicationPreview,
+    revisionRun:state.revisionRun?.projectId===state.activeProject?.id?state.revisionRun:null,
+  };
+}
+function renderWorkbenchTaskState(snapshot=currentWorkbenchSnapshot()) {
+  const task=deriveWorkbenchTaskState(snapshot);
+  state.workbenchTask=task;
+  const project=snapshot.project;
+  $("#workbench-current-project").innerHTML=project
+    ? `<strong>${escapeHtml(project.title)}</strong><span>${project.mode==="short"?"短篇":"长篇"} · ${Number(project.target_words||0).toLocaleString()} 字</span>`
+    : "<strong>还没有作品</strong><span>创建后会在这里显示当前进度</span>";
+  $("#workbench-current-stage").innerHTML=`<strong>${escapeHtml(task.stage)}</strong><span>${escapeHtml(task.detail)}</span>`;
+  $("#workbench-priority-issues").innerHTML=task.issues.length
+    ? `<h3>现在最需要处理</h3>${task.issues.map(item=>`<article><strong>${escapeHtml(revisionSafeText(item.title,"正文问题"))}</strong><p>${escapeHtml(revisionSafeText(item.effect,"这处问题可能影响阅读或理解。"))}</p><span>${escapeHtml(qualityIssueStatus(item.status))}</span></article>`).join("")}`
+    : '<p class="workbench-no-issues">当前没有需要优先展示的问题。</p>';
+  const action=$("#workbench-primary-action");
+  action.textContent=task.action.label;
+  action.dataset.workbenchAction=task.action.kind;
+  action.disabled=["starting","loading"].includes(task.action.kind);
+  const latest=(snapshot.runs||[])[0];
+  $("#workbench-task-progress").hidden=!(task.showProgress||latest&&["failed","cancelled","interrupted"].includes(latest.status));
+}
+function openWorkbenchDetails(selector) {
+  const details=$("#workbench-details");
+  details.open=true;
+  const target=$(selector)||details;
+  if(!target.matches("button,input,select,textarea,summary,a,[tabindex]"))target.tabIndex=-1;
+  target.focus?.({preventScroll:true});
+  target.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openWorkbenchLocalScan() {
+  $("#workbench-details").open=true;
+  const localScan=$("#candidate-quality .quality-drawer");
+  if(localScan)localScan.open=true;
+  openWorkbenchDetails(localScan?"#candidate-quality .quality-drawer":".candidate-band");
+}
+$("#workbench-primary-action").addEventListener("click",async event=>{
+  const action=event.currentTarget.dataset.workbenchAction;
+  if(action==="new")return navigateToView("projects");
+  if(action==="reload")return renderActiveProject();
+  if(action==="initialize")return $("#initialize-project").click();
+  if(action==="generate-short")return $("#run-short").click();
+  if(action==="formal")return $("#publish-candidate").click();
+  if(action==="progress")return $("#workbench-task-progress").scrollIntoView({behavior:"smooth",block:"center"});
+  if(action==="publication")return openWorkbenchDetails(".publication-band");
+  if(action==="long-writing")return openWorkbenchDetails(".action-panel");
+  if(action==="resume-revision"){
+    const projectId=state.activeProject?.id;
+    openWorkbenchDetails("#quality-revision-workspace");
+    await resumeTargetedRevision();
+    if(state.activeProject?.id===projectId)await renderActiveProject();
+    return;
+  }
+  if(action==="confirm-revision")return openWorkbenchDetails("#revision-group-results");
+  if(action==="repair")return openWorkbenchDetails("#quality-revision-workspace");
+  if(action==="local-scan")return openWorkbenchLocalScan();
+  openWorkbenchDetails(".candidate-band");
+});
+
 async function api(path, options = {}) {
   const response = await fetch(path, {headers:{"Content-Type":"application/json"}, ...options});
   if (!response.ok) {
@@ -169,6 +277,7 @@ function showView(name, label) {
 }
 async function navigateToView(name, label) {
   if(!showView(name,label))return false;
+  if(name==="workbench")await renderActiveProject();
   if(name==="materials")await renderMaterials();
   if(name==="market")await loadMarketDashboard();
   return true;
@@ -875,16 +984,20 @@ async function modelLearnReference() {
 async function loadProjectLearning() {
   const projectId=$("#learning-project").value;
   if(projectId){
-    [state.projectLearning,state.outlines,state.effectiveRules]=await Promise.all([
+    const [projectLearning,outlines,effectiveRules]=await Promise.all([
       api(`/api/projects/${projectId}/learning`),
       api(`/api/projects/${projectId}/learning/outlines`),
       api(`/api/projects/${projectId}/learning/effective-rules`),
     ]);
+    if($("#learning-project").value!==projectId)return false;
+    state.projectLearning=projectLearning;state.outlines=outlines;state.effectiveRules=effectiveRules;
   }else{
+    if($("#learning-project").value)return false;
     state.projectLearning=null;state.effectiveRules=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
   }
   renderLearningArtifacts();
   renderOutlineWorkspace();
+  return true;
 }
 
 function setOutlineOperationStatus(kind,title,detail){
@@ -1177,7 +1290,15 @@ function switchLearningView(view){
   document.querySelectorAll("[data-learning-panel]").forEach(panel=>{const active=panel.dataset.learningPanel===target;panel.hidden=!active;panel.classList.toggle("active",active);});
 }
 document.querySelectorAll("[data-learning-view]").forEach(button=>button.addEventListener("click",()=>switchLearningView(button.dataset.learningView)));
-$("#learning-project").addEventListener("change",async event=>{ state.activeProject=state.projects.find(item=>item.id===event.target.value)||state.activeProject; state.projectLearning=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null; await loadProjectLearning(); renderLearning(); });
+$("#learning-project").addEventListener("change",async event=>{
+  const projectId=event.target.value,project=state.projects.find(item=>item.id===projectId);
+  if(project&&state.activeProject?.id!==projectId){stopRunMonitor();resetRevisionWorkspace();}
+  if(project)state.activeProject=project;
+  $("#active-project").value=projectId;
+  $("#materials-project").value=projectId;
+  state.projectLearning=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
+  if(await loadProjectLearning())renderLearning();
+});
 $("#learning-mechanism-view").addEventListener("change",reloadMechanisms);
 $("#learning-mechanism-origin").addEventListener("change",renderLearning);
 const learningProjectId=()=>$("#learning-project").value;
@@ -1203,19 +1324,37 @@ async function nlpAction(path,options={method:"POST"}){ try{state.localNlp=await
 $("#nlp-install").addEventListener("click",()=>nlpAction("/api/settings/local-nlp/install"));
 $("#nlp-uninstall").addEventListener("click",()=>confirm("卸载本地中文分析组件？")&&nlpAction("/api/settings/local-nlp/uninstall"));
 $("#nlp-toggle").addEventListener("click",()=>nlpAction("/api/settings/local-nlp",{method:"PUT",body:JSON.stringify({enabled:!state.localNlp?.enabled})}));
-async function loadWorkflowAnalysis(){
+function workbenchContextMatches(projectId,generation) {
+  return (state.activeProject?.id||null)===(projectId||null)&&(generation===undefined||generation===state.workbenchGeneration);
+}
+function stopRunMonitor() {
+  clearTimeout(state.pollTimer);
+  state.pollTimer=null;
+  state.activeRun=null;
+  state.activeRunProjectId=null;
+  state.runMonitorGeneration+=1;
+  $("#run-cancel").hidden=true;
+}
+async function loadWorkflowAnalysis(projectId=state.activeProject?.id,generation){
   const shell=$("#workflow-analysis-status"),button=$("#workflow-analysis-toggle");
-  if(!state.activeProject){state.workflowAnalysis=null;shell.textContent="请选择作品";button.disabled=true;return;}
-  state.workflowAnalysis=await api(`/api/projects/${state.activeProject.id}/learning/workflow-analysis`);
-  button.disabled=false;button.textContent=state.workflowAnalysis.enabled?"停用当前作品优化":"为当前作品启用";
-  shell.textContent=state.workflowAnalysis.enabled?"已启用 · 首次全文终审，返修后关联窗口复核 · 原创检查仅限本地资料库":"未启用 · 继续使用每轮全文终审";
+  if(!projectId){state.workflowAnalysis=null;shell.textContent="请选择作品";button.disabled=true;return;}
+  try{
+    const result=await api(`/api/projects/${projectId}/learning/workflow-analysis`);
+    if(!workbenchContextMatches(projectId,generation))return;
+    state.workflowAnalysis=result;
+    button.disabled=false;button.textContent=result.enabled?"停用当前作品优化":"为当前作品启用";
+    shell.textContent=result.enabled?"已启用 · 首次全文终审，返修后关联窗口复核 · 原创检查仅限本地资料库":"未启用 · 继续使用每轮全文终审";
+  }catch{
+    if(!workbenchContextMatches(projectId,generation))return;
+    state.workflowAnalysis=null;button.disabled=true;shell.textContent="分析流程状态读取失败，请刷新后重试";
+  }
 }
 $("#workflow-analysis-toggle").addEventListener("click",async()=>{
   if(!state.activeProject)return toast("请先选择作品");
   state.workflowAnalysis=await api(`/api/projects/${state.activeProject.id}/learning/workflow-analysis`,{method:"PUT",body:JSON.stringify({enabled:!state.workflowAnalysis?.enabled})});
   await loadWorkflowAnalysis();toast("作品分析流程已更新");
 });
-function renderProjects() {
+function renderProjects(renderActive=true) {
   const select = $("#active-project");
   select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">尚无作品</option>';
   if (!state.activeProject || !state.projects.some(p => p.id === state.activeProject.id)) state.activeProject = state.projects[0] || null;
@@ -1226,28 +1365,33 @@ function renderProjects() {
   $("#project-list").innerHTML = state.projects.length ? state.projects.map(p => `<article class="project-item"><h3>${escapeHtml(p.title)}</h3><div class="skill-meta">${p.mode === "short" ? "短篇" : "长篇"} · ${escapeHtml(p.genre)} · ${Number(p.target_words).toLocaleString()} 字</div><div class="project-actions"><button class="secondary" data-continue="${p.id}">继续写作</button><button class="secondary danger-text" data-trash="${p.id}">移入回收站</button></div></article>`).join("") : '<p class="skill-meta">尚无作品</p>';
   document.querySelectorAll("[data-continue]").forEach(button => button.addEventListener("click", () => continueProject(button.dataset.continue)));
   document.querySelectorAll("[data-trash]").forEach(button => button.addEventListener("click", () => trashProject(button.dataset.trash)));
-  renderActiveProject();
+  if(renderActive)renderActiveProject();
 }
 async function continueProject(projectId) {
   const project = state.projects.find(item => item.id === projectId);
   if (!project) return toast("作品不存在");
+  if(state.activeProject?.id!==projectId){stopRunMonitor();resetRevisionWorkspace();}
   state.activeProject = project;
-  renderProjects();
+  $("#active-project").value=projectId;
+  $("#materials-project").value=projectId;
   await navigateToView("workbench");
-  await renderActiveProject();
   if (project.mode !== "short") return;
-  const runs = await api(`/api/projects/${project.id}/runs`);
+  const generation=state.workbenchGeneration;
+  let runs;
+  try{runs=await api(`/api/projects/${project.id}/runs`);}
+  catch{if(workbenchContextMatches(projectId,generation))toast("运行记录读取失败，请重新读取状态。");return;}
+  if(!workbenchContextMatches(projectId,generation))return;
   const resumableRun = runs.find(item => item.workflow === "short-story"
     && ["failed","cancelled"].includes(item.status));
   if (!resumableRun) return toast("没有可继续的失败任务");
   await run(`/api/runs/${resumableRun.id}/resume`);
 }
-async function loadProjectLocations(projectId) {
+async function loadProjectLocations(projectId,generation) {
   const shell = $("#project-locations");
   if (!projectId) { shell.innerHTML = '<p class="skill-meta">请先选择作品</p>'; return; }
   try {
     const result = await api(`/api/projects/${projectId}/locations`);
-    if (state.activeProject?.id !== projectId) return;
+    if (!workbenchContextMatches(projectId,generation)) return;
     shell.innerHTML = result.locations.map(item => `<div class="location-row"><div class="location-copy"><strong>${escapeHtml(item.label)}</strong><code>${item.exists ? escapeHtml(item.path) : "尚未生成"}</code></div><div class="location-actions">${item.exists ? `<button class="icon-button small" data-copy-path="${escapeHtml(item.path)}" title="复制路径" aria-label="复制${escapeHtml(item.label)}路径">⧉</button><button class="icon-button small" data-open-location="${escapeHtml(item.kind)}" title="在资源管理器中打开" aria-label="打开${escapeHtml(item.label)}">↗</button>` : ""}</div></div>`).join("");
     shell.querySelectorAll("[data-copy-path]").forEach(button => button.addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(button.dataset.copyPath); toast("路径已复制"); }
@@ -1258,6 +1402,7 @@ async function loadProjectLocations(projectId) {
       catch(error) { toast(error.message); }
     }));
   } catch(error) {
+    if (!workbenchContextMatches(projectId,generation)) return;
     shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`;
   }
 }
@@ -1509,6 +1654,7 @@ function renderRevisionWorkspace(detail,report) {
   results.querySelector("[data-revision-return]")?.addEventListener("click",()=>$("#revision-issue-selection")?.scrollIntoView({behavior:"smooth",block:"start"}));
   $("#revision-issue-selection")?.querySelectorAll("input,button").forEach(control=>control.disabled=revisionRunBlocksNewRound(state.revisionRun)||state.revisionFinalizing);
   updateRevisionSelectionCount();
+  if(workbenchContextMatches(state.revisionRun.projectId)){state.workbenchRuns=[detail,...state.workbenchRuns.filter(item=>item.id!==detail.id)];renderWorkbenchTaskState();}
 }
 async function startTargetedRevision() {
   const projectId=state.activeProject?.id;
@@ -1591,8 +1737,8 @@ function resetRevisionWorkspace() {
   state.revisionRefreshGeneration+=1;
   state.revisionRun=null;state.revisionReport=null;state.revisionFinalizing=false;state.revisionIssues=[];
 }
-async function loadLatestRevisionWorkspace(projectId,runs) {
-  if(state.activeProject?.id!==projectId)return;
+async function loadLatestRevisionWorkspace(projectId,runs,workbenchGeneration) {
+  if(!workbenchContextMatches(projectId,workbenchGeneration))return;
   clearTimeout(state.revisionPollTimer);
   const generation=++state.revisionRefreshGeneration;
   const project=state.projects.find(item=>item.id===projectId)||state.activeProject;
@@ -1601,6 +1747,7 @@ async function loadLatestRevisionWorkspace(projectId,runs) {
   if(!latest){state.revisionRun=null;state.revisionReport=null;state.revisionFinalizing=false;renderRevisionIssueSelection(state.revisionIssues);return;}
   state.revisionRun={...latest,projectId};
   await refreshRevisionRun(latest.id,true,projectId,generation);
+  if(!workbenchContextMatches(projectId,workbenchGeneration))return;
 }
 function qualityCriteriaMarkup(score) {
   const entries=Object.entries(score.criteria||{});
@@ -1680,19 +1827,21 @@ async function changePassageProtection(projectId,protectionId,action) {
   try{setCandidateOperationStatus("busy",action==="allow"?"正在允许下次修改一次":"正在取消保护","正文现在不会改变");await api(path,{method:action==="allow"?"POST":"DELETE"});await reloadCandidateQuality(projectId,action==="allow"?"下次返修可修改这段一次":"已取消保护");}
   catch(error){setCandidateOperationStatus("error","操作失败",error.message);}
 }
-async function loadCandidateQuality(projectId) {
+async function loadCandidateQuality(projectId,generation) {
   const shell=$("#candidate-quality"),publish=$("#publish-candidate");
   publish.hidden=true;publish.disabled=true;publish.title="";
   state.candidateQuality=null;state.candidateControls=null;
+  state.candidateLoadState=projectId?"loading":"missing";
   if(!projectId){shell.innerHTML='<p class="skill-meta">请先选择作品</p>';setCandidateOperationStatus("","请先选择作品");return;}
   shell.innerHTML='<p class="skill-meta">正在读取候选稿、本地扫描和终审结果…</p>';
   setCandidateOperationStatus("busy","正在读取稿件质量","完成后会显示下一步");
   try{
     const result=await api(`/api/projects/${projectId}/candidate`);
-    if(state.activeProject?.id!==projectId)return;
-    if(!result.available){shell.innerHTML='<p class="skill-meta">尚无候选稿。完成正文生成后，这里会显示质量结论和下一步。</p>';setCandidateOperationStatus("","尚无候选稿","先生成或恢复一份正文候选稿");return;}
+    if(!workbenchContextMatches(projectId,generation))return;
+    if(!result.available){state.candidateLoadState="missing";shell.innerHTML='<p class="skill-meta">尚无候选稿。完成正文生成后，这里会显示质量结论和下一步。</p>';setCandidateOperationStatus("","尚无候选稿","先生成或恢复一份正文候选稿");return;}
     const controls=await loadCandidateQualityControls(projectId);
-    if(state.activeProject?.id!==projectId)return;
+    if(!workbenchContextMatches(projectId,generation))return;
+    state.candidateLoadState="available";
     state.candidateQuality=result;state.candidateControls=controls;
     const authority=renderCandidateQualityWorkspace(result,controls);
     const reasons=authority.blocking_reasons||[];
@@ -1700,19 +1849,19 @@ async function loadCandidateQuality(projectId) {
     publish.disabled=!authority.can_set_formal;
     publish.title=authority.can_set_formal?"确认后设为正式稿":reasons.join("；");
     setCandidateOperationStatus(authority.can_set_formal?"success":"warning",result.quality_summary?.next_action||"继续检查候选稿",authority.can_set_formal?"当前稿件已通过全部发布检查":reasons[0]||"等待质量检查");
-  }catch(error){shell.innerHTML=`<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`;setCandidateOperationStatus("error","稿件质量读取失败",error.message);}
+  }catch(error){if(!workbenchContextMatches(projectId,generation))return;state.candidateLoadState="error";shell.innerHTML=`<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`;setCandidateOperationStatus("error","稿件质量读取失败",error.message);}
 }
-async function loadWritingRulesSummary(projectId) {
+async function loadWritingRulesSummary(projectId,generation) {
   const shell = $("#writing-rules-summary");
   if (!projectId) { shell.innerHTML = '<p class="skill-meta">请先选择作品</p>'; return; }
   try {
     const result = await api(`/api/projects/${projectId}/learning/effective-rules`);
-    if (state.activeProject?.id !== projectId) return;
+    if (!workbenchContextMatches(projectId,generation)) return;
     state.effectiveRules=result;shell.innerHTML=effectiveRulesMarkup(result,true);
-  } catch(error) { shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
+  } catch(error) { if(!workbenchContextMatches(projectId,generation))return;shell.innerHTML = `<p class="skill-meta error-text">${escapeHtml(error.message)}</p>`; }
 }
-async function loadPublicationPanel(projectId){
-  const panel=$("#platform-profile-panel"),form=$("#zhihu-publication-form"),status=$("#publication-status"),submit=form.querySelector('button[type="submit"]');state.publicationPreview=null;
+async function loadPublicationPanel(projectId,generation){
+  const panel=$("#platform-profile-panel"),form=$("#zhihu-publication-form"),status=$("#publication-status"),submit=form.querySelector('button[type="submit"]');if(workbenchContextMatches(projectId,generation))state.publicationPreview=null;
   submit.disabled=true;submit.title="请先完成正式稿和终审检查";
   if(!projectId){panel.innerHTML='<p class="skill-meta">请先选择作品</p>';form.hidden=true;return;}
   const project=state.projects.find(item=>item.id===projectId);
@@ -1722,8 +1871,8 @@ async function loadPublicationPanel(projectId){
   panel.querySelector("[data-profile-toggle]").addEventListener("click",()=>changePlatformProfile(enabled?null:"zhihu-salt-short"));form.hidden=!enabled;if(!enabled)return;
   form.elements.title.value ||= project.title||"";form.elements.content_type.value ||= project.genre||"";
   status.className="operation-status busy";status.textContent="正在检查正式稿和终审结果…";
-  try{state.publicationPreview=await api(`/api/projects/${projectId}/publication/zhihu/preview`);const ready=Boolean(state.publicationPreview.ready);submit.disabled=!ready;submit.title=ready?"生成新的投稿包，旧版本继续保留":`当前还不能生成投稿包：${state.publicationPreview.message}`;status.className=`operation-status ${ready?"success":"warning"}`;status.textContent=`${state.publicationPreview.message} 正文 ${Number(state.publicationPreview.character_count).toLocaleString()} 字。`;}
-  catch(error){submit.disabled=true;submit.title="当前还不能生成投稿包";status.className="operation-status error";status.textContent=`投稿条件检查失败：${error.message}`;}
+  try{const preview=await api(`/api/projects/${projectId}/publication/zhihu/preview`);if(!workbenchContextMatches(projectId,generation))return;state.publicationPreview=preview;const ready=Boolean(preview.ready);submit.disabled=!ready;submit.title=ready?"生成新的投稿包，旧版本继续保留":`当前还不能生成投稿包：${preview.message}`;status.className=`operation-status ${ready?"success":"warning"}`;status.textContent=`${preview.message} 正文 ${Number(preview.character_count).toLocaleString()} 字。`;}
+  catch(error){if(!workbenchContextMatches(projectId,generation))return;submit.disabled=true;submit.title="当前还不能生成投稿包";status.className="operation-status error";status.textContent=`投稿条件检查失败：${error.message}`;}
 }
 async function changePlatformProfile(profileId){
   if(!state.activeProject)return;
@@ -1916,14 +2065,18 @@ $("#story-state-save").addEventListener("click", async () => {
 });
 $("#publish-candidate").addEventListener("click", async () => {
   if (!state.activeProject || !confirm("将当前最高分候选设为正式成品？原正式成品会被替换。")) return;
+  const projectId=state.activeProject.id,requestGeneration=state.workbenchGeneration;
   const button=$("#publish-candidate");
   button.disabled=true;
   setCandidateOperationStatus("busy","正在设为正式稿","正在核对候选稿、终审结果和稿件版本");
   try {
-    await api(`/api/projects/${state.activeProject.id}/candidate/publish`, {method:"POST"});
-    await Promise.all([loadProjectLocations(state.activeProject.id), loadCandidateQuality(state.activeProject.id)]);
+    await api(`/api/projects/${projectId}/candidate/publish`, {method:"POST"});
+    if(!workbenchContextMatches(projectId,requestGeneration))return;
+    await renderActiveProject();
+    if(state.activeProject?.id!==projectId)return;
     setCandidateOperationStatus("success","正式稿已更新","原正式稿已被替换，当前候选稿和终审记录保持绑定");
   } catch(error) {
+    if(!workbenchContextMatches(projectId,requestGeneration))return;
     const authority=state.candidateQuality?.quality_summary?.publication_authority;
     button.disabled=!authority?.can_set_formal;
     setCandidateOperationStatus("error","设为正式稿失败",error.message);
@@ -1931,31 +2084,77 @@ $("#publish-candidate").addEventListener("click", async () => {
 });
 async function renderActiveProject() {
   const p = state.activeProject;
-  if(!revisionWorkspaceEnabled(p)||state.revisionRun?.projectId&&state.revisionRun.projectId!==p.id)resetRevisionWorkspace();
+  const projectId=p?.id||null;
+  if(state.activeRunProjectId&&state.activeRunProjectId!==projectId)stopRunMonitor();
+  const generation=++state.workbenchGeneration;
+  if(!revisionWorkspaceEnabled(p)||state.revisionRun?.projectId&&state.revisionRun.projectId!==projectId)resetRevisionWorkspace();
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  if (!p) { $("#run-list").innerHTML = ""; await loadProjectLocations(null); await loadCandidateQuality(null); await loadWritingRulesSummary(null); await loadPublicationPanel(null); await loadWorkflowAnalysis(); return; }
-  await Promise.all([loadProjectLocations(p.id), loadCandidateQuality(p.id), loadWritingRulesSummary(p.id), loadPublicationPanel(p.id), loadWorkflowAnalysis()]);
-  const runs = await api(`/api/projects/${p.id}/runs`);
-  await loadLatestRevisionWorkspace(p.id,runs);
+  state.workbenchRuns=[];state.workbenchRunsLoadState="loading";state.workbenchManuscript=null;
+  if (!p) {
+    stopRunMonitor();state.publicationPreview=null;state.candidateQuality=null;state.candidateLoadState="missing";
+    state.workbenchRunsLoadState="available";
+    $("#run-list").innerHTML = "";
+    await Promise.all([loadProjectLocations(null,generation),loadCandidateQuality(null,generation),loadWritingRulesSummary(null,generation),loadPublicationPanel(null,generation),loadWorkflowAnalysis(null,generation)]);
+    if(workbenchContextMatches(null,generation))renderWorkbenchTaskState();
+    return;
+  }
+  $("#workbench-current-project").innerHTML=`<strong>${escapeHtml(p.title)}</strong><span>${p.mode==="short"?"短篇":"长篇"} · ${Number(p.target_words||0).toLocaleString()} 字</span>`;
+  $("#workbench-current-stage").innerHTML="<strong>正在读取作品状态</strong><span>很快会显示最需要处理的下一步。</span>";
+  $("#workbench-priority-issues").innerHTML='<p class="workbench-no-issues">正在读取问题清单…</p>';
+  $("#workbench-primary-action").textContent="正在读取";
+  $("#workbench-primary-action").disabled=true;
+  const results=await Promise.all([
+    loadProjectLocations(projectId,generation),
+    loadCandidateQuality(projectId,generation),
+    loadWritingRulesSummary(projectId,generation),
+    loadPublicationPanel(projectId,generation),
+    loadWorkflowAnalysis(projectId,generation),
+    api(`/api/projects/${projectId}/manuscript`).catch(()=>null),
+  ]);
+  if(!workbenchContextMatches(projectId,generation))return;
+  state.workbenchManuscript=results[5];
+  let runs;
+  try{runs=await api(`/api/projects/${projectId}/runs`);}
+  catch{
+    if(!workbenchContextMatches(projectId,generation))return;
+    state.workbenchRunsLoadState="error";state.workbenchRuns=[];
+    $("#run-list").innerHTML='<p class="skill-meta error-text">运行记录读取失败，请重新读取状态。</p>';
+    $("#run-state").className="run-state error";$("#run-state").textContent="运行记录读取失败，请重新读取状态。";
+    $("#initialize-project").hidden=true;
+    ["#run-short","#run-setup","#run-chapter"].forEach(selector=>{$(selector).disabled=true;});
+    renderWorkbenchTaskState();
+    return;
+  }
+  if(!workbenchContextMatches(projectId,generation))return;
+  state.workbenchRuns=runs;state.workbenchRunsLoadState="available";
+  await loadLatestRevisionWorkspace(projectId,runs,generation);
+  if(!workbenchContextMatches(projectId,generation))return;
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
   const initialized = initialization?.status === "completed";
   const activeRun = runs.find(run => ["queued","running","cancelling"].includes(run.status));
   const latestRun = runs[0];
+  if(!activeRun&&state.activeRunProjectId===projectId)stopRunMonitor();
   $("#initialize-project").hidden = initialized || initializing;
   ["#run-short", "#run-setup", "#run-chapter"].forEach(selector => { $(selector).disabled = !initialized; });
   $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(runLabel(r.workflow))}</strong><div class="skill-meta">${escapeHtml(runLabel(r.current_stage))} · ${escapeHtml(formatLocalTimestamp(r.created_at))}</div></div><span class="status ${isQualityRejected(r) ? "quality-rejected" : r.status}">${escapeHtml(runStatusLabel(r))}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
-  document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => showRunDetail(await api(`/api/runs/${button.dataset.runDetail}`))));
-  if (!state.activeRun) {
-    if (activeRun) monitorRun(activeRun);
-    else if (latestRun) showRunDetail(await api(`/api/runs/${latestRun.id}`));
-    else { $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”"; }
+  document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => {
+    const detail=await api(`/api/runs/${button.dataset.runDetail}`);
+    if(workbenchContextMatches(projectId,generation))showRunDetail(detail);
+  }));
+  renderWorkbenchTaskState();
+  if (activeRun) monitorRun(activeRun,projectId,generation);
+  else if (latestRun) {
+    const detail=await api(`/api/runs/${latestRun.id}`).catch(()=>null);
+    if(detail&&workbenchContextMatches(projectId,generation))showRunDetail(detail);
+  } else if(workbenchContextMatches(projectId,generation)) {
+    $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”";
   }
 }
-$("#active-project").addEventListener("change", event => { resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
-$("#materials-project").addEventListener("change", async event => { resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
+$("#active-project").addEventListener("change", event => { stopRunMonitor();resetRevisionWorkspace();state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
+$("#materials-project").addEventListener("change", async event => { stopRunMonitor();resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
 $("#edit-project-learning").addEventListener("click", async () => {
   if(!state.activeProject)return toast("请先选择作品");
   await navigateToView("learning"); $("#learning-project").value=state.activeProject.id; state.projectLearning=null;
@@ -1963,12 +2162,26 @@ $("#edit-project-learning").addEventListener("click", async () => {
 });
 
 function renderWizardDrafts() {
-  const drafts = state.wizards.filter(item => item.status === "draft");
-  $("#wizard-drafts").innerHTML = '<option value="">选择草稿</option>' + drafts.map(item => `<option value="${item.id}">${escapeHtml(item.answers?.title?.value || (item.mode === "long" ? "未命名长篇" : "未命名短篇"))}</option>`).join("");
+  const drafts = state.wizards.filter(item => ["draft", "gathering_input", "ready"].includes(item.status) && !item.project_id);
+  const select=$("#wizard-drafts"),selected=select.value;
+  select.innerHTML = '<option value="">选择草稿</option>' + drafts.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.answers?.title?.value || (item.mode === "long" ? "未命名长篇" : "未命名短篇"))}</option>`).join("");
+  if(drafts.some(item=>item.id===selected))select.value=selected;
+  updateWizardDraftControls();
   const learnedSourceIds=new Set(state.mechanisms.map(item=>item.source_id));
   $("#wizard-reference").innerHTML='<option value="">自己构思（原方式）</option>'+state.references.map(item=>creatableReferenceTypes.has(item.content_type)
     ? `<option value="${item.id}">从《${escapeHtml(item.title)}》${learnedSourceIds.has(item.id)?"的学习成果":"开始学习并"}创建</option>`
     : `<option value="${item.id}" disabled>《${escapeHtml(item.title)}》（仅供查阅，不能创建）</option>`).join("");
+}
+function updateWizardDraftControls(){
+  const selected=Boolean($("#wizard-drafts")?.value);
+  $("#continue-wizard-draft").disabled=!selected;
+  $("#delete-wizard-draft").disabled=!selected;
+}
+function wizardDraftErrorMessage(error){
+  return ({
+    wizard_not_found:"草稿不存在或已经删除。当前输入仍然保留，可以刷新后再选。",
+    wizard_has_project:"这份开书资料已经创建作品，不能从草稿列表删除。作品和当前输入都没有变化。",
+  })[error?.code]||"删除没有完成。当前输入仍然保留，可以重新尝试。";
 }
 function fieldControl(field, answer) {
   const value = answer?.value ?? field.default ?? "";
@@ -2137,12 +2350,15 @@ async function openProjectOutlineGenerator(projectId){
   await navigateToView("learning");
   switchLearningView("application");
   const project=state.projects.find(item=>item.id===projectId);
+  if(project&&state.activeProject?.id!==projectId){stopRunMonitor();resetRevisionWorkspace();}
   if(project)state.activeProject=project;
   const select=$("#learning-project");
   select.innerHTML=state.projects.length?state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join(""):'<option value="">请先创建作品</option>';
   select.value=projectId;
+  $("#active-project").value=projectId;
+  $("#materials-project").value=projectId;
   state.projectLearning=null;state.effectiveRules=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
-  await loadProjectLearning();
+  if(!await loadProjectLearning())throw new Error("selection_changed");
   renderLearning();
   select.value=projectId;
   const form=$("#outline-generate-form");
@@ -2257,7 +2473,27 @@ $("#start-wizard").addEventListener("click",()=>{
   const referenceId=$("#wizard-reference").value;
   startWizardFromReference(referenceId?[referenceId]:[]);
 });
-$("#wizard-drafts").addEventListener("change", async event => { if (!event.target.value) return; state.activeWizard=await api(`/api/wizards/${event.target.value}`); state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=state.activeWizard.schema?.creation_context?.reference_source_ids?.[0]||null; renderWizard(); });
+$("#wizard-drafts").addEventListener("change",()=>updateWizardDraftControls());
+$("#continue-wizard-draft").addEventListener("click",async()=>{
+  const wizardId=$("#wizard-drafts").value;if(!wizardId)return;
+  const button=$("#continue-wizard-draft");button.disabled=true;
+  try{
+    state.activeWizard=await api(`/api/wizards/${wizardId}`);state.wizardStep=0;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=state.activeWizard.schema?.creation_context?.reference_source_ids?.[0]||null;renderWizard();$("#wizard-draft-status").textContent="草稿已打开，可以继续填写。";
+  }catch(error){$("#wizard-draft-status").textContent="草稿读取失败，请刷新后重试。";toast("草稿读取失败，请刷新后重试。");updateWizardDraftControls();}
+});
+$("#delete-wizard-draft").addEventListener("click",async()=>{
+  const wizardId=$("#wizard-drafts").value;if(!wizardId)return;
+  if(!confirm("只删除这份未完成的开书资料，不会删除任何作品。"))return;
+  const select=$("#wizard-drafts"),continueButton=$("#continue-wizard-draft"),deleteButton=$("#delete-wizard-draft");
+  select.disabled=true;continueButton.disabled=true;deleteButton.disabled=true;$("#wizard-draft-status").className="skill-meta";$("#wizard-draft-status").textContent="正在删除草稿";
+  try{
+    const result=await api(`/api/wizards/${wizardId}`,{method:"DELETE"});
+    if(result?.id!==wizardId)throw new Error("unexpected");
+    state.wizards=state.wizards.filter(item=>item.id!==wizardId);
+    if(state.activeWizard?.id===wizardId){state.activeWizard=null;state.wizardConfirmedMethods=null;state.wizardMethodsFor=null;state.selectedWizardMethods=new Set();state.wizardSourceReferenceId=null;$("#wizard-shell").hidden=true;$("#wizard-launcher").hidden=false;}
+    renderWizardDrafts();$("#wizard-draft-status").textContent="草稿已删除，作品和其他草稿都没有变化。";
+  }catch(error){select.disabled=false;$("#wizard-draft-status").className="skill-meta error-text";$("#wizard-draft-status").textContent=wizardDraftErrorMessage(error);updateWizardDraftControls();}
+});
 $("#wizard-back").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep--; renderWizard(); });
 $("#wizard-next").addEventListener("click", async () => { await saveWizardStep(); state.wizardStep++; renderWizard(); });
 $("#wizard-analyze").addEventListener("click", async () => { try { await saveWizardStep(); state.activeWizard=await api(`/api/wizards/${state.activeWizard.id}/analyze`,{method:"POST"}); state.wizardStep=state.activeWizard.schema.steps.length-1; renderWizard(); toast(state.activeWizard.status === "ready" ? "关键资料完整" : "已生成必要追问"); } catch(error) { toast(error.message); } });
@@ -2289,9 +2525,27 @@ $("#wizard-confirm").addEventListener("click", async () => {
 
 async function run(path, body) {
   if (!state.activeProject) return toast("请先创建作品");
+  const projectId=state.activeProject.id,workbenchGeneration=state.workbenchGeneration;
+  if(state.activeRun||state.runStartingProjectId)return toast("任务正在启动或运行，请不要重复点击。");
+  state.runStartingProjectId=projectId;
   const box = $("#run-state"); box.className = "run-state busy"; box.textContent = "飞轮运行中，请保持此页面打开...";
-  try { const result = await api(path, {method:"POST", body:body ? JSON.stringify(body) : undefined}); monitorRun(result); }
-  catch (error) { box.className = "run-state error"; box.textContent = error.message; }
+  $("#workbench-task-progress").hidden=false;
+  renderWorkbenchTaskState();
+  let startFailed=false;
+  try {
+    const result = await api(path, {method:"POST", body:body ? JSON.stringify(body) : undefined});
+    if(workbenchContextMatches(projectId,workbenchGeneration))monitorRun(result,projectId,workbenchGeneration);
+  }
+  catch {
+    startFailed=true;
+    if(workbenchContextMatches(projectId,workbenchGeneration)){box.className="run-state error";box.textContent="任务没有启动，请稍后重试。";}
+  }finally{
+    if(state.runStartingProjectId===projectId)state.runStartingProjectId=null;
+    if(workbenchContextMatches(projectId,workbenchGeneration)){
+      renderWorkbenchTaskState();
+      if(startFailed)$("#workbench-task-progress").hidden=false;
+    }
+  }
 }
 function renderRunLog(events) {
   $("#run-log").innerHTML = events.length ? events.map(item => {
@@ -2326,33 +2580,57 @@ function showRunDetail(detail) {
   $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
   $("#run-state").textContent=active ? `正在执行：${runLabel(detail.current_stage || detail.workflow)}` : detail.status === "completed" ? (initialization ? "初始化及校验已完成，可以开始写作" : "任务执行完成") : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : detail.status === "failed" ? `${initialization ? "初始化" : "任务"}失败：${readableRunMessage(detail.error || "请查看日志")}` : `${runStatusLabel(detail)}：${readableRunMessage(detail.error || "请查看日志")}`;
 }
-async function monitorRun(runRecord) {
-  clearTimeout(state.pollTimer); state.activeRun=runRecord.id; $("#run-cancel").hidden=false;
+async function monitorRun(runRecord,projectId=runRecord.project_id||state.activeProject?.id,workbenchGeneration=state.workbenchGeneration) {
+  clearTimeout(state.pollTimer);
+  const runId=runRecord.id;
+  const monitorGeneration=++state.runMonitorGeneration;
+  state.activeRun=runId;state.activeRunProjectId=projectId;
+  state.workbenchRuns=[{...runRecord,status:runRecord.status||"queued"},...state.workbenchRuns.filter(item=>item.id!==runId)];
+  $("#run-cancel").hidden=false;
+  renderWorkbenchTaskState();
   const poll = async () => {
+    if(state.runMonitorGeneration!==monitorGeneration||state.activeRun!==runId||!workbenchContextMatches(projectId,workbenchGeneration))return;
     try {
-      const detail=await api(`/api/runs/${state.activeRun}`); renderRunLog(detail.events || []); renderRunContext(detail);
+      const detail=await api(`/api/runs/${runId}`);
+      if(state.runMonitorGeneration!==monitorGeneration||state.activeRun!==runId||!workbenchContextMatches(projectId,workbenchGeneration))return;
+      state.workbenchRuns=[detail,...state.workbenchRuns.filter(item=>item.id!==detail.id)];
+      renderRunLog(detail.events || []); renderRunContext(detail);
       if (detail.workflow==="materials-audit") renderMaterialAudit(detail);
       const active=["queued","running","cancelling"].includes(detail.status); const qualityRejected=isQualityRejected(detail); $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
       $("#run-state").textContent=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${runLabel(detail.current_stage || detail.workflow)}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : `${runStatusLabel(detail)}：${readableRunMessage(detail.error || "请查看日志")}`;
+      renderWorkbenchTaskState();
       if (active) state.pollTimer=setTimeout(poll,900); else { state.activeRun=null; $("#run-cancel").hidden=true; await renderActiveProject(); if (detail.status === "completed") toast("飞轮执行完成"); }
-    } catch(error) { $("#run-state").className="run-state error"; $("#run-state").textContent=error.message; $("#run-cancel").hidden=true; }
+    } catch(error) { if(state.runMonitorGeneration!==monitorGeneration||!workbenchContextMatches(projectId,workbenchGeneration))return;$("#run-state").className="run-state error"; $("#run-state").textContent=readableRunMessage(error.message); $("#run-cancel").hidden=true;renderWorkbenchTaskState(); }
   };
   await poll();
 }
-$("#run-cancel").addEventListener("click", async () => { if (!state.activeRun) return; try { await api(`/api/runs/${state.activeRun}/cancel`,{method:"POST"}); $("#run-state").textContent="正在终止当前阶段..."; } catch(error) { toast(error.message); } });
+$("#run-cancel").addEventListener("click",async()=>{
+  const runId=state.activeRun,projectId=state.activeRunProjectId,generation=state.workbenchGeneration;
+  if(!runId||!projectId)return;
+  try{
+    await api(`/api/runs/${runId}/cancel`,{method:"POST"});
+    if(state.activeRun===runId&&workbenchContextMatches(projectId,generation))$("#run-state").textContent="正在终止当前阶段...";
+  }catch{
+    if(state.activeRun===runId&&workbenchContextMatches(projectId,generation)){
+      $("#run-state").className="run-state error";$("#run-state").textContent="终止请求没有完成，请稍后重试。";
+    }
+  }
+});
 $("#initialize-project").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/initialize-skills`));
 $("#run-short").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/short`));
 $("#run-setup").addEventListener("click", () => run(`/api/projects/${state.activeProject.id}/runs/setup`));
 $("#run-chapter").addEventListener("click", () => { const chapter_goal = $("#chapter-goal").value.trim(); if (!chapter_goal) return toast("请填写本章目标"); run(`/api/projects/${state.activeProject.id}/runs/chapter`, {chapter_goal}); });
 $("#open-manuscript").addEventListener("click", async () => {
   if (!state.activeProject) return;
+  const projectId=state.activeProject.id,generation=state.workbenchGeneration;
   try {
-    const result = await api(`/api/projects/${state.activeProject.id}/manuscript`);
+    const result = await api(`/api/projects/${projectId}/manuscript`);
+    if(!workbenchContextMatches(projectId,generation))return;
     $("#manuscript").textContent = result.content || "尚未生成正文";
     const panel = $("#manuscript-panel");
     panel.hidden = false;
     panel.scrollIntoView({behavior:"smooth",block:"start"});
-  } catch(error) { toast(error.message); }
+  } catch { if(workbenchContextMatches(projectId,generation))toast("正文读取失败，请稍后重试。"); }
 });
 $("#close-manuscript").addEventListener("click", () => $("#manuscript-panel").hidden = true);
 $("#migrate-project").addEventListener("click", async () => { if (!state.activeProject) return toast("请先选择作品"); try { const preview=await api(`/api/projects/${state.activeProject.id}/migration`); if (!confirm(`将映射 ${preview.mapped_facts.length} 条设定，${preview.ambiguous_facts.length} 条需要复核。继续？`)) return; await api(`/api/projects/${state.activeProject.id}/migration`,{method:"POST"}); toast("项目迁移和校验完成"); } catch(error) { toast(error.message); } });

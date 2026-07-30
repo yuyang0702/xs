@@ -107,7 +107,7 @@ Reference analysis also produces an evidence-backed narrative-attraction proposa
 
 Candidate outlines use the existing `planning` route and appear in **学习库 → 作品应用 → 大纲版本**. Users can read and edit the complete candidate, compare local story blocks, apply selected changes or the whole version, reject it, and restore a prior version. Local comparison never calls a model. The optional semantic review is called only after an explicit click and sends at most the uncertain changes with bounded context.
 
-The formal outline remains part of versioned StoryState; `<project>/plot/outline.md` is a readable copy, and `<project>/learning/candidates/` stores candidate files. Applying or restoring an outline creates a new StoryState revision, never rewrites `manuscript/story.md`, and marks only the latest scene briefs and short causal chain stale for regeneration. Existing projects may continue to read their latest completed `planning.md` until a candidate is formally applied. The new-book wizard can optionally apply up to 12 confirmed, non-competitor learning mechanisms; nothing is selected by default.
+The formal outline remains part of versioned StoryState; `<project>/plot/outline.md` is a readable copy, and `<project>/learning/candidates/` stores candidate files. Applying or restoring an outline creates a new StoryState revision, never rewrites `manuscript/story.md`, and marks only the latest scene briefs and short causal chain stale for regeneration. Existing projects may continue to read their latest completed `planning.md` until a candidate is formally applied. The new-book wizard can optionally apply up to 12 confirmed, non-competitor learning mechanisms: when there are 12 or fewer they are shown for review, and when there are more the user explicitly chooses the set. Only those checked at confirmation are adopted.
 
 Targeted `line_edit` uses its own role and stores candidate JSON below `<project>/learning/line-edits/`. It does not overwrite formal files. Optional LTP neural NLP is installed, enabled, disabled, or uninstalled explicitly from **模型与 API**; it runs in a separate CPU process and fails open to deterministic rules.
 
@@ -190,7 +190,11 @@ Unknown initialization Skills receive a validated generated form cached by Skill
 
 Before confirmation, **检查关键缺口** adds required follow-ups for missing endings, character arcs, world rules, and long-form main arcs. Confirmation creates the Story Skills schema-v2 project layout and saves locks in SQLite and `continuity/locks.json`.
 
-The final step can show up to 12 globally confirmed writing methods. Rejected, unconfirmed, missing-source, and competitor-only methods are excluded. Every option starts unchecked; only explicit selections are adopted into the new project's creative blueprint.
+The final step can show up to 12 globally confirmed writing methods. Rejected, unconfirmed, missing-source, and competitor-only methods are excluded. Reference-scoped methods are shown with their source grouped; every method remains a user choice and only checked selections are adopted into the new project's creative blueprint.
+
+The console homepage is task-first: it shows the selected work, current stage, at most three priority issues, and one next action. Existing detailed controls remain under “查看详细信息”, so the page stays readable on desktop and mobile. The four navigation groups are 创作、资料与学习、市场、设置. A new project can start from one or more reference works or popular samples; local preparation happens before the wizard and the original source is never copied into the generated prose.
+
+The wizard lists unfinished drafts (`draft`, `gathering_input`, or `ready`) that have not created a project. “继续草稿” opens one; “删除草稿” only deletes that unfinished wizard after confirmation and never deletes a project. A missing or already-confirmed draft produces a plain Chinese message and keeps the current input. If automatic candidate-outline generation fails after project creation, the project and selected learning remain and the same outline can be retried from the project application page.
 
 ## Controlled Skill Runtime
 

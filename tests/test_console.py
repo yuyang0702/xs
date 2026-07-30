@@ -206,7 +206,8 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "deleteRejectedMechanisms" in script
     assert "查看全部证据" in script
     assert "const latestRun = runs[0]" in script
-    assert "showRunDetail(await api(`/api/runs/${latestRun.id}`))" in script
+    assert "const detail=await api(`/api/runs/${latestRun.id}`)" in script
+    assert "if(detail&&workbenchContextMatches(projectId,generation))showRunDetail(detail)" in script
     assert "continueProject(button.dataset.continue)" in script
     assert "resumableRun" in script
     assert "run(`/api/runs/${resumableRun.id}/resume`)" in script
@@ -568,6 +569,146 @@ def test_reference_created_outline_failure_keeps_project_and_offers_retry_path(
     )[0]
 
 
+def test_workbench_is_task_first_and_keeps_old_tools_in_details(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for control in (
+        "workbench-current-project",
+        "workbench-current-stage",
+        "workbench-priority-issues",
+        "workbench-primary-action",
+        "workbench-details",
+    ):
+        assert f'id="{control}"' in html
+    for label in (
+        "新建作品",
+        "继续初始化",
+        "查看当前进度",
+        "从失败项继续",
+        "生成完整短篇",
+        "修复已选问题",
+        "继续确认修改",
+        "设为正式稿",
+        "准备投稿",
+        "查看稿件质量",
+    ):
+        assert label in script
+    assert "<summary>查看详细信息</summary>" in html
+    details = html.split('id="workbench-details"', 1)[1].split("</details>", 1)[0]
+    for old_control in (
+        "project-summary",
+        "project-locations",
+        "candidate-quality",
+        "writing-rules-summary",
+        "platform-profile-panel",
+        "initialize-project",
+        "run-short",
+        "run-list",
+        "project-list",
+        "manuscript-panel",
+    ):
+        assert f'id="{old_control}"' in details
+        assert html.count(f'id="{old_control}"') == 1
+    assert ".workbench-task-summary" in css
+    assert ".workbench-primary-action" in css
+
+
+def test_workbench_task_priority_is_deterministic_and_shows_at_most_three_issues(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    decision = script.split("function deriveWorkbenchTaskState", 1)[1].split(
+        "function renderWorkbenchTaskState", 1,
+    )[0]
+
+    for branch in (
+        "!snapshot.project",
+        "!snapshot.initialized&&!activeRun",
+        "if(activeRun)",
+        "resumableRevision",
+        'snapshot.candidateLoadState==="missing"',
+        "hasBlockingIssues",
+        "snapshot.revisionRun?.status",
+        "snapshot.canSetFormal&&!snapshot.formalMatchesCandidate",
+        "snapshot.publicationPreview?.ready",
+    ):
+        assert branch in decision
+    assert decision.index("if(activeRun)") < decision.index("if(resumableRevision)")
+    assert decision.index("if(resumableRevision)") < decision.index(
+        'snapshot.candidateLoadState==="missing"'
+    )
+    assert decision.index("if(hasBlockingIssues") < decision.index(
+        "snapshot.publicationPreview?.ready"
+    )
+    assert "issues.slice(0,3)" in decision.replace(" ", "")
+    assert 'snapshot.project?.mode==="short"' in decision
+    loading_branch = decision.split(
+        'if(snapshot.candidateLoadState==="loading")', 1,
+    )[1].split(";", 1)[0]
+    assert 'kind:"quality"' in loading_branch
+    assert 'kind:"generate-short"' not in loading_branch
+    error_branch = decision.split(
+        'if(snapshot.candidateLoadState==="error")', 1,
+    )[1].split(";", 1)[0]
+    assert 'kind:"reload"' in error_branch
+
+
+def test_workbench_async_state_is_project_scoped_and_candidate_load_is_explicit(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    assert "candidateLoadState:" in script
+    for status in ('"loading"', '"available"', '"missing"', '"error"'):
+        assert status in script
+    assert "workbenchRuns:" in script
+    assert "workbenchGeneration:" in script
+    assert "activeRunProjectId:" in script
+    assert "runMonitorGeneration:" in script
+    assert "function workbenchContextMatches" in script
+    render = script.split("async function renderActiveProject", 1)[1].split(
+        '$("#active-project")', 1,
+    )[0]
+    assert "const generation=++state.workbenchGeneration" in render
+    assert "workbenchContextMatches(projectId,generation)" in render
+    assert "state.workbenchRuns=runs" in render
+    monitor = script.split("async function monitorRun", 1)[1].split(
+        '$("#initialize-project")', 1,
+    )[0]
+    assert "activeRunProjectId" in monitor
+    assert "runMonitorGeneration" in monitor
+    assert "workbenchContextMatches(projectId,workbenchGeneration)" in monitor
+    starter = script.split("async function run(path, body)", 1)[1].split(
+        "function renderRunLog", 1,
+    )[0]
+    assert "const projectId=state.activeProject.id" in starter
+    assert "workbenchContextMatches(projectId,workbenchGeneration)" in starter
+    assert "renderProjects();" not in script.split(
+        "async function continueProject", 1,
+    )[1].split("async function loadProjectLocations", 1)[0]
+
+
+def test_wizard_draft_controls_are_plain_and_delete_only_unfinished_drafts(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    for control in ("continue-wizard-draft", "delete-wizard-draft", "wizard-draft-status"):
+        assert f'id="{control}"' in html
+    assert "只删除这份未完成的开书资料，不会删除任何作品。" in script
+    assert "wizard_not_found" in script and "wizard_has_project" in script
+    assert '["draft", "gathering_input", "ready"].includes(item.status)' in script
+    assert "!item.project_id" in script
+    assert "result?.id!==wizardId" in script
+    assert ".wizard-draft-picker" in css
+
+
 def test_legacy_outline_does_not_render_as_numbered_old_version(tmp_path) -> None:
     client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
     script = client.get("/static/app.js").text
@@ -663,7 +804,7 @@ def test_candidate_quality_is_one_plain_chinese_progressive_workspace(tmp_path) 
     assert "/quality-references/recommendations" in script
     assert "/passage-protections" in script
     assert "publish.disabled" in script
-    assert "publicationPreview.ready" in script
+    assert "publicationPreview?.ready" in script
     assert ".candidate-quality-workspace" in css
     assert ".quality-score-strip" in css
     assert ".quality-manuscript-preview" in css
@@ -781,7 +922,7 @@ def test_revision_async_updates_stay_with_their_project_and_run(tmp_path) -> Non
     assert "const generation=++state.revisionRefreshGeneration" in handlers
     assert "state.revisionRefreshGeneration+=1" in handlers
     assert '"正在保存你的决定，正文和最佳稿暂时不会改变。",5,false' in handlers
-    assert script.count("resetRevisionWorkspace(); state.activeProject") >= 2
+    assert script.count("stopRunMonitor();resetRevisionWorkspace();") >= 2
     finalize_catch = handlers.split("async function finalizeTargetedRevision", 1)[1].split(
         "}finally{", 1,
     )[0].split("}catch(error){", 1)[1]
