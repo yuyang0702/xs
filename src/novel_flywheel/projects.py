@@ -281,8 +281,8 @@ class ProjectStore:
         target = (self.trash_root / project_id).resolve()
         if not target.is_relative_to(self.trash_root):
             raise ValueError("Invalid trash path")
-        if target.exists():
-            raise ValueError("Project already exists in trash")
+        while target.exists():
+            target = (self.trash_root / f"{project_id}-{uuid.uuid4().hex[:8]}").resolve()
         shutil.move(str(source), str(target))
         try:
             self.db.trash_project(project_id, source, target)
@@ -304,14 +304,48 @@ class ProjectStore:
         source = Path(row["trash_path"]).resolve()
         target = Path(row["original_path"]).resolve()
         if not source.is_relative_to(self.trash_root) or not target.is_relative_to(self.workspace_root):
-            raise ValueError("Project restore path is outside managed roots")
+            raise ValueError("作品恢复路径不在系统管理范围内，未移动或覆盖任何文件")
+        backup = None
         if target.exists():
-            raise ValueError("Original project path already exists")
-        shutil.move(str(source), str(target))
+            project_file = target / "project.json"
+            if project_file.is_file():
+                try:
+                    metadata = json.loads(project_file.read_text(encoding="utf-8"))
+                except (OSError, UnicodeError, json.JSONDecodeError):
+                    raise ValueError(
+                        f"原位置的作品信息无法识别，已保留原位置和回收站两份数据：{target}；{source}"
+                    ) from None
+                if not isinstance(metadata, dict) or metadata.get("id") != project_id:
+                    raise ValueError(
+                        f"原位置属于其他作品，已保留原位置和回收站两份数据：{target}；{source}"
+                    )
+                self.db.restore_project(project_id, target)
+                return self.get(project_id)
+            if not target.is_dir():
+                raise ValueError(
+                    f"原位置不是作品目录，已保留原位置和回收站数据：{target}；{source}"
+                )
+        if not source.is_dir():
+            raise ValueError(f"回收站中的作品目录不存在，未改动原位置：{target}")
+        if target.exists():
+            backup_root = (self.trash_root / "restore-conflicts").resolve()
+            if not backup_root.is_relative_to(self.trash_root):
+                raise ValueError("冲突备份路径不在回收站范围内，未移动或覆盖任何文件")
+            backup_root.mkdir(parents=True, exist_ok=True)
+            backup = (backup_root / f"{project_id}-{uuid.uuid4().hex[:8]}").resolve()
+            while backup.exists():
+                backup = (backup_root / f"{project_id}-{uuid.uuid4().hex[:8]}").resolve()
+            shutil.move(str(target), str(backup))
         try:
-            self.db.restore_project(project_id, target)
+            shutil.move(str(source), str(target))
+            try:
+                self.db.restore_project(project_id, target)
+            except Exception:
+                shutil.move(str(target), str(source))
+                raise
         except Exception:
-            shutil.move(str(target), str(source))
+            if backup is not None and backup.exists() and not target.exists():
+                shutil.move(str(backup), str(target))
             raise
         return self.get(project_id)
 
@@ -335,6 +369,18 @@ class ProjectStore:
                 parts.append(path.read_text(encoding="utf-8"))
         parts.append((project.path / "constraints.md").read_text(encoding="utf-8"))
         state = StoryStateStore(self.db).get(project_id)
+        if state:
+            facts = [
+                f"- {item.get('key')}: {item.get('value')}"
+                for item in [*state.data.get("locked_facts", []),
+                             *state.data.get("confirmed_facts", [])]
+                if isinstance(item, dict) and item.get("value") not in (None, "")
+            ]
+            if facts:
+                parts.append(
+                    "# CONFIRMED STORY FACTS (take precedence over older project notes)\n\n"
+                    + "\n".join(facts)
+                )
         outline = state.data.get("outline") if state else None
         if isinstance(outline, dict) and str(outline.get("content") or "").strip():
             parts.append("# Current Confirmed Outline\n\n" + str(outline["content"])[:30_000])

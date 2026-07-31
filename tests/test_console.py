@@ -139,6 +139,8 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     script = client.get("/static/app.js").text
     assert "叙事账本" in script
     assert "问题返修台账" in script
+    assert "detail_analysis" in script
+    assert "已单独复核" in script
     assert 'id="reference-list"' in html
     assert 'id="reference-detail"' in html
     assert 'id="reference-url"' in html
@@ -361,6 +363,28 @@ def test_learning_library_supports_multi_reference_creation_with_readable_states
     assert ".reference-selection-status.error" in css
 
 
+def test_confirmed_learning_can_create_first_project_without_existing_projects(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    html = client.get("/").text
+    script = client.get("/static/app.js").text
+
+    assert 'data-mechanism-create-reference="${escapeHtml(item.source_id)}"' in script
+    assert "用这篇资料创建新作品" in script
+    assert "当前还没有作品，可以直接用这篇资料开始创建。" in script
+    assert "startWizardFromReference([button.dataset.mechanismCreateReference])" in script
+    assert 'id="learning-application-empty"' in html
+    assert 'id="learning-project-content"' in html
+    assert 'id="learning-empty-reference"' in html
+    assert 'id="learning-empty-new"' in html
+    assert "state.projectLearning=null;state.effectiveRules=null;state.outlines=null" in script
+    assert '$("#learning-application-empty").hidden=hasProjects' in script
+    assert '$("#learning-project-content").hidden=!hasProjects' in script
+    assert 'switchLearningView("references")' in script
+    assert 'navigateToView("projects")' in script
+
+
 def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
     client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
     script = client.get("/static/app.js").text
@@ -374,7 +398,7 @@ def test_learning_library_explains_results_and_tracks_actions(tmp_path) -> None:
         assert label in script
     assert "reference-task-status" in script
     assert "pollReferenceAnalysisTask" in script
-    assert "模型未形成可逐条采纳的候选写法" in script
+    assert "模型未形成有充分证据的候选内容" in script
     assert "referenceTask" in script
     assert "showIndeterminate" in script
     assert "正在使用已配置的备用模型" in script
@@ -437,15 +461,18 @@ def test_outline_workspace_uses_plain_language_and_visible_operation_states(tmp_
         "不会修改已经写好的正文", "查看并编辑全文", "比较变化",
         "应用勾选的变化", "整体采用这个版本", "请模型判断",
         "恢复这个版本", "正在生成候选大纲", "生成失败",
+        "按当前大纲创建新作品", "新作品重新生成人物和设定",
+        "原作品、原资料和运行记录都会保留",
     ):
         assert label in html + script
     assert 'id="outline-candidate-form"' not in html
     assert "loadOutlineWorkspace" in script
     assert "renderOutlineWorkspace" in script
     assert "setOutlineOperationStatus" in script
+    assert "createProjectFromCurrentOutline" in script
     assert ".outline-operation-status.busy" in css
     assert ".outline-change-list" in css
-    assert "outline-layout { grid-template-columns:1fr" in css
+    assert ".outline-generate-form,.outline-layout,.outline-canon-item { grid-template-columns:1fr" in css
     assert 'id="wizard-confirmed-methods"' in html
     assert "可选：带入已确认写法" in html
     assert "只有最终勾选的写法才会用于新作品" in html
@@ -542,8 +569,11 @@ def test_reference_created_outline_failure_keeps_project_and_offers_retry_path(
     manual_generation = script.split(
         '$("#outline-generate-form").addEventListener("submit"', 1,
     )[1].split('$("#outline-save")', 1)[0]
-    assert "error.message" not in manual_generation
-    assert "请稍后重试；现有作品、大纲和正文不会改变。" in manual_generation
+    assert "error.message" in manual_generation
+    assert 'error.code==="outline_generation_not_ready"' in manual_generation
+    assert "现有作品、大纲和正文不会改变" in manual_generation
+    assert "候选已经保存，但页面没有刷新" in manual_generation
+    assert "不需要重新生成" in manual_generation
 
     confirmation = script.split(
         '$("#wizard-confirm").addEventListener("click"', 1,
@@ -557,6 +587,9 @@ def test_reference_created_outline_failure_keeps_project_and_offers_retry_path(
     assert "wizardSelectionErrorMessage(error)" in confirmation
     assert 'setWizardMethodSelectionStatus(message,"error")' in confirmation
     assert "error.message" not in confirmation
+    assert "/initialize-skills" not in confirmation
+    assert "monitorRun(" not in confirmation
+    assert "作品已创建，请先确认正式大纲" in confirmation
     safe_error = script.split("function wizardSelectionErrorMessage", 1)[1].split(
         "async function startWizardFromReference", 1,
     )[0]
@@ -580,11 +613,12 @@ def test_workbench_is_task_first_and_keeps_old_tools_in_details(tmp_path) -> Non
         "workbench-current-stage",
         "workbench-priority-issues",
         "workbench-primary-action",
+        "workbench-new-project",
         "workbench-details",
     ):
         assert f'id="{control}"' in html
     for label in (
-        "新建作品",
+        "从样本开始",
         "继续初始化",
         "查看当前进度",
         "从失败项继续",
@@ -614,6 +648,10 @@ def test_workbench_is_task_first_and_keeps_old_tools_in_details(tmp_path) -> Non
         assert html.count(f'id="{old_control}"') == 1
     assert ".workbench-task-summary" in css
     assert ".workbench-primary-action" in css
+    assert "正在处理的作品" in html
+    assert "开始新作品" in html
+    assert "从样本开始" in script
+    assert 'action==="references"' in script
 
 
 def test_workbench_task_priority_is_deterministic_and_shows_at_most_three_issues(
@@ -627,6 +665,7 @@ def test_workbench_task_priority_is_deterministic_and_shows_at_most_three_issues
 
     for branch in (
         "!snapshot.project",
+        "!snapshot.hasFormalOutline&&!activeRun",
         "!snapshot.initialized&&!activeRun",
         "if(activeRun)",
         "resumableRevision",
@@ -638,6 +677,9 @@ def test_workbench_task_priority_is_deterministic_and_shows_at_most_three_issues
     ):
         assert branch in decision
     assert decision.index("if(activeRun)") < decision.index("if(resumableRevision)")
+    assert decision.index("!snapshot.hasFormalOutline&&!activeRun") < decision.index(
+        "!snapshot.initialized&&!activeRun"
+    )
     assert decision.index("if(resumableRevision)") < decision.index(
         'snapshot.candidateLoadState==="missing"'
     )
@@ -677,6 +719,8 @@ def test_workbench_async_state_is_project_scoped_and_candidate_load_is_explicit(
     assert "const generation=++state.workbenchGeneration" in render
     assert "workbenchContextMatches(projectId,generation)" in render
     assert "state.workbenchRuns=runs" in render
+    assert "state.workbenchOutline=results[6]" in render
+    assert "!hasFormalOutline || initialized || initializing" in render
     monitor = script.split("async function monitorRun", 1)[1].split(
         '$("#initialize-project")', 1,
     )[0]
@@ -691,6 +735,98 @@ def test_workbench_async_state_is_project_scoped_and_candidate_load_is_explicit(
     assert "renderProjects();" not in script.split(
         "async function continueProject", 1,
     )[1].split("async function loadProjectLocations", 1)[0]
+
+
+def test_console_explains_polish_recovery_in_plain_chinese(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    for event_type in (
+        "polish_compact_retry",
+        "polish_compact_fallback",
+        "polish_segment_preserved",
+        "polish_segment_progress",
+    ):
+        assert event_type in script
+    for label in (
+        "正在精简要求后重新润色本段",
+        "首选模型没有返回正文，正在使用备用模型",
+        "本段未完成精修，已保留原文并继续",
+        "继续运行时只处理未完成片段",
+    ):
+        assert label in script
+    assert "已完成 ${completed} / ${total} 段，其中 ${preserved} 段保留原文" in script
+
+
+def test_console_polish_run_progress_stops_busy_and_polling_at_terminal_statuses(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    active_status = script.split("const isActiveRunStatus", 1)[1].split(";", 1)[0]
+    assert '["queued","running","cancelling"].includes(status)' in active_status
+    for terminal in ("completed", "failed", "cancelled", "interrupted"):
+        assert terminal not in active_status
+
+    show_detail = script.split("function showRunDetail", 1)[1].split(
+        "async function monitorRun", 1,
+    )[0]
+    monitor = script.split("async function monitorRun", 1)[1].split(
+        '$("#run-cancel").addEventListener', 1,
+    )[0]
+    assert "const active=isActiveRunStatus(detail.status)" in show_detail
+    assert "const active=isActiveRunStatus(detail.status)" in monitor
+    assert "polishRunProgress(detail.events || [],detail.status)" in show_detail
+    assert "polishRunProgress(detail.events || [],detail.status)" in monitor
+    assert "if (active) state.pollTimer=setTimeout(poll,900)" in monitor
+
+    progress = script.split("function polishRunProgress", 1)[1].split(
+        "function polishRunEventMessage", 1,
+    )[0]
+    assert progress.startswith("(events,status)")
+    assert "if(isActiveRunStatus(status)" in progress
+    assert '["failed","cancelled","interrupted"].includes(status)' in progress
+    assert 'resumable&&preserved>0' in progress
+
+
+def test_console_validates_polish_progress_and_hides_internal_events(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    validation = script.split("function polishProgressMetadata", 1)[1].split(
+        "function polishRunProgress", 1,
+    )[0]
+    assert "Number.isFinite" in validation
+    for invalid in ("completed<0", "total<=0", "preserved<0", "completed>total"):
+        assert invalid in validation
+
+    event_message = script.split("function polishRunEventMessage", 1)[1].split(
+        "function renderRunLog", 1,
+    )[0]
+    assert "polishProgressMetadata(item)" in event_message
+    assert "readableRunMessage(item.message)" in event_message
+
+    hidden = script.split("const hiddenRunEventTypes", 1)[1].split(";", 1)[0]
+    for event_type in (
+        "polish_segment_route",
+        "polish_circuit_opened",
+        "polish_max_tokens_retry",
+    ):
+        assert event_type in hidden
+    run_log = script.split("function renderRunLog", 1)[1].split(
+        "function renderRunContext", 1,
+    )[0]
+    assert ".filter(item=>!hiddenRunEventTypes.has(item.event_type))" in run_log
+    assert "escapeHtml(polishRunEventMessage(item))" in run_log
+    show_detail = script.split("function showRunDetail", 1)[1].split(
+        "async function monitorRun", 1,
+    )[0]
+    monitor = script.split("async function monitorRun", 1)[1].split(
+        '$("#run-cancel").addEventListener', 1,
+    )[0]
+    assert '.textContent=progress?' in show_detail
+    assert '.textContent=progress?' in monitor
 
 
 def test_wizard_draft_controls_are_plain_and_delete_only_unfinished_drafts(tmp_path) -> None:
@@ -734,6 +870,22 @@ def test_learning_candidates_explain_local_and_model_sources_in_chinese(tmp_path
     assert "模型返回的旧结果没有完成中文化" in script
     assert ".mechanism-source-badges" in css
     assert ".reference-analysis-guide" in css
+    assert "const listValue=value=>Array.isArray(value)" in script
+    assert "listValue(item.data.applicable_modes).map" in script
+    for label in (
+        "从优秀样本学到的表达方式", "确认这条文笔", "加入当前作品",
+        "什么时候适合用", "不要怎么用", "文笔和剧情写法分开显示",
+    ):
+        assert label in script or label in html
+    assert "/api/learning/style-candidates?view=all" in script
+    assert "/learning/style-candidates/${id}" in script
+    assert ".style-candidate-section" in css
+    for label in (
+        "当前基础文笔", "作品基础方向", "系统默认规则",
+        "从样本确认并加入的规则", "系统默认文笔 · 尚未加入样本规则",
+    ):
+        assert label in script
+    assert ".prose-baseline-overview" in css
     for old_label in (
         "LOCAL WRITING SYSTEM", "LOCAL MARKET INTELLIGENCE", "SKILL-DRIVEN SETUP",
         "PLANNING MODEL", "MODEL ROUTING", "EXECUTION GATES", "RECOVERABLE PROJECTS",
@@ -770,6 +922,26 @@ def test_learning_rules_are_visible_removable_and_recoverable(tmp_path) -> None:
     assert "removeAdoption" in script
     assert ".effective-rule-layers" in css
     assert ".blueprint-rule-row" in css
+    assert "准备建立第一版正式大纲" in script
+    assert "设为第一版正式大纲" in script
+    assert "整体采用后，这份候选会成为第一版正式大纲" in script
+
+
+def test_outline_generation_explains_missing_methods_and_saved_refresh_failure(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    for label in (
+        "还不能生成大纲",
+        "去选择写法",
+        "候选已经保存，但页面没有刷新",
+        "不需要重新生成，请重新读取候选列表",
+        "重新读取",
+    ):
+        assert label in script
+    assert "catch(error)" in script
+    assert 'state.activeOutlineCandidateId=created?.id||null' in script
+    assert 'error.code==="outline_generation_not_ready"' in script
 
 
 def test_candidate_quality_is_one_plain_chinese_progressive_workspace(tmp_path) -> None:

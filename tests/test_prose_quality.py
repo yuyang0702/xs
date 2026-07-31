@@ -12,6 +12,16 @@ def test_analyzer_blocks_model_process_text_and_locates_segment() -> None:
     assert report["blocking_count"] == 1
 
 
+def test_analyzer_blocks_planning_notes_mixed_script_and_duplicate_paragraphs() -> None:
+    repeated = "苏荞把门闩压回原位，又检查了一遍窗纸上的影子，确认院外的人还没有离开。"
+    report = analyze_prose(
+        f"{repeated}\n\n- **状态变化**：她决定离开。\n\n苏quila转身。\n\n{repeated}"
+    )
+
+    codes = {item["code"] for item in report["findings"] if item["blocking"]}
+    assert {"production_text", "mixed_script_corruption", "duplicate_paragraph"} <= codes
+
+
 def test_analyzer_reports_formulaic_explanation_as_soft_signal() -> None:
     text = "这一刻，他终于明白，这不是逃避，而是命运的选择。" * 3
 

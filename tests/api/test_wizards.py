@@ -205,6 +205,23 @@ def test_initialize_skills_returns_tracked_background_run(tmp_path) -> None:
     }})
     project = client.post(f"/api/wizards/{wizard['id']}/confirm").json()
 
+    blocked = client.post(f"/api/projects/{project['id']}/initialize-skills")
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "outline_confirmation_required"
+
+    candidate = client.post(
+        f"/api/projects/{project['id']}/learning/outline-candidates",
+        json={"title": "第一版", "outline": "# 正式大纲\n\n## 开头\n门被推开。"},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project['id']}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    applied = client.post(
+        f"/api/projects/{project['id']}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    )
+    assert applied.status_code == 200
+
     response = client.post(f"/api/projects/{project['id']}/initialize-skills")
 
     assert response.status_code == 202

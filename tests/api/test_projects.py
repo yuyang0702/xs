@@ -1,5 +1,6 @@
 import hashlib
 import json
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
@@ -212,6 +213,50 @@ def test_candidate_diagnostics_and_controlled_publication(tmp_path) -> None:
     assert published.status_code == 201
     assert (root / "manuscript" / "story.md").read_text(encoding="utf-8") == "他说：“回来。”\n她关上门。"
     assert (root / "chapters" / "chapter-01.md").is_file()
+
+
+def test_candidate_analysis_does_not_recreate_project_after_trash(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Archive during analysis", "mode": "short", "genre": "suspense",
+        "premise": "The analysis finishes after archival.", "target_words": 6000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("analysis-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "analysis-run" / "outputs"
+    outputs.mkdir(parents=True)
+    text = "candidate manuscript"
+    (outputs / "best-candidate.md").write_text(text, encoding="utf-8")
+
+    def analyze_then_trash(*_args, **_kwargs):
+        app.state.projects.trash(project.id)
+        return {
+            "coverage": 1.0,
+            "text_hash": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+            "originality": {},
+        }
+
+    monkeypatch.setattr(
+        "novel_flywheel.api.projects.analyze_manuscript", analyze_then_trash,
+    )
+
+    response = client.get(f"/api/projects/{project.id}/candidate")
+
+    assert response.status_code == 200
+    assert response.json()["analysis_status"] == "complete"
+    assert not project.path.exists()
+    trash_path = tmp_path / "trash" / project.id
+    assert trash_path.is_dir()
+    assert not (
+        trash_path / "runs" / "analysis-run" / "outputs" / "analysis-candidate.json"
+    ).exists()
 
 
 def test_candidate_api_reconciles_and_returns_higher_historical_best(tmp_path) -> None:
@@ -612,6 +657,31 @@ def test_project_trash_restore_and_permanent_delete_api(tmp_path) -> None:
     response = client.delete(f"/api/projects/{project['id']}/permanent")
     assert response.status_code == 204
     assert client.get("/api/projects/trash").json() == []
+
+
+def test_project_restore_conflict_api_explains_that_both_copies_were_kept(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Conflict", "mode": "short", "genre": "suspense",
+        "premise": "Another project occupies the path.", "target_words": 8_000,
+    }).json()
+    original = Path(project["path"])
+    client.delete(f"/api/projects/{project['id']}")
+    trash_path = Path(client.get("/api/projects/trash").json()[0]["path"])
+    original.mkdir()
+    (original / "project.json").write_text(
+        json.dumps({"id": "another-project"}), encoding="utf-8",
+    )
+
+    response = client.post(f"/api/projects/{project['id']}/restore")
+
+    assert response.status_code == 409
+    assert "原位置属于其他作品" in response.json()["detail"]["message"]
+    assert original.is_dir()
+    assert trash_path.is_dir()
 
 
 def test_project_style_sample_status_analyze_and_delete_api(tmp_path) -> None:

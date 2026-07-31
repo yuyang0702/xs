@@ -16,7 +16,7 @@
         </button>
         <div id="nav-group-creation" class="nav-group-items">
           <button type="button" class="nav-item active" data-view="workbench" aria-current="page"><span>创作工作台</span></button>
-          <button type="button" class="nav-item" data-view="projects"><span>新建作品</span></button>
+          <button type="button" class="nav-item" data-view="projects"><span>开始新作品</span></button>
         </div>
       </div>
       <div class="nav-group" data-nav-group="learning">
@@ -58,7 +58,8 @@
 
     <section id="workbench" class="view active">
       <div class="toolbar workbench-project-toolbar">
-        <label>当前作品<select id="active-project"></select></label>
+        <label>正在处理的作品<select id="active-project"></select></label>
+        <button id="workbench-new-project" class="secondary" type="button" data-view-target="projects">开始新作品</button>
       </div>
       <section class="workbench-task-summary" aria-labelledby="workbench-current-stage">
         <div id="workbench-current-project" class="workbench-current-project">还没有选择作品</div>
@@ -125,7 +126,7 @@
         </section>
         <section class="history-panel"><div class="run-tabs"><button class="run-tab active" data-run-tab="log">执行日志</button><button class="run-tab" data-run-tab="context">上下文</button></div><div id="run-log" class="run-log"><p class="skill-meta">尚未开始任务</p></div><div id="run-context" class="run-context" hidden><p class="skill-meta">选择运行记录后查看上下文摘要</p></div><h2 class="history-title">运行记录</h2><div id="run-list" class="run-list"></div></section>
       </div>
-      <section class="project-library"><div class="section-heading"><h2>我的作品</h2><button class="secondary" data-view-target="projects">新建作品</button></div><div id="project-list" class="project-list"></div></section>
+      <section class="project-library"><div class="section-heading"><h2>我的作品</h2><button class="secondary" data-view-target="projects">开始另一部作品</button></div><div id="project-list" class="project-list"></div></section>
       <section class="manuscript-panel" id="manuscript-panel" hidden>
         <div class="section-heading"><h2>正文</h2><button id="close-manuscript" class="icon-button" aria-label="关闭正文">×</button></div>
         <pre id="manuscript"></pre>
@@ -136,7 +137,7 @@
 
     <section id="materials" class="view">
       <div class="toolbar">
-        <label>当前作品<select id="materials-project"></select></label>
+        <label>正在查看的作品<select id="materials-project"></select></label>
       </div>
       <div id="materials-summary" class="summary-band"></div>
       <section class="materials-characters" aria-labelledby="materials-characters-title">
@@ -167,7 +168,7 @@
     </section>
 
     <section id="learning" class="view">
-      <div class="section-heading learning-page-heading"><div><p class="eyebrow">学习资料库</p><h2>参考资料与写作方法</h2><p class="skill-meta">整理参考资料、确认可借鉴写法，并查看它们如何用于当前作品</p></div><label class="learning-project-picker">当前作品<select id="learning-project"><option value="">请先创建作品</option></select></label></div>
+      <div class="section-heading learning-page-heading"><div><p class="eyebrow">学习资料库</p><h2>参考资料与写作方法</h2><p class="skill-meta">先独立整理样本和写法；准备使用时，再选择要应用到的作品</p></div><label class="learning-project-picker">应用到作品<select id="learning-project"><option value="">暂无作品，仍可整理资料</option></select></label></div>
       <nav class="learning-view-tabs" aria-label="学习库内容">
         <button type="button" class="active" data-learning-view="references">资料与分析</button>
         <button type="button" data-learning-view="mechanisms">候选写法</button>
@@ -217,12 +218,21 @@
       </section>
 
       <section class="learning-view-panel" data-learning-panel="mechanisms" hidden>
-        <div class="learning-panel-heading"><div><p class="eyebrow">写法整理</p><h2>候选写法</h2><p>每条结果都会说明来自本地还是模型。展开依据后，再决定保留、应用或拒绝。</p></div><div class="mechanism-filters"><label>状态<select id="learning-mechanism-view"><option value="active">待确认与已保留</option><option value="rejected">已拒绝</option><option value="all">全部</option></select></label><label>分析来源<select id="learning-mechanism-origin"><option value="all">全部来源</option><option value="local">本地提炼</option><option value="hybrid">本地 + 模型复核</option><option value="model">模型新增</option></select></label></div></div>
-        <div id="learning-mechanisms" class="learning-mechanisms"><p class="skill-meta">完成本地提炼后，这里会显示候选写法</p></div>
+        <div class="learning-panel-heading"><div><p class="eyebrow">写法整理</p><h2>候选写法</h2><p>文笔和剧情写法分开显示。先看用途与原文依据，再决定确认、应用或拒绝。</p></div><div class="mechanism-filters"><label>状态<select id="learning-mechanism-view"><option value="active">待确认与已保留</option><option value="rejected">已拒绝</option><option value="all">全部</option></select></label><label>分析来源<select id="learning-mechanism-origin"><option value="all">全部来源</option><option value="local">本地提炼</option><option value="hybrid">本地 + 模型复核</option><option value="model">模型新增</option></select></label></div></div>
+        <div id="learning-mechanisms" class="learning-mechanisms"><p class="skill-meta">完成本地提炼或模型全文分析后，这里会显示候选内容</p></div>
       </section>
 
       <section class="learning-view-panel" data-learning-panel="application" hidden>
-        <div class="learning-panel-heading application-overview"><div><h2>当前作品的创作设置</h2><p>在这里管理大纲版本、待确认写法和已经生效的规则。所有操作只影响后续创作，不会改动现有正文。</p></div></div>
+        <div class="learning-panel-heading application-overview"><div><h2 id="learning-application-title">当前作品的创作设置</h2><p id="learning-application-description">在这里管理大纲版本、待确认写法和已经生效的规则。所有操作只影响后续创作，不会改动现有正文。</p></div></div>
+        <section id="learning-application-empty" class="learning-empty" hidden>
+          <strong>开始一部新作品</strong>
+          <p>你可以先选择已经分析过的参考作品或爆款样本，也可以直接从自己的想法开始。</p>
+          <div class="reference-selection-actions">
+            <button id="learning-empty-reference" class="primary" type="button">去选参考资料</button>
+            <button id="learning-empty-new" class="secondary" type="button">直接新建作品</button>
+          </div>
+        </section>
+        <div id="learning-project-content">
         <section id="outline-workspace" class="outline-workspace" aria-labelledby="outline-workspace-title">
           <header class="outline-workspace-heading">
             <div><h3 id="outline-workspace-title">大纲版本</h3><p>候选版本只有经过你确认才会生效，也不会修改已经写好的正文。</p></div>
@@ -268,6 +278,7 @@
             <form id="line-edit-form"><h3>定向行文精修</h3><label>原文<textarea name="source" rows="6" required></textarea></label><label>问题类别<input name="issues" required placeholder="例如：机械对白,过度确定"></label><button class="secondary">生成精修候选</button><pre id="line-edit-result" hidden></pre></form>
           </div>
         </details>
+        </div>
       </section>
     </section>
 

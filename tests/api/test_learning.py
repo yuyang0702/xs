@@ -323,6 +323,37 @@ def test_effective_rules_and_artifact_restore_are_available(tmp_path) -> None:
     assert any(item["name"] == "基础文笔规则" for item in overview.json()["layers"])
 
 
+def test_style_candidate_api_requires_confirmation_and_updates_project_baseline(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, _node_id = project_and_mechanism(client)
+    source = client.post("/api/references", json={
+        "title": "文笔来源", "source_type": "paste", "text": "她放下茶杯。",
+    }).json()
+    candidate = client.app.state.learning._save_node("style_rule", {
+        "field": "sentence_rhythm", "rule": "动作句短，观察句稍长",
+        "when_to_use": "紧张场景", "avoid": "不要连续同构短句",
+        "supporting_windows": [1], "confidence": 0.9,
+    }, source_id=source["id"], status="proposed")
+
+    blocked = client.post(
+        f"/api/projects/{project_id}/learning/style-candidates/{candidate['id']}",
+    )
+    client.post(
+        f"/api/learning/nodes/{candidate['id']}/revisions",
+        json={"action": "confirm", "data": {}},
+    )
+    applied = client.post(
+        f"/api/projects/{project_id}/learning/style-candidates/{candidate['id']}",
+    )
+    listed = client.get("/api/learning/style-candidates?view=all").json()
+
+    assert blocked.status_code == 422
+    assert "先确认" in blocked.json()["detail"]
+    assert applied.status_code == 200
+    assert applied.json()["data"]["sentence_rhythm"] == ["动作句短，观察句稍长"]
+    assert listed[0]["source_title"] == "文笔来源"
+
+
 def test_learning_api_normalizes_legacy_single_incompatible_condition(tmp_path) -> None:
     client = client_for(tmp_path)
     source = client.post("/api/references", json={
@@ -410,6 +441,41 @@ def test_outline_candidates_can_be_viewed_compared_edited_applied_and_restored(t
     assert deleted.status_code == 200
     remaining = client.get(f"/api/projects/{project_id}/learning/outlines").json()["candidates"]
     assert abandoned["id"] not in {item["id"] for item in remaining}
+
+
+def test_conflicting_current_outline_can_create_new_project_through_api(tmp_path) -> None:
+    client = client_for(tmp_path)
+    project_id, _node_id = project_and_mechanism(client)
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={
+            "outline": "# 错认鸾枝\n\n**方小满（冒牌千金）**进入沈府。",
+            "title": "新人物版本",
+        },
+    ).json()
+    applied = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"apply_whole": True},
+    )
+    assert applied.status_code == 200
+    project = client.app.state.projects.get(project_id)
+    metadata_path = project.path / "project.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["story_requirements"] = {
+        "protagonist.name": "苏荞", "world.locations": "容府、东市",
+    }
+    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
+
+    response = client.post(
+        f"/api/projects/{project_id}/learning/outlines/create-project",
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id"] != project_id
+    assert response.json()["materials_need_generation"] is True
+    assert client.app.state.outlines.current(response.json()["id"])["content"].startswith(
+        "# 错认鸾枝"
+    )
 
 
 def test_outline_semantic_review_sends_only_uncertain_changes_to_planning_model(tmp_path) -> None:

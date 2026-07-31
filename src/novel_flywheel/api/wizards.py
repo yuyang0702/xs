@@ -304,6 +304,18 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
         answers = project.metadata.get("story_requirements", {})
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found", "message": str(exc)}) from exc
+    readiness = request.app.state.outlines.writing_readiness(project_id)
+    if not request.app.state.outlines.current(project_id)["exists"]:
+        raise HTTPException(status_code=409, detail={
+            "code": "outline_confirmation_required",
+            "message": "请先在“作品应用”中选择候选大纲并设为正式大纲，再准备人物和设定。",
+        })
+    if not readiness["ready"]:
+        raise HTTPException(status_code=409, detail={
+            "code": "outline_canon_conflict",
+            "message": readiness["message"],
+            "conflicts": readiness["conflicts"],
+        })
 
     async def operation(run_id: str) -> object:
         results = []

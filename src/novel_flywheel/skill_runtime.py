@@ -264,7 +264,7 @@ class SkillRuntimeToolbox:
         elif relative.startswith("plot/arcs/"):
             fields = {"characters"}
         elif relative.startswith("continuity/promises/") or relative.startswith("continuity/questions/"):
-            fields = {"characters", "arcs"}
+            fields = {"characters", "arcs", "planted", "payoff"}
         return cls._remove_frontmatter_fields(content, fields) if fields else content
 
     @staticmethod

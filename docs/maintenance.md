@@ -74,6 +74,14 @@ To roll back, disable the feature for the project. Existing artifacts remain ava
 
 Deleting a provider is permanent and also removes its model mappings and stored secret. Role bindings that use the provider as primary are deleted; bindings that use it only as fallback retain their primary route and clear the fallback fields. These changes do not alter project files or committed manuscripts.
 
+## Project trash recovery
+
+Restore treats `project.json.id` as the project-directory identity. If an interrupted restore has already moved the directory back to its recorded original path but the database still marks it as trashed, Runtime clears only the stale trash record after confirming the ID; it does not move or rewrite project files. If matching complete project directories exist at both paths, the original directory becomes active and the trash copy remains untouched. A later delete uses a unique trash path instead of overwriting that retained copy. If the original path has no `project.json`, Runtime preserves that derived shell under `trash/restore-conflicts/` before moving the complete trash project back. Another project's directory, an unreadable `project.json`, or a missing trash directory stops recovery and reports the preserved locations; no restore path overwrites or deletes either copy.
+
+Candidate analysis rechecks the active project registry after local analysis and before writing its cache. If the project entered trash while the request was running, the in-memory report may finish for the open page but no old project path is recreated. Learning mechanism list fields accept legacy single-text values at the read boundary; `both` becomes short and long, and stages, genres, and incompatible conditions become lists before project adoption or page rendering. The browser keeps a defensive list conversion so an old stored result cannot break the entire learning page.
+
+The console treats market data, reference analysis, and confirmed learning methods as pre-project work. Starting another project is always available from the workbench, while project-only outline, writing, revision, and publication controls remain scoped to the selected project and are hidden behind a clear empty state when no project exists.
+
 ## Skill classification
 
 The Skill page distinguishes executable Skills from prompt Skills that merely bundle auxiliary validation or development scripts. A script requires approval only when `SKILL.md` explicitly references its `scripts/...` path. Auxiliary scripts remain visible in the UI but are not executable through the writing workflow.
@@ -118,9 +126,15 @@ No local generative model is installed or supported by this feature. A later opt
 
 Short-story scene separators remain internal to drafting and targeted revision. Local manuscript analysis, full or incremental final review, and the terminal reviewed hash use the clean reader-visible text, so workflow markers cannot enter editorial findings or publication eligibility.
 
-When a primary polish response fails local length, prose, or locked-fact validation, Runtime tries the configured polish fallback once before preserving the source segment. Both the retry and a failed retry are visible run events; an invalid fallback can never replace the source text.
+Ordinary polish uses one fixed recovery order: full primary request, compact primary request, compact configured fallback, then preserve the source segment and continue. Empty output, non-empty output ending with `finish_reason=max_tokens`, and obviously overlong output enter compact recovery immediately; they never trigger the legacy 8,192-token retry or manuscript splitting. The compact prompt retains only the current segment, bounded adjacent context, relevant character voice, facts, protected passages, local findings, and the length contract. A configured fallback is called only after compact primary failure.
 
-Every full-review window, incremental-review window, and final adjudication is parsed locally before it is accepted. A malformed or truncated JSON response retries only that request through the final-review role's configured fallback and records `final_review_json_fallback`; completed windows and the preserved best candidate are not discarded.
+Two consecutive full-request output anomalies on the same route open a compact circuit for the rest of that invocation, so later ordinary segments start with compact primary. A valid full response resets the counter, and a new task starts with a closed circuit. If both compact routes fail, Runtime writes a non-authorizing `accepted: false`, `status: preserved_source` checkpoint, records handled/completed/preserved counts, and continues with independent segments. Resume reuses only accepted source-hash checkpoints and retries preserved segments. Legacy checkpoints without `accepted` remain readable; malformed non-boolean acceptance values are never authorized.
+
+Authentication, missing-key, missing-provider/model, and invalid role-binding errors stop immediately, including when nested inside a route-exhaustion exception. Cancellation always propagates. Only `502`, `504`, `524`, timeout, and connection failures retain safe paragraph-boundary splitting. Structural targeted correction keeps its existing retry, fallback, and validation semantics and never enters the ordinary compact recovery events.
+
+If a complete ordinary response reaches local prose, length, fact, or passage validation but fails it, the configured validation fallback still gets one attempt. That attempt never raises its output limit: empty or non-empty `max_tokens` and obviously overlong output are rejected and preserve the source. Fatal configuration errors propagate immediately, while transport errors return to the same safe split path.
+
+Every single-request review, full-review window, incremental-review window, and final adjudication is parsed locally before it is accepted. A malformed or truncated JSON response retries only that request through the final-review role's configured fallback and records `final_review_json_fallback`. If both full-format routes remain incomplete, Runtime makes one compact recovery request, records `final_review_compact_recovery`, and never joins partial JSON fragments. Completed windows and the preserved best candidate are not discarded. If snapshot rollback itself fails, `snapshot_restore_failed` records that secondary failure without replacing the original model or validation error.
 
 If final adjudication returns a readable reconciliation summary object instead of the required item list, Runtime recovers only issue entries whose stable IDs match the prior ledger and records `final_review_reconciliation_recovered`. Missing IDs still trigger the existing conservative evidence cap; recovery never treats an omitted issue as resolved and does not call a model again.
 
@@ -148,7 +162,7 @@ Polish receives one bounded manuscript segment, adjacent boundaries, a compact f
 
 Four or more consecutive short narrative sentences are reported to polish as rhythm issues. Headings and quoted dialogue are excluded from narrative short-sentence metrics; dialogue-only runs and timestamp scene fragments remain separate findings. Polish merges fragments that belong to one continuous action while preserving intentional dialogue, emphasis, suspense, and scene changes. A candidate passes when its longest narrative short-sentence run or short-sentence ratio improves materially, and Runtime still rejects material regression.
 
-Rhythm retry logs name the actual finding: narrative fragments, dialogue-only exchange, or scene fragmentation. Each source segment receives at most one ordinary polish and one targeted rhythm retry for the same polish role configuration and rhythm-policy version. If both fail local validation, Runtime checkpoints the preserved source as `preserved_after_retry`; resume reuses it without another paid call. A source edit, polish provider/model change, or policy-version change invalidates that preservation checkpoint and permits a new attempt.
+Rhythm retry logs name the actual finding: narrative fragments, dialogue-only exchange, or scene fragmentation. Each source segment receives at most one ordinary polish and one targeted rhythm retry in one invocation. If both fail local validation, Runtime records the source as a non-authorizing `preserved_source` checkpoint; a resumed invocation retries it instead of treating it as accepted prose.
 
 ### Token budgets
 
@@ -163,7 +177,7 @@ Rhythm retry logs name the actual finding: narrative fragments, dialogue-only ex
 | Final review | 8,192 |
 | Maintenance extraction | 4,096 |
 
-Ordinary output budgets use the stage-derived default capped by the selected primary or configured fallback model's numeric ceiling; a ceiling never enlarges an ordinary request. Legacy model records without a ceiling retain the stage-derived default. A targeted patch without a configured ceiling treats that actual stage budget as its ceiling. It may retry only when the next numeric limit is larger; at the ceiling Runtime raises into the current-segment split path instead of guessing 8,192 or repeating an identical request. Primary and automatic fallback calls are independently capped by their own configured ceilings. Ordinary polish and Review retain their established compatibility retries, also capped when the route has a numeric ceiling.
+Ordinary output budgets use the stage-derived default capped by the selected primary or configured fallback model's numeric ceiling; a ceiling never enlarges an ordinary request. Legacy model records without a ceiling retain the stage-derived default. Ordinary polish does not raise its output budget after an output anomaly; its compact primary and compact fallback calls use the segment-derived budget under each selected model's ceiling. A targeted patch without a configured ceiling treats its actual stage budget as its ceiling and retains the existing targeted retry behavior. Review retains its separate compatibility retry.
 
 Review starts with its normal 4,096 output limit. An empty Review response with `finish_reason=max_tokens` retries the same model route once at 8,192 with compact JSON-only instructions. If it remains empty, only the Review role's configured fallback is used. Planning is never used as an editorial-review substitute. If both Review routes fail, `review_incomplete` preserves the draft and existing polish checkpoints without creating an editorial score.
 
@@ -177,7 +191,7 @@ When a character profile is saved with "retire removed settings" enabled, the ap
 
 The `maintenance` role compares the change with project material files only. Candidate patches must identify a project-relative file and an exact existing excerpt. The API rejects paths outside the project, model excerpts that do not exist, empty replacements, unchanged replacements, files modified since analysis, and empty selections. Applying selected patches creates a project snapshot, writes only the selected material excerpts, synchronizes affected StoryState sections, and resolves the candidate. Formal manuscripts and run candidates are outside this operation.
 
-The initial-polish input circuit breaker is the larger of 120,000 or 20,000 per generated segment, so smaller adaptive segments can complete the manuscript. Structural correction remains capped at 60,000 per round, and correction count remains bounded by the quality route. There is no conflicting fixed cumulative cap across resumed and corrective rounds. Runtime checks actual successful-call receipts before starting the next segment. Provider-side failed calls without usage metadata cannot be counted exactly.
+The initial-polish input circuit breaker is the larger of 120,000 or 20,000 per generated segment, so smaller adaptive segments can complete the manuscript. Structural correction remains capped at 60,000 per round, and correction count remains bounded by the quality route. There is no conflicting fixed cumulative cap across resumed and corrective rounds. Runtime counts every returned polish receipt before starting the next segment, including responses later rejected for output limit or excessive length. Provider-side failed calls without usage metadata cannot be counted exactly and are never assigned fabricated usage.
 
 Structural plans contain literal checks for hard issues and preserve the model's task priority. Runtime applies no more than 40% of stable `scene-NN` scenes in one batch; valid targets beyond that limit retain their tasks and continue in later batches under the same correction-round token budget before final review. A truncated or otherwise invalid plan does not fall back to an all-scene rewrite. It halts correction, writes the best available text to `outputs/best-candidate.md`, and leaves the formal manuscript unchanged. Exact consecutive multi-paragraph duplicates are removed locally; semantic near-duplicates remain review findings.
 
@@ -187,21 +201,23 @@ Revision planning compacts its Skill and constraint prompts. Malformed JSON firs
 
 Ordinary polish targets about 1,400 characters and normally stays below 1,800, splitting only at existing paragraph boundaries. A single oversized paragraph is preserved instead of being cut mechanically. Before each provider call, Runtime estimates the complete system and user input; if it is unusually large, repeated Skill and constraint context is compacted further while manuscript prose, locked facts, relevant character state, and the current task remain intact. Structural correction does not reuse ordinary prose chunks: each targeted `scene-NN` is sent exactly once unless a recoverable relay failure requires safe paragraph splitting. Structural candidates use a 60%-180% length contract; ordinary candidates use 70%-160%. Rejection metadata includes absolute bounds and a short candidate preview. Prompt metadata always appears before `MANUSCRIPT SEGMENT`; source prose is last.
 
-After configured Claude routes return a recoverable `502`, `504`, `524`, timeout, or connection failure, Runtime splits only the failed segment near a paragraph boundary and retries its children to a bounded depth. Successful children use source-hash checkpoints. Authentication, configuration, validation, and minimum-size failures stop transparently. Polish never silently switches to the Draft role.
+After configured routes return a recoverable `502`, `504`, `524`, timeout, or connection failure, Runtime splits only the failed segment near a paragraph boundary and retries its children to a bounded depth. Successful children use source-hash checkpoints. Output anomalies use compact recovery instead and are never split. Authentication, configuration, and minimum-size failures stop transparently. Polish never silently switches to the Draft role.
 
-Rejected candidates are never written as polish checkpoints. A later resume can retry the rejected source instead of mistaking the preserved original for a completed edit.
+Rejected candidates write only a non-authorizing preserved-source checkpoint for progress display. `_load_polish_checkpoint()` ignores it, so a later resume retries the source instead of mistaking the preserved original for a completed edit.
 
 Structural correction has two length thresholds: a preferred floor of 60% and a hard rejection floor of 50%. Candidates between them emit `polish_conditional_length` and continue only to final review; they are not auto-committed. Before executing a structural plan, Runtime also re-checks each `forbidden_text` against the full manuscript and can move that repair task to the scene that actually contains the text, logging `revision_targets_aligned`.
 
 ## Full-manuscript final review
 
-Short manuscripts up to one 6,000-character window are sent to `final_review` in full. Longer short stories are split into paragraph-aligned 4,000-6,000 character windows with overlap. Each window extracts ordered events, character state and knowledge, timeline, promises, payoffs, and evidenced issues; it does not assign the book's final score. Final adjudication receives the merged evidence and performs cross-window consistency checks.
+Short manuscripts up to one 6,000-character window are sent to `final_review` in full. Longer short stories are split into paragraph-aligned 4,000-6,000 character windows with overlap. The default window pass returns only a bounded summary and evidenced issues; it does not assign the book's final score. Local narrative-ledger uncertainties or prior cross-window issues automatically select relevant windows for a separate bounded events, character-state, timeline, and promise/payoff pass. Final adjudication receives the merged evidence and performs cross-window consistency checks. This uses the existing `final_review` role and adds model calls only when local or prior evidence requires them.
 
 Initial editorial issues receive content-derived stable IDs plus source, repair goal, and status. Revision-plan tasks preserve related `issue_ids`. Incremental adjudication must mark every prior issue exactly `resolved`, `unresolved`, or `uncertain` with evidence. Missing or invalid reconciliation, incomplete coverage, or insufficient evidence triggers the complete-review fallback. An unresolved or uncertain major issue cannot pass incrementally.
 
 Final review uses only the `final_review` role and its configured provider fallback. It never switches to `planning`. A provider failure records `final_review_model_failed`; a model response rejected by local JSON or score validation records `final_review_result_rejected`. Both paths write `best-candidate.md` and leave the formal manuscript unchanged. A complete `zhihu-short-v2` criteria set is authoritative and is scored locally without requiring legacy `score` or `dimensions` fields. The output limit remains 8,192 tokens. A typical 20,000-character story uses several 6,000-12,000 input-token requests and roughly 40,000-70,000 cumulative input tokens.
 
-The run detail context can expose manuscript coverage, reviewed window count, reconciliation counts, and local gate reasons from `quality-report.json`.
+An empty `final_review` response is treated as an incomplete report at the same recovery boundary as malformed JSON. This applies to every manuscript window, optional detail pass, and final adjudication request: Runtime tries the configured fallback for that exact request, then uses the existing compact recovery request if both full-format results remain unusable. Other provider failures keep their existing route-exhaustion behavior and are not retried again at the workflow layer.
+
+The run detail context exposes manuscript coverage, reviewed window count, reconciliation counts, local gate reasons, compact-report recovery status, and whether detailed event/foreshadowing analysis ran from `quality-report.json`.
 
 ### Zhihu short quality v2 and protected checkpoints
 
@@ -250,7 +266,7 @@ Rollback does not require deleting project data. Disable the Zhihu platform prof
 ### Evidence-driven local analysis versions
 
 - `learning-window-v2` invalidates local extraction caches when windowing behavior changes. It records full-text coverage ranges and multiple evidence occurrences. Old confirmed/adopted nodes remain intact; operators must not bulk-delete them during cache maintenance.
-- `reference-model-window-v1` checkpoints every successful model-analysis window as a `model_claim`. Resume rebuilds the current dynamic window list and reuses only claims with the same content type, analysis version, exact window-text hash, and a still-valid Chinese result shape. A new source version can reuse unchanged windows; changed or newly split windows run again. Single-version legacy claims may be upgraded only when their index and boundaries exactly match, which preserves interrupted analyses created before checkpoint metadata existed.
+- `reference-model-window-v2` checkpoints every successful model-analysis window as a `model_claim`. Version 2 separates prose evidence from plot hooks and requires every prose observation to name its rule category, so version 1 windows are reanalyzed instead of being reused as false prose evidence. Resume rebuilds the current dynamic window list and reuses only claims with the same content type, analysis version, exact window-text hash, and a still-valid Chinese result shape. A new source version can reuse unchanged windows; changed or newly split windows run again. Single-version legacy claims may be upgraded only when their index and boundaries exactly match, which preserves interrupted analyses created before checkpoint metadata existed.
 - `manuscript-analysis-v2` adds advisory market comparison and a hash-bound narrative ledger. A stale text hash cannot approve an incremental review.
 - Market cohorts count each confirmed linked work once per platform/ranking/category/length group. Missing or fewer than five samples disable guidance without blocking project creation.
 - Rejected-node deletion is intentionally narrow: only rejected nodes with no project adoption are eligible. The transaction cascades graph evidence, edges, and revisions but never source versions.
@@ -272,6 +288,12 @@ The homepage is task-first and keeps the existing detailed workbench inside a co
 
 Confirmed learning mechanisms remain global library records until the user adopts them into a project. Adoption updates only that project's `creative_blueprint`; it does not merge into or replace `prose_baseline`, formal outlines, or manuscripts. Removing an adoption regenerates the blueprint without deleting the source mechanism or changing existing prose.
 
+Reference model analysis can also return up to four evidenced prose rules in the existing `reference_synthesis` response. This adds no model request. Only `reference_work` and `popular_sample` sources can create `style_rule` candidates. If synthesis omits a rule's window numbers, Runtime recovers only same-category prose evidence from completed windows; candidates still lacking real evidence are discarded without failing the otherwise valid synthesis. Each candidate remains proposed until the user confirms it. Applying a confirmed candidate appends the rule to the selected project's versioned `prose_baseline`, preserves other baseline fields, and does not modify an existing outline or manuscript. Reapplying an identical rule is idempotent and does not create another version. Rejected style candidates can be deleted with their local evidence.
+
+Confirming the new-project wizard creates only the project and, when requested, an outline candidate. It never starts Skill initialization. The workbench routes projects without a confirmed outline back to the outline application view; both Skill initialization and short-story run APIs reject requests until a formal outline exists. Applying a candidate confirms the formal outline but still requires a separate user action in the workbench before characters, setting files, or prose generation can begin.
+
+`/api/projects/{id}/learning` exposes a read-only prose-baseline overview containing the project-derived default genre, POV, tone, fixed local rules, and any active learned rules. The application page always renders this overview, even when no `prose_baseline` artifact exists. The legacy `perspective` metadata key remains a fallback, while current projects use `pov`.
+
 The effective-rules endpoint presents the order used by later generation: user locks, confirmed outline and project facts, platform requirements, prose baseline, adopted blueprint mechanisms, then advisory market data. Local checks report stale artifacts, explicit mode mismatches, similar adopted mechanisms, and recorded incompatible conditions. Post-generation usage status is deterministic and advisory; unsupported semantic mechanisms remain marked for human review rather than being reported as absent.
 
 Learning artifact restoration is append-only. Restoring an older prose, voice, or knowledge version creates a new latest version containing the historical data; it never deletes intervening history or rewrites existing manuscripts. The project-readable JSON file continues to contain only the latest version used by `ProjectStore.load_constraints()`.
@@ -283,11 +305,16 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 ## Log interpretation
 
 - `checkpoint_reused`: prior complete artifacts were reused; generation did not restart from zero.
-- `polish_max_tokens_retry`: a token-limited polish output is retrying at a strictly larger permitted budget, or is using the legacy ordinary-polish compatibility retry.
+- `polish_compact_retry`: an ordinary segment output was unusable, or this invocation's compact circuit is open, and compact primary is running.
+- `polish_compact_fallback`: compact primary did not return usable prose and the configured polish fallback is running with the same compact prompt.
+- `polish_compact_circuit_opened`: two consecutive full-request output anomalies caused later ordinary segments in this invocation to skip the full prompt.
+- `polish_segment_preserved`: no compact route produced accepted prose; the source segment was retained without an authorizing checkpoint.
+- `polish_segment_progress`: handled, total, and preserved-source segment counts for the current ordinary pass.
+- `polish_max_tokens_retry`: the legacy or targeted polish path is retrying at a larger permitted budget; ordinary recovery does not emit this event.
 - `model_fallback`: the primary route failed and a configured model or role fallback is running.
 - `polish_circuit_opened`: a successful fallback is reused for later segments in the same pass.
 - `polish_input_sized`: estimated complete input size recorded before a provider call.
-- `polish_segment_split`: a recoverable relay or repeated `max_tokens` failure caused only the failed segment to be split and retried.
+- `polish_segment_split`: a recoverable relay or connection failure caused only the failed segment to be split and retried.
 - `polish_output_rejected`: local validation kept the original segment.
 - `revision_plan_deferred`: a valid plan exceeded the per-batch 40% limit; current and deferred scene IDs are recorded separately.
 - `revision_batch_continued`: the current batch passed local handling and the next saved batch is starting under the remaining round token budget.
@@ -302,7 +329,10 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 - `quality_assessed`: includes source, total score, dimensions, decision, and hard-fail state.
 - `final_review_model_failed`: configured terminal-review routes failed; the best candidate was preserved without a fabricated score.
 - `final_review_result_rejected`: a terminal-review response arrived but failed local format or score validation; the best candidate was preserved and the original validation detail remains in event metadata.
+- `final_review_json_fallback`: the current terminal-review request returned empty or incomplete content and is being repeated through the configured fallback model.
+- `final_review_compact_recovery`: full-format terminal-review JSON remained incomplete and one compact recovery request produced a usable report.
 - `final_review_reconciliation_recovered`: final adjudication returned a summary object instead of itemized reconciliation; matching stable issue IDs were recovered locally and any missing IDs remain unresolved.
+- `snapshot_restore_failed`: rollback met a secondary filesystem error; the original run failure remains authoritative and the secondary error is recorded separately.
 - `story_state_committed`: the candidate manuscript and authoritative state advanced together.
 - `failed`: the run stopped; formal files remain at their last committed revision.
 
@@ -316,8 +346,22 @@ Starting a wizard from a reference preselects only that reference's user-confirm
 6. Restart with `start-novel-console.cmd` or the same configured data directory and port.
 7. Verify the home page, project count, database path, and relevant state rows.
 
+Outline generation keeps model creation and local refresh as separate user-visible outcomes. A
+generation rejection must show the server's safe Chinese reason, including a missing confirmed
+writing method. Once the server returns a candidate id, a later list-refresh failure must say that
+the candidate was saved and offer a local reread; it must not ask the user to pay for generation
+again.
+
 ## New feature compatibility gate
 
 New capabilities are additive by default. They must not replace or bypass StoryState, Runtime-controlled formal writes, model routing and fallback, stage-specific Skills, candidate validation, quality gates, credential storage, project files, or run history. External projects are design references unless a scoped integration has passed overlap, prompt/Skill conflict, data ownership, migration, rollback, security, and license review.
 
 Optional behavior should be project-scoped, disabled for existing projects, reversible, and implemented through existing contracts. A core workflow may change only when the proposal defines measurable gains in writing quality, consistency, or user control and retains the previous path as a tested fallback until comparative evidence supports removal. Generated content always remains a candidate until the existing validation, review, and commit flow accepts it.
+
+## Outline canon and short-story production gates
+
+Outline comparison checks the candidate against the established protagonist, primary location, and main counterpart from project requirements, character materials, and confirmed StoryState facts. Conflicts require an explicit choice before application. Keeping the project fact rewrites the candidate consistently; adopting an unlocked candidate fact records it in existing `confirmed_facts`. Locked requirements remain editable only through project materials. No second canon store is introduced.
+
+When an existing project's materials and outline describe different stories, the user may create an independent project from the candidate outline. The source project, files, candidates, runs, and model bindings remain unchanged. The new project receives the candidate as its first formal outline and regenerates people and setting through the existing initialization workflow after user confirmation.
+
+Short-story planning must expose one numbered event block per generated segment. Every block names its opening handoff, owned event, and closing handoff; both handoffs cover character location, current action, relationship state, and known information. Invalid canon, missing ownership or handoff fields, or duplicated duties trigger one planning repair before drafting; a second failure stops before prose generation. Draft segments receive only their owned event block, the previous segment ending and exact closing handoff, and explicit continuity instructions. Severe length drift, repeated prose, production notes, mixed-script corruption, or an unbridged location change trigger one bounded rewrite and then stop while preserving completed output. Canonical full-text analysis runs after draft, after polish, and immediately before formal publication. Only deterministic punctuation, spacing, quote, control-character, and consecutive-duplicate repairs happen locally without confirmation; semantic and structural changes retain the existing model and user-confirmation flow.

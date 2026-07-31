@@ -2,6 +2,7 @@ import asyncio
 import hashlib
 import json
 from collections.abc import Sequence
+from pathlib import Path
 from types import SimpleNamespace
 from typing import get_type_hints
 
@@ -9,7 +10,7 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
-from novel_flywheel.models import ModelResult
+from novel_flywheel.models import ModelResult, ModelRoutesExhaustedError
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.quality import issue_ledger, review_windows
 from novel_flywheel.quality_profiles import score_review
@@ -70,6 +71,32 @@ def test_workflow_analysis_writes_hash_matching_artifact_and_reuses_it(tmp_path)
     assert report["coverage"] == 1.0
     assert reused["text_hash"] == report["text_hash"]
     assert len(calls) == 1
+
+
+def test_snapshot_recovery_failure_is_logged_without_replacing_primary_error(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Recovery log", mode="short", genre="suspense",
+        premise="Keep the original failure.", target_words=1000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SkillGate(db, SkillScanner([])))
+    run_id, _ = service._begin_run(project, "short-story", None)
+
+    class BrokenSnapshot:
+        @staticmethod
+        def restore():
+            raise OSError(22, "Invalid argument")
+
+    service._restore_snapshot_after_failure(run_id, BrokenSnapshot())
+
+    event = next(
+        item for item in db.list_run_events(run_id)
+        if item["event_type"] == "snapshot_restore_failed"
+    )
+    assert event["message"] == "项目文件恢复未完全完成，系统已保留最初的失败原因"
+    assert "Invalid argument" in event["metadata"]["recovery_error"]
 
 
 @pytest.mark.asyncio
@@ -477,6 +504,27 @@ def make_prompt_skills(root) -> None:
         (folder / "SKILL.md").write_text(
             f"---\nname: {name}\n---\n\nSkill instructions for {name}.", encoding="utf-8",
         )
+
+
+def make_polish_recovery_service(tmp_path, gateway, run_id="polish-recovery"):
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("polish", "primary", "primary-model", "backup", "backup-model")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Polish recovery", mode="short", genre="suspense",
+        premise="An editor recovers one failed segment.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    return db, project, service, run_path
 
 
 @pytest.mark.asyncio
@@ -984,7 +1032,7 @@ class SegmentGateway:
         self.roles.append(role)
         self.calls.append({"role": role, "user": user})
         number = len(self.calls)
-        return ModelResult(f"第{number}段" + "正文" * 1250, {
+        return ModelResult(f"第{number}段" + chr(0x4e00 + number) * 2500, {
             "role": role, "model_name": f"fake-{role}",
         })
 
@@ -1157,8 +1205,12 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
 
+    plan = "\n\n".join(
+        f"### 段 {index}：事件{index}\n本段只负责事件{index}，完成结果{index}并留下下一段问题。" + "细节" * 40
+        for index in range(1, 9)
+    )
     draft = await service._draft_short_in_segments(
-        "segmented", run_path, project, "constraints", "approved plan",
+        "segmented", run_path, project, "constraints", plan,
     )
 
     assert WorkflowService._short_segment_count(20000) == 8
@@ -1166,6 +1218,36 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     assert all("不要提问" in call["user"] for call in gateway.calls)
     assert len(WorkflowService._split_segments(draft)) == 8
     assert (run_path / "outputs" / "draft.md").read_text(encoding="utf-8") == draft
+
+
+def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() -> None:
+    plan = "\n\n".join(
+        f"### 段 {index}：事件{index}\n"
+        f"段首承接：人物在地点{index}，接着上段动作，关系和已知信息不变。\n"
+        f"本段事件：只负责事件{index}，完成状态变化。\n"
+        f"段末交接：人物留在地点{index}，继续行动，关系变化并知道线索{index}。"
+        + "细节" * 30
+        for index in range(1, 4)
+    )
+    segments = WorkflowService._short_plan_segments(plan, 3)
+    assert len(segments) == 3
+    assert "事件2" not in segments[0]
+    assert WorkflowService._short_plan_handoff(segments[0]).startswith("人物留在地点1")
+
+    missing_handoff_plan = plan.replace("段末交接", "结尾状态", 1)
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {}, missing_handoff_plan, 3,
+    )
+    assert any("无法保证前后自然衔接" in item for item in issues)
+
+    previous = ["苏荞在容府厨房关上门，继续等周嬷嬷回来。" * 8]
+    abrupt = "沈府大厅里，方小满已经开始参加家宴。" + "众人沉默。" * 60
+    issues = WorkflowService._draft_segment_issues(abrupt, 600, previous)
+    assert any("换了场景" in item for item in issues)
+
+    bridged = "次日清晨，苏荞从厨房回到容府大厅。" + "她接着处理昨夜留下的问题。" * 50
+    bridged_issues = WorkflowService._draft_segment_issues(bridged, 600, previous)
+    assert not any("换了场景" in item for item in bridged_issues)
 
 
 @pytest.mark.asyncio
@@ -1239,7 +1321,13 @@ async def test_segment_polish_rejects_truncated_output_and_keeps_original(tmp_pa
     events = db.list_run_events("protected")
     assert sum(item["event_type"] == "polish_output_rejected" for item in events) == 2
     checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
-    assert not list(checkpoint_root.glob("*.json"))
+    checkpoints = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in sorted(checkpoint_root.glob("*.json"))
+    ]
+    assert len(checkpoints) == 2
+    assert all(item["accepted"] is False for item in checkpoints)
+    assert all(item["status"] == "preserved_source" for item in checkpoints)
 
 
 @pytest.mark.asyncio
@@ -2369,7 +2457,9 @@ async def test_quality_final_review_hides_internal_segment_markers(
     async def reader(*args, **kwargs):
         return service._review(quality_review())
 
-    async def full_review(run_id, path, current_project, constraints, text, initial, suffix=""):
+    async def full_review(
+        run_id, path, current_project, constraints, text, initial, suffix="", analysis=None,
+    ):
         reviewed.append(text)
         return service._review(quality_review()), {
             "coverage": 1.0, "windows": [], "review_mode": "full",
@@ -2724,64 +2814,371 @@ def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:
 
 
 @pytest.mark.asyncio
-async def test_polish_retries_empty_max_token_response_once_with_full_budget(tmp_path) -> None:
-    db = Database(tmp_path / "app.db")
-    db.migrate()
-    store = ProjectStore(db, tmp_path / "workspace")
-    project = store.create(ProjectCreate(
-        title="Retry polish", mode="short", genre="comedy",
-        premise="A cat goes to work.", target_words=3000,
-    ))
-    skill_root = tmp_path / "skills"
-    make_prompt_skills(skill_root)
+async def test_polish_output_limit_retries_primary_with_compact_prompt(tmp_path) -> None:
+    source = "A continuous scene with fixed events and natural sentence rhythm. " * 20
 
     class Gateway:
         def __init__(self):
-            self.budgets = []
+            self.calls = []
 
         async def complete(self, role, system, user, max_output_tokens=None):
-            self.budgets.append(max_output_tokens)
-            if len(self.budgets) == 1:
+            self.calls.append({
+                "prefer_configured_fallback": False,
+                "prompt": user,
+                "max_output_tokens": max_output_tokens,
+            })
+            if len(self.calls) == 1:
                 return ModelResult("", {
                     "model_name": "claude", "input_tokens": 7000,
                     "output_tokens": max_output_tokens, "finish_reason": "max_tokens",
                 })
-            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+            return ModelResult(source, {
                 "model_name": "claude", "finish_reason": "end_turn",
             })
 
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.calls.append({
+                "prefer_configured_fallback": True,
+                "prompt": user,
+                "max_output_tokens": max_output_tokens,
+            })
+            return ModelResult(source, {"model_name": "backup"})
+
     gateway = Gateway()
-    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
-    db.create_run("retry-polish", project.id, "short-story", status="running")
-    run_path = project.path / "runs" / "retry-polish"
-    (run_path / "outputs").mkdir(parents=True)
-    (run_path / "receipts").mkdir()
-    manuscript = "A continuous scene with fixed events. " * 60
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     result = await service._polish_short_segments(
-        "retry-polish", run_path, project, "constraints", manuscript, "{}",
+        "polish-recovery", run_path, project, "constraints", source, "{}",
     )
 
-    assert result == manuscript.strip()
-    assert gateway.budgets[0] < 8192
-    assert gateway.budgets == [gateway.budgets[0], 8192]
-    assert any(
-        event["event_type"] == "polish_max_tokens_retry"
-        for event in db.list_run_events("retry-polish")
+    assert result == source.strip()
+    assert len(gateway.calls) == 2
+    assert gateway.calls[1]["prefer_configured_fallback"] is False
+    assert "只返回修改后的正文，不解释、不分析" in gateway.calls[1]["prompt"]
+    assert "COMPACT FULL STORY MAP" not in gateway.calls[1]["prompt"]
+    assert 8192 not in [call["max_output_tokens"] for call in gateway.calls]
+    events = db.list_run_events("polish-recovery")
+    assert any(event["event_type"] == "polish_compact_retry" for event in events)
+    assert not any(event["event_type"] == "polish_segment_split" for event in events)
+    assert not any(event["event_type"] == "polish_max_tokens_retry" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_polish_nonempty_max_token_output_is_discarded_before_compact_retry(
+    tmp_path,
+) -> None:
+    source = "A complete paragraph preserves every fixed event in natural prose. " * 18
+
+    class Gateway:
+        def __init__(self):
+            self.primary_calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            raise AssertionError("ordinary polish must use the primary-only gateway path")
+
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
+            self.primary_calls += 1
+            if self.primary_calls == 1:
+                return ModelResult(source[: len(source) // 2], {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                })
+            return ModelResult(source, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            raise AssertionError("compact primary success must not call fallback")
+
+    gateway = Gateway()
+    _, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source.strip()
+    assert gateway.primary_calls == 2
+    assert not (run_path / "outputs" / "polish-part-01.md").exists()
+
+
+@pytest.mark.asyncio
+async def test_polish_empty_tool_use_output_enters_compact_recovery(tmp_path) -> None:
+    source = "A complete segment preserves fixed events in naturally paced prose. " * 18
+
+    class Gateway:
+        def __init__(self):
+            self.prompts = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.prompts.append(user)
+            if len(self.prompts) == 1:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "tool_use",
+                })
+            return ModelResult(source, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source.strip()
+    assert len(gateway.prompts) == 2
+    assert "只返回修改后的正文，不解释、不分析" in gateway.prompts[1]
+    assert not any(
+        event["event_type"] == "polish_tool_use_retry"
+        for event in db.list_run_events("polish-recovery")
     )
 
 
 @pytest.mark.asyncio
-async def test_polish_splits_segment_when_full_budget_retry_also_hits_limit(tmp_path) -> None:
-    db = Database(tmp_path / "app.db")
-    db.migrate()
-    store = ProjectStore(db, tmp_path / "workspace")
-    project = store.create(ProjectCreate(
-        title="Split max tokens", mode="short", genre="suspense",
-        premise="A witness revisits the scene.", target_words=3000,
-    ))
-    skill_root = tmp_path / "skills"
-    make_prompt_skills(skill_root)
+async def test_polish_compact_primary_failure_uses_configured_fallback(tmp_path) -> None:
+    source = "A witness revisits the scene and verifies every fixed event carefully. " * 18
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append((False, user))
+            return ModelResult("", {
+                "model_name": "primary", "output_tokens": max_output_tokens,
+                "finish_reason": "max_tokens",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append((True, user))
+            return ModelResult(source, {
+                "model_name": "backup", "finish_reason": "end_turn",
+                "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source.strip()
+    assert [route for route, _ in gateway.routes] == [False, False, True]
+    assert "只返回修改后的正文，不解释、不分析" in gateway.routes[1][1]
+    assert gateway.routes[1][1] == gateway.routes[2][1]
+    events = db.list_run_events("polish-recovery")
+    assert any(event["event_type"] == "polish_compact_fallback" for event in events)
+    assert not any(event["event_type"] == "polish_segment_split" for event in events)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fallback_text", ["", "source"])
+async def test_polish_validation_fallback_max_tokens_preserves_source_without_retry(
+    tmp_path, fallback_text,
+) -> None:
+    source = "A locally valid source segment keeps every established event in natural prose. " * 16
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append(("primary", max_output_tokens))
+            return ModelResult("too short", {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append(("fallback", max_output_tokens))
+            text = source if fallback_text else ""
+            return ModelResult(text, {
+                "model_name": "backup", "finish_reason": "max_tokens",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source.strip()
+    assert [route for route, _ in gateway.routes] == ["primary", "fallback"]
+    assert not any(
+        event["event_type"] == "polish_max_tokens_retry"
+        for event in db.list_run_events("polish-recovery")
+    )
+    checkpoint = json.loads((
+        run_path / "outputs" / "polish-checkpoints" / "initial" / "part-01.json"
+    ).read_text(encoding="utf-8"))
+    assert checkpoint["accepted"] is False
+
+
+@pytest.mark.asyncio
+async def test_polish_validation_fallback_fatal_error_stops_immediately(tmp_path) -> None:
+    source = "A source segment keeps every established event in naturally paced prose. " * 16
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            return ModelResult("too short", {"model_name": "primary"})
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append("fallback")
+            raise RuntimeError("missing_api_key: backup")
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    with pytest.raises(RuntimeError, match="missing_api_key"):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints", source, "{}",
+        )
+
+    assert gateway.routes == ["primary", "fallback"]
+    assert not any(
+        event["event_type"] == "polish_segment_preserved"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_validation_fallback_transport_error_uses_safe_split(tmp_path) -> None:
+    paragraphs = [(str(index) + "A" * 399) for index in range(4)]
+    source = "\n\n".join(paragraphs)
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+            self.primary_calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            self.primary_calls += 1
+            if self.primary_calls == 1:
+                return ModelResult("too short", {"model_name": "primary"})
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append("fallback")
+            raise RuntimeError("524 Gateway Timeout")
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source
+    assert gateway.routes == ["primary", "fallback", "primary", "primary"]
+    assert any(
+        event["event_type"] == "polish_segment_split"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_recovery_counts_all_returned_receipt_input_tokens(tmp_path) -> None:
+    first = "A complete source segment preserves a stable event in natural prose. " * 16
+    second = "A second source segment preserves another stable event in natural prose. " * 16
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+            self.primary_calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            self.primary_calls += 1
+            segment = user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+            if self.primary_calls <= 2:
+                return ModelResult(segment * 2, {
+                    "model_name": "primary", "input_tokens": 110,
+                })
+            return ModelResult(segment, {
+                "model_name": "primary", "input_tokens": 110,
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append("fallback")
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "backup", "input_tokens": 110,
+            })
+
+    gateway = Gateway()
+    _, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join((first, second))
+
+    with pytest.raises(PolishTokenBudgetError, match="round"):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints", manuscript, "{}",
+            round_cap_override=300,
+        )
+
+    assert gateway.routes == ["primary", "primary", "fallback"]
+
+
+@pytest.mark.asyncio
+async def test_polish_recovery_counts_empty_output_receipt_input_tokens(tmp_path) -> None:
+    first = "A complete source segment preserves a stable event in natural prose. " * 16
+    second = "A second source segment must be blocked by the round input cap. " * 16
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        @staticmethod
+        def empty_result(model_name):
+            return ModelResult("", {
+                "model_name": model_name, "input_tokens": 110,
+                "finish_reason": "end_turn",
+            })
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            return self.empty_result("primary")
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append("fallback")
+            return self.empty_result("backup")
+
+    gateway = Gateway()
+    _, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    with pytest.raises(PolishTokenBudgetError, match="round"):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints",
+            WorkflowService.SHORT_SEGMENT_SEPARATOR.join((first, second)), "{}",
+            round_cap_override=300,
+        )
+
+    assert gateway.routes == ["primary", "primary", "fallback"]
+
+
+@pytest.mark.asyncio
+async def test_polish_compact_recovery_cancellation_propagates_without_preserving(
+    tmp_path,
+) -> None:
+    parts = [
+        "A first source segment preserves a stable event in natural prose. " * 16,
+        "A second source segment must never be called after cancellation. " * 16,
+    ]
 
     class Gateway:
         def __init__(self):
@@ -2789,31 +3186,349 @@ async def test_polish_splits_segment_when_full_budget_retry_also_hits_limit(tmp_
 
         async def complete(self, role, system, user, max_output_tokens=None):
             self.calls += 1
-            if self.calls <= 2:
+            if self.calls == 1:
                 return ModelResult("", {
-                    "model_name": "claude-sonnet-5", "input_tokens": 8330,
-                    "output_tokens": max_output_tokens, "finish_reason": "max_tokens",
+                    "model_name": "primary", "finish_reason": "max_tokens",
                 })
-            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
-                "model_name": "claude-sonnet-5", "finish_reason": "end_turn",
+            raise asyncio.CancelledError
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    with pytest.raises(asyncio.CancelledError):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints",
+            WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts), "{}",
+        )
+
+    assert gateway.calls == 2
+    assert not any(
+        event["event_type"] == "polish_segment_preserved"
+        for event in db.list_run_events("polish-recovery")
+    )
+    checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
+    assert not list(checkpoint_root.glob("*.json"))
+
+
+@pytest.mark.asyncio
+async def test_polish_full_success_resets_consecutive_output_error_count(tmp_path) -> None:
+    parts = [
+        f"Segment {index} preserves a distinct event in naturally paced prose. " * 15
+        for index in range(1, 5)
+    ]
+
+    class Gateway:
+        def __init__(self):
+            self.prompts = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.prompts.append(user)
+            call = len(self.prompts)
+            if call in {1, 4}:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                })
+            segment_index = {2: 0, 3: 1, 5: 2, 6: 3}[call]
+            return ModelResult(parts[segment_index], {
+                "model_name": "primary", "finish_reason": "end_turn",
             })
 
     gateway = Gateway()
-    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
-    db.create_run("split-max-tokens", project.id, "short-story", status="running")
-    run_path = project.path / "runs" / "split-max-tokens"
-    (run_path / "outputs").mkdir(parents=True)
-    (run_path / "receipts").mkdir()
-    manuscript = "\n\n".join((f"Paragraph {index}. " * 45) for index in range(4))
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
-    result = await service._polish_short_segments(
-        "split-max-tokens", run_path, project, "constraints", manuscript, "{}",
+    await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts), "{}",
     )
 
-    assert result == "\n\n".join(item.strip() for item in manuscript.split("\n\n"))
-    assert gateway.calls >= 4
-    assert any(event["event_type"] == "polish_segment_split"
-               for event in db.list_run_events("split-max-tokens"))
+    assert len(gateway.prompts) == 6
+    assert "只返回修改后的正文，不解释、不分析" not in gateway.prompts[5]
+    assert not any(
+        event["event_type"] == "polish_compact_circuit_opened"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_obviously_long_output_uses_compact_recovery(tmp_path) -> None:
+    source = "A measured scene preserves every established fact without repetition. " * 18
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append((False, user))
+            return ModelResult(source * 2 if len(self.routes) == 1 else source, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append((True, user))
+            return ModelResult(source, {"model_name": "backup"})
+
+    gateway = Gateway()
+    _, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source.strip()
+    assert [route for route, _ in gateway.routes] == [False, False]
+    assert "只返回修改后的正文，不解释、不分析" in gateway.routes[1][1]
+
+
+@pytest.mark.asyncio
+async def test_polish_both_compact_routes_fail_preserves_source_and_continues(tmp_path) -> None:
+    first = "The first segment keeps its established event and measured sentence rhythm. " * 16
+    second = "The second segment continues independently with another established event. " * 16
+    improved_second = second.replace("continues", "moves forward")
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append(False)
+            if len(self.routes) <= 2:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                })
+            return ModelResult(improved_second, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append(True)
+            return ModelResult("", {
+                "model_name": "backup", "finish_reason": "max_tokens",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join((first, second))
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    assert result == WorkflowService.SHORT_SEGMENT_SEPARATOR.join((
+        first.strip(), improved_second.strip(),
+    ))
+    assert gateway.routes == [False, False, True, False]
+    checkpoint = json.loads((
+        run_path / "outputs" / "polish-checkpoints" / "initial" / "part-01.json"
+    ).read_text(encoding="utf-8"))
+    assert checkpoint["accepted"] is False
+    assert checkpoint["status"] == "preserved_source"
+    events = db.list_run_events("polish-recovery")
+    assert any(event["event_type"] == "polish_segment_preserved" for event in events)
+    assert not any(event["event_type"] == "polish_segment_split" for event in events)
+    progress = [event for event in events if event["event_type"] == "polish_segment_progress"]
+    assert progress[-1]["metadata"] == {
+        "segment": 2, "total": 2, "completed": 2, "preserved": 1,
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("message", [
+    "missing api key", "authentication failed", "invalid role binding",
+])
+async def test_polish_fatal_configuration_error_stops_immediately(tmp_path, message) -> None:
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            raise RuntimeError(message)
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    with pytest.raises(RuntimeError, match=message):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints",
+            "A complete source paragraph with fixed facts. " * 20, "{}",
+        )
+
+    assert gateway.calls == 1
+    assert not any(
+        event["event_type"] == "polish_segment_preserved"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_wrapped_fatal_configuration_error_stops_immediately(tmp_path) -> None:
+    wrapped = ModelRoutesExhaustedError(
+        RuntimeError("provider_not_found: primary"), RuntimeError("504 Gateway Timeout"),
+    )
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            raise wrapped
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    with pytest.raises(ModelRoutesExhaustedError):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints",
+            "\n\n".join(
+                f"Paragraph {index} keeps fixed facts in valid prose. " * 9
+                for index in range(4)
+            ), "{}",
+        )
+
+    assert gateway.calls == 1
+    assert not any(
+        event["event_type"] in {"polish_segment_preserved", "polish_segment_split"}
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_structural_polish_does_not_enter_ordinary_compact_recovery(tmp_path) -> None:
+    source = "A structural segment keeps every approved event in place. " * 16
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            return ModelResult("", {
+                "model_name": "primary", "finish_reason": "max_tokens",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    with pytest.raises(RuntimeError, match="empty output"):
+        await service._polish_short_segments(
+            "polish-recovery", run_path, project, "constraints", source, "{}",
+            structural=True, targeted_context={
+                "tasks": [], "checks": [], "global_facts": [],
+                "previous_paragraph": "", "next_paragraph": "", "segment": 1,
+            },
+        )
+
+    assert gateway.calls == 2
+    assert not any(
+        event["event_type"].startswith("polish_compact")
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_two_consecutive_output_errors_skip_full_prompt_for_later_segments(
+    tmp_path,
+) -> None:
+    parts = [
+        f"Segment {index} preserves a distinct event in a naturally paced paragraph. " * 15
+        for index in range(1, 4)
+    ]
+
+    class Gateway:
+        def __init__(self):
+            self.prompts = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.prompts.append(user)
+            if len(self.prompts) in {1, 3}:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                })
+            target = parts[min((len(self.prompts) - 1) // 2, 2)]
+            return ModelResult(target, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts)
+
+    await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    assert len(gateway.prompts) == 5
+    assert "只返回修改后的正文，不解释、不分析" in gateway.prompts[4]
+    assert sum(
+        event["event_type"] == "polish_compact_circuit_opened"
+        for event in db.list_run_events("polish-recovery")
+    ) == 1
+
+    new_run_id = "new-polish-task"
+    db.create_run(new_run_id, project.id, "short-story", status="running")
+    new_run_path = project.path / "runs" / new_run_id
+    (new_run_path / "outputs").mkdir(parents=True)
+    (new_run_path / "receipts").mkdir()
+    await service._polish_short_segments(
+        new_run_id, new_run_path, project, "constraints", parts[0], "{}",
+    )
+    assert "只返回修改后的正文，不解释、不分析" not in gateway.prompts[5]
+
+
+@pytest.mark.asyncio
+async def test_polish_resume_reuses_accepted_segments_and_retries_preserved_segments(
+    tmp_path,
+) -> None:
+    first = "The accepted segment contains a stable event in natural prose. " * 16
+    second = "The preserved segment contains another stable event in natural prose. " * 16
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+            self.resume = False
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append(False)
+            if self.resume or len(self.routes) == 1:
+                return ModelResult(first if len(self.routes) == 1 else second, {
+                    "model_name": "primary", "finish_reason": "end_turn",
+                })
+            return ModelResult("", {
+                "model_name": "primary", "finish_reason": "max_tokens",
+            })
+
+        async def complete_configured_fallback(self, role, system, user,
+                                               max_output_tokens=None):
+            self.routes.append(True)
+            return ModelResult("", {
+                "model_name": "backup", "finish_reason": "max_tokens",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+    manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join((first, second))
+
+    first_result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", manuscript, "{}",
+    )
+    gateway.resume = True
+    resumed_result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", manuscript, "{}",
+    )
+
+    expected = WorkflowService.SHORT_SEGMENT_SEPARATOR.join((
+        first.strip(), second.strip(),
+    ))
+    assert first_result == resumed_result == expected
+    assert gateway.routes == [False, False, False, True, False]
+    reused = [
+        event for event in db.list_run_events("polish-recovery")
+        if event["event_type"] == "polish_checkpoint_reused"
+    ]
+    assert reused[-1]["metadata"]["segment"] == 1
 
 
 @pytest.mark.asyncio
@@ -3046,7 +3761,7 @@ async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(t
 
 
 @pytest.mark.asyncio
-async def test_rejected_rhythm_retry_is_not_repeated_for_same_source_and_route(tmp_path) -> None:
+async def test_rejected_rhythm_retry_is_retried_until_accepted(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_role_binding("polish", "primary-provider", "primary-model", None, None)
@@ -3082,7 +3797,7 @@ async def test_rejected_rhythm_retry_is_not_repeated_for_same_source_and_route(t
     )
 
     assert first == second == source
-    assert gateway.calls == 2
+    assert gateway.calls == 4
 
 
 @pytest.mark.asyncio
@@ -3133,14 +3848,14 @@ async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_an
         "adaptive", run_path, project, "constraints", manuscript, "{}",
     )
 
-    assert calls_after_first == ["primary", "configured_fallback", "configured_fallback", "primary"]
+    assert calls_after_first == ["primary"] * 4
     assert gateway.routes == calls_after_first
     assert first == second
     assert len(list((run_path / "outputs" / "polish-checkpoints" / "initial").glob("*.json"))) == 4
 
 
 @pytest.mark.asyncio
-async def test_single_segment_reuses_open_polish_circuit_across_correction_passes(tmp_path) -> None:
+async def test_ordinary_polish_does_not_reuse_gateway_fallback_circuit(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
@@ -3186,8 +3901,8 @@ async def test_single_segment_reuses_open_polish_circuit_across_correction_passe
         "single", run_path, project, "constraints", manuscript, "{}", suffix="-2",
     )
 
-    assert gateway.routes == ["primary", "configured_fallback"]
-    assert any(
+    assert gateway.routes == ["primary", "primary"]
+    assert not any(
         event["event_type"] == "polish_circuit_opened"
         for event in db.list_run_events("single")
     )
@@ -3229,6 +3944,41 @@ def test_polish_resume_reports_first_missing_checkpoint(tmp_path) -> None:
     WorkflowService._save_polish_checkpoint(root, 4, parts[3], "polished four")
 
     assert WorkflowService._polish_checkpoint_progress(root, parts) == (2, 1)
+
+
+def test_polish_checkpoint_loader_accepts_legacy_authorized_checkpoint(tmp_path) -> None:
+    root = tmp_path / "checkpoints"
+    root.mkdir()
+    source = "legacy source"
+    polished = "legacy polished"
+    (root / "part-01.json").write_text(json.dumps({
+        "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        "polished": polished,
+        "status": "accepted",
+    }), encoding="utf-8")
+
+    assert WorkflowService._load_polish_checkpoint(root, 1, source) == polished
+
+
+def test_polish_checkpoint_loader_rejects_non_boolean_false_acceptance(tmp_path) -> None:
+    root = tmp_path / "checkpoints"
+    root.mkdir()
+    source = "preserved source"
+    (root / "part-01.json").write_text(json.dumps({
+        "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        "polished": source,
+        "accepted": "false",
+        "status": "preserved_source",
+    }), encoding="utf-8")
+
+    assert WorkflowService._load_polish_checkpoint(root, 1, source) is None
+
+
+def test_polish_checkpoint_loader_rejects_source_hash_mismatch(tmp_path) -> None:
+    root = tmp_path / "checkpoints"
+    WorkflowService._save_polish_checkpoint(root, 1, "old source", "polished")
+
+    assert WorkflowService._load_polish_checkpoint(root, 1, "new source") is None
 
 
 def test_initial_short_story_planning_skips_empty_memory_tools() -> None:
@@ -3303,6 +4053,9 @@ async def test_long_manuscript_final_review_audits_every_window_without_planning
     assert gateway.roles == ["final_review"] * (count + 1)
     assert "planning" not in gateway.roles
     assert all("WINDOW " in call["user"] for call in gateway.calls[:-1])
+    assert all("summary and issues only" in call["user"] for call in gateway.calls[:-1])
+    assert all("events" not in call["user"] for call in gateway.calls[:-1])
+    assert audit["detail_analysis"]["performed"] is False
 
 
 @pytest.mark.asyncio
@@ -3451,6 +4204,222 @@ async def test_final_review_retries_malformed_window_with_configured_fallback(tm
         event["event_type"] == "final_review_json_fallback"
         for event in db.list_run_events(run_id)
     )
+
+
+@pytest.mark.asyncio
+async def test_final_review_retries_empty_adjudication_with_configured_fallback(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("final_review", "primary", "reviewer", "backup", "reviewer-2")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Empty adjudication", mode="short", genre="suspense",
+        premise="The final report is empty.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    evidence = json.dumps({
+        "summary": "The manuscript window was reviewed.", "issues": [],
+    })
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [], "reconciliations": [],
+    })
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+            self.primary_responses = iter([evidence, ""])
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            text = next(self.primary_responses)
+            return ModelResult(text, {
+                "model_name": "reviewer", "input_tokens": 100,
+                "output_tokens": 0 if not text else 100, "finish_reason": None,
+            })
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            self.routes.append("configured_fallback")
+            return ModelResult(final, {
+                "model_name": "reviewer-2", "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+    )
+
+    assert review["score"] > 80
+    assert audit["reviewed_windows"] == 1
+    assert gateway.routes == ["primary", "primary", "configured_fallback"]
+    assert any(
+        event["event_type"] == "final_review_json_fallback"
+        for event in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_final_review_recovers_compact_window_after_primary_and_fallback_truncate(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("final_review", "primary", "reviewer", "backup", "reviewer-2")
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Compact recovery", mode="short", genre="suspense",
+        premise="A report is truncated.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    compact = json.dumps({
+        "summary": "窗口摘要已恢复。", "issues": [],
+    }, ensure_ascii=False)
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [], "reconciliations": [],
+    })
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+            self.calls = []
+            self.primary_responses = iter(['{"summary":"truncated', compact, final])
+            self.fallback_responses = iter(['{"summary":"also truncated'])
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            self.calls.append(user)
+            return ModelResult(next(self.primary_responses), {"model_name": "reviewer"})
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            self.routes.append("configured_fallback")
+            self.calls.append(user)
+            return ModelResult(next(self.fallback_responses), {
+                "model_name": "reviewer-2", "configured_fallback_direct": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+    )
+
+    assert review["score"] > 80
+    assert audit["windows"][0]["summary"] == "窗口摘要已恢复。"
+    assert audit["windows"][0]["recovery_mode"] == "compact_recovery"
+    assert audit["final_review_recovery"]["succeeded"] is True
+    assert gateway.routes == ["primary", "configured_fallback", "primary", "primary"]
+    assert "只允许两个字段：summary" in gateway.calls[2]
+    assert any(
+        event["event_type"] == "final_review_compact_recovery"
+        for event in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_final_review_detail_evidence_is_requested_separately(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Separate detail", mode="short", genre="suspense",
+        premise="Events need a separate pass.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    base = json.dumps({"summary": "基础窗口摘要。", "issues": []}, ensure_ascii=False)
+    detail = json.dumps({
+        "events": [{"event": "发现线索"}],
+        "promises": [{"promise": "兑现承诺"}],
+        "character_states": [], "timeline": [],
+    }, ensure_ascii=False)
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [], "reconciliations": [],
+    })
+    gateway = RecordingGateway([base, detail, final])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    analysis = {
+        "narrative_ledger": {
+            "important_uncertainties": [{
+                "start": 0, "text": "开头承诺尚未找到明确兑现位置",
+            }],
+        },
+    }
+    _, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+        analysis=analysis,
+    )
+
+    assert audit["detail_mode"] == "separate"
+    assert audit["detail_analysis"] == {
+        "performed": True,
+        "window_count": 1,
+        "message": "本地检查发现需要确认的伏笔或承诺，已单独复核 1 个正文窗口",
+    }
+    assert audit["windows"][0]["events"] == [{"event": "发现线索"}]
+    assert "详细事件和伏笔" in gateway.calls[1]["user"]
+
+
+@pytest.mark.asyncio
+async def test_single_window_quality_review_recovers_truncated_json(tmp_path, monkeypatch) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Single window recovery", mode="short", genre="suspense",
+        premise="A compact final report is enough.", target_words=2000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    recovered = json.dumps({
+        "dimensions": {"commercial": 86, "story": 84, "prose": 82},
+        "hard_fail": False, "decision": "pass", "issues": [],
+    }, ensure_ascii=False)
+    gateway = RecordingGateway(['{"dimensions":', recovered])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    candidate = "正文内容。" * 300
+
+    async def polish(*args, **kwargs):
+        return candidate
+
+    async def reader(*args, **kwargs):
+        return service._review(quality_review())
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {
+        "coverage": 1.0, "windows": review_windows(candidate),
+        "nlp": {"available": True}, "prose": {"blocking_count": 0},
+    })
+
+    selected, report = await service._quality_polish(
+        run_id, run_path, project, "constraints", candidate,
+        service._review(quality_review()),
+    )
+
+    assert selected == candidate
+    assert report["status"] == "passed"
+    assert report["final_review_recovery"]["succeeded"] is True
+    assert "终审结果精简恢复" in gateway.calls[1]["user"]
 
 
 @pytest.mark.asyncio

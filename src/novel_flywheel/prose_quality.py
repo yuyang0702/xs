@@ -8,7 +8,10 @@ PRODUCTION_PATTERNS = (
     r"以下(?:是|为).{0,20}(?:润色|修改|改写)(?:后|的)?(?:版本|正文)",
     r"(?:本片段|这个片段).{0,30}(?:不含|已经|修改)",
     r"(?:修改说明|润色说明|审核结论|作为AI|作为 AI)",
+    r"(?m)^\s*(?:[-*]\s*)?\*{0,2}(?:状态变化|新问题|写作方法|核心功能|段\s*\d+\s*完结点)\*{0,2}\s*[：:]",
+    r"SHORT_CAUSAL_CHAIN_JSON_(?:START|END)",
 )
+MIXED_SCRIPT = re.compile(r"(?:[\u4e00-\u9fff][A-Za-z]{2,}|[A-Za-z]{2,}[\u4e00-\u9fff])")
 FORMULA_PATTERNS = (
     ("timestamp_scene_fragment", r"[-\u2014]{2}\s*[\u96f6\u3007\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\d]{1,4}[\u70b9\u65f6\u6642:\uff1a][^\u3002\uff01\uff1f\n]{0,12}[\u3002\uff01\uff1f]\s*[^\u201c\u201d\n]{4,45}[\u3002\uff01\uff1f]"),
     ("epiphany_formula", r"这一刻.{0,12}(?:终于)?明白"),
@@ -43,6 +46,15 @@ def analyze_prose(text: str) -> dict[str, Any]:
     for pattern in PRODUCTION_PATTERNS:
         for match in re.finditer(pattern, text, re.I):
             findings.append(_finding("production_text", text, match, True))
+    for match in MIXED_SCRIPT.finditer(text):
+        findings.append(_finding("mixed_script_corruption", text, match, True))
+    seen_paragraphs: dict[str, re.Match[str]] = {}
+    for match in re.finditer(r"(?ms)(?:^|\n\s*\n)([^\n].{23,}?)(?=\n\s*\n|\Z)", text):
+        normalized = re.sub(r"\s+", "", match.group(1))
+        if normalized in seen_paragraphs:
+            findings.append(_finding("duplicate_paragraph", text, match, True))
+        else:
+            seen_paragraphs[normalized] = match
     for code, pattern in FORMULA_PATTERNS:
         matches = list(re.finditer(pattern, text))
         if matches:

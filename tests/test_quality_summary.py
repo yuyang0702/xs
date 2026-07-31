@@ -50,6 +50,9 @@ def test_duplicate_window_issues_merge_into_one_issue_with_multiple_evidence() -
     assert issues[0]["title"] == "人物与情节逻辑"
     assert issues[0]["status"] == "unresolved"
     assert issues[0]["severity"] == "high"
+    assert issues[0]["repair_mode"] == "structural"
+    assert issues[0]["handling_label"] == "规划模型定位，精修模型修改"
+    assert issues[0]["source_label"] == "终审发现"
     assert [item["location"] for item in issues[0]["evidence"]] == [
         "会面准备场景", "材料披露场景",
     ]
@@ -203,4 +206,4 @@ def test_preserved_advisory_is_not_counted_as_waiting_for_action() -> None:
 
     summary = build_quality_summary(project, "run", "", report, None)
 
-    assert summary["issue_counts"] == {"total": 1, "unresolved": 0}
+    assert summary["issue_counts"] == {"total": 1, "mandatory": 0, "unresolved": 0}

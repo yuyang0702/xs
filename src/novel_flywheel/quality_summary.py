@@ -49,6 +49,19 @@ CATEGORY_LABELS = {
 }
 
 
+def _issue_handling(category: str) -> tuple[str, str, str]:
+    if category in {"production_text", "manuscript_corruption"}:
+        return "mechanical", "本地程序先处理", "本地扫描或终审发现"
+    if category in {"canon", "compliance"}:
+        return "confirmation", "需要你确认", "项目设定或投稿要求"
+    if category in {
+        "story", "story_structure", "logic_continuity", "character_arc",
+        "ending", "ending_payoff", "pacing",
+    }:
+        return "structural", "规划模型定位，精修模型修改", "终审发现"
+    return "polish", "精修模型处理", "终审发现"
+
+
 def effective_han_characters(text: str) -> int:
     cleaned = INTERNAL_MARKER.sub("", text)
     cleaned = MARKDOWN_HEADING.sub("", cleaned)
@@ -69,6 +82,7 @@ def merge_quality_issues(report: dict, review: dict | None = None) -> list[dict]
         ).hexdigest()[:16]
         severity = str(issue.get("severity_class") or issue.get("severity") or "medium").lower()
         status = str(issue.get("status") or "unresolved").lower()
+        repair_mode, handling_label, source_label = _issue_handling(category)
         item = groups.setdefault(grouping, {
             "issue_id": issue_id or f"quality-{grouping}",
             "title": CATEGORY_LABELS.get(category, "正文问题"),
@@ -79,6 +93,9 @@ def merge_quality_issues(report: dict, review: dict | None = None) -> list[dict]
             "mandatory": issue_is_mandatory(issue),
             "repair_direction": action,
             "effect": str(issue.get("effect") or "可能影响阅读理解或剧情可信度"),
+            "repair_mode": repair_mode,
+            "handling_label": handling_label,
+            "source_label": source_label,
             "evidence": [],
         })
         if SEVERITY_ORDER.get(severity, 2) > SEVERITY_ORDER.get(item["severity"], 2):
@@ -208,6 +225,10 @@ def build_quality_summary(project: Any, run_id: str, text: str, report: dict,
         "issues": issues,
         "issue_counts": {
             "total": len(issues),
+            "mandatory": sum(
+                item["mandatory"] and not issue_is_resolved(item)
+                for item in issues
+            ),
             "unresolved": sum(
                 not issue_is_resolved(item) and item["status"] != "preserved"
                 for item in issues

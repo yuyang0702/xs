@@ -159,22 +159,61 @@ async def test_gateway_uses_fallback_when_primary_key_is_missing(tmp_path) -> No
 
 
 @pytest.mark.asyncio
+async def test_gateway_primary_only_preserves_missing_key_error_without_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "polish", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    primary_error = ValueError("missing_api_key")
+
+    class Registry:
+        def __init__(self):
+            self.resolve_calls = []
+
+        def resolve(self, provider_id, model_id):
+            self.resolve_calls.append((provider_id, model_id))
+            if provider_id == "primary-provider":
+                raise primary_error
+            return ResolvedModel(
+                provider_id, model_id, model_id, SuccessfulFallbackAdapter(),
+            )
+
+    registry = Registry()
+
+    with pytest.raises(ValueError) as caught:
+        await ModelGateway(db, registry).complete_primary(
+            "polish", "rules", "polish",
+        )
+
+    assert caught.value is primary_error
+    assert registry.resolve_calls == [("primary-provider", "primary-model")]
+
+
+@pytest.mark.asyncio
 async def test_gateway_retries_one_transient_connect_failure_before_fallback(tmp_path, monkeypatch) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_role_binding("polish", "primary-provider", "primary-model", "fallback-provider", "fallback-model")
-    primary = FlakyConnectAdapter()
 
     class Registry(ConfiguredFallbackRegistry):
+        def __init__(self):
+            self.primary_adapters = []
+
         def resolve(self, provider_id, model_id):
             if provider_id == "primary-provider":
-                return ResolvedModel(provider_id, model_id, "primary", primary)
+                adapter = FlakyConnectAdapter()
+                self.primary_adapters.append(adapter)
+                return ResolvedModel(provider_id, model_id, "primary", adapter)
             return super().resolve(provider_id, model_id)
 
+    registry = Registry()
     monkeypatch.setattr(ModelGateway, "CONNECT_RETRY_DELAY", 0)
-    result = await ModelGateway(db, Registry()).complete("polish", "rules", "text")
+    result = await ModelGateway(db, registry).complete("polish", "rules", "text")
 
-    assert primary.calls == 2
+    assert len(registry.primary_adapters) == 1
+    assert registry.primary_adapters[0].calls == 2
     assert result.text == "recovered"
     assert result.receipt.get("fallback_used") is not True
 

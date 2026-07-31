@@ -74,6 +74,89 @@ def test_local_comparison_reports_story_blocks_and_does_not_need_a_model(tmp_pat
     assert report["can_apply"] is True
 
 
+def test_canon_conflicts_require_a_choice_and_can_keep_project_facts(tmp_path) -> None:
+    _db, projects, project, service = setup_outline_service(tmp_path)
+    metadata_path = project.path / "project.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata["story_requirements"] = {
+        "protagonist.name": "苏荞", "world.locations": "容府、东市",
+    }
+    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
+    candidate = service.create_candidate(
+        project.id,
+        "# 新大纲\n\n**方小满（冒牌千金）**住进沈府。\n\n沈府众人开始试探她。\n",
+    )
+
+    report = service.compare_candidate(project.id, candidate["id"])
+
+    assert {item["key"] for item in report["canon_conflicts"]} >= {
+        "protagonist", "primary_location",
+    }
+    assert report["can_apply"] is False
+    with pytest.raises(ValueError, match="设定冲突"):
+        service.apply_candidate(project.id, candidate["id"])
+    applied = service.apply_candidate(
+        project.id, candidate["id"], canon_choices={
+            item["id"]: "keep_current" for item in report["canon_conflicts"]
+        },
+    )
+    assert "苏荞" in applied["content"]
+    assert "容府" in applied["content"]
+    assert service.writing_readiness(project.id)["ready"] is True
+
+
+def test_conflicting_candidate_can_create_independent_project(tmp_path) -> None:
+    _db, projects, project, service = setup_outline_service(tmp_path)
+    candidate = service.create_candidate(
+        project.id,
+        "# 错认鸾枝\n\n**方小满（冒牌千金）**进入沈府，决定查清错认真相。\n",
+    )
+
+    created = service.create_project_from_candidate(project.id, candidate["id"])
+
+    assert created["id"] != project.id
+    assert created["materials_need_generation"] is True
+    assert service.current(created["id"])["content"].startswith("# 错认鸾枝")
+    assert service.get_candidate(project.id, candidate["id"])["status"] == "pending"
+    assert projects.get(project.id).path.is_dir()
+
+
+def test_conflicting_current_outline_can_create_clean_project_without_changing_source(
+    tmp_path,
+) -> None:
+    db, projects, project, service = setup_outline_service(tmp_path)
+    candidate = service.create_candidate(
+        project.id,
+        "# 错认鸾枝\n\n**方小满（冒牌千金）**进入沈府，决定查清错认真相。\n",
+    )
+    service.apply_candidate(project.id, candidate["id"])
+    db.create_run("source-run", project.id, "short-story", status="completed")
+    metadata_path = project.path / "project.json"
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    metadata.update({
+        "must_include": "旧人物苏荞必须出现",
+        "must_avoid": "不得离开容府",
+        "story_requirements": {
+            "protagonist.name": "苏荞", "world.locations": "容府、东市",
+        },
+    })
+    metadata_path.write_text(json.dumps(metadata, ensure_ascii=False), encoding="utf-8")
+    source_outline = service.current(project.id)["content"]
+
+    assert service.writing_readiness(project.id)["ready"] is False
+    created = service.create_project_from_current(project.id)
+
+    assert created["id"] != project.id
+    assert created["materials_need_generation"] is True
+    assert service.current(created["id"])["content"] == source_outline
+    assert service.current(project.id)["content"] == source_outline
+    assert db.get_run("source-run")["project_id"] == project.id
+    new_metadata = projects.get(created["id"]).metadata
+    assert new_metadata["must_include"] == ""
+    assert new_metadata["must_avoid"] == ""
+    assert "protagonist.name" not in new_metadata["story_requirements"]
+
+
 def test_selected_changes_create_new_outline_version_and_preserve_unselected_blocks(tmp_path) -> None:
     _db, _projects, project, service = setup_outline_service(tmp_path)
     initial = service.create_candidate(

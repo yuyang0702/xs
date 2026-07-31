@@ -44,6 +44,7 @@ class ModelGateway:
             fallback_max_output_tokens if fallback_max_output_tokens is not None
             else max_output_tokens,
         )
+        resolved = None
         try:
             resolved = self.registry.resolve(
                 binding["primary_provider_id"], binding["primary_model_id"],
@@ -54,7 +55,7 @@ class ModelGateway:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
-            if self._is_transient_connect_error(exc):
+            if resolved is not None and self._is_transient_connect_error(exc):
                 await asyncio.sleep(self.CONNECT_RETRY_DELAY)
                 try:
                     return await self._complete_resolved(
@@ -78,6 +79,21 @@ class ModelGateway:
             return self._mark_fallback(
                 result, binding["primary_provider_id"], binding["primary_model_id"], exc,
             )
+
+    async def complete_primary(
+        self, role: str, system: str, user: str,
+        max_output_tokens: int | None = None,
+    ) -> ModelResult:
+        binding = self.db.get_role_binding(role)
+        if binding is None:
+            raise LookupError(f"Model role is not configured: {role}")
+        resolved = self.registry.resolve(
+            binding["primary_provider_id"], binding["primary_model_id"],
+        )
+        return await self._complete_resolved(
+            role, system, user, resolved,
+            self._route_output_limit(binding.get("primary_model_id"), max_output_tokens),
+        )
 
     async def complete_configured_fallback(
         self, role: str, system: str, user: str,

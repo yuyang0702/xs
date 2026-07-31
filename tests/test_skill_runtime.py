@@ -194,6 +194,30 @@ def test_bootstrap_runtime_removes_artifact_location_and_owner_references(tmp_pa
     assert "tags:\n  - device" in content
 
 
+def test_bootstrap_runtime_removes_future_chapter_links_from_promises(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    db.create_skill_execution("run", project.id, "plot-structure", "hash")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("plot-structure"),
+        StoryCli(project, lambda command: "ok"), bootstrap=True,
+    )
+
+    toolbox.execute("create_file_proposal", {
+        "relative_path": "continuity/promises/oath.md",
+        "content": (
+            "---\ntitle: Oath\nstatus: planned\nplanted: chapter-05\n"
+            "payoff: chapter-16\ncharacters:\n  - hero\n---\n"
+            "\n# Oath\n\n第5章埋下承诺，第16章兑现。\n"
+        ),
+    })
+
+    content = db.list_file_proposals("run")[0]["content"]
+    assert "planted:" not in content
+    assert "payoff:" not in content
+    assert "characters:" not in content
+    assert "第5章埋下承诺，第16章兑现。" in content
+
+
 def test_bootstrap_runtime_does_not_offer_interactive_question_tool(tmp_path) -> None:
     db, project = make_project(tmp_path)
     db.create_skill_execution("run", project.id, "story-init", "hash")

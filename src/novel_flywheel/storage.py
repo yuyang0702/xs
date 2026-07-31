@@ -62,7 +62,11 @@ class ProjectSnapshot:
         for entry in self.entries:
             destination = self.project_root / entry["path"]
             if not entry["existed"]:
-                destination.unlink(missing_ok=True)
+                # A failed run may leave the file absent, or a user-created
+                # directory at the same path.  Only remove a file/symlink;
+                # never turn recovery into a second failure or delete a tree.
+                if destination.is_file() or destination.is_symlink():
+                    destination.unlink()
                 continue
             source = self.snapshot_root / "files" / entry["path"]
             destination.parent.mkdir(parents=True, exist_ok=True)

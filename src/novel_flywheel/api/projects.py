@@ -233,6 +233,12 @@ def _candidate_analysis(request: Request, project: Project, run_id: str, text: s
             project.id, "market_baseline",
         ),
     )
+    try:
+        current = get_store(request).get(project.id)
+    except (LookupError, OSError):
+        return report
+    if current.path.resolve() != project.path.resolve():
+        return report
     atomic_write(path, json.dumps(report, ensure_ascii=False, indent=2))
     return report
 

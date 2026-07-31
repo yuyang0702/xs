@@ -44,6 +44,9 @@ class OutlineApplyPayload(BaseModel):
     change_ids: list[str] | None = Field(default=None, max_length=500)
     apply_whole: bool = False
     confirm_manuscript_impact: bool = False
+    canon_choices: dict[str, Literal["keep_current", "use_candidate"]] = Field(
+        default_factory=dict, max_length=20,
+    )
 
 
 class OutlineRestorePayload(BaseModel):
@@ -180,6 +183,19 @@ def delete_mechanisms(payload: DeleteMechanismsPayload, request: Request) -> dic
     return _handle(lambda: _learning(request).delete_rejected_nodes(payload.node_ids))
 
 
+@router.get("/learning/style-candidates")
+def list_style_candidates(
+    request: Request, source_id: str | None = None,
+    view: Literal["active", "rejected", "all"] = "active",
+) -> list[dict]:
+    return _learning(request).list_style_candidates(source_id, view)
+
+
+@router.delete("/learning/style-candidates")
+def delete_style_candidates(payload: DeleteMechanismsPayload, request: Request) -> dict:
+    return _handle(lambda: _learning(request).delete_rejected_style_candidates(payload.node_ids))
+
+
 @router.post("/learning/nodes/{node_id}/revisions")
 def revise_node(node_id: str, payload: RevisionPayload, request: Request) -> dict:
     return _handle(lambda: _learning(request).revise_node(node_id, payload.action, payload.data))
@@ -193,6 +209,7 @@ def project_learning(project_id: str, request: Request) -> dict:
             "adoptions": _learning(request).list_adoptions(project_id),
             "adoption_reviews": _learning(request).list_adoption_reviews(project_id),
             "artifacts": _learning(request).list_artifacts(project_id),
+            "prose_baseline": _learning(request).prose_baseline_overview(project_id),
             "legacy_style_migration": migration,
         }
     return _handle(result)
@@ -251,6 +268,11 @@ def prose_baseline(project_id: str, payload: ArtifactPayload, request: Request) 
     return _handle(lambda: _learning(request).build_prose_baseline(project_id, payload.data))
 
 
+@router.post("/projects/{project_id}/learning/style-candidates/{node_id}")
+def apply_style_candidate(project_id: str, node_id: str, request: Request) -> dict:
+    return _handle(lambda: _learning(request).apply_style_candidate(project_id, node_id))
+
+
 @router.put("/projects/{project_id}/learning/voice-profiles")
 def voice_profiles(project_id: str, payload: ArtifactPayload, request: Request) -> dict:
     return _handle(lambda: _learning(request).save_voice_profiles(project_id, payload.data))
@@ -278,6 +300,14 @@ def outline_overview(project_id: str, request: Request) -> dict:
     return _handle(lambda: request.app.state.outlines.overview(project_id))
 
 
+@router.post(
+    "/projects/{project_id}/learning/outlines/create-project",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_project_from_current_outline(project_id: str, request: Request) -> dict:
+    return _handle(lambda: request.app.state.outlines.create_project_from_current(project_id))
+
+
 @router.put("/projects/{project_id}/learning/outline-candidates/{candidate_id}")
 def update_outline_candidate(
     project_id: str, candidate_id: str, payload: OutlineCandidatePayload, request: Request,
@@ -290,6 +320,17 @@ def update_outline_candidate(
 @router.delete("/projects/{project_id}/learning/outline-candidates/{candidate_id}")
 def reject_outline_candidate(project_id: str, candidate_id: str, request: Request) -> dict:
     return _handle(lambda: request.app.state.outlines.reject_candidate(project_id, candidate_id))
+
+
+@router.post(
+    "/projects/{project_id}/learning/outline-candidates/{candidate_id}/create-project",
+    status_code=status.HTTP_201_CREATED,
+)
+def create_project_from_outline_candidate(project_id: str, candidate_id: str,
+                                          request: Request) -> dict:
+    return _handle(lambda: request.app.state.outlines.create_project_from_candidate(
+        project_id, candidate_id,
+    ))
 
 
 @router.get("/projects/{project_id}/learning/outline-candidates/{candidate_id}/comparison")
@@ -318,6 +359,7 @@ def apply_outline_candidate(
         change_ids=None if payload.apply_whole else payload.change_ids,
         expected_revision=payload.expected_revision,
         allow_full_with_manuscript=payload.confirm_manuscript_impact,
+        canon_choices=payload.canon_choices,
     ))
 
 

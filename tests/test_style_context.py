@@ -18,6 +18,17 @@ def test_style_profile_is_created_once_from_project_metadata(tmp_path: Path) -> 
     assert ensure_style_profile(project).endswith("自定义规则")
 
 
+def test_style_profile_reads_current_project_pov_field(tmp_path: Path) -> None:
+    project = type("Project", (), {
+        "path": tmp_path,
+        "metadata": {"genre": "言情", "tone": "克制", "pov": "third-limited"},
+    })()
+
+    profile = ensure_style_profile(project)
+
+    assert "叙事视角：third-limited" in profile
+
+
 def test_character_fingerprints_only_include_named_characters(tmp_path: Path) -> None:
     folder = tmp_path / "characters"
     folder.mkdir()

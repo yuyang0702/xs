@@ -441,6 +441,108 @@ def test_project_trash_restore_and_permanent_delete(tmp_path) -> None:
     assert not (tmp_path / "trash" / project.id).exists()
 
 
+def test_restore_reconciles_when_project_is_already_back_at_original_path(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Interrupted Restore", mode="short", genre="suspense",
+        premise="The files moved before the database changed.", target_words=8_000,
+    ))
+    original = project.path
+    trashed = store.trash(project.id)
+    trashed["path"].rename(original)
+
+    restored = store.restore(project.id)
+
+    assert restored.path == original
+    assert restored.metadata["id"] == project.id
+    assert store.list_trash() == []
+    assert not trashed["path"].exists()
+
+
+def test_restore_preserves_both_locations_when_original_is_another_project(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Restore Conflict", mode="short", genre="suspense",
+        premise="Another directory occupies the old path.", target_words=8_000,
+    ))
+    original = project.path
+    trashed = store.trash(project.id)
+    original.mkdir()
+    (original / "project.json").write_text(
+        json.dumps({"id": "different-project"}), encoding="utf-8",
+    )
+    (original / "keep.txt").write_text("original occupant", encoding="utf-8")
+    (trashed["path"] / "keep.txt").write_text("trashed project", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="其他作品"):
+        store.restore(project.id)
+
+    assert (original / "keep.txt").read_text(encoding="utf-8") == "original occupant"
+    assert (trashed["path"] / "keep.txt").read_text(encoding="utf-8") == "trashed project"
+    assert store.list_trash()[0]["id"] == project.id
+
+
+def test_restore_moves_derived_shell_aside_without_losing_its_files(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Derived Shell", mode="short", genre="suspense",
+        premise="Analysis recreated the original directory.", target_words=8_000,
+    ))
+    original = project.path
+    trashed = store.trash(project.id)
+    original.mkdir()
+    (original / "analysis-candidate.json").write_text(
+        '{"kept": true}', encoding="utf-8",
+    )
+
+    restored = store.restore(project.id)
+
+    backups = list((tmp_path / "trash" / "restore-conflicts").glob(f"{project.id}-*"))
+    assert restored.path == original
+    assert restored.metadata["id"] == project.id
+    assert len(backups) == 1
+    assert (backups[0] / "analysis-candidate.json").read_text(encoding="utf-8") == '{"kept": true}'
+    assert not trashed["path"].exists()
+    assert store.list_trash() == []
+
+
+def test_restore_uses_matching_original_and_preserves_complete_trash_copy(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Two Copies", mode="short", genre="suspense",
+        premise="Two recoverable copies must both survive.", target_words=8_000,
+    ))
+    original = project.path
+    trashed = store.trash(project.id)
+    original.mkdir()
+    (original / "project.json").write_text(
+        json.dumps(project.metadata), encoding="utf-8",
+    )
+    (original / "keep.txt").write_text("original copy", encoding="utf-8")
+    (trashed["path"] / "keep.txt").write_text("trash copy", encoding="utf-8")
+
+    restored = store.restore(project.id)
+
+    assert restored.path == original
+    assert (original / "keep.txt").read_text(encoding="utf-8") == "original copy"
+    assert (trashed["path"] / "keep.txt").read_text(encoding="utf-8") == "trash copy"
+    assert store.list_trash() == []
+
+    trashed_again = store.trash(project.id)
+
+    assert trashed_again["path"] != trashed["path"]
+    assert (trashed_again["path"] / "keep.txt").read_text(encoding="utf-8") == "original copy"
+    assert (trashed["path"] / "keep.txt").read_text(encoding="utf-8") == "trash copy"
+
+
 def test_cancelled_run_does_not_hide_project_and_trash_rejects_outside_path(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

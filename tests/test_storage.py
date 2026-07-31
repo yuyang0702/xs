@@ -40,6 +40,24 @@ def test_snapshot_restores_changed_and_deleted_files(tmp_path) -> None:
     assert {path: digest(path) for path in before} == before
 
 
+def test_snapshot_restore_ignores_missing_targets_and_existing_directories(tmp_path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    missing = project / "missing" / "chapter.md"
+    snapshot = ProjectSnapshot.create(
+        project, tmp_path / "snapshots" / "run-missing", [missing],
+    )
+
+    # The target was never a file, and a later run may create a directory at
+    # the same path. Recovery must stay idempotent and must not remove trees.
+    missing.mkdir(parents=True)
+    missing.joinpath("keep.txt").write_text("keep", encoding="utf-8")
+    snapshot.restore()
+
+    assert missing.is_dir()
+    assert missing.joinpath("keep.txt").read_text(encoding="utf-8") == "keep"
+
+
 def test_snapshot_manifest_is_written_atomically(tmp_path, monkeypatch) -> None:
     project = tmp_path / "project"
     project.mkdir()

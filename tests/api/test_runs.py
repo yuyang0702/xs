@@ -30,6 +30,21 @@ class FakeWorkflows:
         }
 
 
+def confirm_outline(client: TestClient, project_id: str) -> None:
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "第一版", "outline": "# 正式大纲\n\n## 开头\n主角发现异常。"},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    response = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    )
+    assert response.status_code == 200
+
+
 def test_start_short_run_and_list_history(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(
@@ -40,6 +55,11 @@ def test_start_short_run_and_list_history(tmp_path) -> None:
         "title": "Short", "mode": "short", "genre": "suspense",
         "premise": "Someone vanishes.", "target_words": 5000,
     }).json()
+    blocked = client.post(f"/api/projects/{project['id']}/runs/short")
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "outline_confirmation_required"
+
+    confirm_outline(client, project["id"])
     response = client.post(f"/api/projects/{project['id']}/runs/short")
     assert response.status_code == 202
     assert response.json()["status"] in {"queued", "running"}

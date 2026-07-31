@@ -48,6 +48,25 @@ def test_local_mechanism_exposes_plain_provenance_and_source_title(tmp_path) -> 
     }
 
 
+def test_legacy_mechanism_list_fields_accept_single_text_values(tmp_path) -> None:
+    _db, library, _projects, system = setup_system(tmp_path)
+    source = library.import_text(
+        title="旧候选写法", source_type="paste", text="她决定继续追查真相。",
+    )
+    created = system._save_node("mechanism", {
+        "name": "旧写法", "confidence": 0.9,
+        "applicable_modes": "both", "applicable_stages": "开头",
+        "applicable_genres": "悬疑", "incompatible_conditions": "纯日常题材不适用",
+    }, source_id=source["id"], status="confirmed")
+
+    listed = next(item for item in system.list_mechanisms() if item["id"] == created["id"])
+
+    assert listed["data"]["applicable_modes"] == ["short", "long"]
+    assert listed["data"]["applicable_stages"] == ["开头"]
+    assert listed["data"]["applicable_genres"] == ["悬疑"]
+    assert listed["data"]["incompatible_conditions"] == ["纯日常题材不适用"]
+
+
 def test_cached_window_rebuilds_missing_mechanisms(tmp_path) -> None:
     db, library, _projects, system = setup_system(tmp_path)
     source = library.import_text(
@@ -554,6 +573,29 @@ async def test_model_analysis_reuses_all_windows_after_synthesis_failure(tmp_pat
     assert progress[0]["current_window"] is None
 
 
+async def test_model_analysis_rechecks_v1_window_for_prose_evidence(tmp_path) -> None:
+    db, library, projects, system = setup_system(tmp_path)
+    source = library.import_text(
+        title="旧版文笔证据", source_type="paste", text="她推开门，先看见桌上的旧信。",
+    )
+    window = system._windows("她推开门，先看见桌上的旧信。")[0]
+    system._save_node("model_claim", {
+        "window": 1, "window_start": window["start"], "window_end": window["end"],
+        "analysis_version": "reference-model-window-v1", "checkpoint_key": "old",
+        "result": json.loads(valid_window_result()), "review_state": "proposal",
+        "model_receipt": {"model_id": "old-model"},
+    }, source_id=source["id"], status="proposed")
+    gateway = FakeGateway([valid_window_result(), valid_synthesis_result()])
+    progress = []
+
+    await LearningSystem(db, library, projects, gateway).model_analyze_reference(
+        source["id"], progress.append,
+    )
+
+    assert gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert progress[0]["reused_windows"] == 0
+
+
 async def test_model_analysis_recovers_valid_legacy_claim_for_single_version_source(tmp_path) -> None:
     db, library, projects, system = setup_system(tmp_path)
     text = "甲" * 7_000
@@ -603,6 +645,155 @@ async def test_model_analysis_uses_explicit_roles_and_keeps_claims_proposed(tmp_
     assert progress[0]["completed_windows"] == 0
     assert progress[-1]["phase"] == "synthesizing"
     assert progress[-1]["completed_windows"] == progress[-1]["total_windows"] == 1
+
+
+async def test_model_analysis_creates_evidenced_style_candidates_without_extra_call(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([
+        json.dumps({
+            "events": [], "state_changes": [], "reader_questions": [],
+            "turning_points": [], "relationship_changes": [],
+            "style_evidence": [{
+                "field": "psychology",
+                "start": 0, "end": 9, "fact": "先写动作再写判断",
+                "interpretation": "让情绪由证据自然显现", "confidence": 0.88,
+            }],
+        }, ensure_ascii=False),
+        json.dumps({
+            "mechanisms": [], "attraction_map": {},
+            "style_profile": {
+                "summary": "动作先于情绪判断",
+                "rules": [{
+                    "field": "psychology", "rule": "先给出可观察动作，再写人物的有限判断",
+                    "when_to_use": "人物情绪发生变化时",
+                    "avoid": "不要直接替读者总结情绪",
+                    "supporting_windows": [1], "confidence": 0.86,
+                }],
+                "uncertainties": [],
+            },
+        }, ensure_ascii=False),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="文笔样本", source_type="paste", text="她攥紧袖口，半晌才抬起眼。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+    listed = system.list_style_candidates(source["id"])
+
+    assert gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert len(result["style_candidates"]) == len(listed) == 1
+    assert listed[0]["status"] == "proposed"
+    assert listed[0]["data"]["field"] == "psychology"
+    assert listed[0]["data"]["rule"] == "先给出可观察动作，再写人物的有限判断"
+    assert listed[0]["evidence"][0]["excerpt"] == "她攥紧袖口，半晌才"
+    assert '"style_profile":{}' in gateway.requests[1]["user"]
+
+
+async def test_model_analysis_recovers_missing_style_window_from_same_category_evidence(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([
+        json.dumps({
+            "events": [], "state_changes": [], "reader_questions": [],
+            "turning_points": [], "relationship_changes": [],
+            "style_evidence": [{
+                "field": "dialogue", "start": 0, "end": 8,
+                "fact": "对话回应同时改变信息",
+                "interpretation": "冲突对白应让关系或信息发生变化",
+                "confidence": 0.88,
+            }],
+        }, ensure_ascii=False),
+        json.dumps({
+            "mechanisms": [], "attraction_map": {},
+            "style_profile": {
+                "summary": "对白推动关系变化",
+                "rules": [{
+                    "field": "dialogue", "rule": "让每次关键回应带来新信息或关系变化",
+                    "when_to_use": "人物冲突时", "avoid": "不要重复已知信息",
+                    "confidence": 0.84,
+                }],
+                "uncertainties": [],
+            },
+        }, ensure_ascii=False),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="遗漏窗口编号", source_type="paste", text="她问出真相，他却承认早已知情。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+    listed = system.list_style_candidates(source["id"])
+
+    assert len(result["style_candidates"]) == 1
+    assert result["style_candidates"][0]["data"]["supporting_windows"] == [1]
+    assert listed[0]["evidence"]
+
+
+async def test_model_analysis_ignores_unsupported_style_rule_without_losing_summary(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    gateway = FakeGateway([
+        valid_window_result(),
+        json.dumps({
+            "mechanisms": [{
+                "name": "延迟揭示", "supporting_windows": [1],
+                "transfer_guidance": "把关键回答延后到人物采取行动之后",
+            }],
+            "attraction_map": {},
+            "style_profile": {
+                "summary": "动作先于情绪判断",
+                "rules": [{
+                    "field": "psychology",
+                    "rule": "先给动作，再写人物判断",
+                    "when_to_use": "人物情绪变化时",
+                    "avoid": "不要直接总结情绪",
+                    "confidence": 0.8,
+                }],
+                "uncertainties": [],
+            },
+        }, ensure_ascii=False),
+    ])
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="缺少文笔依据的样本", source_type="paste", text="她推开门，停在原地。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert len(result["mechanisms"]) == 1
+    assert result["style_candidates"] == []
+    assert gateway.roles == ["reference_analysis", "reference_synthesis"]
+
+
+def test_confirmed_style_candidate_merges_into_versioned_prose_baseline(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="文笔应用", mode="short", genre="都市", premise="测试", target_words=8000,
+    ))
+    source = library.import_text(title="优秀样本", source_type="paste", text="她推开门。")
+    candidate = system._save_node("style_rule", {
+        "field": "dialogue", "rule": "每次回应都改变信息或人物关系",
+        "when_to_use": "冲突对白", "avoid": "不要只重复已知信息",
+        "supporting_windows": [1], "confidence": 0.9,
+    }, source_id=source["id"], status="proposed")
+    system.build_prose_baseline(project.id, {"psychology": ["先给证据，再写判断"]})
+
+    with pytest.raises(ValueError, match="先确认"):
+        system.apply_style_candidate(project.id, candidate["id"])
+
+    system.revise_node(candidate["id"], "confirm", {})
+    applied = system.apply_style_candidate(project.id, candidate["id"])
+    repeated = system.apply_style_candidate(project.id, candidate["id"])
+
+    assert applied["version"] == repeated["version"] == 2
+    assert applied["data"]["psychology"] == ["先给证据，再写判断"]
+    assert applied["data"]["dialogue"] == ["每次回应都改变信息或人物关系"]
+    assert len(system.artifact_history(project.id, "prose_baseline")) == 2
 
 
 async def test_model_analysis_updates_matching_local_candidate_instead_of_duplicating(tmp_path) -> None:
@@ -716,7 +907,7 @@ async def test_model_analysis_limits_window_shape_to_avoid_truncated_json(tmp_pa
 
     synthesis_request = gateway.requests[1]
     assert synthesis_request["role"] == "reference_synthesis"
-    assert '{"mechanisms":[],"attraction_map":{}}' in synthesis_request["user"]
+    assert '{"mechanisms":[],"attraction_map":{},"style_profile":{}}' in synthesis_request["user"]
     assert "Use at most 3 mechanisms" in synthesis_request["user"]
 
 
@@ -881,7 +1072,7 @@ def test_synthesis_result_wraps_one_complete_mechanism_object() -> None:
 
     result = LearningSystem._synthesis_result(json.dumps(mechanism, ensure_ascii=False))
 
-    assert result == {"mechanisms": [mechanism], "attraction_map": {}}
+    assert result == {"mechanisms": [mechanism], "attraction_map": {}, "style_profile": {}}
 
 
 async def test_model_analysis_uses_fallback_for_wrong_window_shape(tmp_path) -> None:
@@ -927,6 +1118,41 @@ async def test_model_analysis_uses_fallback_for_wrong_synthesis_shape(tmp_path) 
     gateway = GatewayWithFallback()
     system = LearningSystem(db, library, projects, gateway)
     source = library.import_text(title="wrong-synthesis-shape", source_type="paste", text="sample text")
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["attraction_map"]["status"] == "proposed"
+    assert gateway.fallback_roles == ["reference_synthesis"]
+
+
+async def test_model_analysis_uses_fallback_when_mechanism_lacks_supporting_windows(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithFallback(FakeGateway):
+        def __init__(self):
+            super().__init__([
+                valid_window_result(),
+                json.dumps({
+                    "mechanisms": [{
+                        "name": "延迟揭示",
+                        "transfer_guidance": "保留信息延迟出现的结构",
+                    }],
+                    "attraction_map": {},
+                }, ensure_ascii=False),
+            ])
+            self.fallback_roles = []
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_roles.append(role)
+            return SimpleNamespace(text=valid_synthesis_result(), receipt={"model_id": "fallback"})
+
+    gateway = GatewayWithFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="missing-supporting-windows", source_type="paste", text="sample text",
+    )
 
     result = await system.model_analyze_reference(source["id"])
 

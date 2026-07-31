@@ -21,9 +21,25 @@ def _ensure_project(project_id: str, request: Request) -> None:
         }) from exc
 
 
+def _ensure_confirmed_outline(project_id: str, request: Request) -> None:
+    readiness = request.app.state.outlines.writing_readiness(project_id)
+    if not request.app.state.outlines.current(project_id)["exists"]:
+        raise HTTPException(status_code=409, detail={
+            "code": "outline_confirmation_required",
+            "message": "请先选择候选大纲并设为正式大纲，再生成正文。",
+        })
+    if not readiness["ready"]:
+        raise HTTPException(status_code=409, detail={
+            "code": "outline_canon_conflict",
+            "message": readiness["message"],
+            "conflicts": readiness["conflicts"],
+        })
+
+
 @router.post("/projects/{project_id}/runs/short", status_code=status.HTTP_202_ACCEPTED)
 async def start_short_run(project_id: str, request: Request) -> dict:
     _ensure_project(project_id, request)
+    _ensure_confirmed_outline(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_short(project_id, run_id=run_id)

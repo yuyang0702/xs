@@ -9,12 +9,133 @@ import re
 from pathlib import Path
 
 from novel_flywheel.db import Database
-from novel_flywheel.projects import ProjectStore
+from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
 
 
 MAX_OUTLINE_CHARACTERS = 100_000
+
+
+def _confirmed_value(state: dict, key: str) -> str:
+    for item in state.get("confirmed_facts", []):
+        if isinstance(item, dict) and item.get("key") == key:
+            return str(item.get("value") or "").strip()
+    return ""
+
+
+def _character_profile(project_path: Path, role: str) -> str:
+    for path in sorted((project_path / "characters").glob("*.md")):
+        if path.name == "_index.md":
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        name = re.search(r'(?m)^name:\s*["\']?([^"\'\r\n]+)', text)
+        profile_role = re.search(r"(?m)^role:\s*([^\r\n]+)", text)
+        if role == "protagonist" and profile_role and profile_role.group(1).strip() == role:
+            return name.group(1).strip() if name else ""
+        if role == "counterpart" and name and re.search(r"公子|少爷|世子|从嘲笑.*(?:守护|真香)", text):
+            return name.group(1).strip()
+    return ""
+
+
+def canon_profile(project, state: dict) -> dict[str, dict[str, str | bool]]:
+    requirements = project.metadata.get("story_requirements") or {}
+    protagonist = (
+        _confirmed_value(state, "outline.protagonist")
+        or str(requirements.get("protagonist.name") or "").strip()
+        or _character_profile(project.path, "protagonist")
+    )
+    locations = str(requirements.get("world.locations") or "")
+    location = _confirmed_value(state, "outline.primary_location")
+    if not location:
+        match = re.search(r"([\u4e00-\u9fff]{1,6}(?:府|宫|庄|村|城|镇|国|朝))", locations)
+        location = match.group(1) if match else ""
+    counterpart = (
+        _confirmed_value(state, "outline.counterpart")
+        or _character_profile(project.path, "counterpart")
+    )
+    locked_keys = {
+        str(item.get("key")) for item in state.get("locked_facts", [])
+        if isinstance(item, dict)
+    }
+    return {
+        "protagonist": {
+            "label": "主角姓名", "value": protagonist,
+            "locked": "protagonist.name" in locked_keys,
+        },
+        "primary_location": {
+            "label": "主要府邸或地点", "value": location, "locked": False,
+        },
+        "counterpart": {
+            "label": "主要公子", "value": counterpart, "locked": False,
+        },
+    }
+
+
+def detect_canon_conflicts(project, state: dict, content: str) -> list[dict]:
+    profile = canon_profile(project, state)
+    bold_names = re.findall(
+        r"\*\*([\u4e00-\u9fff]{2,4})[（(][^\n）)]*(?:主角|千金|公子|少爷|世子)[^\n）)]*[）)]\*\*",
+        content,
+    )
+    protagonist_candidate = next((name for name in bold_names if name != profile["counterpart"]["value"]), "")
+    if not protagonist_candidate:
+        match = re.search(
+            r"(?:孤女|丫头|女子|少女|姑娘)([\u4e00-\u9fff]{2,4})被", content,
+        )
+        protagonist_candidate = match.group(1) if match else ""
+    counterpart_match = re.search(
+        r"\*\*([\u4e00-\u9fff]{2,4})[（(][^\n）)]*(?:公子|少爷|世子)[^\n）)]*[）)]\*\*",
+        content,
+    )
+    counterpart_candidate = counterpart_match.group(1) if counterpart_match else ""
+    ignored_locations = {"府中", "府里", "府内", "府外", "府邸"}
+    location_counts: dict[str, int] = {}
+    expected_location = str(profile["primary_location"]["value"])
+    for raw_value in re.findall(r"[\u4e00-\u9fff]{1,6}(?:府|宫|庄|村|城|镇|国|朝)", content):
+        value = (
+            raw_value[-len(expected_location):]
+            if expected_location and raw_value.endswith(expected_location[-1])
+            and len(raw_value) >= len(expected_location)
+            else raw_value
+        )
+        if value not in ignored_locations:
+            location_counts[value] = location_counts.get(value, 0) + 1
+    location_candidate = next((
+        value for value, _count in sorted(
+            location_counts.items(), key=lambda item: (-item[1], item[0]),
+        ) if value != expected_location
+    ), "")
+    candidates = {
+        "protagonist": protagonist_candidate,
+        "primary_location": location_candidate,
+        "counterpart": counterpart_candidate,
+    }
+    conflicts = []
+    for key, candidate_value in candidates.items():
+        current_value = str(profile[key]["value"] or "")
+        if not current_value or not candidate_value or candidate_value == current_value:
+            continue
+        if current_value in content and key != "primary_location":
+            explanation = f"候选大纲同时出现“{current_value}”和“{candidate_value}”，后续容易混用。"
+        elif current_value in content:
+            explanation = f"候选大纲混用了“{current_value}”和“{candidate_value}”两个地点。"
+        else:
+            explanation = f"项目资料写的是“{current_value}”，候选大纲改成了“{candidate_value}”。"
+        identity = hashlib.sha1(
+            f"{key}|{current_value}|{candidate_value}".encode("utf-8"),
+        ).hexdigest()[:16]
+        conflicts.append({
+            "id": identity, "key": key, "label": profile[key]["label"],
+            "current_value": current_value, "candidate_value": candidate_value,
+            "locked": bool(profile[key]["locked"]),
+            "can_use_candidate": not bool(profile[key]["locked"]),
+            "explanation": explanation,
+        })
+    return conflicts
 
 
 @dataclass(frozen=True)
@@ -131,7 +252,83 @@ class OutlineService:
         assert rejected is not None
         return self._public_candidate(rejected, self._candidate_content(project_id, rejected))
 
+    def create_project_from_candidate(self, project_id: str, candidate_id: str) -> dict:
+        source = self.projects.get(project_id)
+        candidate = self._candidate(project_id, candidate_id)
+        content = self._candidate_content(project_id, candidate)
+        return self._create_project_from_outline(
+            source, content, candidate.metadata.get("title"), candidate_id,
+        )
+
+    def create_project_from_current(self, project_id: str) -> dict:
+        source = self.projects.get(project_id)
+        current = self.current(project_id)
+        readiness = self.writing_readiness(project_id)
+        if not current["exists"]:
+            raise ValueError("当前作品还没有正式大纲")
+        if readiness["ready"]:
+            raise ValueError("当前正式大纲与项目资料没有冲突，不需要另建作品")
+        return self._create_project_from_outline(
+            source, current["content"], source.title, None,
+        )
+
+    def _create_project_from_outline(self, source, content: str,
+                                     fallback_title: str | None,
+                                     source_candidate_id: str | None) -> dict:
+        heading = re.search(r"(?m)^#\s+(.+)$", content)
+        base_title = (
+            heading.group(1).strip().strip("《》") if heading
+            else str(fallback_title or source.title).strip()
+        )
+        paragraphs = [
+            value.strip() for value in re.split(r"\n\s*\n", content)
+            if value.strip() and not value.lstrip().startswith(("#", "|", "---"))
+        ]
+        premise = (paragraphs[0] if paragraphs else source.metadata.get("premise") or base_title)[:2000]
+        created = self.projects.create(ProjectCreate(
+            title=f"{base_title}（新大纲）",
+            mode=source.mode,
+            genre=str(source.metadata.get("genre") or "未分类"),
+            premise=premise,
+            target_words=int(source.metadata.get("target_words") or 10_000),
+            pov=str(source.metadata.get("pov") or "third-limited"),
+            tone=str(source.metadata.get("tone") or "natural"),
+        ))
+        metadata_path = created.path / "project.json"
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        for key in (
+            "initialization_skills", "platform", "platform_profile_id",
+            "platform_profile_version", "optimized_local_review_enabled",
+        ):
+            if key in source.metadata:
+                metadata[key] = source.metadata[key]
+        metadata.update({
+            "source_project_id": source.id,
+            "source_outline_candidate_id": source_candidate_id,
+            "materials_need_generation": True,
+            "story_requirements": {
+                "title": metadata["title"], "genre": metadata["genre"],
+                "premise": metadata["premise"], "target_words": metadata["target_words"],
+                "pov": metadata["pov"], "tone": metadata["tone"],
+            },
+        })
+        atomic_write(metadata_path, json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
+        new_candidate = self.create_candidate(
+            created.id, content, title="新作品第一版大纲",
+            metadata={
+                "source_project_id": source.id,
+                "source_candidate_id": source_candidate_id,
+            },
+        )
+        self.apply_candidate(created.id, new_candidate["id"])
+        result = self.projects.get(created.id)
+        return {
+            **result.metadata, "path": str(result.path),
+            "message": "新作品和第一版正式大纲已创建；人物与设定将在你确认后重新生成。",
+        }
+
     def compare_candidate(self, project_id: str, candidate_id: str) -> dict:
+        project = self.projects.get(project_id)
         current = self.current(project_id)
         candidate = self.get_candidate(project_id, candidate_id)
         changes = self._compare(current["content"], candidate["content"])
@@ -144,6 +341,7 @@ class OutlineService:
         state = self.states.get(project_id)
         assert state is not None
         lock_failures = validate_locked_facts(current["content"], candidate["content"], state.data)
+        canon_conflicts = detect_canon_conflicts(project, state.data, candidate["content"])
         risks = []
         if current["manuscript_exists"]:
             risks.append("作品已经有正文；应用后只改变后续创作依据，不会修改现有正文。")
@@ -151,12 +349,15 @@ class OutlineService:
             risks.append(f"候选版本删除了 {summary['removed']} 个剧情块，请确认伏笔和结局仍能兑现。")
         if lock_failures:
             risks.append("候选版本遗漏了已锁定设定，当前不能应用。")
+        if canon_conflicts:
+            risks.append(f"发现 {len(canon_conflicts)} 处项目资料与候选大纲不一致，请先逐项决定。")
         return {
             "project_id": project_id, "candidate_id": candidate_id,
             "state_revision": current["state_revision"], "stage": current["stage"],
             "current": current, "candidate": candidate, "changes": changes,
             "summary": summary, "risks": risks, "lock_failures": lock_failures,
-            "can_apply": not lock_failures, "model_called": False,
+            "canon_conflicts": canon_conflicts,
+            "can_apply": not lock_failures and not canon_conflicts, "model_called": False,
             "semantic_review_recommended": bool(summary["uncertain"]),
         }
 
@@ -164,7 +365,8 @@ class OutlineService:
                         change_ids: list[str] | None = None,
                         expected_revision: int | None = None,
                         allow_full_with_manuscript: bool = False,
-                        source: str = "candidate") -> dict:
+                        source: str = "candidate",
+                        canon_choices: dict[str, str] | None = None) -> dict:
         project = self.projects.get(project_id)
         candidate = self._candidate(project_id, candidate_id)
         candidate_content = self._candidate_content(project_id, candidate)
@@ -183,6 +385,30 @@ class OutlineService:
         state = self.states.get(project_id)
         if state is None:
             raise LookupError("StoryState not found")
+        final_conflicts = detect_canon_conflicts(project, state.data, content)
+        choices = canon_choices or {}
+        unresolved = [item for item in final_conflicts if choices.get(item["id"]) not in {
+            "keep_current", "use_candidate",
+        }]
+        if unresolved:
+            raise ValueError("请先决定每一处设定冲突最终采用哪一项")
+        confirmed_facts = list(state.data.get("confirmed_facts", []))
+        for item in final_conflicts:
+            choice = choices[item["id"]]
+            if choice == "use_candidate" and not item["can_use_candidate"]:
+                raise ValueError(f"“{item['label']}”已被锁定，请先在项目资料中修改")
+            if choice == "keep_current":
+                content = content.replace(item["candidate_value"], item["current_value"])
+                continue
+            fact_key = f"outline.{item['key']}"
+            confirmed_facts = [
+                fact for fact in confirmed_facts
+                if not isinstance(fact, dict) or fact.get("key") != fact_key
+            ]
+            confirmed_facts.append({
+                "key": fact_key, "value": item["candidate_value"],
+                "level": "confirmed", "source": f"outline:{candidate_id}",
+            })
         lock_failures = validate_locked_facts(current["content"], content, state.data)
         if lock_failures:
             raise ValueError("候选大纲遗漏了锁定设定，不能应用")
@@ -194,7 +420,7 @@ class OutlineService:
         }
         committed = self.states.commit(
             candidate_id, expected_revision or state.revision,
-            {**state.data, "outline": outline},
+            {**state.data, "confirmed_facts": confirmed_facts, "outline": outline},
         )
         atomic_write(project.path / "plot" / "outline.md", content)
         self._mark_outline_artifacts_stale(project.path, project_id)
@@ -242,6 +468,25 @@ class OutlineService:
             "current": self.current(project_id),
             "candidates": self.list_candidates(project_id),
             "history": self.history(project_id),
+            "writing_readiness": self.writing_readiness(project_id),
+        }
+
+    def writing_readiness(self, project_id: str) -> dict:
+        project = self.projects.get(project_id)
+        current = self.current(project_id)
+        if not current["exists"]:
+            return {
+                "ready": False, "conflicts": [],
+                "message": "请先确认一份正式大纲，再开始准备人物或生成正文。",
+            }
+        state = self.states.ensure(project_id, project.path)
+        conflicts = detect_canon_conflicts(project, state.data, current["content"])
+        return {
+            "ready": not conflicts, "conflicts": conflicts,
+            "message": (
+                "正式大纲与项目资料一致，可以进入后续写作。" if not conflicts else
+                f"正式大纲与项目资料有 {len(conflicts)} 处冲突，请先生成修正版候选并重新确认。"
+            ),
         }
 
     async def semantic_review(self, project_id: str, candidate_id: str) -> dict:

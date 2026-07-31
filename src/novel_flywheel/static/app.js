@@ -1,4 +1,4 @@
-const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], selectedReferenceIds:new Set(), referenceSelectionBusy:false, referenceSelectionStatus:null, referenceSelectionPendingIds:[], referenceSelectionPendingTitles:[], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, candidateLoadState:"missing", workbenchManuscript:null, workbenchRuns:[], workbenchRunsLoadState:"loading", workbenchGeneration:0, workbenchTask:null, runStartingProjectId:null, activeRunProjectId:null, runMonitorGeneration:0, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
+const state = { projects: [], trash: [], providers: [], skills: [], wizards: [], references: [], mechanisms: [], styleCandidates:[], selectedReferenceIds:new Set(), referenceSelectionBusy:false, referenceSelectionStatus:null, referenceSelectionPendingIds:[], referenceSelectionPendingTitles:[], projectLearning:null, effectiveRules:null, outlines:null, activeOutlineCandidateId:null, outlineComparison:null, learningReport:null, attractionMap:null, referenceTask:null, referenceTaskTimer:null, localNlp:null, workflowAnalysis:null, market:null, marketBaselines:[], marketBaseline:null, marketMatch:null, importReceipt:null, publicationPreview:null, candidateQuality:null, candidateControls:null, candidateLoadState:"missing", workbenchManuscript:null, workbenchOutline:null, workbenchRuns:[], workbenchRunsLoadState:"loading", workbenchGeneration:0, workbenchTask:null, runStartingProjectId:null, activeRunProjectId:null, runMonitorGeneration:0, revisionRun:null, revisionReport:null, revisionPollTimer:null, revisionRefreshGeneration:0, revisionFinalizing:false, revisionIssues:[], activeReference: null, referenceContent: "", referenceAnalysis: null, activeProject: null, activeWizard: null, wizardStep: 0, wizardConfirmedMethods:null, wizardMethodsFor:null, selectedWizardMethods:new Set(), wizardSourceReferenceId:null, wizardAutoOutline:false, activeRun: null, pollTimer: null, interviewWizardId: null, interviewMessages: [], interviewBusy: false, editingProviderId: null, storyState: null, materials: null, activeCharacter: null, activeMaterialGroup:"characters", activeMaterialPath:null };
 const creatableReferenceTypes = new Set(["reference_work", "popular_sample"]);
 const referenceCreationUnavailable = "这类资料只用于查阅，不能直接创建作品";
 const WIZARD_METHOD_LIMIT = 12;
@@ -43,6 +43,7 @@ const findingLabels = {
   theme_summary_ending:"结尾概括主题过多", one_sentence_paragraph_run:"连续单句成段",
   uniform_short_sentence_run:"连续短句过于整齐", dialogue_ping_pong:"连续对话缺少动作和变化",
   production_text:"正文混入修改说明", checklist_judgment:"连续下结论，缺少过程",
+  mixed_script_corruption:"正文出现异常中英文混字", duplicate_paragraph:"正文出现重复段落",
   functional_repetition:"相邻段落作用重复", repeated_phrase:"短距离重复表达",
   mechanical_dialogue_run:"连续对话缺少场景动作", regular_sentence_rhythm:"句子节奏过于整齐",
   repeated_body_reaction:"身体反应重复", unsupported_certainty:"人物判断缺少证据",
@@ -80,7 +81,16 @@ const readableRunMessage = value => {
     "Polish input token budget exhausted; stopped before the next model call":"精修模型用量已到上限，已在下一次调用前停止",
     "Quality revision stopped and preserved the best candidate":"返修已停止，当前最佳候选稿已保留",
     "Quality revision halted; preserved best candidate (token_budget_exhausted)":"返修因模型用量到达上限而停止，当前最佳候选稿已保留",
-    "Server disconnected without sending a response.":"模型服务断开连接，没有返回内容；已有进度已保留。"
+    "Server disconnected without sending a response.":"模型服务断开连接，没有返回内容；已有进度已保留。",
+    "Final review providers failed; preserved the best candidate":"终审模型和备用模型都没有完成检查，当前最佳候选稿已保留，可以检查模型设置后重试。",
+    "Final review incomplete; preserved best candidate":"终审没有完成，当前最佳候选稿已保留，可以检查模型设置后重试。",
+    "Editorial quality gate did not pass within the correction limit":"已达到返工次数上限，稿件仍未通过质量检查，当前最佳候选稿已保留。",
+    "Editorial quality gate requires a full pass; preserved conditional candidate":"当前候选稿达到条件通过，但还不能设为正式稿；候选稿已保留。",
+    "Program restarted while task was active":"程序重启时任务尚未完成，任务已暂停；已有结果已保留，可以继续运行。",
+    "[Errno 22] Invalid argument":"系统写入文件时遇到路径或文件名问题（错误码 22），候选稿已保留，请检查文件名后重试。",
+    "Review primary and configured fallback did not produce usable output":"审稿模型和备用模型都没有返回可用结果，已有内容已保留。",
+    "终审模型返回内容不完整，精简报告恢复也未完成；已保留最佳稿":"终审模型返回内容不完整，精简报告恢复也未完成；最佳稿已保留，可以重新终审。",
+    "终审模型已返回，但结果未通过系统校验，已保留最佳稿":"终审模型已返回，但内容不完整，系统没有采用半份报告；最佳稿已保留，可以重新终审。"
   };
   if(exact[text])return exact[text];
   let result=text
@@ -121,6 +131,7 @@ const runStatusLabel = run => isQualityRejected(run) ? "质量未通过" : ({
   cancelled:"已终止", failed:"失败", waiting_confirmation:"等待你确认",
   waiting_local_fix:"需要人工处理", interrupted:"意外中断，可继续"
 }[run.status] || "状态待确认");
+const isActiveRunStatus = status => ["queued","running","cancelling"].includes(status);
 
 function deriveWorkbenchTaskState(snapshot) {
   const runs=snapshot.runs||[];
@@ -129,10 +140,11 @@ function deriveWorkbenchTaskState(snapshot) {
   const resumableRevision=latestRevision&&snapshot.revisionRun?.id===latestRevision.id&&["failed","cancelled","interrupted"].includes(latestRevision.status);
   const issues=(snapshot.issues||[]).filter(item=>!["resolved","closed","preserved"].includes(item.status));
   const visibleIssues=issues.slice(0,3);
-  if(!snapshot.project)return {stage:"还没有作品",issues:[],action:{kind:"new",label:"新建作品"},detail:"先创建一部作品，再开始写作。"};
+  if(!snapshot.project)return {stage:"准备开始新作品",issues:[],action:{kind:"references",label:"从样本开始"},detail:"可以先选择爆款样本或参考作品；也可以直接点击上方“开始新作品”。"};
   if(snapshot.runStarting)return {stage:"正在启动任务",issues:visibleIssues,action:{kind:"starting",label:"正在启动"},detail:"请求已经发出，请不要重复点击。",showProgress:true};
   if(snapshot.runsLoadState==="loading")return {stage:"正在读取作品状态",issues:[],action:{kind:"loading",label:"正在读取"},detail:"读取完成后会自动显示下一步。"};
   if(snapshot.runsLoadState==="error")return {stage:"暂时没有读到任务状态",issues:visibleIssues,action:{kind:"reload",label:"重新读取状态"},detail:"没有启动任何新任务，请重新读取当前作品。",showProgress:true};
+  if(!snapshot.hasFormalOutline&&!activeRun)return {stage:"等待你选择正式大纲",issues:visibleIssues,action:{kind:"outline",label:"选择大纲"},detail:"候选大纲不会自动用于创作；确认正式大纲后，才能准备人物、设定和正文。"};
   if(!snapshot.initialized&&!activeRun)return {stage:"作品还没有准备好",issues:visibleIssues,action:{kind:"initialize",label:"继续初始化"},detail:"完成初始化后，系统才能按这部作品的要求写作。"};
   if(activeRun)return {stage:`正在处理：${runLabel(activeRun.current_stage||activeRun.workflow)}`,issues:visibleIssues,action:{kind:"progress",label:"查看当前进度"},detail:"当前任务仍在进行，不会重复启动。",showProgress:true};
   if(resumableRevision)return {stage:"上次返修没有完成",issues:visibleIssues,action:{kind:"resume-revision",label:"从失败项继续"},detail:"已完成的修改仍然保留，打开返修区后再确认继续。",showProgress:true};
@@ -162,6 +174,7 @@ function currentWorkbenchSnapshot() {
   const summary=state.candidateQuality?.quality_summary||{};
   return {
     project:state.activeProject,
+    hasFormalOutline:Boolean(state.workbenchOutline?.current?.exists),
     initialized:initialization?.status==="completed",
     runs,
     runsLoadState:state.workbenchRunsLoadState,
@@ -181,7 +194,7 @@ function renderWorkbenchTaskState(snapshot=currentWorkbenchSnapshot()) {
   const project=snapshot.project;
   $("#workbench-current-project").innerHTML=project
     ? `<strong>${escapeHtml(project.title)}</strong><span>${project.mode==="short"?"短篇":"长篇"} · ${Number(project.target_words||0).toLocaleString()} 字</span>`
-    : "<strong>还没有作品</strong><span>创建后会在这里显示当前进度</span>";
+    : "<strong>现在没有正在写的作品</strong><span>学习库和市场分析仍然可以正常使用</span>";
   $("#workbench-current-stage").innerHTML=`<strong>${escapeHtml(task.stage)}</strong><span>${escapeHtml(task.detail)}</span>`;
   $("#workbench-priority-issues").innerHTML=task.issues.length
     ? `<h3>现在最需要处理</h3>${task.issues.map(item=>`<article><strong>${escapeHtml(revisionSafeText(item.title,"正文问题"))}</strong><p>${escapeHtml(revisionSafeText(item.effect,"这处问题可能影响阅读或理解。"))}</p><span>${escapeHtml(qualityIssueStatus(item.status))}</span></article>`).join("")}`
@@ -210,6 +223,8 @@ function openWorkbenchLocalScan() {
 $("#workbench-primary-action").addEventListener("click",async event=>{
   const action=event.currentTarget.dataset.workbenchAction;
   if(action==="new")return navigateToView("projects");
+  if(action==="references"){await navigateToView("learning");return switchLearningView("references");}
+  if(action==="outline")return openProjectOutlineGenerator(state.activeProject.id);
   if(action==="reload")return renderActiveProject();
   if(action==="initialize")return $("#initialize-project").click();
   if(action==="generate-short")return $("#run-short").click();
@@ -312,7 +327,7 @@ async function loadReferences() {
 }
 
 async function loadAll() {
-  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), loadReferences(), api("/api/learning/mechanisms?view=all"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
+  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.styleCandidates, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), loadReferences(), api("/api/learning/mechanisms?view=all"), api("/api/learning/style-candidates?view=all"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
   renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences(); renderLearning(); renderNlpStatus();
 }
 
@@ -660,10 +675,10 @@ async function pollReferenceAnalysisTask(sourceId){
     if(state.activeReference?.id!==sourceId)return;
     state.referenceTask=task;
     if(task.status==="completed"&&previous!=="completed"){
-      state.mechanisms=await api("/api/learning/mechanisms?view=all");
+      [state.mechanisms,state.styleCandidates]=await Promise.all([api("/api/learning/mechanisms?view=all"),api("/api/learning/style-candidates?view=all")]);
       state.attractionMap=task.result?.attraction_map||await api(`/api/references/${sourceId}/attraction-map`);
-      const count=task.result?.mechanisms?.length||0;
-      task.summary=count?`全文模型分析完成，得到 ${count} 个候选写法`:"全文模型分析完成；模型未形成可逐条采纳的候选写法，剧情吸引力报告仍可查看";
+      const count=task.result?.mechanisms?.length||0,styleCount=task.result?.style_candidates?.length||0;
+      task.summary=(count||styleCount)?`全文模型分析完成：剧情写法 ${count} 条，文笔候选 ${styleCount} 条`:"全文模型分析完成；模型未形成有充分证据的候选内容，剧情吸引力报告仍可查看";
       renderLearning();renderReferenceDetail();
     }
     renderReferenceTaskStatus();
@@ -1000,10 +1015,13 @@ async function loadProjectLearning() {
   return true;
 }
 
-function setOutlineOperationStatus(kind,title,detail){
+function setOutlineOperationStatus(kind,title,detail,action=null){
   const shell=$("#outline-operation-status");if(!shell)return;
   shell.className=`outline-operation-status ${kind||""}`.trim();
   shell.innerHTML=`<strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail||"")}</span>`;
+  if(action){
+    const button=document.createElement("button");button.type="button";button.className="secondary outline-retry-action";button.textContent=action.label;button.addEventListener("click",action.run);shell.append(button);
+  }
 }
 
 async function loadOutlineWorkspace(){
@@ -1021,6 +1039,7 @@ function renderOutlineComparison(report){
   if(!report){shell.hidden=true;shell.innerHTML="";return;}
   shell.hidden=false;
   const summary=report.summary||{},changes=report.changes||[];
+  const canonConflicts=report.canon_conflicts||[];
   const risks=(report.risks||[]).map(item=>`<li>${escapeHtml(item)}</li>`).join("");
   const list=changes.length?changes.map(item=>`<article class="outline-change-item">
     <label><input type="checkbox" data-outline-change="${item.id}"> <span><strong>${escapeHtml(item.label)}</strong><small>${outlineChangeLabel(item.type)}</small></span></label>
@@ -1028,27 +1047,58 @@ function renderOutlineComparison(report){
     ${item.impact?`<p class="outline-impact"><strong>可能影响：</strong>${escapeHtml(item.impact)}</p>`:""}
     <details><summary>查看改动前后</summary><div class="outline-before-after"><section><span>当前大纲</span><pre>${escapeHtml(item.current_text||"（没有这段）")}</pre></section><section><span>候选大纲</span><pre>${escapeHtml(item.candidate_text||"（将删除这段）")}</pre></section></div></details>
   </article>`).join(""):'<div class="learning-empty"><strong>没有发现变化</strong><p>这个候选与当前大纲内容相同，不需要应用。</p></div>';
-  shell.innerHTML=`<header><div><h4>比较结果</h4><p>勾选你想要的变化；没有勾选的内容会保持原样。</p></div><div class="outline-change-summary"><span>新增 <b>${summary.added||0}</b></span><span>删除 <b>${summary.removed||0}</b></span><span>调整 <b>${summary.changed||0}</b></span></div></header>
+  const firstOutline=report.stage==="no_outline";
+  const canonCards=canonConflicts.length?`<section class="outline-canon-conflicts"><header><strong>先确认这些设定</strong><span>每一项只保留一个答案，确认后才会进入后续写作。</span></header>${canonConflicts.map(item=>`<article class="outline-canon-item"><div><span>${escapeHtml(item.label)}</span><p>${escapeHtml(item.explanation)}</p></div><fieldset><legend>最终采用</legend><label><input type="radio" name="canon-${escapeHtml(item.id)}" data-canon-choice="${escapeHtml(item.id)}" value="keep_current"><span><small>保留项目资料</small><strong>${escapeHtml(item.current_value)}</strong></span></label><label class="${item.can_use_candidate?"":"disabled"}"><input type="radio" name="canon-${escapeHtml(item.id)}" data-canon-choice="${escapeHtml(item.id)}" value="use_candidate" ${item.can_use_candidate?"":"disabled"}><span><small>${item.can_use_candidate?"采用候选大纲":"项目资料已锁定"}</small><strong>${escapeHtml(item.candidate_value)}</strong></span></label></fieldset></article>`).join("")}</section>`:"";
+  shell.innerHTML=`<header><div><h4>${firstOutline?"准备建立第一版正式大纲":"比较结果"}</h4><p>${firstOutline?"当前作品还没有正式大纲；整体采用后，这份候选会成为第一版正式大纲。":"勾选你想要的变化；没有勾选的内容会保持原样。"}</p></div><div class="outline-change-summary"><span>新增 <b>${summary.added||0}</b></span><span>删除 <b>${summary.removed||0}</b></span><span>调整 <b>${summary.changed||0}</b></span></div></header>
     ${risks?`<ul class="outline-risks">${risks}</ul>`:""}
+    ${canonCards}
     <div class="outline-change-list">${list}</div>
     <footer>
+      ${canonConflicts.length?'<button class="secondary" type="button" data-outline-create-project>按这份大纲创建新作品</button>':""}
       ${report.semantic_review_recommended?'<button class="secondary" type="button" data-outline-semantic>请模型判断</button>':""}
       <button class="secondary" type="button" data-outline-apply-selected ${changes.length?"":"disabled"}>应用勾选的变化</button>
-      <button class="primary" type="button" data-outline-apply-whole ${report.can_apply&&changes.length?"":"disabled"}>整体采用这个版本</button>
+      <button class="primary" type="button" data-outline-apply-whole ${!(report.lock_failures||[]).length&&changes.length?"":"disabled"}>${firstOutline?"设为第一版正式大纲":"整体采用这个版本"}</button>
     </footer>`;
   shell.querySelector("[data-outline-semantic]")?.addEventListener("click",semanticReviewOutline);
+  shell.querySelector("[data-outline-create-project]")?.addEventListener("click",createProjectFromOutline);
   shell.querySelector("[data-outline-apply-selected]")?.addEventListener("click",()=>applyOutline(false));
   shell.querySelector("[data-outline-apply-whole]")?.addEventListener("click",()=>applyOutline(true));
+}
+
+async function createProjectFromOutline(){
+  const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId;
+  if(!projectId||!candidateId||!confirm("按这份候选大纲创建一部新作品？原作品、原大纲和运行记录都会保留。"))return;
+  setOutlineOperationStatus("busy","正在创建新作品","先建立独立作品和第一版正式大纲，不会修改原作品。");
+  try{
+    const created=await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}/create-project`,{method:"POST"});
+    await refreshProjectsAfterConfirmation(created);
+    toast("新作品已创建，下一步可以重新生成人物和设定");
+    await navigateToView("workbench");
+  }catch(error){setOutlineOperationStatus("error","创建失败",error.message);}
+}
+
+async function createProjectFromCurrentOutline(){
+  const projectId=learningProjectId();
+  if(!projectId||!confirm("按当前正式大纲创建一部新作品？原作品、原资料和运行记录都会保留。"))return;
+  setOutlineOperationStatus("busy","正在创建新作品","当前大纲会成为新作品的第一版正式大纲，原作品不会改变。");
+  try{
+    const created=await api(`/api/projects/${projectId}/learning/outlines/create-project`,{method:"POST"});
+    await refreshProjectsAfterConfirmation(created);
+    toast("新作品已创建，下一步可以重新生成人物和设定");
+    await navigateToView("workbench");
+  }catch(error){setOutlineOperationStatus("error","创建失败",error.message);}
 }
 
 function renderOutlineWorkspace(){
   const currentShell=$("#outline-current"),candidateShell=$("#outline-candidates"),editor=$("#outline-editor");
   if(!currentShell||!candidateShell||!editor)return;
   const current=state.outlines?.current;
+  const readiness=state.outlines?.writing_readiness;
   const currentVersion=Number(current?.outline_version)>0?`第 ${current.outline_version} 版`:"旧项目已有版本";
   currentShell.innerHTML=current?.exists
-    ?`<strong>当前正式大纲 · ${currentVersion}</strong><span>${escapeHtml(current.message)}</span>`
+    ?`<strong>当前正式大纲 · ${currentVersion}</strong><span>${escapeHtml(readiness?.message||current.message)}</span>${readiness&&!readiness.ready?'<button class="secondary" type="button" data-current-outline-create-project>按当前大纲创建新作品</button><small>新作品重新生成人物和设定；原作品、原资料和运行记录都会保留。</small>':""}`
     :`<strong>还没有正式大纲</strong><span>${escapeHtml(current?.message||"生成候选后，可以把它设为第一版大纲。")}</span>`;
+  currentShell.querySelector("[data-current-outline-create-project]")?.addEventListener("click",createProjectFromCurrentOutline);
   const candidates=state.outlines?.candidates||[];
   candidateShell.innerHTML=candidates.length?candidates.map(item=>`<button type="button" class="outline-candidate-item ${item.id===state.activeOutlineCandidateId?"active":""}" data-outline-open="${item.id}"><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.message||"等待你处理")}</small></span><b>查看并编辑全文</b></button>`).join(""):'<div class="learning-empty"><strong>还没有候选大纲</strong><p>在上方说明想调整什么，然后生成候选版本。</p></div>';
   candidateShell.querySelectorAll("[data-outline-open]").forEach(button=>button.addEventListener("click",()=>{
@@ -1099,14 +1149,17 @@ async function applyOutline(whole){
   const projectId=learningProjectId(),candidateId=state.activeOutlineCandidateId,report=state.outlineComparison;if(!projectId||!candidateId||!report)return;
   const changeIds=[...document.querySelectorAll("[data-outline-change]:checked")].map(item=>item.dataset.outlineChange);
   if(!whole&&!changeIds.length)return setOutlineOperationStatus("error","还没有勾选变化","请先勾选至少一项想采用的变化。");
+  const canonChoices=Object.fromEntries([...document.querySelectorAll("[data-canon-choice]:checked")].map(item=>[item.dataset.canonChoice,item.value]));
+  const canonConflicts=report.canon_conflicts||[];
+  if(canonConflicts.some(item=>!canonChoices[item.id]))return setOutlineOperationStatus("error","还有设定没有确认","请在“先确认这些设定”中，为每一项选择最终采用的内容。");
   const manuscript=Boolean(report.current?.manuscript_exists);
-  const message=whole?(manuscript?"整体采用会改变后续创作依据，但不会修改已经写好的正文。确认继续？":"整体采用这个候选版本作为正式大纲？"):`应用勾选的 ${changeIds.length} 项变化？其他内容保持不变。`;
+  const message=whole?(manuscript?"整体采用会改变后续创作依据，但不会修改已经写好的正文。确认继续？":report.stage==="no_outline"?"把这个候选设为该作品的第一版正式大纲？":"整体采用这个候选版本作为正式大纲？"):`应用勾选的 ${changeIds.length} 项变化？其他内容保持不变。`;
   if(!confirm(message))return;
   setOutlineOperationStatus("busy","正在应用大纲","系统正在保存新版本并检查锁定设定。");
   try{
-    await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}/apply`,{method:"POST",body:JSON.stringify({expected_revision:report.state_revision,apply_whole:whole,change_ids:whole?null:changeIds,confirm_manuscript_impact:whole&&manuscript})});
+    await api(`/api/projects/${projectId}/learning/outline-candidates/${candidateId}/apply`,{method:"POST",body:JSON.stringify({expected_revision:report.state_revision,apply_whole:whole,change_ids:whole?null:changeIds,confirm_manuscript_impact:whole&&manuscript,canon_choices:canonChoices})});
     state.activeOutlineCandidateId=null;state.outlineComparison=null;await loadProjectLearning();
-    setOutlineOperationStatus("success","新大纲已生效","后续创作会使用它；已经写好的正文没有改变。");
+    setOutlineOperationStatus("success","正式大纲已确认","人物、设定和正文还不会自动生成。下一步请到工作台确认准备作品。",{label:"前往工作台",run:()=>navigateToView("workbench")});
   }catch(error){setOutlineOperationStatus("error","应用失败",error.message);}
 }
 
@@ -1154,28 +1207,53 @@ function mechanismSourceMeta(item){
   return {...(values[analysis.state]||values[origin==="model"?"model_only":"local_only"]),origin,analysis};
 }
 
+const listValue=value=>Array.isArray(value)?value:(value==null||value===""?[]:[value]);
+const styleFieldLabels={viewpoint:"叙事视角",narrative_distance:"叙事距离",sentence_rhythm:"句子节奏",paragraph_rhythm:"段落节奏",dialogue:"对白表达",psychology:"心理描写",action_sensation:"动作与感官",professional_detail:"细节用法",forbidden_patterns:"避免使用"};
+
+function styleCandidateApplied(item){
+  const baseline=state.projectLearning?.artifacts?.find(value=>value.artifact_type==="prose_baseline")?.data||{};
+  return listValue(baseline[item.data.field]).includes(item.data.rule);
+}
+
+function renderStyleCandidateCard(item){
+  const rejected=item.status==="rejected",confirmed=item.status==="confirmed",applied=styleCandidateApplied(item);
+  const evidence=item.evidence||[],hasProject=Boolean(learningProjectId()),field=styleFieldLabels[item.data.field]||"文笔规则";
+  const evidenceHtml=evidence.length?`<details class="style-candidate-evidence"><summary>查看原文依据（${evidence.length} 处）</summary>${evidence.slice(0,6).map(value=>`<blockquote class="mechanism-evidence">${escapeHtml(value.excerpt)}</blockquote>`).join("")}</details>`:'<p class="skill-meta">这条候选没有保存可展示的原文依据，不建议采用。</p>';
+  const applyAction=hasProject
+    ?`<button class="primary" type="button" data-style-apply="${item.id}" ${(!confirmed||applied)?"disabled":""}>${applied?"已加入基础文笔":"加入当前作品"}</button>`
+    :(confirmed&&item.source_id?`<button class="primary" type="button" data-style-create-reference="${escapeHtml(item.source_id)}">用这篇资料创建新作品</button>`:'');
+  const actions=rejected
+    ?`<button class="secondary danger-text" type="button" data-style-delete="${item.id}">永久删除</button>`
+    :`<button class="secondary" type="button" data-style-confirm="${item.id}" ${confirmed?"disabled":""}>${confirmed?"分析已确认":"确认这条文笔"}</button>${applyAction}<button class="secondary" type="button" data-style-reject="${item.id}">不采用</button>`;
+  return `<article class="style-candidate-item"><header><div><span class="style-candidate-kind">${escapeHtml(field)}</span><h3>${escapeHtml(item.data.rule||"待确认文笔规则")}</h3></div><span class="mechanism-status">${rejected?"已拒绝":confirmed?"已确认":"等待你判断"}</span></header><div class="style-candidate-summary"><span>来自《${escapeHtml(item.source_title||"未记录")}》</span><span>全文证据 ${evidence.length} 处</span></div><div class="style-candidate-use"><section><strong>什么时候适合用</strong><p>${escapeHtml(item.data.when_to_use||"适合在不改变人物和剧情设定的前提下，作为通用表达规则使用。")}</p></section><section><strong>不要怎么用</strong><p>${escapeHtml(item.data.avoid||"不要照搬原句、专名、设定或标志性表达。")}</p></section></div>${evidenceHtml}<p class="style-candidate-note">${rejected?"这条文笔不会进入任何作品。":"确认只表示认可分析；点击“加入当前作品”后，才会生成新的基础文笔版本。已有正文不会改变。"}</p><div class="mechanism-actions">${actions}</div></article>`;
+}
+
 function renderMechanismCard(item,adopted,rejectedView){
   const rejected=item.status==="rejected",confirmed=item.status==="confirmed";
   const needsConfirm=Number(item.data.confidence||0)<0.7&&!confirmed;
   const statusLabel=rejected?"已拒绝":confirmed?"已确认":"等待你判断";
   const source=mechanismSourceMeta(item),modelOnly=source.origin==="model";
   const text=(value,fallback)=>modelOnly?readableModelText(value,fallback):String(value||fallback);
-  const evidence=item.evidence||[],positions=item.data.positions||[];
+  const evidence=item.evidence||[],positions=listValue(item.data.positions);
   const stages=[...new Set(positions.map(mechanismStage))];
   const groups=mechanismEvidenceGroups(item);
-  const conditions=text((item.data.incompatible_conditions||[]).join("；"),"没有明确使用条件，请结合原文证据判断是否适合。 ");
+  const conditions=text(listValue(item.data.incompatible_conditions).join("；"),"没有明确使用条件，请结合原文证据判断是否适合。 ");
   const modeLabels={short:"短篇",long:"长篇"};
-  const modes=(item.data.applicable_modes||[]).map(value=>modeLabels[value]||value);
-  const applicableStages=item.data.applicable_stages||[];
-  const genres=item.data.applicable_genres||[];
+  const modes=listValue(item.data.applicable_modes).map(value=>modeLabels[value]||value);
+  const applicableStages=listValue(item.data.applicable_stages);
+  const genres=listValue(item.data.applicable_genres);
   const scope=[modes.length?modes.join("、"):"短篇和长篇",applicableStages.length?applicableStages.join("、"):null,genres.length?genres.join("、"):null].filter(Boolean).join(" · ");
   const similar=(item.similar_items||[]).length?`<p class="mechanism-similar">发现意思相近的写法：${item.similar_items.slice(0,2).map(value=>escapeHtml(value.name)).join("、")}。应用前建议只保留表达最清楚的一条。</p>`:"";
   const groupedEvidence=Object.entries(groups).map(([stage,items])=>`<section><strong>${stage} · ${items.length} 处</strong>${items.map(value=>`<blockquote class="mechanism-evidence">${escapeHtml(value.excerpt)}</blockquote>`).join("")}</section>`).join("");
   const deletable=item.deletable!==false;
   const selection=rejectedView&&deletable?`<label class="mechanism-select"><input type="checkbox" data-mechanism-select="${item.id}"> 选择</label>`:"";
   const rejectedActions=deletable?`<button class="secondary danger-text" data-mechanism-delete="${item.id}">永久删除</button>`:`<p class="mechanism-delete-blocked">${escapeHtml(item.delete_reason||"这条写法当前不能删除")}</p><button class="secondary" data-mechanism-release="${item.id}">从作品中移除</button>`;
-  const activeActions=`<button class="secondary" data-mechanism-confirm="${item.id}" ${confirmed?"disabled":""}>${confirmed?"已保留":"保留为候选"}</button><button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm)?"disabled":""}>${adopted.has(item.id)?"已应用":"应用到当前作品"}</button><button class="secondary" data-mechanism-reject="${item.id}">不采用</button>`;
-  const decision=rejected?"这条写法已被你拒绝。可以永久删除；如果仍在作品中使用，需要先取消应用。":"“保留为候选”表示认可分析；“应用到当前作品”会写入创作蓝图，但不会直接修改正文。";
+  const createFirstProject=confirmed&&!state.projects.length&&item.source_id;
+  const primaryAction=createFirstProject
+    ?`<button class="primary" data-mechanism-create-reference="${escapeHtml(item.source_id)}">用这篇资料创建新作品</button>`
+    :`<button class="primary" data-mechanism-adopt="${item.id}" ${(adopted.has(item.id)||needsConfirm)?"disabled":""}>${adopted.has(item.id)?"已应用":"应用到当前作品"}</button>`;
+  const activeActions=`<button class="secondary" data-mechanism-confirm="${item.id}" ${confirmed?"disabled":""}>${confirmed?"已保留":"保留为候选"}</button>${primaryAction}<button class="secondary" data-mechanism-reject="${item.id}">不采用</button>`;
+  const decision=rejected?"这条写法已被你拒绝。可以永久删除；如果仍在作品中使用，需要先取消应用。":createFirstProject?"当前还没有作品，可以直接用这篇资料开始创建。":"“保留为候选”表示认可分析；“应用到当前作品”会写入创作蓝图，但不会直接修改正文。";
   const modelReason=source.analysis.model?readableModelText(source.analysis.model.reason,"模型完成了复核，但没有提供可读的中文理由。 "):"";
   const localScore=source.analysis.local?.confidence;
   const technical=`<details class="mechanism-judgment-details"><summary>查看判断依据</summary><p>本地判断：${localScore==null?"未运行":`${Math.round(Number(localScore)*100)}%`} · 模型复核：${source.analysis.model?source.detail:"未调用模型"}</p>${modelReason?`<p>模型理由：${escapeHtml(modelReason)}</p>`:""}<p>分析时间：${escapeHtml(formatLocalTimestamp(item.updated_at)||"未记录")}</p></details>`;
@@ -1184,20 +1262,36 @@ function renderMechanismCard(item,adopted,rejectedView){
 
 function renderLearning() {
   const select=$("#learning-project"); if (!select) return;
-  select.innerHTML=state.projects.length ? state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("") : '<option value="">请先创建作品</option>';
+  const hasProjects=Boolean(state.projects.length);
+  select.innerHTML=hasProjects ? state.projects.map(item=>`<option value="${item.id}">${escapeHtml(item.title)}</option>`).join("") : '<option value="">暂无作品</option>';
   if (state.activeProject) select.value=state.activeProject.id;
+  if(!hasProjects){state.projectLearning=null;state.effectiveRules=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;}
+  $("#learning-application-empty").hidden=hasProjects;
+  $("#learning-project-content").hidden=!hasProjects;
+  $("#learning-application-title").textContent=hasProjects?"当前作品的创作设置":"开始新作品";
+  $("#learning-application-description").textContent=hasProjects?"在这里管理大纲版本、待确认写法和已经生效的规则。所有操作只影响后续创作，不会改动现有正文。":"当前没有作品。先选择参考资料创建，或者直接填写自己的故事设定。";
   const adopted=new Set((state.projectLearning?.adoptions||[]).map(item=>item.node_id));
   const view=mechanismView(),rejectedView=view==="rejected";
   const origin=$("#learning-mechanism-origin")?.value||"all";
   const visible=state.mechanisms.filter(item=>(view==="all"||(rejectedView?item.status==="rejected":item.status!=="rejected"))&&(origin==="all"||(item.data.analysis_origin||"local")===origin));
+  const visibleStyles=state.styleCandidates.filter(item=>(view==="all"||(rejectedView?item.status==="rejected":item.status!=="rejected"))&&["all","model"].includes(origin));
   const deletableCount=visible.filter(item=>item.deletable!==false).length;
   const batch=rejectedView&&deletableCount?`<div class="mechanism-batch-actions"><label><input type="checkbox" data-mechanism-select-all> 全选可删除的 ${deletableCount} 条</label><button class="secondary danger-text" data-mechanism-delete-selected>删除所选</button></div>`:"";
-  const cards=visible.length?visible.map(item=>renderMechanismCard(item,adopted,rejectedView)).join(""):`<p class="skill-meta">${rejectedView?"当前筛选下没有已拒绝写法":"当前筛选下没有候选写法"}</p>`;
+  const cards=visible.length?visible.map(item=>renderMechanismCard(item,adopted,rejectedView)).join(""):`<p class="skill-meta">${rejectedView?"当前筛选下没有已拒绝剧情写法":"当前筛选下没有剧情写法候选"}</p>`;
+  const styleCards=visibleStyles.length?visibleStyles.map(renderStyleCandidateCard).join(""):'<div class="style-candidate-empty"><strong>还没有文笔候选</strong><p>对参考作品或爆款样本运行“模型全文分析”后，有充分原文证据的文风规则会显示在这里。</p></div>';
+  const styleSection=`<section class="style-candidate-section"><header><div><span>文笔</span><h3>从优秀样本学到的表达方式</h3><p>先确认分析，再加入作品。不会照搬原句，也不会自动修改正文。</p></div><strong>${visibleStyles.length} 条</strong></header><div class="style-candidate-list">${styleCards}</div></section>`;
+  const mechanismSection=`<section class="mechanism-candidate-section"><header><div><span>剧情</span><h3>情节结构与吸引力写法</h3><p>用于安排开头、推进、反转和结尾，不会改变基础文笔。</p></div><strong>${visible.length} 条</strong></header>${batch}${cards}</section>`;
   const pending=state.referenceSelectionPendingTitles;
   const readiness=pending.length?`<section class="reference-readiness-notice"><strong>还需要确认这些资料的候选写法</strong><ul>${pending.map(title=>`<li>《${escapeHtml(title)}》</li>`).join("")}</ul><p>所选资料会继续保留。确认完成后，可以继续用刚才选择的资料创建作品。</p><button class="primary" type="button" data-reference-selection-retry>重新检查并创建</button></section>`:"";
-  $("#learning-mechanisms").innerHTML=readiness+batch+cards;
+  $("#learning-mechanisms").innerHTML=readiness+styleSection+mechanismSection;
+  document.querySelectorAll("[data-style-confirm]").forEach(button=>button.addEventListener("click",()=>reviseStyleCandidate(button.dataset.styleConfirm,"confirm")));
+  document.querySelectorAll("[data-style-reject]").forEach(button=>button.addEventListener("click",()=>reviseStyleCandidate(button.dataset.styleReject,"reject")));
+  document.querySelectorAll("[data-style-apply]").forEach(button=>button.addEventListener("click",()=>applyStyleCandidate(button.dataset.styleApply)));
+  document.querySelectorAll("[data-style-delete]").forEach(button=>button.addEventListener("click",()=>deleteStyleCandidate(button.dataset.styleDelete)));
+  document.querySelectorAll("[data-style-create-reference]").forEach(button=>button.addEventListener("click",()=>startWizardFromReference([button.dataset.styleCreateReference])));
   document.querySelectorAll("[data-mechanism-confirm]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismConfirm,"confirm")));
   document.querySelectorAll("[data-mechanism-adopt]").forEach(button=>button.addEventListener("click",()=>adoptMechanism(button.dataset.mechanismAdopt)));
+  document.querySelectorAll("[data-mechanism-create-reference]").forEach(button=>button.addEventListener("click",()=>startWizardFromReference([button.dataset.mechanismCreateReference])));
   document.querySelectorAll("[data-mechanism-reject]").forEach(button=>button.addEventListener("click",()=>reviseMechanism(button.dataset.mechanismReject,"reject")));
   document.querySelectorAll("[data-mechanism-delete]").forEach(button=>button.addEventListener("click",()=>deleteRejectedMechanisms([button.dataset.mechanismDelete])));
   document.querySelectorAll("[data-mechanism-release]").forEach(button=>button.addEventListener("click",()=>releaseMechanism(button.dataset.mechanismRelease)));
@@ -1206,9 +1300,14 @@ function renderLearning() {
   $("[data-reference-selection-retry]")?.addEventListener("click",()=>startWizardFromReference([...state.referenceSelectionPendingIds]));
   if (select.value && !state.projectLearning) loadProjectLearning(); else renderLearningArtifacts();
 }
+$("#learning-empty-reference").addEventListener("click",()=>switchLearningView("references"));
+$("#learning-empty-new").addEventListener("click",()=>navigateToView("projects"));
 const mechanismView=()=>$("#learning-mechanism-view")?.value||"active";
-async function reloadMechanisms(){state.mechanisms=await api("/api/learning/mechanisms?view=all");renderLearning();}
+async function reloadMechanisms(){[state.mechanisms,state.styleCandidates]=await Promise.all([api("/api/learning/mechanisms?view=all"),api("/api/learning/style-candidates?view=all")]);renderLearning();}
 async function reviseMechanism(id,action) { try { await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})}); await reloadMechanisms(); toast(action==="confirm"?"分析已确认":"分析已拒绝，可在“已拒绝”中查看"); } catch(error){toast(error.message);} }
+async function reviseStyleCandidate(id,action){try{await api(`/api/learning/nodes/${id}/revisions`,{method:"POST",body:JSON.stringify({action,data:{}})});await reloadMechanisms();toast(action==="confirm"?"文笔分析已确认，现在可以加入作品":"文笔候选已拒绝，不会影响任何作品");}catch(error){toast(error.message);}}
+async function applyStyleCandidate(id){const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/style-candidates/${id}`,{method:"POST"});await loadProjectLearning();renderLearning();toast("已加入基础文笔并保存新版本；已有正文没有改变");}catch(error){toast(error.message);}}
+async function deleteStyleCandidate(id){if(!confirm("永久删除这条已拒绝文笔候选及其原文证据？此操作不可撤销。"))return;try{await api("/api/learning/style-candidates",{method:"DELETE",body:JSON.stringify({node_ids:[id]})});await reloadMechanisms();toast("已删除这条文笔候选");}catch(error){toast(error.message);}}
 async function deleteRejectedMechanisms(ids){if(!ids.length)return toast("请先选择要删除的记录");if(!confirm(`永久删除 ${ids.length} 条已拒绝机制及其证据？此操作不可撤销。`))return;try{const result=await api("/api/learning/mechanisms",{method:"DELETE",body:JSON.stringify({node_ids:ids})});await reloadMechanisms();const skipped=result.skipped.length?`；未删除：${result.skipped.map(item=>item.reason).join("；")}`:"";toast(`已删除 ${result.deleted_ids.length} 条${skipped}`);}catch(error){toast(error.message);}}
 async function releaseMechanism(id){const item=state.mechanisms.find(value=>value.id===id);const projectIds=item?.active_project_ids||[];if(!projectIds.length)return reloadMechanisms();if(!confirm(`这条写法仍在 ${projectIds.length} 个作品中使用。确认从这些作品的创作蓝图中移除？不会修改已经生成的正文。`))return;try{for(const projectId of projectIds)await api(`/api/projects/${projectId}/learning/rejections/${id}`,{method:"POST",body:JSON.stringify({reason:"用户从已拒绝列表中取消应用"})});state.projectLearning=null;await reloadMechanisms();toast("已从作品中移除，现在可以永久删除");}catch(error){toast(error.message);}}
 async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
@@ -1240,12 +1339,20 @@ function renderLearningArtifact(item){
   const canRestore=item.version>1&&["prose_baseline","voice_profiles","epistemic_state"].includes(item.artifact_type);
   return `<details class="learning-artifact"><summary><span><strong>${escapeHtml(learningArtifactLabels[item.artifact_type]||"学习资料")}</strong><small>${artifactSummary(item)}</small></span><b>${item.status==="stale"?"待复核":"生效中"}</b></summary><div class="project-learning-copy">${readableLearningValue(item.data)}</div>${canRestore?`<div class="artifact-version-actions"><button class="secondary" type="button" data-artifact-history="${item.artifact_type}">查看和恢复旧版本</button><div data-artifact-history-list="${item.artifact_type}"></div></div>`:""}</details>`;
 }
+function renderProseBaselineOverview(){
+  const overview=state.projectLearning?.prose_baseline||{},defaults=overview.default||{},learned=overview.learned||{};
+  const defaultRules=listValue(defaults.rules).map(item=>`<div><span>${escapeHtml(item.label||"默认规则")}</span><p>${escapeHtml(item.rule||"")}</p></div>`).join("");
+  const learnedRules=Object.entries(learned).flatMap(([field,values])=>listValue(values).map(rule=>`<div><span>${escapeHtml(styleFieldLabels[field]||"补充规则")}</span><p>${escapeHtml(rule)}</p></div>`)).join("");
+  const version=Number(overview.version||0),history=version>1?`<div class="artifact-version-actions"><button class="secondary" type="button" data-artifact-history="prose_baseline">查看和恢复旧版本</button><div data-artifact-history-list="prose_baseline"></div></div>`:"";
+  return `<details class="learning-artifact prose-baseline-artifact" open><summary><span><strong>当前基础文笔</strong><small>${version?`系统默认 + 已确认样本文笔 · 版本 ${version}`:"系统默认文笔 · 尚未加入样本规则"}</small></span><b>生效中</b></summary><div class="prose-baseline-overview"><section><h4>作品基础方向</h4><div class="prose-baseline-facts"><span>题材 <b>${escapeHtml(defaults.genre||"未指定")}</b></span><span>视角 <b>${escapeHtml(defaults.viewpoint||"未指定")}</b></span><span>语调 <b>${escapeHtml(defaults.tone||"未指定")}</b></span></div></section><section><h4>系统默认规则</h4><div class="prose-baseline-rules">${defaultRules}</div></section><section><h4>从样本确认并加入的规则</h4><div class="prose-baseline-rules">${learnedRules||'<p class="skill-meta">目前没有。到“候选写法”确认文笔候选后，再加入当前作品。</p>'}</div></section></div>${history}</details>`;
+}
 function renderLearningArtifacts(){
   const shell=$("#learning-artifacts"); if(!shell)return;
   const artifacts=state.projectLearning?.artifacts||[];
   const reviews=state.projectLearning?.adoption_reviews||[];
   const warning=reviews.length?`<section class="learning-review-alert"><div class="learning-review-list">${reviews.map(renderLearningReview).join("")}</div></section>`:"";
-  const content=artifacts.length?artifacts.map(renderLearningArtifact).join(""):'<div class="learning-empty"><strong>当前作品还没有应用任何写法</strong><p>在“候选写法”中确认并应用后，这里会展示真正生效的创作规则。</p></div>';
+  const otherArtifacts=artifacts.filter(item=>item.artifact_type!=="prose_baseline");
+  const content=renderProseBaselineOverview()+(otherArtifacts.length?otherArtifacts.map(renderLearningArtifact).join(""):'');
   shell.innerHTML=warning+content;
   renderEffectiveRules();
   shell.querySelectorAll("[data-learning-review-keep]").forEach(button=>button.addEventListener("click",()=>keepLearningReview(button.dataset.learningReviewKeep)));
@@ -1308,11 +1415,24 @@ $("#voice-form").addEventListener("submit",async event=>{event.preventDefault();
 $("#scene-brief-form").addEventListener("submit",async event=>{event.preventDefault();const projectId=learningProjectId();if(!projectId)return toast("请先选择作品");try{await api(`/api/projects/${projectId}/learning/scene-briefs`,{method:"POST",body:JSON.stringify({outline:new FormData(event.target).get("outline")})});await loadProjectLearning();toast("场景简报已生成，可继续编辑");}catch(error){toast(error.message);}});
 $("#outline-generate-form").addEventListener("submit",async event=>{
   event.preventDefault();const projectId=learningProjectId();if(!projectId)return setOutlineOperationStatus("error","还没有选择作品","请先在页面顶部选择要处理的作品。");
+  const chooseMethods=()=>switchLearningView("mechanisms");
+  if(state.projectLearning&&!(state.projectLearning.adoptions||[]).length)return setOutlineOperationStatus("error","还不能生成大纲","请先到“候选写法”确认一条内容，再点“加入当前作品”。",{label:"去选择写法",run:chooseMethods});
   if(!confirm("生成候选会调用规划模型，可能产生费用。结果只进入候选区，不会覆盖正式大纲或正文。继续？"))return;
   const button=event.currentTarget.querySelector("button");button.disabled=true;setOutlineOperationStatus("busy","正在生成候选大纲","规划模型正在整理新版本，完成前请不要重复点击。");
-  try{await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:new FormData(event.currentTarget).get("brief")})});await loadOutlineWorkspace();setOutlineOperationStatus("success","候选大纲已生成","请在下方打开全文，编辑或比较后再决定是否应用。");}
-  catch{setOutlineOperationStatus("error","生成失败","请稍后重试；现有作品、大纲和正文不会改变。");}
-  finally{button.disabled=false;}
+  let created;
+  try{created=await api(`/api/projects/${projectId}/learning/generate-outline`,{method:"POST",body:JSON.stringify({brief:new FormData(event.currentTarget).get("brief")})});}
+  catch(error){
+    const needsMethods=error.code==="outline_generation_not_ready"&&error.message.includes("写法");
+    setOutlineOperationStatus("error",needsMethods?"还不能生成大纲":"生成失败",`${error.message} 现有作品、大纲和正文不会改变。`,needsMethods?{label:"去选择写法",run:chooseMethods}:null);button.disabled=false;return;
+  }
+  state.activeOutlineCandidateId=created?.id||null;
+  try{
+    await loadOutlineWorkspace();
+    if(created?.id&&!(state.outlines?.candidates||[]).some(item=>item.id===created.id))throw new Error("页面暂时没有读到新候选");
+    setOutlineOperationStatus("success","候选大纲已生成","全文已经保存在下方；打开后可以编辑、比较，再决定是否应用。");
+  }catch(error){
+    setOutlineOperationStatus("error","候选已经保存，但页面没有刷新",`${error.message}。不需要重新生成，请重新读取候选列表。`,{label:"重新读取",run:async()=>{try{await loadOutlineWorkspace();setOutlineOperationStatus("success","候选已重新读入","现在可以打开全文，编辑或比较后再决定是否应用。");}catch(retryError){setOutlineOperationStatus("error","仍未读取成功",retryError.message);}}});
+  }finally{button.disabled=false;}
 });
 $("#outline-save").addEventListener("click",saveOutlineCandidate);
 $("#outline-compare").addEventListener("click",compareOutlineCandidate);
@@ -1356,7 +1476,7 @@ $("#workflow-analysis-toggle").addEventListener("click",async()=>{
 });
 function renderProjects(renderActive=true) {
   const select = $("#active-project");
-  select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">尚无作品</option>';
+  select.innerHTML = state.projects.length ? state.projects.map(p => `<option value="${p.id}">${escapeHtml(p.title)}</option>`).join("") : '<option value="">没有正在写的作品</option>';
   if (!state.activeProject || !state.projects.some(p => p.id === state.activeProject.id)) state.activeProject = state.projects[0] || null;
   if (state.activeProject) select.value = state.activeProject.id;
   const materialsSelect = $("#materials-project");
@@ -1527,14 +1647,14 @@ function revisionIssueRowMarkup(item) {
   const actionable=!["resolved","closed","preserved"].includes(item.status);
   const issueId=String(item.issue_id||"");
   const title=revisionSafeText(item.title,"正文问题");
-  return `<article class="revision-issue-row ${mandatory?"mandatory":"advisory"}"><div class="revision-issue-choice"><label><input type="checkbox" data-revision-issue="${escapeHtml(issueId)}" ${mandatory&&actionable?"checked":""} ${!actionable||!issueId?"disabled":""}><span><b>${escapeHtml(mandatory?"必须处理":qualitySeverity(item.severity))}</b><strong>${escapeHtml(title)}</strong><small>${escapeHtml(qualityIssueStatus(item.status))}</small></span></label><em>会检查 ${evidence.length||1} 处相关位置</em></div><details><summary>查看原因、建议和位置</summary><div><p><strong>为什么需要处理</strong>${escapeHtml(revisionSafeText(item.effect,"可能影响理解、可信度或继续阅读的意愿。"))}</p><p><strong>建议怎么改</strong>${escapeHtml(revisionSafeText(item.repair_direction,"结合上下文复核并修改。"))}</p><p><strong>问题类型</strong>${escapeHtml(revisionCategoryLabel(item.category))}</p>${evidence.map(value=>`<blockquote><span>${escapeHtml(revisionSafeText(value.location,"正文相关位置"))}</span>${escapeHtml(revisionSafeText(value.excerpt,"这处原文需要结合上下文复核"))}</blockquote>`).join("")||'<p><strong>出现位置</strong>正文相关位置</p>'}</div></details></article>`;
+  return `<article class="revision-issue-row ${mandatory?"mandatory":"advisory"}"><div class="revision-issue-choice"><label><input type="checkbox" data-revision-issue="${escapeHtml(issueId)}" ${mandatory&&actionable?"checked":""} ${!actionable||!issueId?"disabled":""}><span><b>${escapeHtml(mandatory?"必须处理":qualitySeverity(item.severity))}</b><strong>${escapeHtml(title)}</strong><small>${escapeHtml(qualityIssueStatus(item.status))} · ${escapeHtml(item.handling_label||"精修模型处理")}</small></span></label><em>会检查 ${evidence.length||1} 处相关位置</em></div><details><summary>查看原因、建议和位置</summary><div><p><strong>从哪里发现</strong>${escapeHtml(item.source_label||"终审发现")}</p><p><strong>谁来处理</strong>${escapeHtml(item.handling_label||"精修模型处理")}</p><p><strong>为什么需要处理</strong>${escapeHtml(revisionSafeText(item.effect,"可能影响理解、可信度或继续阅读的意愿。"))}</p><p><strong>建议怎么改</strong>${escapeHtml(revisionSafeText(item.repair_direction,"结合上下文复核并修改。"))}</p><p><strong>问题类型</strong>${escapeHtml(revisionCategoryLabel(item.category))}</p>${evidence.map(value=>`<blockquote><span>${escapeHtml(revisionSafeText(value.location,"正文相关位置"))}</span>${escapeHtml(revisionSafeText(value.excerpt,"这处原文需要结合上下文复核"))}</blockquote>`).join("")||'<p><strong>出现位置</strong>正文相关位置</p>'}</div></details></article>`;
 }
 function revisionIssuesMarkup(issues) {
   const actionable=issues.filter(item=>!["resolved","closed","preserved"].includes(item.status));
   if(!actionable.length)return '<div class="quality-empty"><strong>终审没有留下待处理问题</strong><p>仍可展开本地扫描，查看措辞和节奏方面的可选优化。</p></div>';
-  const first=actionable.slice(0,5).map(revisionIssueRowMarkup).join("");
-  const rest=actionable.slice(5).map(revisionIssueRowMarkup).join("");
-  return `<div class="revision-issue-list">${first}</div>${rest?`<details class="revision-more-issues"><summary>查看其余 ${actionable.length-5} 项</summary><div class="revision-issue-list">${rest}</div></details>`:""}<div class="revision-selection-actions"><span data-revision-selection-hint>必须处理项已选中；建议项由你决定。</span><button class="primary" type="button" data-revision-start>修复已选问题（0项）</button></div>`;
+  const first=actionable.slice(0,3).map(revisionIssueRowMarkup).join("");
+  const rest=actionable.slice(3).map(revisionIssueRowMarkup).join("");
+  return `<div class="revision-issue-list">${first}</div>${rest?`<details class="revision-more-issues"><summary>查看其余 ${actionable.length-3} 项</summary><div class="revision-issue-list">${rest}</div></details>`:""}<div class="revision-selection-actions"><span data-revision-selection-hint>必须处理项已选中；建议项由你决定。</span><button class="primary" type="button" data-revision-start>修复已选问题（0项）</button></div>`;
 }
 function revisionWorkspaceEnabled(project=state.activeProject) {
   return project?.mode==="short"&&(project?.optimized_local_review_enabled===true||project?.metadata?.optimized_local_review_enabled===true);
@@ -1547,7 +1667,8 @@ function revisionContextMatches(projectId,runId,generation) {
 }
 function qualityReadOnlyIssuesMarkup(issues) {
   if(!issues.length)return '<div class="quality-empty"><strong>终审没有留下待处理问题</strong><p>仍可展开本地扫描，查看措辞和节奏方面的可选优化。</p></div>';
-  return issues.slice(0,5).map(item=>`<details class="quality-issue-row"><summary><span><b>${escapeHtml(qualitySeverity(item.severity))}</b><strong>${escapeHtml(revisionSafeText(item.title,"正文问题"))}</strong></span><small>${escapeHtml(qualityIssueStatus(item.status))}</small></summary><div><p><strong>为什么影响阅读</strong>${escapeHtml(revisionSafeText(item.effect,"可能影响理解、可信度或继续阅读的意愿。"))}</p><p><strong>建议怎么改</strong>${escapeHtml(revisionSafeText(item.repair_direction,"结合上下文复核并修改。"))}</p>${(item.evidence||[]).map(evidence=>`<blockquote><span>${escapeHtml(revisionSafeText(evidence.location,"正文相关位置"))}</span>${escapeHtml(revisionSafeText(evidence.excerpt,"没有保留原文证据"))}</blockquote>`).join("")}</div></details>`).join("");
+  const rows=issues.map(item=>`<details class="quality-issue-row"><summary><span><b>${escapeHtml(qualitySeverity(item.severity))}</b><strong>${escapeHtml(revisionSafeText(item.title,"正文问题"))}</strong></span><small>${escapeHtml(qualityIssueStatus(item.status))} · ${escapeHtml(item.handling_label||"精修模型处理")}</small></summary><div><p><strong>从哪里发现</strong>${escapeHtml(item.source_label||"终审发现")}</p><p><strong>谁来处理</strong>${escapeHtml(item.handling_label||"精修模型处理")}</p><p><strong>为什么影响阅读</strong>${escapeHtml(revisionSafeText(item.effect,"可能影响理解、可信度或继续阅读的意愿。"))}</p><p><strong>建议怎么改</strong>${escapeHtml(revisionSafeText(item.repair_direction,"结合上下文复核并修改。"))}</p>${(item.evidence||[]).map(evidence=>`<blockquote><span>${escapeHtml(revisionSafeText(evidence.location,"正文相关位置"))}</span>${escapeHtml(revisionSafeText(evidence.excerpt,"没有保留原文证据"))}</blockquote>`).join("")}</div></details>`);
+  return `${rows.slice(0,3).join("")}${rows.length>3?`<details class="revision-more-issues"><summary>查看其余 ${rows.length-3} 项</summary>${rows.slice(3).join("")}</details>`:""}`;
 }
 function qualityIssuesMarkup(issues) {
   state.revisionIssues=issues;
@@ -1781,6 +1902,11 @@ function renderCandidateQualityWorkspace(result,controls) {
   const wordMaximum=Number(word.maximum||1),wordPercent=Math.max(0,Math.min(100,Math.round(Number(word.current||0)/wordMaximum*100)));
   const localFindings=(report.findings||[]).slice(0,8).map(item=>`<p><strong>${escapeHtml(findingLabel(item.code))}</strong><span>第 ${item.segment} 段 · ${escapeHtml(item.excerpt)}</span></p>`).join("");
   shell.innerHTML=`<div class="candidate-quality-workspace"><header class="quality-workspace-head"><div><span class="quality-state ${summary.manuscript_state?.protected_best?"protected":""}">${stateLabel}</span><h3>${escapeHtml(summary.profile?.label||"稿件质量")}</h3><p class="quality-judge">终审模型：${escapeHtml(summary.profile?.judge_label||"旧记录未保存模型名称")}</p><p>${escapeHtml(score.comparison_message||"等待建立可比较的评分记录")}</p></div><div class="quality-next-action"><span>下一步</span><strong>${escapeHtml(summary.next_action||"继续检查候选稿")}</strong></div></header><div class="quality-score-strip"><div><span>总分</span><strong>${qualityScore(score.current)}</strong></div><div><span>阅读吸引力</span><strong>${qualityScore(dimensions.commercial)}</strong></div><div><span>故事质量</span><strong>${qualityScore(dimensions.story)}</strong></div><div><span>文字表达</span><strong>${qualityScore(dimensions.prose)}</strong></div></div><section class="quality-word-count"><div><strong>正文有效字数 ${Number(word.current||result.han_characters||0).toLocaleString()} 字</strong><span>目标 ${Number(word.minimum||0).toLocaleString()}～${Number(word.maximum||0).toLocaleString()} 个有效正文汉字</span></div><div class="quality-word-track" aria-label="正文篇幅进度"><span style="width:${wordPercent}%"></span></div></section>${authority.can_set_formal?'<div class="quality-ready"><strong>当前稿件已具备设为正式稿的条件</strong><span>按钮已启用，确认后才会替换原正式稿。</span></div>':`<details class="quality-blockers" open><summary>为什么现在不能设为正式稿</summary>${(authority.blocking_reasons||[]).map(reason=>`<p>${escapeHtml(reason)}</p>`).join("")}</details>`}<section class="quality-priority"><header><h3>最需要处理的问题</h3><span>${issues.length?`共 ${issues.length} 项，先显示最重要的 ${Math.min(5,issues.length)} 项`:"没有待处理终审问题"}</span></header>${qualityIssuesMarkup(issues)}</section><details class="quality-drawer"><summary><span><strong>查看本地扫描</strong><small>全文规则、原创候选和叙事账本</small></span><b>展开</b></summary><div class="quality-drawer-body"><div class="quality-local-summary"><span>自然度 <b>${Number(report.naturalness_score||0)}</b></span><span>阻断问题 <b>${Number(report.blocking_count||0)}</b></span><span>局部优化 <b>${Number(report.targeted_count||0)}</b></span><span>语义分析 <b>${nlp.available?"已完成":"标准规则"}</b></span></div>${localFindings?`<div class="candidate-findings">${localFindings}</div>`:'<p class="skill-meta">本地扫描未发现明显模板化问题。</p>'}<p class="skill-meta">原创检查只比较本地资料库：连续片段 ${Number(originality.continuous_passages?.length||0)} 处 · 人名 ${Number(originality.similar_names?.length||0)} 处 · 语义候选 ${Number(originality.semantic_candidates?.length||0)} 处</p><div class="quality-ledger-summary"><strong>叙事账本</strong><span>未兑现 ${unresolved.length} · 已关联 ${(ledger.relations||[]).length} · 场景 ${(ledger.scenes||[]).length}</span>${unresolved.slice(0,8).map(item=>`<p>${escapeHtml(item.kind||"线索")}：${escapeHtml(item.text||"")}</p>`).join("")}</div></div></details><details class="quality-drawer"><summary><span><strong>查看详细评分</strong><small>逐项分数、判断位置和原文依据</small></span><b>展开</b></summary><div class="quality-drawer-body quality-criteria-list">${qualityCriteriaMarkup(score)}</div></details><details class="quality-drawer"><summary><span><strong>评分参考组</strong><small>${(controls.group?.items||[]).length} 份已确认参考</small></span><b>展开</b></summary><div class="quality-drawer-body">${qualityReferencesMarkup(controls)}</div></details><details class="quality-drawer"><summary><span><strong>查看完整正文与保护片段</strong><small>${(controls.protections?.items||[]).filter(item=>item.active).length} 段保护中</small></span><b>展开</b></summary><div class="quality-drawer-body">${passageProtectionsMarkup(controls)}<pre id="candidate-manuscript-preview" class="quality-manuscript-preview" tabindex="0">${escapeHtml(result.content||"")}</pre></div></details></div>`;
+  const mandatoryCount=Number(summary.issue_counts?.mandatory||0);
+  const totalScore=shell.querySelector(".quality-score-strip > div");
+  if(totalScore&&mandatoryCount){const note=document.createElement("small");note.textContent=`${mandatoryCount} 个必须处理问题暂未解决`;totalScore.append(note);}
+  const priorityHint=shell.querySelector(".quality-priority > header span");
+  if(priorityHint&&issues.length)priorityHint.textContent=`共 ${issues.length} 项，先显示最重要的 ${Math.min(3,issues.length)} 项`;
   bindCandidateQualityActions(result.project_id);
   return authority;
 }
@@ -2091,7 +2217,7 @@ async function renderActiveProject() {
   $("#short-actions").hidden = !p || p.mode !== "short"; $("#long-actions").hidden = !p || p.mode !== "long";
   $("#project-summary").innerHTML = p ? `<div class="metric"><strong>${escapeHtml(p.title)}</strong><span>当前作品</span></div><div class="metric"><strong>${p.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(p.target_words).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${escapeHtml(p.genre)}</strong><span>题材</span></div>` : '<span>先创建一部作品。</span>';
   $("#trash-project").disabled = !p;
-  state.workbenchRuns=[];state.workbenchRunsLoadState="loading";state.workbenchManuscript=null;
+  state.workbenchRuns=[];state.workbenchRunsLoadState="loading";state.workbenchManuscript=null;state.workbenchOutline=null;
   if (!p) {
     stopRunMonitor();state.publicationPreview=null;state.candidateQuality=null;state.candidateLoadState="missing";
     state.workbenchRunsLoadState="available";
@@ -2112,9 +2238,11 @@ async function renderActiveProject() {
     loadPublicationPanel(projectId,generation),
     loadWorkflowAnalysis(projectId,generation),
     api(`/api/projects/${projectId}/manuscript`).catch(()=>null),
+    api(`/api/projects/${projectId}/learning/outlines`).catch(()=>null),
   ]);
   if(!workbenchContextMatches(projectId,generation))return;
   state.workbenchManuscript=results[5];
+  state.workbenchOutline=results[6];
   let runs;
   try{runs=await api(`/api/projects/${projectId}/runs`);}
   catch{
@@ -2134,10 +2262,11 @@ async function renderActiveProject() {
   const initialization = runs.find(run => run.workflow === "initialize-skills");
   const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
   const initialized = initialization?.status === "completed";
+  const hasFormalOutline=Boolean(state.workbenchOutline?.current?.exists);
   const activeRun = runs.find(run => ["queued","running","cancelling"].includes(run.status));
   const latestRun = runs[0];
   if(!activeRun&&state.activeRunProjectId===projectId)stopRunMonitor();
-  $("#initialize-project").hidden = initialized || initializing;
+  $("#initialize-project").hidden = !hasFormalOutline || initialized || initializing;
   ["#run-short", "#run-setup", "#run-chapter"].forEach(selector => { $(selector).disabled = !initialized; });
   $("#run-list").innerHTML = runs.length ? runs.map(r => `<button class="run-row" data-run-detail="${r.id}"><div><strong>${escapeHtml(runLabel(r.workflow))}</strong><div class="skill-meta">${escapeHtml(runLabel(r.current_stage))} · ${escapeHtml(formatLocalTimestamp(r.created_at))}</div></div><span class="status ${isQualityRejected(r) ? "quality-rejected" : r.status}">${escapeHtml(runStatusLabel(r))}</span></button>`).join("") : '<p class="skill-meta">暂无运行记录</p>';
   document.querySelectorAll("[data-run-detail]").forEach(button => button.addEventListener("click", async () => {
@@ -2150,7 +2279,7 @@ async function renderActiveProject() {
     const detail=await api(`/api/runs/${latestRun.id}`).catch(()=>null);
     if(detail&&workbenchContextMatches(projectId,generation))showRunDetail(detail);
   } else if(workbenchContextMatches(projectId,generation)) {
-    $("#run-state").className="run-state error"; $("#run-state").textContent="作品尚未初始化，请点击“继续初始化”";
+    $("#run-state").className="run-state error"; $("#run-state").textContent=hasFormalOutline?"作品尚未初始化，请点击“继续初始化”":"请先选择候选大纲并设为正式大纲";
   }
 }
 $("#active-project").addEventListener("change", event => { stopRunMonitor();resetRevisionWorkspace();state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
@@ -2516,11 +2645,12 @@ $("#wizard-confirm").addEventListener("click", async () => {
   }
   clearConfirmedWizard(wizardId);
   await refreshProjectsAfterConfirmation(project);
-  if(autoOutline)await generateInitialOutline(project.id);else await navigateToView("workbench");
-  try{
-    const initialized=await api(`/api/projects/${project.id}/initialize-skills`,{method:"POST"});
-    monitorRun(initialized);
-  }catch{toast("作品已经创建，但初始化没有完成，可以稍后继续初始化。");}
+  if(autoOutline)await generateInitialOutline(project.id);
+  else{
+    await openProjectOutlineGenerator(project.id);
+    setOutlineOperationStatus("","作品已创建，先准备大纲","人物、设定和正文都不会自动生成。请先生成或选择候选大纲，再由你确认正式版本。");
+  }
+  toast("作品已创建，请先确认正式大纲");
 });
 
 async function run(path, body) {
@@ -2547,10 +2677,43 @@ async function run(path, body) {
     }
   }
 }
+const polishRecoveryMessages={
+  polish_compact_retry:"正在精简要求后重新润色本段",
+  polish_compact_fallback:"首选模型没有返回正文，正在使用备用模型",
+  polish_segment_preserved:"本段未完成精修，已保留原文并继续",
+};
+const hiddenRunEventTypes=new Set(["polish_segment_route","polish_circuit_opened","polish_max_tokens_retry"]);
+function polishProgressMetadata(item) {
+  const metadata=item?.metadata||{};
+  const completed=Number(metadata.completed),total=Number(metadata.total),preserved=Number(metadata.preserved);
+  if(![completed,total,preserved].every(Number.isFinite)||completed<0||total<=0||preserved<0||completed>total)return null;
+  return {completed,total,preserved};
+}
+function polishRunProgress(events,status) {
+  const latest=[...events].reverse().find(item=>item.event_type==="polish_segment_progress"||polishRecoveryMessages[item.event_type]);
+  const progress=[...events].reverse().find(item=>item.event_type==="polish_segment_progress");
+  if(!latest)return "";
+  const metadata=polishProgressMetadata(progress);
+  const {completed,total,preserved}=metadata||{};
+  const parts=[];
+  if(isActiveRunStatus(status)&&latest.event_type!=="polish_segment_progress")parts.push(polishRecoveryMessages[latest.event_type]);
+  if(metadata)parts.push(`已完成 ${completed} / ${total} 段，其中 ${preserved} 段保留原文`);
+  const resumable=["failed","cancelled","interrupted"].includes(status);
+  if(resumable&&preserved>0)parts.push("继续运行时只处理未完成片段");
+  return parts.join("；");
+}
+function polishRunEventMessage(item) {
+  if(item.event_type==="polish_segment_progress"){
+    const metadata=polishProgressMetadata(item);
+    if(!metadata)return readableRunMessage(item.message);
+    return `已完成 ${metadata.completed} / ${metadata.total} 段，其中 ${metadata.preserved} 段保留原文`;
+  }
+  return polishRecoveryMessages[item.event_type]||readableRunMessage(item.message||`${item.event_type||"event"}: 未返回可用诊断信息`);
+}
 function renderRunLog(events) {
-  $("#run-log").innerHTML = events.length ? events.map(item => {
-    const message = item.message || `${item.event_type || "event"}: 未返回可用诊断信息`;
-    return `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(runLabel(item.stage || item.event_type))}</span><span>${escapeHtml(readableRunMessage(message))}</span></div>`;
+  const visibleEvents=events.filter(item=>!hiddenRunEventTypes.has(item.event_type));
+  $("#run-log").innerHTML = visibleEvents.length ? visibleEvents.map(item => {
+    return `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(runLabel(item.stage || item.event_type))}</span><span>${escapeHtml(polishRunEventMessage(item))}</span></div>`;
   }).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }
@@ -2562,10 +2725,15 @@ function renderRunContext(detail) {
   const stages=completed.map(item => { const meta=item.metadata || {}; const context=loaded.get(item.stage) || {}; return `<div class="context-stage"><div><strong>${escapeHtml(runLabel(item.stage))}</strong><span>${escapeHtml(meta.model_name || "未记录模型")}${item.usedFallback ? " · 已回退" : ""}</span></div><dl><dt>写作能力</dt><dd>${escapeHtml((context.skills || meta.skills || []).join("、") || "无")}</dd><dt>提示词</dt><dd>${Number(context.prompt_characters || 0).toLocaleString()} 字符</dd><dt>约束</dt><dd>${Number(context.constraint_characters || 0).toLocaleString()} 字符</dd><dt>模型用量</dt><dd>${Number(meta.input_tokens || 0).toLocaleString()} 输入 · ${Number(meta.output_tokens || 0).toLocaleString()} 输出</dd><dt>执行</dt><dd>${escapeHtml(runLabel(meta.execution_mode || "普通请求"))}</dd></dl></div>`; });
   const tools=detail.tool_receipts || [];
   const audit=detail.quality_report?.final_review_evidence; const counts=audit?.reconciliation_counts || {};
+  const detailAnalysis=audit?.detail_analysis;
+  const detailStatus=detailAnalysis ? `<div class="context-tools"><strong>${detailAnalysis.performed?"已单独复核":"无需单独复核"}</strong><span>${escapeHtml(detailAnalysis.message||"系统已根据本地检查决定是否需要详细事件和伏笔复核")}</span></div>` : "";
   const quality=audit ? `<div class="context-tools"><strong>${audit.review_mode==="incremental"?"关联窗口复核":"全文终审"}</strong><span>覆盖 ${Math.round(Number(audit.coverage || 0)*100)}% · ${Number(audit.reviewed_windows || 0)}/${Number(audit.window_count || 0)} 窗口 · 节省约 ${Number(audit.estimated_saved_input_characters || 0).toLocaleString()} 输入字符${(audit.fallback_reasons || []).length ? ` · 全文回退：${escapeHtml(audit.fallback_reasons.join("、"))}` : ""} · 已解决 ${Number(counts.resolved || 0)} · 部分解决 ${Number(counts.partially_resolved || 0)} · 未解决 ${Number(counts.unresolved || 0)}${(audit.gate_reasons || []).length ? ` · 阻断：${escapeHtml(audit.gate_reasons.join("、"))}` : ""}</span></div>` : "";
   const issues=detail.quality_report?.review?.issues||detail.quality_report?.issues||[];
   const issueLedger=issues.length?`<details class="quality-ledger"><summary><span><strong>问题返修台账</strong><small>${issues.length} 项 · 未解决优先</small></span><span>展开</span></summary><div class="ledger-list">${[...issues].sort((a,b)=>(a.status==="resolved")-(b.status==="resolved")).map(item=>`<details><summary><span class="ledger-status ${item.status==="resolved"?"resolved":""}">${item.status==="resolved"?"已解决":"待处理"}</span>${escapeHtml(findingLabel(item.issue_id||item.category||"问题"))}</summary><p><strong>证据：</strong>${escapeHtml(item.evidence||"未提供")}</p><p><strong>修复目标：</strong>${escapeHtml(item.repair_goal||item.action||"待确认")}</p></details>`).join("")}</div></details>`:"";
-  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + quality + issueLedger + (tools.length ? `<div class="context-tools"><strong>工具调用记录</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => runLabel(item.execution_mode)))].join("、"))}</span></div>` : "");
+  const recovery=detail.quality_report?.final_review_recovery;
+  const failureDetail=detail.quality_report?.failure_detail;
+  const notice=recovery?.attempted ? `<div class="context-tools ${recovery.succeeded ? "success" : "warning"}"><strong>${recovery.succeeded ? "终审报告已恢复" : "终审报告仍不完整"}</strong><span>${escapeHtml(recovery.message || "最佳稿已保留，可以重新终审")}</span></div>` : failureDetail?.kind === "malformed_json" ? '<div class="context-tools warning"><strong>终审返回内容不完整</strong><span>系统没有采用半份报告，最佳稿已保留；可以重新终审。</span></div>' : "";
+  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + notice + quality + detailStatus + issueLedger + (tools.length ? `<div class="context-tools"><strong>工具调用记录</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => runLabel(item.execution_mode)))].join("、"))}</span></div>` : "");
 }
 document.querySelectorAll("[data-run-tab]").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll("[data-run-tab]").forEach(item => item.classList.toggle("active",item === button));
@@ -2574,11 +2742,13 @@ document.querySelectorAll("[data-run-tab]").forEach(button => button.addEventLis
 function showRunDetail(detail) {
   renderRunLog(detail.events || []);
   renderRunContext(detail);
-  const active=["queued","running","cancelling"].includes(detail.status);
+  const active=isActiveRunStatus(detail.status);
   const initialization=detail.workflow === "initialize-skills";
   const qualityRejected=isQualityRejected(detail);
   $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
-  $("#run-state").textContent=active ? `正在执行：${runLabel(detail.current_stage || detail.workflow)}` : detail.status === "completed" ? (initialization ? "初始化及校验已完成，可以开始写作" : "任务执行完成") : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : detail.status === "failed" ? `${initialization ? "初始化" : "任务"}失败：${readableRunMessage(detail.error || "请查看日志")}` : `${runStatusLabel(detail)}：${readableRunMessage(detail.error || "请查看日志")}`;
+  const progress=polishRunProgress(detail.events || [],detail.status);
+  const message=active ? `正在执行：${runLabel(detail.current_stage || detail.workflow)}` : detail.status === "completed" ? (initialization ? "初始化及校验已完成，可以开始写作" : "任务执行完成") : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : detail.status === "failed" ? `${initialization ? "初始化" : "任务"}失败：${readableRunMessage(detail.error || "请查看日志")}` : `${runStatusLabel(detail)}：${readableRunMessage(detail.error || "请查看日志")}`;
+  $("#run-state").textContent=progress?`${message} · ${progress}`:message;
 }
 async function monitorRun(runRecord,projectId=runRecord.project_id||state.activeProject?.id,workbenchGeneration=state.workbenchGeneration) {
   clearTimeout(state.pollTimer);
@@ -2596,8 +2766,10 @@ async function monitorRun(runRecord,projectId=runRecord.project_id||state.active
       state.workbenchRuns=[detail,...state.workbenchRuns.filter(item=>item.id!==detail.id)];
       renderRunLog(detail.events || []); renderRunContext(detail);
       if (detail.workflow==="materials-audit") renderMaterialAudit(detail);
-      const active=["queued","running","cancelling"].includes(detail.status); const qualityRejected=isQualityRejected(detail); $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
-      $("#run-state").textContent=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${runLabel(detail.current_stage || detail.workflow)}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : `${runStatusLabel(detail)}：${readableRunMessage(detail.error || "请查看日志")}`;
+      const active=isActiveRunStatus(detail.status); const qualityRejected=isQualityRejected(detail); $("#run-state").className=`run-state ${active ? "busy" : qualityRejected ? "warning" : detail.status === "failed" ? "error" : detail.status}`;
+      const progress=polishRunProgress(detail.events || [],detail.status);
+      const message=detail.status === "cancelling" ? "正在终止当前阶段..." : active ? `正在执行：${runLabel(detail.current_stage || detail.workflow)}` : detail.status === "completed" ? "执行完成" : detail.status === "cancelled" ? "本次任务已终止，作品仍可继续写作" : qualityRejected ? "质量审核未通过：草稿和审核报告已保留，可修改后重试" : `${runStatusLabel(detail)}：${readableRunMessage(detail.error || "请查看日志")}`;
+      $("#run-state").textContent=progress?`${message} · ${progress}`:message;
       renderWorkbenchTaskState();
       if (active) state.pollTimer=setTimeout(poll,900); else { state.activeRun=null; $("#run-cancel").hidden=true; await renderActiveProject(); if (detail.status === "completed") toast("飞轮执行完成"); }
     } catch(error) { if(state.runMonitorGeneration!==monitorGeneration||!workbenchContextMatches(projectId,workbenchGeneration))return;$("#run-state").className="run-state error"; $("#run-state").textContent=readableRunMessage(error.message); $("#run-cancel").hidden=true;renderWorkbenchTaskState(); }

@@ -8,6 +8,7 @@ import threading
 import uuid
 from contextlib import contextmanager, nullcontext
 from collections.abc import Sequence
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Iterator
 
@@ -25,6 +26,7 @@ from novel_flywheel.context_policy import (
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
+from novel_flywheel.outlines import canon_profile, detect_canon_conflicts
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript, compact_analysis
 from novel_flywheel.incremental_review import (
@@ -113,6 +115,14 @@ class StageText(str):
         return instance
 
 
+class FinalReviewJSONError(ValueError):
+    """Raised when all safe final-review JSON routes remain incomplete."""
+
+    def __init__(self, message: str, detail: dict | None = None):
+        super().__init__(message)
+        self.detail = detail or {}
+
+
 class RevisionPlanError(RuntimeError):
     pass
 
@@ -160,6 +170,20 @@ class WorkflowService:
 
     def _short_revision_lock(self, run_id: str) -> threading.Lock:
         return _SHORT_REVISION_LOCK
+
+    def _restore_snapshot_after_failure(
+        self, run_id: str, snapshot: ProjectSnapshot,
+    ) -> None:
+        try:
+            snapshot.restore()
+        except Exception as recovery_error:
+            self.db.add_run_event(
+                run_id, "warning", "snapshot_restore_failed",
+                "项目文件恢复未完全完成，系统已保留最初的失败原因",
+                stage="archive", metadata={
+                    "recovery_error": str(recovery_error)[:500],
+                },
+            )
 
     def _analyze_manuscript(
         self, text: str, run_path: Path, project: Project, label: str,
@@ -2351,7 +2375,24 @@ class WorkflowService:
             constraints = self.projects.load_constraints(project.id)
             target_words = int(project.metadata["target_words"])
             segment_count = self._short_segment_count(target_words)
+            readiness_conflicts = detect_canon_conflicts(
+                project, state.data,
+                str((state.data.get("outline") or {}).get("content") or ""),
+            )
+            if readiness_conflicts:
+                raise ValueError(
+                    f"正式大纲与项目资料有 {len(readiness_conflicts)} 处冲突，请先在作品应用中确认设定"
+                )
             checkpoint = self._find_short_checkpoint(project, run_id, segment_count)
+            if checkpoint:
+                checkpoint_plan = (checkpoint / "planning.md").read_text(encoding="utf-8")
+                if self._short_plan_issues(project, state.data, checkpoint_plan, segment_count):
+                    self.db.add_run_event(
+                        run_id, "warning", "checkpoint_plan_rejected",
+                        "上一轮规划没有通过新的分段与设定检查，本次将重新规划",
+                        stage="planning",
+                    )
+                    checkpoint = None
             resumed_best = False
             if checkpoint:
                 plan = (checkpoint / "planning.md").read_text(encoding="utf-8")
@@ -2371,10 +2412,18 @@ class WorkflowService:
             else:
                 brief = json.dumps({
                     **project.metadata,
+                    "formal_story_facts": canon_profile(project, state.data),
                     "generation_contract": {
                         "target_total_words": target_words,
                         "segment_count": segment_count,
                         "require_segment_map": segment_count > 1,
+                        "segment_block_fields": (
+                            [
+                                "段首承接：上一段留下的人物位置、动作、关系和已知信息",
+                                "本段事件：本段唯一负责的事件",
+                                "段末交接：留给下一段的人物位置、动作、关系和已知信息",
+                            ] if segment_count > 1 else []
+                        ),
                     },
                     "short_causal_chain_contract": {
                         "purpose": "append whole-story causal-chain JSON without replacing the outline",
@@ -2400,6 +2449,38 @@ class WorkflowService:
                 plan, causal_chain = self._extract_and_save_short_causal_chain(
                     run_id, run_path, project, plan,
                 )
+                plan_issues = self._short_plan_issues(
+                    project, state.data, plan, segment_count,
+                )
+                if plan_issues:
+                    self.db.add_run_event(
+                        run_id, "warning", "planning_gate_retry",
+                        "规划稿没有通过本地检查，正在修正后再进入正文",
+                        stage="planning", metadata={"issues": plan_issues},
+                    )
+                    repaired_plan = await self._stage(
+                        run_id, run_path, project, "planning", constraints,
+                        "请修正下面的规划稿。必须保留正式大纲的故事方向，为每个分段明确分配互不重复的事件，"
+                        "并使用正式人物和地点名称。每段都要写明“段首承接”“本段事件”“段末交接”；"
+                        "段首和段末必须交代人物位置、正在做什么、关系变化和已经知道什么。"
+                        "只返回完整修正版规划稿。\n\n"
+                        f"需要修正：{json.dumps(plan_issues, ensure_ascii=False)}\n\n"
+                        f"当前规划稿：\n{plan}",
+                        suffix="-gate-repair", allow_tools=False,
+                    )
+                    plan, causal_chain = self._extract_and_save_short_causal_chain(
+                        run_id, run_path, project, repaired_plan,
+                    )
+                    remaining = self._short_plan_issues(
+                        project, state.data, plan, segment_count,
+                    )
+                    if remaining:
+                        self.db.add_run_event(
+                            run_id, "error", "planning_gate_failed",
+                            "规划稿仍有设定或分段问题，已在生成正文前停止",
+                            stage="planning", metadata={"issues": remaining},
+                        )
+                        raise ValueError("规划稿未通过设定和分段检查，尚未生成正文")
                 if causal_chain:
                     constraints += (
                         "\n\n# Short Story Causal Chain\n\n"
@@ -2463,6 +2544,21 @@ class WorkflowService:
             polished, _ = await self._quality_polish(
                 run_id, run_path, project, constraints, draft, review,
             )
+            publish_text = "\n\n".join(self._split_segments(polished))
+            publish_analysis = self._analyze_manuscript(
+                publish_text, run_path, project, "publish",
+            )
+            publish_blockers = [
+                item for item in publish_analysis.get("prose", {}).get("findings", [])
+                if item.get("blocking")
+            ]
+            if publish_blockers:
+                self.db.add_run_event(
+                    run_id, "error", "publish_local_gate_failed",
+                    "发布前全文检查发现正文异常，已保留最佳稿但不会写入正式稿",
+                    stage="quality", metadata={"findings": publish_blockers[:12]},
+                )
+                raise ValueError("发布前全文检查未通过，请先处理正文完整性问题")
             canon_text = await self._stage_with_role_fallback(
                 run_id, run_path, project, "maintenance", constraints, polished,
                 fallback_role="planning", allow_tools=False,
@@ -2519,7 +2615,7 @@ class WorkflowService:
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
             if not state_committed:
-                snapshot.restore()
+                self._restore_snapshot_after_failure(run_id, snapshot)
             if candidate_id:
                 self.story_states.reject(candidate_id, "cancelled")
             if draft_candidate_id:
@@ -2528,7 +2624,7 @@ class WorkflowService:
             raise
         except Exception as exc:
             if not state_committed:
-                snapshot.restore()
+                self._restore_snapshot_after_failure(run_id, snapshot)
             if candidate_id:
                 self.story_states.reject(candidate_id, str(exc))
             if draft_candidate_id:
@@ -2689,31 +2785,48 @@ class WorkflowService:
                         patch_groups=applied_patch_groups,
                     )
                     report["final_review_evidence"] = evidence_audit
+                    if evidence_audit.get("final_review_recovery"):
+                        report["final_review_recovery"] = evidence_audit["final_review_recovery"]
                 elif project.mode == "short" and len(final_input) > 6000:
                     final_review, evidence_audit = await self._full_manuscript_review(
                         run_id, run_path, project, constraints, final_input, review,
                         suffix=f"-{attempt + 1}" if attempt else "",
+                        analysis=current_analysis,
                     )
                     report["final_review_evidence"] = evidence_audit
+                    if evidence_audit.get("final_review_recovery"):
+                        report["final_review_recovery"] = evidence_audit["final_review_recovery"]
                 else:
                     final_input = (
                         quality_profile_prompt(active_profile)
                         + self._causal_chain_review_checks(constraints)
                         + final_input
                     )
-                    raw_final_review = await self._stage(
-                        run_id, run_path, project, "final_review", constraints, final_input,
-                        suffix=f"-{attempt + 1}" if attempt else "", allow_tools=False,
+                    raw_final_review, final_payload = await self._final_review_json(
+                        run_id, run_path, project, constraints, final_input,
+                        suffix=f"-{attempt + 1}" if attempt else "",
                     )
                     final_review = self._review_for_project(
-                        raw_final_review, project,
+                        final_payload, project,
                         getattr(raw_final_review, "receipt", {}),
                     )
                     evidence_audit = {
                         "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
                         "windows": [{"index": 1, "start": 0, "end": len(polished),
                                      "summary": "single-request complete review"}],
+                        "review_mode": "full",
                     }
+                    if final_payload.get("_recovery_mode"):
+                        evidence_audit["final_review_recovery"] = {
+                            "attempted": True,
+                            "succeeded": True,
+                            "mode": "compact_recovery",
+                            "count": 1,
+                            "message": "终审原始报告不完整，系统已用精简格式恢复报告",
+                        }
+                        report["final_review_recovery"] = evidence_audit[
+                            "final_review_recovery"
+                        ]
                 if attempt == 0:
                     baseline_review = {
                         **final_review,
@@ -2756,6 +2869,18 @@ class WorkflowService:
                 report["status"] = report_status
                 report["terminal_review_complete"] = False
                 report["failure_reasons"] = [message]
+                if isinstance(exc, FinalReviewJSONError):
+                    report["status"] = "final_review_incomplete"
+                    report["failure_reasons"] = [str(exc)]
+                    report["failure_detail"] = exc.detail
+                    report["final_review_recovery"] = {
+                        "attempted": True, "succeeded": False,
+                        "mode": "compact_recovery",
+                        "message": "终审原始返回不完整，精简报告恢复也未完成；最佳稿已保留",
+                    }
+                    report_status = "final_review_incomplete"
+                    event_type = "final_review_model_failed"
+                    message = str(exc)
                 atomic_write(run_path / "outputs" / "best-candidate.md", best_polished)
                 self._write_quality_report(run_path, report)
                 self.db.add_run_event(
@@ -2960,53 +3085,206 @@ class WorkflowService:
 
     async def _final_review_json(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
-        prompt: str, suffix: str,
+        prompt: str, suffix: str, recovery_kind: str = "review",
     ) -> tuple[str, dict]:
-        raw = await self._stage(
-            run_id, run_path, project, "final_review", constraints, prompt,
-            suffix=suffix, allow_tools=False,
-        )
+        stage_error: RuntimeError | None = None
         try:
+            raw = await self._stage(
+                run_id, run_path, project, "final_review", constraints, prompt,
+                suffix=suffix, allow_tools=False,
+            )
+        except RuntimeError as exc:
+            if not str(exc).startswith("final_review model returned empty output"):
+                raise
+            stage_error = exc
+            raw = ""
+        try:
+            if stage_error is not None:
+                raise stage_error
             return raw, self._json_object(raw)
-        except (json.JSONDecodeError, ValueError) as exc:
+        except (json.JSONDecodeError, ValueError, RuntimeError) as primary_error:
             binding = self.db.get_role_binding("final_review") or {}
             configured_fallback = bool(
                 binding.get("fallback_provider_id") and binding.get("fallback_model_id")
                 and hasattr(self.gateway, "complete_configured_fallback")
             )
-            if not configured_fallback:
-                raise
+            fallback_error: Exception | None = None
+            if configured_fallback:
+                self.db.add_run_event(
+                    run_id, "warning", "final_review_json_fallback",
+                    "终审模型返回内容不完整，正在用备用模型重做当前检查",
+                    stage="final_review", metadata={
+                        "suffix": suffix, "error": str(primary_error)[:300],
+                    },
+                )
+                try:
+                    fallback_raw = await self._stage(
+                        run_id, run_path, project, "final_review", constraints, prompt,
+                        suffix=f"{suffix}-json-fallback", allow_tools=False,
+                        prefer_configured_fallback=True,
+                    )
+                    return fallback_raw, self._json_object(fallback_raw)
+                except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
+                    fallback_error = exc
+
+            compact_prompt = self._final_review_compact_prompt(prompt, recovery_kind)
             self.db.add_run_event(
-                run_id, "warning", "final_review_json_fallback",
-                "终审模型返回内容不完整，正在用备用模型重做当前检查",
+                run_id, "warning", "final_review_compact_recovery_started",
+                "终审报告不完整，正在改用精简格式重新检查",
                 stage="final_review", metadata={
-                    "suffix": suffix, "error": str(exc)[:300],
+                    "suffix": suffix, "kind": recovery_kind,
+                    "primary_error": str(primary_error)[:300],
+                    "fallback_error": str(fallback_error)[:300] if fallback_error else None,
                 },
             )
-            raw = await self._stage(
-                run_id, run_path, project, "final_review", constraints, prompt,
-                suffix=f"{suffix}-json-fallback", allow_tools=False,
-                prefer_configured_fallback=True,
+            try:
+                compact_raw = await self._stage(
+                    run_id, run_path, project, "final_review", constraints,
+                    compact_prompt, suffix=f"{suffix}-compact-recovery", allow_tools=False,
+                )
+                compact_payload = self._json_object(compact_raw)
+            except (json.JSONDecodeError, ValueError, RuntimeError) as compact_error:
+                detail = self._final_review_error_detail(
+                    primary_error, fallback_error, compact_error, suffix, recovery_kind,
+                )
+                raise FinalReviewJSONError(
+                    "终审模型返回内容不完整，精简报告恢复也未完成；已保留最佳稿",
+                    detail,
+                ) from compact_error
+            if isinstance(compact_raw, StageText):
+                compact_raw.receipt = {
+                    **getattr(compact_raw, "receipt", {}),
+                    "recovery_mode": "compact_recovery",
+                }
+            self.db.add_run_event(
+                run_id, "warning", "final_review_compact_recovery",
+                "终审原始报告不完整，系统已用精简格式恢复报告",
+                stage="final_review", metadata={
+                    "suffix": suffix, "kind": recovery_kind,
+                },
             )
-            return raw, self._json_object(raw)
+            compact_payload["_recovery_mode"] = "compact_recovery"
+            return compact_raw, compact_payload
+
+    @staticmethod
+    def _final_review_compact_prompt(prompt: str, kind: str) -> str:
+        if kind == "window":
+            return (
+                "终审窗口精简恢复。请重新阅读当前窗口，只返回一个 JSON 对象，不要解释。"
+                "只允许两个字段：summary（不超过240字的窗口摘要）和 issues（最多4条，"
+                "每条只含 category、severity、evidence、location、action）。"
+                "不要返回 events、character_states、timeline、promises，不要评分，不要复述全文。\n\n"
+                + prompt
+            )
+        if kind == "detail":
+            return (
+                "终审详细事件和伏笔单独分析。请只返回一个 JSON 对象，字段为 events、promises、"
+                "character_states、timeline；每个数组最多8条，每条只保留必要的短句。"
+                "不要评分，不要重写正文，不要返回其它字段。\n\n" + prompt
+            )
+        return (
+            "终审结果精简恢复。请只返回一个 JSON 对象，必须包含 dimensions（commercial、story、"
+            "prose，0-100）、hard_fail、decision（pass、revise 或 rewrite）和 issues（最多4条，"
+            "每条只含 category、severity、evidence、action），可以省略其它字段。不要解释。\n\n"
+            + prompt
+        )
+
+    @staticmethod
+    def _bound_final_review_window_item(item: dict) -> dict:
+        """Keep evidence small enough for the cross-window adjudication request."""
+        result = dict(item)
+        summary = str(result.get("summary") or "").strip()
+        result["summary"] = summary[:240]
+        for key in ("events", "character_states", "timeline", "promises"):
+            result[key] = []
+        issues = result.get("issues")
+        bounded_issues = []
+        for issue in issues[:4] if isinstance(issues, list) else []:
+            if not isinstance(issue, dict):
+                continue
+            bounded_issues.append({
+                **issue,
+                "evidence": str(issue.get("evidence") or "")[:160],
+                "location": str(issue.get("location") or "")[:120],
+                "action": str(issue.get("action") or "")[:160],
+            })
+        result["issues"] = bounded_issues
+        return result
+
+    @staticmethod
+    def _final_review_detail_plan(
+        project: Project, analysis: dict | None, initial_review: dict,
+        windows: list[dict],
+    ) -> tuple[set[int], str]:
+        all_windows = {int(window["index"]) for window in windows}
+        if project.metadata.get("final_review_detail_analysis"):
+            return all_windows, "已按作品设置单独复核详细事件、人物状态、时间线和伏笔"
+
+        issue_text = json.dumps(
+            initial_review.get("issues", []), ensure_ascii=False,
+        ).lower()
+        issue_markers = (
+            "logic_continuity", "timeline", "character_state", "knowledge_state",
+            "causal", "promise", "payoff", "setup", "foreshadow",
+            "前后矛盾", "连续性", "时间线", "人物状态", "知情", "因果",
+            "伏笔", "承诺", "兑现",
+        )
+        if any(marker in issue_text for marker in issue_markers):
+            return all_windows, "已有终审问题涉及跨段关系，已单独复核详细事件和伏笔"
+
+        selected: set[int] = set()
+        ledger = (analysis or {}).get("narrative_ledger", {})
+        for item in ledger.get("important_uncertainties", []):
+            position = item.get("start") if isinstance(item, dict) else None
+            if not isinstance(position, int):
+                continue
+            for window in windows:
+                if int(window["start"]) <= position < int(window["end"]):
+                    selected.add(int(window["index"]))
+        if selected:
+            return selected, "本地检查发现需要确认的伏笔或承诺"
+        return set(), "未发现需要单独复核的跨段伏笔、人物状态或时间线问题"
+
+    @staticmethod
+    def _final_review_error_detail(
+        primary: Exception, fallback: Exception | None, compact: Exception,
+        suffix: str, kind: str,
+    ) -> dict:
+        def error_info(error: Exception | None) -> dict | None:
+            if error is None:
+                return None
+            info = {"type": type(error).__name__, "message": str(error)[:500]}
+            if isinstance(error, json.JSONDecodeError):
+                info.update({"line": error.lineno, "column": error.colno})
+            return info
+        return {
+            "kind": "malformed_json", "stage": "final_review", "suffix": suffix,
+            "recovery_kind": kind, "primary": error_info(primary),
+            "fallback": error_info(fallback), "compact": error_info(compact),
+        }
 
     async def _full_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, initial_review: dict, suffix: str = "",
+        analysis: dict | None = None,
     ) -> tuple[dict, dict]:
         constraints = self._constraints_with_platform_rules(project, constraints)
         causal_checks = self._causal_chain_review_checks(constraints)
         windows = review_windows(manuscript)
         ledger = issue_ledger(initial_review.get("issues", []))
         evidence = []
+        recovery_modes = []
         previous_summary = ""
+        detail_windows, detail_message = self._final_review_detail_plan(
+            project, analysis, initial_review, windows,
+        )
         for window in windows:
             prompt = (
-                "FULL MANUSCRIPT EVIDENCE EXTRACTION. Do not score or rewrite. Return one JSON "
-                "object with summary, events, character_states, timeline, promises, and issues. "
-                "summary should be a concise non-empty string; structured summaries are accepted but unnecessary. "
-                "Every issue must include category, severity, evidence, location, and action. "
-                "Track what each character knows and when causally important actions become possible.\n\n"
+                "FULL MANUSCRIPT WINDOW SUMMARY. Do not score or rewrite. Return one JSON object with "
+                "summary and issues only. Keep summary under 240 Chinese characters. Return at most 4 "
+                "issues; each issue must include "
+                "category, severity, evidence, location, and action, with each text under 160 characters. "
+                "Only record changes and evidence; do not retell the window.\n\n"
                 f"WINDOW {window['index']}/{len(windows)} "
                 f"CHARACTERS {window['start']}-{window['end']}\n"
                 f"PREVIOUS WINDOW SUMMARY:\n{previous_summary or 'None'}\n\n"
@@ -3016,7 +3294,7 @@ class WorkflowService:
             )
             raw, item = await self._final_review_json(
                 run_id, run_path, project, constraints, prompt,
-                suffix=f"{suffix}-window-{window['index']}",
+                suffix=f"{suffix}-window-{window['index']}", recovery_kind="window",
             )
             summary = item.get("summary")
             if isinstance(summary, (dict, list)) and summary:
@@ -3028,6 +3306,23 @@ class WorkflowService:
             item["start"] = window["start"]
             item["end"] = window["end"]
             item["receipt"] = getattr(raw, "receipt", {})
+            item = self._bound_final_review_window_item(item)
+            if item.get("_recovery_mode"):
+                item["recovery_mode"] = item.pop("_recovery_mode")
+            if item.get("recovery_mode"):
+                recovery_modes.append(str(item["recovery_mode"]))
+            if window["index"] in detail_windows:
+                detail_prompt = self._final_review_compact_prompt(
+                    f"WINDOW {window['index']}/{len(windows)}\n{window['text']}", "detail",
+                )
+                detail_raw, detail = await self._final_review_json(
+                    run_id, run_path, project, constraints, detail_prompt,
+                    suffix=f"{suffix}-window-{window['index']}-detail", recovery_kind="detail",
+                )
+                for key in ("events", "promises", "character_states", "timeline"):
+                    if isinstance(detail.get(key), list):
+                        item[key] = detail[key][:8]
+                item["detail_receipt"] = getattr(detail_raw, "receipt", {})
             evidence.append(item)
             previous_summary = item["summary"]
 
@@ -3048,6 +3343,8 @@ class WorkflowService:
             run_id, run_path, project, constraints, adjudication_prompt,
             suffix=f"{suffix}-adjudication",
         )
+        if payload.get("_recovery_mode"):
+            recovery_modes.append(str(payload["_recovery_mode"]))
         review = self._review_for_project(
             payload, project, getattr(raw_final, "receipt", {}),
         )
@@ -3087,7 +3384,24 @@ class WorkflowService:
             "windows": evidence,
             "adjudication_receipt": getattr(raw_final, "receipt", {}),
             "review_mode": "full",
+            "detail_mode": "separate" if detail_windows else "compact",
+            "detail_analysis": {
+                "performed": bool(detail_windows),
+                "window_count": len(detail_windows),
+                "message": (
+                    f"{detail_message}，已单独复核 {len(detail_windows)} 个正文窗口"
+                    if detail_windows else detail_message
+                ),
+            },
         }
+        if recovery_modes:
+            audit["final_review_recovery"] = {
+                "attempted": True,
+                "succeeded": True,
+                "mode": "compact_recovery",
+                "count": len(recovery_modes),
+                "message": "终审原始报告不完整，系统已用精简格式恢复报告",
+            }
         if reconciliation_summary is not None:
             audit["reconciliation_summary"] = reconciliation_summary
         review, gate_reasons = apply_evidence_gate(review, audit)
@@ -3168,6 +3482,7 @@ class WorkflowService:
         if baseline_reasons:
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+                analysis=analysis,
             )
             audit.update({
                 "review_mode": "full_fallback",
@@ -3187,6 +3502,7 @@ class WorkflowService:
         if scope_reasons:
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+                analysis=analysis,
             )
             audit.update({
                 "review_mode": "full_fallback",
@@ -3201,6 +3517,7 @@ class WorkflowService:
         if full:
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+                analysis=analysis,
             )
             audit.update({
                 "review_mode": "full_fallback",
@@ -3222,7 +3539,7 @@ class WorkflowService:
             prompt = (
                 "INCREMENTAL FINAL REVIEW EVIDENCE. Do not rewrite. Review the current window "
                 "against its first-full-review baseline and the structured local change evidence. "
-                "Return JSON with summary, events, character_states, timeline, promises, and issues.\n\n"
+                "Return JSON with summary and issues only.\n\n"
                 f"SELECTION REASONS:\n{json.dumps(scope['reasons'].get(str(window['index']), []), ensure_ascii=False)}\n\n"
                 f"BASELINE EVIDENCE:\n{json.dumps(baseline_by_index.get(window['index'], {}), ensure_ascii=False)}\n\n"
                 f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
@@ -3231,6 +3548,7 @@ class WorkflowService:
             raw, item = await self._final_review_json(
                 run_id, run_path, project, constraints, prompt,
                 suffix=f"{suffix}-incremental-window-{window['index']}",
+                recovery_kind="window",
             )
             summary = item.get("summary")
             if not isinstance(summary, str) or not summary.strip():
@@ -3261,6 +3579,7 @@ class WorkflowService:
             changes["reviewer_requested_full"] = True
             review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+                analysis=analysis,
             )
             audit.update({"review_mode": "full_fallback",
                           "fallback_reasons": ["reviewer_requested_full"]})
@@ -3275,6 +3594,7 @@ class WorkflowService:
         if gate_reasons:
             full_review, audit = await self._full_manuscript_review(
                 run_id, run_path, project, constraints, manuscript, initial_review, suffix,
+                analysis=analysis,
             )
             audit.update({"review_mode": "full_fallback", "fallback_reasons": gate_reasons})
             return full_review, audit
@@ -3311,6 +3631,121 @@ class WorkflowService:
         if target_words <= 8000:
             return 1
         return min(12, max(2, math.ceil(target_words / 2500)))
+
+    @classmethod
+    def _short_plan_segments(cls, plan: str, count: int) -> list[str]:
+        if count == 1:
+            return [plan.strip()] if plan.strip() else []
+        headings = list(re.finditer(
+            r"(?m)^#{2,4}\s*(?:第\s*)?段\s*(\d+)\s*[：:]?.*$", plan,
+        ))
+        by_number: dict[int, str] = {}
+        for position, match in enumerate(headings):
+            number = int(match.group(1))
+            end = headings[position + 1].start() if position + 1 < len(headings) else len(plan)
+            by_number.setdefault(number, plan[match.start():end].strip())
+        return [by_number[number] for number in range(1, count + 1) if number in by_number]
+
+    @classmethod
+    def _short_plan_issues(cls, project: Project, state: dict, plan: str,
+                           count: int) -> list[str]:
+        issues = []
+        conflicts = detect_canon_conflicts(project, state, plan)
+        if conflicts:
+            labels = "、".join(
+                f"{item['label']}（{item['current_value']} / {item['candidate_value']}）"
+                for item in conflicts
+            )
+            issues.append(f"人物或地点与正式设定不一致：{labels}")
+        if count == 1:
+            return issues
+        segments = cls._short_plan_segments(plan, count)
+        if len(segments) != count:
+            issues.append(f"规划稿需要明确列出第 1 至第 {count} 段各自负责的事件")
+        elif any(len(re.sub(r"\s+", "", segment)) < 80 for segment in segments):
+            issues.append("有分段没有写清本段事件、结果和交接问题")
+        elif count > 1:
+            missing_handoffs = []
+            required = (
+                ("段首承接", "开场承接"),
+                ("本段事件", "核心事件", "负责事件"),
+                ("段末交接", "交接状态", "段末状态"),
+            )
+            for index, segment in enumerate(segments, 1):
+                if any(not any(label in segment for label in aliases) for aliases in required):
+                    missing_handoffs.append(index)
+            if missing_handoffs:
+                joined = "、".join(map(str, missing_handoffs))
+                issues.append(
+                    f"第 {joined} 段缺少段首承接、本段事件或段末交接，无法保证前后自然衔接"
+                )
+        normalized = [re.sub(r"\W+", "", segment) for segment in segments]
+        if any(
+            SequenceMatcher(None, normalized[left], normalized[right]).ratio() >= 0.86
+            for left in range(len(normalized)) for right in range(left + 1, len(normalized))
+        ):
+            issues.append("不同分段承担了过于相似的事件，需要重新分配")
+        return issues
+
+    @staticmethod
+    def _short_plan_handoff(segment: str) -> str:
+        match = re.search(
+            r"(?ms)(?:段末交接|交接状态|段末状态)\s*[：:]\s*(.+)$",
+            segment,
+        )
+        return (match.group(1).strip() if match else segment.strip())[-700:]
+
+    @classmethod
+    def _draft_segment_issues(cls, part: str, target: int,
+                              previous_parts: list[str]) -> list[str]:
+        issues = []
+        han = effective_han_characters(part)
+        if han > int(target * 1.45):
+            issues.append(f"本段写了 {han} 个正文汉字，明显超过约 {target} 字的范围")
+        if han < int(target * 0.45):
+            issues.append(f"本段只有 {han} 个正文汉字，主要事件可能没有写完整")
+        blocking = [
+            item for item in analyze_prose(part).get("findings", [])
+            if item.get("blocking")
+        ]
+        if blocking:
+            issues.append("正文夹带了写作说明、异常文字或重复内容")
+        current_paragraphs = [
+            re.sub(r"\s+", "", value)
+            for value in re.split(r"\n\s*\n", part)
+            if len(re.sub(r"\s+", "", value)) >= 60
+        ]
+        prior_paragraphs = [
+            re.sub(r"\s+", "", value)
+            for prior in previous_parts
+            for value in re.split(r"\n\s*\n", prior)
+            if len(re.sub(r"\s+", "", value)) >= 60
+        ]
+        if any(
+            SequenceMatcher(None, current, prior).ratio() >= 0.92
+            for current in current_paragraphs for prior in prior_paragraphs
+        ):
+            issues.append("本段重复了前面已经写过的场景或段落")
+        if previous_parts:
+            previous_tail = previous_parts[-1][-1200:]
+            first = next((
+                value.strip() for value in re.split(r"\n\s*\n", part)
+                if value.strip()
+            ), "")[:500]
+            explicit_bridge = re.search(
+                r"次日|翌日|第二天|[一二三四五六七八九十\d]+(?:日|天|月|年)后|"
+                r"与此同时|同一时刻|回到|离开|天亮|入夜|黄昏|清晨|午后|当晚|转眼|半个时辰后",
+                first,
+            )
+            current_places = set(re.findall(
+                r"[\u4e00-\u9fff]{1,6}(?:府|宫|街|院|房|厅|渡口|厨房)", first,
+            ))
+            previous_places = set(re.findall(
+                r"[\u4e00-\u9fff]{1,6}(?:府|宫|街|院|房|厅|渡口|厨房)", previous_tail,
+            ))
+            if current_places - previous_places and not explicit_bridge:
+                issues.append("本段开头换了场景，但没有交代时间、地点或人物如何过渡")
+        return issues
 
     @classmethod
     def _split_segments(cls, text: str) -> list[str]:
@@ -3384,16 +3819,214 @@ class WorkflowService:
                 return path
         return None
 
+    @staticmethod
+    def _compact_polish_prompt(*, segment: str, previous_context: str,
+                               next_context: str, local_findings: list,
+                               character_voice: str, locked_facts: list,
+                               passage_locks: list, minimum_characters: int,
+                               maximum_characters: int) -> str:
+        return (
+            "普通润色精简恢复。只处理当前正文片段，不扩写片段外内容。\n\n"
+            f"前一段结尾（限800字）：\n{previous_context[-800:]}\n\n"
+            f"后一段开头（限800字）：\n{next_context[:800]}\n\n"
+            f"相关人物声音：\n{character_voice[:2400]}\n\n"
+            f"当前片段本地问题：\n"
+            f"{json.dumps(local_findings, ensure_ascii=False)[:2400]}\n\n"
+            f"锁定事实：\n{json.dumps(locked_facts, ensure_ascii=False)[:2400]}\n\n"
+            f"受保护片段：\n{json.dumps(passage_locks, ensure_ascii=False)[:1600]}\n\n"
+            f"正文长度必须在 {minimum_characters} 到 {maximum_characters} 字之间。"
+            "只返回修改后的正文，不解释、不分析。\n\n"
+            f"MANUSCRIPT SEGMENT:\n{segment}"
+        )
+
+    @staticmethod
+    def _is_polish_output_error(exc: Exception) -> bool:
+        message = describe_error(exc).lower()
+        return any(marker in message for marker in (
+            "empty output", "empty manuscript", "finish_reason=max_tokens",
+            "output exceeds", "明显超长",
+        ))
+
+    @staticmethod
+    def _is_fatal_model_configuration_error(exc: Exception) -> bool:
+        markers = (
+            "missing api key", "missing_api_key", "invalid api key", "invalid_api_key",
+            "api key is missing", "authentication", "unauthorized", "forbidden",
+            "401", "403", "invalid role binding", "model role is not configured",
+            "role binding is invalid", "binding is corrupt", "provider_not_found",
+            "provider not found", "model_not_found", "model not found",
+        )
+        pending: list[BaseException] = [exc]
+        seen: set[int] = set()
+        while pending:
+            current = pending.pop()
+            if id(current) in seen:
+                continue
+            seen.add(id(current))
+            if any(marker in describe_error(current).lower() for marker in markers):
+                return True
+            for nested in (
+                getattr(current, "primary_error", None),
+                getattr(current, "fallback_error", None),
+                current.__cause__, current.__context__,
+            ):
+                if isinstance(nested, BaseException):
+                    pending.append(nested)
+        return False
+
+    @staticmethod
+    def _raise_for_unusable_polish_output(
+        text: str, source_characters: int, maximum_characters: int,
+    ) -> None:
+        receipt = getattr(text, "receipt", {})
+        if receipt.get("finish_reason") == "max_tokens":
+            raise RuntimeError("polish output incomplete (finish_reason=max_tokens)")
+        if source_characters >= 200 and len(text.strip()) > maximum_characters:
+            raise RuntimeError(
+                f"polish output exceeds allowed maximum ({len(text.strip())} > "
+                f"{maximum_characters})"
+            )
+
+    @staticmethod
+    def _polish_input_tokens(value: object) -> int:
+        receipt = getattr(value, "receipt", None)
+        if isinstance(receipt, dict):
+            try:
+                return max(0, int(receipt.get("input_tokens", 0) or 0))
+            except (TypeError, ValueError):
+                return 0
+        match = re.search(r"input_tokens=(\d+)", str(value))
+        return int(match.group(1)) if match else 0
+
+    async def _ordinary_polish_segment(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        source: str, full_prompt: str, compact_prompt: str, suffix: str,
+        maximum_characters: int, configured_fallback: bool,
+        force_compact: bool, metadata: dict,
+    ) -> tuple[str, bool, bool, bool, int]:
+        full_output_error = False
+        consumed_input_tokens = 0
+        if not force_compact:
+            try:
+                polished = await self._stage(
+                    run_id, run_path, project, "polish", constraints, full_prompt,
+                    suffix=suffix, allow_tools=False,
+                    prefer_configured_fallback=False,
+                    output_source_characters=len(source),
+                    primary_only=True,
+                    retry_polish_output_limit=False,
+                )
+                consumed_input_tokens += int(
+                    getattr(polished, "receipt", {}).get("input_tokens", 0) or 0
+                )
+                self._raise_for_unusable_polish_output(
+                    polished, len(source), maximum_characters,
+                )
+                return polished, False, False, False, consumed_input_tokens
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                consumed_input_tokens += self._polish_input_tokens(exc)
+                if self._is_fatal_model_configuration_error(exc):
+                    raise
+                if not self._is_polish_output_error(exc):
+                    raise
+                full_output_error = True
+                primary_error = exc
+        else:
+            primary_error = RuntimeError("compact recovery circuit is active")
+
+        self.db.add_run_event(
+            run_id, "warning", "polish_compact_retry",
+            "正在精简要求后重新润色本段",
+            stage="polish", metadata={
+                **metadata, "error": describe_error(primary_error)[:500],
+                "circuit": force_compact,
+            },
+        )
+        try:
+            polished = await self._stage(
+                run_id, run_path, project, "polish", constraints, compact_prompt,
+                suffix=f"{suffix}-compact", allow_tools=False,
+                prefer_configured_fallback=False,
+                output_source_characters=len(source),
+                primary_only=True,
+                retry_polish_output_limit=False,
+            )
+            consumed_input_tokens += int(
+                getattr(polished, "receipt", {}).get("input_tokens", 0) or 0
+            )
+            self._raise_for_unusable_polish_output(
+                polished, len(source), maximum_characters,
+            )
+            return polished, False, full_output_error, False, consumed_input_tokens
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            consumed_input_tokens += self._polish_input_tokens(exc)
+            if self._is_fatal_model_configuration_error(exc):
+                raise
+            if self._is_polish_transport_error(exc):
+                raise
+            compact_error = exc
+
+        if configured_fallback:
+            self.db.add_run_event(
+                run_id, "warning", "polish_compact_fallback",
+                "首选模型没有返回正文，正在使用备用模型",
+                stage="polish", metadata={
+                    **metadata, "error": describe_error(compact_error)[:500],
+                },
+            )
+            try:
+                polished = await self._stage(
+                    run_id, run_path, project, "polish", constraints, compact_prompt,
+                    suffix=f"{suffix}-compact-fallback", allow_tools=False,
+                    prefer_configured_fallback=True,
+                    output_source_characters=len(source),
+                    retry_polish_output_limit=False,
+                )
+                consumed_input_tokens += int(
+                    getattr(polished, "receipt", {}).get("input_tokens", 0) or 0
+                )
+                self._raise_for_unusable_polish_output(
+                    polished, len(source), maximum_characters,
+                )
+                return polished, False, full_output_error, True, consumed_input_tokens
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                consumed_input_tokens += self._polish_input_tokens(exc)
+                if self._is_fatal_model_configuration_error(exc):
+                    raise
+                if self._is_polish_transport_error(exc):
+                    raise
+                compact_error = exc
+
+        self.db.add_run_event(
+            run_id, "warning", "polish_segment_preserved",
+            "本段未完成精修，已保留原文并继续",
+            stage="polish", metadata={
+                **metadata, "error": describe_error(compact_error)[:500],
+            },
+        )
+        return (
+            source, True, full_output_error, configured_fallback,
+            consumed_input_tokens,
+        )
+
     async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
                                        constraints: str, plan: str) -> str:
         target_words = int(project.metadata["target_words"])
         count = self._short_segment_count(target_words)
-        if count == 1:
-            return await self._stage(
-                run_id, run_path, project, "draft", constraints,
-                f"APPROVED PLAN:\n{plan}\n\nWrite the complete story now. Do not ask questions.",
-            )
         target = math.ceil(target_words / count)
+        segment_plans = self._short_plan_segments(plan, count)
+        if len(segment_plans) != count:
+            raise ValueError("规划稿没有明确每一段负责的事件，尚未生成正文")
+        ownership = "\n".join(
+            f"第 {index} 段：{next((line.lstrip('# ').strip() for line in block.splitlines() if line.strip()), '未命名')}"
+            for index, block in enumerate(segment_plans, 1)
+        )
         parts: list[str] = []
         for index in range(1, count + 1):
             self.db.add_run_event(
@@ -3401,18 +4034,48 @@ class WorkflowService:
                 stage="draft", metadata={"segment": index, "total": count, "target_words": target},
             )
             previous_tail = parts[-1][-1200:] if parts else "这是开篇，无上一段。"
+            previous_plan_tail = (
+                self._short_plan_handoff(segment_plans[index - 2])
+                if index > 1 else "这是开篇，无上一段交接状态。"
+            )
             prompt = (
-                f"APPROVED COMPLETE PLAN:\n{plan}\n\n"
-                f"WRITE SEGMENT {index} OF {count}. Target about {target} Chinese characters. "
-                "Return only publishable fiction prose. Continue the approved causal sequence, preserve "
-                "character voices and commercial hooks, and do not summarize, explain, or ask questions. "
-                "All project decisions are final; infer minor details from the plan.\n\n"
-                f"上一段结尾：\n{previous_tail}\n\n不要提问，直接写本段正文。"
+                f"整篇分工：\n{ownership}\n\n"
+                f"本次只写第 {index}/{count} 段，本段唯一负责的事件：\n{segment_plans[index - 1]}\n\n"
+                f"目标约 {target} 个正文汉字。只返回可发布的小说正文，不要标题、写作说明、"
+                "状态变化、完结点或总结。不得提前写后续分段的事件，也不得重写前面已经发生的场景。"
+                "人物、地点、因果和结局均以正式设定为准。开头必须承接上一段结束时的人物位置、动作、"
+                "关系和知情状态；如果本段需要换时间或换场景，第一段必须用自然过渡交代清楚。\n\n"
+                f"上一段计划留下的状态：\n{previous_plan_tail}\n\n"
+                f"上一段正文结尾：\n{previous_tail}\n\n不要提问，直接写本段正文。"
             )
             part = await self._stage(
                 run_id, run_path, project, "draft", constraints, prompt,
                 suffix=f"-part-{index:02d}", allow_tools=False,
             )
+            issues = self._draft_segment_issues(part, target, parts) if count > 1 else []
+            if issues:
+                self.db.add_run_event(
+                    run_id, "warning", "draft_segment_gate_retry",
+                    f"正文第 {index}/{count} 段没有通过本地检查，正在重写本段",
+                    stage="draft", metadata={"segment": index, "issues": issues},
+                )
+                part = await self._stage(
+                    run_id, run_path, project, "draft", constraints,
+                    f"上次第 {index} 段未通过本地检查：{json.dumps(issues, ensure_ascii=False)}。\n"
+                    "请严格按本段事件分工重新写，只返回小说正文；不要增加其他分段的事件。\n\n"
+                    "开头必须接住上一段的人物位置、动作和知情状态；换时或换场必须自然交代。\n\n"
+                    f"本段计划：\n{segment_plans[index - 1]}\n\n上一段计划交接：\n{previous_plan_tail}"
+                    f"\n\n上一段正文结尾：\n{previous_tail}",
+                    suffix=f"-part-{index:02d}-gate-retry", allow_tools=False,
+                )
+                remaining = self._draft_segment_issues(part, target, parts) if count > 1 else []
+                if remaining:
+                    self.db.add_run_event(
+                        run_id, "error", "draft_segment_gate_failed",
+                        f"正文第 {index}/{count} 段仍有越界、重复或正文异常，已停止后续生成",
+                        stage="draft", metadata={"segment": index, "issues": remaining},
+                    )
+                    raise ValueError(f"正文第 {index} 段未通过本地检查，已有进度已保留")
             parts.append(part.strip())
             self.db.add_run_event(
                 run_id, "success", "segment_completed", f"正文第 {index}/{count} 段生成完成",
@@ -3510,6 +4173,10 @@ class WorkflowService:
             event["event_type"] == "polish_circuit_opened"
             for event in self.db.list_run_events(run_id)
         )
+        compact_circuit_open = False
+        compact_output_errors = 0
+        compact_output_route: str | None = None
+        preserved_segments = 0
         binding = self.db.get_role_binding("polish") or {}
         retry_signature = self._polish_retry_signature(binding)
         configured_fallback = bool(
@@ -3537,6 +4204,15 @@ class WorkflowService:
                     f"润色第 {index}/{len(parts)} 段已从检查点恢复",
                     stage="polish", metadata={"segment": index, "route": "checkpoint"},
                 )
+                if not targeted:
+                    self.db.add_run_event(
+                        run_id, "info", "polish_segment_progress",
+                        f"已完成 {index} / {len(parts)} 段，其中 {preserved_segments} 段保留原文",
+                        stage="polish", metadata={
+                            "segment": index, "total": len(parts),
+                            "completed": index, "preserved": preserved_segments,
+                        },
+                    )
                 continue
             if round_input_tokens >= round_cap:
                 self.db.add_run_event(
@@ -3589,6 +4265,7 @@ class WorkflowService:
                 global_facts = []
                 previous_context = previous_tail
                 next_context = next_head
+            voice = character_fingerprints(project.path, part)
             positions = list(dict.fromkeys(
                 task["seven_step_position"] for task in tasks
                 if task.get("seven_step_position")
@@ -3623,7 +4300,7 @@ class WorkflowService:
                 prompt = (
                     f"STYLE PROFILE:\n{style_profile}\n\n"
                     f"RELEVANT CHARACTER VOICES:\n"
-                    f"{character_fingerprints(project.path, part)}\n\n"
+                    f"{voice}\n\n"
                     + revision_patch_context(
                         issue={
                             "tasks": tasks,
@@ -3657,7 +4334,7 @@ class WorkflowService:
                 prompt = (
                     f"STYLE PROFILE:\n{style_profile}\n\n"
                     f"RELEVANT CHARACTER VOICES:\n"
-                    f"{character_fingerprints(project.path, part)}\n\n"
+                    f"{voice}\n\n"
                     f"LOCAL PROSE FINDINGS:\n"
                     f"{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
                     + polish_context(
@@ -3673,10 +4350,29 @@ class WorkflowService:
                     )
                     + passage_prompt_context(passage_locks)
                 )
+            compact_prompt = self._compact_polish_prompt(
+                segment=part,
+                previous_context=previous_context,
+                next_context=next_context,
+                local_findings=local_report["findings"],
+                character_voice=voice,
+                locked_facts=[
+                    *authoritative_state.get("locked_facts", []),
+                    *authoritative_state.get("confirmed_facts", []),
+                    *global_facts,
+                ],
+                passage_locks=[{
+                    "id": lock.get("id"), "label": lock.get("label"),
+                    "mode": lock.get("mode"),
+                } for lock in passage_locks],
+                minimum_characters=minimum_characters,
+                maximum_characters=maximum_characters,
+            )
             part_suffix = f"{suffix}-part-{index:02d}"
             priority = bool(targeted or index in {1, len(parts)} or local_report["findings"])
             prefer_configured = bool(
-                configured_fallback and (primary_circuit_open or not priority)
+                targeted and configured_fallback
+                and (primary_circuit_open or not priority)
             )
             route = (
                 "circuit_fallback" if primary_circuit_open and prefer_configured else
@@ -3691,15 +4387,83 @@ class WorkflowService:
                 },
             )
             targeted_group_failed = False
-            try:
-                polished_part = await self._stage(
-                    run_id, run_path, project, "polish", constraints, prompt,
-                    suffix=part_suffix, allow_tools=False,
-                    prefer_configured_fallback=prefer_configured,
-                    output_source_characters=len(part),
-                    targeted_retry=targeted,
+            ordinary_preserved = False
+            compact_recovery_used = False
+            compact_fallback_used = False
+            ordinary_input_tokens = 0
+
+            async def split_failed_segment(exc: Exception) -> str:
+                children = self._split_failed_polish_segment(part)
+                if recovery_depth >= 2 or children is None:
+                    raise exc
+                self.db.add_run_event(
+                    run_id, "warning", "polish_segment_split",
+                    "模型输出受限，正在拆分当前片段后重试",
+                    stage="polish", metadata={
+                        "segment": index, "characters": len(part),
+                        "child_characters": [len(child) for child in children],
+                        "split_depth": recovery_depth + 1, "failed_route": route,
+                        "error": describe_error(exc),
+                    },
                 )
-                if getattr(polished_part, "receipt", {}).get("fallback_used"):
+                recovered = await self._polish_short_segments(
+                    run_id, run_path, project, constraints,
+                    self.SHORT_SEGMENT_SEPARATOR.join(children), plan_context,
+                    suffix=f"{part_suffix}-split-{recovery_depth + 1}",
+                    structural=False, recovery_depth=recovery_depth + 1,
+                    recovery_rule=revision_rule,
+                    targeted_context=current_targeted_context if targeted else None,
+                )
+                return recovered.replace(self.SHORT_SEGMENT_SEPARATOR, "\n\n")
+
+            try:
+                if not targeted:
+                    compact_recovery_used = compact_circuit_open
+                    (polished_part, ordinary_preserved, full_output_error,
+                     compact_fallback_used,
+                     ordinary_input_tokens) = await self._ordinary_polish_segment(
+                        run_id, run_path, project, constraints, part, prompt,
+                        compact_prompt, part_suffix, maximum_characters,
+                        configured_fallback, compact_circuit_open, {
+                            "segment": index, "total": len(parts),
+                            "completed": index - 1,
+                            "preserved": preserved_segments,
+                        },
+                    )
+                    compact_recovery_used = bool(
+                        compact_recovery_used or full_output_error
+                    )
+                    if full_output_error:
+                        if compact_output_route == route:
+                            compact_output_errors += 1
+                        else:
+                            compact_output_route = route
+                            compact_output_errors = 1
+                        if compact_output_errors >= 2 and not compact_circuit_open:
+                            compact_circuit_open = True
+                            self.db.add_run_event(
+                                run_id, "warning", "polish_compact_circuit_opened",
+                                "后续片段将直接使用精简要求恢复",
+                                stage="polish", metadata={
+                                    "segment": index, "total": len(parts),
+                                    "completed": index - 1,
+                                    "preserved": preserved_segments,
+                                    "route": route,
+                                },
+                            )
+                    elif not compact_circuit_open:
+                        compact_output_errors = 0
+                        compact_output_route = None
+                else:
+                    polished_part = await self._stage(
+                        run_id, run_path, project, "polish", constraints, prompt,
+                        suffix=part_suffix, allow_tools=False,
+                        prefer_configured_fallback=prefer_configured,
+                        output_source_characters=len(part),
+                        targeted_retry=True,
+                    )
+                if (targeted
+                        and getattr(polished_part, "receipt", {}).get("fallback_used")):
                     primary_circuit_open = True
                     self.db.add_run_event(
                         run_id, "warning", "polish_circuit_opened",
@@ -3720,33 +4484,18 @@ class WorkflowService:
                     },
                 )
             except Exception as exc:
-                children = self._split_failed_polish_segment(part)
-                if (not self._is_recoverable_polish_error(exc)
-                        or recovery_depth >= 2 or children is None):
+                recoverable = (
+                    self._is_polish_transport_error(exc)
+                    or (targeted and self._is_polish_output_error(exc))
+                )
+                if (self._is_fatal_model_configuration_error(exc)
+                        or not recoverable):
                     raise
-                self.db.add_run_event(
-                    run_id, "warning", "polish_segment_split",
-                    "模型输出受限，正在拆分当前片段后重试",
-                    stage="polish", metadata={
-                        "segment": index, "characters": len(part),
-                        "child_characters": [len(child) for child in children],
-                        "split_depth": recovery_depth + 1, "failed_route": route,
-                        "error": describe_error(exc),
-                    },
-                )
-                polished_part = await self._polish_short_segments(
-                    run_id, run_path, project, constraints,
-                    self.SHORT_SEGMENT_SEPARATOR.join(children), plan_context,
-                    suffix=f"{part_suffix}-split-{recovery_depth + 1}",
-                    structural=False, recovery_depth=recovery_depth + 1,
-                    recovery_rule=revision_rule,
-                    targeted_context=current_targeted_context if targeted else None,
-                )
-                polished_part = polished_part.replace(self.SHORT_SEGMENT_SEPARATOR, "\n\n")
-            round_input_tokens += int(
-                getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
+                polished_part = await split_failed_segment(exc)
+            round_input_tokens += (
+                int(getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0)
+                if targeted else ordinary_input_tokens
             )
-            voice = character_fingerprints(project.path, part)
             required = re.findall(r"(?m)^##\s+(.+)$", voice)
             assessment = assess_polish_candidate(
                 part, polished_part, required,
@@ -3755,6 +4504,9 @@ class WorkflowService:
             if targeted_group_failed:
                 assessment["accepted"] = False
                 assessment["reasons"].append("targeted_model_routes_failed")
+            if ordinary_preserved:
+                assessment["accepted"] = False
+                assessment["reasons"].append("model_routes_failed")
             rhythm_reasons = {
                 "sentence_rhythm_not_improved",
                 "timestamp_scene_fragment_not_improved",
@@ -3779,8 +4531,9 @@ class WorkflowService:
                     f"passage_protection:{item['id']}"
                     for item in passage_validation["conflicts"]
                 )
-            if (not targeted_group_failed and not assessment["accepted"] and configured_fallback
-                    and not prefer_configured):
+            if (not targeted_group_failed and not ordinary_preserved
+                    and not assessment["accepted"] and configured_fallback
+                    and not prefer_configured and not compact_fallback_used):
                 self.db.add_run_event(
                     run_id, "warning", "polish_validation_fallback",
                     f"润色第 {index}/{len(parts)} 段未通过本地验收，正在改用备用模型重试",
@@ -3788,28 +4541,43 @@ class WorkflowService:
                         "segment": index, "reasons": assessment["reasons"],
                     },
                 )
+                fallback_candidate: str | None = None
                 try:
-                    polished_part = await self._stage(
-                        run_id, run_path, project, "polish", constraints, prompt,
+                    candidate = await self._stage(
+                        run_id, run_path, project, "polish", constraints,
+                        compact_prompt if compact_recovery_used else prompt,
                         suffix=f"{part_suffix}-validation-fallback", allow_tools=False,
                         prefer_configured_fallback=True,
                         output_source_characters=len(part),
                         targeted_retry=targeted,
+                        retry_polish_output_limit=targeted,
                     )
+                    round_input_tokens += int(
+                        getattr(candidate, "receipt", {}).get("input_tokens", 0) or 0
+                    )
+                    if not targeted:
+                        self._raise_for_unusable_polish_output(
+                            candidate, len(part), maximum_characters,
+                        )
+                    fallback_candidate = candidate
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
-                    self.db.add_run_event(
-                        run_id, "warning", "polish_validation_fallback_failed",
-                        f"润色第 {index}/{len(parts)} 段的备用模型重试失败，已保留原文",
-                        stage="polish", metadata={
-                            "segment": index, "error": describe_error(exc),
-                        },
-                    )
-                else:
-                    round_input_tokens += int(
-                        getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
-                    )
+                    round_input_tokens += self._polish_input_tokens(exc)
+                    if self._is_fatal_model_configuration_error(exc):
+                        raise
+                    if self._is_polish_transport_error(exc):
+                        fallback_candidate = await split_failed_segment(exc)
+                    else:
+                        self.db.add_run_event(
+                            run_id, "warning", "polish_validation_fallback_failed",
+                            f"润色第 {index}/{len(parts)} 段的备用模型重试失败，已保留原文",
+                            stage="polish", metadata={
+                                "segment": index, "error": describe_error(exc),
+                            },
+                        )
+                if fallback_candidate is not None:
+                    polished_part = fallback_candidate
                     assessment = assess_polish_candidate(
                         part, polished_part, required,
                         minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
@@ -3836,7 +4604,8 @@ class WorkflowService:
                             for item in passage_validation["conflicts"]
                         )
             rhythm_retried = False
-            if not targeted and rhythm_reasons.intersection(assessment["reasons"]):
+            if (not targeted and not compact_recovery_used
+                    and rhythm_reasons.intersection(assessment["reasons"])):
                 rhythm_retried = True
                 reason = next(item for item in (
                     "sentence_rhythm_not_improved",
@@ -3960,11 +4729,38 @@ class WorkflowService:
                     checkpoint_root, index, part, polished_part,
                     change_evidence=change_evidence,
                 )
+            elif not targeted:
+                if not ordinary_preserved:
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_segment_preserved",
+                        "本段未完成精修，已保留原文并继续",
+                        stage="polish", metadata={
+                            "segment": index, "total": len(parts),
+                            "completed": index, "preserved": preserved_segments + 1,
+                            "reasons": assessment["reasons"],
+                        },
+                    )
+                preserved_segments += 1
+                self._save_polish_checkpoint(
+                    checkpoint_root, index, part, part,
+                    status="preserved_source", retry_signature=retry_signature,
+                    accepted=False,
+                    change_evidence=change_evidence,
+                )
             elif rhythm_retried:
                 self._save_polish_checkpoint(
                     checkpoint_root, index, part, part,
                     status="preserved_after_retry", retry_signature=retry_signature,
-                    change_evidence=change_evidence,
+                    accepted=False, change_evidence=change_evidence,
+                )
+            if not targeted:
+                self.db.add_run_event(
+                    run_id, "info", "polish_segment_progress",
+                    f"已完成 {index} / {len(parts)} 段，其中 {preserved_segments} 段保留原文",
+                    stage="polish", metadata={
+                        "segment": index, "total": len(parts),
+                        "completed": index, "preserved": preserved_segments,
+                    },
                 )
         restored_groups: list[str] = []
         for group in range(1, len(original_parts) + 1):
@@ -4032,13 +4828,12 @@ class WorkflowService:
         return polished
 
     @staticmethod
-    def _is_recoverable_polish_error(exc: Exception) -> bool:
+    def _is_polish_transport_error(exc: Exception) -> bool:
         message = str(exc).lower()
         return any(marker in message for marker in (
             "502", "504", "524", "timeout", "timed out", "connecterror",
             "connection reset", "connection refused", "connection attempts failed",
             "server disconnected", "bad gateway", "gateway timeout",
-            "finish_reason=max_tokens",
         ))
 
     @classmethod
@@ -4224,7 +5019,9 @@ class WorkflowService:
                      model_role: str | None = None, allow_tools: bool = True,
                      prefer_configured_fallback: bool = False,
                      output_source_characters: int | None = None,
-                     targeted_retry: bool = False) -> str:
+                     targeted_retry: bool = False,
+                     primary_only: bool = False,
+                     retry_polish_output_limit: bool = True) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -4251,7 +5048,7 @@ class WorkflowService:
                     [*skill_run.receipts, *optional.receipts],
                 )
             skills = [receipt.skill_name for receipt in skill_run.receipts]
-            compact_context = stage in {"polish", "revision_plan"}
+            compact_context = stage in {"polish", "revision_plan", "final_review"}
             model_skill_prompt = (
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
                 if compact_context else skill_run.prompt
@@ -4348,6 +5145,11 @@ class WorkflowService:
                         gateway_role, system, user,
                         max_output_tokens=output_budget,
                     )
+                elif primary_only and hasattr(self.gateway, "complete_primary"):
+                    result = await self.gateway.complete_primary(
+                        gateway_role, system, user,
+                        max_output_tokens=output_budget,
+                    )
                 elif isinstance(self.gateway, ModelGateway):
                     result = await self.gateway.complete(
                         gateway_role, system, user,
@@ -4441,7 +5243,8 @@ class WorkflowService:
                         gateway_role, retry_system, user,
                         max_output_tokens=min(8192, fallback_ceiling or 8192),
                     )
-            if (stage == "polish" and gateway_role == "polish" and not allow_tools
+            if (retry_polish_output_limit and stage == "polish"
+                    and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
                 used_fallback = bool(
@@ -4487,7 +5290,8 @@ class WorkflowService:
                         result = await self.gateway.complete(
                             gateway_role, system, user, max_output_tokens=retry_budget,
                         )
-            if (stage == "polish" and gateway_role == "polish" and not allow_tools
+            if (retry_polish_output_limit and stage == "polish"
+                    and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") in {"tool_use", "tool_calls"}):
                 self.db.add_run_event(
@@ -4510,14 +5314,24 @@ class WorkflowService:
                         gateway_role, retry_system, user,
                         max_output_tokens=output_budget,
                     )
+            if (not retry_polish_output_limit and stage == "polish"
+                    and gateway_role == "polish"
+                    and result.receipt.get("finish_reason") == "max_tokens"):
+                error = RuntimeError(
+                    "polish output incomplete (finish_reason=max_tokens)"
+                )
+                error.receipt = result.receipt
+                raise error
             if not result.text.strip():
-                raise RuntimeError(
+                error = RuntimeError(
                     f"{stage} model returned empty output "
                     f"(model={result.receipt.get('model_name', 'unknown')}, "
                     f"input_tokens={result.receipt.get('input_tokens', 0)}, "
                     f"output_tokens={result.receipt.get('output_tokens', 0)}, "
                     f"finish_reason={result.receipt.get('finish_reason', 'unknown')})"
                 )
+                error.receipt = result.receipt
+                raise error
             if result.receipt.get("fallback_used"):
                 fallback_metadata = {
                     "fallback_type": "configured",
@@ -4546,8 +5360,12 @@ class WorkflowService:
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
             atomic_write(run_path / "receipts" / f"{name}.json", json.dumps(receipt, ensure_ascii=False, indent=2))
+            stage_completed_message = (
+                "模型已返回，正在校验终审格式"
+                if stage == "final_review" else f"{stage} 执行完成"
+            )
             self.db.add_run_event(
-                run_id, "success", "stage_completed", f"{stage} 执行完成", stage=stage,
+                run_id, "success", "stage_completed", stage_completed_message, stage=stage,
                 metadata={
                     "provider_id": result.receipt.get("provider_id"),
                     "model_name": result.receipt.get("model_name"),
@@ -4640,10 +5458,13 @@ class WorkflowService:
             return None
         digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
         polished = value.get("polished")
+        if "accepted" in value and value["accepted"] is not True:
+            return None
         if (value.get("status") == "preserved_after_retry"
                 and value.get("retry_signature") != retry_signature):
             return None
-        return polished if value.get("source_sha256") == digest and isinstance(polished, str) else None
+        source_hash = value.get("source_sha256", value.get("source_hash"))
+        return polished if source_hash == digest and isinstance(polished, str) else None
 
     @classmethod
     def _polish_checkpoint_progress(cls, root: Path, parts: list[str],
@@ -4666,14 +5487,21 @@ class WorkflowService:
     def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str,
                                 status: str = "accepted",
                                 retry_signature: str | None = None,
+                                accepted: bool = True,
                                 change_evidence: dict | None = None) -> None:
-        atomic_write(root / f"part-{index:02d}.json", json.dumps({
-            "source_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        source_hash = hashlib.sha256(source.encode("utf-8")).hexdigest()
+        checkpoint = {
             "polished": polished,
+            "accepted": accepted,
             "status": status,
             "retry_signature": retry_signature,
             "change_evidence": change_evidence or {"ranges": [], "changed_ratio": 0.0},
-        }, ensure_ascii=False, indent=2))
+        }
+        checkpoint["source_sha256" if accepted else "source_hash"] = source_hash
+        atomic_write(
+            root / f"part-{index:02d}.json",
+            json.dumps(checkpoint, ensure_ascii=False, indent=2),
+        )
 
     def _post_write_maintenance(self, run_id: str, project: Project) -> None:
         skill = self.skills.skills(project.path).get("story-maintenance")
