@@ -163,6 +163,7 @@ CREATE TABLE IF NOT EXISTS skill_executions(
   project_id TEXT NOT NULL,
   skill_name TEXT NOT NULL,
   content_hash TEXT NOT NULL,
+  context_hash TEXT,
   status TEXT NOT NULL,
   error TEXT,
   created_at TEXT NOT NULL,
@@ -419,6 +420,11 @@ class Database:
                 )
             if "classification_json" not in columns:
                 connection.execute("ALTER TABLE reference_sources ADD COLUMN classification_json TEXT")
+            skill_columns = {
+                row["name"] for row in connection.execute("PRAGMA table_info(skill_executions)")
+            }
+            if "context_hash" not in skill_columns:
+                connection.execute("ALTER TABLE skill_executions ADD COLUMN context_hash TEXT")
             connection.execute(
                 "UPDATE reference_sources SET classification_json=? WHERE classification_json IS NULL",
                 (json.dumps({"trust": "legacy", "confidence": 0.5,
@@ -709,6 +715,19 @@ class Database:
                 (run_id, project_id, workflow, status),
             )
 
+    def create_run_if_idle(self, run_id: str, project_id: str, workflow: str,
+                           status: str = "queued") -> bool:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "INSERT INTO runs (id, project_id, workflow, status, current_stage, error, created_at, updated_at) "
+                "SELECT ?, ?, ?, ?, NULL, NULL, datetime('now'), datetime('now') "
+                "WHERE NOT EXISTS ("
+                "SELECT 1 FROM runs WHERE project_id=? AND status IN ('queued','running','cancelling')"
+                ")",
+                (run_id, project_id, workflow, status, project_id),
+            )
+        return cursor.rowcount == 1
+
     def update_run(self, run_id: str, status: str, current_stage: str | None = None,
                    error: str | None = None) -> None:
         with self.connect() as connection:
@@ -719,18 +738,31 @@ class Database:
 
     def claim_run_status(
         self, run_id: str, expected_statuses: set[str],
-        status: str, current_stage: str | None = None,
+        status: str, current_stage: str | None = None, *,
+        require_project_idle: bool = False,
     ) -> bool:
         if not expected_statuses:
             return False
         ordered = sorted(expected_statuses)
         placeholders = ", ".join("?" for _ in ordered)
+        idle_clause = ""
+        arguments: list[Any] = [status, current_stage, run_id, *ordered]
+        if require_project_idle:
+            idle_clause = (
+                " AND NOT EXISTS ("
+                "SELECT 1 FROM runs active WHERE active.project_id=("
+                "SELECT project_id FROM runs WHERE id=?"
+                ") AND active.id<>? "
+                "AND active.status IN ('queued','running','cancelling')"
+                ")"
+            )
+            arguments.extend((run_id, run_id))
         with self.connect() as connection:
             cursor = connection.execute(
                 "UPDATE runs SET status=?, current_stage=?, error=NULL, "
                 "updated_at=datetime('now') "
-                f"WHERE id=? AND status IN ({placeholders})",
-                (status, current_stage, run_id, *ordered),
+                f"WHERE id=? AND status IN ({placeholders}){idle_clause}",
+                arguments,
             )
         return cursor.rowcount == 1
 
@@ -926,11 +958,14 @@ class Database:
 
     def create_skill_execution(self, execution_id: str, project_id: str,
                                skill_name: str, content_hash: str,
-                               status: str = "pending") -> None:
+                               status: str = "pending", *,
+                               context_hash: str | None = None) -> None:
         with self.connect() as connection:
             connection.execute(
-                "INSERT INTO skill_executions VALUES (?, ?, ?, ?, ?, NULL, datetime('now'), datetime('now'))",
-                (execution_id, project_id, skill_name, content_hash, status),
+                "INSERT INTO skill_executions "
+                "(id, project_id, skill_name, content_hash, context_hash, status, error, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, NULL, datetime('now'), datetime('now'))",
+                (execution_id, project_id, skill_name, content_hash, context_hash, status),
             )
 
     def update_skill_execution(self, execution_id: str, status: str,
@@ -940,6 +975,13 @@ class Database:
                 "UPDATE skill_executions SET status=?, error=?, updated_at=datetime('now') WHERE id=?",
                 (status, error, execution_id),
             )
+
+    def get_skill_execution(self, execution_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM skill_executions WHERE id=?", (execution_id,),
+            ).fetchone()
+        return dict(row) if row else None
 
     def has_completed_skill_execution(self, project_id: str, skill_name: str,
                                       content_hash: str) -> bool:
@@ -975,6 +1017,60 @@ class Database:
                 "UPDATE file_proposals SET status=?, error=? WHERE id=?",
                 (status, error, proposal_id),
             )
+
+    def update_file_proposals_status(
+        self, execution_id: str, current_status: str, status: str,
+        error: str | None = None,
+    ) -> int:
+        with self.connect() as connection:
+            cursor = connection.execute(
+                "UPDATE file_proposals SET status=?, error=? "
+                "WHERE execution_id=? AND status=?",
+                (status, error, execution_id, current_status),
+            )
+        return cursor.rowcount
+
+    def file_proposal_summary(self, execution_id: str) -> dict[str, Any]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT status, COUNT(*) count FROM file_proposals "
+                "WHERE execution_id=? GROUP BY status ORDER BY status",
+                (execution_id,),
+            ).fetchall()
+        counts = {row["status"]: int(row["count"]) for row in rows}
+        recoverable = {"pending", "retained", "failed"}
+        return {
+            "execution_id": execution_id,
+            "total": sum(counts.values()),
+            "recoverable_count": sum(
+                count for status, count in counts.items() if status in recoverable
+            ),
+            "counts": counts,
+        }
+
+    def list_recoverable_skill_executions(
+        self, project_id: str, skill_name: str | None = None,
+        content_hash: str | None = None, context_hash: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = (
+            "SELECT * FROM skill_executions WHERE project_id=? AND status='recoverable'"
+        )
+        arguments: list[Any] = [project_id]
+        if skill_name:
+            query += " AND skill_name=?"
+            arguments.append(skill_name)
+        if content_hash:
+            query += " AND content_hash=?"
+            arguments.append(content_hash)
+        if context_hash:
+            query += " AND context_hash=?"
+            arguments.append(context_hash)
+        query += " ORDER BY updated_at DESC, rowid DESC"
+        with self.connect() as connection:
+            rows = [dict(row) for row in connection.execute(query, arguments)]
+        for row in rows:
+            row["proposal_summary"] = self.file_proposal_summary(row["id"])
+        return rows
 
     def create_reference_source(self, source_id: str, title: str, source_type: str,
                                 source_uri: str | None = None, platform: str | None = None,

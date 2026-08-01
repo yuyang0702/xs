@@ -18,6 +18,20 @@ async def test_reference_analysis_task_records_failure() -> None:
     assert state["finished_at"]
 
 
+async def test_reference_analysis_task_names_an_error_without_a_message() -> None:
+    manager = ReferenceAnalysisTaskManager()
+
+    async def fail(_progress):
+        raise TimeoutError()
+
+    manager.start("source-1", fail)
+    await asyncio.sleep(0)
+
+    assert manager.get_for_source("source-1")["error"] == (
+        "TimeoutError (provider returned no error detail)"
+    )
+
+
 async def test_reference_analysis_task_can_be_cancelled() -> None:
     manager = ReferenceAnalysisTaskManager()
     blocker = asyncio.Event()

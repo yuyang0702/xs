@@ -57,5 +57,41 @@ def test_migrated_legacy_sample_is_not_injected_twice(tmp_path: Path) -> None:
     result = ensure_style_profile(project)
 
     assert "保留" in result
-    assert "旧范文规则" not in result
+    assert result.count("旧范文规则") == 1
+    assert "已确认基础文笔" in result
     assert "旧范文规则" in (tmp_path / "style-profile.md").read_text(encoding="utf-8")
+
+
+def test_active_prose_baseline_is_merged_at_runtime_without_rewriting_profile(tmp_path: Path) -> None:
+    project = type("Project", (), {"path": tmp_path, "metadata": {}})()
+    profile = "# 用户文风\n\n保留这段自定义说明。\n"
+    (tmp_path / "style-profile.md").write_text(profile, encoding="utf-8")
+    learning = tmp_path / "learning"
+    learning.mkdir()
+    (learning / "prose_baseline.json").write_text(json.dumps({
+        "version": 3,
+        "status": "active",
+        "data": {
+            "sentence_rhythm": ["关键动作使用短句。"],
+            "dialogue": "每次回应都改变信息或关系。",
+        },
+    }, ensure_ascii=False), encoding="utf-8")
+
+    result = ensure_style_profile(project)
+
+    assert "句子节奏：关键动作使用短句。" in result
+    assert "对白方式：每次回应都改变信息或关系。" in result
+    assert (tmp_path / "style-profile.md").read_text(encoding="utf-8") == profile
+
+
+def test_inactive_prose_baseline_is_not_merged(tmp_path: Path) -> None:
+    project = type("Project", (), {"path": tmp_path, "metadata": {}})()
+    (tmp_path / "style-profile.md").write_text("# 用户文风\n", encoding="utf-8")
+    learning = tmp_path / "learning"
+    learning.mkdir()
+    (learning / "prose_baseline.json").write_text(json.dumps({
+        "status": "stale",
+        "data": {"dialogue": ["不应进入运行时。"]},
+    }, ensure_ascii=False), encoding="utf-8")
+
+    assert "不应进入运行时" not in ensure_style_profile(project)

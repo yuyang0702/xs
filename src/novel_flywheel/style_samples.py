@@ -66,12 +66,14 @@ class StyleSampleService:
             )
             profile = self._parse_profile(repaired.text)
         folder = Path(project.path) / "style-samples"
-        base = self._without_managed_block(ensure_style_profile(project))
+        profile_path = Path(project.path) / "style-profile.md"
+        ensure_style_profile(project)
+        base = self._without_managed_block(profile_path.read_text(encoding="utf-8"))
         atomic_write(folder / "reference.txt", sample + "\n")
         atomic_write(folder / "profile.json", json.dumps({
             **profile, "source_name": Path(source_name).name[:160],
         }, ensure_ascii=False, indent=2) + "\n")
-        atomic_write(Path(project.path) / "style-profile.md", base.rstrip() + "\n\n" + self._render(profile))
+        atomic_write(profile_path, base.rstrip() + "\n\n" + self._render(profile))
         return self.status(project)
 
     def delete(self, project: Any) -> dict:

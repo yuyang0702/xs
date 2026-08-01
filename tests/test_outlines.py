@@ -5,7 +5,10 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
-from novel_flywheel.outlines import OutlineService
+from novel_flywheel.outlines import (
+    OutlineService, extract_outline_characters, local_outline_manifest,
+    normalize_outline_manifest, outline_events,
+)
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.reference_library import ReferenceLibrary
 
@@ -74,6 +77,50 @@ def test_local_comparison_reports_story_blocks_and_does_not_need_a_model(tmp_pat
     assert report["can_apply"] is True
 
 
+def test_outline_comparison_uses_market_opening_signals_as_non_blocking_advice(tmp_path) -> None:
+    db, projects, project, service = setup_outline_service(tmp_path)
+    learning = LearningSystem(
+        db, ReferenceLibrary(db, tmp_path / "references"), projects,
+    )
+    learning.save_artifact(project.id, "market_baseline", {
+        "sample_count": 12, "confidence_level": "advisory",
+        "opening": {"question_percent": 75, "anomaly_percent": 66.7},
+        "mechanisms": [{"name": "开场目标受阻", "work_count": 8, "position_median": 5}],
+        "boundary": "只描述本地已确认样本，不代表质量标准。",
+    })
+    projects.set_market_baseline_selection(
+        project.id, enabled=True,
+        key={"platform": "知乎", "ranking_name": "盐选热榜", "category": "悬疑", "length_type": "short"},
+    )
+    candidate = service.create_candidate(
+        project.id,
+        "# 候选大纲\n\n## 开头\n主角整理朋友留下的旧照片。\n\n## 结尾\n主角找到朋友。\n",
+    )
+
+    report = service.compare_candidate(project.id, candidate["id"])
+
+    assert report["market_check"]["status"] == "advisory"
+    assert {item["signal"] for item in report["market_check"]["signals"]} == {
+        "opening_question", "opening_anomaly",
+    }
+    assert all(item["detected"] is False for item in report["market_check"]["signals"])
+    assert report["market_check"]["advisory_only"] is True
+    assert report["can_apply"] is True
+    assert not any("市场" in item for item in report["risks"])
+    assert report["model_called"] is False
+
+    learning.save_artifact(project.id, "market_baseline", {
+        "sample_count": 3, "confidence_level": "insufficient",
+        "opening": {"question_percent": 100, "anomaly_percent": 100},
+        "mechanisms": [{"name": "样本不足的机制", "work_count": 3}],
+    })
+    insufficient = service.compare_candidate(project.id, candidate["id"])["market_check"]
+    assert insufficient["status"] == "insufficient"
+    assert insufficient["signals"] == []
+    assert insufficient["mechanisms"] == []
+    assert "数量不足" in insufficient["message"]
+
+
 def test_canon_conflicts_require_a_choice_and_can_keep_project_facts(tmp_path) -> None:
     _db, projects, project, service = setup_outline_service(tmp_path)
     metadata_path = project.path / "project.json"
@@ -119,6 +166,158 @@ def test_conflicting_candidate_can_create_independent_project(tmp_path) -> None:
     assert service.current(created["id"])["content"].startswith("# 错认鸾枝")
     assert service.get_candidate(project.id, candidate["id"])["status"] == "pending"
     assert projects.get(project.id).path.is_dir()
+    new_project = projects.get(created["id"])
+    story = (new_project.path / "story.md").read_text(encoding="utf-8")
+    assert "## Confirmed Story Requirements" in story
+    assert new_project.metadata["initialization_skills"] == [
+        "story-init", "character-management", "worldbuilding", "plot-structure",
+    ]
+    assert new_project.title == "错认鸾枝（新大纲）"
+
+
+def test_confirmed_outline_creates_stable_event_ids() -> None:
+    content = (
+        "# 《归途》小说大纲\n\n## 开头\n收到死者来信。\n\n"
+        "## 中段\n**第一次营救：失败**\n\n## 结尾\n付出代价后救回朋友。\n"
+    )
+
+    before = outline_events(content)
+    after = outline_events(content.replace("收到死者来信。", "深夜收到死者来信。"))
+
+    assert [item["label"] for item in before] == ["开头", "中段", "第一次营救：失败", "结尾"]
+    assert [item["id"] for item in before] == [item["id"] for item in after]
+
+
+def test_outline_character_manifest_reads_only_explicit_named_roles() -> None:
+    content = """# 大纲
+
+## 人物设定
+
+### 女主（花穗）
+- 性情泼辣直爽，目标是离开深宅。
+
+### 男主（裴砚行）
+- 身份是沈家故交之子。
+
+### 重要配角
+- **沈老夫人**：沈家主母。
+- **沈大小姐**：名门闺秀。
+"""
+
+    characters = extract_outline_characters(content)
+
+    assert [item["name"] for item in characters] == [
+        "花穗", "裴砚行", "沈老夫人", "沈大小姐",
+    ]
+    assert not {"性情", "目标", "身份"} & {item["name"] for item in characters}
+
+
+def test_outline_manifest_collapses_model_labels_for_the_same_evidence() -> None:
+    manifest = normalize_outline_manifest({
+        "plot_arcs": [
+            {"name": "第一幕：错入高门（约3000字）", "evidence": "### 第一幕：错入高门（约3000字）"},
+            {"name": "第一幕：错入高门", "evidence": "### 第一幕：错入高门（约3000字）"},
+        ],
+        "questions": [
+            {"name": "花穗被人塞进轿子，带回沈府冒充三小姐", "evidence": "- **开篇钩子**：花穗被错认。"},
+            {"name": "花穗为何被错认？", "evidence": "- **开篇钩子**：花穗被错认。"},
+        ],
+    })
+
+    assert [item["name"] for item in manifest["plot_arcs"]] == ["第一幕：错入高门"]
+    assert [item["name"] for item in manifest["questions"]] == ["花穗为何被错认？"]
+
+
+@pytest.mark.asyncio
+async def test_material_manifest_rejects_invented_entities_and_reuses_outline_cache(tmp_path) -> None:
+    db, projects, project, _service = setup_outline_service(tmp_path)
+
+    class Gateway:
+        calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            return type("Result", (), {
+                "text": json.dumps({
+                    "characters": [
+                        {"name": "花穗", "role": "protagonist", "evidence": "### 女主（花穗）"},
+                        {"name": "张三", "role": "supporting", "evidence": "### 女主（花穗）"},
+                    ],
+                    "world": [],
+                    "locations": [
+                        {"name": "沈府", "evidence": "- **地点**：沈府"},
+                        {"name": "京城", "evidence": "- **地点**：沈府"},
+                    ],
+                    "plot_arcs": [], "timeline": [], "promises": [],
+                    "questions": [], "constraints": [],
+                }, ensure_ascii=False),
+                "receipt": {"model_name": "test-planner"},
+            })()
+
+    gateway = Gateway()
+    service = OutlineService(db, projects, gateway)
+    first = service.create_candidate(project.id, """# 大纲
+
+## 人物设定
+### 女主（花穗）
+
+## 章节大纲
+### 第一幕：入府
+#### 第1章·错认
+
+- **地点**：沈府
+""")
+    service.apply_candidate(project.id, first["id"])
+
+    manifest = await service.material_manifest(project.id)
+    cached = await service.material_manifest(project.id)
+
+    assert gateway.calls == 1
+    assert cached == manifest
+    assert [item["name"] for item in manifest["characters"]] == ["花穗"]
+    assert [item["name"] for item in manifest["locations"]] == ["沈府"]
+    assert manifest["_review"]["status"] == "model_confirmed"
+
+    changed = service.create_candidate(project.id, service.current(project.id)["content"] + "\n#### 第2章·查账\n")
+    service.apply_candidate(project.id, changed["id"])
+    await service.material_manifest(project.id)
+    assert gateway.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_material_manifest_uses_strict_local_result_when_planning_model_is_unavailable(
+    tmp_path,
+) -> None:
+    db, projects, project, _service = setup_outline_service(tmp_path)
+
+    class Gateway:
+        available = False
+
+        async def complete(self, *args, **kwargs):
+            if not self.available:
+                raise LookupError("planning role is not configured")
+            return type("Result", (), {
+                "text": json.dumps({key: [] for key in (
+                    "characters", "world", "locations", "plot_arcs", "timeline",
+                    "promises", "questions", "constraints",
+                )}),
+                "receipt": {"model_name": "planner"},
+            })()
+
+    gateway = Gateway()
+    service = OutlineService(db, projects, gateway)
+    candidate = service.create_candidate(project.id, "# 正式大纲\n\n## 开头\n门被推开。\n")
+    service.apply_candidate(project.id, candidate["id"])
+
+    manifest = await service.material_manifest(project.id)
+
+    assert manifest["_review"]["status"] == "local_only"
+    assert manifest["characters"] == []
+    assert local_outline_manifest("普通描述，不是人物清单。")["characters"] == []
+
+    gateway.available = True
+    reviewed = await service.material_manifest(project.id)
+    assert reviewed["_review"]["status"] == "model_confirmed"
 
 
 def test_conflicting_current_outline_can_create_clean_project_without_changing_source(

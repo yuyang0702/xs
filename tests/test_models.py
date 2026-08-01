@@ -2,7 +2,7 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import ModelResponse, ToolCall
-from novel_flywheel.models import ModelGateway
+from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
 from novel_flywheel.providers.registry import ResolvedModel
 from novel_flywheel.providers.http import ToolCapabilityError
 
@@ -11,6 +11,15 @@ class FakeAdapter:
     async def complete(self, request):
         assert request.model == "actual-model"
         return ModelResponse(text="result", input_tokens=10, output_tokens=20, raw_request_id="req-1")
+
+
+def test_routes_exhausted_names_errors_without_provider_detail() -> None:
+    error = ModelRoutesExhaustedError(TimeoutError(), RuntimeError())
+
+    assert str(error) == (
+        "主模型失败：TimeoutError (provider returned no error detail)；"
+        "备用模型失败：RuntimeError (provider returned no error detail)"
+    )
 
 
 class FakeRegistry:
@@ -49,6 +58,17 @@ class FlakyConnectAdapter:
         self.calls += 1
         if self.calls == 1:
             raise RuntimeError("All connection attempts failed")
+        return ModelResponse(text="recovered", input_tokens=2, output_tokens=3)
+
+
+class FlakyToolConnectAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls == 1:
+            raise RuntimeError("peer closed connection without sending complete message body")
         return ModelResponse(text="recovered", input_tokens=2, output_tokens=3)
 
 
@@ -214,6 +234,30 @@ async def test_gateway_retries_one_transient_connect_failure_before_fallback(tmp
 
     assert len(registry.primary_adapters) == 1
     assert registry.primary_adapters[0].calls == 2
+    assert result.text == "recovered"
+    assert result.receipt.get("fallback_used") is not True
+
+
+@pytest.mark.asyncio
+async def test_tool_gateway_retries_one_transient_read_failure_before_fallback(tmp_path, monkeypatch) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("review", "primary-provider", "primary-model", "fallback-provider", "fallback-model")
+    primary = FlakyToolConnectAdapter()
+
+    class Registry(ConfiguredFallbackRegistry):
+        def resolve(self, provider_id, model_id):
+            if provider_id == "primary-provider":
+                return ResolvedModel(provider_id, model_id, "primary", primary)
+            return super().resolve(provider_id, model_id)
+
+    monkeypatch.setattr(ModelGateway, "CONNECT_RETRY_DELAY", 0)
+    result = await ModelGateway(db, Registry()).complete_with_tools(
+        "review", "rules", "review", Toolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert primary.calls == 2
     assert result.text == "recovered"
     assert result.receipt.get("fallback_used") is not True
 
@@ -446,6 +490,101 @@ class ReadUntilForcedAdapter:
         return ModelResponse(text="# Complete draft", input_tokens=5, output_tokens=120)
 
 
+class PrematureControlledAdapter:
+    def __init__(self):
+        self.calls = 0
+        self.required_tools = []
+
+    async def complete(self, request):
+        self.calls += 1
+        self.required_tools.append(request.required_tool)
+        if self.calls == 1:
+            return ModelResponse(text="done", input_tokens=3, output_tokens=1)
+        assert "controlled task is not complete" in request.messages[-1].content
+        return ModelResponse(tool_calls=[ToolCall(
+            id="complete", name="complete_skill", arguments={"summary": "finished"},
+        )])
+
+
+class ForceUnsupportedThenToolAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if request.required_tool:
+            raise ToolCapabilityError("tool_choice is not supported")
+        if self.calls == 2:
+            return ModelResponse(tool_calls=[ToolCall(
+                id="search", name="search_chapters", arguments={"query": "all"},
+            )])
+        return ModelResponse(tool_calls=[ToolCall(
+            id="complete", name="complete_skill", arguments={"summary": "finished"},
+        )])
+
+
+class ProposalThenRouteFailureAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls == 1:
+            return ModelResponse(tool_calls=[ToolCall(
+                id="proposal", name="create_file_proposal", arguments={},
+            )])
+        raise RuntimeError("primary route ended before complete_skill")
+
+
+class RecoverableProposalToolbox:
+    def __init__(self):
+        self.ready = False
+
+    def definitions(self):
+        from novel_flywheel.domain.models import ToolDefinition
+        return [
+            ToolDefinition(name="create_file_proposal", description="Create", input_schema={"type": "object"}),
+            ToolDefinition(name="complete_skill", description="Complete", input_schema={"type": "object"}),
+        ]
+
+    def execute(self, name, arguments):
+        if name == "create_file_proposal":
+            self.ready = True
+            return {"status": "pending"}
+        return {"status": "validating", "summary": "finished"}
+
+    def finalize_after_route_error(self):
+        return "Recovered complete proposals" if self.ready else None
+
+
+class NeverCalledAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        raise AssertionError("fallback must not run")
+
+
+class RepairContextToolbox(Toolbox):
+    def __init__(self):
+        self.prepared = []
+
+    def prepare_fallback(self, error):
+        self.prepared.append(str(error))
+        return "保留已有候选，只补缺失项：世界设定索引"
+
+
+class RepairContextAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        assert "保留已有候选，只补缺失项：世界设定索引" in request.messages[-1].content
+        return ModelResponse(text="fallback repaired", input_tokens=2, output_tokens=3)
+
+
 @pytest.mark.asyncio
 async def test_gateway_runs_tools_and_returns_execution_receipt(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -506,6 +645,94 @@ async def test_gateway_allows_toolbox_to_finalize_safely_at_round_limit(tmp_path
     assert adapter.calls == 8
     assert result.text == "Generated proposals are ready for local validation"
     assert result.receipt["tool_call_count"] == 8
+
+
+@pytest.mark.asyncio
+async def test_controlled_runtime_continues_after_premature_text_response(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "provider", "model", None, None)
+    adapter = PrematureControlledAdapter()
+
+    result = await ModelGateway(db, ToolRegistry(adapter)).complete_with_tools(
+        "planning", "rules", "execute", MixedCompletingToolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert adapter.calls == 2
+    assert adapter.required_tools == ["search_chapters", None]
+    assert result.text == "finished"
+    assert result.receipt["tool_call_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_controlled_runtime_retries_optional_tools_when_force_is_unsupported(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "provider", "model", None, None)
+    adapter = ForceUnsupportedThenToolAdapter()
+
+    result = await ModelGateway(db, ToolRegistry(adapter)).complete_with_tools(
+        "planning", "rules", "execute", MixedCompletingToolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert adapter.calls == 3
+    assert result.text == "finished"
+    assert result.receipt["tool_call_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_tool_gateway_uses_complete_local_proposals_before_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    primary = ProposalThenRouteFailureAdapter()
+    fallback = NeverCalledAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            adapter = primary if provider_id == "primary-provider" else fallback
+            return ResolvedModel(provider_id, model_id, model_id, adapter)
+
+    result = await ModelGateway(db, Registry()).complete_with_tools(
+        "planning", "rules", "execute", RecoverableProposalToolbox(),
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert result.text == "Recovered complete proposals"
+    assert result.receipt["execution_mode"] == "native_tools"
+    assert result.receipt["proposal_recovered"] is True
+    assert fallback.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_tool_gateway_passes_isolated_repair_context_to_fallback(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    toolbox = RepairContextToolbox()
+    fallback = RepairContextAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            adapter = FailingAdapter() if provider_id == "primary-provider" else fallback
+            return ResolvedModel(provider_id, model_id, model_id, adapter)
+
+    result = await ModelGateway(db, Registry()).complete_with_tools(
+        "planning", "rules", "execute", toolbox,
+        fallback_context=lambda: "fallback", run_id="run-1",
+    )
+
+    assert result.text == "fallback repaired"
+    assert toolbox.prepared == ["primary unavailable"]
+    assert result.receipt["fallback_used"] is True
 
 
 @pytest.mark.asyncio

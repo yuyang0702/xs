@@ -1,10 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from typing import Literal
+import asyncio
 import json
 
 from novel_flywheel.db import WIZARD_MUTATION_LOCK
 from novel_flywheel.errors import describe_error
+from novel_flywheel.skill_runtime import initialization_answers, initialization_stage_issues
+from novel_flywheel.storage import ProjectSnapshot
 
 
 router = APIRouter(prefix="/api", tags=["wizards"])
@@ -301,11 +304,13 @@ def apply_interview_suggestions(wizard_id: str, message_id: str,
 async def initialize_project_skills(project_id: str, request: Request) -> dict:
     try:
         project = request.app.state.projects.get(project_id)
-        answers = project.metadata.get("story_requirements", {})
+        current_outline = request.app.state.outlines.current(project_id)
+        answers = initialization_answers(project, current_outline)
+        learning_snapshot = request.app.state.learning.initialization_contexts(project_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found", "message": str(exc)}) from exc
     readiness = request.app.state.outlines.writing_readiness(project_id)
-    if not request.app.state.outlines.current(project_id)["exists"]:
+    if not current_outline["exists"]:
         raise HTTPException(status_code=409, detail={
             "code": "outline_confirmation_required",
             "message": "请先在“作品应用”中选择候选大纲并设为正式大纲，再准备人物和设定。",
@@ -319,31 +324,128 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
 
     async def operation(run_id: str) -> object:
         results = []
+        manifest = await request.app.state.outlines.material_manifest(project_id)
+        runtime_answers = {**answers, "outline_manifest": manifest}
+        learning_summary = learning_snapshot["summary"]
+        versions = learning_snapshot["versions"]
+        request.app.state.registry.db.add_run_event(
+            run_id, "info", "initialization_learning_snapshot",
+            "已固定本次使用的文笔和创作方法；正式大纲不会重新生成。",
+            stage="starting", metadata={**versions, **learning_summary},
+        )
+        request.app.state.registry.db.add_run_event(
+            run_id,
+            "success" if manifest.get("_review", {}).get("status") == "model_confirmed" else "warning",
+            "outline_manifest_ready",
+            manifest.get("_review", {}).get("message")
+            or "已核对正式大纲中的人物、地点、剧情、时间线、伏笔和创作约束。",
+            stage="starting", metadata={
+                key: len(value) for key, value in manifest.items() if isinstance(value, list)
+            },
+        )
         available = request.app.state.skill_gate.skills(project.path)
+        managed_roots = (
+            "characters", "worldbuilding", "plot", "continuity",
+            "chapters", "glossary", "scenes",
+        )
+        managed_files = (project.path / "story.md", project.path / "constraints.md")
+        before_paths = {
+            path.resolve() for root in managed_roots
+            for path in (project.path / root).rglob("*.md")
+        }
+        before_paths.update(path.resolve() for path in managed_files if path.is_file())
+        batch_snapshot = ProjectSnapshot.create(
+            project.path,
+            project.path / "snapshots" / f"initialization-{run_id}",
+            sorted(before_paths),
+        )
+
+        def rollback_batch(reason: str) -> None:
+            batch_snapshot.restore()
+            for root in managed_roots:
+                for path in (project.path / root).rglob("*.md"):
+                    if path.resolve() not in before_paths:
+                        path.unlink()
+            for path in managed_files:
+                if path.is_file() and path.resolve() not in before_paths:
+                    path.unlink()
+            for completed in results:
+                execution_id = completed.get("id") if isinstance(completed, dict) else None
+                if not execution_id:
+                    continue
+                request.app.state.registry.db.update_file_proposals_status(
+                    execution_id, "applied", "retained", reason,
+                )
+                request.app.state.registry.db.update_skill_execution(
+                    execution_id, "recoverable", reason,
+                )
+
         for skill_name in project.metadata.get("initialization_skills", []):
             skill = available.get(skill_name)
-            if skill and request.app.state.registry.db.has_completed_skill_execution(
-                    project_id, skill_name, skill.content_hash):
+            completed_before = skill and request.app.state.registry.db.has_completed_skill_execution(
+                project_id, skill_name, skill.content_hash,
+            )
+            issues = initialization_stage_issues(project, skill_name, runtime_answers)
+            if completed_before and not issues:
                 request.app.state.registry.db.add_run_event(
                     run_id, "success", "skill_skipped",
-                    f"{skill_name} already completed; skipped", stage=skill_name,
+                    f"{skill_name} 已完整完成，本次无需重复生成。", stage=skill_name,
                 )
                 continue
+            if completed_before and issues:
+                request.app.state.registry.db.add_run_event(
+                    run_id, "warning", "skill_incomplete",
+                    f"发现此前资料不完整，正在继续补齐：{'；'.join(issues)}",
+                    stage=skill_name, metadata={"issues": issues},
+                )
             request.app.state.registry.db.update_run(run_id, "running", skill_name)
             request.app.state.registry.db.add_run_event(
                 run_id, "info", "skill_started", f"开始执行 {skill_name}", stage=skill_name,
             )
             try:
+                stage_context = learning_snapshot["stages"].get(skill_name, {
+                    "source_versions": dict(versions), "prose_rules": [],
+                    "creative_methods": [],
+                })
+                request.app.state.registry.db.add_run_event(
+                    run_id, "info", "learning_context_loaded",
+                    f"本阶段参考 {len(stage_context['prose_rules'])} 条文笔规则、"
+                    f"{len(stage_context['creative_methods'])} 条创作方法。",
+                    stage=skill_name, metadata={
+                        "prose_rules": len(stage_context["prose_rules"]),
+                        "creative_methods": len(stage_context["creative_methods"]),
+                        "source_versions": stage_context.get("source_versions", {}),
+                    },
+                )
                 result = await request.app.state.skill_runtime.run(
-                    project_id, skill_name, answers, bootstrap=True,
+                    project_id, skill_name,
+                    {**runtime_answers, "confirmed_learning_context": stage_context},
+                    bootstrap=True,
                 )
                 if result.get("status") != "completed":
                     raise RuntimeError(
                         f"{skill_name} did not complete: {result.get('status', 'unknown')}"
                     )
+            except asyncio.CancelledError:
+                rollback_batch("初始化被取消，已保留可继续使用的候选资料")
+                request.app.state.registry.db.add_run_event(
+                    run_id, "warning", "initialization_rolled_back",
+                    "初始化已停止，正式人物、设定和剧情资料已恢复；候选资料会在下次继续时复用。",
+                    stage=skill_name,
+                )
+                raise
             except Exception as exc:
+                rollback_batch("后续初始化阶段失败，已恢复批次开始前的正式资料")
+                proposal_summary = getattr(exc, "proposal_summary", None)
                 request.app.state.registry.db.add_run_event(
                     run_id, "error", "skill_failed", str(exc), stage=skill_name,
+                    metadata={"proposal_summary": proposal_summary}
+                    if isinstance(proposal_summary, dict) else None,
+                )
+                request.app.state.registry.db.add_run_event(
+                    run_id, "warning", "initialization_rolled_back",
+                    "本次初始化没有完整通过，已恢复开始前的人物、设定和剧情资料。",
+                    stage=skill_name,
                 )
                 raise
             results.append(result)
@@ -351,6 +453,7 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
                 run_id, "success", "skill_completed", f"{skill_name} 执行完成",
                 stage=skill_name, metadata={"proposal_count": len(result.get("proposals", []))},
             )
+        batch_snapshot.discard()
         return results
 
     return request.app.state.run_tasks.start(project_id, "initialize-skills", operation)

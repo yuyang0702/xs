@@ -196,6 +196,10 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "data-provider-edit" in script
     assert "data-provider-delete" in script
     assert "editingProviderId" in script
+    assert 'new Set(["planning"])' in script
+    assert "需要工具" in script
+    assert "不需要工具" in script
+    assert ".role-tool-note.required" in client.get("/static/app.css").text
     assert "含辅助脚本" in script
     assert "applyInterviewSuggestions" in script
     assert "formatLocalTimestamp" in script
@@ -254,6 +258,9 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "原创检查仅限本地资料库" in script
     assert "local_corpus_only" not in script
     assert "readableLearningValue(item.data)" in script
+    assert 'first:"第一人称"' in script
+    assert "readableViewpoint(defaults.viewpoint)" in script
+    assert "map((item,index)=>`<li><b>${index+1}</b>" in script
     assert "state.references.map(item=>" in script
     assert 'api("/api/learning/mechanisms?view=all")' in script
     assert "startWizardFromReference" in script
@@ -654,6 +661,21 @@ def test_workbench_is_task_first_and_keeps_old_tools_in_details(tmp_path) -> Non
     assert 'action==="references"' in script
 
 
+def test_run_context_explains_confirmed_inputs_and_retained_initialization_files(
+    tmp_path,
+) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+
+    assert "本阶段参考" in script
+    assert "confirmed_context" in script
+    assert '["stage_completed","skill_completed"]' in script
+    assert '["skills_loaded","learning_context_loaded"]' in script
+    assert "失败前生成的资料已经保留" in script
+    assert "正式人物、设定和剧情资料没有被修改" in script
+    assert "proposal_summary" in script
+
+
 def test_workbench_task_priority_is_deterministic_and_shows_at_most_three_issues(
     tmp_path,
 ) -> None:
@@ -732,6 +754,9 @@ def test_workbench_async_state_is_project_scoped_and_candidate_load_is_explicit(
     )[0]
     assert "const projectId=state.activeProject.id" in starter
     assert "workbenchContextMatches(projectId,workbenchGeneration)" in starter
+    assert "catch(error)" in starter
+    assert "任务没有启动：${message}" in starter
+    assert "toast(message)" in starter
     assert "renderProjects();" not in script.split(
         "async function continueProject", 1,
     )[1].split("async function loadProjectLocations", 1)[0]
@@ -819,6 +844,12 @@ def test_console_validates_polish_progress_and_hides_internal_events(tmp_path) -
     )[0]
     assert ".filter(item=>!hiddenRunEventTypes.has(item.event_type))" in run_log
     assert "escapeHtml(polishRunEventMessage(item))" in run_log
+    assert 'items[index-1].severity!=="error"' in run_log
+    assert "Skill completed without file proposals" in script
+    assert "再次初始化只会继续未完成阶段" in script
+    assert '"character-management":"人物资料"' in script
+    assert "本次参考的文笔和创作方法" in script
+    assert "正式大纲和已确认设定优先，不会在这里被改写" in script
     show_detail = script.split("function showRunDetail", 1)[1].split(
         "async function monitorRun", 1,
     )[0]
@@ -920,6 +951,8 @@ def test_learning_rules_are_visible_removable_and_recoverable(tmp_path) -> None:
     assert "effectiveRulesMarkup" in script
     assert "loadArtifactHistory" in script
     assert "removeAdoption" in script
+    assert 'escapeHtml(item.title||"需要确认的写法")' in script
+    assert ".effective-rule-warning-item" in css
     assert ".effective-rule-layers" in css
     assert ".blueprint-rule-row" in css
     assert "准备建立第一版正式大纲" in script
@@ -942,6 +975,21 @@ def test_outline_generation_explains_missing_methods_and_saved_refresh_failure(t
     assert "catch(error)" in script
     assert 'state.activeOutlineCandidateId=created?.id||null' in script
     assert 'error.code==="outline_generation_not_ready"' in script
+
+
+def test_outline_comparison_keeps_market_reference_short_and_folded(tmp_path) -> None:
+    client = TestClient(create_app(Database(tmp_path / "app.db"), MemorySecretStore()))
+    script = client.get("/static/app.js").text
+    css = client.get("/static/app.css").text
+
+    market_markup = script.split("function outlineMarketReferenceMarkup", 1)[1].split(
+        "function renderOutlineComparison", 1,
+    )[0]
+    assert "同类市场参考" in market_markup
+    assert "市场数据只供参考，不影响候选大纲的应用" in market_markup
+    assert "<details>" in market_markup
+    assert "<details open" not in market_markup
+    assert "outline-market-reference" in css
 
 
 def test_candidate_quality_is_one_plain_chinese_progressive_workspace(tmp_path) -> None:

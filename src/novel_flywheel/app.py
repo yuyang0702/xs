@@ -26,7 +26,7 @@ from novel_flywheel.workflows import WorkflowService
 from novel_flywheel.wizard import SkillFormCatalog, WizardService
 from novel_flywheel.skill_runtime import SkillRuntimeService
 from novel_flywheel.migration import ProjectMigrator
-from novel_flywheel.tasks import RunTaskManager
+from novel_flywheel.tasks import ProjectRunActiveError, RunTaskManager
 from novel_flywheel.interviews import WizardInterviewService
 from novel_flywheel.style_samples import StyleSampleService
 from novel_flywheel.material_impacts import MaterialImpactService
@@ -67,6 +67,12 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
             }})
         return await request_validation_exception_handler(request, exc)
 
+    @app.exception_handler(ProjectRunActiveError)
+    async def project_run_active_error(request: Request, exc: ProjectRunActiveError):
+        return JSONResponse(status_code=409, content={"detail": {
+            "code": "project_run_active", "message": str(exc),
+        }})
+
     @app.middleware("http")
     async def disable_local_asset_cache(request: Request, call_next):
         response = await call_next(request)
@@ -100,7 +106,9 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     )
     gateway = ModelGateway(db, app.state.registry)
     app.state.learning = LearningSystem(db, app.state.references, app.state.projects, gateway)
-    app.state.outlines = OutlineService(db, app.state.projects, gateway)
+    app.state.outlines = OutlineService(
+        db, app.state.projects, gateway, local_nlp=app.state.local_nlp,
+    )
     app.state.learning.outlines = app.state.outlines
     app.state.reference_analysis_tasks = ReferenceAnalysisTaskManager()
     app.state.material_impacts = MaterialImpactService(gateway)

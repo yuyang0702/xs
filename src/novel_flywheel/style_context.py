@@ -14,6 +14,19 @@ DEFAULT_STYLE_RULES = (
     ("避免使用", "以下是润色版本、这一刻终于明白、不是命运而是选择。"),
 )
 
+PROSE_BASELINE_LABELS = {
+    "summary": "整体风格",
+    "viewpoint": "叙事视角",
+    "narrative_distance": "叙事距离",
+    "sentence_rhythm": "句子节奏",
+    "paragraph_rhythm": "段落节奏",
+    "dialogue": "对白方式",
+    "psychology": "心理描写",
+    "action_sensation": "动作与感官",
+    "professional_detail": "专业细节",
+    "forbidden_patterns": "避免使用",
+}
+
 
 def default_style_profile(metadata: dict) -> dict:
     return {
@@ -26,29 +39,45 @@ def default_style_profile(metadata: dict) -> dict:
 
 def ensure_style_profile(project: Any) -> str:
     path = Path(project.path) / "style-profile.md"
+    baseline = Path(project.path) / "learning" / "prose_baseline.json"
+    try:
+        artifact = json.loads(baseline.read_text(encoding="utf-8"))
+        baseline_data = artifact.get("data", {}) if artifact.get("status") == "active" else {}
+        if not isinstance(baseline_data, dict):
+            baseline_data = {}
+    except (OSError, json.JSONDecodeError):
+        baseline_data = {}
     if path.is_file():
         text = path.read_text(encoding="utf-8")
-        baseline = Path(project.path) / "learning" / "prose_baseline.json"
-        try:
-            migrated = json.loads(baseline.read_text(encoding="utf-8")).get("data", {}).get("source") == "legacy_style_sample"
-        except (OSError, json.JSONDecodeError):
-            migrated = False
-        if migrated:
-            return re.sub(
+        if baseline_data.get("source") == "legacy_style_sample":
+            text = re.sub(
                 r"\n*<!-- STYLE_SAMPLE_START -->.*?<!-- STYLE_SAMPLE_END -->\n*", "\n",
                 text, flags=re.S,
             ).rstrip() + "\n"
+    else:
+        profile_data = default_style_profile(project.metadata)
+        text = (
+            "# 作品专属文风档案\n\n"
+            f"- 题材：{profile_data['genre']}\n"
+            f"- 叙事视角：{profile_data['viewpoint']}\n"
+            f"- 基础语调：{profile_data['tone']}\n"
+            + "".join(f"- {item['label']}：{item['rule']}\n" for item in profile_data["rules"])
+        )
+        atomic_write(path, text)
+
+    rules = []
+    seen = set()
+    for field, label in PROSE_BASELINE_LABELS.items():
+        value = baseline_data.get(field)
+        values = [value] if isinstance(value, str) else value if isinstance(value, list) else []
+        for item in values:
+            rule = item.strip() if isinstance(item, str) else ""
+            if rule and rule not in seen and rule not in text:
+                seen.add(rule)
+                rules.append(f"- {label}：{rule}")
+    if not rules:
         return text
-    profile_data = default_style_profile(project.metadata)
-    profile = (
-        "# 作品专属文风档案\n\n"
-        f"- 题材：{profile_data['genre']}\n"
-        f"- 叙事视角：{profile_data['viewpoint']}\n"
-        f"- 基础语调：{profile_data['tone']}\n"
-        + "".join(f"- {item['label']}：{item['rule']}\n" for item in profile_data["rules"])
-    )
-    atomic_write(path, profile)
-    return profile
+    return text.rstrip() + "\n\n## 已确认基础文笔\n\n" + "\n".join(rules) + "\n"
 
 
 def character_fingerprints(project_path: Path, segment: str, max_chars: int = 2400) -> str:

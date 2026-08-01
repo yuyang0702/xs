@@ -383,7 +383,22 @@ class ProjectStore:
                 )
         outline = state.data.get("outline") if state else None
         if isinstance(outline, dict) and str(outline.get("content") or "").strip():
+            events = outline.get("events") or []
+            if events:
+                parts.append(
+                    "# Confirmed Outline Event IDs\n\n" + "\n".join(
+                        f"- {item.get('id')}: {item.get('label')}"
+                        for item in events if isinstance(item, dict) and item.get("id")
+                    )
+                )
             parts.append("# Current Confirmed Outline\n\n" + str(outline["content"])[:30_000])
+        book_plan = project.path / "memory" / "book-plan.md"
+        legacy_plan = project.path / "outline.md"
+        plan_path = book_plan if book_plan.is_file() else legacy_plan
+        if plan_path.is_file():
+            parts.append("# Confirmed Long-form Execution Plan\n\n" + plan_path.read_text(
+                encoding="utf-8",
+            )[:30_000])
         profile = resolve_platform_profile(
             project.metadata.get("platform_profile_id"), project,
             self.active_learning_data(project_id, "market_baseline"),

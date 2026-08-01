@@ -15,6 +15,7 @@ from novel_flywheel.narrative_attraction import (
     local_attraction_candidates,
     normalize_attraction_map,
 )
+from novel_flywheel.outlines import compact_market_reference
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.style_context import default_style_profile
@@ -41,6 +42,27 @@ OUTLINE_ATTRACTION_RULE_FIELDS = (
     "opening_rule", "cycle_rules", "question_rules",
     "relationship_rules", "reversal_rule", "ending_rule",
 )
+INITIALIZATION_STYLE_FIELDS = {
+    "character-management": ("dialogue", "psychology", "viewpoint", "narrative_distance"),
+    "worldbuilding": (),
+    "plot-structure": (),
+}
+STYLE_FIELD_LABELS = {
+    "dialogue": "对白方式", "psychology": "心理描写", "viewpoint": "叙事视角",
+    "narrative_distance": "叙事距离",
+}
+INITIALIZATION_STAGE_KEYWORDS = {
+    "character-management": (
+        "character-management", "character", "人物", "角色", "关系", "对白", "情感", "动机", "身份",
+    ),
+    "worldbuilding": (
+        "worldbuilding", "world", "setting", "世界", "设定", "场景", "地点", "规则", "制度", "环境", "时代",
+    ),
+    "plot-structure": (
+        "plot-structure", "plot", "structure", "剧情", "大纲", "结构", "因果", "悬念", "反转", "伏笔",
+        "开头", "中段", "结尾", "收束", "回报", "推进",
+    ),
+}
 
 
 class OutlineGenerationNotReady(ValueError):
@@ -154,15 +176,15 @@ class LearningSystem:
         async def complete_fallback_window(prompt: str):
             last_error = None
             for _attempt in range(2):
-                response = await fallback(
-                    "reference_analysis", f"You extract evidenced reference facts. {focus}",
-                    prompt, max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-                )
                 try:
+                    response = await fallback(
+                        "reference_analysis", f"You extract evidenced reference facts. {focus}",
+                        prompt, max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                    )
                     value = self._window_result(response.text)
                     self._require_chinese_window(value)
                     return response, value
-                except ValueError as exc:
+                except Exception as exc:
                     last_error = exc
             assert last_error is not None
             raise last_error
@@ -951,11 +973,15 @@ class LearningSystem:
         for index, left in enumerate(adoptions):
             if left["node_id"] in used:
                 continue
-            left_text = str(left["data"].get("name") or "") + str(left["data"].get("transfer_guidance") or "")
+            left_name = str(left["data"].get("name") or "")
+            left_guidance = str(left["data"].get("transfer_guidance") or "")
             matches = [{"id": left["node_id"], "name": left["data"].get("name") or "补充写法"}]
             for right in adoptions[index + 1:]:
-                right_text = str(right["data"].get("name") or "") + str(right["data"].get("transfer_guidance") or "")
-                if SequenceMatcher(None, left_text, right_text).ratio() >= 0.72:
+                right_name = str(right["data"].get("name") or "")
+                right_guidance = str(right["data"].get("transfer_guidance") or "")
+                name_match = SequenceMatcher(None, left_name, right_name).ratio()
+                guidance_match = SequenceMatcher(None, left_guidance, right_guidance).ratio()
+                if name_match >= 0.72 or (name_match >= 0.55 and guidance_match >= 0.8):
                     matches.append({"id": right["node_id"], "name": right["data"].get("name") or "补充写法"})
             if len(matches) > 1:
                 groups.append(matches)
@@ -1042,6 +1068,155 @@ class LearningSystem:
             "learned": (artifact or {}).get("data", {}),
             "version": (artifact or {}).get("version", 0),
             "status": (artifact or {}).get("status", "default"),
+        }
+
+    def initialization_contexts(self, project_id: str) -> dict:
+        """Build one compact snapshot for initialization Skills."""
+        project = self.projects.get(project_id)
+        baseline = self.get_artifact(project_id, "prose_baseline")
+        blueprint = self.get_artifact(project_id, "creative_blueprint")
+        baseline = baseline if baseline and baseline["status"] == "active" else None
+        blueprint = blueprint if blueprint and blueprint["status"] == "active" else None
+        versions = {
+            "prose_baseline": int((baseline or {}).get("version") or 0),
+            "creative_blueprint": int((blueprint or {}).get("version") or 0),
+        }
+        stages = {
+            stage: {
+                "source_versions": dict(versions),
+                "prose_rules": [],
+                "creative_methods": [],
+                "authority": "正式大纲、锁定要求和已确认事实优先；这些内容只补充表达与设计方法。",
+            }
+            for stage in INITIALIZATION_STYLE_FIELDS
+        }
+        skipped_conflicts = []
+        baseline_data = (baseline or {}).get("data") or {}
+        pov = str(project.metadata.get("pov") or project.metadata.get("perspective") or "")
+        for stage, fields in INITIALIZATION_STYLE_FIELDS.items():
+            for field in fields:
+                raw_rules = baseline_data.get(field) or []
+                rules = [raw_rules] if isinstance(raw_rules, str) else raw_rules
+                if not isinstance(rules, list):
+                    continue
+                for raw_rule in rules:
+                    rule = str(raw_rule).strip() if isinstance(raw_rule, str) else ""
+                    if not rule:
+                        continue
+                    reason = self._viewpoint_conflict(rule, pov)
+                    if reason:
+                        skipped_conflicts.append({"rule": rule, "reason": reason})
+                        continue
+                    stages[stage]["prose_rules"].append({
+                        "category": STYLE_FIELD_LABELS.get(field, field), "rule": rule,
+                    })
+
+        eligible_methods = []
+        blueprint_data = (blueprint or {}).get("data") or {}
+        for section in ("mechanisms", "causal_structure", "attraction_guidance"):
+            values = blueprint_data.get(section) or []
+            if not isinstance(values, list):
+                continue
+            for raw in values:
+                if not isinstance(raw, dict):
+                    continue
+                data = self._normalize_mechanism_data(raw)
+                if not self._method_matches_project(data, project.mode, str(project.metadata.get("genre") or "")):
+                    continue
+                method = self._compact_initialization_method(data)
+                if not method:
+                    continue
+                eligible_methods.append(method)
+                for stage in stages:
+                    if self._method_matches_stage(data, stage):
+                        stages[stage]["creative_methods"].append(method)
+
+        stage_counts = {
+            stage: {
+                "prose_rules": len(context["prose_rules"]),
+                "creative_methods": len(context["creative_methods"]),
+            }
+            for stage, context in stages.items()
+        }
+        return {
+            "versions": versions,
+            "summary": {
+                "prose_rules": sum(value["prose_rules"] for value in stage_counts.values()),
+                "creative_methods": len(eligible_methods),
+                "skipped_conflicts": len(skipped_conflicts),
+                "stage_counts": stage_counts,
+            },
+            "stages": stages,
+            "skipped_conflicts": skipped_conflicts,
+        }
+
+    @staticmethod
+    def _viewpoint_conflict(rule: str, pov: str) -> str:
+        if pov.casefold() != "first":
+            return ""
+        lowered = rule.casefold()
+        if any(marker in lowered for marker in (
+            "切换视角", "多视角", "第三人称", "全知视角",
+            "switch viewpoint", "multiple viewpoint", "third person", "omniscient",
+        )):
+            return "当前作品使用第一人称，这条规则可能造成视角冲突。"
+        return ""
+
+    @staticmethod
+    def _method_matches_project(data: dict, mode: str, genre: str) -> bool:
+        if mode not in (data.get("applicable_modes") or ["short", "long"]):
+            return False
+        genres = data.get("applicable_genres") or []
+        if not genres:
+            return True
+        current = genre.casefold().strip()
+        if any(item.casefold().strip() in {"all", "both", "全部", "不限", "通用"} for item in genres):
+            return True
+        if not current:
+            return False
+        return any(
+            (candidate := item.casefold().strip()) and (candidate in current or current in candidate)
+            for item in genres
+        )
+
+    @staticmethod
+    def _method_matches_stage(data: dict, stage: str) -> bool:
+        if stage == "plot-structure":
+            return True
+        explicit = data.get("applicable_stages") or []
+        if any(item.casefold().strip() in {"all", "both", "全部", "全篇", "通用"} for item in explicit):
+            explicit = []
+        review = data.get("model_review") if isinstance(data.get("model_review"), dict) else {}
+        text = " ".join(str(item) for item in explicit) if explicit else " ".join((
+            str(data.get("name") or ""), str(review.get("suggested_name") or ""),
+        ))
+        lowered = text.casefold()
+        keywords = INITIALIZATION_STAGE_KEYWORDS[stage]
+        return any(keyword.casefold() in lowered for keyword in keywords)
+
+    @staticmethod
+    def _compact_initialization_method(data: dict) -> dict | None:
+        review = data.get("model_review") if isinstance(data.get("model_review"), dict) else {}
+        guidance = (
+            review.get("suggested_guidance") if review.get("verdict") == "confirmed" else ""
+        ) or data.get("transfer_guidance") or data.get("guidance") or data.get("rule")
+        if not guidance:
+            rule_values = []
+            for key, value in data.items():
+                if key.endswith("_rule") and isinstance(value, str) and value.strip():
+                    rule_values.append(value.strip())
+                elif key.endswith("_rules") and isinstance(value, list):
+                    rule_values.extend(item.strip() for item in value if isinstance(item, str) and item.strip())
+            guidance = "；".join(rule_values)
+        name = str(data.get("name") or data.get("title") or "已确认创作方法").strip()
+        guidance = str(guidance or "").strip()
+        if not guidance:
+            return None
+        return {
+            "name": name,
+            "how_to_use": guidance,
+            "do_not_use_when": data.get("incompatible_conditions") or [],
+            "position": str(data.get("structural_position") or "").strip(),
         }
 
     def apply_style_candidate(self, project_id: str, node_id: str) -> dict:
@@ -1147,7 +1322,10 @@ class LearningSystem:
             response = await self.gateway.complete(
                 "planning",
                 "只根据原创作品简报、用户补充和人工确认的抽象写法生成候选小说大纲。"
-                "不得复现参考资料的人名、设定、具体情节或独特表达。返回 Markdown 大纲。",
+                "不得复现参考资料的人名、设定、具体情节或独特表达。"
+                "如果存在 market_reference，它只是本地同类样本摘要，可以忽略，不是质量门槛。"
+                "它不得覆盖 project_brief、user_brief、正式设定或原创选择，也不得用来复制市场样本。"
+                "返回 Markdown 大纲。",
                 json.dumps(context, ensure_ascii=False, indent=2),
                 max_output_tokens=8192,
             )
@@ -1177,7 +1355,7 @@ class LearningSystem:
                 }
                 if method:
                     methods.append(method)
-        return {
+        context = {
             "project_brief": {
                 field: metadata.get(field) for field in OUTLINE_PROJECT_FIELDS
             },
@@ -1185,6 +1363,11 @@ class LearningSystem:
             "attraction_rules": attraction_rules,
             "user_brief": brief,
         }
+        if metadata.get("market_baseline_enabled") is True:
+            context["market_reference"] = compact_market_reference(
+                self.projects.active_learning_data(project_id, "market_baseline")
+            )
+        return context
 
     def create_line_edit_candidate(self, project_id: str, source: str, candidate: str,
                                    *, issues: list[str], locked_facts: list[str]) -> dict:
@@ -1453,6 +1636,22 @@ class LearningSystem:
     @staticmethod
     def _normalize_mechanism_data(data: dict) -> dict:
         value = dict(data)
+
+        confidence = value.get("confidence", 0)
+        if isinstance(confidence, str):
+            label = confidence.strip().casefold()
+            confidence = {"高": 0.9, "较高": 0.8, "中": 0.6, "中等": 0.6,
+                          "低": 0.3, "high": 0.9, "medium": 0.6, "low": 0.3}.get(label, label)
+            try:
+                confidence = float(str(confidence).rstrip("%"))
+                if label.endswith("%") or confidence > 1:
+                    confidence /= 100
+            except ValueError:
+                confidence = 0
+        if isinstance(confidence, (int, float)) and not isinstance(confidence, bool):
+            value["confidence"] = max(0.0, min(1.0, float(confidence)))
+        else:
+            value["confidence"] = 0.0
 
         def text_list(field: str, default: list[str]) -> list[str]:
             current = value.get(field)

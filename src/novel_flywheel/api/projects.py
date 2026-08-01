@@ -19,6 +19,7 @@ from novel_flywheel.quality_records import reconcile_legacy_checkpoint
 from novel_flywheel.quality_summary import build_quality_summary, effective_han_characters
 from novel_flywheel.quality_profiles import profile_for_project
 from novel_flywheel.passage_protection import PassageProtectionService
+from novel_flywheel.outlines import local_outline_manifest, normalize_outline_manifest
 from novel_flywheel.revision import normalize_chinese_prose
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StaleStoryState, StoryStateStore
@@ -34,7 +35,7 @@ MATERIAL_GROUPS = (
     ("locations", "地点资料", ("worldbuilding/locations/**/*.md",), {"_index.md"}),
     ("plot", "剧情结构", ("plot/_index.md", "plot/arcs/**/*.md"), set()),
     ("timeline", "时间线", ("plot/timeline.md",), set()),
-    ("issues", "伏笔与问题", ("continuity/promises/**/*.md", "continuity/questions/**/*.md"), set()),
+    ("issues", "伏笔与问题", ("continuity/promises/**/*.md", "continuity/questions/**/*.md"), {"_index.md"}),
     ("constraints", "创作约束", ("constraints.md",), set()),
 )
 MATERIAL_LABELS = {
@@ -57,7 +58,10 @@ MATERIAL_LABELS = {
 }
 MATERIAL_VALUE_LABELS = {
     "building": "建筑", "landmark": "地标", "wilderness": "自然区域",
+    "town": "城镇", "city": "城市", "village": "村落", "manor": "宅邸",
+    "document": "文书", "family": "家族", "social": "社会规则", "economic": "经济规则",
     "thriving": "正常", "active": "活跃", "planned": "规划中", "none": "无",
+    "hidden": "隐藏", "common": "常见", "unknown": "未确认",
     "main": "主线", "character": "人物线", "three-act": "三幕式",
 }
 MATERIAL_META_LABELS = {
@@ -457,6 +461,8 @@ def _material_documents(project: Project) -> list[dict]:
                     continue
                 seen.add(resolved)
                 text = path.read_text(encoding="utf-8")
+                if not _meaningful_material_document(group_id, path, text):
+                    continue
                 relative = path.relative_to(project.path).as_posix()
                 items.append({
                     "path": relative, "title": _material_title(path, text),
@@ -465,6 +471,98 @@ def _material_documents(project: Project) -> list[dict]:
                 })
         documents.append({"id": group_id, "label": label, "documents": items})
     return documents
+
+
+def _meaningful_material_document(group_id: str, path: Path, text: str) -> bool:
+    if group_id not in {"world", "plot", "timeline"}:
+        return True
+    if path.name != "_index.md" and group_id != "timeline":
+        return bool(text.strip())
+    body = re.sub(r"\A---\s*\n.*?\n---\s*", "", text, count=1, flags=re.S)
+    for raw_line in body.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith("**Model:**"):
+            continue
+        if re.search(r"\*No .+ yet\*", line, flags=re.I):
+            continue
+        if line.startswith("|"):
+            cells = [cell.strip() for cell in line.strip("|").split("|")]
+            if all(
+                not cell or cell in MATERIAL_LABELS or re.fullmatch(r":?-{3,}:?", cell)
+                for cell in cells
+            ):
+                continue
+        return True
+    return False
+
+
+def _display_outline_manifest(project: Project, request: Request) -> dict:
+    current = request.app.state.outlines.current(project.id)
+    content = str(current.get("content") or "")
+    manifest = local_outline_manifest(content) if content else {}
+    try:
+        saved = json.loads(
+            (project.path / "memory" / "outline-manifest.json").read_text(encoding="utf-8")
+        )
+        if (
+            saved.get("outline_hash") == hashlib.sha256(content.encode("utf-8")).hexdigest()
+            and isinstance(saved.get("manifest"), dict)
+        ):
+            manifest = saved["manifest"]
+    except (OSError, json.JSONDecodeError):
+        pass
+    return normalize_outline_manifest(manifest)
+
+
+def _material_coverage(groups: list[dict], manifest: dict) -> dict[str, dict]:
+    manifest_keys = {
+        "characters": ("characters",), "world": ("world",),
+        "locations": ("locations",), "plot": ("plot_arcs",),
+        "timeline": ("timeline",), "issues": ("promises", "questions"),
+        "constraints": ("constraints",),
+    }
+    result = {}
+    for group in groups:
+        group_id = group["id"]
+        expected = [
+            item for key in manifest_keys[group_id]
+            for item in manifest.get(key, []) if isinstance(item, dict)
+        ]
+        titles = [
+            str((item.get("display") or {}).get("title") or item.get("title") or "").strip()
+            for item in group["documents"]
+        ]
+        duplicates = sorted({title for title in titles if title and titles.count(title) > 1})
+        combined = "\n".join(str(item.get("content") or "") for item in group["documents"])
+        missing = []
+        for item in expected:
+            identity = str(
+                item.get("text") if group_id == "constraints" else item.get("name") or ""
+            ).strip()
+            evidence = str(item.get("evidence") or "").strip()
+            covered = identity in titles if group_id in {"characters", "world", "locations"} else (
+                bool(identity) and (identity in combined or bool(evidence) and evidence in combined)
+            )
+            if identity and not covered:
+                missing.append({"name": identity, "evidence": evidence})
+        if duplicates:
+            message = f"发现同名资料：{'、'.join(duplicates)}。请只保留一份正确内容。"
+        elif missing:
+            labels = [
+                item["name"] if len(item["name"]) <= 22 else item["name"][:22] + "…"
+                for item in missing[:4]
+            ]
+            message = f"还缺 {len(missing)} 项正式大纲资料：{'、'.join(labels)}"
+        elif group["documents"]:
+            message = f"已有 {len(group['documents'])} 份有效资料。"
+        else:
+            message = "目前只有空模板，还没有可用于写作的资料。"
+        result[group_id] = {
+            "status": "needs_attention" if duplicates or missing or not group["documents"] else "ready",
+            "message": message, "missing": missing, "duplicates": duplicates,
+            "expected_count": len(expected), "document_count": len(group["documents"]),
+        }
+    return result
 
 
 def _material_lookup(project: Project, relative_path: str) -> tuple[str, Path]:
@@ -518,13 +616,18 @@ def get_project_materials(project_id: str, request: Request) -> dict:
          if path.name != "_index.md"),
         key=lambda item: (item.get("role") != "protagonist", item.get("name", "")),
     )
+    groups = _material_documents(project)
+    manifest = _display_outline_manifest(project, request)
     return {
         "project": {"id": project.id, "title": project.title, "mode": project.mode,
                     "genre": project.metadata.get("genre"),
                     "target_words": project.metadata.get("target_words"),
                     "premise": project.metadata.get("premise", "")},
         "characters": profiles,
-        "groups": _material_documents(project),
+        "groups": groups,
+        "coverage": _material_coverage(groups, manifest),
+        "outline_conflicts": request.app.state.outlines.writing_readiness(project_id)["conflicts"],
+        "manifest_review": manifest.get("_review", {}),
         "material_impacts": request.app.state.material_impacts.list(project.path),
     }
 

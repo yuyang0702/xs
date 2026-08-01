@@ -11,6 +11,8 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.models import ModelResult, ModelRoutesExhaustedError
+from novel_flywheel.narrative_ledger import build_narrative_ledger
+from novel_flywheel.outlines import outline_events
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.quality import issue_ledger, review_windows
 from novel_flywheel.quality_profiles import score_review
@@ -932,7 +934,8 @@ async def test_long_setup_writes_book_bible_and_canon(tmp_path) -> None:
     result = await service.run_long_setup(project.id, use_crewai=False)
 
     assert result["status"] == "completed"
-    assert "Book Bible" in (project.path / "outline.md").read_text(encoding="utf-8")
+    assert "Book Bible" in (project.path / "memory" / "book-plan.md").read_text(encoding="utf-8")
+    assert not (project.path / "outline.md").exists()
 
 
 @pytest.mark.asyncio
@@ -1206,7 +1209,8 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     (run_path / "receipts").mkdir()
 
     plan = "\n\n".join(
-        f"### 段 {index}：事件{index}\n本段只负责事件{index}，完成结果{index}并留下下一段问题。" + "细节" * 40
+        f"### 段 {index}：事件{index}\n事件ID：EV-{index:08x}\n大纲依据：事件{index}\n"
+        f"本段只负责事件{index}，完成结果{index}并留下下一段问题。" + "细节" * 40
         for index in range(1, 9)
     )
     draft = await service._draft_short_in_segments(
@@ -1218,6 +1222,11 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     assert all("不要提问" in call["user"] for call in gateway.calls)
     assert len(WorkflowService._split_segments(draft)) == 8
     assert (run_path / "outputs" / "draft.md").read_text(encoding="utf-8") == draft
+    assignments = json.loads(
+        (run_path / "outputs" / "segment-events.json").read_text(encoding="utf-8"),
+    )["segments"]
+    assert assignments[0]["event_ids"] == ["EV-00000001"]
+    assert assignments[-1]["event_ids"] == ["EV-00000008"]
 
 
 def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() -> None:
@@ -1238,7 +1247,44 @@ def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() ->
     issues = WorkflowService._short_plan_issues(
         SimpleNamespace(path=Path("."), metadata={}), {}, missing_handoff_plan, 3,
     )
-    assert any("无法保证前后自然衔接" in item for item in issues)
+    assert any("无法确认剧情分工与前后衔接" in item for item in issues)
+
+
+def test_short_plan_requires_every_formal_outline_event_in_order() -> None:
+    outline = "# 大纲\n\n## 开头\n发现异常。\n\n## 结尾\n兑现承诺。\n"
+    events = outline_events(outline)
+    plan = "\n\n".join((
+        f"### 段 1：结尾\n事件ID：{events[1]['id']}\n大纲依据：结尾\n"
+        "段首承接：这是开篇。\n本段事件：发现异常。\n段末交接：带着问题离开。" + "细节" * 30,
+        f"### 段 2：开头\n事件ID：{events[0]['id']}\n大纲依据：开头\n"
+        "段首承接：继续调查。\n本段事件：兑现承诺。\n段末交接：故事结束。" + "收束" * 30,
+    ))
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}),
+        {"outline": {"content": outline, "events": events}}, plan, 2,
+    )
+
+    assert any("顺序发生倒退" in item for item in issues)
+
+
+def test_adjacent_segments_may_continue_the_same_formal_outline_event() -> None:
+    outline = "# 大纲\n\n## 开头\n发现异常。\n\n## 结尾\n兑现承诺。\n"
+    events = outline_events(outline)
+    plan = "\n\n".join((
+        f"### 段 1：开头上\n事件ID：{events[0]['id']}\n大纲依据：开头\n"
+        "段首承接：这是开篇。\n本段事件：发现异常。\n段末交接：继续追查。" + "细节" * 30,
+        f"### 段 2：开头下\n事件ID：{events[0]['id']}\n大纲依据：开头\n"
+        "段首承接：继续追查。\n本段事件：查明原因。\n段末交接：准备收束。" + "推进" * 30,
+        f"### 段 3：结尾\n事件ID：{events[1]['id']}\n大纲依据：结尾\n"
+        "段首承接：准备收束。\n本段事件：兑现承诺。\n段末交接：故事结束。" + "收束" * 30,
+    ))
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}),
+        {"outline": {"content": outline, "events": events}}, plan, 3,
+    )
+
+    assert not any("事件" in item and ("倒退" in item or "没有分配" in item) for item in issues)
 
     previous = ["苏荞在容府厨房关上门，继续等周嬷嬷回来。" * 8]
     abrupt = "沈府大厅里，方小满已经开始参加家宴。" + "众人沉默。" * 60
@@ -1248,6 +1294,57 @@ def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() ->
     bridged = "次日清晨，苏荞从厨房回到容府大厅。" + "她接着处理昨夜留下的问题。" * 50
     bridged_issues = WorkflowService._draft_segment_issues(bridged, 600, previous)
     assert not any("换了场景" in item for item in bridged_issues)
+
+
+@pytest.mark.asyncio
+async def test_polish_stage_keeps_confirmed_outline_style_and_blueprint(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Confirmed context", mode="short", genre="mystery",
+        premise="A sealed letter changes the case.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway(["polished"])
+    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    db.create_run("confirmed-context", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "confirmed-context"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    constraints = "\n\n".join((
+        "# General Notes\n" + "background filler\n" * 800,
+        "# CONFIRMED STORY FACTS (take precedence over older project notes)\n"
+        "- ending: The heroine leaves alone.",
+        "# Confirmed Outline Event IDs\n- EV-a1b2c3d4: Open the sealed letter",
+        "# Current Confirmed Outline\n## Opening\nThe letter arrives.\n\n"
+        "## Ending\nThe heroine opens it and learns the truth.",
+        "# Executable Prose Baseline\n"
+        '{"sentence_rhythm":["Alternate long and short sentences."]}',
+        "# Confirmed Creative Blueprint\n"
+        '{"mechanisms":[{"name":"Delayed answer",'
+        '"transfer_guidance":"Keep the letter unresolved until the final turn."}]}',
+    ))
+
+    await service._stage(
+        "confirmed-context", run_path, project, "polish", constraints,
+        "Polish EV-a1b2c3d4 without revealing the sealed letter early.",
+    )
+
+    system = gateway.calls[0]["system"]
+    assert "The heroine leaves alone" in system
+    assert "The heroine opens it and learns the truth" in system
+    assert "Alternate long and short sentences" in system
+    assert "Keep the letter unresolved until the final turn" in system
+    assert "background filler" not in system
+    loaded = next(
+        item for item in db.list_run_events("confirmed-context")
+        if item["event_type"] == "skills_loaded"
+    )
+    assert loaded["metadata"]["confirmed_context"] == [
+        "已确认事实", "正式大纲", "基础文笔", "创作蓝图",
+    ]
 
 
 @pytest.mark.asyncio
@@ -2513,6 +2610,90 @@ def test_default_polish_segments_stay_below_adaptive_maximum() -> None:
 
     assert len(chunks) > 1
     assert max(map(len, chunks)) <= 1800
+
+
+@pytest.mark.asyncio
+async def test_ordinary_polish_receives_window_findings_and_actual_handoff(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Window context", mode="short", genre="suspense",
+        premise="A key links two meetings.", target_words=3000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.users = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.users.append(user)
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "polisher", "input_tokens": 500,
+            })
+
+    class LocalNlp:
+        def __init__(self):
+            self.calls = 0
+
+        def analyze(self, text):
+            self.calls += 1
+            return {"available": False, "backend": "test", "backend_version": "test-v1"}
+
+    gateway = Gateway()
+    local_nlp = LocalNlp()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+        local_nlp=local_nlp,
+    )
+    db.create_run("window-context", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "window-context"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    first = (
+        "她在旧宅的书桌下摸到铜钥匙，听见走廊尽头传来脚步声。"
+        "她决定把铜钥匙藏进衣柜。"
+    )
+    second = (
+        "渡船已经离开河岸，沈岚却没有出现，她只好沿着石阶继续寻找。"
+        "她发现船票背面写着另一个地址。"
+    )
+    findings = json.dumps({"issues": [
+        {"category": "continuity", "severity": "high",
+         "evidence": "她决定把铜钥匙藏进衣柜。", "action": "说明钥匙藏放是否安全。"},
+        {"category": "timeline", "severity": "high",
+         "evidence": "渡船已经离开河岸。", "action": "核对渡船离岸的时间。"},
+    ]}, ensure_ascii=False)
+
+    await service._polish_short_segments(
+        "window-context", run_path, project, "constraints",
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join([first, second]), findings,
+    )
+
+    assert len(gateway.users) == 2
+    assert "说明钥匙藏放是否安全" in gateway.users[0]
+    assert "核对渡船离岸的时间" not in gateway.users[0]
+    assert "核对渡船离岸的时间" in gateway.users[1]
+    assert "说明钥匙藏放是否安全" not in gateway.users[1]
+    assert '"上一窗实际交接状态": "她决定把铜钥匙藏进衣柜。"' in gateway.users[1]
+    assert "seven_step_position" not in gateway.users[0]
+    assert "seven_step_position" not in gateway.users[1]
+    assert (run_path / "outputs" / "analysis-polish-source.json").is_file()
+    assert local_nlp.calls == 1
+
+
+def test_polish_narrative_context_includes_a_linked_payoff() -> None:
+    text = "我答应一定带她回家。\n\n后来我找到旧车票，终于带她回家。"
+    ledger = build_narrative_ledger(text)
+    second_start = text.index("后来")
+
+    context = WorkflowService._polish_narrative_context(
+        ledger, text[second_start:], second_start, len(text),
+    )
+
+    assert context["本窗关联的提问与兑现"]
 
 
 @pytest.mark.asyncio

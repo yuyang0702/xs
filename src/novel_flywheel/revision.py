@@ -255,11 +255,92 @@ def compact_polish_findings(value: dict[str, Any], max_issues: int = 8) -> dict[
     return result
 
 
-def segment_map(parts: list[str], width: int = 320) -> list[dict[str, Any]]:
+_POLISH_GLOBAL_CATEGORIES = {
+    "global", "overall", "structure", "story_structure", "plot_structure",
+}
+_POLISH_GLOBAL_MARKERS = re.compile(
+    r"全文|全篇|全局|整体|通篇|\boverall\b|\bthroughout\b|"
+    r"\bwhole\s+(?:story|manuscript)\b|\bacross\s+(?:the\s+)?(?:story|manuscript)\b",
+    flags=re.IGNORECASE,
+)
+_POLISH_TERM_STOP = {
+    "一个", "这个", "当前", "全文", "全篇", "整体", "问题", "内容", "正文",
+    "段落", "故事", "情节", "人物", "读者", "需要", "应该", "避免", "保持",
+    "加强", "调整", "修改", "修复", "处理", "表达", "部分", "进行", "没有",
+    "with", "from", "that", "this", "into", "only", "story", "segment",
+    "manuscript", "should", "revise", "improve", "strengthen", "preserve",
+}
+
+
+def _polish_match_terms(value: str) -> set[str]:
+    terms = {
+        item.lower() for item in re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", value)
+        if item.lower() not in _POLISH_TERM_STOP
+    }
+    for run in re.findall(r"[\u3400-\u9fff]{2,}", value):
+        for width in range(2, min(6, len(run)) + 1):
+            terms.update(
+                run[index:index + width]
+                for index in range(len(run) - width + 1)
+                if run[index:index + width] not in _POLISH_TERM_STOP
+            )
+    return terms
+
+
+def filter_polish_findings_for_segment(
+    compacted: dict[str, Any], segment: str, max_issues: int = 4, max_global: int = 1,
+) -> dict[str, Any]:
+    """Return only findings that can guide this segment, plus one global priority."""
+    segment_plain = re.sub(r"\s+", "", segment).lower()
+    segment_terms = _polish_match_terms(segment)
+    local: list[dict[str, Any]] = []
+    global_issues: list[dict[str, Any]] = []
+    for source in compacted.get("issues", []):
+        if not isinstance(source, dict):
+            continue
+        issue = copy.deepcopy(source)
+        evidence = str(issue.get("evidence") or "")
+        action = str(issue.get("action") or "")
+        evidence_plain = re.sub(r"\s+", "", evidence).lower()
+        related = bool(
+            (len(evidence_plain) >= 2 and evidence_plain in segment_plain)
+            or segment_terms.intersection(_polish_match_terms(f"{evidence}\n{action}"))
+        )
+        if related:
+            local.append(issue)
+            continue
+        category = str(issue.get("category") or "").strip().lower()
+        severity = str(issue.get("severity") or "medium").strip().lower()
+        if (
+            severity in {"critical", "high"}
+            and (
+                category in _POLISH_GLOBAL_CATEGORIES
+                or _POLISH_GLOBAL_MARKERS.search(f"{category}\n{evidence}\n{action}")
+            )
+        ):
+            global_issues.append(issue)
+    selected_global = global_issues[:max_global]
+    local_limit = max(0, max_issues - len(selected_global))
+    result = {"issues": [*local[:local_limit], *selected_global]}
+    if isinstance(compacted.get("reader_signals"), dict):
+        result["reader_signals"] = copy.deepcopy(compacted["reader_signals"])
+    return result
+
+
+def segment_map(parts: list[str], width: int = 320,
+                event_assignments: list[dict] | None = None) -> list[dict[str, Any]]:
+    assignments = {
+        int(item.get("segment", 0)): item
+        for item in (event_assignments or []) if isinstance(item, dict)
+    }
     return [
         {
             "segment": index,
             "scene_id": f"scene-{index:02d}",
+            **({
+                "event_ids": assignments[index].get("event_ids", []),
+                "handoff": assignments[index].get("handoff", ""),
+            } if index in assignments else {}),
             "characters": len(part),
             "opening": part[:width],
             "ending": part[-width:],

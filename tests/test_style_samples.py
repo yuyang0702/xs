@@ -40,6 +40,11 @@ def project(tmp_path):
 async def test_analyze_stores_source_and_updates_only_managed_profile_block(tmp_path):
     item = project(tmp_path)
     (item.path / "style-profile.md").write_text("# 基础风格\n\n保留我。\n", encoding="utf-8")
+    learning = item.path / "learning"
+    learning.mkdir()
+    (learning / "prose_baseline.json").write_text(json.dumps({
+        "status": "active", "data": {"dialogue": ["只在运行时使用的基础文笔。"]},
+    }, ensure_ascii=False), encoding="utf-8")
     profile = {
         "summary": "冷静但不疏离",
         "sentence_rhythm": ["长短句交替"],
@@ -59,6 +64,7 @@ async def test_analyze_stores_source_and_updates_only_managed_profile_block(tmp_
     assert "保留我" in text
     assert "冷静但不疏离" in text
     assert "用动作和停顿表现情绪" in text
+    assert "只在运行时使用的基础文笔" not in text
 
 
 @pytest.mark.asyncio

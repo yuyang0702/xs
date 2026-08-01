@@ -5,6 +5,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Awaitable, Callable
 
+from novel_flywheel.errors import describe_error
+
 
 ProgressCallback = Callable[[dict], None]
 AnalysisOperation = Callable[[ProgressCallback], Awaitable[dict]]
@@ -62,7 +64,9 @@ class ReferenceAnalysisTaskManager:
         except asyncio.CancelledError:
             state.update(status="cancelled", phase="cancelled", finished_at=self._now())
         except Exception as exc:  # The UI needs the provider error after the request has detached.
-            state.update(status="failed", phase="failed", error=str(exc), finished_at=self._now())
+            state.update(
+                status="failed", phase="failed", error=describe_error(exc), finished_at=self._now(),
+            )
 
     @staticmethod
     def _now() -> str:

@@ -31,6 +31,7 @@ const roles = {
   reference_analysis: "参考资料分窗分析", reference_synthesis: "学习机制综合", line_edit: "定向行文精修",
   final_review: "独立终审", maintenance: "项目资料更新"
 };
+const toolRequiredRoles = new Set(["planning"]);
 const workflowLabels = {
   "initialize-skills":"作品初始化", "short-story":"短篇完整创作", "long-setup":"长篇准备",
   "long-chapter":"长篇章节创作", "materials-audit":"资料检查", "materials-repair":"资料修复",
@@ -57,7 +58,9 @@ const readableModelText = (value, fallback="模型返回的旧结果没有完成
 };
 const runLabel = value => roles[value] || workflowLabels[value] || ({
   editorial:"编辑检查", target_reader:"目标读者检查", chief_editor:"主编终审", tool_use:"工具调用",
-  token_budget_exhausted:"模型用量已到上限"
+  token_budget_exhausted:"模型用量已到上限", "story-init":"作品基础资料",
+  "character-management":"人物资料", worldbuilding:"世界设定", "plot-structure":"剧情结构",
+  "initialize-skills":"准备人物与设定"
 }[value]) || (/[㐀-鿿]/.test(String(value||"")) ? String(value) : (String(value || "").trim() ? "系统阶段" : "未记录"));
 const findingLabel = value => {
   const text=String(value||"").trim();
@@ -90,7 +93,10 @@ const readableRunMessage = value => {
     "[Errno 22] Invalid argument":"系统写入文件时遇到路径或文件名问题（错误码 22），候选稿已保留，请检查文件名后重试。",
     "Review primary and configured fallback did not produce usable output":"审稿模型和备用模型都没有返回可用结果，已有内容已保留。",
     "终审模型返回内容不完整，精简报告恢复也未完成；已保留最佳稿":"终审模型返回内容不完整，精简报告恢复也未完成；最佳稿已保留，可以重新终审。",
-    "终审模型已返回，但结果未通过系统校验，已保留最佳稿":"终审模型已返回，但内容不完整，系统没有采用半份报告；最佳稿已保留，可以重新终审。"
+    "终审模型已返回，但结果未通过系统校验，已保留最佳稿":"终审模型已返回，但内容不完整，系统没有采用半份报告；最佳稿已保留，可以重新终审。",
+    "Skill completed without file proposals":"模型读取了作品资料，但没有生成本阶段需要的文件；已有资料不受影响，再次初始化只会继续未完成阶段。",
+    "Controlled runtime ended without required tool output":"模型读取了作品资料，但自动补救后仍未生成本阶段需要的文件；已有资料不受影响，再次初始化只会继续未完成阶段。",
+    "Model exceeded the eight-round tool limit":"模型多次读取资料后仍未完成写入；已有资料不受影响，再次初始化只会继续未完成阶段。"
   };
   if(exact[text])return exact[text];
   let result=text
@@ -108,7 +114,11 @@ const readableRunMessage = value => {
     .replace(/\bprimary\b/g,"主模型")
     .replace(/\barchive\b/g,"归档")
     .replace(/\btoken_budget_exhausted\b/g,"模型用量已到上限")
-    .replace(/\btool_use\b/g,"工具调用");
+    .replace(/\btool_use\b/g,"工具调用")
+    .replace(/\bstory-init\b/g,"作品基础资料")
+    .replace(/\bcharacter-management\b/g,"人物资料")
+    .replace(/\bworldbuilding\b/g,"世界设定")
+    .replace(/\bplot-structure\b/g,"剧情结构");
   return /[A-Za-z]/.test(result) && !/[㐀-鿿]/.test(result)
     ? "系统记录了一条技术信息；如任务失败，请在模型设置中检查连接后继续运行。"
     : result.replace(/https?:\/\/\S+/g,"").trim();
@@ -1034,6 +1044,14 @@ async function loadOutlineWorkspace(){
 
 function outlineChangeLabel(type){return {added:"新增剧情",removed:"删除剧情",changed:"内容变化",reordered:"位置调整",uncertain:"暂时判断不了"}[type]||"发生变化";}
 
+function outlineMarketReferenceMarkup(check){
+  if(!check||check.status==="not_enabled")return "";
+  const signals=(check.signals||[]).map(item=>`<p><b>${item.detected?"已出现":"可留意"}</b><span>${escapeHtml(item.message)}</span></p>`).join("");
+  const mechanisms=(check.mechanisms||[]).map(item=>`<li><strong>${escapeHtml(item.name)}</strong><span>${Number(item.work_count||0)} 篇样本出现${item.position_median==null?"":` · 常见位置约全文 ${Number(item.position_median)}%`}</span></li>`).join("");
+  const details=mechanisms?`<details><summary>查看同类样本中的常见机制</summary><ul>${mechanisms}</ul>${check.boundary?`<small>${escapeHtml(check.boundary)}</small>`:""}</details>`:"";
+  return `<section class="outline-market-reference"><header><strong>同类市场参考</strong><span>${escapeHtml(check.message||"市场数据只供参考，不影响候选大纲的应用。")}</span></header>${signals?`<div>${signals}</div>`:""}${details}</section>`;
+}
+
 function renderOutlineComparison(report){
   const shell=$("#outline-comparison");if(!shell)return;
   if(!report){shell.hidden=true;shell.innerHTML="";return;}
@@ -1048,8 +1066,10 @@ function renderOutlineComparison(report){
     <details><summary>查看改动前后</summary><div class="outline-before-after"><section><span>当前大纲</span><pre>${escapeHtml(item.current_text||"（没有这段）")}</pre></section><section><span>候选大纲</span><pre>${escapeHtml(item.candidate_text||"（将删除这段）")}</pre></section></div></details>
   </article>`).join(""):'<div class="learning-empty"><strong>没有发现变化</strong><p>这个候选与当前大纲内容相同，不需要应用。</p></div>';
   const firstOutline=report.stage==="no_outline";
+  const marketReference=outlineMarketReferenceMarkup(report.market_check);
   const canonCards=canonConflicts.length?`<section class="outline-canon-conflicts"><header><strong>先确认这些设定</strong><span>每一项只保留一个答案，确认后才会进入后续写作。</span></header>${canonConflicts.map(item=>`<article class="outline-canon-item"><div><span>${escapeHtml(item.label)}</span><p>${escapeHtml(item.explanation)}</p></div><fieldset><legend>最终采用</legend><label><input type="radio" name="canon-${escapeHtml(item.id)}" data-canon-choice="${escapeHtml(item.id)}" value="keep_current"><span><small>保留项目资料</small><strong>${escapeHtml(item.current_value)}</strong></span></label><label class="${item.can_use_candidate?"":"disabled"}"><input type="radio" name="canon-${escapeHtml(item.id)}" data-canon-choice="${escapeHtml(item.id)}" value="use_candidate" ${item.can_use_candidate?"":"disabled"}><span><small>${item.can_use_candidate?"采用候选大纲":"项目资料已锁定"}</small><strong>${escapeHtml(item.candidate_value)}</strong></span></label></fieldset></article>`).join("")}</section>`:"";
   shell.innerHTML=`<header><div><h4>${firstOutline?"准备建立第一版正式大纲":"比较结果"}</h4><p>${firstOutline?"当前作品还没有正式大纲；整体采用后，这份候选会成为第一版正式大纲。":"勾选你想要的变化；没有勾选的内容会保持原样。"}</p></div><div class="outline-change-summary"><span>新增 <b>${summary.added||0}</b></span><span>删除 <b>${summary.removed||0}</b></span><span>调整 <b>${summary.changed||0}</b></span></div></header>
+    ${marketReference}
     ${risks?`<ul class="outline-risks">${risks}</ul>`:""}
     ${canonCards}
     <div class="outline-change-list">${list}</div>
@@ -1095,8 +1115,9 @@ function renderOutlineWorkspace(){
   const current=state.outlines?.current;
   const readiness=state.outlines?.writing_readiness;
   const currentVersion=Number(current?.outline_version)>0?`第 ${current.outline_version} 版`:"旧项目已有版本";
+  const currentConflicts=(readiness?.conflicts||[]).map(item=>`<p><strong>${escapeHtml(item.label)}</strong><span>项目资料：${escapeHtml(item.current_value)} · 正式大纲：${escapeHtml(item.candidate_value)}</span></p>`).join("");
   currentShell.innerHTML=current?.exists
-    ?`<strong>当前正式大纲 · ${currentVersion}</strong><span>${escapeHtml(readiness?.message||current.message)}</span>${readiness&&!readiness.ready?'<button class="secondary" type="button" data-current-outline-create-project>按当前大纲创建新作品</button><small>新作品重新生成人物和设定；原作品、原资料和运行记录都会保留。</small>':""}`
+    ?`<strong>当前正式大纲 · ${currentVersion}</strong><span>${escapeHtml(readiness?.message||current.message)}</span>${currentConflicts?`<div class="outline-current-conflicts">${currentConflicts}</div>`:""}${readiness&&!readiness.ready?'<button class="secondary" type="button" data-current-outline-create-project>按当前大纲创建新作品</button><small>新作品重新生成人物和设定；原作品、原资料和运行记录都会保留。</small>':""}`
     :`<strong>还没有正式大纲</strong><span>${escapeHtml(current?.message||"生成候选后，可以把它设为第一版大纲。")}</span>`;
   currentShell.querySelector("[data-current-outline-create-project]")?.addEventListener("click",createProjectFromCurrentOutline);
   const candidates=state.outlines?.candidates||[];
@@ -1209,6 +1230,8 @@ function mechanismSourceMeta(item){
 
 const listValue=value=>Array.isArray(value)?value:(value==null||value===""?[]:[value]);
 const styleFieldLabels={viewpoint:"叙事视角",narrative_distance:"叙事距离",sentence_rhythm:"句子节奏",paragraph_rhythm:"段落节奏",dialogue:"对白表达",psychology:"心理描写",action_sensation:"动作与感官",professional_detail:"细节用法",forbidden_patterns:"避免使用"};
+const viewpointLabels={first:"第一人称","first-person":"第一人称",second:"第二人称","second-person":"第二人称",third:"第三人称","third-limited":"第三人称限知",third_limited:"第三人称限知","third-person-limited":"第三人称限知","third-omniscient":"第三人称全知",third_omniscient:"第三人称全知","third-person-omniscient":"第三人称全知"};
+function readableViewpoint(value){const text=String(value||"").trim();return viewpointLabels[text.toLowerCase()]||(/[a-z]/i.test(text)?"自定义视角":text)||"未指定";}
 
 function styleCandidateApplied(item){
   const baseline=state.projectLearning?.artifacts?.find(value=>value.artifact_type==="prose_baseline")?.data||{};
@@ -1313,10 +1336,10 @@ async function releaseMechanism(id){const item=state.mechanisms.find(value=>valu
 async function adoptMechanism(id) { const projectId=$("#learning-project").value; if(!projectId)return toast("请先选择作品"); try { await api(`/api/projects/${projectId}/learning/adoptions/${id}`,{method:"POST",body:JSON.stringify({edits:{}})}); await loadProjectLearning(); renderLearning(); toast("已采纳并生成新版创作蓝图"); } catch(error){toast(error.message);} }
 function effectiveRulesMarkup(data,compact=false){
   if(!data)return '<p class="skill-meta">尚未读取当前作品的创作设置</p>';
-  const layers=(data.layers||[]).map(item=>`<li><b>${item.priority}</b><span><strong>${escapeHtml(item.name)}</strong><small>${Number(item.count||0)} 项 · ${escapeHtml(item.status)}</small></span></li>`).join("");
+  const layers=(data.layers||[]).map((item,index)=>`<li><b>${index+1}</b><span><strong>${escapeHtml(item.name)}</strong><small>${Number(item.count||0)} 项 · ${escapeHtml(item.status)}</small></span></li>`).join("");
   const conflicts=data.conflicts||[];
   const cautions=data.cautions||[];
-  const warnings=conflicts.length?`<div class="effective-rule-warning"><strong>需要你留意 ${conflicts.length} 项</strong>${conflicts.map(item=>`<p>${escapeHtml(item.message)}</p>`).join("")}</div>`:'<div class="effective-rule-clear"><strong>没有发现明确冲突</strong><span>生成时会按下方顺序使用。</span></div>';
+  const warnings=conflicts.length?`<div class="effective-rule-warning"><strong>需要你留意 ${conflicts.length} 项</strong>${conflicts.map(item=>`<div class="effective-rule-warning-item"><b>${escapeHtml(item.title||"需要确认的写法")}</b><p>${escapeHtml(item.message)}</p></div>`).join("")}</div>`:'<div class="effective-rule-clear"><strong>没有发现明确冲突</strong><span>生成时会按下方顺序使用。</span></div>';
   const usage=data.usage||[];
   const usageLabels={evident:"明显体现",partial:"有部分迹象",missing:"没有发现",review:"需要人工判断"};
   const usageHtml=usage.length?`<details class="effective-rule-usage"><summary>检查已有正文是否体现补充写法（${usage.length}条）</summary>${usage.map(item=>`<p><strong>${escapeHtml(item.name)}</strong><span class="${item.status}">${usageLabels[item.status]||"等待判断"}</span><small>${escapeHtml(item.reason)}</small></p>`).join("")}</details>`:(data.has_manuscript?'<p class="skill-meta">当前没有需要检查的补充写法。</p>':'<p class="skill-meta">生成正文后，这里会用本地规则检查补充写法是否得到体现。</p>');
@@ -1344,7 +1367,7 @@ function renderProseBaselineOverview(){
   const defaultRules=listValue(defaults.rules).map(item=>`<div><span>${escapeHtml(item.label||"默认规则")}</span><p>${escapeHtml(item.rule||"")}</p></div>`).join("");
   const learnedRules=Object.entries(learned).flatMap(([field,values])=>listValue(values).map(rule=>`<div><span>${escapeHtml(styleFieldLabels[field]||"补充规则")}</span><p>${escapeHtml(rule)}</p></div>`)).join("");
   const version=Number(overview.version||0),history=version>1?`<div class="artifact-version-actions"><button class="secondary" type="button" data-artifact-history="prose_baseline">查看和恢复旧版本</button><div data-artifact-history-list="prose_baseline"></div></div>`:"";
-  return `<details class="learning-artifact prose-baseline-artifact" open><summary><span><strong>当前基础文笔</strong><small>${version?`系统默认 + 已确认样本文笔 · 版本 ${version}`:"系统默认文笔 · 尚未加入样本规则"}</small></span><b>生效中</b></summary><div class="prose-baseline-overview"><section><h4>作品基础方向</h4><div class="prose-baseline-facts"><span>题材 <b>${escapeHtml(defaults.genre||"未指定")}</b></span><span>视角 <b>${escapeHtml(defaults.viewpoint||"未指定")}</b></span><span>语调 <b>${escapeHtml(defaults.tone||"未指定")}</b></span></div></section><section><h4>系统默认规则</h4><div class="prose-baseline-rules">${defaultRules}</div></section><section><h4>从样本确认并加入的规则</h4><div class="prose-baseline-rules">${learnedRules||'<p class="skill-meta">目前没有。到“候选写法”确认文笔候选后，再加入当前作品。</p>'}</div></section></div>${history}</details>`;
+  return `<details class="learning-artifact prose-baseline-artifact" open><summary><span><strong>当前基础文笔</strong><small>${version?`系统默认 + 已确认样本文笔 · 版本 ${version}`:"系统默认文笔 · 尚未加入样本规则"}</small></span><b>生效中</b></summary><div class="prose-baseline-overview"><section><h4>作品基础方向</h4><div class="prose-baseline-facts"><span>题材 <b>${escapeHtml(defaults.genre||"未指定")}</b></span><span>视角 <b>${escapeHtml(readableViewpoint(defaults.viewpoint))}</b></span><span>语调 <b>${escapeHtml(defaults.tone||"未指定")}</b></span></div></section><section><h4>系统默认规则</h4><div class="prose-baseline-rules">${defaultRules}</div></section><section><h4>从样本确认并加入的规则</h4><div class="prose-baseline-rules">${learnedRules||'<p class="skill-meta">目前没有。到“候选写法”确认文笔候选后，再加入当前作品。</p>'}</div></section></div>${history}</details>`;
 }
 function renderLearningArtifacts(){
   const shell=$("#learning-artifacts"); if(!shell)return;
@@ -2041,10 +2064,24 @@ const materialSectionLabels = {
 function materialImpact(groupId) {
   return ({characters:"后续生成、润色与人物一致性审核",world:"后续规划、生成与世界规则审核",locations:"后续场景生成与地点一致性审核",plot:"后续规划与结构审核",timeline:"后续生成与时间线审核",issues:"后续审核与定向修订",constraints:"全部后续生成和发布检查"})[groupId] || "后续写作";
 }
+const materialRoleLabels={protagonist:"主角",counterpart:"重要对手戏人物",deuteragonist:"重要对手戏人物",antagonist:"反派",supporting:"重要配角",minor:"次要人物",narrator:"叙述者"};
+const materialStatusLabels={alive:"在世",deceased:"已故",active:"活跃",planned:"计划中"};
+function renderMaterialCoverage(groupId) {
+  const shell=$("#material-coverage"),coverage=state.materials?.coverage?.[groupId];
+  if(!shell)return;
+  if(!coverage){shell.innerHTML="";shell.hidden=true;return;}
+  const conflicts=groupId==="characters"?(state.materials?.outline_conflicts||[]):[];
+  const conflictHtml=conflicts.map(item=>`<p><strong>${escapeHtml(item.label)}</strong><span>项目资料写的是“${escapeHtml(item.current_value)}”，正式大纲写的是“${escapeHtml(item.candidate_value)}”。请先在作品应用页确认最终采用哪一个。</span></p>`).join("");
+  const missingHtml=(coverage.missing||[]).length?`<details><summary>查看缺失项和大纲依据</summary><div>${coverage.missing.map(item=>`<p><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.evidence||"正式大纲已明确要求这项资料")}</span></p>`).join("")}</div></details>`:"";
+  const review=state.materials?.manifest_review?.status==="model_confirmed"?"规划模型已按大纲原文复核":"本地程序已按大纲明确结构核对";
+  shell.hidden=false;shell.className=`material-coverage ${coverage.status==="needs_attention"?"needs-attention":"ready"}`;
+  shell.innerHTML=`<header><div><strong>${escapeHtml(coverage.message)}</strong><span>${review}</span></div><span>已有 ${coverage.document_count||0}${coverage.expected_count?` · 大纲明确 ${coverage.expected_count}`:""}</span></header>${conflictHtml}${missingHtml}`;
+}
 function renderCharacter(profile, document) {
   const shell=$("#character-detail");
   if (!profile) { shell.innerHTML='<p class="skill-meta">暂无人物档案</p>'; return; }
-  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(profile.role || "character")}</p><h2>${escapeHtml(profile.name)}</h2></div><div class="character-facts"><span>${escapeHtml(profile.age || "-")} 岁</span><span>${escapeHtml(profile.status || "-")}</span></div></header><div class="material-actions"><button class="secondary" data-material-edit>编辑人物档案</button></div><div class="character-tags">${(profile.tags || []).map(tag=>`<span>${escapeHtml(tag)}</span>`).join("")}</div>${profile.arc ? `<section><h3>人物弧线摘要</h3><p>${escapeHtml(profile.arc)}</p></section>` : ""}${(profile.sections || []).map(section=>`<section><h3>${escapeHtml(materialSectionLabels[section.title] || section.title)}</h3><div class="profile-copy">${escapeHtml(section.content)}</div></section>`).join("")}`;
+  const facts=[profile.age?`${profile.age} 岁`:"",materialStatusLabels[profile.status]||profile.status||""].filter(Boolean);
+  shell.innerHTML=`<header><div><p class="eyebrow">${escapeHtml(materialRoleLabels[profile.role] || "人物")}</p><h2>${escapeHtml(profile.name)}</h2></div><div class="character-facts">${facts.map(item=>`<span>${escapeHtml(item)}</span>`).join("")}</div></header><div class="material-actions"><button class="secondary" data-material-edit>编辑人物档案</button></div><div class="character-tags">${(profile.tags || []).map(tag=>`<span>${escapeHtml(tag)}</span>`).join("")}</div>${profile.arc ? `<section><h3>人物弧线摘要</h3><p>${escapeHtml(profile.arc)}</p></section>` : ""}${(profile.sections || []).map(section=>`<section><h3>${escapeHtml(materialSectionLabels[section.title] || section.title)}</h3><div class="profile-copy">${escapeHtml(section.content)}</div></section>`).join("")}`;
   shell.querySelector("[data-material-edit]")?.addEventListener("click",()=>renderMaterialEditor(document,"characters"));
 }
 function renderMaterialDocument(document, groupId) {
@@ -2072,6 +2109,7 @@ function renderMaterialEditor(document, groupId) {
 }
 function renderSelectedMaterial() {
   const group=(state.materials?.groups || []).find(item=>item.id===state.activeMaterialGroup);
+  renderMaterialCoverage(state.activeMaterialGroup);
   const documents=group?.documents || [];
   if (!documents.some(item=>item.path===state.activeMaterialPath)) state.activeMaterialPath=documents[0]?.path || null;
   $("#character-list").innerHTML=documents.map(item=>`<button class="character-list-item ${item.path===state.activeMaterialPath ? "active" : ""}" data-material-path="${escapeHtml(item.path)}"><strong>${escapeHtml(item.display?.title || item.title)}</strong><span>${escapeHtml(group?.label || "项目资料")}</span></button>`).join("") || '<p class="skill-meta">暂无资料文件</p>';
@@ -2086,6 +2124,7 @@ async function renderMaterials() {
   const project=state.activeProject;
   if (!project) {
     state.materials=null; $("#materials-summary").innerHTML='<span>先创建一部作品。</span>';
+    $("#material-coverage").innerHTML=""; $("#material-coverage").hidden=true;
     $("#character-list").innerHTML=""; renderCharacter(null); renderProjectLearningMaterials(null); await loadStoryState(null); return;
   }
   $("#materials-project").value=project.id;
@@ -2096,7 +2135,7 @@ async function renderMaterials() {
     $("#materials-summary").innerHTML=`<div class="metric"><strong>${escapeHtml(result.project.title)}</strong><span>作品</span></div><div class="metric"><strong>${result.project.mode === "short" ? "短篇" : "长篇"}</strong><span>模式</span></div><div class="metric"><strong>${Number(result.project.target_words || 0).toLocaleString()}</strong><span>目标字数</span></div><div class="metric"><strong>${result.characters.length}</strong><span>人物档案</span></div>`;
     const groups=result.groups || [];
     if (!groups.some(item=>item.id===state.activeMaterialGroup)) state.activeMaterialGroup=groups[0]?.id || "characters";
-    $("#material-tabs").innerHTML=groups.map(group=>`<button class="material-tab ${group.id===state.activeMaterialGroup ? "active" : ""}" data-material-group="${group.id}" role="tab">${escapeHtml(group.label)}<span>${group.documents.length}</span></button>`).join("");
+    $("#material-tabs").innerHTML=groups.map(group=>{const coverage=result.coverage?.[group.id];const missing=coverage?.missing?.length||0;return `<button class="material-tab ${group.id===state.activeMaterialGroup ? "active" : ""}" data-material-group="${group.id}" role="tab">${escapeHtml(group.label)}<span>${group.documents.length}${missing?` · 缺 ${missing}`:""}</span></button>`;}).join("");
     $("#material-tabs").querySelectorAll("[data-material-group]").forEach(button=>button.addEventListener("click",()=>{state.activeMaterialGroup=button.dataset.materialGroup; state.activeMaterialPath=null; renderMaterialsTabs();}));
     renderMaterialsTabs();
     renderMaterialImpacts(result.material_impacts || []);
@@ -2666,9 +2705,10 @@ async function run(path, body) {
     const result = await api(path, {method:"POST", body:body ? JSON.stringify(body) : undefined});
     if(workbenchContextMatches(projectId,workbenchGeneration))monitorRun(result,projectId,workbenchGeneration);
   }
-  catch {
+  catch(error) {
     startFailed=true;
-    if(workbenchContextMatches(projectId,workbenchGeneration)){box.className="run-state error";box.textContent="任务没有启动，请稍后重试。";}
+    const message=readableRunMessage(error.message||"任务没有启动，请稍后重试。");
+    if(workbenchContextMatches(projectId,workbenchGeneration)){box.className="run-state error";box.textContent=`任务没有启动：${message}`;toast(message);}
   }finally{
     if(state.runStartingProjectId===projectId)state.runStartingProjectId=null;
     if(workbenchContextMatches(projectId,workbenchGeneration)){
@@ -2711,18 +2751,38 @@ function polishRunEventMessage(item) {
   return polishRecoveryMessages[item.event_type]||readableRunMessage(item.message||`${item.event_type||"event"}: 未返回可用诊断信息`);
 }
 function renderRunLog(events) {
-  const visibleEvents=events.filter(item=>!hiddenRunEventTypes.has(item.event_type));
+  const visibleEvents=events.filter(item=>!hiddenRunEventTypes.has(item.event_type)).filter(
+    (item,index,items)=>index===0||item.severity!=="error"||items[index-1].severity!=="error"||
+      polishRunEventMessage(item)!==polishRunEventMessage(items[index-1])
+  );
   $("#run-log").innerHTML = visibleEvents.length ? visibleEvents.map(item => {
     return `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(runLabel(item.stage || item.event_type))}</span><span>${escapeHtml(polishRunEventMessage(item))}</span></div>`;
   }).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }
+function initializationCandidateNotice(events) {
+  const event=[...events].reverse().find(item=>item.event_type==="skill_failed"&&item.metadata?.proposal_summary);
+  if(!event)return "";
+  const summary=event.metadata.proposal_summary||{},counts=summary.counts||{};
+  const reusable=Number(summary.retainable_count??((counts.pending||0)+(counts.retained||0)));
+  const repair=Number(summary.repair_count??counts.failed??0);
+  const duplicates=Number(summary.duplicate_count??counts.superseded??0);
+  const missing=Number(summary.missing_count??(summary.missing_items||[]).length);
+  const missingItems=Array.isArray(summary.missing_items)?summary.missing_items.filter(Boolean):[];
+  const parts=[`${Math.max(0,reusable)} 份可继续使用`];
+  if(repair>0)parts.push(`${repair} 份需要自动修复`);
+  if(duplicates>0)parts.push(`${duplicates} 份重复内容已隔离`);
+  if(missing>0)parts.push(`${missing} 项仍需补写`);
+  const title=reusable>0?"失败前生成的资料已经保留":repair>0?"生成的资料需要修复后再使用":"本阶段没有可复用的新资料";
+  const missingDetail=missingItems.length?`<details class="candidate-missing"><summary>查看仍需补写的内容</summary><ul>${missingItems.slice(0,3).map(item=>`<li>${escapeHtml(item)}</li>`).join("")}</ul>${missingItems.length>3?`<small>还有 ${missingItems.length-3} 项，继续初始化时会一起处理。</small>`:""}</details>`:"";
+  return `<div class="context-tools warning"><strong>${title}</strong><span>${escapeHtml(parts.join(" · "))}<br>正式人物、设定和剧情资料没有被修改；再次继续初始化时，系统会先复用可用内容并修复其余内容。</span>${missingDetail}</div>`;
+}
 function renderRunContext(detail) {
   const events=detail.events || []; const loaded=new Map();
-  events.filter(item => item.event_type === "skills_loaded").forEach(item => loaded.set(item.stage,item.metadata || {}));
+  events.filter(item => ["skills_loaded","learning_context_loaded"].includes(item.event_type)).forEach(item => loaded.set(item.stage,{...(loaded.get(item.stage)||{}),...(item.metadata||{})}));
   const pendingFallbacks=new Set(); const completed=[];
-  events.forEach(item => { if(item.event_type === "model_fallback") pendingFallbacks.add(item.stage); if(item.event_type === "stage_completed") { completed.push({...item,usedFallback:pendingFallbacks.has(item.stage)}); pendingFallbacks.delete(item.stage); } });
-  const stages=completed.map(item => { const meta=item.metadata || {}; const context=loaded.get(item.stage) || {}; return `<div class="context-stage"><div><strong>${escapeHtml(runLabel(item.stage))}</strong><span>${escapeHtml(meta.model_name || "未记录模型")}${item.usedFallback ? " · 已回退" : ""}</span></div><dl><dt>写作能力</dt><dd>${escapeHtml((context.skills || meta.skills || []).join("、") || "无")}</dd><dt>提示词</dt><dd>${Number(context.prompt_characters || 0).toLocaleString()} 字符</dd><dt>约束</dt><dd>${Number(context.constraint_characters || 0).toLocaleString()} 字符</dd><dt>模型用量</dt><dd>${Number(meta.input_tokens || 0).toLocaleString()} 输入 · ${Number(meta.output_tokens || 0).toLocaleString()} 输出</dd><dt>执行</dt><dd>${escapeHtml(runLabel(meta.execution_mode || "普通请求"))}</dd></dl></div>`; });
+  events.forEach(item => { if(item.event_type === "model_fallback") pendingFallbacks.add(item.stage); if(["stage_completed","skill_completed"].includes(item.event_type)) { completed.push({...item,usedFallback:pendingFallbacks.has(item.stage)}); pendingFallbacks.delete(item.stage); } });
+  const stages=completed.map(item => { const meta=item.metadata || {}; const context=loaded.get(item.stage) || {}; const confirmed=[...(context.confirmed_context||meta.confirmed_context||[])]; if("prose_rules" in context||"creative_methods" in context)confirmed.push(`${Number(context.prose_rules||0)} 条文笔规则`,`${Number(context.creative_methods||0)} 条创作方法`); return `<div class="context-stage"><div><strong>${escapeHtml(runLabel(item.stage))}</strong><span>${escapeHtml(meta.model_name || "未记录模型")}${item.usedFallback ? " · 已回退" : ""}</span></div><dl><dt>写作能力</dt><dd>${escapeHtml((context.skills || meta.skills || []).join("、") || "无")}</dd>${confirmed.length?`<dt>本阶段参考</dt><dd>${escapeHtml(confirmed.join("、"))}</dd>`:""}<dt>提示词</dt><dd>${Number(context.prompt_characters || 0).toLocaleString()} 字符</dd><dt>约束</dt><dd>${Number(context.constraint_characters || 0).toLocaleString()} 字符</dd><dt>模型用量</dt><dd>${Number(meta.input_tokens || 0).toLocaleString()} 输入 · ${Number(meta.output_tokens || 0).toLocaleString()} 输出</dd><dt>执行</dt><dd>${escapeHtml(runLabel(meta.execution_mode || "普通请求"))}</dd></dl></div>`; });
   const tools=detail.tool_receipts || [];
   const audit=detail.quality_report?.final_review_evidence; const counts=audit?.reconciliation_counts || {};
   const detailAnalysis=audit?.detail_analysis;
@@ -2733,7 +2793,12 @@ function renderRunContext(detail) {
   const recovery=detail.quality_report?.final_review_recovery;
   const failureDetail=detail.quality_report?.failure_detail;
   const notice=recovery?.attempted ? `<div class="context-tools ${recovery.succeeded ? "success" : "warning"}"><strong>${recovery.succeeded ? "终审报告已恢复" : "终审报告仍不完整"}</strong><span>${escapeHtml(recovery.message || "最佳稿已保留，可以重新终审")}</span></div>` : failureDetail?.kind === "malformed_json" ? '<div class="context-tools warning"><strong>终审返回内容不完整</strong><span>系统没有采用半份报告，最佳稿已保留；可以重新终审。</span></div>' : "";
-  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + notice + quality + detailStatus + issueLedger + (tools.length ? `<div class="context-tools"><strong>工具调用记录</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => runLabel(item.execution_mode)))].join("、"))}</span></div>` : "");
+  const learning=events.find(item=>item.event_type==="initialization_learning_snapshot")?.metadata;
+  const stageCounts=learning?.stage_counts||{};
+  const learningStages=Object.entries(stageCounts).filter(([stage])=>stage!=="story-init").map(([stage,count])=>`${runLabel(stage)}：${Number(count.prose_rules||0)} 条文笔、${Number(count.creative_methods||0)} 条方法`).join("；");
+  const learningContext=learning ? `<div class="context-tools success"><strong>本次参考的文笔和创作方法</strong><span>${learning.prose_baseline?`基础文笔第 ${Number(learning.prose_baseline)} 版`:`没有已生效的基础文笔`} · ${learning.creative_blueprint?`创作蓝图第 ${Number(learning.creative_blueprint)} 版`:`没有已生效的创作蓝图`}${learningStages?`<br>${escapeHtml(learningStages)}`:""}${Number(learning.skipped_conflicts||0)?`<br>已跳过 ${Number(learning.skipped_conflicts)} 条与当前叙事视角冲突的规则。`:""}<br>正式大纲和已确认设定优先，不会在这里被改写。</span></div>` : "";
+  const initializationCandidates=initializationCandidateNotice(events);
+  $("#run-context").innerHTML=(stages.join("") || '<p class="skill-meta">本次运行尚无已完成阶段</p>') + learningContext + initializationCandidates + notice + quality + detailStatus + issueLedger + (tools.length ? `<div class="context-tools"><strong>工具调用记录</strong><span>${tools.length} 条 · ${escapeHtml([...new Set(tools.map(item => runLabel(item.execution_mode)))].join("、"))}</span></div>` : "");
 }
 document.querySelectorAll("[data-run-tab]").forEach(button => button.addEventListener("click", () => {
   document.querySelectorAll("[data-run-tab]").forEach(item => item.classList.toggle("active",item === button));
@@ -2875,7 +2940,12 @@ function renderProviders() {
 function modelOptions() { return state.providers.flatMap(p => p.models.map(m => `<option value="${p.id}|${m.id}">${escapeHtml(p.name)} / ${escapeHtml(m.display_name)}</option>`)).join(""); }
 function renderBindings() {
   const options = modelOptions();
-  $("#role-bindings").innerHTML = Object.entries(roles).map(([role,label]) => `<div class="binding-row"><strong>${label}</strong><label class="binding-control"><span>主模型</span><select id="binding-primary-${role}"><option value="">请选择模型</option>${options}</select></label><label class="binding-control"><span>备用模型</span><select id="binding-fallback-${role}"><option value="">使用程序默认回退</option>${options}</select></label><button class="secondary" data-bind="${role}">保存</button></div>`).join("");
+  $("#role-bindings").innerHTML = Object.entries(roles).map(([role,label]) => {
+    const requiresTools=toolRequiredRoles.has(role);
+    const toolNote=requiresTools ? "需要工具" : "不需要工具";
+    const toolTitle=requiresTools ? "这个角色会写入项目资料，主模型和备用模型都必须支持工具调用" : "这个角色不支持工具调用也能正常工作";
+    return `<div class="binding-row"><div class="binding-role"><strong>${label}</strong><small class="role-tool-note ${requiresTools ? "required" : ""}" title="${toolTitle}">${toolNote}</small></div><label class="binding-control"><span>主模型</span><select id="binding-primary-${role}"><option value="">请选择模型</option>${options}</select></label><label class="binding-control"><span>备用模型</span><select id="binding-fallback-${role}"><option value="">使用程序默认回退</option>${options}</select></label><button class="secondary" data-bind="${role}">保存</button></div>`;
+  }).join("");
   document.querySelectorAll("[data-bind]").forEach(button => button.addEventListener("click", async () => {
     const role = button.dataset.bind;
     const primaryValue = $(`#binding-primary-${role}`).value;

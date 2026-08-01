@@ -1,7 +1,10 @@
+import asyncio
 import json
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
+from types import SimpleNamespace
 
+import pytest
 from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
@@ -226,6 +229,277 @@ def test_initialize_skills_returns_tracked_background_run(tmp_path) -> None:
 
     assert response.status_code == 202
     assert response.json()["workflow"] == "initialize-skills"
+
+
+def test_initialization_freezes_learning_versions_and_skips_completed_stage(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    _wizard, project_data = create_completed_wizard(client)
+    project_id = project_data["id"]
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "正式版", "outline": "# 正式大纲\n\n## 开头\n门被推开。"},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    )
+    learning = client.app.state.learning
+    learning.build_prose_baseline(project_id, {
+        "dialogue": ["让回应改变关系。"],
+        "psychology": ["先写动作，再写判断。"],
+    })
+    learning.save_artifact(project_id, "creative_blueprint", {
+        "mechanisms": [{
+            "name": "递进冲突", "transfer_guidance": "每轮冲突都改变状态。",
+            "applicable_modes": ["short"],
+        }],
+    })
+    project = client.app.state.projects.get(project_id)
+    metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
+    metadata["initialization_skills"] = [
+        "story-init", "character-management", "worldbuilding", "plot-structure",
+    ]
+    (project.path / "project.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    skills = {
+        name: SimpleNamespace(name=name, content_hash=f"hash-{name}")
+        for name in metadata["initialization_skills"]
+    }
+    db.create_skill_execution(
+        "completed-story", project_id, "story-init", "hash-story-init", "completed",
+    )
+
+    class Runtime:
+        calls = []
+
+        async def run(self, requested_project_id, skill_name, answers, bootstrap=False):
+            self.calls.append((skill_name, answers["confirmed_learning_context"]))
+            assert answers["confirmed_outline"]["content"].startswith("# 正式大纲")
+            if skill_name == "character-management":
+                learning.build_prose_baseline(project_id, {"dialogue": ["任务启动后新增的规则。"]})
+            return {"status": "completed", "proposals": []}
+
+    class CapturingTasks:
+        operation = None
+
+        def start(self, requested_project_id, workflow, operation):
+            db.create_run("initialization-run", requested_project_id, workflow, status="queued")
+            self.operation = operation
+            return db.get_run("initialization-run")
+
+    runtime = Runtime()
+    tasks = CapturingTasks()
+    client.app.state.skill_gate = SimpleNamespace(skills=lambda _path: skills)
+    client.app.state.skill_runtime = runtime
+    client.app.state.run_tasks = tasks
+    outline_before = client.app.state.outlines.current(project_id)
+
+    response = client.post(f"/api/projects/{project_id}/initialize-skills")
+    asyncio.run(tasks.operation("initialization-run"))
+
+    assert response.status_code == 202
+    assert [name for name, _context in runtime.calls] == [
+        "character-management", "worldbuilding", "plot-structure",
+    ]
+    assert {context["source_versions"]["prose_baseline"] for _name, context in runtime.calls} == {1}
+    assert len(runtime.calls[0][1]["prose_rules"]) == 2
+    assert runtime.calls[1][1]["prose_rules"] == []
+    assert len(runtime.calls[2][1]["creative_methods"]) == 1
+    assert learning.get_artifact(project_id, "prose_baseline")["version"] == 2
+    assert client.app.state.outlines.current(project_id) == outline_before
+    events = db.list_run_events("initialization-run")
+    snapshot = next(item for item in events if item["event_type"] == "initialization_learning_snapshot")
+    assert snapshot["metadata"]["prose_baseline"] == 1
+    assert snapshot["metadata"]["creative_blueprint"] == 1
+
+
+def test_initialization_rolls_back_all_earlier_stages_when_a_later_stage_fails(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    _wizard, project_data = create_completed_wizard(client)
+    project_id = project_data["id"]
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "正式版", "outline": "# 正式大纲\n\n## 开头\n门被推开。"},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    )
+    project = client.app.state.projects.get(project_id)
+    rollback_indexes = [
+        project.path / "chapters" / "_index.md",
+        project.path / "glossary" / "_index.md",
+        project.path / "scenes" / "_index.md",
+    ]
+    original_indexes = {path: path.read_text(encoding="utf-8") for path in rollback_indexes}
+    metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
+    metadata["initialization_skills"] = ["character-management", "worldbuilding"]
+    (project.path / "project.json").write_text(
+        json.dumps(metadata, ensure_ascii=False), encoding="utf-8",
+    )
+    skills = {
+        name: SimpleNamespace(name=name, content_hash=f"hash-{name}")
+        for name in metadata["initialization_skills"]
+    }
+
+    class Runtime:
+        async def run(self, requested_project_id, skill_name, answers, bootstrap=False):
+            if skill_name == "character-management":
+                generated = project.path / "characters" / "generated.md"
+                content = "---\nname: 临时人物\nrole: protagonist\n---\n# 临时人物\n"
+                generated.write_text(
+                    content,
+                    encoding="utf-8",
+                )
+                for path in rollback_indexes:
+                    path.write_text("changed by reindex", encoding="utf-8")
+                db.create_skill_execution(
+                    "character-execution", project.id, skill_name,
+                    skills[skill_name].content_hash, "completed",
+                )
+                db.save_file_proposal(
+                    "character-proposal", "character-execution",
+                    "characters/generated.md", content, "applied",
+                )
+                return {
+                    "id": "character-execution", "status": "completed",
+                    "proposals": [],
+                }
+            error = RuntimeError("世界设定生成失败")
+            error.proposal_summary = {
+                "execution_id": "worldbuilding-execution",
+                "retainable_count": 2,
+                "repair_count": 1,
+                "duplicate_count": 1,
+                "missing_count": 1,
+                "missing_items": ["这些故事地点还没有资料：镇子集市"],
+                "formal_unchanged": True,
+            }
+            raise error
+
+    class CapturingTasks:
+        operation = None
+
+        def start(self, requested_project_id, workflow, operation):
+            db.create_run("rollback-run", requested_project_id, workflow, status="queued")
+            self.operation = operation
+            return db.get_run("rollback-run")
+
+    tasks = CapturingTasks()
+    client.app.state.skill_gate = SimpleNamespace(skills=lambda _path: skills)
+    client.app.state.skill_runtime = Runtime()
+    client.app.state.run_tasks = tasks
+
+    assert client.post(f"/api/projects/{project_id}/initialize-skills").status_code == 202
+    with pytest.raises(RuntimeError, match="世界设定生成失败"):
+        asyncio.run(tasks.operation("rollback-run"))
+
+    assert not (project.path / "characters" / "generated.md").exists()
+    assert all(
+        path.read_text(encoding="utf-8") == original_indexes[path]
+        for path in rollback_indexes
+    )
+    assert db.get_skill_execution("character-execution")["status"] == "recoverable"
+    assert db.list_file_proposals("character-execution")[0]["status"] == "retained"
+    assert any(
+        item["event_type"] == "initialization_rolled_back"
+        for item in db.list_run_events("rollback-run")
+    )
+    failed = next(
+        item for item in db.list_run_events("rollback-run")
+        if item["event_type"] == "skill_failed"
+    )
+    assert failed["metadata"]["proposal_summary"]["retainable_count"] == 2
+    assert failed["metadata"]["proposal_summary"]["formal_unchanged"] is True
+
+
+def test_cancelling_initialization_restores_formal_materials(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    _wizard, project_data = create_completed_wizard(client)
+    project_id = project_data["id"]
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "正式版", "outline": "# 正式大纲\n\n## 开头\n门被推开。"},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    )
+    project = client.app.state.projects.get(project_id)
+    metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
+    metadata["initialization_skills"] = ["character-management"]
+    (project.path / "project.json").write_text(
+        json.dumps(metadata, ensure_ascii=False), encoding="utf-8",
+    )
+    skill = SimpleNamespace(name="character-management", content_hash="hash-character")
+
+    class Runtime:
+        def __init__(self):
+            self.started = asyncio.Event()
+
+        async def run(self, requested_project_id, skill_name, answers, bootstrap=False):
+            generated = project.path / "characters" / "cancelled.md"
+            generated.write_text(
+                "---\nname: 临时人物\nrole: protagonist\n---\n# 临时人物\n",
+                encoding="utf-8",
+            )
+            self.started.set()
+            await asyncio.Event().wait()
+
+    class CapturingTasks:
+        operation = None
+
+        def start(self, requested_project_id, workflow, operation):
+            db.create_run("cancel-run", requested_project_id, workflow, status="queued")
+            self.operation = operation
+            return db.get_run("cancel-run")
+
+    runtime = Runtime()
+    tasks = CapturingTasks()
+    client.app.state.skill_gate = SimpleNamespace(
+        skills=lambda _path: {"character-management": skill},
+    )
+    client.app.state.skill_runtime = runtime
+    client.app.state.run_tasks = tasks
+
+    assert client.post(f"/api/projects/{project_id}/initialize-skills").status_code == 202
+
+    async def cancel_operation() -> None:
+        task = asyncio.create_task(tasks.operation("cancel-run"))
+        await runtime.started.wait()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(cancel_operation())
+
+    assert not (project.path / "characters" / "cancelled.md").exists()
+    assert any(
+        item["event_type"] == "initialization_rolled_back"
+        for item in db.list_run_events("cancel-run")
+    )
 
 
 def test_wizard_interview_history_turn_and_apply_routes(tmp_path) -> None:

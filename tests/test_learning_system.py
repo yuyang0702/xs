@@ -67,6 +67,64 @@ def test_legacy_mechanism_list_fields_accept_single_text_values(tmp_path) -> Non
     assert listed["data"]["incompatible_conditions"] == ["纯日常题材不适用"]
 
 
+def test_initialization_contexts_filter_rules_by_stage_project_and_viewpoint(tmp_path) -> None:
+    _db, _library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="第一人称悬疑", mode="short", genre="悬疑", premise="门后有人。",
+        target_words=8000, pov="first",
+    ))
+    system.build_prose_baseline(project.id, {
+        "dialogue": ["让每次回应改变关系或信息。"],
+        "psychology": ["先写动作，再写人物判断。"],
+        "sentence_rhythm": ["长短句交替。"],
+        "viewpoint": ["需要时切换视角补充另一方信息。"],
+    })
+    system.save_artifact(project.id, "creative_blueprint", {
+        "mechanisms": [
+            {
+                "name": "关系冲突进入对白", "transfer_guidance": "让对白改变人物关系。",
+                "applicable_modes": ["short"], "applicable_stages": ["人物与关系"],
+            },
+            {
+                "name": "地点规则制造限制", "transfer_guidance": "让地点规则限制人物行动。",
+                "applicable_modes": ["short"], "applicable_stages": ["世界设定"],
+            },
+            {
+                "name": "延迟答案", "transfer_guidance": "保留推进方式，替换人物、设定和具体情节。",
+                "applicable_modes": ["short"], "applicable_stages": [],
+            },
+            {
+                "name": "长篇专用", "transfer_guidance": "跨卷回收。",
+                "applicable_modes": ["long"], "applicable_stages": [],
+            },
+            {
+                "name": "科幻专用", "transfer_guidance": "围绕技术代价推进。",
+                "applicable_modes": ["short"], "applicable_genres": ["科幻"],
+            },
+        ],
+    })
+
+    context = system.initialization_contexts(project.id)
+
+    assert context["versions"] == {"prose_baseline": 1, "creative_blueprint": 1}
+    assert [item["category"] for item in context["stages"]["character-management"]["prose_rules"]] == [
+        "对白方式", "心理描写",
+    ]
+    assert context["stages"]["worldbuilding"]["prose_rules"] == []
+    assert [item["name"] for item in context["stages"]["character-management"]["creative_methods"]] == [
+        "关系冲突进入对白",
+    ]
+    assert [item["name"] for item in context["stages"]["worldbuilding"]["creative_methods"]] == [
+        "地点规则制造限制",
+    ]
+    assert [item["name"] for item in context["stages"]["plot-structure"]["creative_methods"]] == [
+        "关系冲突进入对白", "地点规则制造限制", "延迟答案",
+    ]
+    assert context["summary"]["creative_methods"] == 3
+    assert context["summary"]["skipped_conflicts"] == 1
+    assert "第一人称" in context["skipped_conflicts"][0]["reason"]
+
+
 def test_cached_window_rebuilds_missing_mechanisms(tmp_path) -> None:
     db, library, _projects, system = setup_system(tmp_path)
     source = library.import_text(
@@ -183,6 +241,40 @@ def test_adoption_requires_confirmation_and_never_overwrites_outline(tmp_path) -
     assert system.get_artifact(project.id, "creative_blueprint")["data"]["mechanisms"]
 
 
+def test_adoption_accepts_chinese_confidence_from_model_output(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="中文置信度", mode="short", genre="悬疑", premise="测试", target_words=10_000,
+    ))
+    source = library.import_text(title="样本", source_type="paste", text="她推门寻找真相。")
+    high = system._save_node(
+        "mechanism", {"key": "high", "name": "高置信写法", "confidence": "高"},
+        source_id=source["id"], status="proposed",
+    )
+    medium = system._save_node(
+        "mechanism", {"key": "medium", "name": "中置信写法", "confidence": "中"},
+        source_id=source["id"], status="proposed",
+    )
+
+    assert system.adopt(project.id, high["id"])["data"]["confidence"] == 0.9
+    with pytest.raises(ValueError, match="低置信度候选必须先确认分析"):
+        system.adopt(project.id, medium["id"])
+
+
+def test_duplicate_check_ignores_unrelated_names_with_shared_generic_guidance() -> None:
+    guidance = "没有新增信息、状态变化或后果时不采用"
+    adoptions = [
+        {"node_id": str(index), "data": {"name": name, "transfer_guidance": guidance}}
+        for index, name in enumerate((
+            "将平台硬性要求转化为发布检查",
+            "预期反转并重释既有信息",
+            "延迟回答核心读者问题",
+        ))
+    ]
+
+    assert LearningSystem._adoption_duplicates(adoptions) == []
+
+
 def test_line_edit_is_candidate_only_and_preserves_locked_facts(tmp_path) -> None:
     _db, _library, projects, system = setup_system(tmp_path)
     project = projects.create(ProjectCreate(
@@ -297,6 +389,69 @@ def test_active_market_baseline_is_advisory_planning_context(tmp_path) -> None:
 
     assert "Advisory Market Baseline" in constraints
     assert "只提供建议，不是质量门槛" in constraints
+
+
+@pytest.mark.asyncio
+async def test_enabled_market_baseline_is_bounded_advice_for_outline_generation(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="原创悬疑", mode="short", genre="悬疑",
+        premise="主角寻找失踪的朋友", target_words=10_000,
+    ))
+    source = library.import_text(
+        title="参考样本", source_type="paste", text="她推门后发现真相。",
+    )
+    method = system._save_node("mechanism", {
+        "name": "递进阻碍", "transfer_guidance": "每次尝试都改变下一步选择",
+        "confidence": 0.9,
+    }, source_id=source["id"], status="confirmed")
+    system.adopt(project.id, method["id"])
+    system.save_artifact(project.id, "market_baseline", {
+        "key": {
+            "platform": "知乎", "ranking_name": "盐选热榜",
+            "category": "悬疑", "length_type": "short",
+        },
+        "sample_count": 12, "confidence_level": "advisory",
+        "opening": {"question_percent": 75, "anomaly_percent": 66.7},
+        "mechanisms": [
+            {"name": f"常见机制 {index}", "work_count": 12 - index,
+             "position_median": index * 10, "private_evidence": "不得发送"}
+            for index in range(8)
+        ],
+        "samples": [{"title": "不得发送样本标题", "weight": 1}],
+        "boundary": "只描述本地已确认同类样本，不代表成功原因。" * 20,
+    })
+    projects.set_market_baseline_selection(
+        project.id, enabled=True,
+        key={"platform": "知乎", "ranking_name": "盐选热榜", "category": "悬疑", "length_type": "short"},
+    )
+
+    class Gateway:
+        calls = []
+
+        async def complete(self, role, system_prompt, user, max_output_tokens=None):
+            self.calls.append((role, system_prompt, json.loads(user), max_output_tokens))
+            return SimpleNamespace(text="# 候选大纲\n\n## 开头\n朋友失踪。", receipt={})
+
+    gateway = Gateway()
+    system.gateway = gateway
+    await system.generate_outline_candidate(project.id, "保留我的人物设定和原创结局")
+
+    _role, prompt, context, _budget = gateway.calls[0]
+    market = context["market_reference"]
+    assert context["user_brief"] == "保留我的人物设定和原创结局"
+    assert market["advisory_only"] is True
+    assert market["sample_count"] == 12
+    assert len(market["mechanisms"]) == 5
+    assert len(json.dumps(market, ensure_ascii=False)) < 2_000
+    assert "samples" not in market
+    assert "不得发送" not in json.dumps(market, ensure_ascii=False)
+    assert "不得覆盖 project_brief、user_brief、正式设定或原创选择" in prompt
+    assert "不是质量门槛" in prompt
+
+    disabled = projects.set_market_baseline_selection(project.id, enabled=False, key=None)
+    context = system._outline_generation_context(project.id, disabled.metadata, "原创简报")
+    assert "market_reference" not in context
 
 
 def test_short_causal_chain_is_project_artifact_and_constraint(tmp_path) -> None:
@@ -991,6 +1146,32 @@ async def test_model_analysis_uses_configured_fallback_for_invalid_json(tmp_path
     assert result["claims"] == 1
     assert gateway.fallback_roles == ["reference_analysis"]
     assert any(item["phase"] == "fallback_window" for item in progress)
+
+
+async def test_model_analysis_retries_a_transient_fallback_failure(tmp_path) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class GatewayWithTransientFallback(FakeGateway):
+        def __init__(self):
+            super().__init__(["", valid_synthesis_result()])
+            self.fallback_calls = 0
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_calls += 1
+            if self.fallback_calls == 1:
+                raise TimeoutError()
+            return SimpleNamespace(text=valid_window_result(), receipt={"model_id": "fallback"})
+
+    gateway = GatewayWithTransientFallback()
+    system = LearningSystem(db, library, projects, gateway)
+    source = library.import_text(
+        title="fallback-retry", source_type="paste", text="一段需要分析的正文。",
+    )
+
+    result = await system.model_analyze_reference(source["id"])
+
+    assert result["claims"] == 1
+    assert gateway.fallback_calls == 2
 
 
 async def test_model_analysis_reuses_valid_fallback_for_remaining_windows(tmp_path) -> None:

@@ -1,3 +1,6 @@
+import sqlite3
+from concurrent.futures import ThreadPoolExecutor
+
 from novel_flywheel.db import Database
 
 
@@ -44,6 +47,27 @@ def test_reference_metadata_migration_is_idempotent(tmp_path) -> None:
     assert {"platform", "content_type", "project_id"} <= columns
 
 
+def test_skill_execution_context_migration_is_idempotent(tmp_path) -> None:
+    path = tmp_path / "app.db"
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "CREATE TABLE skill_executions("
+            "id TEXT PRIMARY KEY, project_id TEXT NOT NULL, skill_name TEXT NOT NULL, "
+            "content_hash TEXT NOT NULL, status TEXT NOT NULL, error TEXT, "
+            "created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+        )
+
+    db = Database(path)
+    db.migrate()
+    db.migrate()
+
+    with db.connect() as connection:
+        columns = {
+            row["name"] for row in connection.execute("PRAGMA table_info(skill_executions)")
+        }
+    assert "context_hash" in columns
+
+
 def test_run_events_are_ordered_and_active_runs_can_be_interrupted(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -59,6 +83,23 @@ def test_run_events_are_ordered_and_active_runs_can_be_interrupted(tmp_path) -> 
 
     assert db.interrupt_active_runs() == 1
     assert db.get_run("run")["status"] == "interrupted"
+
+
+def test_only_one_run_can_claim_the_same_project(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_project("book", "Book", "short", tmp_path / "book")
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        accepted = list(pool.map(
+            lambda index: db.create_run_if_idle(
+                f"run-{index}", "book", "short-story", status="queued",
+            ),
+            range(4),
+        ))
+
+    assert accepted.count(True) == 1
+    assert len(db.list_runs("book")) == 1
 
 
 def test_database_provider_round_trip_omits_secrets(tmp_path) -> None:
@@ -160,3 +201,28 @@ def test_completed_skill_execution_is_matched_by_project_skill_and_hash(tmp_path
     assert db.has_completed_skill_execution("book", "story-init", "hash-a")
     assert not db.has_completed_skill_execution("book", "story-init", "hash-b")
     assert not db.has_completed_skill_execution("other", "story-init", "hash-a")
+
+
+def test_recoverable_skill_execution_reports_preserved_proposals(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.create_skill_execution("execution", "book", "worldbuilding", "hash", "running")
+    db.save_file_proposal(
+        "primary", "execution", "worldbuilding/locations/home.md",
+        "---\nname: 家\n---\n", "retained", "primary stopped",
+    )
+    db.save_file_proposal(
+        "fallback", "execution", "worldbuilding/_index.md",
+        "---\ntype: world-registry\n---\n", "failed", "fallback stopped",
+    )
+    db.update_skill_execution("execution", "recoverable", "fallback stopped")
+
+    assert db.file_proposal_summary("execution") == {
+        "execution_id": "execution",
+        "total": 2,
+        "recoverable_count": 2,
+        "counts": {"failed": 1, "retained": 1},
+    }
+    recoverable = db.list_recoverable_skill_executions("book", "worldbuilding")
+    assert [item["id"] for item in recoverable] == ["execution"]
+    assert recoverable[0]["proposal_summary"]["recoverable_count"] == 2

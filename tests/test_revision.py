@@ -1,3 +1,4 @@
+import copy
 import hashlib
 
 import pytest
@@ -9,6 +10,7 @@ from novel_flywheel.revision import (
     check_source_local_constraints,
     compact_polish_findings,
     compact_review,
+    filter_polish_findings_for_segment,
     apply_patch_group,
     normalize_revision_plan,
     normalize_chinese_prose,
@@ -210,6 +212,17 @@ def test_segment_map_includes_both_ends_of_every_segment() -> None:
     assert mapped[1]["scene_id"] == "scene-02"
     assert mapped[1]["opening"] == "second"
     assert mapped[1]["ending"] == "second"
+
+
+def test_segment_map_carries_event_ids_and_handoff_when_available() -> None:
+    mapped = segment_map(
+        ["正文"], event_assignments=[{
+            "segment": 1, "event_ids": ["EV-12345678"], "handoff": "主角已经知道真相。",
+        }],
+    )
+
+    assert mapped[0]["event_ids"] == ["EV-12345678"]
+    assert mapped[0]["handoff"] == "主角已经知道真相。"
 
 
 def test_normalize_revision_plan_rejects_unknown_segments_and_keeps_valid_tasks() -> None:
@@ -491,3 +504,30 @@ def test_polish_findings_prioritize_critical_issues_and_bound_evidence() -> None
     assert len(compacted["issues"]) == 8
     assert len(compacted["issues"][0]["evidence"]) == 280
     assert compacted["reader_signals"] == {"would_pay": False}
+
+
+def test_polish_findings_are_limited_to_the_current_segment_and_one_global_issue() -> None:
+    compacted = {
+        "issues": [
+            {"category": "continuity", "severity": "high", "evidence": "她把铜钥匙藏进袖口。",
+             "action": "交代铜钥匙后来去了哪里。"},
+            {"category": "continuity", "severity": "low", "evidence": "码头的船已经离岸。",
+             "action": "修正码头的时间。"},
+            {"category": "story_structure", "severity": "critical", "evidence": "",
+             "action": "整体因果链需要清楚。"},
+            {"category": "overall", "severity": "high", "evidence": "",
+             "action": "全文节奏需要调整。"},
+        ],
+        "reader_signals": {"would_pay": True},
+    }
+    original = copy.deepcopy(compacted)
+
+    result = filter_polish_findings_for_segment(
+        compacted, "她把铜钥匙藏进袖口，然后推门离开。", max_issues=4, max_global=1,
+    )
+
+    assert [item["action"] for item in result["issues"]] == [
+        "交代铜钥匙后来去了哪里。", "整体因果链需要清楚。",
+    ]
+    assert result["reader_signals"] == {"would_pay": True}
+    assert compacted == original

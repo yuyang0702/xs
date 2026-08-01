@@ -26,9 +26,10 @@ from novel_flywheel.context_policy import (
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
-from novel_flywheel.outlines import canon_profile, detect_canon_conflicts
+from novel_flywheel.outlines import canon_profile, detect_canon_conflicts, outline_events
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript, compact_analysis
+from novel_flywheel.narrative_ledger import build_narrative_ledger
 from novel_flywheel.incremental_review import (
     apply_incremental_gate,
     build_review_baseline,
@@ -91,6 +92,7 @@ from novel_flywheel.revision import (
     check_source_local_constraints,
     compact_polish_findings,
     compact_review,
+    filter_polish_findings_for_segment,
     normalize_repair_contract,
     normalize_chinese_prose,
     normalize_revision_plan,
@@ -2218,7 +2220,7 @@ class WorkflowService:
 
     async def _long_setup_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "long-setup", run_id)
-        outline_path = project.path / "outline.md"
+        outline_path = project.path / "memory" / "book-plan.md"
         canon_path = project.path / "memory" / "canon.json"
         volumes_path = project.path / "memory" / "volumes.json"
         snapshot = ProjectSnapshot.create(
@@ -2227,9 +2229,10 @@ class WorkflowService:
         try:
             constraints = self.projects.load_constraints(project.id)
             brief = (
-                "Create a complete book bible with fixed ending, protagonist arc, act structure, "
+                "Expand the immutable confirmed outline into a complete long-form execution plan with "
+                "fixed ending, protagonist arc, act structure, "
                 "3-5 volumes, chapter map, hooks, foreshadowing, characters, relationships, world rules, "
-                "timeline and knowledge boundaries.\n\n" +
+                "timeline and knowledge boundaries. Do not replace or contradict the confirmed outline.\n\n" +
                 json.dumps(project.metadata, ensure_ascii=False, indent=2)
             )
             outline = await self._stage(run_id, run_path, project, "planning", constraints, brief)
@@ -2413,12 +2416,18 @@ class WorkflowService:
                 brief = json.dumps({
                     **project.metadata,
                     "formal_story_facts": canon_profile(project, state.data),
+                    "formal_outline_events": (
+                        (state.data.get("outline") or {}).get("events")
+                        or outline_events(str((state.data.get("outline") or {}).get("content") or ""))
+                    ),
                     "generation_contract": {
                         "target_total_words": target_words,
                         "segment_count": segment_count,
                         "require_segment_map": segment_count > 1,
                         "segment_block_fields": (
                             [
+                                "事件ID：认领正式大纲事件表中的一个或多个 ID；连续分段可共同完成同一事件",
+                                "大纲依据：对应的正式大纲事件名称",
                                 "段首承接：上一段留下的人物位置、动作、关系和已知信息",
                                 "本段事件：本段唯一负责的事件",
                                 "段末交接：留给下一段的人物位置、动作、关系和已知信息",
@@ -2462,6 +2471,8 @@ class WorkflowService:
                         run_id, run_path, project, "planning", constraints,
                         "请修正下面的规划稿。必须保留正式大纲的故事方向，为每个分段明确分配互不重复的事件，"
                         "并使用正式人物和地点名称。每段都要写明“段首承接”“本段事件”“段末交接”；"
+                        "每个正式大纲事件 ID 都必须覆盖且顺序不能倒退；连续分段可以共同完成同一事件，"
+                        "并写明“大纲依据”；"
                         "段首和段末必须交代人物位置、正在做什么、关系变化和已经知道什么。"
                         "只返回完整修正版规划稿。\n\n"
                         f"需要修正：{json.dumps(plan_issues, ensure_ascii=False)}\n\n"
@@ -3667,6 +3678,8 @@ class WorkflowService:
         elif count > 1:
             missing_handoffs = []
             required = (
+                ("事件ID", "正式事件ID"),
+                ("大纲依据", "正式大纲依据"),
                 ("段首承接", "开场承接"),
                 ("本段事件", "核心事件", "负责事件"),
                 ("段末交接", "交接状态", "段末状态"),
@@ -3677,8 +3690,42 @@ class WorkflowService:
             if missing_handoffs:
                 joined = "、".join(map(str, missing_handoffs))
                 issues.append(
-                    f"第 {joined} 段缺少段首承接、本段事件或段末交接，无法保证前后自然衔接"
+                    f"第 {joined} 段缺少事件ID、大纲依据、段首承接、本段事件或段末交接，"
+                    "无法确认剧情分工与前后衔接"
                 )
+        outline = str((state.get("outline") or {}).get("content") or "")
+        event_map = (state.get("outline") or {}).get("events") or outline_events(outline)
+        if event_map and len(segments) == count:
+            valid = {str(item["id"]).upper() for item in event_map}
+            claimed = [
+                list(dict.fromkeys(
+                    event_id.upper() for event_id in re.findall(
+                        r"EV-[0-9a-f]{8}", segment, flags=re.IGNORECASE,
+                    )
+                ))
+                for segment in segments
+            ]
+            flattened = [event_id for group in claimed for event_id in group]
+            invalid = sorted(set(flattened) - valid)
+            missing = [
+                str(item["id"]) for item in event_map
+                if str(item["id"]).upper() not in flattened
+            ]
+            order = {str(item["id"]).upper(): index for index, item in enumerate(event_map)}
+            collapsed = []
+            for event_id in flattened:
+                if not collapsed or event_id != collapsed[-1]:
+                    collapsed.append(event_id)
+            if invalid:
+                issues.append(f"规划稿使用了不存在的事件 ID：{'、'.join(invalid)}")
+            if missing:
+                issues.append(f"这些正式大纲事件还没有分配到写作段：{'、'.join(missing)}")
+            if any(
+                order[current] < order[previous]
+                for previous, current in zip(collapsed, collapsed[1:])
+                if previous in order and current in order
+            ):
+                issues.append("写作段认领的大纲事件顺序发生倒退")
         normalized = [re.sub(r"\W+", "", segment) for segment in segments]
         if any(
             SequenceMatcher(None, normalized[left], normalized[right]).ratio() >= 0.86
@@ -3694,6 +3741,14 @@ class WorkflowService:
             segment,
         )
         return (match.group(1).strip() if match else segment.strip())[-700:]
+
+    @staticmethod
+    def _short_plan_event_ids(segment: str) -> list[str]:
+        return list(dict.fromkeys(
+            value.upper() for value in re.findall(
+                r"EV-[0-9a-f]{8}", segment, flags=re.IGNORECASE,
+            )
+        ))
 
     @classmethod
     def _draft_segment_issues(cls, part: str, target: int,
@@ -3824,7 +3879,9 @@ class WorkflowService:
                                next_context: str, local_findings: list,
                                character_voice: str, locked_facts: list,
                                passage_locks: list, minimum_characters: int,
-                               maximum_characters: int) -> str:
+                               maximum_characters: int,
+                               review_findings: dict | None = None,
+                               narrative_context: dict | None = None) -> str:
         return (
             "普通润色精简恢复。只处理当前正文片段，不扩写片段外内容。\n\n"
             f"前一段结尾（限800字）：\n{previous_context[-800:]}\n\n"
@@ -3832,12 +3889,104 @@ class WorkflowService:
             f"相关人物声音：\n{character_voice[:2400]}\n\n"
             f"当前片段本地问题：\n"
             f"{json.dumps(local_findings, ensure_ascii=False)[:2400]}\n\n"
+            f"当前片段相关审稿问题：\n"
+            f"{json.dumps(review_findings or {'issues': []}, ensure_ascii=False)[:1800]}\n\n"
+            f"当前片段叙事状态：\n"
+            f"{json.dumps(narrative_context or {}, ensure_ascii=False)[:1800]}\n\n"
             f"锁定事实：\n{json.dumps(locked_facts, ensure_ascii=False)[:2400]}\n\n"
             f"受保护片段：\n{json.dumps(passage_locks, ensure_ascii=False)[:1600]}\n\n"
             f"正文长度必须在 {minimum_characters} 到 {maximum_characters} 字之间。"
             "只返回修改后的正文，不解释、不分析。\n\n"
             f"MANUSCRIPT SEGMENT:\n{segment}"
         )
+
+    @staticmethod
+    def _polish_part_spans(text: str, parts: list[str]) -> list[tuple[int, int]]:
+        spans = []
+        cursor = 0
+        for part in parts:
+            start = text.find(part, cursor)
+            if start < 0:
+                start = cursor
+            end = start + len(part)
+            spans.append((start, end))
+            cursor = end
+        return spans
+
+    @staticmethod
+    def _polish_narrative_context(
+        ledger: dict, segment: str, start: int, end: int,
+        previous_handoff: str = "",
+    ) -> dict:
+        normalized_segment = segment.lower()
+
+        def related(item: dict) -> bool:
+            overlaps = int(item.get("start", -1)) < end and int(item.get("end", -1)) > start
+            anchors = [str(value).lower() for value in item.get("anchors", []) if value]
+            return overlaps or any(anchor in normalized_segment for anchor in anchors)
+
+        def open_items(key: str) -> list[dict]:
+            return [
+                {
+                    "text": str(item.get("text") or "")[:180],
+                    "status": item.get("status", "unresolved"),
+                }
+                for item in ledger.get(key, [])
+                if isinstance(item, dict)
+                and item.get("status") == "unresolved"
+                and related(item)
+            ][:2]
+
+        scenes = []
+        for scene in ledger.get("scenes", []):
+            if not isinstance(scene, dict) or not related(scene):
+                continue
+            scenes.append({
+                "entry_state": scene.get("entry_state"),
+                "exit_state": scene.get("exit_state"),
+                "state_changes": [
+                    str(item.get("evidence") or "")[:160]
+                    for item in scene.get("state_changes", []) if isinstance(item, dict)
+                ][:3],
+            })
+            if len(scenes) == 2:
+                break
+        items_by_id = {
+            item.get("id"): item
+            for key in ("questions", "promises", "setups", "payoffs")
+            for item in ledger.get(key, [])
+            if isinstance(item, dict) and item.get("id")
+        }
+        relations = []
+        for relation in ledger.get("relations", []):
+            if not isinstance(relation, dict) or not related(relation):
+                continue
+            source = items_by_id.get(relation.get("from_id"), {})
+            target = items_by_id.get(relation.get("to_id"), {})
+            relations.append({
+                "关系": relation.get("kind"),
+                "前文": str(source.get("text") or "")[:140],
+                "本窗或后文": str(target.get("text") or relation.get("evidence") or "")[:140],
+            })
+            if len(relations) == 2:
+                break
+        return {
+            "上一窗实际交接状态": previous_handoff[:300],
+            "本窗未兑现问题": open_items("questions"),
+            "本窗未兑现承诺": open_items("promises"),
+            "本窗伏笔": open_items("setups"),
+            "本窗关联的提问与兑现": relations,
+            "本窗场景状态": scenes,
+        }
+
+    @staticmethod
+    def _polish_exit_state(text: str) -> str:
+        scenes = build_narrative_ledger(text).get("scenes", [])
+        return next((
+            str(scene.get("exit_state"))
+            for scene in reversed(scenes)
+            if isinstance(scene, dict) and scene.get("exit_state")
+        ), "")
 
     @staticmethod
     def _is_polish_output_error(exc: Exception) -> bool:
@@ -4028,6 +4177,7 @@ class WorkflowService:
             for index, block in enumerate(segment_plans, 1)
         )
         parts: list[str] = []
+        event_assignments: list[dict] = []
         for index in range(1, count + 1):
             self.db.add_run_event(
                 run_id, "info", "segment_started", f"开始生成正文第 {index}/{count} 段",
@@ -4077,9 +4227,22 @@ class WorkflowService:
                     )
                     raise ValueError(f"正文第 {index} 段未通过本地检查，已有进度已保留")
             parts.append(part.strip())
+            assignment = {
+                "segment": index,
+                "event_ids": self._short_plan_event_ids(segment_plans[index - 1]),
+                "handoff": self._short_plan_handoff(segment_plans[index - 1]),
+            }
+            event_assignments.append(assignment)
+            atomic_write(
+                run_path / "outputs" / "segment-events.json",
+                json.dumps({"segments": event_assignments}, ensure_ascii=False, indent=2),
+            )
             self.db.add_run_event(
                 run_id, "success", "segment_completed", f"正文第 {index}/{count} 段生成完成",
-                stage="draft", metadata={"segment": index, "total": count, "characters": len(part)},
+                stage="draft", metadata={
+                    "segment": index, "total": count, "characters": len(part),
+                    "event_ids": assignment["event_ids"], "handoff": assignment["handoff"],
+                },
             )
         draft = self.SHORT_SEGMENT_SEPARATOR.join(parts)
         atomic_write(run_path / "outputs" / "draft.md", draft)
@@ -4111,8 +4274,23 @@ class WorkflowService:
         )
         parts = [item[0] for item in grouped_parts]
         part_groups = [item[1] for item in grouped_parts]
+        part_spans = self._polish_part_spans(text, parts)
+        narrative_ledger = (
+            self._analyze_manuscript(
+                text, run_path, project, f"polish-source{suffix}",
+            ).get("narrative_ledger", {})
+            if recovery_depth == 0 else build_narrative_ledger(text)
+        )
         revision_plan = None
-        story_map = segment_map(original_parts)
+        compacted_findings: dict | None = None
+        event_path = run_path / "outputs" / "segment-events.json"
+        try:
+            event_assignments = json.loads(event_path.read_text(encoding="utf-8")).get(
+                "segments", [],
+            )
+        except (OSError, json.JSONDecodeError, AttributeError):
+            event_assignments = []
+        story_map = segment_map(original_parts, event_assignments=event_assignments)
         authoritative_state = self.story_states.ensure(project.id, project.path).data
         passage_service = PassageProtectionService(self.db)
         project_passage_locks = self.db.list_locks(project.id)
@@ -4155,10 +4333,9 @@ class WorkflowService:
                 )
         elif not targeted and recovery_rule is None:
             try:
-                findings = json.dumps(
-                    compact_polish_findings(json.loads(findings)), ensure_ascii=False,
-                )
-            except (json.JSONDecodeError, TypeError):
+                compacted_findings = compact_polish_findings(json.loads(findings))
+                findings = json.dumps(compacted_findings, ensure_ascii=False)
+            except (json.JSONDecodeError, TypeError, AttributeError):
                 findings = findings[:4000]
         revision_rule = recovery_rule or (
             "You may replace or remove implausible events and reorder material inside this segment "
@@ -4189,16 +4366,19 @@ class WorkflowService:
         round_input_tokens = 0
         round_cap = (round_cap_override if round_cap_override is not None
                      else self._polish_round_input_cap(targeted, len(parts)))
+        previous_handoff_state = ""
         for index, part in enumerate(parts, 1):
             group = part_groups[index - 1]
             if revision_plan and group not in revision_plan["target_segments"]:
                 polished_parts.append(part)
+                previous_handoff_state = self._polish_exit_state(part)
                 continue
             cached = self._load_polish_checkpoint(
                 checkpoint_root, index, part, retry_signature,
             )
             if cached is not None:
                 polished_parts.append(cached)
+                previous_handoff_state = self._polish_exit_state(cached)
                 self.db.add_run_event(
                     run_id, "success", "polish_checkpoint_reused",
                     f"润色第 {index}/{len(parts)} 段已从检查点恢复",
@@ -4229,6 +4409,14 @@ class WorkflowService:
             previous_tail = polished_parts[-1][-800:] if polished_parts else ""
             next_head = parts[index][:800] if index < len(parts) else ""
             local_report = analyze_prose(part)
+            start, end = part_spans[index - 1]
+            window_findings = (
+                filter_polish_findings_for_segment(compacted_findings, part)
+                if compacted_findings is not None else None
+            )
+            narrative_context = self._polish_narrative_context(
+                narrative_ledger, part, start, end, previous_handoff_state,
+            )
             passage_locks = applicable_passage_locks(project_passage_locks, part)
             if targeted_context:
                 tasks = targeted_context["tasks"]
@@ -4280,12 +4468,20 @@ class WorkflowService:
                 "seven_step_position": seven_step_position,
                 "segment": (targeted_context or {}).get("segment", group),
             }
+            findings_for_window = (
+                json.dumps(window_findings, ensure_ascii=False)
+                if window_findings is not None else findings
+            )
             plan_context = (
                 f"GLOBAL FACTS AND LOCKS:\n{json.dumps(revision_plan['global_facts'], ensure_ascii=False)}\n\n"
                 f"TASKS FOR THIS SEGMENT:\n{json.dumps(tasks, ensure_ascii=False)}\n\n"
                 f"DETERMINISTIC CHECKS:\n{json.dumps(revision_plan['checks'], ensure_ascii=False)}\n\n"
                 f"COMPACT FULL STORY MAP:\n{json.dumps(story_map, ensure_ascii=False)}\n\n"
-                if revision_plan else f"STRUCTURED FINDINGS:\n{findings}\n\n"
+                if revision_plan else (
+                    f"STRUCTURED FINDINGS FOR THIS WINDOW:\n{findings_for_window}\n\n"
+                    f"NARRATIVE STATE FOR THIS WINDOW:\n"
+                    f"{json.dumps(narrative_context, ensure_ascii=False)}\n\n"
+                )
             )
             preferred_minimum_ratio = 0.60 if targeted else 0.70
             minimum_ratio, maximum_ratio = ((0.50, 1.80) if targeted else (0.70, 1.60))
@@ -4367,6 +4563,8 @@ class WorkflowService:
                 } for lock in passage_locks],
                 minimum_characters=minimum_characters,
                 maximum_characters=maximum_characters,
+                review_findings=window_findings,
+                narrative_context=narrative_context,
             )
             part_suffix = f"{suffix}-part-{index:02d}"
             priority = bool(targeted or index in {1, len(parts)} or local_report["findings"])
@@ -4408,7 +4606,7 @@ class WorkflowService:
                 )
                 recovered = await self._polish_short_segments(
                     run_id, run_path, project, constraints,
-                    self.SHORT_SEGMENT_SEPARATOR.join(children), plan_context,
+                    self.SHORT_SEGMENT_SEPARATOR.join(children), findings_for_window,
                     suffix=f"{part_suffix}-split-{recovery_depth + 1}",
                     structural=False, recovery_depth=recovery_depth + 1,
                     recovery_rule=revision_rule,
@@ -4719,6 +4917,7 @@ class WorkflowService:
                 )
             polished_part = polished_part.strip()
             polished_parts.append(polished_part)
+            previous_handoff_state = self._polish_exit_state(polished_part)
             change_evidence = diff_manuscripts(
                 part, polished_part,
                 analyze_manuscript(part, nlp_analyze=None),
@@ -4971,6 +5170,31 @@ class WorkflowService:
         return {**checkpoint, "text": checkpoint_manuscript(run_path, checkpoint)}
 
     @staticmethod
+    def _stage_context_labels(constraints: str, user: str = "") -> list[str]:
+        combined = f"{constraints}\n{user}"
+        markers = (
+            ("CONFIRMED STORY FACTS", "已确认事实"),
+            ("Program-enforced locked story facts", "锁定事实"),
+            ("Current Confirmed Outline", "正式大纲"),
+            ("Confirmed Long-form Execution Plan", "长篇执行计划"),
+            ("Executable Prose Baseline", "基础文笔"),
+            ("Confirmed Creative Blueprint", "创作蓝图"),
+            ("Short Story Causal Chain", "七步剧情结构"),
+            ("Advisory Market Baseline", "同类市场基线"),
+            ("Character Voice Profiles", "人物说话方式"),
+            ("RELEVANT CHARACTER VOICES", "人物说话方式"),
+            ("Character Knowledge Boundaries", "人物认知边界"),
+            ("Scene Briefs", "场景安排"),
+            ("COMPACT FULL STORY MAP", "全文剧情位置图"),
+            ("NARRATIVE STATE FOR THIS WINDOW", "伏笔与场景状态"),
+            ("PROJECT STYLE PROFILE", "作品文风"),
+            ("STYLE PROFILE", "作品文风"),
+        )
+        return list(dict.fromkeys(
+            label for marker, label in markers if marker in combined
+        ))
+
+    @staticmethod
     def _write_quality_report(run_path: Path, report: dict) -> None:
         atomic_write(
             run_path / "outputs" / "quality-report.json",
@@ -5062,7 +5286,32 @@ class WorkflowService:
                     )
             model_constraints = source_constraints
             if compact_context:
-                model_constraints = self.constraint_prompts.compact(source_constraints)
+                model_constraints = self.constraint_prompts.compact_for_stage(
+                    source_constraints, stage=stage, focus=user,
+                )
+            style = (
+                f"\n\nPROJECT STYLE PROFILE:\n{ensure_style_profile(project)}"
+                if stage == "draft"
+                and project.metadata.get("style_sample_scope") == "draft_and_polish"
+                else ""
+            )
+            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}{style}"
+            estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
+            if stage == "polish" and estimated_input_tokens > 12_000:
+                model_constraints = ConstraintPromptCompactor(max_chars=4000).compact_for_stage(
+                    source_constraints, stage=stage, focus=user,
+                )
+                model_skill_prompt = SkillPromptCompactor(max_chars=5000).compact(
+                    skill_run.prompt, skill_run.receipts,
+                )
+                system = (
+                    f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}"
+                    f"\n\n{model_skill_prompt}{style}"
+                )
+                estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
+            confirmed_context = self._stage_context_labels(
+                model_constraints, user + style,
+            )
             self.db.add_run_event(
                 run_id, "success", "skills_loaded", f"已加载 {len(skills)} 个 Skill",
                 stage=stage, metadata={
@@ -5073,28 +5322,9 @@ class WorkflowService:
                     "constraint_characters": len(model_constraints),
                     "source_constraint_characters": len(source_constraints),
                     "compact_constraints": model_constraints != source_constraints,
+                    "confirmed_context": confirmed_context,
                 },
             )
-            style = (
-                f"\n\nPROJECT STYLE PROFILE:\n{ensure_style_profile(project)}"
-                if stage == "draft"
-                and project.metadata.get("style_sample_scope") == "draft_and_polish"
-                else ""
-            )
-            system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}{style}"
-            estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
-            if stage == "polish" and estimated_input_tokens > 12_000:
-                model_constraints = ConstraintPromptCompactor(max_chars=4000).compact(
-                    source_constraints
-                )
-                model_skill_prompt = SkillPromptCompactor(max_chars=5000).compact(
-                    skill_run.prompt, skill_run.receipts,
-                )
-                system = (
-                    f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}"
-                    f"\n\n{model_skill_prompt}{style}"
-                )
-                estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
             if stage == "polish":
                 self.db.add_run_event(
                     run_id, "info", "polish_input_sized",

@@ -18,7 +18,10 @@ class ModelResult:
 
 class ModelRoutesExhaustedError(RuntimeError):
     def __init__(self, primary_error: Exception, fallback_error: Exception) -> None:
-        super().__init__(str(fallback_error))
+        super().__init__(
+            f"主模型失败：{describe_error(primary_error)}；"
+            f"备用模型失败：{describe_error(fallback_error)}"
+        )
         self.primary_error = primary_error
         self.fallback_error = fallback_error
 
@@ -120,7 +123,8 @@ class ModelGateway:
             return False
         return any(marker in message for marker in (
             "connection attempts failed", "connection reset", "connection refused",
-            "connecterror", "server disconnected",
+            "connecterror", "server disconnected", "peer closed connection",
+            "incomplete chunked read", "readerror",
         ))
 
     async def _complete_resolved(self, role, system, user, resolved,
@@ -147,6 +151,7 @@ class ModelGateway:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
+        resolved = None
         try:
             resolved = self.registry.resolve(
                 binding["primary_provider_id"], binding["primary_model_id"],
@@ -158,16 +163,95 @@ class ModelGateway:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            recovered = self._recover_toolbox_proposals(role, resolved, toolbox, exc)
+            if recovered is not None:
+                return recovered
+            if resolved is not None and self._is_transient_connect_error(exc):
+                await asyncio.sleep(self.CONNECT_RETRY_DELAY)
+                try:
+                    return await self._complete_with_tools_resolved(
+                        role, system, user, toolbox, fallback_context, run_id,
+                        max_output_tokens, resolved,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as retry_exc:
+                    exc = retry_exc
+                    recovered = self._recover_toolbox_proposals(
+                        role, resolved, toolbox, exc,
+                    )
+                    if recovered is not None:
+                        return recovered
             fallback = self._resolve_configured_fallback(binding)
             if fallback is None:
                 raise
-            result = await self._complete_with_tools_resolved(
-                role, system, user, toolbox, fallback_context, run_id,
-                max_output_tokens, fallback,
+            repair_context = self._prepare_toolbox_fallback(toolbox, exc)
+            fallback_user = user + (
+                "\n\nRUNTIME REPAIR CONTEXT:\n" + repair_context
+                if repair_context else ""
             )
+            try:
+                result = await self._complete_with_tools_resolved(
+                    role, system, fallback_user, toolbox, fallback_context, run_id,
+                    max_output_tokens, fallback,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as fallback_exc:
+                recovered = self._recover_toolbox_proposals(
+                    role, fallback, toolbox, fallback_exc,
+                )
+                if recovered is None:
+                    raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
+                recovered = ModelResult(recovered.text, {
+                    **recovered.receipt,
+                    "fallback_route_error": describe_error(fallback_exc),
+                })
+                return self._mark_fallback(
+                    recovered, binding["primary_provider_id"],
+                    binding["primary_model_id"], exc,
+                )
             return self._mark_fallback(
                 result, binding["primary_provider_id"], binding["primary_model_id"], exc,
             )
+
+    @staticmethod
+    def _prepare_toolbox_fallback(toolbox, error: Exception) -> str:
+        prepare = getattr(toolbox, "prepare_fallback", None)
+        if not callable(prepare):
+            return ""
+        try:
+            return str(prepare(error) or "")
+        except Exception:
+            return ""
+
+    @staticmethod
+    def _recover_toolbox_proposals(
+        role: str, resolved, toolbox, error: Exception,
+    ) -> ModelResult | None:
+        finalize = getattr(toolbox, "finalize_after_route_error", None)
+        if not callable(finalize):
+            return None
+        try:
+            summary = finalize()
+        except Exception:
+            return None
+        if summary is None:
+            return None
+        return ModelResult(str(summary), {
+            "role": role,
+            "provider_id": getattr(resolved, "provider_id", None),
+            "model_id": getattr(resolved, "model_id", None),
+            "model_name": getattr(resolved, "model_name", None),
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "request_id": None,
+            "finish_reason": "runtime_recovered",
+            "execution_mode": "native_tools",
+            "tool_call_count": 0,
+            "proposal_recovered": True,
+            "route_error": describe_error(error),
+        })
 
     async def _complete_with_tools_resolved(
         self, role, system, user, toolbox, fallback_context, run_id,
@@ -185,6 +269,11 @@ class ModelGateway:
         controlled_runtime = callable(finalize) or any(
             definition.name == "complete_skill" for definition in tool_definitions
         )
+        forced_tool = next(
+            (definition.name for definition in tool_definitions
+             if definition.name not in {"complete_skill", "request_user_input"}),
+            None,
+        ) if controlled_runtime else None
         round_limit = 8 if controlled_runtime else 4
         try:
             for round_index in range(round_limit):
@@ -202,13 +291,53 @@ class ModelGateway:
                         )
                         request_tools = []
                     messages.append(Message(role="user", content=final_instruction))
-                response = await resolved.adapter.complete(ModelRequest(
+                request = ModelRequest(
                     model=resolved.model_name, messages=messages, tools=request_tools,
+                    required_tool=forced_tool if round_index == 0 else None,
                     max_output_tokens=max_output_tokens,
-                ))
+                )
+                try:
+                    response = await resolved.adapter.complete(request)
+                except ToolCapabilityError:
+                    if not request.required_tool:
+                        raise
+                    # Some providers support tools but reject tool_choice. Retry
+                    # the same round with ordinary optional tool calling.
+                    forced_tool = None
+                    response = await resolved.adapter.complete(
+                        request.model_copy(update={"required_tool": None}),
+                    )
                 input_tokens += response.input_tokens
                 output_tokens += response.output_tokens
                 if not response.tool_calls:
+                    if controlled_runtime:
+                        if getattr(toolbox, "awaiting_question", None):
+                            return ModelResult(response.text, self._receipt(
+                                role, resolved, response, input_tokens, output_tokens,
+                                "native_tools", calls,
+                            ))
+                        summary = finalize() if finalize else None
+                        if summary is not None:
+                            return ModelResult(summary, self._receipt(
+                                role, resolved, response, input_tokens, output_tokens,
+                                "native_tools", calls,
+                            ))
+                        if round_index < round_limit - 1:
+                            messages.append(Message(
+                                role="assistant", content=response.text or "No tool call returned.",
+                            ))
+                            messages.append(Message(
+                                role="user",
+                                content=(
+                                    "The controlled task is not complete: no accepted file proposal "
+                                    "or completion tool call exists. Continue now with the supplied "
+                                    "runtime tools. Do not stop after reading or listing files."
+                                ),
+                            ))
+                            continue
+                        raise RuntimeError(
+                            "Controlled runtime ended without required tool output"
+                        )
                     return ModelResult(response.text, self._receipt(
                         role, resolved, response, input_tokens, output_tokens,
                         "native_tools", calls,
@@ -251,7 +380,7 @@ class ModelGateway:
                     role, resolved, response, input_tokens, output_tokens,
                     "native_tools", calls,
                 ))
-            raise RuntimeError("Model exceeded the eight-round tool limit")
+            raise RuntimeError("Controlled runtime ended without required tool output")
         except ToolCapabilityError as exc:
             if mode == "enabled":
                 raise

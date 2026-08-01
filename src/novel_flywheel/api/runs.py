@@ -8,6 +8,7 @@ from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
 )
+from novel_flywheel.skill_runtime import initialization_answers, initialization_stage_issues
 
 router = APIRouter(prefix="/api", tags=["runs"])
 
@@ -36,10 +37,32 @@ def _ensure_confirmed_outline(project_id: str, request: Request) -> None:
         })
 
 
+def _ensure_initialized(project_id: str, request: Request) -> None:
+    project = request.app.state.projects.get(project_id)
+    current = request.app.state.outlines.current(project_id)
+    answers = initialization_answers(project, current)
+    stage_labels = {
+        "story-init": "故事资料", "character-management": "人物资料",
+        "worldbuilding": "世界设定", "plot-structure": "剧情结构",
+    }
+    missing = []
+    for skill_name in project.metadata.get("initialization_skills", []):
+        issues = initialization_stage_issues(project, skill_name, answers)
+        if issues:
+            missing.append(f"{stage_labels.get(skill_name, skill_name)}：{issues[0]}")
+    if missing:
+        raise HTTPException(status_code=409, detail={
+            "code": "initialization_required",
+            "message": "作品资料还没有准备完整，请先点击“继续初始化”。",
+            "issues": missing,
+        })
+
+
 @router.post("/projects/{project_id}/runs/short", status_code=status.HTTP_202_ACCEPTED)
 async def start_short_run(project_id: str, request: Request) -> dict:
     _ensure_project(project_id, request)
     _ensure_confirmed_outline(project_id, request)
+    _ensure_initialized(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_short(project_id, run_id=run_id)
@@ -50,6 +73,8 @@ async def start_short_run(project_id: str, request: Request) -> dict:
 @router.post("/projects/{project_id}/runs/setup", status_code=status.HTTP_202_ACCEPTED)
 async def start_long_setup(project_id: str, request: Request) -> dict:
     _ensure_project(project_id, request)
+    _ensure_confirmed_outline(project_id, request)
+    _ensure_initialized(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_long_setup(project_id, run_id=run_id)
@@ -89,6 +114,8 @@ class ChapterRun(BaseModel):
 @router.post("/projects/{project_id}/runs/chapter", status_code=status.HTTP_202_ACCEPTED)
 async def start_long_chapter(project_id: str, payload: ChapterRun, request: Request) -> dict:
     _ensure_project(project_id, request)
+    _ensure_confirmed_outline(project_id, request)
+    _ensure_initialized(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_chapter(

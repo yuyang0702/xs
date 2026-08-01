@@ -15,6 +15,389 @@ from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
 
 
 MAX_OUTLINE_CHARACTERS = 100_000
+MARKET_REFERENCE_MECHANISM_LIMIT = 5
+_OUTLINE_QUESTION_SIGNAL = re.compile(r"[？?]|为什么|怎么会|究竟")
+_OUTLINE_ANOMALY_SIGNAL = re.compile(r"突然|竟然?|却|失踪|死亡|异常|不见了|消失")
+OUTLINE_EVENT_SKIP_TERMS = (
+    "必须达成", "写作技法", "状态变化", "下一步选择", "全篇收束", "要素确认",
+    "主要人物", "关键配角", "核心设定", "核心矛盾", "说明", "提示",
+)
+
+
+def compact_market_reference(baseline: dict | None) -> dict:
+    """Keep only bounded, non-authoritative market facts used by outline tools."""
+    if not isinstance(baseline, dict):
+        return {
+            "status": "unavailable", "sample_count": 0, "advisory_only": True,
+            "message": "已启用同类市场参考，但还没有可用的本地基线。",
+            "opening": {}, "mechanisms": [],
+        }
+    try:
+        sample_count = max(0, int(baseline.get("sample_count") or 0))
+    except (TypeError, ValueError):
+        sample_count = 0
+    status = "insufficient" if sample_count < 5 else "preliminary" if sample_count < 10 else "advisory"
+    message = (
+        f"只有 {sample_count} 篇已确认同类样本，数量不足，暂不据此判断大纲。"
+        if status == "insufficient" else
+        f"参考 {sample_count} 篇已确认同类样本，仅提供初步提示，不作为应用条件。"
+        if status == "preliminary" else
+        f"参考 {sample_count} 篇已确认同类样本，只供取舍，不代表质量结论。"
+    )
+
+    def percent(value) -> float:
+        try:
+            return round(max(0.0, min(100.0, float(value))), 1)
+        except (TypeError, ValueError):
+            return 0.0
+
+    opening = baseline.get("opening") if isinstance(baseline.get("opening"), dict) else {}
+    mechanisms = []
+    for item in (baseline.get("mechanisms") or []) if status != "insufficient" else []:
+        if not isinstance(item, dict) or not str(item.get("name") or "").strip():
+            continue
+        try:
+            work_count = max(0, int(item.get("work_count") or 0))
+        except (TypeError, ValueError):
+            work_count = 0
+        position = item.get("position_median")
+        mechanisms.append({
+            "name": str(item["name"]).strip()[:80],
+            "work_count": min(work_count, sample_count),
+            "position_median": percent(position) if position is not None else None,
+        })
+        if len(mechanisms) >= MARKET_REFERENCE_MECHANISM_LIMIT:
+            break
+    key = baseline.get("key") if isinstance(baseline.get("key"), dict) else {}
+    return {
+        "status": status,
+        "sample_count": sample_count,
+        "advisory_only": True,
+        "message": message,
+        "cohort": {
+            field: str(key.get(field) or "")[:60]
+            for field in ("platform", "ranking_name", "category", "length_type")
+            if key.get(field)
+        },
+        "opening": {
+            "question_percent": percent(opening.get("question_percent")),
+            "anomaly_percent": percent(opening.get("anomaly_percent")),
+        } if status != "insufficient" else {},
+        "mechanisms": mechanisms,
+        "boundary": str(baseline.get("boundary") or "仅描述本地已确认样本，不代表成功原因或质量标准。")[:240],
+    }
+
+
+CHARACTER_ROLE_LABELS = {
+    "女主": "protagonist", "主角": "protagonist", "主人公": "protagonist",
+    "男主": "counterpart", "男主人公": "counterpart",
+    "反派": "antagonist", "对手": "antagonist",
+    "配角": "supporting", "重要配角": "supporting", "关键配角": "supporting",
+}
+CHARACTER_GROUP_LABELS = {
+    "人物", "人物设定", "人物介绍", "主要人物", "登场人物", "角色", "角色设定",
+    "角色介绍", "重要配角", "关键配角", "配角",
+}
+CHARACTER_FIELD_LABELS = {
+    *CHARACTER_GROUP_LABELS, *CHARACTER_ROLE_LABELS,
+    "姓名", "名字", "年龄", "身份", "性格", "性情", "外貌", "背景", "经历", "动机",
+    "目标", "欲望", "需求", "能力", "特点", "作用", "关系", "弧光", "结局", "设定",
+}
+
+
+def extract_outline_characters(content: str) -> list[dict[str, str]]:
+    """Extract explicitly named cast members from common Chinese outline formats."""
+    found: dict[str, dict[str, str]] = {}
+
+    def role_for(value: str, default: str = "supporting") -> str:
+        compact = re.sub(r"\s+", "", value)
+        return next((role for label, role in CHARACTER_ROLE_LABELS.items()
+                     if label in compact), default)
+
+    def add(raw_name: str, role: str = "supporting") -> None:
+        for value in re.split(r"[、，,；;/]", raw_name):
+            name = value.strip().strip("*# `\"'“”‘’（）()【】[]")
+            name = re.split(r"[：:（(【\[]", name, maxsplit=1)[0].strip()
+            compact = re.sub(r"\s+", "", name)
+            if (
+                compact in CHARACTER_FIELD_LABELS
+                or not re.fullmatch(
+                    r"[\u3400-\u9fff·]{2,8}|[A-Za-z][A-Za-z .'-]{1,29}", name,
+                )
+            ):
+                continue
+            current = found.get(name)
+            if current is None or current["role"] == "supporting" and role != "supporting":
+                found[name] = {"name": name, "role": role}
+
+    lines = str(content or "").splitlines()
+    in_character_section = False
+    section_role = "supporting"
+    for raw_line in lines:
+        line = raw_line.strip()
+        heading = re.match(r"^(#{2,6})\s+(.+?)\s*$", line)
+        heading_text = heading.group(2).strip() if heading else ""
+        if heading and len(heading.group(1)) == 2:
+            compact = re.sub(r"[\s一二三四五六七八九十、.．]+", "", heading_text)
+            in_character_section = any(label in compact for label in ("人物", "角色"))
+            section_role = "supporting"
+
+        source = heading_text if heading else re.sub(r"^[-*+]\s*", "", line)
+        source = source.strip("*")
+        role_then_name = re.match(
+            r"^(女主|男主|主角|主人公|男主人公|反派|对手|重要配角|关键配角|配角)"
+            r"\s*(?:[：:]\s*|[（(])(.+?)(?:[）)]\s*)?$",
+            source,
+        )
+        if role_then_name:
+            label, names = role_then_name.groups()
+            add(names, CHARACTER_ROLE_LABELS[label])
+            section_role = CHARACTER_ROLE_LABELS[label]
+            continue
+
+        name_then_role = re.match(
+            r"^(.+?)\s*[（(](女主|男主|主角|主人公|男主人公|反派|对手|"
+            r"重要配角|关键配角|配角)(?:[^）)]*)[）)]$",
+            source,
+        )
+        if name_then_role:
+            name, label = name_then_role.groups()
+            add(name, CHARACTER_ROLE_LABELS[label])
+            section_role = CHARACTER_ROLE_LABELS[label]
+            continue
+
+        compact_source = re.sub(r"\s+", "", source)
+        if compact_source in CHARACTER_ROLE_LABELS:
+            section_role = CHARACTER_ROLE_LABELS[compact_source]
+            continue
+        if compact_source in CHARACTER_GROUP_LABELS:
+            section_role = "supporting"
+            continue
+
+        for name, descriptor in re.findall(r"\*\*([^*\n（）()：:]{2,30})[（(]([^）)]+)[）)]\*\*", line):
+            if any(label in descriptor for label in CHARACTER_ROLE_LABELS):
+                add(name, role_for(descriptor))
+            elif any(label in descriptor for label in ("千金", "孤女", "姑娘", "丫头")):
+                add(name, "protagonist")
+
+        if not in_character_section:
+            continue
+
+        named_bullet = re.match(
+            r"^(?:[-*+]\s*)?\*\*([^*\n]{2,30})\*\*\s*[：:]", line,
+        )
+        if named_bullet:
+            add(named_bullet.group(1), section_role)
+        if line.startswith("|") and line.endswith("|") and "---" not in line:
+            cells = [cell.strip().strip("*") for cell in line.strip("|").split("|")]
+            role_cell = next((cell for cell in cells if role_for(cell, "") != ""), "")
+            if role_cell:
+                role = role_for(role_cell)
+                for cell in cells:
+                    if cell != role_cell:
+                        before = len(found)
+                        add(cell, role)
+                        if len(found) > before:
+                            break
+    return list(found.values())
+
+
+OUTLINE_MANIFEST_KEYS = (
+    "characters", "world", "locations", "plot_arcs", "timeline",
+    "promises", "questions", "constraints",
+)
+
+
+def local_outline_manifest(content: str) -> dict[str, list[dict[str, str]]]:
+    """Read explicit Markdown structure without treating ordinary prose as entities."""
+    manifest = {key: [] for key in OUTLINE_MANIFEST_KEYS}
+    lines = str(content or "").splitlines()
+    for character in extract_outline_characters(content):
+        evidence = next((line.strip() for line in lines if character["name"] in line), "")
+        if evidence:
+            manifest["characters"].append({**character, "evidence": evidence})
+
+    section = ""
+    for raw_line in lines:
+        line = raw_line.strip()
+        heading = re.match(r"^(#{2,6})\s+(.+?)\s*$", line)
+        if heading:
+            level, label = len(heading.group(1)), heading.group(2).strip()
+            if level == 2:
+                section = label
+            if level == 3 and re.search(r"幕|阶段|卷", label):
+                manifest["plot_arcs"].append({"name": label, "evidence": line})
+            if level >= 4 and re.search(r"第.{1,8}(?:章|节|幕)|开头|中段|结尾", label):
+                manifest["timeline"].append({"name": label, "evidence": line})
+            continue
+        bullet = re.match(r"^[-*+]\s*\*\*([^*\n]{2,30})\*\*\s*[：:]\s*(.+)$", line)
+        if not bullet:
+            continue
+        label, detail = bullet.groups()
+        item = {"name": detail[:80].strip(), "evidence": line}
+        if re.search(r"伏笔|铺垫|承诺|回收|兑现", label):
+            manifest["promises"].append(item)
+        elif re.search(r"钩子|谜团|悬念|问题|留白", label):
+            manifest["questions"].append(item)
+        elif any(term in section for term in ("写作要点", "写作要求", "创作约束")):
+            manifest["constraints"].append({"text": f"{label}：{detail}", "evidence": line})
+    return {key: _dedupe_manifest_items(items) for key, items in manifest.items()}
+
+
+def _dedupe_manifest_items(items: list[dict[str, str]]) -> list[dict[str, str]]:
+    result = []
+    seen = set()
+    for item in items:
+        identity = str(item.get("name") or item.get("text") or "").strip().casefold()
+        if identity and identity not in seen:
+            seen.add(identity)
+            result.append(item)
+    return result
+
+
+def normalize_outline_manifest(manifest: dict) -> dict:
+    """Collapse local/model labels that point to the same outline evidence."""
+    result = {
+        key: _dedupe_manifest_items([
+            item for item in manifest.get(key, []) if isinstance(item, dict)
+        ])
+        for key in OUTLINE_MANIFEST_KEYS
+    }
+    for key in ("plot_arcs", "promises", "questions"):
+        grouped: dict[str, dict] = {}
+        order: list[str] = []
+        for item in result[key]:
+            evidence = re.sub(r"\s+", " ", str(item.get("evidence") or "")).strip().casefold()
+            identity = evidence or str(item.get("name") or "").strip().casefold()
+            if identity not in grouped:
+                grouped[identity] = item
+                order.append(identity)
+                continue
+            current_name = str(item.get("name") or "").strip()
+            saved_name = str(grouped[identity].get("name") or "").strip()
+            if current_name and len(current_name) < len(saved_name):
+                grouped[identity] = item
+        result[key] = [grouped[identity] for identity in order]
+    result.update({key: value for key, value in manifest.items()
+                   if key not in OUTLINE_MANIFEST_KEYS})
+    return result
+
+
+def _validated_manifest(value: dict, content: str) -> dict[str, list[dict[str, str]]]:
+    result = {key: [] for key in OUTLINE_MANIFEST_KEYS}
+    for key in OUTLINE_MANIFEST_KEYS:
+        raw_items = value.get(key)
+        if not isinstance(raw_items, list):
+            continue
+        for raw in raw_items:
+            if not isinstance(raw, dict):
+                continue
+            evidence = str(raw.get("evidence") or "").strip()
+            identity_key = "text" if key == "constraints" else "name"
+            identity = str(raw.get(identity_key) or "").strip()
+            if not identity or not evidence or evidence not in content:
+                continue
+            if key in {"characters", "locations"} and identity not in evidence:
+                continue
+            item = {identity_key: identity[:120], "evidence": evidence[:300]}
+            if key == "characters":
+                role = str(raw.get("role") or "supporting").strip().lower()
+                item["role"] = role if role in {
+                    "protagonist", "counterpart", "antagonist", "supporting", "minor",
+                } else "supporting"
+            elif key == "world":
+                item["kind"] = str(raw.get("kind") or "setting").strip()[:40]
+            result[key].append(item)
+    return {key: _dedupe_manifest_items(items) for key, items in result.items()}
+
+
+def _merge_manifests(*manifests: dict) -> dict[str, list[dict[str, str]]]:
+    return normalize_outline_manifest({
+        key: _dedupe_manifest_items([
+            item for manifest in manifests for item in manifest.get(key, [])
+        ])
+        for key in OUTLINE_MANIFEST_KEYS
+    })
+
+
+def _json_object(text: str) -> dict:
+    cleaned = str(text or "").strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.I)
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError("资料清单没有返回有效 JSON")
+    value = json.loads(cleaned[start:end + 1])
+    if not isinstance(value, dict):
+        raise ValueError("资料清单格式不正确")
+    return value
+
+
+def _ltp_entity_candidates(text: str, payload: dict) -> list[dict[str, str]]:
+    if not isinstance(payload, dict) or not payload.get("available"):
+        return []
+    result = payload.get("result") or {}
+    words = result.get("cws") or []
+    words = words[0] if words and isinstance(words[0], list) else words
+    entities = result.get("ner") or []
+    entities = entities[0] if entities and isinstance(entities[0], list) else entities
+    candidates = []
+    for entity in entities:
+        if not isinstance(entity, (list, tuple)) or len(entity) < 3:
+            continue
+        try:
+            if len(entity) >= 4 and isinstance(entity[1], str):
+                label, start, end = str(entity[0]), int(entity[2]), int(entity[3])
+            else:
+                label, start, end = str(entity[0]), int(entity[1]), int(entity[2])
+        except (TypeError, ValueError):
+            continue
+        if not 0 <= start <= end < len(words):
+            continue
+        value = "".join(map(str, words[start:end + 1])).strip()
+        if value and value in text:
+            candidates.append({"text": value, "type": label})
+    return _dedupe_manifest_items([
+        {"name": item["text"], "evidence": item["text"], "kind": item["type"]}
+        for item in candidates
+    ])[:80]
+
+
+def outline_events(content: str) -> list[dict[str, str | int]]:
+    """Build stable event IDs from explicit event labels in a confirmed outline."""
+    events = []
+    section = ""
+    occurrences: dict[str, int] = {}
+    for line in str(content or "").splitlines():
+        heading = re.match(r"^#{2,4}\s+(.+?)\s*$", line.strip())
+        if heading:
+            label = heading.group(1).strip()
+            if line.lstrip().startswith("## "):
+                section = label
+            candidate = label if (
+                line.lstrip().startswith(("### ", "#### "))
+                or not any(term in label for term in ("大纲", "剧情", "人物", "角色", "设定", "总览"))
+            ) else ""
+        else:
+            bold = re.match(r"^\s*(?:[-*]\s*)?\*\*([^*\n]{2,80})\*\*", line)
+            candidate = bold.group(1).strip() if bold else ""
+        candidate = re.sub(r"[：:]\s*$", "", candidate).strip()
+        if (
+            not candidate or len(candidate) > 50
+            or any(term in candidate for term in OUTLINE_EVENT_SKIP_TERMS)
+            or any(term in section for term in ("人物", "角色"))
+        ):
+            continue
+        normalized = re.sub(r"\W+", "", f"{section}|{candidate}", flags=re.UNICODE).casefold()
+        if not normalized:
+            continue
+        occurrences[normalized] = occurrences.get(normalized, 0) + 1
+        identity = f"{normalized}|{occurrences[normalized]}"
+        events.append({
+            "id": "EV-" + hashlib.sha1(identity.encode("utf-8")).hexdigest()[:8],
+            "order": len(events) + 1, "label": candidate, "section": section,
+        })
+    return events
 
 
 def _confirmed_value(state: dict, key: str) -> str:
@@ -36,7 +419,9 @@ def _character_profile(project_path: Path, role: str) -> str:
         profile_role = re.search(r"(?m)^role:\s*([^\r\n]+)", text)
         if role == "protagonist" and profile_role and profile_role.group(1).strip() == role:
             return name.group(1).strip() if name else ""
-        if role == "counterpart" and name and re.search(r"公子|少爷|世子|从嘲笑.*(?:守护|真香)", text):
+        if role == "counterpart" and name and profile_role and (
+                profile_role.group(1).strip() == "deuteragonist"
+                or re.search(r"公子|少爷|世子|从嘲笑.*(?:守护|真香)", text)):
             return name.group(1).strip()
     return ""
 
@@ -77,21 +462,18 @@ def canon_profile(project, state: dict) -> dict[str, dict[str, str | bool]]:
 
 def detect_canon_conflicts(project, state: dict, content: str) -> list[dict]:
     profile = canon_profile(project, state)
-    bold_names = re.findall(
-        r"\*\*([\u4e00-\u9fff]{2,4})[（(][^\n）)]*(?:主角|千金|公子|少爷|世子)[^\n）)]*[）)]\*\*",
-        content,
+    characters = extract_outline_characters(content)
+    protagonist_candidate = next(
+        (item["name"] for item in characters if item["role"] == "protagonist"), "",
     )
-    protagonist_candidate = next((name for name in bold_names if name != profile["counterpart"]["value"]), "")
     if not protagonist_candidate:
         match = re.search(
             r"(?:孤女|丫头|女子|少女|姑娘)([\u4e00-\u9fff]{2,4})被", content,
         )
         protagonist_candidate = match.group(1) if match else ""
-    counterpart_match = re.search(
-        r"\*\*([\u4e00-\u9fff]{2,4})[（(][^\n）)]*(?:公子|少爷|世子)[^\n）)]*[）)]\*\*",
-        content,
+    counterpart_candidate = next(
+        (item["name"] for item in characters if item["role"] == "counterpart"), "",
     )
-    counterpart_candidate = counterpart_match.group(1) if counterpart_match else ""
     ignored_locations = {"府中", "府里", "府内", "府外", "府邸"}
     location_counts: dict[str, int] = {}
     expected_location = str(profile["primary_location"]["value"])
@@ -146,11 +528,73 @@ class OutlineBlock:
 
 
 class OutlineService:
-    def __init__(self, db: Database, projects: ProjectStore, gateway=None) -> None:
+    def __init__(self, db: Database, projects: ProjectStore, gateway=None, local_nlp=None) -> None:
         self.db = db
         self.projects = projects
         self.gateway = gateway
+        self.local_nlp = local_nlp
         self.states = StoryStateStore(db)
+
+    async def material_manifest(self, project_id: str) -> dict:
+        project = self.projects.get(project_id)
+        current = self.current(project_id)
+        content = str(current.get("content") or "")
+        if not content:
+            raise ValueError("还没有正式大纲，无法建立资料清单")
+        outline_hash = self._hash(content)
+        cache = project.path / "memory" / "outline-manifest.json"
+        try:
+            saved = json.loads(cache.read_text(encoding="utf-8"))
+            if (
+                saved.get("outline_hash") == outline_hash
+                and isinstance(saved.get("manifest"), dict)
+                and saved["manifest"].get("_review", {}).get("status") != "local_only"
+            ):
+                return normalize_outline_manifest(saved["manifest"])
+        except (OSError, json.JSONDecodeError):
+            pass
+
+        local = local_outline_manifest(content)
+        nlp_payload = self.local_nlp.analyze(content) if self.local_nlp else {}
+        nlp_candidates = _ltp_entity_candidates(content, nlp_payload)
+        model = {key: [] for key in OUTLINE_MANIFEST_KEYS}
+        review = {
+            "status": "local_only",
+            "message": "规划模型暂时不可用，本次使用正式大纲的明确结构继续准备。",
+        }
+        model_name = ""
+        if self.gateway is not None:
+            try:
+                response = await self.gateway.complete(
+                    "planning",
+                    "从正式大纲中提取初始化资料清单，只提取原文明确支持的内容，禁止补写、合并人物或猜测别名。"
+                    "返回严格 JSON，键固定为 characters、world、locations、plot_arcs、timeline、promises、"
+                    "questions、constraints。characters 每项含 name、role、evidence；world 每项含 name、kind、"
+                    "evidence；其余除 constraints 外每项含 name、evidence；constraints 每项含 text、evidence。"
+                    "evidence 必须逐字摘自正式大纲。人物和地点的 name 必须逐字出现在自己的 evidence 中。"
+                    "role 只能是 protagonist、counterpart、antagonist、supporting、minor。"
+                    "普通描写、性格、目标和章节标签不能当成人物或地点。",
+                    json.dumps({
+                        "confirmed_outline": content,
+                        "local_markdown_findings": local,
+                        "local_nlp_candidates": nlp_candidates,
+                    }, ensure_ascii=False),
+                    max_output_tokens=4096,
+                )
+                model = _validated_manifest(_json_object(response.text), content)
+                model_name = str(response.receipt.get("model_name") or "")
+                review = {"status": "model_confirmed", "message": "规划模型已按正式大纲原文复核资料清单。"}
+            except Exception:
+                pass
+        manifest = _merge_manifests(local, model)
+        manifest["_review"] = review
+        atomic_write(cache, json.dumps({
+            "outline_hash": outline_hash,
+            "outline_version": current.get("outline_version", 0),
+            "manifest": manifest,
+            "model": model_name,
+        }, ensure_ascii=False, indent=2) + "\n")
+        return manifest
 
     def current(self, project_id: str) -> dict:
         project = self.projects.get(project_id)
@@ -163,16 +607,19 @@ class OutlineService:
             source = str(outline.get("source") or "candidate")
             version = int(outline.get("version") or 1)
             updated_at = outline.get("updated_at")
+            events = outline.get("events") or outline_events(content)
         else:
             content = self._legacy_outline(project_id, project.path)
             source = "legacy_run" if content else "none"
             version = 0
             updated_at = None
+            events = outline_events(content)
         stage = "manuscript_started" if manuscript_exists else "outline_only" if content else "no_outline"
         return {
             "exists": bool(content), "content": content, "source": source,
             "outline_version": version, "state_revision": state.revision,
             "updated_at": updated_at, "stage": stage,
+            "events": events,
             "manuscript_exists": manuscript_exists,
             "message": self._stage_message(stage),
         }
@@ -276,9 +723,8 @@ class OutlineService:
                                      fallback_title: str | None,
                                      source_candidate_id: str | None) -> dict:
         heading = re.search(r"(?m)^#\s+(.+)$", content)
-        base_title = (
-            heading.group(1).strip().strip("《》") if heading
-            else str(fallback_title or source.title).strip()
+        base_title = self._project_title_from_outline(
+            heading.group(1) if heading else "", fallback_title or source.title,
         )
         paragraphs = [
             value.strip() for value in re.split(r"\n\s*\n", content)
@@ -312,7 +758,18 @@ class OutlineService:
                 "pov": metadata["pov"], "tone": metadata["tone"],
             },
         })
+        if not metadata.get("initialization_skills"):
+            metadata["initialization_skills"] = [
+                "story-init", "character-management", "worldbuilding", "plot-structure",
+            ]
         atomic_write(metadata_path, json.dumps(metadata, ensure_ascii=False, indent=2) + "\n")
+        requirements = metadata["story_requirements"]
+        details = "\n\n## Confirmed Story Requirements\n\n" + "\n".join(
+            f"- **{key}**: {value}"
+            for key, value in requirements.items() if value not in (None, "")
+        )
+        story_path = created.path / "story.md"
+        atomic_write(story_path, story_path.read_text(encoding="utf-8") + details)
         new_candidate = self.create_candidate(
             created.id, content, title="新作品第一版大纲",
             metadata={
@@ -351,15 +808,66 @@ class OutlineService:
             risks.append("候选版本遗漏了已锁定设定，当前不能应用。")
         if canon_conflicts:
             risks.append(f"发现 {len(canon_conflicts)} 处项目资料与候选大纲不一致，请先逐项决定。")
+        market_check = self._market_check(project, candidate["content"])
         return {
             "project_id": project_id, "candidate_id": candidate_id,
             "state_revision": current["state_revision"], "stage": current["stage"],
             "current": current, "candidate": candidate, "changes": changes,
             "summary": summary, "risks": risks, "lock_failures": lock_failures,
             "canon_conflicts": canon_conflicts,
+            "market_check": market_check,
             "can_apply": not lock_failures and not canon_conflicts, "model_called": False,
             "semantic_review_recommended": bool(summary["uncertain"]),
         }
+
+    def _market_check(self, project, candidate: str) -> dict:
+        if project.metadata.get("market_baseline_enabled") is not True:
+            return {
+                "status": "not_enabled", "sample_count": 0, "advisory_only": True,
+                "message": "当前作品没有启用同类市场参考。", "signals": [],
+                "mechanisms": [],
+            }
+        baseline = self.projects.active_learning_data(project.id, "market_baseline")
+        reference = compact_market_reference(baseline)
+        result = {**reference, "signals": []}
+        if reference["status"] in {"unavailable", "insufficient"}:
+            return result
+        opening = self._outline_opening(candidate)
+        if not opening:
+            return {
+                **result,
+                "message": reference["message"] + " 候选大纲没有单独标出开头段，暂不比较开头信号。",
+            }
+        for signal, label, pattern, percent in (
+            (
+                "opening_question", "明确问题", _OUTLINE_QUESTION_SIGNAL,
+                reference["opening"].get("question_percent", 0),
+            ),
+            (
+                "opening_anomaly", "异常或冲突", _OUTLINE_ANOMALY_SIGNAL,
+                reference["opening"].get("anomaly_percent", 0),
+            ),
+        ):
+            if percent < 50:
+                continue
+            detected = bool(pattern.search(opening))
+            result["signals"].append({
+                "signal": signal, "label": label, "detected": detected,
+                "sample_percent": percent,
+                "message": (
+                    f"候选开头已出现{label}，与这组同类样本的常见信号一致。"
+                    if detected else
+                    f"同类样本中约 {percent:g}% 的开头出现{label}；候选开头暂未明确出现，是否补充由你决定。"
+                ),
+            })
+        return result
+
+    @classmethod
+    def _outline_opening(cls, content: str) -> str:
+        for block in cls._blocks(content):
+            if re.search(r"开头|开篇|起始|第一章|第一幕", block.label):
+                return block.text[:1200]
+        return ""
 
     def apply_candidate(self, project_id: str, candidate_id: str, *,
                         change_ids: list[str] | None = None,
@@ -417,6 +925,7 @@ class OutlineService:
             "content": content, "version": version, "source": source,
             "candidate_id": candidate_id, "updated_at": self._now(),
             "content_hash": self._hash(content),
+            "events": outline_events(content),
         }
         committed = self.states.commit(
             candidate_id, expected_revision or state.revision,
@@ -732,6 +1241,15 @@ class OutlineService:
         if not value or len(value) > 80:
             raise ValueError("候选大纲标题需要 1-80 个字符")
         return value
+
+    @staticmethod
+    def _project_title_from_outline(heading: str, fallback: str) -> str:
+        value = str(heading or "").strip()
+        quoted = re.match(r"^[《「『](.+?)[》」』]\s*(?:小说|故事)?大纲.*$", value)
+        if quoted:
+            return quoted.group(1).strip()
+        value = re.sub(r"\s*(?:小说|故事)?(?:正式)?大纲\s*$", "", value).strip("《》「」『』 ")
+        return value or str(fallback or "新作品").strip()
 
     @staticmethod
     def _clean_content(content: str) -> str:

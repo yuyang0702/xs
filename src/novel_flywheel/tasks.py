@@ -9,6 +9,10 @@ from novel_flywheel.errors import describe_error
 RunOperation = Callable[[str], Awaitable[object]]
 
 
+class ProjectRunActiveError(RuntimeError):
+    """Raised when a second writer is started for the same project."""
+
+
 class RunTaskManager:
     def __init__(self, db: Database) -> None:
         self.db = db
@@ -16,7 +20,8 @@ class RunTaskManager:
 
     def start(self, project_id: str, workflow: str, operation: RunOperation) -> dict:
         run_id = uuid.uuid4().hex
-        self.db.create_run(run_id, project_id, workflow, status="queued")
+        if not self.db.create_run_if_idle(run_id, project_id, workflow, status="queued"):
+            raise ProjectRunActiveError("该作品已有任务正在执行，请等待当前任务结束后再试")
         self.db.add_run_event(run_id, "info", "queued", "任务已排队", stage="queue")
         task = asyncio.create_task(self._execute(run_id, operation), name=f"novel-run-{run_id}")
         self.tasks[run_id] = task
@@ -37,7 +42,10 @@ class RunTaskManager:
             raise ValueError("Only a failed or cancelled run can be resumed")
         if run_id in self.tasks:
             raise ValueError("Run is already active")
-        self.db.update_run(run_id, "queued")
+        if not self.db.claim_run_status(
+            run_id, allowed, "queued", require_project_idle=True,
+        ):
+            raise ProjectRunActiveError("该作品已有任务正在执行，请等待当前任务结束后再试")
         self.db.add_run_event(run_id, "info", "resumed", "继续上次失败任务", stage="queue")
         task = asyncio.create_task(self._execute(run_id, operation), name=f"novel-run-{run_id}")
         self.tasks[run_id] = task

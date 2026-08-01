@@ -343,6 +343,67 @@ def test_project_materials_expose_complete_character_profiles(tmp_path) -> None:
     }
 
 
+def test_project_materials_do_not_count_empty_registry_templates(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Empty materials", "mode": "short", "genre": "test",
+        "premise": "Only scaffolds exist.", "target_words": 1000,
+    }).json()
+
+    result = client.get(f"/api/projects/{project['id']}/materials").json()
+    groups = {item["id"]: item for item in result["groups"]}
+
+    assert groups["plot"]["documents"] == []
+    assert groups["timeline"]["documents"] == []
+    assert groups["issues"]["documents"] == []
+    assert groups["world"]["documents"] == []
+    assert result["coverage"]["plot"]["status"] == "needs_attention"
+    assert "空模板" in result["coverage"]["timeline"]["message"]
+
+
+def test_project_material_coverage_uses_exact_names_and_reports_duplicates(tmp_path) -> None:
+    app = create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    project_data = client.post("/api/projects", json={
+        "title": "Coverage", "mode": "short", "genre": "test",
+        "premise": "Names must remain distinct.", "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(project_data["id"])
+    candidate = app.state.outlines.create_candidate(project.id, """# 大纲
+
+## 人物设定
+### 女主（花穗）
+### 男主（裴砚行）
+
+## 章节大纲
+### 第一幕：入府
+#### 第1章·错认
+""")
+    app.state.outlines.apply_candidate(project.id, candidate["id"])
+    (project.path / "characters" / "old-name.md").write_text(
+        "---\nname: 柳春杏\nrole: protagonist\naliases:\n  - 花穗\n---\n# 柳春杏\n",
+        encoding="utf-8",
+    )
+    for filename in ("first.md", "second.md"):
+        (project.path / "worldbuilding" / "locations" / filename).write_text(
+            "---\nname: 沈府\ntype: building\n---\n# 沈府\n",
+            encoding="utf-8",
+        )
+
+    result = client.get(f"/api/projects/{project.id}/materials").json()
+
+    assert [item["name"] for item in result["coverage"]["characters"]["missing"]] == [
+        "花穗", "裴砚行",
+    ]
+    assert result["coverage"]["locations"]["duplicates"] == ["沈府"]
+
+
 def test_candidate_reports_effective_word_count(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
@@ -597,7 +658,7 @@ def test_material_documents_expose_localized_structured_display(tmp_path) -> Non
     location = root / "worldbuilding" / "locations" / "tower.md"
     location.parent.mkdir(parents=True, exist_ok=True)
     location.write_text(
-        "---\nname: 黑塔\ntype: building\nstatus: thriving\n---\n\n"
+        "---\nname: 黑塔\ntype: building\nstatus: thriving\ncontrolled-by: unknown\n---\n\n"
         "## Description\n\n终年无灯。\n\n## Notable Features\n\n"
         "| Name | Type |\n|---|---|\n| 顶层 | 禁区 |\n",
         encoding="utf-8",
@@ -609,7 +670,8 @@ def test_material_documents_expose_localized_structured_display(tmp_path) -> Non
 
     assert document["display"]["title"] == "黑塔"
     assert document["display"]["metadata"] == [
-        {"label": "类型", "value": "建筑"}, {"label": "状态", "value": "正常"},
+        {"label": "类型", "value": "建筑"}, {"label": "控制者", "value": "未确认"},
+        {"label": "状态", "value": "正常"},
     ]
     assert document["display"]["sections"][0]["title"] == "描述"
     assert document["display"]["sections"][0]["content"] == "终年无灯。"

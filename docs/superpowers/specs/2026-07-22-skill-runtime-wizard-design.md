@@ -46,7 +46,7 @@ The model receives the complete Skill instructions, the current story context, r
 - `run_story_command(command)`
 - `complete_skill(summary)`
 
-Every argument is schema-validated. Paths must be relative, resolve inside the selected project, and match the Skill's write allowlist. Models only create proposals; the runtime applies validated proposals atomically. The tool loop is bounded by step count, elapsed time, token budget, and output size.
+Every argument is schema-validated. Paths must be relative, resolve inside the selected project, and match the Skill's write allowlist. The model prompt names those project-root-relative patterns and forbids adding a project title or slug prefix. Models only create proposals; the runtime applies validated proposals atomically. The tool loop is bounded by step count, elapsed time, token budget, and output size. A write-capable Skill that returns plain text before creating a proposal is prompted to continue in the same bounded tool session, and `complete_skill` is rejected until at least one proposal exists; an empty result cannot become a successful initialization.
 
 `run_story_command` is not a shell. It only accepts the Story CLI commands `init`, `reindex`, `links`, `validate`, `wordcount`, and other explicitly registered read/maintenance subcommands with fixed argument shapes. Existing executable Skill approval and content-hash checks remain in force.
 
@@ -89,6 +89,16 @@ chapters/_index.md
 
 `story-init` creates the structure and story bible. `character-management`, `worldbuilding`, and `plot-structure` then run separately, each with its own inputs, proposals, receipts, and validation. Registry and backlink maintenance is deterministic. The existing chapter flywheel reads this layout through repository methods rather than maintaining a second authoritative copy.
 
+All project creation paths converge on this sequence after a user confirms the formal outline. The runtime passes that outline to every initialization Skill and validates stage outcomes rather than trusting a historical completed receipt. Explicit outline characters, populated registries, relationships, arcs, and timeline are deterministic completion requirements. Premise wording may be faithfully rewritten, and supporting locations, characters, and concrete details may be added when they do not contradict confirmed facts; literal name equality is not a requirement for creative additions. The `story-init` contract enumerates canonical root-relative files instead of accepting wildcard wrapper directories. Generation APIs independently enforce formal-outline and initialization readiness.
+
+Formal outlines also contain stable `EV-xxxxxxxx` event IDs. Run-scoped planning covers every ID in outline order and records an outline anchor plus entry/exit handoff. Adjacent short-story segments may share an ID when one formal event needs several bounded writing windows, but an earlier ID cannot reappear after the plan advances. Draft and revision artifacts retain those assignments, so `planning.md` refines the formal outline into bounded work without becoming a competing source of truth. Long-form expansion is stored in `memory/book-plan.md` and remains subordinate to `plot/outline.md`.
+
+When initialization starts, the server freezes the current active prose-baseline and creative-blueprint versions into the tracked run. It filters that snapshot by project mode, genre, POV, declared applicability, and the current Skill: character rules go to character preparation, setting methods go to worldbuilding, and structural methods go to plot preparation. The compact context excludes evidence offsets and model receipts. A completed Skill is still skipped, so only unfinished stages use the snapshot. Learning context is advisory and cannot rewrite the confirmed outline, locks, confirmed facts, POV, or identities; bootstrap proposals for `plot/outline.md` are rejected.
+
+Before any initialization Skill writes, the server creates a versioned `memory/outline-manifest.json` bound to the confirmed outline hash. Explicit Markdown structure is authoritative for clearly named roles and chapters, local NLP contributes candidates without authority, and the planning role performs at most one evidence-backed review for that outline version. Model entries without an exact outline quote are discarded; character and location names must occur in their own quote. A missing planning binding or transient provider failure falls back to strict local findings and is recorded as a degraded review rather than changing the project contract.
+
+All initialization Skills consume the same manifest. Completion checks require exact primary-name coverage for the confirmed cast, unique named entity files, complete registries, real arc files, a populated timeline, and manifest-backed promise, question, and constraint coverage. Aliases do not resolve an unconfirmed primary-name conflict. The console presents these checks as seven understandable material sections and excludes empty scaffolds from counts.
+
 ## Locking and Change Requests
 
 Locks are stored in SQLite and `continuity/locks.json`. Each lock records a stable key, value, source answer, scope, creation time, and revision. Locks are included in every relevant model stage.
@@ -106,7 +116,11 @@ Models return structured proposals rather than arbitrary paths or direct writes.
 - registry and backlink consistency;
 - conflicts with locks and confirmed canon.
 
-All proposals for one Skill execution are applied as one snapshot-protected transaction. Story CLI `reindex`, `links`, and `validate` run after application. A validation failure restores the snapshot and preserves the proposals and error report for retry.
+All proposals for one Skill execution are applied as one snapshot-protected transaction. Story CLI `reindex`, `links`, and `validate` run after application, except that bootstrap character proposals defer `links` until worldbuilding has created their forward-referenced locations. Character preflight first enforces one structured relationship per target and exact inverse types; worldbuilding treats character `locations` as a required file-and-backlink checklist. A validation failure restores the snapshot and preserves the proposals and error report for retry. The enclosing initialization run also owns a batch snapshot: if any later Skill fails, all earlier initialization writes from that run are restored and newly created managed Markdown files are removed.
+
+If a model route stops after producing a locally complete proposal set but before calling `complete_skill`, Runtime accepts the proposal set for normal local validation instead of discarding it or calling a fallback model. If the set is incomplete, its pending proposals become `retained` before the configured fallback starts. The fallback receives only the retained path list and current deterministic gaps, and its new proposals remain a separate pending repair layer. Exact entity identity is the pair of the contract-owned entity type and normalized `name` or `title`; a repair that uses another path for the same identity reuses the first canonical path. Runtime never performs fuzzy identity matching.
+
+An apply or route failure leaves proposal rows intact. Active fallback proposals become `failed`, retained primary proposals stay retained until validation selects or supersedes them, and the Skill execution becomes `recoverable` whenever any retained or failed proposal exists. Formal project files remain snapshot-protected. The existing execution and proposal tables expose this recovery state; no second candidate store is created.
 
 ## Existing Project Migration
 
@@ -131,6 +145,7 @@ Project maintenance adds views for Skill executions, file proposals, locks, chan
 - Schema generation failure falls back to the core form and records the failure.
 - Invalid model JSON is repaired once, then the step fails visibly.
 - Runtime step or budget limits stop the Skill without applying pending proposals.
+- A premature text-only response is retried inside the existing bounded tool loop; if no accepted proposal is produced, the configured planning fallback may run and the stage fails without changing formal files.
 - Unauthorized paths, commands, or tool names fail immediately and are recorded.
 - Browser closure does not stop or lose persisted wizard state.
 - Story CLI validation failure restores the project snapshot.

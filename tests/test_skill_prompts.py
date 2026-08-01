@@ -101,6 +101,73 @@ def test_compactor_falls_back_when_no_execution_rules_are_found() -> None:
     assert SkillPromptCompactor().compact(prompt, [Receipt("hash-a")]) == prompt
 
 
+def test_stage_constraint_compactor_reserves_confirmed_writing_context() -> None:
+    constraints = "\n\n".join((
+        "# General Notes\n" + "background filler\n" * 400,
+        "# CONFIRMED STORY FACTS (take precedence over older project notes)\n"
+        "- ending: The heroine leaves alone.",
+        "# Confirmed Outline Event IDs\n- EV-a1b2c3d4: The sealed letter is opened",
+        "# Current Confirmed Outline\n"
+        "## Opening\nThe heroine receives the sealed letter.\n\n"
+        "## Ending\nShe opens it and learns why her friend died.",
+        "# Executable Prose Baseline\n"
+        '{"sentence_rhythm":["Alternate long and short sentences."],'
+        '"dialogue":["Every reply changes information or relationship."]}',
+        "# Confirmed Creative Blueprint\n"
+        '{"mechanisms":[{"name":"Delayed answer",'
+        '"transfer_guidance":"Keep the letter unresolved until the final turn."}]}',
+    ))
+
+    compact = ConstraintPromptCompactor(max_chars=5200).compact_for_stage(
+        constraints, stage="polish", focus="EV-a1b2c3d4 sealed letter final turn",
+    )
+
+    assert "The heroine leaves alone" in compact
+    assert "The sealed letter is opened" in compact
+    assert "She opens it and learns why her friend died" in compact
+    assert "Alternate long and short sentences" in compact
+    assert "Keep the letter unresolved until the final turn" in compact
+    assert "background filler" not in compact
+    assert len(compact) <= 5400
+
+
+def test_stage_constraint_compactor_does_not_let_long_outline_hide_style() -> None:
+    constraints = "\n\n".join((
+        "# CONFIRMED STORY FACTS (take precedence over older project notes)\n"
+        + "The confirmed fact must remain.\n" * 200,
+        "# Current Confirmed Outline\n"
+        + "The long outline continues through another event.\n" * 400,
+        "# Executable Prose Baseline\nKeep the confirmed sentence rhythm.",
+        "# Confirmed Creative Blueprint\nDelay the confirmed answer until the ending.",
+    ))
+
+    compact = ConstraintPromptCompactor(max_chars=4000).compact_for_stage(
+        constraints, stage="polish", focus="ending",
+    )
+
+    assert "The confirmed fact must remain" in compact
+    assert "The long outline continues" in compact
+    assert "Keep the confirmed sentence rhythm" in compact
+    assert "Delay the confirmed answer until the ending" in compact
+    assert len(compact) <= 4000
+
+
+def test_stage_constraint_compactor_keeps_rules_before_first_heading() -> None:
+    constraints = (
+        "Never change the confirmed first-person viewpoint.\n\n"
+        "# Current Confirmed Outline\nThe protagonist opens the door.\n\n"
+        "# Executable Prose Baseline\nKeep the narration restrained."
+    )
+
+    compact = ConstraintPromptCompactor(max_chars=2000).compact_for_stage(
+        constraints, stage="polish", focus="opens the door",
+    )
+
+    assert "Never change the confirmed first-person viewpoint" in compact
+    assert "The protagonist opens the door" in compact
+    assert "Keep the narration restrained" in compact
+
+
 def test_constraint_compactor_keeps_hard_rules_and_bounds_repeated_context() -> None:
     constraints = "\n".join([
         "# 通用规则",
