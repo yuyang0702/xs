@@ -1250,6 +1250,167 @@ def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() ->
     assert any("无法确认剧情分工与前后衔接" in item for item in issues)
 
 
+@pytest.mark.parametrize("headings", [
+    ["### 段 1：开端", "### 段 2：发展", "### 段 3：收束"],
+    ["### 第1段：开端", "### 第2段：发展", "### 第3段：收束"],
+    ["### 第 1 段：开端", "### 第 2 段：发展", "### 第 3 段：收束"],
+    ["### **第一段** · 开端", "### **第二段** · 发展", "### **第三段** · 收束"],
+    ["### 第１段：开端", "### 第２段：发展", "### 第３段：收束"],
+    ["### Segment 1: Opening", "### Segment 2: Middle", "### Segment 3: Ending"],
+    ["   ### 第一段：开端", "  ### 第二段：发展", " ### 第三段：收束"],
+])
+def test_short_plan_segments_accept_common_heading_formats(headings) -> None:
+    plan = "\n\n".join(
+        f"{heading}\n本段事件：事件{index}。" + chr(0x4e00 + index) * 100
+        for index, heading in enumerate(headings, 1)
+    ) + "\n\n## 附录\n不属于最后一个写作段。"
+
+    segments = WorkflowService._short_plan_segments(plan, 3)
+
+    assert len(segments) == 3
+    assert "事件1" in segments[0]
+    assert "事件3" in segments[-1]
+    assert "附录" not in segments[-1]
+
+
+def test_short_plan_segments_accept_chinese_number_twelve() -> None:
+    numerals = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"]
+    plan = "\n\n".join(
+        f"### 第{numeral}段：事件{index}\n本段事件：事件{index}。" + chr(0x4e00 + index) * 100
+        for index, numeral in enumerate(numerals, 1)
+    )
+
+    segments = WorkflowService._short_plan_segments(plan, 12)
+
+    assert len(segments) == 12
+    assert "第十二段" in segments[-1]
+
+
+def test_short_plan_scene_subheadings_do_not_split_numbered_segments() -> None:
+    plan = "\n\n".join((
+        "### 第一段：开端\n事件ID：EV-11111111\n大纲依据：开端\n"
+        "段首承接：开始。\n本段事件：调查。\n#### 场景1：前院\n发现线索。\n"
+        "#### Scene 2: Kitchen\n确认线索。\n段末交接：继续追查。\n" + "甲" * 100,
+        "### 第二段：收束\n事件ID：EV-22222222\n大纲依据：结尾\n"
+        "段首承接：继续追查。\n本段事件：揭晓。\n段末交接：结束。\n" + "乙" * 100,
+    ))
+
+    segments = WorkflowService._short_plan_segments(plan, 2)
+
+    assert len(segments) == 2
+    assert "#### 场景1" in segments[0]
+    assert "#### Scene 2" in segments[0]
+    assert "EV-22222222" not in segments[0]
+
+
+def test_short_plan_fields_accept_markdown_and_ignore_appendix_event_ids() -> None:
+    plan = "\n\n".join((
+        "### 第一段 · 开端\n"
+        "*事件 ID*：EV-11111111\n**大纲依据**：开端\n"
+        "**段首承接**：故事开始。\n**本段事件**：发现异常。\n"
+        "_段末交接_：\n人物留在前院。\n她已经知道账册存在。\n" + "甲" * 100,
+        "### 第二段 · 收束\n"
+        "**事件ID**：EV-22222222\n**大纲依据**：收束\n"
+        "**段首承接**：人物从前院出发。\n**本段事件**：查明真相。\n"
+        "**段末交接**：故事结束。\n" + "乙" * 100,
+    )) + "\n\n## 各分段负责事件对照表\n| 第一段 | EV-11111111 |"
+    state = {"outline": {"events": [
+        {"id": "EV-11111111"}, {"id": "EV-22222222"},
+    ]}}
+
+    segments = WorkflowService._short_plan_segments(plan, 2)
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), state, plan, 2,
+    )
+
+    assert issues == []
+    assert WorkflowService._short_plan_event_ids(segments[1]) == ["EV-22222222"]
+    assert WorkflowService._short_plan_handoff(segments[0]) == (
+        "人物留在前院。\n她已经知道账册存在。\n" + "甲" * 100
+    )
+
+
+def test_short_plan_gate_reports_all_repairable_field_problems_at_once() -> None:
+    plan = (
+        "### 第一段\n事件ID：EV-11111111\n本段事件：太短。\n"
+        "\n### 第二段\n事件ID：EV-22222222\n本段事件：也太短。"
+    )
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {}, plan, 2,
+    )
+
+    assert any("没有写清" in item for item in issues)
+    assert any("缺少事件ID" in item for item in issues)
+
+
+def test_single_short_plan_event_ids_fall_back_to_plan_text() -> None:
+    plan = "单段短篇规划覆盖正式事件 EV-1234abcd，并直接完成全文。"
+
+    assert WorkflowService._short_plan_event_ids(plan) == ["EV-1234ABCD"]
+
+
+def test_short_plan_fields_normalize_width_without_rewriting_prose() -> None:
+    segment = (
+        "```markdown\n事件ID：EV-deadbeef\n```\n"
+        "事件ＩＤ：ＥＶ－１２３４ａｂｃｄ\n段末交接：保留１２：｛原文｝"
+    )
+
+    assert WorkflowService._short_plan_event_ids(segment) == ["EV-1234ABCD"]
+    assert WorkflowService._short_plan_handoff(segment) == "保留１２：｛原文｝"
+
+
+def test_short_plan_gate_ignores_hidden_segment_heading_examples() -> None:
+    plan = (
+        "<!--\n### Segment 4: hidden\n-->\n"
+        "```markdown\n### Segment 3: example\n```\n"
+        "### Segment 1: Opening\n" + "opening detail " * 20 + "\n\n"
+        "### Segment 2: Ending\n" + "ending detail " * 20
+    )
+
+    numbers = [
+        number for _match, number in WorkflowService._short_plan_headings(plan)
+        if number is not None
+    ]
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {}, plan, 2,
+    )
+
+    assert numbers == [1, 2]
+    assert not any("恰好按" in item for item in issues)
+
+
+@pytest.mark.parametrize("numbers", ([1, 2, 3], [1, 1, 2], [2, 1]))
+def test_short_plan_gate_rejects_extra_duplicate_or_reordered_segment_headings(
+    numbers,
+) -> None:
+    plan = "\n\n".join(
+        f"### Segment {number}: Part\n" + "story detail " * 20
+        for number in numbers
+    )
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {}, plan, 2,
+    )
+
+    assert any("恰好按第 1 至第 2 段各出现一次" in item for item in issues)
+
+
+def test_short_plan_gate_rejects_unremoved_causal_chain_markers() -> None:
+    plan = "\n\n".join((
+        "### 第一段\n事件ID：EV-11111111\n大纲依据：开端\n段首承接：开始。\n"
+        "本段事件：发现异常。\n段末交接：继续调查。\n" + "甲" * 100,
+        "### 第二段\n事件ID：EV-22222222\n大纲依据：结尾\n段首承接：继续调查。\n"
+        "本段事件：查明真相。\n段末交接：结束。\n" + "乙" * 100,
+    )) + "\nSHORT_CAUSAL_CHAIN_JSON_START\n```json\n{broken}\n```"
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {}, plan, 2,
+    )
+
+    assert any("因果链" in item for item in issues)
+
+
 def test_short_plan_requires_every_formal_outline_event_in_order() -> None:
     outline = "# 大纲\n\n## 开头\n发现异常。\n\n## 结尾\n兑现承诺。\n"
     events = outline_events(outline)
@@ -1264,7 +1425,106 @@ def test_short_plan_requires_every_formal_outline_event_in_order() -> None:
         {"outline": {"content": outline, "events": events}}, plan, 2,
     )
 
-    assert any("顺序发生倒退" in item for item in issues)
+    reversal = next(item for item in issues if "顺序发生倒退" in item)
+    assert "第 1 段" in reversal
+    assert "第 2 段" in reversal
+    assert "结尾" in reversal
+    assert "开头" in reversal
+
+
+def test_short_plan_order_ignores_structure_theme_and_writing_directives() -> None:
+    outline = """# 大纲
+
+## 一、故事核心设定
+**总字数**：一万字
+
+## 三、章节大纲
+### 第一幕：误入高门
+**开篇钩子**：花穗被错抬进府。
+### 第1章·身份露馅
+**冲突升级**：众人开始怀疑她。
+
+## 四、主题与情感线
+**核心母题**：出身不决定价值。
+
+## 五、写作要点
+**保持第一人称**：只写花穗所见。
+"""
+    events = outline_events(outline)
+    by_label = {item["label"]: item["id"] for item in events}
+    plan = "\n\n".join((
+        "### 第一段：误入\n"
+        f"事件ID：{by_label['开篇钩子']}、{by_label['保持第一人称']}\n"
+        "大纲依据：开篇钩子\n段首承接：这是开篇。\n"
+        "本段事件：花穗被错抬进府并决定留下查明原因。\n"
+        "段末交接：花穗留在前厅，开始怀疑众人的说法。" + "细节" * 30,
+        "### 第二段：露馅\n"
+        f"事件ID：{by_label['第一幕：误入高门']}、"
+        f"{by_label['第1章·身份露馅']}、{by_label['冲突升级']}\n"
+        "大纲依据：冲突升级\n段首承接：花穗仍在前厅，众人开始盘问。\n"
+        "本段事件：花穗的回答露出破绽，身份危机升级。\n"
+        "段末交接：众人查明真相，故事结束。" + "收束" * 30,
+    ))
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}),
+        {"outline": {"content": outline, "events": events}}, plan, 2,
+    )
+
+    assert not any("不存在的事件 ID" in item for item in issues)
+    assert not any("还没有分配" in item for item in issues)
+    assert not any("顺序发生倒退" in item for item in issues)
+
+
+def test_short_plan_gate_rebuilds_legacy_event_cache_from_outline_content() -> None:
+    outline = """# Outline
+
+**Opening beat**: The lead finds a letter.
+
+<!-- **Hidden template beat**: Example only. -->
+
+```markdown
+**Fenced example beat**: Example only.
+```
+
+**Ending beat**: The lead answers the letter.
+"""
+    events = outline_events(outline)
+    saved_events = [*events, {
+        "id": "EV-DEADBEEF", "order": 99,
+        "label": "Hidden template beat", "section": "",
+    }]
+    plan = "\n\n".join((
+        f"### Segment 1: Opening\n{events[0]['id']}\n" + "a" * 100,
+        f"### Segment 2: Ending\n{events[1]['id']}\n" + "b" * 100,
+    ))
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}),
+        {"outline": {"content": outline, "events": saved_events}}, plan, 2,
+    )
+
+    assert not any("EV-DEADBEEF" in issue for issue in issues)
+
+
+def test_short_plan_rejects_unknown_id_when_outline_has_only_directives() -> None:
+    outline = "# 大纲\n\n## 五、写作要点\n**保持第一人称**：只写主角所见。\n"
+    events = outline_events(outline)
+    plan = "\n\n".join((
+        "### 第一段：开始\n事件ID：EV-deadbeef\n大纲依据：写作要求\n"
+        "段首承接：这是开篇。\n本段事件：人物开始行动。\n"
+        "段末交接：人物留在前厅。\n" + "细节" * 30,
+        "### 第二段：结束\n事件ID：EV-deadbeef\n大纲依据：写作要求\n"
+        "段首承接：人物仍在前厅。\n本段事件：人物解决问题。\n"
+        "段末交接：故事结束。\n" + "收束" * 30,
+    ))
+
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}),
+        {"outline": {"content": outline, "events": events}}, plan, 2,
+    )
+
+    assert any("不存在的事件 ID" in item for item in issues)
 
 
 def test_adjacent_segments_may_continue_the_same_formal_outline_event() -> None:
@@ -2245,7 +2505,13 @@ async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> No
 
 
 @pytest.mark.asyncio
-async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(tmp_path) -> None:
+@pytest.mark.parametrize("malformed", [
+    '{"checks": [], "tasks": [',
+    '{"checks": [], "tasks": []}\n{"checks": [], "tasks": []}',
+], ids=["truncated", "ambiguous"])
+async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(
+    tmp_path, malformed,
+) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
@@ -2255,7 +2521,6 @@ async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(tmp_p
     ))
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
-    malformed = '{"checks": [], "tasks": ['
     plan = json.dumps({
         "checks": [{"kind": "forbidden_text", "value": "wrong fact"}],
         "tasks": [{"segments": [2], "instruction": "Repair the canon conflict."}],
@@ -4184,12 +4449,336 @@ def test_resume_prefers_complete_outputs_from_same_run(tmp_path) -> None:
     (outputs / "draft.md").write_text(draft, encoding="utf-8")
     (outputs / "review.md").write_text(quality_review(), encoding="utf-8")
     service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    context = service._short_checkpoint_context(
+        project, state.revision, state.data, store.load_constraints(project.id), 4,
+    )
+    service._save_short_checkpoint(outputs, context)
 
-    checkpoint = service._find_short_checkpoint(project, run_id, 4)
+    checkpoint = service._find_short_checkpoint(project, run_id, 4, context)
     review = service._find_short_stage_output(project, run_id, "review.md")
 
     assert checkpoint == outputs
     assert review == outputs / "review.md"
+
+
+@pytest.mark.parametrize(("status", "reusable"), [
+    ("failed", True),
+    ("cancelled", True),
+    ("completed", False),
+    ("running", False),
+    ("queued", False),
+])
+def test_cross_run_short_checkpoint_requires_resumable_terminal_status(
+    tmp_path, status, reusable,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title=f"Checkpoint {status}", mode="short", genre="suspense",
+        premise="Explicit new runs must not reuse completed work.", target_words=10000,
+    ))
+    db.create_run("source-run", project.id, "short-story", status=status)
+    outputs = project.path / "runs" / "source-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "draft.md").write_text(
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
+        encoding="utf-8",
+    )
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    context = service._short_checkpoint_context(
+        project, state.revision, state.data, store.load_constraints(project.id), 4,
+    )
+    service._save_short_checkpoint(outputs, context)
+
+    checkpoint = service._find_short_checkpoint(
+        project, "explicit-new-run", 4, context,
+    )
+
+    assert (checkpoint == outputs) is reusable
+
+
+def test_short_checkpoint_without_context_fingerprint_is_rejected(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Legacy checkpoint", mode="short", genre="suspense",
+        premise="An old draft must not cross contexts.", target_words=10000,
+    ))
+    db.create_run("legacy-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "legacy-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "draft.md").write_text(
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
+        encoding="utf-8",
+    )
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    context = service._short_checkpoint_context(
+        project, state.revision, state.data, store.load_constraints(project.id), 4,
+    )
+
+    assert service._find_short_checkpoint(project, "new-run", 4, context) is None
+
+
+def test_short_checkpoint_rejects_changed_outline_with_same_event_ids(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Outline fingerprint", mode="short", genre="suspense",
+        premise="The same beat receives changed facts.", target_words=10000,
+    ))
+    db.create_run("old-outline", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "old-outline" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    draft = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
+        ["one", "two", "three", "four"]
+    )
+    (outputs / "draft.md").write_text(draft, encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    old_state = {
+        **state.data,
+        "outline": {
+            "content": "## 第一章：相遇\n花穗在旧地点发现账册。",
+            "events": [{"id": "EV-SAME0001", "label": "相遇"}],
+        },
+    }
+    old_context = service._short_checkpoint_context(
+        project, state.revision, old_state, "same constraints", 4,
+    )
+    service._save_short_checkpoint(outputs, old_context)
+    changed_state = {
+        **old_state,
+        "outline": {
+            **old_state["outline"],
+            "content": "## 第一章：相遇\n花穗在新地点发现密信。",
+        },
+    }
+    changed_context = service._short_checkpoint_context(
+        project, state.revision, changed_state, "same constraints", 4,
+    )
+
+    assert old_state["outline"]["events"] == changed_state["outline"]["events"]
+    assert service._find_short_checkpoint(
+        project, "new-run", 4, changed_context,
+    ) is None
+
+
+@pytest.mark.parametrize("change", ["constraints", "revision"])
+def test_short_checkpoint_rejects_changed_generation_authority(tmp_path, change) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title=f"Changed {change}", mode="short", genre="suspense",
+        premise="Generation authority changes.", target_words=10000,
+    ))
+    db.create_run("old-context", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "old-context" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "draft.md").write_text(
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
+        encoding="utf-8",
+    )
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    old_context = service._short_checkpoint_context(
+        project, state.revision, state.data, "old constraints", 4,
+    )
+    service._save_short_checkpoint(outputs, old_context)
+    current_context = service._short_checkpoint_context(
+        project,
+        state.revision + (change == "revision"),
+        state.data,
+        "new constraints" if change == "constraints" else "old constraints",
+        4,
+    )
+
+    assert service._find_short_checkpoint(
+        project, "new-run", 4, current_context,
+    ) is None
+
+
+def test_short_stage_output_does_not_cross_run_boundary(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Bound review", mode="short", genre="suspense",
+        premise="A new draft needs its own review.", target_words=10000,
+    ))
+    db.create_run("older-run", project.id, "short-story", status="failed")
+    older_outputs = project.path / "runs" / "older-run" / "outputs"
+    older_outputs.mkdir(parents=True)
+    (older_outputs / "review.md").write_text(quality_review(), encoding="utf-8")
+    db.create_run("current-run", project.id, "short-story", status="running")
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+
+    assert service._find_short_stage_output(project, "current-run", "review.md") is None
+    assert service._find_short_stage_output(
+        project, "older-run", "review.md",
+    ) == older_outputs / "review.md"
+
+
+@pytest.mark.asyncio
+async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Fresh review", mode="short", genre="suspense",
+        premise="A regenerated draft needs a fresh review.", target_words=10000,
+    ))
+    db.create_run("fresh-review", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "fresh-review" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "review.md").write_text(quality_review(), encoding="utf-8")
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    numerals = ["一", "二", "三", "四"]
+    plan = "\n\n".join(
+        f"### 第{numeral}段：事件{index}\n事件ID：EV-{index:08x}\n"
+        f"大纲依据：事件{index}\n段首承接：状态{index}。\n"
+        f"本段事件：推进{index}。\n段末交接：结果{index}。\n"
+        + chr(0x4e00 + index) * 120
+        for index, numeral in enumerate(numerals, 1)
+    )
+
+    async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
+        if stage == "planning":
+            return plan
+        if stage == "review":
+            raise RuntimeError("fresh review requested")
+        raise AssertionError(f"unexpected stage: {stage}")
+
+    async def fake_draft(*args):
+        return WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
+            ["甲" * 500, "乙" * 500, "丙" * 500, "丁" * 500]
+        )
+
+    async def stale_review_used(*args, **kwargs):
+        raise RuntimeError("stale review reused")
+
+    service._stage = fake_stage
+    service._draft_short_in_segments = fake_draft
+    service._analyze_manuscript = lambda *args, **kwargs: {}
+    service._quality_polish = stale_review_used
+
+    with pytest.raises(RuntimeError, match="fresh review requested"):
+        await service.run_short(project.id, use_crewai=False, run_id="fresh-review")
+
+    checkpoint = json.loads(
+        (outputs / "short-checkpoint.json").read_text(encoding="utf-8")
+    )
+    assert checkpoint["version"] == WorkflowService.SHORT_CHECKPOINT_VERSION
+    assert checkpoint["draft_sha256"] == hashlib.sha256(
+        (outputs / "draft.md").read_text(encoding="utf-8").encode("utf-8")
+    ).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_chain(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Repair plan", mode="short", genre="suspense",
+        premise="A repaired plan remains resumable.", target_words=10000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    numerals = ["一", "二", "三", "四"]
+    repaired = "\n\n".join(
+        f"### 第{numeral}段：事件{index}\n"
+        f"事件ID：EV-{index:08x}\n大纲依据：事件{index}\n"
+        f"段首承接：承接状态{index}。\n本段事件：推进事件{index}。\n"
+        f"段末交接：留下状态{index}。\n" + chr(0x4e00 + index) * 120
+        for index, numeral in enumerate(numerals, 1)
+    )
+    prompts = []
+
+    async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
+        prompts.append(user)
+        return "没有分段标题的初稿" if len(prompts) == 1 else repaired
+
+    extract_calls = 0
+
+    def fake_extract(run_id, plan):
+        nonlocal extract_calls
+        extract_calls += 1
+        return (plan, {"core_goal": "保留最初因果链"}) if extract_calls == 1 else (plan, None)
+
+    saved_chains = []
+
+    def fake_save(run_id, current_project, chain):
+        saved_chains.append(chain)
+
+    captured = {}
+
+    async def stop_after_planning(run_id, run_path, current_project, constraints, plan):
+        captured["constraints"] = constraints
+        captured["plan"] = plan
+        raise RuntimeError("stop after planning")
+
+    service._stage = fake_stage
+    service._extract_short_causal_chain = fake_extract
+    service._save_short_causal_chain = fake_save
+    service._draft_short_in_segments = stop_after_planning
+
+    with pytest.raises(RuntimeError, match="stop after planning"):
+        await service.run_short(project.id, use_crewai=False, run_id="repair-plan")
+
+    saved = project.path / "runs" / "repair-plan" / "outputs" / "planning.md"
+    assert saved.read_text(encoding="utf-8") == repaired
+    assert captured["plan"] == repaired
+    assert "保留最初因果链" in captured["constraints"]
+    assert saved_chains == [{"core_goal": "保留最初因果链"}]
+    assert "segment_heading_format" in prompts[0]
+    assert "### 第 1 段" in prompts[1]
+
+
+@pytest.mark.asyncio
+async def test_failed_planning_repair_does_not_persist_causal_chain(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Rejected chain", mode="short", genre="suspense",
+        premise="A rejected plan must stay isolated.", target_words=10000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    extract_calls = 0
+    saved_chains = []
+
+    async def fake_stage(*args, **kwargs):
+        return "仍然没有分段标题"
+
+    def fake_extract(run_id, plan):
+        nonlocal extract_calls
+        extract_calls += 1
+        return plan, {"core_goal": f"未通过的因果链{extract_calls}"}
+
+    def fake_save(run_id, current_project, chain):
+        saved_chains.append(chain)
+
+    service._stage = fake_stage
+    service._extract_short_causal_chain = fake_extract
+    service._save_short_causal_chain = fake_save
+
+    with pytest.raises(ValueError, match="规划稿未通过"):
+        await service.run_short(project.id, use_crewai=False, run_id="rejected-chain")
+
+    assert extract_calls == 2
+    assert saved_chains == []
 @pytest.mark.asyncio
 async def test_long_manuscript_final_review_audits_every_window_without_planning(tmp_path) -> None:
     db = Database(tmp_path / "app.db")

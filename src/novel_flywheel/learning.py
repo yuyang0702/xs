@@ -10,6 +10,7 @@ from typing import Any
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
+from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.narrative_attraction import (
     compact_attraction_guidance,
     local_attraction_candidates,
@@ -1841,20 +1842,10 @@ class LearningSystem:
         cleaned = text.strip()
         if not cleaned:
             raise ValueError("模型返回了空内容")
-        fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", cleaned, flags=re.IGNORECASE | re.DOTALL)
-        candidates = [fenced.group(1)] if fenced else []
-        candidates.append(cleaned)
-        decoder = json.JSONDecoder()
-        for candidate in candidates:
-            starts = [index for index, character in enumerate(candidate) if character == "{"]
-            for start in starts:
-                try:
-                    value, _end = decoder.raw_decode(candidate[start:])
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(value, dict):
-                    return value
-        raise ValueError("模型返回的内容不是可识别的 JSON 对象")
+        try:
+            return parse_json_object(cleaned, label="模型返回内容")
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise ValueError(f"模型返回的内容不是唯一可识别的 JSON 对象：{exc}") from exc
 
     @classmethod
     def _window_result(cls, text: str) -> dict:

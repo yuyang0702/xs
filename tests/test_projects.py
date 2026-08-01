@@ -591,3 +591,80 @@ def test_current_confirmed_outline_is_loaded_as_a_creation_constraint(tmp_path) 
 
     assert "# Current Confirmed Outline" in constraints
     assert "主角收到死者来信" in constraints
+
+
+def test_creation_constraints_rebuild_legacy_event_cache_from_outline_content(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Legacy Event Cache", mode="short", genre="suspense",
+        premise="A cached template event must be ignored.", target_words=8_000,
+    ))
+    outlines = OutlineService(db, store)
+    content = """# Outline
+
+**Opening beat**: The lead finds a letter.
+
+<!-- **Hidden template beat**: Example only. -->
+
+```markdown
+**Fenced example beat**: Example only.
+```
+
+**Ending beat**: The lead answers the letter.
+"""
+    candidate = outlines.create_candidate(project.id, content)
+    outlines.apply_candidate(project.id, candidate["id"])
+    state = StoryStateStore(db).get(project.id)
+    assert state is not None
+    state.data["outline"]["events"].append({
+        "id": "EV-DEADBEEF", "order": 99,
+        "label": "Hidden template beat", "section": "",
+    })
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE story_states SET state_json=? WHERE project_id=?",
+            (json.dumps(state.data, ensure_ascii=False), project.id),
+        )
+
+    constraints = store.load_constraints(project.id)
+    event_block = constraints.split("# Confirmed Outline Event IDs", 1)[1].split(
+        "# Current Confirmed Outline", 1,
+    )[0]
+
+    assert "Opening beat" in event_block
+    assert "Ending beat" in event_block
+    assert "EV-DEADBEEF" not in event_block
+    assert "Hidden template beat" not in event_block
+
+
+def test_creation_constraints_list_only_narrative_outline_event_ids(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Narrative IDs", mode="short", genre="suspense",
+        premise="A false identity is exposed.", target_words=8_000,
+    ))
+    outlines = OutlineService(db, store)
+    candidate = outlines.create_candidate(project.id, """# 正式大纲
+
+## 三、章节大纲
+**开篇钩子**：主角被错认。
+
+## 五、写作要点
+**保持第一人称**：只写主角所见。
+""")
+    outlines.apply_candidate(project.id, candidate["id"])
+
+    constraints = store.load_constraints(project.id)
+    event_block = constraints.split("# Confirmed Outline Event IDs", 1)[1].split(
+        "# Current Confirmed Outline", 1,
+    )[0]
+
+    assert "开篇钩子" in event_block
+    assert "保持第一人称" not in event_block
+    assert "保持第一人称" in constraints

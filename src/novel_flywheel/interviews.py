@@ -1,11 +1,11 @@
 import json
-import re
 import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
+from novel_flywheel.model_output import parse_json_object
 
 
 class InterviewSuggestion(BaseModel):
@@ -130,20 +130,11 @@ class WizardInterviewService:
 
     @staticmethod
     def _parse_output(text: str) -> InterviewModelOutput:
-        candidate = text.strip()
-        fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate,
-                              flags=re.IGNORECASE | re.DOTALL)
-        if fenced:
-            candidate = fenced.group(1)
-        decoder = json.JSONDecoder()
-        errors = []
-        for start in [0, *(match.start() for match in re.finditer(r"\{", candidate))]:
-            try:
-                value, _ = decoder.raw_decode(candidate, start)
-                return InterviewModelOutput.model_validate(value)
-            except (json.JSONDecodeError, ValidationError) as exc:
-                errors.append(exc)
-        raise ValueError("Planning model did not return valid JSON") from errors[-1]
+        try:
+            value = parse_json_object(text, label="Planning model output")
+            return InterviewModelOutput.model_validate(value)
+        except (json.JSONDecodeError, ValueError, ValidationError) as exc:
+            raise ValueError("Planning model did not return one valid JSON object") from exc
 
     def _valid_suggestions(self, wizard: dict,
                            suggestions: list[InterviewSuggestion]) -> list[InterviewSuggestion]:

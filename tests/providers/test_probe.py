@@ -150,3 +150,12 @@ async def test_probe_treats_successful_empty_chat_as_connected_and_accepts_fence
     assert result.chat is True
     assert result.structured_output is True
     assert result.tool_calling is True
+
+
+def test_probe_json_parser_accepts_wrappers_and_rejects_ambiguous_objects() -> None:
+    assert CapabilityProbe._parse_json(
+        'Result:\n<!-- presentation note -->\n```JSON\n{"ok": true}\n```'
+    ) == {"ok": True}
+
+    with pytest.raises(ValueError, match="multiple JSON objects"):
+        CapabilityProbe._parse_json('{"ok": false}\n{"ok": true}')

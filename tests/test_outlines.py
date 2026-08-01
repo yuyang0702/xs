@@ -7,7 +7,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.outlines import (
     OutlineService, extract_outline_characters, local_outline_manifest,
-    normalize_outline_manifest, outline_events,
+    narrative_outline_events, normalize_outline_manifest, outline_event_kind,
+    outline_events,
 )
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.reference_library import ReferenceLibrary
@@ -108,7 +109,6 @@ def test_outline_comparison_uses_market_opening_signals_as_non_blocking_advice(t
     assert report["can_apply"] is True
     assert not any("市场" in item for item in report["risks"])
     assert report["model_called"] is False
-
     learning.save_artifact(project.id, "market_baseline", {
         "sample_count": 3, "confidence_level": "insufficient",
         "opening": {"question_percent": 100, "anomaly_percent": 100},
@@ -119,6 +119,24 @@ def test_outline_comparison_uses_market_opening_signals_as_non_blocking_advice(t
     assert insufficient["signals"] == []
     assert insufficient["mechanisms"] == []
     assert "数量不足" in insufficient["message"]
+
+
+def test_semantic_outline_decisions_accept_wrappers_and_reject_ambiguity() -> None:
+    decision = {
+        "decisions": [{
+            "id": "change-1", "type": "changed",
+            "explanation": "补足动机", "impact": "因果更清楚",
+        }],
+    }
+
+    assert OutlineService._semantic_decisions(
+        f"说明如下：\n```JSON\n{json.dumps(decision, ensure_ascii=False)}\n```",
+        {"change-1"},
+    )[0]["id"] == "change-1"
+    with pytest.raises(ValueError, match="重新尝试"):
+        OutlineService._semantic_decisions(
+            f"{json.dumps(decision)}\n{json.dumps(decision)}", {"change-1"},
+        )
 
 
 def test_canon_conflicts_require_a_choice_and_can_keep_project_facts(tmp_path) -> None:
@@ -186,6 +204,183 @@ def test_confirmed_outline_creates_stable_event_ids() -> None:
 
     assert [item["label"] for item in before] == ["开头", "中段", "第一次营救：失败", "结尾"]
     assert [item["id"] for item in before] == [item["id"] for item in after]
+
+
+def test_outline_events_separate_story_beats_from_structure_and_directives() -> None:
+    content = """# 大纲
+
+## 一、故事核心设定
+**总字数**：一万字
+
+## 三、章节大纲
+### 第一幕：误入高门
+**开篇钩子**：花穗被错抬进府。
+### 第1章·身份露馅
+**冲突升级**：众人开始怀疑她。
+
+## 四、主题与情感线
+**核心母题**：出身不决定价值。
+
+## 五、写作要点
+**保持第一人称**：只写花穗所见。
+"""
+
+    events = outline_events(content)
+
+    assert {
+        item["label"]: outline_event_kind(item["section"], item["label"])
+        for item in events
+    } == {
+        "总字数": "directive",
+        "第一幕：误入高门": "structure",
+        "开篇钩子": "narrative",
+        "第1章·身份露馅": "narrative",
+        "冲突升级": "narrative",
+        "四、主题与情感线": "theme",
+        "核心母题": "theme",
+        "五、写作要点": "directive",
+        "保持第一人称": "directive",
+    }
+    assert [item["label"] for item in narrative_outline_events(events)] == [
+        "开篇钩子", "第1章·身份露馅", "冲突升级",
+    ]
+
+    assert all("kind" not in item for item in events)
+
+
+def test_narrative_outline_events_falls_back_to_sparse_chapter_headings() -> None:
+    events = outline_events("# 大纲\n\n## 第一章\n\n## 第二章\n")
+
+    assert [outline_event_kind(item["section"], item["label"]) for item in events] == [
+        "structure", "structure",
+    ]
+    assert narrative_outline_events(events) == events
+
+
+def test_narrative_outline_events_keeps_titled_chapter_in_mixed_sparse_outline() -> None:
+    events = outline_events(
+        "# 大纲\n\n## 第一章：误入\n**开篇钩子**：被错抬进府。\n\n"
+        "## 第二章：真相揭晓\n"
+    )
+
+    assert [item["label"] for item in narrative_outline_events(events)] == [
+        "第一章：误入", "开篇钩子", "第二章：真相揭晓",
+    ]
+
+
+def test_narrative_outline_events_falls_back_per_sparse_chapter() -> None:
+    events = outline_events(
+        "# 大纲\n\n## 第一章\n花穗被错抬进府。\n\n"
+        "## 第二章：身份揭晓\n"
+    )
+
+    assert [item["label"] for item in narrative_outline_events(events)] == [
+        "第一章", "第二章：身份揭晓",
+    ]
+
+
+def test_narrative_outline_events_falls_back_per_nested_sparse_chapter() -> None:
+    events = outline_events(
+        "# 大纲\n\n## 章节规划\n### 第一章\n花穗被错抬进府。\n\n"
+        "### 第二章：身份揭晓\n"
+    )
+
+    assert [item["label"] for item in narrative_outline_events(events)] == [
+        "第一章", "第二章：身份揭晓",
+    ]
+
+
+def test_narrative_outline_events_does_not_require_act_before_titled_chapter() -> None:
+    events = outline_events(
+        "# 大纲\n\n## 章节规划\n"
+        "### 第一幕：错入高门\n### 第1章·一顶轿子抬错了人\n"
+        "### 第二幕：真相浮现\n### 第2章·账册露出破绽\n"
+    )
+
+    assert [item["label"] for item in narrative_outline_events(events)] == [
+        "第1章·一顶轿子抬错了人", "第2章·账册露出破绽",
+    ]
+
+
+@pytest.mark.parametrize("section", ["世界崩塌", "背景真相揭晓", "情感线索浮现"])
+def test_outline_event_kind_defaults_unknown_story_sections_to_narrative(section) -> None:
+    assert outline_event_kind(section, "危机升级") == "narrative"
+
+
+def test_outline_semantic_scans_ignore_html_comments_and_fenced_examples() -> None:
+    content = """# 大纲
+
+## 开头
+<!--
+**隐藏冲突**：这只是模板提示。
+### 女主（假千金）
+-->
+```markdown
+**示例事件**：这只是格式示例。
+### 女主（示例人物）
+```
+**真实事件**：花穗被错抬进府。
+
+## 人物设定
+### 女主（花穗）
+"""
+
+    assert [item["label"] for item in outline_events(content)] == [
+        "开头", "真实事件",
+    ]
+    assert [item["name"] for item in extract_outline_characters(content)] == ["花穗"]
+
+
+@pytest.mark.parametrize("section", ["写作要求：", "写作要求/", "写作要求:"])
+def test_outline_event_kind_accepts_trailing_section_punctuation(section) -> None:
+    assert outline_event_kind(section, "保持第一人称") == "directive"
+
+
+@pytest.mark.parametrize("section", ["（一）写作要求", "(1) 写作要求", "一）写作要求"])
+def test_outline_event_kind_accepts_bracketed_section_numbers(section) -> None:
+    assert outline_event_kind(section, "保持第一人称") == "directive"
+
+
+def test_outline_events_accept_tab_headings_and_normalize_identity_width() -> None:
+    tabbed = outline_events(
+        "# 大纲\n\n##\t写作要求\n###\t保持第一人称\n\n##\t第１章：开端\n",
+    )
+    ascii_width = outline_events("# 大纲\n\n## 第1章：开端\n")
+
+    assert outline_event_kind(tabbed[0]["section"], tabbed[0]["label"]) == "directive"
+    assert outline_event_kind(tabbed[1]["section"], tabbed[1]["label"]) == "directive"
+    assert tabbed[-1]["id"] == ascii_width[-1]["id"]
+
+
+def test_outline_structure_container_accepts_trailing_punctuation() -> None:
+    events = outline_events("# 大纲\n\n## 章节规划：\n### 第一章\n")
+
+    assert [item["label"] for item in narrative_outline_events(events)] == ["第一章"]
+
+
+def test_current_outline_rebuilds_legacy_cached_events_from_visible_content(tmp_path) -> None:
+    db, _projects, project, service = setup_outline_service(tmp_path)
+    candidate = service.create_candidate(
+        project.id,
+        "# 大纲\n\n**真实事件**：主角发现线索。\n"
+        "<!-- **模板事件**：只是示例。 -->\n",
+    )
+    service.apply_candidate(project.id, candidate["id"])
+    state = service.states.get(project.id)
+    assert state is not None
+    state.data["outline"]["events"].append({
+        "id": "EV-DEADBEEF", "order": 99, "label": "模板事件", "section": "",
+    })
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE story_states SET state_json=? WHERE project_id=?",
+            (json.dumps(state.data, ensure_ascii=False), project.id),
+        )
+
+    current = service.current(project.id)
+
+    assert [item["label"] for item in current["events"]] == ["真实事件"]
+    assert all(item["id"] != "EV-DEADBEEF" for item in current["events"])
 
 
 def test_outline_character_manifest_reads_only_explicit_named_roles() -> None:

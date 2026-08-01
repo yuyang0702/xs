@@ -118,3 +118,73 @@ SHORT_CAUSAL_CHAIN_JSON_END
     assert "# 正常大纲" in outline
     assert "SHORT_CAUSAL_CHAIN_JSON_START" not in outline
     assert chain["core_goal"]["content"] == "复活朋友"
+
+
+def test_extract_short_causal_chain_accepts_markdown_json_fence() -> None:
+    text = """
+# 正常大纲
+
+SHORT_CAUSAL_CHAIN_JSON_START
+```json
+{"core_goal":{"content":"复活朋友"},"cycles":[],"ending":{"surface_goal":"告别"}}
+```
+SHORT_CAUSAL_CHAIN_JSON_END
+
+## 附录
+保留这部分。
+"""
+
+    outline, chain = extract_short_causal_chain(text)
+
+    assert "SHORT_CAUSAL_CHAIN_JSON_START" not in outline
+    assert "## 附录" in outline
+    assert chain["core_goal"]["content"] == "复活朋友"
+
+
+def test_extract_short_causal_chain_accepts_html_comments_crlf_and_json_label_case() -> None:
+    text = (
+        "# 正常大纲\r\n\r\n"
+        "  <!--  SHORT_CAUSAL_CHAIN_JSON_START  -->  \r\n"
+        "```  JsOn  \r\n"
+        '{"core_goal":{"content":"查清真相"},"cycles":[],"ending":{"surface_goal":"回家"}}\r\n'
+        "```\r\n"
+        "<!-- SHORT_CAUSAL_CHAIN_JSON_END -->\r\n\r\n"
+        "## 附录\r\n保留这部分。\r\n"
+    )
+
+    outline, chain = extract_short_causal_chain(text)
+
+    assert "# 正常大纲" in outline
+    assert "## 附录\r\n保留这部分。" in outline
+    assert "SHORT_CAUSAL_CHAIN_JSON_START" not in outline
+    assert chain["core_goal"]["content"] == "查清真相"
+
+
+def test_extract_short_causal_chain_accepts_long_and_tilde_fences() -> None:
+    payload = '{"core_goal":{"content":"查清真相"},"cycles":[],"ending":{"surface_goal":"回家"}}'
+    for fence in ("````json", "~~~JSON"):
+        marker = fence[:4] if fence.startswith("````") else "~~~"
+        text = (
+            "# 正常大纲\n\nSHORT_CAUSAL_CHAIN_JSON_START\n"
+            f"{fence}\n{payload}\n{marker}\n"
+            "SHORT_CAUSAL_CHAIN_JSON_END\n"
+        )
+
+        outline, chain = extract_short_causal_chain(text)
+
+        assert outline == "# 正常大纲"
+        assert chain["core_goal"]["content"] == "查清真相"
+
+
+def test_extract_short_causal_chain_does_not_consume_marker_text_inside_prose() -> None:
+    text = (
+        "前文 <!-- SHORT_CAUSAL_CHAIN_JSON_START --> 不是独立标记行\n"
+        '{"core_goal":{"content":"不应提取"}}\n'
+        "<!-- SHORT_CAUSAL_CHAIN_JSON_END -->\n"
+        "后文"
+    )
+
+    outline, chain = extract_short_causal_chain(text)
+
+    assert outline == text
+    assert chain is None

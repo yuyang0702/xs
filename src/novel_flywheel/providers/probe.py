@@ -1,8 +1,7 @@
-import json
-import re
 from pydantic import BaseModel
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
+from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.providers.base import ProviderAdapter
 from novel_flywheel.providers.http import ToolCapabilityError
 
@@ -25,11 +24,7 @@ class CapabilityProbe:
 
     @staticmethod
     def _parse_json(text: str) -> dict:
-        candidate = text.strip()
-        fenced = re.fullmatch(r"```(?:json)?\s*(.*?)\s*```", candidate, flags=re.IGNORECASE | re.DOTALL)
-        if fenced:
-            candidate = fenced.group(1)
-        return json.loads(candidate)
+        return parse_json_object(text, label="Capability probe output")
 
     async def run(self, model: str) -> ProbeResult:
         try:
@@ -62,7 +57,7 @@ class CapabilityProbe:
         try:
             parsed = self._parse_json(structured.text) if structured else {}
             structured_ok = parsed.get("ok") is True
-        except (json.JSONDecodeError, AttributeError):
+        except (ValueError, AttributeError):
             structured_ok = False
         try:
             tools = [ToolDefinition(

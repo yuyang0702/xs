@@ -1112,6 +1112,13 @@ def test_reference_model_json_accepts_fenced_or_explained_object() -> None:
     assert LearningSystem._json_object('分析如下：\n```json\n{"events": []}\n```\n请确认。') == {"events": []}
 
 
+def test_reference_model_json_rejects_multiple_objects_instead_of_using_example() -> None:
+    with pytest.raises(ValueError, match="唯一"):
+        LearningSystem._json_object(
+            '示例：{"events": []}\n最终：{"events": [{"name": "真实事件"}]}'
+        )
+
+
 async def test_model_analysis_explains_empty_window_response(tmp_path) -> None:
     db, library, projects, _system = setup_system(tmp_path)
     system = LearningSystem(db, library, projects, FakeGateway([""]))

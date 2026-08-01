@@ -2,6 +2,7 @@ import copy
 import hashlib
 import re
 import math
+import unicodedata
 from typing import Any
 
 from novel_flywheel.prose_quality import analyze_prose
@@ -22,6 +23,50 @@ REPAIR_LABELS = {
     "non_unique_quote_pair": "非唯一引号对",
     "truncated_sentence": "疑似句子截断",
 }
+_CHINESE_SEGMENT_NUMBERS = {
+    "一": 1, "二": 2, "两": 2, "三": 3, "四": 4, "五": 5, "六": 6,
+    "七": 7, "八": 8, "九": 9, "十": 10, "十一": 11, "十二": 12,
+}
+_SEGMENT_NUMBER_TOKEN = r"\d{1,2}|十二|十一|十|九|八|七|六|五|四|三|二|两|一"
+_SEGMENT_LABEL = re.compile(
+    rf"^(?:"
+    rf"(?:第\s*)?(?P<before>{_SEGMENT_NUMBER_TOKEN})\s*(?:个\s*)?"
+    rf"(?:(?:写作|规划)?(?:分)?段(?:落)?)|"
+    rf"(?:(?:写作|规划)?(?:分)?段(?:落)?)\s*(?P<after>{_SEGMENT_NUMBER_TOKEN})|"
+    rf"segment\s*(?P<english>\d{{1,2}})|"
+    rf"(?:scene|场景)\s*[-_]?\s*(?P<scene>{_SEGMENT_NUMBER_TOKEN})"
+    rf")(?=$|[\s:：·—–\-（(])",
+    re.IGNORECASE,
+)
+
+
+def parse_segment_number(value: Any, *, allow_scene: bool = True) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if value.is_integer() else None
+    if not isinstance(value, str):
+        return None
+    text = unicodedata.normalize("NFKC", value).strip()
+    text = re.sub(r"^#{1,6}[ \t]*", "", text)
+    text = text.translate(str.maketrans("", "", "*_`")).strip()
+    text = re.sub(
+        r"^\d+\s*[.、)]\s*(?=(?:第|段|分段|写作段|规划段|segment))",
+        "", text, flags=re.IGNORECASE,
+    )
+    if text.isdecimal():
+        return int(text)
+    if text in _CHINESE_SEGMENT_NUMBERS:
+        return _CHINESE_SEGMENT_NUMBERS[text]
+    match = _SEGMENT_LABEL.match(text)
+    if not match:
+        return None
+    if match.group("scene") is not None and not allow_scene:
+        return None
+    token = next(value for value in match.groupdict().values() if value is not None)
+    return int(token) if token.isdecimal() else _CHINESE_SEGMENT_NUMBERS.get(token)
 
 
 def _repair_record(code: str) -> dict[str, str]:
@@ -373,8 +418,9 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int,
         segments = item.get("segments")
         if not isinstance(instruction, str) or not instruction.strip() or not isinstance(segments, list):
             continue
-        valid_segments = sorted({number for number in segments
-                                 if isinstance(number, int) and 1 <= number <= segment_count})
+        valid_segments = sorted({number for value in segments
+                                 if (number := parse_segment_number(value)) is not None
+                                 and 1 <= number <= segment_count})
         if valid_segments:
             task = {"segments": valid_segments, "instruction": instruction.strip()}
             issue_ids = sorted({issue_id.strip() for issue_id in item.get("issue_ids", [])

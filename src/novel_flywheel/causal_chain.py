@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
+
+from novel_flywheel.model_output import parse_json_object
 
 
 START = "SHORT_CAUSAL_CHAIN_JSON_START"
@@ -111,15 +112,20 @@ def compact_causal_chain(chain: dict[str, Any], max_cycles: int = 7) -> str:
 
 
 def extract_short_causal_chain(text: str) -> tuple[str, dict[str, Any] | None]:
+    start_marker = rf"(?:{re.escape(START)}|<!--[ \t]*{re.escape(START)}[ \t]*-->)"
+    end_marker = rf"(?:{re.escape(END)}|<!--[ \t]*{re.escape(END)}[ \t]*-->)"
     match = re.search(
-        rf"\n?{START}\s*(?P<json>\{{.*?\}})\s*{END}\n?",
+        rf"^[ \t]*{start_marker}[ \t]*\r?$\n?"
+        rf"(?P<body>.*?)"
+        rf"^[ \t]*{end_marker}[ \t]*\r?$\n?",
         text,
-        flags=re.DOTALL,
+        flags=re.DOTALL | re.MULTILINE,
     )
     if not match:
         return text, None
+    chain = parse_json_object(match.group("body"), label="Short causal chain")
     outline = (text[:match.start()] + text[match.end():]).strip()
-    return outline, json.loads(match.group("json"))
+    return outline, chain
 
 
 def _text(value: Any) -> str:

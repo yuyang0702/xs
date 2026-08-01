@@ -267,6 +267,27 @@ def test_initialization_answers_normalizes_cached_outline_manifest(tmp_path) -> 
     ]
 
 
+def test_initialization_answers_rebuilds_legacy_outline_event_cache(tmp_path) -> None:
+    _db, project = make_project(tmp_path)
+    outline = (
+        "# 大纲\n\n**真实事件**：主角发现线索。\n"
+        "<!-- **模板事件**：只是示例。 -->\n"
+    )
+
+    answers = initialization_answers(project, {
+        "content": outline,
+        "outline_version": 1,
+        "events": [{
+            "id": "EV-DEADBEEF", "order": 99,
+            "label": "模板事件", "section": "",
+        }],
+    })
+
+    events = answers["confirmed_outline"]["events"]
+    assert [item["label"] for item in events] == ["真实事件"]
+    assert all(item["id"] != "EV-DEADBEEF" for item in events)
+
+
 def test_bootstrap_character_preflight_rejects_ambiguous_relationships(tmp_path) -> None:
     _db, project = make_project(tmp_path)
     answers = {"outline_manifest": {"characters": [

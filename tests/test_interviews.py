@@ -150,6 +150,14 @@ def test_interview_extracts_json_surrounded_by_model_commentary() -> None:
     assert output.message == "继续说说主角。"
 
 
+def test_interview_rejects_multiple_valid_json_objects() -> None:
+    with pytest.raises(ValueError, match="one valid JSON object"):
+        WizardInterviewService._parse_output(
+            '示例：{"message":"示例问题","suggestions":[]}\n'
+            '最终：{"message":"真实问题","suggestions":[]}'
+        )
+
+
 @pytest.mark.asyncio
 async def test_interview_repairs_non_json_model_response_once(tmp_path) -> None:
     db = Database(tmp_path / "app.db")

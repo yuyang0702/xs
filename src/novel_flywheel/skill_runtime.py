@@ -14,7 +14,11 @@ from novel_flywheel.domain.models import ToolDefinition
 from novel_flywheel.projects import Project
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.models import ModelGateway
-from novel_flywheel.outlines import extract_outline_characters, normalize_outline_manifest
+from novel_flywheel.outlines import (
+    extract_outline_characters,
+    normalize_outline_manifest,
+    outline_events,
+)
 from novel_flywheel.projects import ProjectStore
 from novel_flywheel.skills import SkillGate
 
@@ -108,6 +112,7 @@ def expected_initialization_characters(answers: dict) -> list[str]:
 
 def initialization_answers(project: Project, current_outline: dict) -> dict:
     content = str(current_outline.get("content") or "")
+    events = outline_events(content) if content.strip() else current_outline.get("events", [])
     requirements = dict(project.metadata.get("story_requirements", {}))
     characters = extract_outline_characters(content)
     outline_protagonist = next(
@@ -121,7 +126,7 @@ def initialization_answers(project: Project, current_outline: dict) -> dict:
         "confirmed_outline": {
             "version": current_outline.get("outline_version", 0),
             "content": content,
-            "events": current_outline.get("events", []),
+            "events": events,
         },
     }
     try:

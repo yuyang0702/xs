@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.style_context import ensure_style_profile
 
@@ -87,10 +88,9 @@ class StyleSampleService:
 
     @staticmethod
     def _parse_profile(raw: str) -> dict:
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip(), flags=re.I)
         try:
-            value = json.loads(cleaned)
-        except json.JSONDecodeError as exc:
+            value = parse_json_object(raw, label="笔感分析")
+        except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("笔感分析模型没有返回有效 JSON") from exc
         if not isinstance(value, dict) or not isinstance(value.get("summary"), str):
             raise ValueError("笔感分析缺少 summary")

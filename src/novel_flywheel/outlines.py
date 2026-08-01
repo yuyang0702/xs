@@ -6,9 +6,11 @@ import difflib
 import hashlib
 import json
 import re
+import unicodedata
 from pathlib import Path
 
 from novel_flywheel.db import Database
+from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
@@ -22,6 +24,55 @@ OUTLINE_EVENT_SKIP_TERMS = (
     "必须达成", "写作技法", "状态变化", "下一步选择", "全篇收束", "要素确认",
     "主要人物", "关键配角", "核心设定", "核心矛盾", "说明", "提示",
 )
+OUTLINE_EVENT_KINDS = {"narrative", "structure", "theme", "directive"}
+_OUTLINE_THEME_SECTIONS = {
+    "主题", "主题设计", "主题与情感线", "情感线", "人物弧光", "角色弧光",
+}
+_OUTLINE_DIRECTIVE_SECTIONS = {
+    "故事核心设定", "核心设定", "基础设定", "人物设定", "角色设定", "世界观设定",
+    "写作要点", "写作要求", "创作要求", "创作说明", "文风要求", "风格要求",
+    "备注", "附录",
+}
+_OUTLINE_STRUCTURE_SECTIONS = {
+    "章节大纲", "章节规划", "章节安排", "分章大纲", "分章规划",
+    "剧情结构", "故事结构", "剧情大纲", "故事大纲", "整体结构", "篇章结构",
+}
+_OUTLINE_SECTION_NUMBER = re.compile(
+    r"^(?:\(\s*(?:[一二三四五六七八九十百零〇两]+|[0-9]+)\s*\)"
+    r"|(?:[一二三四五六七八九十百零〇两]+|[0-9]+)\s*[)、.:：、])\s*"
+)
+_OUTLINE_CHAPTER_LABEL = re.compile(
+    r"^(?:第[一二三四五六七八九十百零〇两0-9０-９]+章"
+    r"|chapter\s*[0-9０-９ivx]+)(?P<suffix>.*)$",
+    flags=re.IGNORECASE,
+)
+_OUTLINE_STRUCTURE_LABEL = re.compile(
+    r"^(?:第[一二三四五六七八九十百零〇两0-9０-９]+[幕卷部]"
+    r"|(?:act|part|volume)\s*[0-9０-９ivx]+)(?:\b|[·：:\s])",
+    flags=re.IGNORECASE,
+)
+
+
+def _visible_outline_markdown(content: str) -> str:
+    """Remove non-visible template syntax before semantic outline scans."""
+    content = re.sub(r"<!--.*?-->", "", str(content or ""), flags=re.DOTALL)
+    visible: list[str] = []
+    fence_character = ""
+    fence_length = 0
+    for line in content.splitlines(keepends=True):
+        fence = re.match(r"^[ ]{0,3}(?P<mark>`{3,}|~{3,})", line)
+        if fence_character:
+            if (fence and fence.group("mark")[0] == fence_character
+                    and len(fence.group("mark")) >= fence_length):
+                fence_character = ""
+                fence_length = 0
+            continue
+        if fence:
+            fence_character = fence.group("mark")[0]
+            fence_length = len(fence.group("mark"))
+            continue
+        visible.append(line)
+    return "".join(visible)
 
 
 def compact_market_reference(baseline: dict | None) -> dict:
@@ -130,7 +181,7 @@ def extract_outline_characters(content: str) -> list[dict[str, str]]:
             if current is None or current["role"] == "supporting" and role != "supporting":
                 found[name] = {"name": name, "role": role}
 
-    lines = str(content or "").splitlines()
+    lines = _visible_outline_markdown(content).splitlines()
     in_character_section = False
     section_role = "supporting"
     for raw_line in lines:
@@ -211,7 +262,7 @@ OUTLINE_MANIFEST_KEYS = (
 def local_outline_manifest(content: str) -> dict[str, list[dict[str, str]]]:
     """Read explicit Markdown structure without treating ordinary prose as entities."""
     manifest = {key: [] for key in OUTLINE_MANIFEST_KEYS}
-    lines = str(content or "").splitlines()
+    lines = _visible_outline_markdown(content).splitlines()
     for character in extract_outline_characters(content):
         evidence = next((line.strip() for line in lines if character["name"] in line), "")
         if evidence:
@@ -321,16 +372,10 @@ def _merge_manifests(*manifests: dict) -> dict[str, list[dict[str, str]]]:
 
 
 def _json_object(text: str) -> dict:
-    cleaned = str(text or "").strip()
-    if cleaned.startswith("```"):
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", cleaned, flags=re.I)
-    start, end = cleaned.find("{"), cleaned.rfind("}")
-    if start < 0 or end < start:
-        raise ValueError("资料清单没有返回有效 JSON")
-    value = json.loads(cleaned[start:end + 1])
-    if not isinstance(value, dict):
-        raise ValueError("资料清单格式不正确")
-    return value
+    try:
+        return parse_json_object(text, label="资料清单")
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise ValueError(f"资料清单没有返回唯一有效 JSON：{exc}") from exc
 
 
 def _ltp_entity_candidates(text: str, payload: dict) -> list[dict[str, str]]:
@@ -363,19 +408,98 @@ def _ltp_entity_candidates(text: str, payload: dict) -> list[dict[str, str]]:
     ])[:80]
 
 
+def _outline_section_title(value: str) -> str:
+    title = unicodedata.normalize("NFKC", str(value or "")).strip()
+    title = _OUTLINE_SECTION_NUMBER.sub("", title).strip().rstrip(":/ \t")
+    title = re.sub(r"\s*\([^()]*\)\s*$", "", title).strip()
+    return title.rstrip(":/ \t")
+
+
+def outline_event_kind(section: str, label: str) -> str:
+    """Classify outline labels so non-story constraints never become chronology."""
+    section = unicodedata.normalize("NFKC", str(section or "")).strip()
+    label = unicodedata.normalize("NFKC", str(label or "")).strip()
+    section_title = _outline_section_title(section)
+    label_title = _outline_section_title(label)
+    if section_title in _OUTLINE_THEME_SECTIONS:
+        return "theme"
+    if section_title in _OUTLINE_DIRECTIVE_SECTIONS:
+        return "directive"
+    if label_title == section_title and section_title in _OUTLINE_STRUCTURE_SECTIONS:
+        return "structure"
+    chapter = _OUTLINE_CHAPTER_LABEL.match(label)
+    if chapter:
+        suffix = chapter.group("suffix").strip().strip("·：:-— ")
+        return "narrative" if suffix else "structure"
+    if _OUTLINE_STRUCTURE_LABEL.match(label):
+        return "structure"
+    return "narrative"
+
+
+def _outline_event_anchor(label: str) -> bool:
+    label = unicodedata.normalize("NFKC", str(label or "")).strip()
+    return bool(
+        _OUTLINE_CHAPTER_LABEL.match(label) or _OUTLINE_STRUCTURE_LABEL.match(label)
+    )
+
+
+def _outline_anchor_level(label: str) -> int:
+    """Return nesting rank: chapter < act < part/volume."""
+    label = unicodedata.normalize("NFKC", str(label or "")).strip()
+    if _OUTLINE_CHAPTER_LABEL.match(label):
+        return 1
+    if not _OUTLINE_STRUCTURE_LABEL.match(label):
+        return 0
+    if re.match(r"^(?:第.+幕|act\b)", label, flags=re.IGNORECASE):
+        return 2
+    return 3
+
+
+def narrative_outline_events(events: list[dict]) -> list[dict]:
+    """Return story beats, falling back within each sparse chapter or section."""
+    classified: list[tuple[dict, str, int]] = []
+    for event in events:
+        kind = str(event.get("kind") or "")
+        if kind not in OUTLINE_EVENT_KINDS:
+            kind = outline_event_kind(event.get("section", ""), event.get("label", ""))
+        label = str(event.get("label") or "").strip()
+        classified.append((event, kind, _outline_anchor_level(label)))
+
+    result = []
+    for index, (event, kind, level) in enumerate(classified):
+        if kind == "narrative":
+            result.append(event)
+            continue
+        if kind != "structure" or not level:
+            continue
+        following_has_narrative = False
+        for _following, following_kind, following_level in classified[index + 1:]:
+            if following_level >= level:
+                break
+            if following_kind == "narrative":
+                following_has_narrative = True
+                break
+        if not following_has_narrative:
+            result.append(event)
+    return result
+
+
 def outline_events(content: str) -> list[dict[str, str | int]]:
     """Build stable event IDs from explicit event labels in a confirmed outline."""
     events = []
     section = ""
     occurrences: dict[str, int] = {}
-    for line in str(content or "").splitlines():
-        heading = re.match(r"^#{2,4}\s+(.+?)\s*$", line.strip())
+    for line in _visible_outline_markdown(content).splitlines():
+        heading = re.match(
+            r"^(?P<marks>#{2,4})[ \t]+(?P<label>.+?)\s*$", line.strip(),
+        )
         if heading:
-            label = heading.group(1).strip()
-            if line.lstrip().startswith("## "):
+            label = heading.group("label").strip()
+            level = len(heading.group("marks"))
+            if level == 2:
                 section = label
             candidate = label if (
-                line.lstrip().startswith(("### ", "#### "))
+                level >= 3
                 or not any(term in label for term in ("大纲", "剧情", "人物", "角色", "设定", "总览"))
             ) else ""
         else:
@@ -388,7 +512,8 @@ def outline_events(content: str) -> list[dict[str, str | int]]:
             or any(term in section for term in ("人物", "角色"))
         ):
             continue
-        normalized = re.sub(r"\W+", "", f"{section}|{candidate}", flags=re.UNICODE).casefold()
+        identity_text = unicodedata.normalize("NFKC", f"{section}|{candidate}")
+        normalized = re.sub(r"\W+", "", identity_text, flags=re.UNICODE).casefold()
         if not normalized:
             continue
         occurrences[normalized] = occurrences.get(normalized, 0) + 1
@@ -607,7 +732,7 @@ class OutlineService:
             source = str(outline.get("source") or "candidate")
             version = int(outline.get("version") or 1)
             updated_at = outline.get("updated_at")
-            events = outline.get("events") or outline_events(content)
+            events = outline_events(content)
         else:
             content = self._legacy_outline(project_id, project.path)
             source = "legacy_run" if content else "none"
@@ -1180,12 +1305,9 @@ class OutlineService:
 
     @staticmethod
     def _semantic_decisions(text: str, allowed_ids: set[str]) -> list[dict]:
-        value = str(text or "").strip()
-        if value.startswith("```"):
-            value = re.sub(r"^```(?:json)?\s*|\s*```$", "", value, flags=re.IGNORECASE)
         try:
-            payload = json.loads(value)
-        except json.JSONDecodeError as exc:
+            payload = parse_json_object(text, label="大纲变化判断")
+        except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("模型没有返回可读取的判断结果，请重新尝试") from exc
         decisions = payload.get("decisions") if isinstance(payload, dict) else None
         if not isinstance(decisions, list):

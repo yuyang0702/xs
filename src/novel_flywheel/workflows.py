@@ -5,6 +5,7 @@ import math
 import os
 import re
 import threading
+import unicodedata
 import uuid
 from contextlib import contextmanager, nullcontext
 from collections.abc import Sequence
@@ -13,7 +14,12 @@ from pathlib import Path
 from typing import Iterator
 
 from novel_flywheel.db import Database
-from novel_flywheel.causal_chain import compact_causal_chain, extract_short_causal_chain
+from novel_flywheel.causal_chain import (
+    END as SHORT_CAUSAL_CHAIN_END,
+    START as SHORT_CAUSAL_CHAIN_START,
+    compact_causal_chain,
+    extract_short_causal_chain,
+)
 from novel_flywheel.context_policy import (
     estimate_input_tokens,
     next_retry_action,
@@ -26,7 +32,13 @@ from novel_flywheel.context_policy import (
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
-from novel_flywheel.outlines import canon_profile, detect_canon_conflicts, outline_events
+from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.outlines import (
+    canon_profile,
+    detect_canon_conflicts,
+    narrative_outline_events,
+    outline_events,
+)
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript, compact_analysis
 from novel_flywheel.narrative_ledger import build_narrative_ledger
@@ -96,6 +108,7 @@ from novel_flywheel.revision import (
     normalize_repair_contract,
     normalize_chinese_prose,
     normalize_revision_plan,
+    parse_segment_number,
     repair_mechanical_text,
     remove_consecutive_duplicate_blocks,
     segment_map,
@@ -150,6 +163,14 @@ _SHORT_REVISION_LOCK = threading.Lock()
 
 class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
+    SHORT_CHECKPOINT_VERSION = 1
+    SHORT_PLAN_FIELD_ALIASES = {
+        "event_id": ("事件ID", "正式事件ID"),
+        "outline": ("大纲依据", "正式大纲依据"),
+        "opening": ("段首承接", "开场承接"),
+        "event": ("本段事件", "核心事件", "负责事件"),
+        "handoff": ("段末交接", "交接状态", "段末状态"),
+    }
     INITIAL_POLISH_INPUT_CAP = 120_000
     STRUCTURAL_POLISH_INPUT_CAP = 60_000
 
@@ -2378,6 +2399,9 @@ class WorkflowService:
             constraints = self.projects.load_constraints(project.id)
             target_words = int(project.metadata["target_words"])
             segment_count = self._short_segment_count(target_words)
+            checkpoint_context = self._short_checkpoint_context(
+                project, state.revision, state.data, constraints, segment_count,
+            )
             readiness_conflicts = detect_canon_conflicts(
                 project, state.data,
                 str((state.data.get("outline") or {}).get("content") or ""),
@@ -2386,7 +2410,9 @@ class WorkflowService:
                 raise ValueError(
                     f"正式大纲与项目资料有 {len(readiness_conflicts)} 处冲突，请先在作品应用中确认设定"
                 )
-            checkpoint = self._find_short_checkpoint(project, run_id, segment_count)
+            checkpoint = self._find_short_checkpoint(
+                project, run_id, segment_count, checkpoint_context,
+            )
             if checkpoint:
                 checkpoint_plan = (checkpoint / "planning.md").read_text(encoding="utf-8")
                 if self._short_plan_issues(project, state.data, checkpoint_plan, segment_count):
@@ -2405,6 +2431,9 @@ class WorkflowService:
                 resumed_best = source_artifact == "best-candidate.md"
                 atomic_write(run_path / "outputs" / "planning.md", plan)
                 atomic_write(run_path / "outputs" / "draft.md", draft)
+                self._save_short_checkpoint(
+                    run_path / "outputs", checkpoint_context,
+                )
                 self.db.add_run_event(
                     run_id, "success", "checkpoint_reused", "已复用上一轮完整规划和分段草稿",
                     stage="draft", metadata={
@@ -2413,17 +2442,26 @@ class WorkflowService:
                     },
                 )
             else:
+                formal_outline = state.data.get("outline") or {}
+                formal_outline_content = str(formal_outline.get("content") or "")
+                formal_outline_events = (
+                    outline_events(formal_outline_content)
+                    if formal_outline_content.strip()
+                    else formal_outline.get("events") or []
+                )
                 brief = json.dumps({
                     **project.metadata,
                     "formal_story_facts": canon_profile(project, state.data),
-                    "formal_outline_events": (
-                        (state.data.get("outline") or {}).get("events")
-                        or outline_events(str((state.data.get("outline") or {}).get("content") or ""))
+                    "formal_outline_events": narrative_outline_events(
+                        formal_outline_events
                     ),
                     "generation_contract": {
                         "target_total_words": target_words,
                         "segment_count": segment_count,
                         "require_segment_map": segment_count > 1,
+                        "segment_heading_format": (
+                            f"### 第 1 段：标题，依次编号到 ### 第 {segment_count} 段：标题"
+                        ),
                         "segment_block_fields": (
                             [
                                 "事件ID：认领正式大纲事件表中的一个或多个 ID；连续分段可共同完成同一事件",
@@ -2455,9 +2493,7 @@ class WorkflowService:
                     run_id, run_path, project, "planning", constraints, brief,
                     allow_tools=self._planning_uses_tools(state),
                 )
-                plan, causal_chain = self._extract_and_save_short_causal_chain(
-                    run_id, run_path, project, plan,
-                )
+                plan, causal_chain = self._extract_short_causal_chain(run_id, plan)
                 plan_issues = self._short_plan_issues(
                     project, state.data, plan, segment_count,
                 )
@@ -2470,6 +2506,8 @@ class WorkflowService:
                     repaired_plan = await self._stage(
                         run_id, run_path, project, "planning", constraints,
                         "请修正下面的规划稿。必须保留正式大纲的故事方向，为每个分段明确分配互不重复的事件，"
+                        f"必须恰好写 {segment_count} 个分段，标题依次使用“### 第 1 段：标题”"
+                        f"到“### 第 {segment_count} 段：标题”；"
                         "并使用正式人物和地点名称。每段都要写明“段首承接”“本段事件”“段末交接”；"
                         "每个正式大纲事件 ID 都必须覆盖且顺序不能倒退；连续分段可以共同完成同一事件，"
                         "并写明“大纲依据”；"
@@ -2479,9 +2517,10 @@ class WorkflowService:
                         f"当前规划稿：\n{plan}",
                         suffix="-gate-repair", allow_tools=False,
                     )
-                    plan, causal_chain = self._extract_and_save_short_causal_chain(
-                        run_id, run_path, project, repaired_plan,
+                    plan, repaired_chain = self._extract_short_causal_chain(
+                        run_id, repaired_plan,
                     )
+                    causal_chain = repaired_chain or causal_chain
                     remaining = self._short_plan_issues(
                         project, state.data, plan, segment_count,
                     )
@@ -2492,13 +2531,24 @@ class WorkflowService:
                             stage="planning", metadata={"issues": remaining},
                         )
                         raise ValueError("规划稿未通过设定和分段检查，尚未生成正文")
+                atomic_write(run_path / "outputs" / "planning.md", plan)
                 if causal_chain:
+                    self._save_short_causal_chain(run_id, project, causal_chain)
                     constraints += (
                         "\n\n# Short Story Causal Chain\n\n"
                         f"{compact_causal_chain(causal_chain)}"
                     )
+                checkpoint_constraints = self.projects.load_constraints(project.id)
+                checkpoint_context = self._short_checkpoint_context(
+                    project, state.revision, state.data, checkpoint_constraints,
+                    segment_count,
+                )
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
+                )
+                atomic_write(run_path / "outputs" / "draft.md", draft)
+                self._save_short_checkpoint(
+                    run_path / "outputs", checkpoint_context,
                 )
             draft_analysis = self._analyze_manuscript(
                 draft, run_path, project, "draft",
@@ -2509,8 +2559,11 @@ class WorkflowService:
                 {"artifact": "outputs/draft.md"},
             )
             draft_candidate_id = draft_candidate.id
-            review_checkpoint = (None if resumed_best else
-                                 self._find_short_stage_output(project, run_id, "review.md"))
+            review_checkpoint = (
+                None if resumed_best or checkpoint is None else self._find_short_stage_output(
+                    project, checkpoint.parent.name, "review.md",
+                )
+            )
             review = None
             if review_checkpoint:
                 try:
@@ -2643,30 +2696,34 @@ class WorkflowService:
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
-    def _extract_and_save_short_causal_chain(
-        self, run_id: str, run_path: Path, project: Project, plan: str,
+    def _extract_short_causal_chain(
+        self, run_id: str, plan: str,
     ) -> tuple[str, dict | None]:
         try:
             outline, chain = extract_short_causal_chain(plan)
         except (ValueError, json.JSONDecodeError) as exc:
             self.db.add_run_event(
                 run_id, "warning", "causal_chain_parse_failed",
-                "短篇因果链解析失败，已继续使用原大纲",
+                "短篇因果链解析失败，规划稿将先进入本地修正",
                 stage="planning", metadata={"error": str(exc)[:300]},
             )
             return plan, None
         if not chain:
             return plan, None
+
+        return outline, chain
+
+    def _save_short_causal_chain(
+        self, run_id: str, project: Project, chain: dict,
+    ) -> None:
         LearningSystem(self.db, self.references, self.projects, self.gateway).build_short_causal_chain(
             project.id, chain,
         )
-        atomic_write(run_path / "outputs" / "planning.md", outline)
         self.db.add_run_event(
             run_id, "success", "causal_chain_saved",
             "短篇整篇因果链已保存为项目资料",
             stage="planning", metadata={"cycles": len(chain.get("cycles") or [])},
         )
-        return outline, chain
 
     async def _quality_polish(self, run_id: str, run_path: Path, project: Project,
                               constraints: str, draft: str, review: dict,
@@ -3647,20 +3704,106 @@ class WorkflowService:
     def _short_plan_segments(cls, plan: str, count: int) -> list[str]:
         if count == 1:
             return [plan.strip()] if plan.strip() else []
-        headings = list(re.finditer(
-            r"(?m)^#{2,4}\s*(?:第\s*)?段\s*(\d+)\s*[：:]?.*$", plan,
-        ))
+        headings = cls._short_plan_headings(plan)
         by_number: dict[int, str] = {}
-        for position, match in enumerate(headings):
-            number = int(match.group(1))
-            end = headings[position + 1].start() if position + 1 < len(headings) else len(plan)
+        for position, (match, number) in enumerate(headings):
+            if number is None or not 1 <= number <= count:
+                continue
+            level = len(match.group("marks"))
+            end = len(plan)
+            for following, following_number in headings[position + 1:]:
+                if (following_number is not None
+                        or len(following.group("marks")) <= level):
+                    end = following.start()
+                    break
             by_number.setdefault(number, plan[match.start():end].strip())
         return [by_number[number] for number in range(1, count + 1) if number in by_number]
+
+    @staticmethod
+    def _mask_nonsemantic_markdown(text: str) -> str:
+        """Mask comments and fenced examples while preserving source offsets."""
+        characters = list(str(text or ""))
+
+        def mask(start: int, end: int) -> None:
+            for index in range(start, end):
+                if characters[index] not in "\r\n":
+                    characters[index] = " "
+
+        for comment in re.finditer(r"<!--.*?(?:-->|\Z)", text, flags=re.DOTALL):
+            mask(comment.start(), comment.end())
+
+        visible = "".join(characters)
+        fence_character = ""
+        fence_length = 0
+        offset = 0
+        for line in visible.splitlines(keepends=True):
+            fence = re.match(r"^[ ]{0,3}(?P<mark>`{3,}|~{3,})", line)
+            if fence_character:
+                mask(offset, offset + len(line))
+                if (fence and fence.group("mark")[0] == fence_character
+                        and len(fence.group("mark")) >= fence_length):
+                    fence_character = ""
+                    fence_length = 0
+            elif fence:
+                fence_character = fence.group("mark")[0]
+                fence_length = len(fence.group("mark"))
+                mask(offset, offset + len(line))
+            offset += len(line)
+        return "".join(characters)
+
+    @classmethod
+    def _short_plan_headings(cls, plan: str) -> list[tuple[re.Match, int | None]]:
+        comparison = cls._short_plan_comparison_view(plan)
+        return [
+            (match, parse_segment_number(match.group("title"), allow_scene=False))
+            for match in re.finditer(
+                r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
+                comparison,
+            )
+        ]
+
+    @classmethod
+    def _short_plan_comparison_view(cls, text: str) -> str:
+        """Normalize width for labels and IDs while preserving source offsets."""
+        result = []
+        for character in str(text or ""):
+            normalized = unicodedata.normalize("NFKC", character)
+            result.append(normalized if len(normalized) == 1 else character)
+        return cls._mask_nonsemantic_markdown("".join(result))
+
+    @classmethod
+    def _short_plan_field(cls, segment: str, field: str) -> str:
+        aliases = cls.SHORT_PLAN_FIELD_ALIASES[field]
+
+        def flexible(label: str) -> str:
+            return r"[ \t]*".join(re.escape(character) for character in label)
+
+        labels = "|".join(flexible(label) for label in aliases)
+        all_labels = "|".join(
+            flexible(label)
+            for values in cls.SHORT_PLAN_FIELD_ALIASES.values()
+            for label in values
+        )
+        wrapper = r"(?:\*{1,2}|_{1,2}|`)?"
+        prefix = rf"^[ \t]*(?:[-+*][ \t]+)?(?:#{{1,6}}[ \t]*)?{wrapper}[ \t]*"
+        suffix = rf"[ \t]*{wrapper}[ \t]*[：:][ \t]*{wrapper}[ \t]*"
+        comparison = cls._short_plan_comparison_view(segment)
+        match = re.search(
+            rf"(?ims){prefix}(?:{labels}){suffix}(?P<value>.*?)"
+            rf"(?={prefix}(?:{all_labels}){suffix}|^[ \t]*#{{1,6}}(?:[ \t]+|$)|\Z)",
+            comparison,
+        )
+        if not match:
+            return ""
+        start, end = match.span("value")
+        return segment[start:end].strip()
 
     @classmethod
     def _short_plan_issues(cls, project: Project, state: dict, plan: str,
                            count: int) -> list[str]:
         issues = []
+        if SHORT_CAUSAL_CHAIN_START in plan or SHORT_CAUSAL_CHAIN_END in plan:
+            issues.append("规划稿附带的因果链 JSON 格式不完整")
         conflicts = detect_canon_conflicts(project, state, plan)
         if conflicts:
             labels = "、".join(
@@ -3671,21 +3814,23 @@ class WorkflowService:
         if count == 1:
             return issues
         segments = cls._short_plan_segments(plan, count)
+        heading_numbers = [
+            number for _match, number in cls._short_plan_headings(plan)
+            if number is not None
+        ]
+        if heading_numbers and heading_numbers != list(range(1, count + 1)):
+            issues.append(f"规划稿分段标题必须恰好按第 1 至第 {count} 段各出现一次")
         if len(segments) != count:
             issues.append(f"规划稿需要明确列出第 1 至第 {count} 段各自负责的事件")
-        elif any(len(re.sub(r"\s+", "", segment)) < 80 for segment in segments):
-            issues.append("有分段没有写清本段事件、结果和交接问题")
-        elif count > 1:
+        else:
+            if any(len(re.sub(r"\s+", "", segment)) < 80 for segment in segments):
+                issues.append("有分段没有写清本段事件、结果和交接问题")
             missing_handoffs = []
-            required = (
-                ("事件ID", "正式事件ID"),
-                ("大纲依据", "正式大纲依据"),
-                ("段首承接", "开场承接"),
-                ("本段事件", "核心事件", "负责事件"),
-                ("段末交接", "交接状态", "段末状态"),
-            )
             for index, segment in enumerate(segments, 1):
-                if any(not any(label in segment for label in aliases) for aliases in required):
+                if any(
+                    not cls._short_plan_field(segment, field)
+                    for field in cls.SHORT_PLAN_FIELD_ALIASES
+                ):
                     missing_handoffs.append(index)
             if missing_handoffs:
                 joined = "、".join(map(str, missing_handoffs))
@@ -3693,39 +3838,59 @@ class WorkflowService:
                     f"第 {joined} 段缺少事件ID、大纲依据、段首承接、本段事件或段末交接，"
                     "无法确认剧情分工与前后衔接"
                 )
-        outline = str((state.get("outline") or {}).get("content") or "")
-        event_map = (state.get("outline") or {}).get("events") or outline_events(outline)
+        formal_outline = state.get("outline") or {}
+        outline = str(formal_outline.get("content") or "")
+        event_map = (
+            outline_events(outline)
+            if outline.strip()
+            else formal_outline.get("events") or []
+        )
+        required_events = narrative_outline_events(event_map)
         if event_map and len(segments) == count:
             valid = {str(item["id"]).upper() for item in event_map}
-            claimed = [
-                list(dict.fromkeys(
-                    event_id.upper() for event_id in re.findall(
-                        r"EV-[0-9a-f]{8}", segment, flags=re.IGNORECASE,
-                    )
-                ))
-                for segment in segments
-            ]
+            claimed = [cls._short_plan_event_ids(segment) for segment in segments]
             flattened = [event_id for group in claimed for event_id in group]
             invalid = sorted(set(flattened) - valid)
-            missing = [
-                str(item["id"]) for item in event_map
-                if str(item["id"]).upper() not in flattened
-            ]
-            order = {str(item["id"]).upper(): index for index, item in enumerate(event_map)}
-            collapsed = []
-            for event_id in flattened:
-                if not collapsed or event_id != collapsed[-1]:
-                    collapsed.append(event_id)
             if invalid:
                 issues.append(f"规划稿使用了不存在的事件 ID：{'、'.join(invalid)}")
+        if required_events and len(segments) == count:
+            required = {str(item["id"]).upper() for item in required_events}
+            claimed = [cls._short_plan_event_ids(segment) for segment in segments]
+            flattened = [event_id for group in claimed for event_id in group]
+            missing = [
+                str(item["id"]) for item in required_events
+                if str(item["id"]).upper() not in flattened
+            ]
+            order = {
+                str(item["id"]).upper(): index
+                for index, item in enumerate(required_events)
+            }
+            labels = {
+                str(item["id"]).upper(): str(item.get("label") or item["id"])
+                for item in required_events
+            }
+            collapsed: list[tuple[int, str]] = []
+            for segment_number, group in enumerate(claimed, 1):
+                for event_id in group:
+                    if event_id not in required:
+                        continue
+                    if not collapsed or event_id != collapsed[-1][1]:
+                        collapsed.append((segment_number, event_id))
             if missing:
                 issues.append(f"这些正式大纲事件还没有分配到写作段：{'、'.join(missing)}")
-            if any(
-                order[current] < order[previous]
-                for previous, current in zip(collapsed, collapsed[1:])
-                if previous in order and current in order
-            ):
-                issues.append("写作段认领的大纲事件顺序发生倒退")
+            reversal = next((
+                (previous_segment, previous, current_segment, current)
+                for (previous_segment, previous), (current_segment, current)
+                in zip(collapsed, collapsed[1:])
+                if order[current] < order[previous]
+            ), None)
+            if reversal:
+                previous_segment, previous, current_segment, current = reversal
+                issues.append(
+                    "写作段认领的大纲事件顺序发生倒退："
+                    f"第 {previous_segment} 段 {previous}（{labels[previous]}）之后，"
+                    f"第 {current_segment} 段又认领 {current}（{labels[current]}）"
+                )
         normalized = [re.sub(r"\W+", "", segment) for segment in segments]
         if any(
             SequenceMatcher(None, normalized[left], normalized[right]).ratio() >= 0.86
@@ -3734,19 +3899,18 @@ class WorkflowService:
             issues.append("不同分段承担了过于相似的事件，需要重新分配")
         return issues
 
-    @staticmethod
-    def _short_plan_handoff(segment: str) -> str:
-        match = re.search(
-            r"(?ms)(?:段末交接|交接状态|段末状态)\s*[：:]\s*(.+)$",
-            segment,
-        )
-        return (match.group(1).strip() if match else segment.strip())[-700:]
+    @classmethod
+    def _short_plan_handoff(cls, segment: str) -> str:
+        return (cls._short_plan_field(segment, "handoff") or segment.strip())[-700:]
 
-    @staticmethod
-    def _short_plan_event_ids(segment: str) -> list[str]:
+    @classmethod
+    def _short_plan_event_ids(cls, segment: str) -> list[str]:
+        field = cls._short_plan_field(segment, "event_id")
+        comparison = cls._short_plan_comparison_view(field or segment)
         return list(dict.fromkeys(
             value.upper() for value in re.findall(
-                r"EV-[0-9a-f]{8}", segment, flags=re.IGNORECASE,
+                r"EV-[0-9a-f]{8}", comparison,
+                flags=re.IGNORECASE,
             )
         ))
 
@@ -3836,18 +4000,68 @@ class WorkflowService:
                     chunks[-2:] = [merged]
         return chunks
 
+    @classmethod
+    def _short_checkpoint_context(
+        cls, project: Project, state_revision: int, state: dict,
+        constraints: str, segment_count: int,
+    ) -> dict:
+        outline = str(((state.get("outline") or {}).get("content")) or "")
+        context = {
+            "version": cls.SHORT_CHECKPOINT_VERSION,
+            "outline_sha256": hashlib.sha256(outline.encode("utf-8")).hexdigest(),
+            "constraints_sha256": hashlib.sha256(
+                constraints.encode("utf-8")
+            ).hexdigest(),
+            "story_state_revision": int(state_revision),
+            "target_words": int(project.metadata["target_words"]),
+            "segment_count": int(segment_count),
+        }
+        context["generation_context_sha256"] = hashlib.sha256(json.dumps(
+            context, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        return context
+
+    @staticmethod
+    def _save_short_checkpoint(outputs: Path, context: dict) -> None:
+        plan = (outputs / "planning.md").read_text(encoding="utf-8")
+        draft = (outputs / "draft.md").read_text(encoding="utf-8")
+        atomic_write(outputs / "short-checkpoint.json", json.dumps({
+            **context,
+            "planning_sha256": hashlib.sha256(plan.encode("utf-8")).hexdigest(),
+            "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+        }, ensure_ascii=False, indent=2, sort_keys=True))
+
     def _find_short_checkpoint(self, project: Project, current_run_id: str,
-                               segment_count: int) -> Path | None:
+                               segment_count: int, context: dict) -> Path | None:
         for run in self.db.list_runs(project.id):
             if run["workflow"] != "short-story":
+                continue
+            if (run["id"] != current_run_id
+                    and run["status"] not in {"failed", "cancelled"}):
                 continue
             outputs = project.path / "runs" / run["id"] / "outputs"
             plan_path = outputs / "planning.md"
             draft_path = outputs / "draft.md"
-            if not plan_path.is_file() or not draft_path.is_file():
+            manifest_path = outputs / "short-checkpoint.json"
+            if (not plan_path.is_file() or not draft_path.is_file()
+                    or not manifest_path.is_file()):
                 continue
-            plan = plan_path.read_text(encoding="utf-8").strip()
-            draft = draft_path.read_text(encoding="utf-8")
+            try:
+                manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                plan_text = plan_path.read_text(encoding="utf-8")
+                draft = draft_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if (
+                not isinstance(manifest, dict)
+                or any(manifest.get(key) != value for key, value in context.items())
+                or manifest.get("planning_sha256")
+                != hashlib.sha256(plan_text.encode("utf-8")).hexdigest()
+                or manifest.get("draft_sha256")
+                != hashlib.sha256(draft.encode("utf-8")).hexdigest()
+            ):
+                continue
+            plan = plan_text.strip()
             if plan and len(self._split_segments(draft)) == segment_count:
                 return outputs
         return None
@@ -3866,13 +4080,8 @@ class WorkflowService:
 
     def _find_short_stage_output(self, project: Project, current_run_id: str,
                                  filename: str) -> Path | None:
-        for run in self.db.list_runs(project.id):
-            if run["workflow"] != "short-story":
-                continue
-            path = project.path / "runs" / run["id"] / "outputs" / filename
-            if path.is_file() and path.stat().st_size:
-                return path
-        return None
+        path = project.path / "runs" / current_run_id / "outputs" / filename
+        return path if path.is_file() and path.stat().st_size else None
 
     @staticmethod
     def _compact_polish_prompt(*, segment: str, previous_context: str,
@@ -5094,7 +5303,7 @@ class WorkflowService:
                 )
                 try:
                     payload = self._json_object(output)
-                except json.JSONDecodeError:
+                except (json.JSONDecodeError, ValueError):
                     repair = schema_repair_prompt(output, "repair_revision_plan_v1")
                     output = await self._stage(
                         run_id, run_path, project, "revision_plan", constraints, repair,
@@ -5820,11 +6029,7 @@ class WorkflowService:
 
     @staticmethod
     def _json_object(text: str) -> dict:
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
-        value = json.loads(cleaned)
-        if not isinstance(value, dict):
-            raise ValueError("Model output must be a JSON object")
-        return value
+        return parse_json_object(text)
 
     @staticmethod
     def _normalized_revision_plan(value: dict, segment_count: int, **kwargs) -> dict:

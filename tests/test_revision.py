@@ -242,6 +242,23 @@ def test_normalize_revision_plan_rejects_unknown_segments_and_keeps_valid_tasks(
     assert plan["target_segments"] == [1, 3]
 
 
+def test_normalize_revision_plan_accepts_common_segment_labels_and_rejects_booleans() -> None:
+    plan = normalize_revision_plan({
+        "tasks": [{
+            "segments": [
+                "1", "第2段", "第三段", "段 4", "Segment 5", "scene-06", "场景7",
+                True, "第99段",
+            ],
+            "instruction": "修正这些分段。",
+        }],
+    }, segment_count=7)
+
+    assert plan["tasks"] == [{
+        "segments": [1, 2, 3, 4, 5, 6, 7], "instruction": "修正这些分段。",
+    }]
+    assert plan["target_segments"] == [1, 2, 3, 4, 5, 6, 7]
+
+
 def test_normalize_revision_plan_keeps_issue_links_on_tasks() -> None:
     plan = normalize_revision_plan({
         "tasks": [{

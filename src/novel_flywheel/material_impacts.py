@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.storage import atomic_write
 
 
@@ -164,11 +165,10 @@ class MaterialImpactService:
 
     @staticmethod
     def _json_object(text: str) -> dict[str, Any]:
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
-        value = json.loads(cleaned)
-        if not isinstance(value, dict):
-            raise ValueError("material_impact_invalid_json")
-        return value
+        try:
+            return parse_json_object(text, label="material impact")
+        except (json.JSONDecodeError, ValueError) as exc:
+            raise ValueError("material_impact_invalid_json") from exc
 
     def prepare_apply(
         self, project_path: Path, impact_id: str, proposal_ids: list[str],
