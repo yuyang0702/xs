@@ -390,6 +390,79 @@ def test_project_style_can_authorize_local_short_rhythm_but_not_hard_loss() -> N
     assert "missing_literal:brass key" in rejected["hard_reasons"]
 
 
+@pytest.mark.parametrize(("genre", "prose_kind"), [
+    ("古言宅斗", "authorized_short_reveal"),
+    ("现代情感", "dialogue_dense"),
+    ("悬疑", "authorized_suspense_turn"),
+    ("科幻", "long_exposition"),
+    ("玄幻", "scene_transition"),
+    ("梦境", "ambiguous_location"),
+    ("虚拟世界", "knowledge_change"),
+])
+def test_genre_name_does_not_change_structural_style_decision(
+    genre: str, prose_kind: str,
+) -> None:
+    measured = "A measured sentence carries the action forward with enough context. " * 8
+    fixtures = {
+        "authorized_short_reveal": (
+            measured,
+            "Door opened. Name matched. Debt was real. She understood. " + measured * 6,
+            ProseValidationPolicy(
+                source_ids=("style-profile",),
+                authorized_short_beats=frozenset({"information_reveal"}),
+            ),
+            {"reveals": ["identity"]},
+        ),
+        "dialogue_dense": (
+            "\n\n".join(f'“Turn {index} carries distinct subtext.”' for index in range(5)),
+            "\n\n".join(f'“Turn {index} carries distinct subtext.”' for index in range(5)),
+            ProseValidationPolicy(),
+            {},
+        ),
+        "authorized_suspense_turn": (
+            measured,
+            "Lock moved. Footsteps stopped. Light vanished. The promise returned. "
+            + measured * 6,
+            ProseValidationPolicy(
+                source_ids=("prose_baseline:1",),
+                authorized_short_beats=frozenset({"suspense_turn"}),
+            ),
+            {"payoffs": [{"id": "promise-1"}]},
+        ),
+        "long_exposition": (measured, measured, ProseValidationPolicy(), {}),
+        "scene_transition": (
+            "Three days later, she crossed the courtyard and entered the archive. " * 5,
+            "Three days later, she crossed the courtyard and entered the archive. " * 5,
+            ProseValidationPolicy(),
+            {"scenes": [{"location": "archive"}]},
+        ),
+        "ambiguous_location": (
+            "She could not tell whether the corridor belonged to memory or sleep. " * 5,
+            "She could not tell whether the corridor belonged to memory or sleep. " * 5,
+            ProseValidationPolicy(),
+            {"location": "unresolved"},
+        ),
+        "knowledge_change": (
+            measured, measured, ProseValidationPolicy(),
+            {"knowledge_changed": True},
+        ),
+    }
+    source, candidate, policy, narrative = fixtures[prose_kind]
+
+    themed = assess_polish_candidate(
+        source, candidate, policy=policy,
+        narrative_context={**narrative, "genre": genre},
+    )
+    control = assess_polish_candidate(
+        source, candidate, policy=policy,
+        narrative_context={**narrative, "genre": "未指定"},
+    )
+
+    assert themed["disposition"] == control["disposition"]
+    assert themed["signal_families"] == control["signal_families"]
+    assert themed["style_allowances"] == control["style_allowances"]
+
+
 def test_small_single_metric_shift_is_advisory_not_a_repair_target() -> None:
     source = "A measured sentence carries enough context. " * 8
     candidate = "Stop. Wait. " + source

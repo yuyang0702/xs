@@ -2723,9 +2723,10 @@ const polishRecoveryMessages={
   polish_input_compact_retry:"输入超出当前模型上下文，正在保留叙事权威后压缩建议重试",
   polish_output_limit_retry:"供应商截断了本段输出，正在同一路由扩大输出空间重试",
   polish_transport_retry:"润色请求遇到网络波动，正在同一路由重试",
-  polish_route_fallback:"首选润色路由未产生可用正文，正在使用备用路由",
+  polish_configured_fallback:"首选润色路由未产生可用正文，正在使用备用路由",
   polish_segment_split:"当前片段输出仍受限，正在按段落边界拆分后重试",
   polish_targeted_repair:"本段出现有证据的局部问题，正在进行小范围定向修复",
+  polish_style_allowance:"本段局部节奏符合项目文风规则，已通过验收",
   polish_capacity_preserved:"当前父段无法安全拆分，已保留原文并继续",
   polish_segment_preserved:"本段未完成精修，已保留原文并继续",
 };

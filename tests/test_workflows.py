@@ -3771,7 +3771,11 @@ async def test_polish_output_limit_expands_same_prompt_then_splits(tmp_path) -> 
     assert gateway.calls[0][0] == gateway.calls[1][0]
     assert gateway.calls[1][1] > gateway.calls[0][1]
     events = db.list_run_events("polish-recovery")
-    assert sum(event["event_type"] == "polish_output_limit_retry" for event in events) == 1
+    output_retry = [
+        event for event in events if event["event_type"] == "polish_output_limit_retry"
+    ]
+    assert len(output_retry) == 1
+    assert output_retry[0]["metadata"]["failure_class"] == "output_limit"
     assert any(event["event_type"] == "polish_segment_split" for event in events)
     assert not any(event["event_type"] == "polish_compact_retry" for event in events)
 
@@ -3808,7 +3812,10 @@ async def test_explicit_input_overflow_compacts_without_losing_authority(tmp_pat
     for field in ("MINIMUM NARRATIVE AUTHORITY", "LOCKED FACTS", "ALLOWED SCOPE"):
         assert all(field in prompt for prompt in gateway.prompts)
     events = db.list_run_events("polish-recovery")
-    assert any(event["event_type"] == "polish_input_compact_retry" for event in events)
+    compact_retry = next(
+        event for event in events if event["event_type"] == "polish_input_compact_retry"
+    )
+    assert compact_retry["metadata"]["failure_class"] == "input_context_overflow"
     assert not any(event["event_type"] == "polish_segment_split" for event in events)
 
 
@@ -3891,7 +3898,14 @@ async def test_transport_retries_same_route_then_configured_fallback_without_spl
     assert result == source.strip()
     assert gateway.routes == ["primary", "primary", "fallback"]
     events = db.list_run_events("polish-recovery")
-    assert any(event["event_type"] == "polish_transport_retry" for event in events)
+    transport_retry = next(
+        event for event in events if event["event_type"] == "polish_transport_retry"
+    )
+    assert transport_retry["metadata"]["failure_class"] == "transport_interrupted"
+    fallback = next(
+        event for event in events if event["event_type"] == "polish_configured_fallback"
+    )
+    assert fallback["metadata"]["failure_class"] == "transport_interrupted"
     assert not any(event["event_type"] == "polish_segment_split" for event in events)
 
 
@@ -4890,10 +4904,58 @@ async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(t
     assert result == "她听清了：侯府三小姐林知晚，那些词忽然都有了陌生的分量。"
     events = db.list_run_events("retry-rhythm")
     assert any(event["event_type"] == "polish_rhythm_retry" for event in events)
-    assert any(event["event_type"] == "polish_targeted_repair" for event in events)
+    targeted_event = next(
+        event for event in events if event["event_type"] == "polish_targeted_repair"
+    )
+    assert targeted_event["metadata"]["policy_source_ids"] == ["style-profile"]
+    assert targeted_event["metadata"]["raw_metrics"]["source"]
+    assert targeted_event["metadata"]["raw_metrics"]["candidate"]
+    assert targeted_event["metadata"]["baseline"]
+    assert targeted_event["metadata"]["authority_hash"]
     assert "TARGETED LOCAL PROSE REPAIR" in gateway.prompts[1]
     assert "MINIMUM NARRATIVE AUTHORITY" in gateway.prompts[1]
     assert gateway.prompts[1].count(source) == 1
+
+
+@pytest.mark.asyncio
+async def test_project_style_allowance_records_exact_rule_source_and_metrics(tmp_path) -> None:
+    source = "A measured sentence carries the action forward with enough context. " * 8
+    candidate = (
+        "Door opened. Name matched. Debt was real. She understood. "
+        + "A measured sentence carries the action forward with enough context. " * 6
+    )
+
+    class Gateway:
+        async def complete(self, role, system, user, max_output_tokens=None):
+            return ModelResult(candidate, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, Gateway())
+    (project.path / "style-profile.md").write_text(
+        "# 文风\n\n- 信息揭示时允许短句形成局部落点。\n",
+        encoding="utf-8",
+    )
+    service._polish_narrative_context = lambda *args, **kwargs: {
+        "reveals": ["identity"],
+    }
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == candidate.strip()
+    event = next(
+        item for item in db.list_run_events("polish-recovery")
+        if item["event_type"] == "polish_style_allowance"
+    )
+    assert event["metadata"]["policy_source_ids"] == ["style-profile"]
+    assert event["metadata"]["style_allowances"][0]["authorized_beats"] == [
+        "information_reveal"
+    ]
+    assert event["metadata"]["raw_metrics"]["source"]
+    assert event["metadata"]["raw_metrics"]["candidate"]
+    assert event["metadata"]["authority_hash"]
 
 
 @pytest.mark.asyncio

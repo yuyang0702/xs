@@ -4731,6 +4731,7 @@ class WorkflowService:
                         stage="polish", metadata={
                             **metadata, "error": describe_error(exc)[:500],
                             "route": "primary",
+                            "failure_class": "input_context_overflow",
                         },
                     )
                     continue
@@ -4744,6 +4745,7 @@ class WorkflowService:
                         stage="polish", metadata={
                             **metadata, "error": describe_error(exc)[:500],
                             "route": "primary",
+                            "failure_class": "transport_interrupted",
                         },
                     )
                     continue
@@ -4755,11 +4757,12 @@ class WorkflowService:
             fallback_prompt = compact_prompt if fallback_compact else full_prompt
             while True:
                 self.db.add_run_event(
-                    run_id, "warning", "polish_route_fallback",
+                    run_id, "warning", "polish_configured_fallback",
                     "首选润色路由未产生可用正文，正在使用配置的备用路由",
                     stage="polish", metadata={
                         **metadata, "error": describe_error(primary_error)[:500],
                         "compact_input": fallback_compact,
+                        "failure_class": classify_model_failure(primary_error),
                     },
                 )
                 try:
@@ -4785,6 +4788,7 @@ class WorkflowService:
                             stage="polish", metadata={
                                 **metadata, "error": describe_error(exc)[:500],
                                 "route": "fallback",
+                                "failure_class": "input_context_overflow",
                             },
                         )
                         continue
@@ -4798,6 +4802,7 @@ class WorkflowService:
             "本段未完成精修，已保留原文并继续",
             stage="polish", metadata={
                 **metadata, "error": describe_error(primary_error)[:500],
+                "failure_class": classify_model_failure(primary_error),
             },
         )
         return (
@@ -5464,6 +5469,7 @@ class WorkflowService:
                                 "segment": index, "characters": len(part),
                                 "split_depth": recovery_depth,
                                 "error": describe_error(exc)[:500],
+                                "failure_class": classify_model_failure(exc),
                             },
                         )
                         self.db.add_run_event(
@@ -5483,6 +5489,7 @@ class WorkflowService:
                         "child_characters": [len(child) for child in children],
                         "split_depth": recovery_depth + 1, "failed_route": route,
                         "error": describe_error(exc),
+                        "failure_class": classify_model_failure(exc),
                     },
                 )
                 child_suffix = f"{part_suffix}-split-{recovery_depth + 1}"
@@ -5672,6 +5679,13 @@ class WorkflowService:
                         "segment": index,
                         "signal_families": assessment.get("signal_families", []),
                         "signal_codes": sorted(signal_codes),
+                        "raw_metrics": {
+                            "source": local_report.get("metrics", {}),
+                            "candidate": assessment.get("diagnostics", {}).get("metrics", {}),
+                        },
+                        "baseline": assessment.get("baseline", {}),
+                        "policy_source_ids": list(prose_policy.source_ids),
+                        "evidence_spans": evidence_findings,
                         "authority_hash": authority_hash,
                     },
                 )
@@ -5747,6 +5761,22 @@ class WorkflowService:
                 if "model_routes_failed" not in assessment["reasons"]:
                     assessment["reasons"].append("model_routes_failed")
             accepted = bool(assessment["accepted"])
+            if accepted and assessment.get("disposition") == "pass_with_style_allowance":
+                self.db.add_run_event(
+                    run_id, "success", "polish_style_allowance",
+                    f"润色第 {index}/{len(parts)} 段按项目文风规则保留局部节奏",
+                    stage="polish", metadata={
+                        "segment": index,
+                        "style_allowances": assessment.get("style_allowances", []),
+                        "policy_source_ids": list(prose_policy.source_ids),
+                        "raw_metrics": {
+                            "source": local_report.get("metrics", {}),
+                            "candidate": assessment.get("diagnostics", {}).get("metrics", {}),
+                        },
+                        "baseline": assessment.get("baseline", {}),
+                        "authority_hash": authority_hash,
+                    },
+                )
             conditional_length = bool(
                 accepted and targeted and assessment["ratio"] < preferred_minimum_ratio
             )
@@ -6485,6 +6515,7 @@ class WorkflowService:
                                 "previous_budget": previous_budget,
                                 "retry_budget": retry_budget,
                                 "model_name": result.receipt.get("model_name"),
+                                "failure_class": "output_limit",
                             },
                         )
                         used_fallback = bool(
