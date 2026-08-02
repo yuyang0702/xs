@@ -47,7 +47,11 @@ class OpenAIChatAdapter(HttpProvider):
             input_tokens=usage.get("prompt_tokens", 0),
             output_tokens=usage.get("completion_tokens", 0),
             raw_request_id=body.get("id"),
-            provider_state={"assistant": message},
+            provider_state={
+                "assistant": message,
+                "transport_complete": choice.get("finish_reason") is not None,
+                "raw_finish_reason": choice.get("finish_reason"),
+            },
         )
 
     @staticmethod

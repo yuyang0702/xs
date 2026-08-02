@@ -61,6 +61,24 @@ class FlakyConnectAdapter:
         return ModelResponse(text="recovered", input_tokens=2, output_tokens=3)
 
 
+class InterruptedThenCompleteAdapter:
+    def __init__(self):
+        self.calls = 0
+
+    async def complete(self, request):
+        self.calls += 1
+        if self.calls == 1:
+            return ModelResponse(
+                text="partial", input_tokens=2, output_tokens=3,
+                provider_state={"transport_complete": False},
+            )
+        return ModelResponse(
+            text="complete", input_tokens=2, output_tokens=4,
+            finish_reason="stop",
+            provider_state={"transport_complete": True},
+        )
+
+
 class FlakyToolConnectAdapter:
     def __init__(self):
         self.calls = 0
@@ -239,6 +257,33 @@ async def test_gateway_retries_one_transient_connect_failure_before_fallback(tmp
 
 
 @pytest.mark.asyncio
+async def test_gateway_retries_nonterminal_response_without_accepting_partial_text(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("draft", "provider", "model", None, None)
+    adapter = InterruptedThenCompleteAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            return ResolvedModel(provider_id, model_id, "actual-model", adapter)
+
+    monkeypatch.setattr(ModelGateway, "CONNECT_RETRY_DELAY", 0)
+    result = await ModelGateway(db, Registry()).complete(
+        "draft", "rules", "text", max_output_tokens=4096,
+    )
+
+    assert adapter.calls == 2
+    assert result.text == "complete"
+    with db.connect() as connection:
+        observations = [dict(row) for row in connection.execute(
+            "SELECT * FROM model_output_observations ORDER BY id"
+        )]
+    assert [item["transport_complete"] for item in observations] == [0, 1]
+
+
+@pytest.mark.asyncio
 async def test_tool_gateway_retries_one_transient_read_failure_before_fallback(tmp_path, monkeypatch) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -263,7 +308,7 @@ async def test_tool_gateway_retries_one_transient_read_failure_before_fallback(t
 
 
 @pytest.mark.asyncio
-async def test_gateway_does_not_retry_full_timeout(tmp_path) -> None:
+async def test_gateway_retries_full_timeout_once_before_fallback(tmp_path, monkeypatch) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_role_binding("polish", "primary-provider", "primary-model", "fallback-provider", "fallback-model")
@@ -275,9 +320,10 @@ async def test_gateway_does_not_retry_full_timeout(tmp_path) -> None:
                 return ResolvedModel(provider_id, model_id, "primary", primary)
             return super().resolve(provider_id, model_id)
 
+    monkeypatch.setattr(ModelGateway, "CONNECT_RETRY_DELAY", 0)
     result = await ModelGateway(db, Registry()).complete("polish", "rules", "text")
 
-    assert primary.calls == 1
+    assert primary.calls == 2
     assert result.receipt["fallback_used"] is True
     assert result.receipt["primary_error"] == "request timed out"
 
@@ -364,11 +410,17 @@ async def test_gateway_routes_role_and_returns_redacted_receipt(tmp_path) -> Non
     db.save_role_binding("draft", "provider", "model", None, None)
     result = await ModelGateway(db, FakeRegistry()).complete("draft", "system rules", "write")
     assert result.text == "result"
-    assert result.receipt == {
-        "role": "draft", "provider_id": "provider", "model_id": "model",
-        "model_name": "actual-model", "input_tokens": 10, "output_tokens": 20,
-        "request_id": "req-1", "finish_reason": None,
-    }
+    assert result.receipt["role"] == "draft"
+    assert result.receipt["provider_id"] == "provider"
+    assert result.receipt["model_id"] == "model"
+    assert result.receipt["model_name"] == "actual-model"
+    assert result.receipt["input_tokens"] == 10
+    assert result.receipt["output_tokens"] == 20
+    assert result.receipt["request_id"] == "req-1"
+    assert result.receipt["finish_reason"] is None
+    assert result.receipt["transport_complete"] is True
+    assert result.receipt["execution_mode"] == "plain"
+    assert len(result.receipt["route_fingerprint"]) == 64
 
 
 @pytest.mark.asyncio

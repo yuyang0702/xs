@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 import asyncio
+import hashlib
 import json
 import time
 
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest
 from novel_flywheel.errors import describe_error
+from novel_flywheel.context_policy import normalize_finish_reason
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 
@@ -24,6 +26,15 @@ class ModelRoutesExhaustedError(RuntimeError):
         )
         self.primary_error = primary_error
         self.fallback_error = fallback_error
+
+
+class TransportInterruptedError(RuntimeError):
+    """A route returned a partial/non-terminal response body."""
+
+    def __init__(self, receipt: dict, partial_text: str = "") -> None:
+        super().__init__("provider transport ended before a terminal response")
+        self.receipt = receipt
+        self.partial_text = partial_text
 
 
 class ModelGateway:
@@ -119,12 +130,11 @@ class ModelGateway:
     @staticmethod
     def _is_transient_connect_error(exc: Exception) -> bool:
         message = str(exc).lower()
-        if "timeout" in message or "timed out" in message:
-            return False
         return any(marker in message for marker in (
             "connection attempts failed", "connection reset", "connection refused",
             "connecterror", "server disconnected", "peer closed connection",
-            "incomplete chunked read", "readerror",
+            "incomplete chunked read", "readerror", "timeout", "timed out",
+            "transport ended before a terminal response",
         ))
 
     async def _complete_resolved(self, role, system, user, resolved,
@@ -134,7 +144,7 @@ class ModelGateway:
             messages=[Message(role="system", content=system), Message(role="user", content=user)],
             max_output_tokens=max_output_tokens,
         ))
-        return ModelResult(response.text, {
+        receipt = {
             "role": role,
             "provider_id": resolved.provider_id,
             "model_id": resolved.model_id,
@@ -142,8 +152,21 @@ class ModelGateway:
             "input_tokens": response.input_tokens,
             "output_tokens": response.output_tokens,
             "request_id": response.raw_request_id,
-            "finish_reason": response.finish_reason,
-        })
+            "finish_reason": normalize_finish_reason(response.finish_reason) or None,
+            "raw_finish_reason": response.provider_state.get(
+                "raw_finish_reason", response.finish_reason,
+            ),
+            "transport_complete": response.provider_state.get(
+                "transport_complete", True,
+            ) is not False,
+            "requested_max_output_tokens": max_output_tokens,
+            "route_fingerprint": self._route_fingerprint(resolved, "plain"),
+            "execution_mode": "plain",
+        }
+        self._record_output_observation(receipt, response.text)
+        if not receipt["transport_complete"]:
+            raise TransportInterruptedError(receipt, response.text)
+        return ModelResult(response.text, receipt)
 
     async def complete_with_tools(self, role: str, system: str, user: str, toolbox,
                                   fallback_context, run_id: str | None = None,
@@ -309,18 +332,26 @@ class ModelGateway:
                     )
                 input_tokens += response.input_tokens
                 output_tokens += response.output_tokens
+                round_receipt = self._receipt(
+                    role, resolved, response, response.input_tokens,
+                    response.output_tokens, "native_tool_round", 0,
+                    max_output_tokens,
+                )
+                self._record_output_observation(round_receipt, response.text)
+                if not round_receipt["transport_complete"]:
+                    raise TransportInterruptedError(round_receipt, response.text)
                 if not response.tool_calls:
                     if controlled_runtime:
                         if getattr(toolbox, "awaiting_question", None):
                             return ModelResult(response.text, self._receipt(
                                 role, resolved, response, input_tokens, output_tokens,
-                                "native_tools", calls,
+                                "native_tools", calls, max_output_tokens,
                             ))
                         summary = finalize() if finalize else None
                         if summary is not None:
                             return ModelResult(summary, self._receipt(
                                 role, resolved, response, input_tokens, output_tokens,
-                                "native_tools", calls,
+                                "native_tools", calls, max_output_tokens,
                             ))
                         if round_index < round_limit - 1:
                             messages.append(Message(
@@ -340,7 +371,7 @@ class ModelGateway:
                         )
                     return ModelResult(response.text, self._receipt(
                         role, resolved, response, input_tokens, output_tokens,
-                        "native_tools", calls,
+                        "native_tools", calls, max_output_tokens,
                     ))
                 calls += len(response.tool_calls)
                 summaries = []
@@ -370,7 +401,7 @@ class ModelGateway:
                 if completion_summary is not None:
                     return ModelResult(completion_summary, self._receipt(
                         role, resolved, response, input_tokens, output_tokens,
-                        "native_tools", calls,
+                        "native_tools", calls, max_output_tokens,
                     ))
                 messages.append(Message(role="assistant", content="Requested read-only story evidence."))
                 messages.append(Message(role="user", content="TOOL RESULTS:\n" + json.dumps(summaries, ensure_ascii=False)))
@@ -378,7 +409,7 @@ class ModelGateway:
             if summary is not None:
                 return ModelResult(summary, self._receipt(
                     role, resolved, response, input_tokens, output_tokens,
-                    "native_tools", calls,
+                    "native_tools", calls, max_output_tokens,
                 ))
             raise RuntimeError("Controlled runtime ended without required tool output")
         except ToolCapabilityError as exc:
@@ -430,16 +461,57 @@ class ModelGateway:
             execution_mode="degraded_prompt_mode", status="succeeded", fallback_reason=reason,
         )
         receipt = self._receipt(role, resolved, response, response.input_tokens,
-                                response.output_tokens, "degraded_prompt_mode", 0)
+                                response.output_tokens, "degraded_prompt_mode", 0,
+                                max_output_tokens)
+        self._record_output_observation(receipt, response.text)
+        if not receipt["transport_complete"]:
+            raise TransportInterruptedError(receipt, response.text)
         receipt["fallback_reason"] = reason
         return ModelResult(response.text, receipt)
 
-    @staticmethod
-    def _receipt(role, resolved, response, input_tokens, output_tokens, mode, calls):
+    def _receipt(self, role, resolved, response, input_tokens, output_tokens, mode, calls,
+                 requested_max_output_tokens=None):
         return {
             "role": role, "provider_id": resolved.provider_id, "model_id": resolved.model_id,
             "model_name": resolved.model_name, "input_tokens": input_tokens,
             "output_tokens": output_tokens, "request_id": response.raw_request_id,
-            "finish_reason": response.finish_reason,
+            "finish_reason": normalize_finish_reason(response.finish_reason) or None,
+            "raw_finish_reason": response.provider_state.get(
+                "raw_finish_reason", response.finish_reason,
+            ),
+            "transport_complete": response.provider_state.get(
+                "transport_complete", True,
+            ) is not False,
+            "requested_max_output_tokens": requested_max_output_tokens,
+            "route_fingerprint": self._route_fingerprint(resolved, mode),
             "execution_mode": mode, "tool_call_count": calls,
         }
+
+    def _route_fingerprint(self, resolved, execution_mode: str) -> str:
+        provider = self.db.get_provider(resolved.provider_id) or {}
+        payload = {
+            "provider_id": resolved.provider_id,
+            "model_id": resolved.model_id,
+            "model_name": resolved.model_name,
+            "protocol": provider.get("protocol"),
+            "base_url": provider.get("base_url"),
+            "auth_type": provider.get("auth_type"),
+            "header_names": sorted((provider.get("extra_headers") or {}).keys()),
+            "capabilities": resolved.capabilities,
+            "execution_mode": execution_mode,
+        }
+        encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def _record_output_observation(self, receipt: dict, text: str) -> None:
+        self.db.save_model_output_observation(
+            provider_id=str(receipt.get("provider_id") or ""),
+            model_id=str(receipt.get("model_id") or ""),
+            route_fingerprint=str(receipt.get("route_fingerprint") or ""),
+            execution_mode=str(receipt.get("execution_mode") or "plain"),
+            requested_max_output_tokens=receipt.get("requested_max_output_tokens"),
+            actual_output_tokens=int(receipt.get("output_tokens") or 0),
+            visible_characters=len(text or ""),
+            finish_reason=normalize_finish_reason(receipt.get("finish_reason")) or None,
+            transport_complete=bool(receipt.get("transport_complete", True)),
+        )

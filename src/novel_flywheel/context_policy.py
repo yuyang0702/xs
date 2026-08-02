@@ -4,9 +4,70 @@ import re
 from typing import Any
 
 
+OUTPUT_LIMIT_REASONS = {
+    "length", "max_output_tokens", "max_tokens", "model_length",
+}
+INVALID_TERMINAL_REASONS = {
+    "incomplete", "failed", "cancelled", "canceled", "content_filter", "safety",
+}
+AUTO_DISCOVERY_MAX_OUTPUT_TOKENS = 65_536
+
+
 def estimate_input_tokens(text: str) -> int:
     cjk = len(re.findall(r"[\u3400-\u9fff]", text))
     return cjk + math.ceil((len(text) - cjk) / 4)
+
+
+def normalize_finish_reason(value: object) -> str:
+    reason = str(value or "").strip().lower().replace("-", "_")
+    return "max_tokens" if reason in OUTPUT_LIMIT_REASONS else reason
+
+
+def output_limited(receipt: dict | None) -> bool:
+    return normalize_finish_reason((receipt or {}).get("finish_reason")) == "max_tokens"
+
+
+def invalid_terminal_output(receipt: dict | None) -> bool:
+    return normalize_finish_reason(
+        (receipt or {}).get("finish_reason")
+    ) in INVALID_TERMINAL_REASONS
+
+
+def adaptive_output_budget(
+    stage: str,
+    *,
+    expected_output_characters: int | None = None,
+    input_tokens: int = 0,
+    context_window: int | None = None,
+    declared_output_ceiling: int | None = None,
+) -> int | None:
+    """Choose headroom for quality; this is not a content or cost limit."""
+    baseline = stage_output_budget(stage, expected_output_characters)
+    if baseline is None:
+        return None
+    desired = baseline
+    if expected_output_characters is not None:
+        expected = estimate_input_tokens("汉" * max(0, expected_output_characters))
+        desired = max(baseline, math.ceil(expected * 1.75) + 1024)
+    ceiling = declared_output_ceiling or AUTO_DISCOVERY_MAX_OUTPUT_TOKENS
+    if context_window:
+        ceiling = min(ceiling, max(1, context_window - input_tokens - 2048))
+    return min(desired, ceiling)
+
+
+def expanded_output_budget(
+    current: int | None,
+    *,
+    input_tokens: int = 0,
+    context_window: int | None = None,
+    declared_output_ceiling: int | None = None,
+) -> int | None:
+    if current is None:
+        return None
+    ceiling = declared_output_ceiling or AUTO_DISCOVERY_MAX_OUTPUT_TOKENS
+    if context_window:
+        ceiling = min(ceiling, max(1, context_window - input_tokens - 2048))
+    return min(ceiling, max(current + 1024, current * 2))
 
 
 def _json(value: Any, limit: int) -> str:

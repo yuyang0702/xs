@@ -20,9 +20,11 @@ from novel_flywheel.quality_records import load_quality_checkpoint, write_qualit
 from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.revision import segment_map
+from novel_flywheel.scene_continuity import LocationRef
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.workflows import (
+    IncompleteModelOutputError,
     PolishTokenBudgetError,
     RevisionPlanError,
     StageText,
@@ -469,6 +471,12 @@ class FakeGateway:
         self.roles.append(role)
         self.systems.append(system)
         assert "Skill instructions" in system
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            return ModelResult(json.dumps({
+                "core_goal": "完成正式规划中的目标",
+                "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+                "ending": "完成正式结局", "covered_event_ids": [],
+            }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
 
@@ -729,13 +737,19 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
 
     assert result["status"] == "completed"
     assert gateway.roles == [
-        "planning", "draft", "review", "review", "polish", "final_review", "maintenance",
+        "planning", "planning", "draft", "review", "review", "polish",
+        "final_review", "maintenance",
     ]
     assert (project.path / "manuscript" / "story.md").read_text(encoding="utf-8") == "# Final Story\nHuman, polished prose."
     assert (project.path / "chapters" / "chapter-01.md").is_file()
     assert json.loads((project.path / "memory" / "canon.json").read_text(encoding="utf-8"))["facts"]
     run_path = project.path / "runs" / result["id"]
     assert (run_path / "outputs" / "planning.md").is_file()
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+    execution_index = json.loads(
+        (run_path / "outputs" / "short-execution-index.json").read_text(encoding="utf-8")
+    )
+    assert execution_index["status"] == "ready"
     assert (run_path / "outputs" / "final_review.md").is_file()
     report = json.loads((run_path / "outputs" / "quality-report.json").read_text(encoding="utf-8"))
     assert report["route"]["enhanced"] is True
@@ -968,6 +982,12 @@ class RecordingGateway:
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
         self.calls.append({"role": role, "system": system, "user": user})
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            return ModelResult(json.dumps({
+                "core_goal": "完成正式规划中的目标",
+                "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+                "ending": "完成正式结局", "covered_event_ids": [],
+            }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
 
@@ -1248,6 +1268,392 @@ def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() ->
         SimpleNamespace(path=Path("."), metadata={}), {}, missing_handoff_plan, 3,
     )
     assert any("无法确认剧情分工与前后衔接" in item for item in issues)
+
+
+@pytest.mark.asyncio
+async def test_truncated_draft_segment_is_split_into_internal_subtasks(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Adaptive draft", mode="short", genre="suspense",
+        premise="A route truncates one owned segment.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            if len(self.calls) <= 2:
+                return ModelResult("未完成", {
+                    "role": role, "model_name": "limited",
+                    "finish_reason": "max_tokens",
+                    "requested_max_output_tokens": max_output_tokens,
+                })
+            character = "甲" if "内部子任务 1/2" in user else "乙"
+            return ModelResult(character * 500, {
+                "role": role, "model_name": "limited", "finish_reason": "stop",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("adaptive", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "adaptive"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "adaptive", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-01", target=1000, previous_parts=[],
+    )
+
+    assert text == "甲" * 500 + "\n\n" + "乙" * 500
+    assert len(gateway.calls) == 4
+    split = next(
+        item for item in db.list_run_events("adaptive")
+        if item["event_type"] == "draft_task_split"
+    )
+    assert split["metadata"]["subtasks"] == 2
+
+
+@pytest.mark.asyncio
+async def test_normal_finish_underlength_splits_semantically(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Normally short draft", mode="short", genre="suspense",
+        premise="A model stops normally before developing the scene.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            if len(self.calls) == 1:
+                return ModelResult("摘要" * 80, {
+                    "role": role, "model_name": "early-stop", "finish_reason": "stop",
+                    "transport_complete": True,
+                })
+            character = "甲" if "内部子任务 1/2" in user else "乙"
+            return ModelResult(character * 500, {
+                "role": role, "model_name": "early-stop", "finish_reason": "stop",
+                "transport_complete": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("normal-short", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "normal-short"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "normal-short", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-04", target=1000, previous_parts=[],
+        event_ids=[
+            "EV-00000001", "EV-00000002", "EV-00000003", "EV-00000004",
+        ],
+    )
+
+    assert text == "甲" * 500 + "\n\n" + "乙" * 500
+    assert len(gateway.calls) == 3
+    assert "EV-00000001、EV-00000002" in gateway.calls[1]
+    assert "EV-00000003、EV-00000004" in gateway.calls[2]
+    split = next(
+        item for item in db.list_run_events("normal-short")
+        if item["event_type"] == "draft_task_split"
+    )
+    assert split["metadata"]["reason"] == "normal_finish_underlength"
+    assert split["metadata"]["han_characters"] == 160
+    assert split["metadata"]["issue_codes"] == ["underlength"]
+    assert split["metadata"]["event_ids"] == [
+        "EV-00000001", "EV-00000002", "EV-00000003", "EV-00000004",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_normal_finish_non_han_text_does_not_use_han_length_split(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="English draft", mode="short", genre="suspense",
+        premise="A project whose prose is not measured by Han character count.",
+        target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            return ModelResult("# Draft\n\nAn English scene returned normally.", {
+                "role": role, "model_name": "english", "finish_reason": "stop",
+                "transport_complete": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("english", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "english"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "english", run_path, project, "constraints", "Write the scene.",
+        suffix="-part-01", target=1000, previous_parts=[],
+    )
+
+    assert text == "# Draft\n\nAn English scene returned normally."
+    assert len(gateway.calls) == 1
+    assert not any(
+        item["event_type"] == "draft_task_split"
+        for item in db.list_run_events("english")
+    )
+
+
+@pytest.mark.asyncio
+async def test_underlength_without_terminal_evidence_is_not_classified_as_normal_finish(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Unknown terminal", mode="short", genre="suspense",
+        premise="A legacy route omits terminal metadata.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            return ModelResult("正文草稿", {
+                "role": role, "model_name": "legacy-without-terminal-state",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("unknown-terminal", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "unknown-terminal"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "unknown-terminal", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-01", target=1000, previous_parts=[],
+    )
+
+    assert text == "正文草稿"
+    assert len(gateway.calls) == 1
+    assert not any(
+        item["event_type"] == "draft_task_split"
+        for item in db.list_run_events("unknown-terminal")
+    )
+
+
+@pytest.mark.asyncio
+async def test_short_planning_batches_are_internal_and_checkpointed(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Batched plan", mode="short", genre="suspense",
+        premise="A long plan is split safely.", target_words=10000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    db.create_run("batched-plan", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "batched-plan"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    calls = []
+
+    async def fake_stage(*args, **kwargs):
+        user = args[5]
+        calls.append(user)
+        match = __import__("re").search(r"第 (\d+) 段到第 (\d+) 段", user)
+        assert match
+        start, end = map(int, match.groups())
+        return "\n\n".join(
+            f"### 第 {number} 段：事件{number}\n"
+            f"事件ID：EV-{number:08x}\n大纲依据：事件{number}\n"
+            f"段首承接：承接状态{number}\n本段事件：推进事件{number}\n"
+            f"段末交接：留下状态{number}\n" + chr(0x4e00 + number) * 100
+            for number in range(start, end + 1)
+        )
+
+    service._stage = fake_stage
+    plan = await service._plan_short_in_batches(
+        "batched-plan", run_path, project, "constraints", "brief", {}, 4,
+    )
+
+    assert len(calls) == 2
+    assert len(service._short_plan_segments(plan, 4)) == 4
+    assert len(list((run_path / "outputs" / "planning-checkpoints").glob("*.json"))) == 2
+
+    async def should_not_call(*args, **kwargs):
+        raise AssertionError("validated planning batch was not reused")
+
+    service._stage = should_not_call
+    assert await service._plan_short_in_batches(
+        "batched-plan", run_path, project, "constraints", "brief", {}, 4,
+    ) == plan
+
+
+@pytest.mark.asyncio
+async def test_invalid_causal_chain_keeps_execution_index_pending(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Pending causal chain", mode="short", genre="suspense",
+        premise="Drafting waits for causal authority.", target_words=3000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    db.create_run("causal-pending", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "causal-pending"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    async def invalid_chain(*args, **kwargs):
+        return json.dumps({"core_goal": "目标"}, ensure_ascii=False)
+
+    service._stage = invalid_chain
+    with pytest.raises(ValueError, match="因果链未通过"):
+        await service._ensure_short_causal_chain(
+            "causal-pending", run_path, project, "constraints",
+            "# 已验收规划", [], None,
+        )
+
+    index = json.loads(
+        (run_path / "outputs" / "short-execution-index.json").read_text(encoding="utf-8")
+    )
+    assert index["status"] == "causal_pending"
+    assert not (run_path / "outputs" / "short-causal-chain.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Cross-run prefix", mode="short", genre="suspense",
+        premise="A failed draft resumes without rewriting accepted scenes.",
+        target_words=10000,
+    ))
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    constraints = store.load_constraints(project.id)
+    plan = "\n\n".join(
+        f"### 第 {number} 段：事件{number}\n"
+        f"事件ID：EV-{number:08x}\n大纲依据：事件{number}\n"
+        f"段首承接：承接状态{number}\n本段事件：推进事件{number}\n"
+        f"段末交接：留下状态{number}\n" + chr(0x4e00 + number) * 100
+        for number in range(1, 5)
+    )
+    assert not WorkflowService._short_plan_issues(project, state.data, plan, 4)
+    chain = {
+        "core_goal": "完成目标",
+        "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+        "ending": "完成结局",
+    }
+    db.create_run("failed-prefix", project.id, "short-story", status="running")
+    source_outputs = project.path / "runs" / "failed-prefix" / "outputs"
+    source_outputs.mkdir(parents=True)
+    atomic = __import__("novel_flywheel.storage", fromlist=["atomic_write"]).atomic_write
+    atomic(source_outputs / "planning.md", plan)
+    atomic(
+        source_outputs / "short-causal-chain.json",
+        json.dumps(chain, ensure_ascii=False, indent=2),
+    )
+    WorkflowService._write_short_execution_index(
+        project.path / "runs" / "failed-prefix", project, state.revision,
+        state.data, constraints, plan, chain, 4,
+    )
+    augmented_constraints = constraints + (
+        "\n\n# Short Story Causal Chain\n\n"
+        + __import__("novel_flywheel.causal_chain", fromlist=["compact_causal_chain"])
+        .compact_causal_chain(chain)
+    )
+    authority_hash = hashlib.sha256(json.dumps({
+        "plan": plan, "constraints": augmented_constraints,
+        "target_words": 10000, "segment_count": 4,
+    }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    previous = ""
+    for number, character in ((1, "甲"), (2, "乙")):
+        text = character * 2500
+        block = WorkflowService._short_plan_segments(plan, 4)[number - 1]
+        atomic(
+            source_outputs / "draft-checkpoints" / f"segment-{number:02d}.json",
+            json.dumps({
+                "version": 1, "authority_sha256": authority_hash,
+                "previous_sha256": (
+                    hashlib.sha256(previous.encode("utf-8")).hexdigest()
+                    if previous else ""
+                ),
+                "segment_plan_sha256": hashlib.sha256(block.encode("utf-8")).hexdigest(),
+                "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+                "text": text,
+                "assignment": {
+                    "segment": number,
+                    "event_ids": [f"EV-{number:08X}"],
+                    "handoff": WorkflowService._short_plan_handoff(block),
+                },
+            }, ensure_ascii=False, indent=2),
+        )
+        previous = text
+    db.update_run("failed-prefix", "failed", error="provider interrupted segment 3")
+
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    assert service._find_short_partial_checkpoint(
+        project, "resume-prefix", state.revision, state.data, constraints, 4,
+    ) == source_outputs
+    generated_segments = []
+
+    async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
+        if stage == "review":
+            raise RuntimeError("stop after resumed draft")
+        assert stage == "draft"
+        match = __import__("re").search(r"本次只写第 (\d+)/4 段", user)
+        assert match
+        number = int(match.group(1))
+        generated_segments.append(number)
+        return chr(0x4e00 + number + 10) * 2500
+
+    service._stage = fake_stage
+    with pytest.raises(RuntimeError, match="stop after resumed draft"):
+        await service.run_short(
+            project.id, use_crewai=False, run_id="resume-prefix",
+        )
+
+    assert generated_segments == [3, 4]
+    resumed = project.path / "runs" / "resume-prefix" / "outputs" / "draft.md"
+    parts = WorkflowService._split_segments(resumed.read_text(encoding="utf-8"))
+    assert parts[:2] == ["甲" * 2500, "乙" * 2500]
 
 
 @pytest.mark.parametrize("headings", [
@@ -1546,14 +1952,58 @@ def test_adjacent_segments_may_continue_the_same_formal_outline_event() -> None:
 
     assert not any("事件" in item and ("倒退" in item or "没有分配" in item) for item in issues)
 
+    catalog = {
+        "容府厨房": LocationRef("容府厨房", "容府"),
+        "容府大厅": LocationRef("容府大厅", "容府"),
+        "沈府大厅": LocationRef("沈府大厅", "沈府"),
+    }
     previous = ["苏荞在容府厨房关上门，继续等周嬷嬷回来。" * 8]
     abrupt = "沈府大厅里，方小满已经开始参加家宴。" + "众人沉默。" * 60
-    issues = WorkflowService._draft_segment_issues(abrupt, 600, previous)
+    issues = WorkflowService._draft_segment_issues(
+        abrupt, 600, previous, catalog,
+    )
     assert any("换了场景" in item for item in issues)
 
     bridged = "次日清晨，苏荞从厨房回到容府大厅。" + "她接着处理昨夜留下的问题。" * 50
-    bridged_issues = WorkflowService._draft_segment_issues(bridged, 600, previous)
+    bridged_issues = WorkflowService._draft_segment_issues(
+        bridged, 600, previous, catalog,
+    )
     assert not any("换了场景" in item for item in bridged_issues)
+
+
+def test_draft_findings_keep_underlength_blocking_without_guessing_unknown_locations() -> None:
+    findings = WorkflowService._draft_segment_findings(
+        "月面基地的灯亮了。" * 5,
+        1000,
+        ["她留在远航号。" * 20],
+        {},
+    )
+
+    blocking_codes = {
+        item["code"] for item in findings if item["blocking"]
+    }
+    assert "underlength" in blocking_codes
+    assert "scene_transition_missing" not in blocking_codes
+
+
+def test_draft_findings_make_same_root_location_change_nonblocking() -> None:
+    catalog = {
+        "教学楼": LocationRef("教学楼", "学校"),
+        "地下车库": LocationRef("地下车库", "学校"),
+    }
+
+    findings = WorkflowService._draft_segment_findings(
+        "地下车库里只剩一盏灯。" + "她屏住呼吸。" * 80,
+        600,
+        ["她站在教学楼门口。" * 40],
+        catalog,
+    )
+
+    assert "scene_transition_uncertain" in {item["code"] for item in findings}
+    assert not any(
+        item["code"] == "scene_transition_uncertain" and item["blocking"]
+        for item in findings
+    )
 
 
 @pytest.mark.asyncio
@@ -2499,7 +2949,7 @@ async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> No
     )
 
     assert result["target_segments"] == [2]
-    assert gateway.roles == ["planning", "review"]
+    assert gateway.roles == ["planning", "planning", "review"]
     assert any(event["event_type"] == "model_fallback"
                for event in db.list_run_events("plan-fallback"))
 
@@ -3058,7 +3508,7 @@ def test_output_budget_uses_each_selected_route_model_ceiling(tmp_path) -> None:
     service = WorkflowService.__new__(WorkflowService)
     service.db = db
 
-    assert service._output_budget_for_call("polish", 2000, "polish", False) == 3212
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 4524
     assert service._output_budget_for_call("polish", 2000, "polish", True) == 3072
 
 
@@ -3082,7 +3532,7 @@ def test_ordinary_stage_budgets_use_defaults_capped_by_selected_route_ceiling(tm
     assert service._output_budget_for_call("planning", None, "planning", False) == 6000
     assert service._output_budget_for_call("draft", None, "draft", False) == 6000
     assert service._output_budget_for_call("review", None, "review", False) == 4096
-    assert service._output_budget_for_call("polish", 2000, "polish", False) == 3212
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 4524
 
 
 def test_output_budget_keeps_stage_default_without_configured_model_ceiling(tmp_path) -> None:
@@ -3101,7 +3551,7 @@ def test_output_budget_keeps_stage_default_without_configured_model_ceiling(tmp_
     service = WorkflowService.__new__(WorkflowService)
     service.db = db
 
-    assert service._output_budget_for_call("polish", 2000, "polish", False) == 3212
+    assert service._output_budget_for_call("polish", 2000, "polish", False) == 4524
 
 
 @pytest.mark.asyncio
@@ -3144,7 +3594,7 @@ async def test_targeted_retry_at_provider_ceiling_does_not_repeat_same_request(t
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
 
-    with pytest.raises(RuntimeError, match="polish model returned empty output"):
+    with pytest.raises(IncompleteModelOutputError, match="remained incomplete"):
         await service._stage(
             "ceiling-split", run_path, project, "polish", "constraints",
             "MANUSCRIPT SEGMENT:\nSource prose.", allow_tools=False,
@@ -3155,7 +3605,7 @@ async def test_targeted_retry_at_provider_ceiling_does_not_repeat_same_request(t
 
 
 @pytest.mark.asyncio
-async def test_targeted_retry_without_configured_ceiling_stops_at_stage_budget(tmp_path) -> None:
+async def test_targeted_retry_without_configured_ceiling_expands_to_quality_estimate(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
@@ -3184,14 +3634,14 @@ async def test_targeted_retry_without_configured_ceiling_stops_at_stage_budget(t
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
 
-    with pytest.raises(RuntimeError, match="polish model returned empty output"):
+    with pytest.raises(IncompleteModelOutputError, match="remained incomplete"):
         await service._stage(
             "legacy-ceiling", run_path, project, "polish", "constraints",
             "MANUSCRIPT SEGMENT:\n" + "A" * 1000, allow_tools=False,
             output_source_characters=1000, targeted_retry=True,
         )
 
-    assert gateway.budgets == [1606, 2048]
+    assert gateway.budgets == [1606, 2774]
     assert 8192 not in gateway.budgets
 
 
@@ -3245,7 +3695,7 @@ async def test_polish_stage_adapts_large_rule_context_with_stage_default_budget(
     system, user, budget = gateway.calls[0]
     from novel_flywheel.context_policy import estimate_input_tokens
     assert estimate_input_tokens(system + user) <= 12000
-    assert budget == 2132
+    assert budget == 3124
 
 
 def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:
@@ -3858,7 +4308,7 @@ async def test_structural_polish_does_not_enter_ordinary_compact_recovery(tmp_pa
     gateway = Gateway()
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
-    with pytest.raises(RuntimeError, match="empty output"):
+    with pytest.raises(IncompleteModelOutputError, match="remained incomplete"):
         await service._polish_short_segments(
             "polish-recovery", run_path, project, "constraints", source, "{}",
             structural=True, targeted_context={
@@ -4061,7 +4511,7 @@ async def test_review_marks_incomplete_when_primary_and_fallback_are_empty(tmp_p
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
 
-    with pytest.raises(RuntimeError, match="review model returned empty output"):
+    with pytest.raises(IncompleteModelOutputError, match="remained incomplete"):
         await service._stage(
             "incomplete-review", run_path, project, "review", "constraints", "draft",
             allow_tools=False,
@@ -4653,6 +5103,12 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
     )
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            return json.dumps({
+                "core_goal": "完成目标",
+                "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+                "ending": "完成结局", "covered_event_ids": [],
+            }, ensure_ascii=False)
         if stage == "planning":
             return plan
         if stage == "review":
@@ -4715,7 +5171,11 @@ async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_
     def fake_extract(run_id, plan):
         nonlocal extract_calls
         extract_calls += 1
-        return (plan, {"core_goal": "保留最初因果链"}) if extract_calls == 1 else (plan, None)
+        return (plan, {
+            "core_goal": "保留最初因果链",
+            "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+            "ending": "完成结局",
+        }) if extract_calls == 1 else (plan, None)
 
     saved_chains = []
 
@@ -4741,7 +5201,11 @@ async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_
     assert saved.read_text(encoding="utf-8") == repaired
     assert captured["plan"] == repaired
     assert "保留最初因果链" in captured["constraints"]
-    assert saved_chains == [{"core_goal": "保留最初因果链"}]
+    assert saved_chains == [{
+        "core_goal": "保留最初因果链",
+        "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+        "ending": "完成结局",
+    }]
     assert "segment_heading_format" in prompts[0]
     assert "### 第 1 段" in prompts[1]
 

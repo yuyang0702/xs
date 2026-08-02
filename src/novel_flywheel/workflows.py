@@ -8,7 +8,7 @@ import threading
 import unicodedata
 import uuid
 from contextlib import contextmanager, nullcontext
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Iterator
@@ -17,12 +17,18 @@ from novel_flywheel.db import Database
 from novel_flywheel.causal_chain import (
     END as SHORT_CAUSAL_CHAIN_END,
     START as SHORT_CAUSAL_CHAIN_START,
+    analyze_short_causal_chain,
     compact_causal_chain,
     extract_short_causal_chain,
 )
 from novel_flywheel.context_policy import (
+    adaptive_output_budget,
     estimate_input_tokens,
+    expanded_output_budget,
+    invalid_terminal_output,
     next_retry_action,
+    normalize_finish_reason,
+    output_limited,
     patch_output_budget,
     polish_context,
     revision_patch_context,
@@ -80,6 +86,11 @@ from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
+)
+from novel_flywheel.scene_continuity import (
+    LocationRef,
+    assess_scene_transition,
+    build_location_catalog,
 )
 from novel_flywheel.quality_profiles import (
     ZHihu_SHORT_V2,
@@ -155,6 +166,16 @@ class ExpansionRejectedError(ValueError):
 
 class PolishTokenBudgetError(RuntimeError):
     pass
+
+
+class IncompleteModelOutputError(RuntimeError):
+    """The transport finished, but the artifact did not prove completeness."""
+
+    def __init__(self, stage: str, partial: StageText):
+        super().__init__(f"{stage} output remained incomplete after output-limit recovery")
+        self.stage = stage
+        self.partial = partial
+        self.receipt = partial.receipt
 
 
 # ponytail: one local console process needs serialization, not a lock registry.
@@ -2422,6 +2443,12 @@ class WorkflowService:
                         stage="planning",
                     )
                     checkpoint = None
+            partial_checkpoint = (
+                None if checkpoint else self._find_short_partial_checkpoint(
+                    project, run_id, state.revision, state.data, constraints,
+                    segment_count,
+                )
+            )
             resumed_best = False
             if checkpoint:
                 plan = (checkpoint / "planning.md").read_text(encoding="utf-8")
@@ -2439,6 +2466,46 @@ class WorkflowService:
                     stage="draft", metadata={
                         "source_run": checkpoint.parent.name,
                         "source_artifact": source_artifact,
+                    },
+                )
+            elif partial_checkpoint:
+                plan = (partial_checkpoint / "planning.md").read_text(encoding="utf-8")
+                causal_chain = json.loads(
+                    (partial_checkpoint / "short-causal-chain.json").read_text(
+                        encoding="utf-8"
+                    )
+                )
+                atomic_write(run_path / "outputs" / "planning.md", plan)
+                atomic_write(
+                    run_path / "outputs" / "short-causal-chain.json",
+                    json.dumps(causal_chain, ensure_ascii=False, indent=2),
+                )
+                self._write_short_execution_index(
+                    run_path, project, state.revision, state.data, constraints,
+                    plan, causal_chain, segment_count,
+                )
+                for source in sorted(
+                    (partial_checkpoint / "draft-checkpoints").glob("segment-*.json")
+                ):
+                    atomic_write(
+                        run_path / "outputs" / "draft-checkpoints" / source.name,
+                        source.read_text(encoding="utf-8"),
+                    )
+                constraints += (
+                    "\n\n# Short Story Causal Chain\n\n"
+                    f"{compact_causal_chain(causal_chain)}"
+                )
+                draft = await self._draft_short_in_segments(
+                    run_id, run_path, project, constraints, plan,
+                )
+                self._save_short_checkpoint(
+                    run_path / "outputs", checkpoint_context,
+                )
+                self.db.add_run_event(
+                    run_id, "success", "partial_draft_checkpoint_reused",
+                    "已复用上一任务通过校验的正文前缀，并从首个缺失分段继续",
+                    stage="draft", metadata={
+                        "source_run": partial_checkpoint.parent.name,
                     },
                 )
             else:
@@ -2489,10 +2556,28 @@ class WorkflowService:
                         "ending_shape": ["surface_goal", "inner_goal", "cost"],
                     },
                 }, ensure_ascii=False, indent=2)
-                plan = await self._stage(
-                    run_id, run_path, project, "planning", constraints, brief,
-                    allow_tools=self._planning_uses_tools(state),
+                expected_plan_characters = max(3000, 1200 * segment_count)
+                proactive_split = self._route_requires_semantic_split(
+                    "planning", expected_plan_characters,
                 )
+                try:
+                    if proactive_split:
+                        raise IncompleteModelOutputError(
+                            "planning", StageText("", {"finish_reason": "predicted_limit"}),
+                        )
+                    plan = await self._stage(
+                        run_id, run_path, project, "planning", constraints, brief,
+                        allow_tools=self._planning_uses_tools(state),
+                        expected_output_characters=expected_plan_characters,
+                        completion_check=lambda value: self._short_plan_output_complete(
+                            project, state.data, value, segment_count,
+                        ),
+                    )
+                except IncompleteModelOutputError:
+                    plan = await self._plan_short_in_batches(
+                        run_id, run_path, project, constraints, brief,
+                        state.data, segment_count,
+                    )
                 plan, causal_chain = self._extract_short_causal_chain(run_id, plan)
                 plan_issues = self._short_plan_issues(
                     project, state.data, plan, segment_count,
@@ -2503,8 +2588,7 @@ class WorkflowService:
                         "规划稿没有通过本地检查，正在修正后再进入正文",
                         stage="planning", metadata={"issues": plan_issues},
                     )
-                    repaired_plan = await self._stage(
-                        run_id, run_path, project, "planning", constraints,
+                    repair_prompt = (
                         "请修正下面的规划稿。必须保留正式大纲的故事方向，为每个分段明确分配互不重复的事件，"
                         f"必须恰好写 {segment_count} 个分段，标题依次使用“### 第 1 段：标题”"
                         f"到“### 第 {segment_count} 段：标题”；"
@@ -2514,9 +2598,24 @@ class WorkflowService:
                         "段首和段末必须交代人物位置、正在做什么、关系变化和已经知道什么。"
                         "只返回完整修正版规划稿。\n\n"
                         f"需要修正：{json.dumps(plan_issues, ensure_ascii=False)}\n\n"
-                        f"当前规划稿：\n{plan}",
-                        suffix="-gate-repair", allow_tools=False,
+                        f"当前规划稿：\n{plan}"
                     )
+                    try:
+                        repaired_plan = await self._stage(
+                            run_id, run_path, project, "planning", constraints,
+                            repair_prompt,
+                            suffix="-gate-repair", allow_tools=False,
+                            expected_output_characters=expected_plan_characters,
+                            completion_check=lambda value: self._short_plan_output_complete(
+                                project, state.data, value, segment_count,
+                            ),
+                        )
+                    except IncompleteModelOutputError:
+                        repaired_plan = await self._plan_short_in_batches(
+                            run_id, run_path, project, constraints,
+                            brief + "\n\nREPAIR REQUIREMENTS:\n" + repair_prompt,
+                            state.data, segment_count,
+                        )
                     plan, repaired_chain = self._extract_short_causal_chain(
                         run_id, repaired_plan,
                     )
@@ -2532,12 +2631,19 @@ class WorkflowService:
                         )
                         raise ValueError("规划稿未通过设定和分段检查，尚未生成正文")
                 atomic_write(run_path / "outputs" / "planning.md", plan)
-                if causal_chain:
-                    self._save_short_causal_chain(run_id, project, causal_chain)
-                    constraints += (
-                        "\n\n# Short Story Causal Chain\n\n"
-                        f"{compact_causal_chain(causal_chain)}"
-                    )
+                causal_chain = await self._ensure_short_causal_chain(
+                    run_id, run_path, project, constraints, plan,
+                    formal_outline_events, causal_chain,
+                )
+                self._save_short_causal_chain(run_id, project, causal_chain)
+                self._write_short_execution_index(
+                    run_path, project, state.revision, state.data, constraints,
+                    plan, causal_chain, segment_count,
+                )
+                constraints += (
+                    "\n\n# Short Story Causal Chain\n\n"
+                    f"{compact_causal_chain(causal_chain)}"
+                )
                 checkpoint_constraints = self.projects.load_constraints(project.id)
                 checkpoint_context = self._short_checkpoint_context(
                     project, state.revision, state.data, checkpoint_constraints,
@@ -2713,6 +2819,140 @@ class WorkflowService:
 
         return outline, chain
 
+    def _short_plan_output_complete(
+        self, project: Project, state: dict, value: str, segment_count: int,
+    ) -> bool:
+        try:
+            outline, _chain = extract_short_causal_chain(value)
+        except (ValueError, json.JSONDecodeError):
+            return False
+        return not self._short_plan_issues(project, state, outline, segment_count)
+
+    def _route_requires_semantic_split(
+        self, role: str, expected_output_characters: int,
+    ) -> bool:
+        binding = self.db.get_role_binding(role) or {}
+        provider_id = str(binding.get("primary_provider_id") or "")
+        model_id = str(binding.get("primary_model_id") or "")
+        if not provider_id or not model_id:
+            return False
+        stable_limits = [
+            profile["suspected_stable_output_tokens"]
+            for profile in (
+                self.db.latest_model_output_profile(provider_id, model_id, "plain"),
+                self.db.latest_model_output_profile(
+                    provider_id, model_id, "native_tool_round",
+                ),
+            )
+            if isinstance(profile.get("suspected_stable_output_tokens"), int)
+            and profile["suspected_stable_output_tokens"] > 0
+        ]
+        if not stable_limits:
+            return False
+        stable = min(stable_limits)
+        return estimate_input_tokens("汉" * expected_output_characters) >= int(stable * 0.75)
+
+    async def _plan_short_in_batches(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        brief: str, state: dict, segment_count: int,
+    ) -> str:
+        if segment_count < 2:
+            raise ValueError("单段短篇规划超过供应商可完整返回的范围，无法安全拆分")
+        batch_size = max(1, math.ceil(segment_count / 2))
+        ranges = [
+            (start, min(segment_count, start + batch_size - 1))
+            for start in range(1, segment_count + 1, batch_size)
+        ]
+        self.db.add_run_event(
+            run_id, "warning", "planning_task_split",
+            "规划单次输出可能不完整，已按连续写作段拆成内部子任务",
+            stage="planning", metadata={
+                "subtasks": len(ranges), "segment_count": segment_count,
+            },
+        )
+        blocks: list[str] = []
+        checkpoint_root = run_path / "outputs" / "planning-checkpoints"
+        authority = hashlib.sha256(
+            (brief + constraints).encode("utf-8")
+        ).hexdigest()
+        for batch_number, (start, end) in enumerate(ranges, 1):
+            previous = "\n\n".join(blocks)
+            previous_hash = hashlib.sha256(previous.encode("utf-8")).hexdigest()
+            checkpoint_path = checkpoint_root / f"batch-{batch_number:02d}.json"
+            try:
+                cached = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError, AttributeError):
+                cached = {}
+            block = str(cached.get("text") or "")
+            if not (
+                cached.get("authority_sha256") == authority
+                and cached.get("previous_sha256") == previous_hash
+                and cached.get("range") == [start, end]
+                and cached.get("text_sha256")
+                == hashlib.sha256(block.encode("utf-8")).hexdigest()
+                and self._short_plan_batch_complete(block, start, end)
+            ):
+                prompt = (
+                    f"{brief}\n\nAUTOMATIC INTERNAL PLANNING SUBTASK {batch_number}/{len(ranges)}\n"
+                    f"本次只返回第 {start} 段到第 {end} 段的完整规划块，标题必须使用"
+                    f"“### 第 {start} 段：标题”到“### 第 {end} 段：标题”。"
+                    "每段仍须包含事件ID、大纲依据、段首承接、本段事件、段末交接。"
+                    "根据正式大纲顺序认领事件，不得重写前面批次，不得提前分配后续批次。"
+                    + (f"\n\n前面已验收批次：\n{previous}" if previous else "")
+                )
+                block = await self._stage(
+                    run_id, run_path, project, "planning", constraints, prompt,
+                    suffix=f"-batch-{batch_number:02d}", allow_tools=False,
+                    expected_output_characters=max(1800, (end - start + 1) * 1200),
+                    completion_check=lambda value, first=start, last=end: (
+                        self._short_plan_batch_complete(value, first, last)
+                    ),
+                )
+                if not self._short_plan_batch_complete(block, start, end):
+                    raise ValueError(
+                        f"规划内部子任务 {batch_number} 未完整返回第 {start}-{end} 段"
+                    )
+                atomic_write(checkpoint_path, json.dumps({
+                    "version": 1, "authority_sha256": authority,
+                    "previous_sha256": previous_hash, "range": [start, end],
+                    "text_sha256": hashlib.sha256(block.encode("utf-8")).hexdigest(),
+                    "text": block,
+                }, ensure_ascii=False, indent=2))
+            blocks.append(block.strip())
+        combined = "\n\n".join(blocks)
+        if self._short_plan_issues(project, state, combined, segment_count):
+            self.db.add_run_event(
+                run_id, "warning", "planning_batches_need_repair",
+                "规划内部子任务已合并，正在通过原有全篇检查定位事件分工问题",
+                stage="planning",
+            )
+        return combined
+
+    @classmethod
+    def _short_plan_batch_complete(cls, value: str, start: int, end: int) -> bool:
+        headings = {
+            number for _match, number in cls._short_plan_headings(value)
+            if number is not None
+        }
+        return headings == set(range(start, end + 1)) and all(
+            cls._short_plan_field(block, "event")
+            and cls._short_plan_field(block, "handoff")
+            for block in cls._short_plan_segments_for_range(value, start, end)
+        )
+
+    @classmethod
+    def _short_plan_segments_for_range(
+        cls, value: str, start: int, end: int,
+    ) -> list[str]:
+        headings = cls._short_plan_headings(value)
+        blocks: list[str] = []
+        for position, (match, number) in enumerate(headings):
+            if number is None or not start <= number <= end:
+                continue
+            boundary = headings[position + 1][0].start() if position + 1 < len(headings) else len(value)
+            blocks.append(value[match.start():boundary].strip())
+        return blocks
+
     def _save_short_causal_chain(
         self, run_id: str, project: Project, chain: dict,
     ) -> None:
@@ -2723,6 +2963,129 @@ class WorkflowService:
             run_id, "success", "causal_chain_saved",
             "短篇整篇因果链已保存为项目资料",
             stage="planning", metadata={"cycles": len(chain.get("cycles") or [])},
+        )
+
+    async def _ensure_short_causal_chain(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        plan: str, formal_outline_events: list[dict], candidate: dict | None,
+    ) -> dict:
+        target_words = int(project.metadata["target_words"])
+
+        def valid(value: dict | None, *, require_coverage: bool) -> bool:
+            if not isinstance(value, dict):
+                return False
+            if analyze_short_causal_chain(value, target_words)["status"] == "invalid":
+                return False
+            required_ids = [
+                str(item.get("id") or "").upper()
+                for item in narrative_outline_events(formal_outline_events)
+                if str(item.get("id") or "").strip()
+            ]
+            covered = [
+                str(item).upper() for item in value.get("covered_event_ids", [])
+                if str(item).strip()
+            ]
+            return not require_coverage or not required_ids or covered == required_ids
+
+        if valid(candidate, require_coverage=False):
+            return candidate  # compatibility: older combined plans did not declare coverage.
+
+        required_events = narrative_outline_events(formal_outline_events)
+        atomic_write(
+            run_path / "outputs" / "short-execution-index.json",
+            json.dumps({
+                "version": 1,
+                "status": "causal_pending",
+                "planning_sha256": hashlib.sha256(plan.encode("utf-8")).hexdigest(),
+                "state_revision": self.story_states.ensure(
+                    project.id, project.path,
+                ).revision,
+                "segment_count": self._short_segment_count(target_words),
+            }, ensure_ascii=False, indent=2),
+        )
+        prompt = (
+            "SHORT_CAUSAL_CHAIN_STANDALONE\n"
+            "根据已经通过检查的正式规划，单独生成整篇短篇因果链。只返回一个 JSON 对象，"
+            "不要 Markdown 围栏或说明。必须包含 core_goal、opening、cycles、accidents、"
+            "reversal、ending、question_chain、relationship_arc、covered_event_ids。"
+            "covered_event_ids 必须逐项、按原顺序覆盖正式大纲事件 ID；不得补写规划中没有的事实。\n\n"
+            f"正式大纲事件：\n{json.dumps(required_events, ensure_ascii=False)}\n\n"
+            f"已验收规划：\n{plan}"
+        )
+
+        def complete(text: str) -> bool:
+            try:
+                return valid(parse_json_object(text, label="Short causal chain"), require_coverage=True)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return False
+
+        raw = await self._stage(
+            run_id, run_path, project, "planning", constraints, prompt,
+            suffix="-causal-chain", allow_tools=False,
+            expected_output_characters=max(2500, len(plan) // 2),
+            completion_check=complete,
+        )
+        try:
+            chain = parse_json_object(raw, label="Short causal chain")
+        except (ValueError, json.JSONDecodeError) as exc:
+            chain = None
+            first_error = str(exc)
+        else:
+            first_error = "semantic causal-chain validation failed"
+        if not valid(chain, require_coverage=True):
+            self.db.add_run_event(
+                run_id, "warning", "causal_chain_repair",
+                "因果链未覆盖全部正式事件，正在单独修正该资料",
+                stage="planning", metadata={"error": first_error[:300]},
+            )
+            repaired = await self._stage(
+                run_id, run_path, project, "planning", constraints,
+                prompt + (
+                    "\n\n上次输出没有通过完整性检查。重新返回完整 JSON，尤其确保"
+                    "covered_event_ids 与正式大纲事件 ID 完全同序、无缺失。"
+                ),
+                suffix="-causal-chain-repair", allow_tools=False,
+                expected_output_characters=max(2500, len(plan) // 2),
+                completion_check=complete,
+            )
+            chain = parse_json_object(repaired, label="Short causal chain")
+        if not valid(chain, require_coverage=True):
+            self.db.add_run_event(
+                run_id, "error", "causal_chain_not_ready",
+                "因果链尚未完整生成，已在正文开始前停止",
+                stage="planning",
+            )
+            raise ValueError("短篇因果链未通过事件覆盖和因果完整性检查，尚未生成正文")
+        atomic_write(
+            run_path / "outputs" / "short-causal-chain.json",
+            json.dumps(chain, ensure_ascii=False, indent=2),
+        )
+        return chain
+
+    @staticmethod
+    def _write_short_execution_index(
+        run_path: Path, project: Project, state_revision: int, state: dict,
+        constraints: str, plan: str, causal_chain: dict, segment_count: int,
+    ) -> None:
+        authority = {
+            "project_id": project.id,
+            "state_revision": state_revision,
+            "outline": state.get("outline"),
+            "constraints_sha256": hashlib.sha256(constraints.encode("utf-8")).hexdigest(),
+            "planning_sha256": hashlib.sha256(plan.encode("utf-8")).hexdigest(),
+            "causal_chain_sha256": hashlib.sha256(
+                json.dumps(causal_chain, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            ).hexdigest(),
+            "segment_count": segment_count,
+        }
+        authority["authority_sha256"] = hashlib.sha256(
+            json.dumps(authority, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        atomic_write(
+            run_path / "outputs" / "short-execution-index.json",
+            json.dumps({
+                "version": 1, "status": "ready", "authority": authority,
+            }, ensure_ascii=False, indent=2),
         )
 
     async def _quality_polish(self, run_id: str, run_path: Path, project: Project,
@@ -3915,20 +4278,38 @@ class WorkflowService:
         ))
 
     @classmethod
-    def _draft_segment_issues(cls, part: str, target: int,
-                              previous_parts: list[str]) -> list[str]:
-        issues = []
+    def _draft_segment_findings(
+        cls, part: str, target: int, previous_parts: list[str],
+        location_catalog: dict[str, LocationRef] | None = None,
+    ) -> list[dict]:
+        findings: list[dict] = []
         han = effective_han_characters(part)
         if han > int(target * 1.45):
-            issues.append(f"本段写了 {han} 个正文汉字，明显超过约 {target} 字的范围")
+            findings.append({
+                "code": "overlength",
+                "message": f"本段写了 {han} 个正文汉字，明显超过约 {target} 字的范围",
+                "blocking": True,
+                "han_characters": han,
+                "target_characters": target,
+            })
         if han < int(target * 0.45):
-            issues.append(f"本段只有 {han} 个正文汉字，主要事件可能没有写完整")
+            findings.append({
+                "code": "underlength",
+                "message": f"本段只有 {han} 个正文汉字，主要事件可能没有写完整",
+                "blocking": True,
+                "han_characters": han,
+                "target_characters": target,
+            })
         blocking = [
             item for item in analyze_prose(part).get("findings", [])
             if item.get("blocking")
         ]
         if blocking:
-            issues.append("正文夹带了写作说明、异常文字或重复内容")
+            findings.append({
+                "code": "prose_invalid",
+                "message": "正文夹带了写作说明、异常文字或重复内容",
+                "blocking": True,
+            })
         current_paragraphs = [
             re.sub(r"\s+", "", value)
             for value in re.split(r"\n\s*\n", part)
@@ -3944,27 +4325,33 @@ class WorkflowService:
             SequenceMatcher(None, current, prior).ratio() >= 0.92
             for current in current_paragraphs for prior in prior_paragraphs
         ):
-            issues.append("本段重复了前面已经写过的场景或段落")
-        if previous_parts:
-            previous_tail = previous_parts[-1][-1200:]
-            first = next((
-                value.strip() for value in re.split(r"\n\s*\n", part)
-                if value.strip()
-            ), "")[:500]
-            explicit_bridge = re.search(
-                r"次日|翌日|第二天|[一二三四五六七八九十\d]+(?:日|天|月|年)后|"
-                r"与此同时|同一时刻|回到|离开|天亮|入夜|黄昏|清晨|午后|当晚|转眼|半个时辰后",
-                first,
+            findings.append({
+                "code": "duplicate_prose",
+                "message": "本段重复了前面已经写过的场景或段落",
+                "blocking": True,
+            })
+        if previous_parts and location_catalog:
+            for finding in assess_scene_transition(
+                previous_parts[-1], part, location_catalog,
+            ):
+                message = str(finding.get("message") or "")
+                if finding.get("code") == "scene_transition_missing":
+                    message = "本段开头换了场景，但没有交代时间、地点或人物如何过渡"
+                findings.append({**finding, "message": message})
+        return findings
+
+    @classmethod
+    def _draft_segment_issues(
+        cls, part: str, target: int, previous_parts: list[str],
+        location_catalog: dict[str, LocationRef] | None = None,
+    ) -> list[str]:
+        return [
+            str(item["message"])
+            for item in cls._draft_segment_findings(
+                part, target, previous_parts, location_catalog,
             )
-            current_places = set(re.findall(
-                r"[\u4e00-\u9fff]{1,6}(?:府|宫|街|院|房|厅|渡口|厨房)", first,
-            ))
-            previous_places = set(re.findall(
-                r"[\u4e00-\u9fff]{1,6}(?:府|宫|街|院|房|厅|渡口|厨房)", previous_tail,
-            ))
-            if current_places - previous_places and not explicit_bridge:
-                issues.append("本段开头换了场景，但没有交代时间、地点或人物如何过渡")
-        return issues
+            if item.get("blocking")
+        ]
 
     @classmethod
     def _split_segments(cls, text: str) -> list[str]:
@@ -4064,6 +4451,70 @@ class WorkflowService:
             plan = plan_text.strip()
             if plan and len(self._split_segments(draft)) == segment_count:
                 return outputs
+        return None
+
+    def _find_short_partial_checkpoint(
+        self, project: Project, current_run_id: str, state_revision: int,
+        state: dict, constraints: str, segment_count: int,
+    ) -> Path | None:
+        expected_constraints = hashlib.sha256(
+            constraints.encode("utf-8")
+        ).hexdigest()
+        for run in self.db.list_runs(project.id):
+            if run["workflow"] != "short-story":
+                continue
+            if (run["id"] != current_run_id
+                    and run["status"] not in {"failed", "cancelled"}):
+                continue
+            outputs = project.path / "runs" / run["id"] / "outputs"
+            plan_path = outputs / "planning.md"
+            chain_path = outputs / "short-causal-chain.json"
+            index_path = outputs / "short-execution-index.json"
+            checkpoint_root = outputs / "draft-checkpoints"
+            if not (
+                plan_path.is_file() and chain_path.is_file() and index_path.is_file()
+                and checkpoint_root.is_dir()
+                and any(checkpoint_root.glob("segment-*.json"))
+            ):
+                continue
+            try:
+                plan = plan_path.read_text(encoding="utf-8")
+                chain = json.loads(chain_path.read_text(encoding="utf-8"))
+                index = json.loads(index_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
+                continue
+            authority = index.get("authority") if isinstance(index, dict) else None
+            if not isinstance(authority, dict) or index.get("status") != "ready":
+                continue
+            authority_payload = {
+                key: value for key, value in authority.items()
+                if key != "authority_sha256"
+            }
+            authority_hash_valid = authority.get("authority_sha256") == hashlib.sha256(
+                json.dumps(
+                    authority_payload, ensure_ascii=False, sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            if (
+                not authority_hash_valid
+                or authority.get("project_id") != project.id
+                or authority.get("state_revision") != state_revision
+                or authority.get("outline") != state.get("outline")
+                or authority.get("constraints_sha256") != expected_constraints
+                or authority.get("planning_sha256")
+                != hashlib.sha256(plan.encode("utf-8")).hexdigest()
+                or authority.get("causal_chain_sha256")
+                != hashlib.sha256(json.dumps(
+                    chain, ensure_ascii=False, sort_keys=True,
+                ).encode("utf-8")).hexdigest()
+                or authority.get("segment_count") != segment_count
+                or self._short_plan_issues(project, state, plan, segment_count)
+                or analyze_short_causal_chain(
+                    chain, int(project.metadata["target_words"]),
+                )["status"] == "invalid"
+            ):
+                continue
+            return outputs
         return None
 
     @classmethod
@@ -4203,6 +4654,7 @@ class WorkflowService:
         return any(marker in message for marker in (
             "empty output", "empty manuscript", "finish_reason=max_tokens",
             "output exceeds", "明显超长",
+            "remained incomplete after output-limit recovery",
         ))
 
     @staticmethod
@@ -4381,10 +4833,33 @@ class WorkflowService:
         segment_plans = self._short_plan_segments(plan, count)
         if len(segment_plans) != count:
             raise ValueError("规划稿没有明确每一段负责的事件，尚未生成正文")
+        location_catalog = build_location_catalog(
+            project.path, self.story_states.ensure(project.id, project.path).data,
+        )
         ownership = "\n".join(
             f"第 {index} 段：{next((line.lstrip('# ').strip() for line in block.splitlines() if line.strip()), '未命名')}"
             for index, block in enumerate(segment_plans, 1)
         )
+        authority_payload = {
+            "plan": plan,
+            "constraints": constraints,
+            "target_words": target_words,
+            "segment_count": count,
+        }
+        legacy_authority_hash = hashlib.sha256(json.dumps(
+            authority_payload, ensure_ascii=False, sort_keys=True,
+        ).encode("utf-8")).hexdigest()
+        authority_hash = hashlib.sha256(json.dumps({
+            **authority_payload,
+            "location_catalog": sorted(
+                (alias, ref.name, ref.root)
+                for alias, ref in location_catalog.items()
+            ),
+        }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+        compatible_authority_hashes = {authority_hash}
+        if not location_catalog:
+            compatible_authority_hashes.add(legacy_authority_hash)
+        checkpoint_root = run_path / "outputs" / "draft-checkpoints"
         parts: list[str] = []
         event_assignments: list[dict] = []
         for index in range(1, count + 1):
@@ -4397,6 +4872,47 @@ class WorkflowService:
                 self._short_plan_handoff(segment_plans[index - 2])
                 if index > 1 else "这是开篇，无上一段交接状态。"
             )
+            checkpoint_path = checkpoint_root / f"segment-{index:02d}.json"
+            previous_hash = (
+                hashlib.sha256(parts[-1].encode("utf-8")).hexdigest() if parts else ""
+            )
+            try:
+                checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError, AttributeError):
+                checkpoint = {}
+            cached_part = str(checkpoint.get("text") or "")
+            cached_assignment = checkpoint.get("assignment") or {}
+            expected_event_ids = self._short_plan_event_ids(segment_plans[index - 1])
+            expected_handoff = self._short_plan_handoff(segment_plans[index - 1])
+            if (
+                checkpoint.get("authority_sha256") in compatible_authority_hashes
+                and checkpoint.get("previous_sha256") == previous_hash
+                and checkpoint.get("segment_plan_sha256") == hashlib.sha256(
+                    segment_plans[index - 1].encode("utf-8")
+                ).hexdigest()
+                and checkpoint.get("text_sha256")
+                == hashlib.sha256(cached_part.encode("utf-8")).hexdigest()
+                and cached_assignment.get("segment") == index
+                and cached_assignment.get("event_ids") == expected_event_ids
+                and cached_assignment.get("handoff") == expected_handoff
+                and cached_part
+                and not self._draft_segment_issues(
+                    cached_part, target, parts, location_catalog,
+                )
+            ):
+                parts.append(cached_part)
+                assignment = cached_assignment
+                event_assignments.append(assignment)
+                atomic_write(
+                    run_path / "outputs" / "segment-events.json",
+                    json.dumps({"segments": event_assignments}, ensure_ascii=False, indent=2),
+                )
+                self.db.add_run_event(
+                    run_id, "success", "draft_checkpoint_reused",
+                    f"正文第 {index}/{count} 段已从内部检查点恢复",
+                    stage="draft", metadata={"segment": index, "total": count},
+                )
+                continue
             prompt = (
                 f"整篇分工：\n{ownership}\n\n"
                 f"本次只写第 {index}/{count} 段，本段唯一负责的事件：\n{segment_plans[index - 1]}\n\n"
@@ -4407,11 +4923,16 @@ class WorkflowService:
                 f"上一段计划留下的状态：\n{previous_plan_tail}\n\n"
                 f"上一段正文结尾：\n{previous_tail}\n\n不要提问，直接写本段正文。"
             )
-            part = await self._stage(
-                run_id, run_path, project, "draft", constraints, prompt,
-                suffix=f"-part-{index:02d}", allow_tools=False,
+            part = await self._draft_short_segment_task(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"-part-{index:02d}", target=target,
+                previous_parts=parts, event_ids=expected_event_ids,
+                location_catalog=location_catalog,
             )
-            issues = self._draft_segment_issues(part, target, parts) if count > 1 else []
+            issues = (
+                self._draft_segment_issues(part, target, parts, location_catalog)
+                if count > 1 else []
+            )
             if issues:
                 self.db.add_run_event(
                     run_id, "warning", "draft_segment_gate_retry",
@@ -4426,8 +4947,15 @@ class WorkflowService:
                     f"本段计划：\n{segment_plans[index - 1]}\n\n上一段计划交接：\n{previous_plan_tail}"
                     f"\n\n上一段正文结尾：\n{previous_tail}",
                     suffix=f"-part-{index:02d}-gate-retry", allow_tools=False,
+                    expected_output_characters=target,
+                    completion_check=lambda value: not self._draft_segment_issues(
+                        value, target, parts, location_catalog,
+                    ),
                 )
-                remaining = self._draft_segment_issues(part, target, parts) if count > 1 else []
+                remaining = (
+                    self._draft_segment_issues(part, target, parts, location_catalog)
+                    if count > 1 else []
+                )
                 if remaining:
                     self.db.add_run_event(
                         run_id, "error", "draft_segment_gate_failed",
@@ -4435,6 +4963,20 @@ class WorkflowService:
                         stage="draft", metadata={"segment": index, "issues": remaining},
                     )
                     raise ValueError(f"正文第 {index} 段未通过本地检查，已有进度已保留")
+            warnings = [
+                finding for finding in self._draft_segment_findings(
+                    part, target, parts, location_catalog,
+                ) if not finding.get("blocking")
+            ]
+            if warnings:
+                self.db.add_run_event(
+                    run_id, "warning", "draft_segment_continuity_warning",
+                    f"正文第 {index}/{count} 段存在无法确定的场景衔接，已记录但不会单独阻断",
+                    stage="draft", metadata={
+                        "segment": index,
+                        "issues": warnings,
+                    },
+                )
             parts.append(part.strip())
             assignment = {
                 "segment": index,
@@ -4442,6 +4984,17 @@ class WorkflowService:
                 "handoff": self._short_plan_handoff(segment_plans[index - 1]),
             }
             event_assignments.append(assignment)
+            atomic_write(checkpoint_path, json.dumps({
+                "version": 1,
+                "authority_sha256": authority_hash,
+                "previous_sha256": previous_hash,
+                "segment_plan_sha256": hashlib.sha256(
+                    segment_plans[index - 1].encode("utf-8")
+                ).hexdigest(),
+                "text_sha256": hashlib.sha256(part.strip().encode("utf-8")).hexdigest(),
+                "text": part.strip(),
+                "assignment": assignment,
+            }, ensure_ascii=False, indent=2))
             atomic_write(
                 run_path / "outputs" / "segment-events.json",
                 json.dumps({"segments": event_assignments}, ensure_ascii=False, indent=2),
@@ -4456,6 +5009,115 @@ class WorkflowService:
         draft = self.SHORT_SEGMENT_SEPARATOR.join(parts)
         atomic_write(run_path / "outputs" / "draft.md", draft)
         return draft
+
+    async def _draft_short_segment_task(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        prompt: str, *, suffix: str, target: int, previous_parts: list[str],
+        event_ids: list[str] | None = None,
+        location_catalog: dict[str, LocationRef] | None = None,
+        depth: int = 0,
+    ) -> str:
+        """Generate one owned segment and split when one response cannot own it."""
+        reason = "output_limit"
+        han_characters = 0
+        try:
+            part = await self._stage(
+                run_id, run_path, project, "draft", constraints, prompt,
+                suffix=suffix, allow_tools=False,
+                expected_output_characters=target,
+                completion_check=lambda value: not self._draft_segment_issues(
+                    value, target, previous_parts, location_catalog,
+                ),
+            )
+        except IncompleteModelOutputError as exc:
+            han_characters = effective_han_characters(str(exc.partial))
+            if depth >= 2 or target < 800:
+                raise
+        else:
+            receipt = getattr(part, "receipt", {})
+            finish_reason = normalize_finish_reason(
+                receipt.get("finish_reason") if isinstance(receipt, dict) else None
+            )
+            if finish_reason not in {"stop", "end_turn", "completed", "complete"}:
+                return part
+            underlength = next((
+                finding for finding in self._draft_segment_findings(
+                    part, target, previous_parts, location_catalog,
+                )
+                if finding.get("code") == "underlength" and finding.get("blocking")
+            ), None)
+            if underlength is None:
+                return part
+            # Han-count recovery is meaningful only after the response proves it
+            # contains Chinese prose. Other-language projects keep using their
+            # normal prose/quality gates instead of being split on a zero metric.
+            han_characters = int(underlength.get("han_characters") or 0)
+            if han_characters <= 0:
+                return part
+            if depth >= 2 or target < 800:
+                return part
+            reason = "normal_finish_underlength"
+        owned_event_ids = list(event_ids or [])
+        split_at = max(1, math.ceil(len(owned_event_ids) / 2))
+        first_event_ids = owned_event_ids[:split_at]
+        second_event_ids = owned_event_ids[split_at:]
+
+        def event_scope(values: list[str], fallback: str) -> str:
+            return "、".join(values) if values else fallback
+
+        self.db.add_run_event(
+            run_id, "warning", "draft_task_split",
+            (
+                "正文正常结束但篇幅不足，已按本段事件和因果推进自动拆分"
+                if reason == "normal_finish_underlength"
+                else "单次正文子任务无法完整返回，已按本段事件和因果推进自动拆分"
+            ),
+            stage="draft", metadata={
+                "suffix": suffix, "depth": depth + 1, "target_characters": target,
+                "subtasks": 2, "reason": reason,
+                "han_characters": han_characters,
+                "issue_codes": [
+                    "underlength" if reason == "normal_finish_underlength"
+                    else "output_limit"
+                ],
+                "event_ids": owned_event_ids,
+            },
+        )
+        first_target = max(400, target // 2)
+        first = await self._draft_short_segment_task(
+            run_id, run_path, project, constraints,
+            prompt + (
+                "\n\n这是自动拆分后的内部子任务 1/2：只写本段前半的必要因果推进，"
+                "保留事件尚未完成的自然交接点；不要总结，也不要提前进入下一写作段。"
+                f"本子任务唯一负责的正式事件 ID：{event_scope(first_event_ids, '本段入口、冲突推进')}。"
+            ),
+            suffix=f"{suffix}-sub-1", target=first_target,
+            previous_parts=previous_parts, event_ids=first_event_ids,
+            location_catalog=location_catalog, depth=depth + 1,
+        )
+        second_target = max(400, target - first_target)
+        second = await self._draft_short_segment_task(
+            run_id, run_path, project, constraints,
+            prompt + (
+                "\n\n这是自动拆分后的内部子任务 2/2：承接下面已经验收的本段前半，"
+                "只完成本段剩余因果推进和原定段末交接；不得重写前半。\n\n"
+                f"本子任务唯一负责的正式事件 ID：{event_scope(second_event_ids, '本段状态改变、段末交接')}。\n\n"
+                f"已验收的本段前半：\n{first}\n\n前半结尾：\n{first[-1200:]}"
+            ),
+            suffix=f"{suffix}-sub-2", target=second_target,
+            previous_parts=[*previous_parts, first], event_ids=second_event_ids,
+            location_catalog=location_catalog, depth=depth + 1,
+        )
+        combined = f"{first.strip()}\n\n{second.strip()}"
+        remaining = self._draft_segment_issues(
+            combined, target, previous_parts, location_catalog,
+        )
+        if remaining:
+            raise ValueError(
+                "自动拆分后的正文段没有通过完整性与衔接检查："
+                + "；".join(remaining)
+            )
+        return combined
 
     async def _polish_short_segments(self, run_id: str, run_path: Path, project: Project,
                                      constraints: str, text: str, findings: str,
@@ -5454,7 +6116,9 @@ class WorkflowService:
                      output_source_characters: int | None = None,
                      targeted_retry: bool = False,
                      primary_only: bool = False,
-                     retry_polish_output_limit: bool = True) -> str:
+                     retry_polish_output_limit: bool = True,
+                     expected_output_characters: int | None = None,
+                     completion_check: Callable[[str], bool] | None = None) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -5549,6 +6213,8 @@ class WorkflowService:
             )
             output_budget = self._output_budget_for_call(
                 stage, output_source_characters, gateway_role, prefer_configured_fallback,
+                expected_output_characters=expected_output_characters,
+                input_tokens=estimated_input_tokens,
             )
             fallback_ceiling = self._provider_output_ceiling(gateway_role, True)
             stage_budget = self._stage_output_budget(stage, output_source_characters)
@@ -5566,6 +6232,7 @@ class WorkflowService:
                 fallback_budget = patch_output_budget(
                     output_source_characters, fallback_effective_ceiling or 1,
                 )
+            output_limit_expanded_once = False
             try:
                 if allow_tools and hasattr(self.gateway, "complete_with_tools"):
                     toolbox = StoryToolbox(project, self.memory)
@@ -5631,6 +6298,7 @@ class WorkflowService:
                         raise TargetedGroupError(str(fallback_exc)) from fallback_exc
                 else:
                     raise TargetedGroupError(str(exc)) from exc
+            result.receipt.setdefault("requested_max_output_tokens", output_budget)
             if (stage == "review" and gateway_role == "review" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
@@ -5666,6 +6334,10 @@ class WorkflowService:
                         gateway_role, retry_system, user,
                         max_output_tokens=review_retry_budget,
                     )
+                result.receipt.setdefault(
+                    "requested_max_output_tokens", review_retry_budget,
+                )
+                output_limit_expanded_once = True
                 used_fallback = bool(
                     used_fallback
                     or result.receipt.get("fallback_used")
@@ -5681,6 +6353,9 @@ class WorkflowService:
                     result = await self.gateway.complete_configured_fallback(
                         gateway_role, retry_system, user,
                         max_output_tokens=min(8192, fallback_ceiling or 8192),
+                    )
+                    result.receipt.setdefault(
+                        "requested_max_output_tokens", min(8192, fallback_ceiling or 8192),
                     )
             if (retry_polish_output_limit and stage == "polish"
                     and gateway_role == "polish" and not allow_tools
@@ -5729,6 +6404,10 @@ class WorkflowService:
                         result = await self.gateway.complete(
                             gateway_role, system, user, max_output_tokens=retry_budget,
                         )
+                    result.receipt.setdefault(
+                        "requested_max_output_tokens", retry_budget,
+                    )
+                    output_limit_expanded_once = True
             if (retry_polish_output_limit and stage == "polish"
                     and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
@@ -5753,11 +6432,121 @@ class WorkflowService:
                         gateway_role, retry_system, user,
                         max_output_tokens=output_budget,
                     )
+                result.receipt.setdefault("requested_max_output_tokens", output_budget)
             if (not retry_polish_output_limit and stage == "polish"
-                    and gateway_role == "polish"
-                    and result.receipt.get("finish_reason") == "max_tokens"):
+                    and gateway_role == "polish" and output_limited(result.receipt)):
                 error = RuntimeError(
                     "polish output incomplete (finish_reason=max_tokens)"
+                )
+                error.receipt = result.receipt
+                raise error
+            if output_limited(result.receipt):
+                complete_at_limit = False
+                if completion_check is not None:
+                    try:
+                        complete_at_limit = bool(completion_check(result.text))
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        complete_at_limit = False
+                if complete_at_limit:
+                    result.receipt["completion_status"] = "complete_at_limit"
+                    self.db.add_run_event(
+                        run_id, "warning", "output_limit_complete",
+                        f"{stage} reached the route output limit but passed an independent completeness check",
+                        stage=stage, metadata={
+                            "requested_max_output_tokens": result.receipt.get(
+                                "requested_max_output_tokens"
+                            ),
+                            "model_name": result.receipt.get("model_name"),
+                        },
+                    )
+                else:
+                    actual_model = self.db.get_model(
+                        str(result.receipt.get("model_id") or "")
+                    ) or {}
+                    if not actual_model:
+                        binding = self.db.get_role_binding(gateway_role) or {}
+                        selected_key = (
+                            "fallback_model_id"
+                            if prefer_configured_fallback
+                            or result.receipt.get("fallback_used")
+                            or result.receipt.get("configured_fallback_direct")
+                            else "primary_model_id"
+                        )
+                        actual_model = self.db.get_model(
+                            str(binding.get(selected_key) or "")
+                        ) or {}
+                    previous_budget = int(
+                        result.receipt.get("requested_max_output_tokens")
+                        or output_budget or 1
+                    )
+                    retry_budget = expanded_output_budget(
+                        previous_budget,
+                        input_tokens=estimated_input_tokens,
+                        context_window=actual_model.get("context_window"),
+                        declared_output_ceiling=actual_model.get("max_output_tokens"),
+                    )
+                    if (not output_limit_expanded_once
+                            and retry_budget and retry_budget > previous_budget):
+                        self.db.add_run_event(
+                            run_id, "warning", "output_limit_expanded",
+                            f"{stage} output may be truncated; retrying the same route with more headroom",
+                            stage=stage, metadata={
+                                "previous_budget": previous_budget,
+                                "retry_budget": retry_budget,
+                                "model_name": result.receipt.get("model_name"),
+                            },
+                        )
+                        used_fallback = bool(
+                            prefer_configured_fallback
+                            or result.receipt.get("fallback_used")
+                            or result.receipt.get("configured_fallback_direct")
+                        )
+                        if used_fallback and hasattr(
+                            self.gateway, "complete_configured_fallback"
+                        ):
+                            result = await self.gateway.complete_configured_fallback(
+                                gateway_role, system, user,
+                                max_output_tokens=retry_budget,
+                            )
+                        elif allow_tools and hasattr(self.gateway, "complete_with_tools"):
+                            toolbox = StoryToolbox(project, self.memory)
+                            result = await self.gateway.complete_with_tools(
+                                gateway_role, system, user, toolbox,
+                                fallback_context=lambda: json.dumps(
+                                    self.memory.context(project.id, user[:500]),
+                                    ensure_ascii=False,
+                                ),
+                                run_id=run_id,
+                                max_output_tokens=retry_budget,
+                            )
+                        elif hasattr(self.gateway, "complete_primary"):
+                            result = await self.gateway.complete_primary(
+                                gateway_role, system, user,
+                                max_output_tokens=retry_budget,
+                            )
+                        else:
+                            result = await self.gateway.complete(
+                                gateway_role, system, user,
+                                max_output_tokens=retry_budget,
+                            )
+                    retry_complete = not output_limited(result.receipt)
+                    if not retry_complete and completion_check is not None:
+                        try:
+                            retry_complete = bool(completion_check(result.text))
+                        except (TypeError, ValueError, json.JSONDecodeError):
+                            retry_complete = False
+                    if not retry_complete:
+                        partial = StageText(result.text, {
+                            **result.receipt, "completion_status": "recoverable_partial",
+                        })
+                        raise IncompleteModelOutputError(stage, partial)
+                    result.receipt["completion_status"] = (
+                        "complete_at_limit" if output_limited(result.receipt) else "complete"
+                    )
+            if invalid_terminal_output(result.receipt):
+                error = RuntimeError(
+                    f"{stage} provider returned terminal state "
+                    f"{result.receipt.get('finish_reason')}"
                 )
                 error.receipt = result.receipt
                 raise error
@@ -5819,6 +6608,24 @@ class WorkflowService:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
         except Exception as exc:
+            if isinstance(exc, IncompleteModelOutputError):
+                if stage == "review":
+                    self.db.add_run_event(
+                        run_id, "error", "review_incomplete",
+                        "审核模型已返回但内容仍不完整，未生成审核分数",
+                        stage=stage, metadata={
+                            "finish_reason": exc.receipt.get("finish_reason"),
+                        },
+                    )
+                self.db.add_run_event(
+                    run_id, "warning", "stage_recoverable_partial",
+                    f"{stage} 返回了可恢复但不完整的内容，等待拆分或续跑",
+                    stage=stage, metadata={
+                        "finish_reason": exc.receipt.get("finish_reason"),
+                        "model_name": exc.receipt.get("model_name"),
+                    },
+                )
+                raise
             short_revision = (self.db.get_run(run_id) or {}).get(
                 "workflow"
             ) == "short-revision"
@@ -6112,15 +6919,28 @@ class WorkflowService:
     def _stage_output_budget(stage: str, source_characters: int | None = None) -> int | None:
         return stage_output_budget(stage, source_characters)
 
-    def _output_budget_for_call(self, stage: str, source_characters: int | None,
-                                gateway_role: str, prefer_configured_fallback: bool) -> int | None:
-        default = self._stage_output_budget(stage, source_characters)
-        ceiling = self._provider_output_ceiling(
-            gateway_role, prefer_configured_fallback,
+    def _output_budget_for_call(
+        self, stage: str, source_characters: int | None,
+        gateway_role: str, prefer_configured_fallback: bool,
+        *, expected_output_characters: int | None = None,
+        input_tokens: int = 0,
+    ) -> int | None:
+        binding = self.db.get_role_binding(gateway_role) or {}
+        model_key = (
+            "fallback_model_id" if prefer_configured_fallback else "primary_model_id"
         )
-        if default is None or ceiling is None:
-            return default
-        return min(default, ceiling)
+        model = self.db.get_model(binding.get(model_key, "")) or {}
+        expected = (
+            expected_output_characters
+            if expected_output_characters is not None else source_characters
+        )
+        return adaptive_output_budget(
+            stage,
+            expected_output_characters=expected,
+            input_tokens=input_tokens,
+            context_window=model.get("context_window"),
+            declared_output_ceiling=model.get("max_output_tokens"),
+        )
 
     def _provider_output_ceiling(self, gateway_role: str,
                                  prefer_configured_fallback: bool) -> int | None:

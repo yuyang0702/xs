@@ -19,6 +19,15 @@
 - A parser change is incomplete without table-driven tests for the canonical form, at least two realistic variants, malformed and ambiguous input that fail closed, and a regression fixture or minimal reproduction for any production failure that prompted the change.
 - Update `docs/maintenance.md` whenever this compatibility contract gains a new accepted representation or changes failure behavior.
 
+## Story-Wide Narrative Integrity Gate
+
+- Every workflow, retry, fallback, resume, parser repair, and context-compaction change MUST preserve story-wide causality, character and knowledge state, timeline order, relationship progression, setup/payoff coverage, and the confirmed ending. Passing a local format check is never sufficient when the change can affect downstream narrative logic.
+- Treat every validated artifact used by a downstream writing stage as required authority, including the confirmed outline, event ownership, causal chain, StoryState facts, segment entry/exit state, and applicable promises or ending constraints. If any required artifact is missing, truncated, ambiguous, stale, or semantically invalid, checkpoint the valid upstream work and stop before downstream generation; never continue with a degraded or partial substitute.
+- A split model call or resumed task MUST receive the same applicable narrative authority as the original flow. Segment drafting additionally requires the validated owned plan, the previous accepted ending state, and the current handoff. Retries may regenerate only the failed artifact, but must revalidate its hashes, event coverage, ordering, and cross-artifact consistency before continuing.
+- A model response with an output-limit finish reason is a truncation risk, not automatic proof of failure or success. It may become validated authority only when an independent artifact-specific completeness check proves schema closure, required event coverage, order, handoffs, and applicable narrative constraints. Otherwise retry the same route with more headroom, then split by semantic ownership; discard incomplete protocol tails and never infer missing narrative facts locally.
+- Degraded continuation is allowed only for explicitly advisory material that cannot affect narrative truth or downstream validation. Causal chains, continuity state, event assignments, canon, timelines, promises, and ending constraints are never advisory.
+- Regression coverage for a workflow change MUST include truncation at each new model-output boundary and prove that no partial authority is committed, valid upstream checkpoints remain reusable, and downstream drafting does not start until story-wide validation passes.
+
 ## New Feature Integration Gate
 
 - New features must preserve the existing StoryState authority, Runtime-controlled formal writes, model roles and fallbacks, Skill behavior, candidate validation, quality gates, credentials, project files, and run history by default.

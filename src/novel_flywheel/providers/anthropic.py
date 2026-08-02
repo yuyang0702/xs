@@ -42,7 +42,11 @@ class AnthropicAdapter(HttpProvider):
             input_tokens=usage.get("input_tokens", 0),
             output_tokens=usage.get("output_tokens", 0),
             raw_request_id=body.get("id"),
-            provider_state={"content": content},
+            provider_state={
+                "content": content,
+                "transport_complete": body.get("stop_reason") is not None,
+                "raw_finish_reason": body.get("stop_reason"),
+            },
         )
 
     @staticmethod

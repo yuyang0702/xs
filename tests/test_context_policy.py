@@ -1,7 +1,10 @@
 import pytest
 
 from novel_flywheel.context_policy import (
+    adaptive_output_budget,
     estimate_input_tokens,
+    expanded_output_budget,
+    invalid_terminal_output,
     next_retry_action,
     patch_output_budget,
     polish_context,
@@ -66,6 +69,21 @@ def test_polish_output_budget_scales_with_segment_and_stays_bounded() -> None:
     assert 2048 < stage_output_budget("polish", 3000) < 8192
     assert stage_output_budget("polish", 20000) == 8192
     assert stage_output_budget("review", 100000) == 4096
+
+
+def test_adaptive_budget_adds_quality_headroom_and_respects_physical_context() -> None:
+    assert adaptive_output_budget(
+        "draft", expected_output_characters=12000,
+    ) > stage_output_budget("draft")
+    assert adaptive_output_budget(
+        "draft", expected_output_characters=12000,
+        input_tokens=6000, context_window=14000,
+    ) == 5952
+    assert expanded_output_budget(
+        4096, input_tokens=6000, context_window=14000,
+    ) == 5952
+    assert invalid_terminal_output({"finish_reason": "content_filter"}) is True
+    assert invalid_terminal_output({"finish_reason": "max_tokens"}) is False
 
 
 @pytest.mark.parametrize(

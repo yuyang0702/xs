@@ -47,6 +47,33 @@ def test_reference_metadata_migration_is_idempotent(tmp_path) -> None:
     assert {"platform", "content_type", "project_id"} <= columns
 
 
+def test_model_output_observation_migration_is_idempotent(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.migrate()
+
+    assert "model_output_observations" in db.table_names()
+    db.save_model_output_observation(
+        provider_id="provider", model_id="model", route_fingerprint="route",
+        execution_mode="plain", requested_max_output_tokens=16000,
+        actual_output_tokens=4000, visible_characters=5000,
+        finish_reason="max_tokens", transport_complete=True,
+    )
+    db.save_model_output_observation(
+        provider_id="provider", model_id="model", route_fingerprint="route",
+        execution_mode="plain", requested_max_output_tokens=20000,
+        actual_output_tokens=4100, visible_characters=5100,
+        finish_reason="max_tokens", transport_complete=True,
+    )
+
+    profile = db.model_output_profile("provider", "model", "route", "plain")
+    assert profile["samples"] == 2
+    assert 4100 <= profile["suspected_stable_output_tokens"] <= 5000
+    assert db.latest_model_output_profile("provider", "model")[
+        "suspected_stable_output_tokens"
+    ] == profile["suspected_stable_output_tokens"]
+
+
 def test_skill_execution_context_migration_is_idempotent(tmp_path) -> None:
     path = tmp_path / "app.db"
     with sqlite3.connect(path) as connection:

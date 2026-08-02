@@ -370,6 +370,19 @@ CREATE TABLE IF NOT EXISTS market_entries(
   metrics_json TEXT NOT NULL DEFAULT '{}',
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS model_output_observations(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider_id TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  route_fingerprint TEXT NOT NULL,
+  execution_mode TEXT NOT NULL,
+  requested_max_output_tokens INTEGER,
+  actual_output_tokens INTEGER NOT NULL DEFAULT 0,
+  visible_characters INTEGER NOT NULL DEFAULT 0,
+  finish_reason TEXT,
+  transport_complete INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_market_entries_work
   ON market_entries(work_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_market_entries_snapshot
@@ -846,6 +859,91 @@ class Database:
             return [dict(row) for row in connection.execute(
                 "SELECT * FROM tool_receipts WHERE run_id = ? ORDER BY id", (run_id,),
             )]
+
+    def save_model_output_observation(
+        self, *, provider_id: str, model_id: str, route_fingerprint: str,
+        execution_mode: str, requested_max_output_tokens: int | None,
+        actual_output_tokens: int, visible_characters: int,
+        finish_reason: str | None, transport_complete: bool,
+    ) -> None:
+        with self.connect() as connection:
+            connection.execute(
+                "INSERT INTO model_output_observations("
+                "provider_id, model_id, route_fingerprint, execution_mode, "
+                "requested_max_output_tokens, actual_output_tokens, visible_characters, "
+                "finish_reason, transport_complete, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+                (
+                    provider_id, model_id, route_fingerprint, execution_mode,
+                    requested_max_output_tokens, max(0, int(actual_output_tokens)),
+                    max(0, int(visible_characters)), finish_reason,
+                    int(transport_complete),
+                ),
+            )
+
+    def model_output_profile(
+        self, provider_id: str, model_id: str, route_fingerprint: str,
+        execution_mode: str, limit: int = 20,
+    ) -> dict[str, Any]:
+        with self.connect() as connection:
+            rows = [dict(row) for row in connection.execute(
+                "SELECT * FROM model_output_observations "
+                "WHERE provider_id=? AND model_id=? AND route_fingerprint=? "
+                "AND execution_mode=? ORDER BY id DESC LIMIT ?",
+                (provider_id, model_id, route_fingerprint, execution_mode, limit),
+            )]
+        hidden_limits = sorted(
+            int(row["actual_output_tokens"])
+            for row in rows
+            if row.get("finish_reason") == "max_tokens"
+            and row.get("transport_complete")
+            and isinstance(row.get("requested_max_output_tokens"), int)
+            and int(row["actual_output_tokens"]) > 0
+            and int(row["actual_output_tokens"]) < int(row["requested_max_output_tokens"]) * 0.8
+        )
+        stable_limit = None
+        if len(hidden_limits) >= 2 and hidden_limits[-1] <= hidden_limits[0] * 1.2:
+            stable_limit = max(512, int(hidden_limits[-1] * 1.1))
+        ratios = sorted(
+            row["visible_characters"] / row["actual_output_tokens"]
+            for row in rows
+            if row["visible_characters"] > 0 and row["actual_output_tokens"] > 0
+        )
+        return {
+            "samples": len(rows),
+            "observed_output_high_water": max(
+                (int(row["actual_output_tokens"]) for row in rows), default=0,
+            ),
+            "accepted_request_high_water": max(
+                (
+                    int(row["requested_max_output_tokens"])
+                    for row in rows
+                    if isinstance(row.get("requested_max_output_tokens"), int)
+                    and row.get("transport_complete")
+                ),
+                default=0,
+            ),
+            "suspected_stable_output_tokens": stable_limit,
+            "conservative_visible_characters_per_token": (
+                ratios[max(0, len(ratios) // 10 - 1)] if ratios else None
+            ),
+        }
+
+    def latest_model_output_profile(
+        self, provider_id: str, model_id: str, execution_mode: str = "plain",
+    ) -> dict[str, Any]:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT route_fingerprint FROM model_output_observations "
+                "WHERE provider_id=? AND model_id=? AND execution_mode=? "
+                "ORDER BY id DESC LIMIT 1",
+                (provider_id, model_id, execution_mode),
+            ).fetchone()
+        if row is None:
+            return {"samples": 0, "suspected_stable_output_tokens": None}
+        return self.model_output_profile(
+            provider_id, model_id, str(row["route_fingerprint"]), execution_mode,
+        )
 
     def save_wizard(self, wizard_id: str, status: str, mode: str,
                     schema: dict, answers: dict, project_id: str | None = None) -> None:
