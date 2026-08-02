@@ -2720,6 +2720,13 @@ async function run(path, body) {
 const polishRecoveryMessages={
   polish_compact_retry:"正在精简要求后重新润色本段",
   polish_compact_fallback:"首选模型没有返回正文，正在使用备用模型",
+  polish_input_compact_retry:"输入超出当前模型上下文，正在保留叙事权威后压缩建议重试",
+  polish_output_limit_retry:"供应商截断了本段输出，正在同一路由扩大输出空间重试",
+  polish_transport_retry:"润色请求遇到网络波动，正在同一路由重试",
+  polish_route_fallback:"首选润色路由未产生可用正文，正在使用备用路由",
+  polish_segment_split:"当前片段输出仍受限，正在按段落边界拆分后重试",
+  polish_targeted_repair:"本段出现有证据的局部问题，正在进行小范围定向修复",
+  polish_capacity_preserved:"当前父段无法安全拆分，已保留原文并继续",
   polish_segment_preserved:"本段未完成精修，已保留原文并继续",
 };
 const hiddenRunEventTypes=new Set(["polish_segment_route","polish_circuit_opened","polish_max_tokens_retry"]);

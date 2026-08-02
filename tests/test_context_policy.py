@@ -94,6 +94,39 @@ def test_input_pressure_never_guesses_an_unknown_window(
     ) == expected
 
 
+@pytest.mark.parametrize(("failure", "expected"), [
+    (RuntimeError("maximum context length exceeded"), "input_context_overflow"),
+    (RuntimeError("HTTP 413 request too large"), "input_context_overflow"),
+    ({"finish_reason": "max_tokens"}, "output_limit"),
+    (RuntimeError("polish output incomplete (finish_reason=max_tokens)"), "output_limit"),
+    (RuntimeError("ConnectError: connection reset"), "transport_interrupted"),
+    (RuntimeError("polish output exceeds allowed maximum"), "normal_invalid_output"),
+    (RuntimeError("missing_api_key: provider"), "provider_rejection"),
+])
+def test_model_failure_classification_is_conservative(failure, expected) -> None:
+    assert context_policy.classify_model_failure(failure) == expected
+
+
+def test_nested_route_failure_does_not_turn_transport_into_output_limit() -> None:
+    class RoutesFailed(RuntimeError):
+        def __init__(self):
+            super().__init__("primary and fallback failed")
+            self.primary_error = RuntimeError("ConnectError")
+            self.fallback_error = RuntimeError("504 Gateway Timeout")
+
+    assert context_policy.classify_model_failure(RoutesFailed()) == "transport_interrupted"
+
+
+def test_nested_fatal_route_failure_wins_over_transient_route() -> None:
+    class RoutesFailed(RuntimeError):
+        def __init__(self):
+            super().__init__("primary and fallback failed")
+            self.primary_error = RuntimeError("provider_not_found: primary")
+            self.fallback_error = RuntimeError("504 Gateway Timeout")
+
+    assert context_policy.classify_model_failure(RoutesFailed()) == "provider_rejection"
+
+
 def test_input_token_estimator_is_conservative_for_chinese_and_ascii() -> None:
     estimated = estimate_input_tokens("中" * 100 + "a" * 400)
 

@@ -769,6 +769,13 @@ def test_console_explains_polish_recovery_in_plain_chinese(tmp_path) -> None:
     for event_type in (
         "polish_compact_retry",
         "polish_compact_fallback",
+        "polish_input_compact_retry",
+        "polish_output_limit_retry",
+        "polish_transport_retry",
+        "polish_route_fallback",
+        "polish_segment_split",
+        "polish_targeted_repair",
+        "polish_capacity_preserved",
         "polish_segment_preserved",
         "polish_segment_progress",
     ):
@@ -776,6 +783,10 @@ def test_console_explains_polish_recovery_in_plain_chinese(tmp_path) -> None:
     for label in (
         "正在精简要求后重新润色本段",
         "首选模型没有返回正文，正在使用备用模型",
+        "输入超出当前模型上下文，正在保留叙事权威后压缩建议重试",
+        "供应商截断了本段输出，正在同一路由扩大输出空间重试",
+        "润色请求遇到网络波动，正在同一路由重试",
+        "本段出现有证据的局部问题，正在进行小范围定向修复",
         "本段未完成精修，已保留原文并继续",
         "继续运行时只处理未完成片段",
     ):

@@ -3,7 +3,7 @@ import hashlib
 import math
 import re
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Literal
 
 
 OUTPUT_LIMIT_REASONS = {
@@ -117,6 +117,90 @@ def classify_input_pressure(
     if full_input_tokens + output_reserve >= context_window * 0.75:
         return "compact"
     return "full"
+
+
+ModelFailureKind = Literal[
+    "input_context_overflow",
+    "output_limit",
+    "transport_interrupted",
+    "normal_invalid_output",
+    "provider_rejection",
+]
+
+
+def classify_model_failure(value: object) -> ModelFailureKind:
+    """Classify a failed model attempt without inferring route capacity from transport noise."""
+    provider_markers = (
+        "missing api key", "missing_api_key", "invalid api key", "invalid_api_key",
+        "api key is missing", "authentication", "unauthorized", "forbidden",
+        "http 401", "http 403", "status code 401", "status code 403",
+        "invalid role binding", "model role is not configured", "role binding is invalid",
+        "binding is corrupt", "provider_not_found", "provider not found",
+        "model_not_found", "model not found",
+    )
+    input_markers = (
+        "input context overflow",
+        "maximum context length", "context length exceeded", "context_length_exceeded",
+        "context window exceeded", "input token limit", "input tokens exceed",
+        "prompt is too long", "prompt too long", "request too large",
+        "request entity too large", "payload too large", "http 413", "status code 413",
+    )
+    transport_markers = (
+        "connecterror", "connection attempts failed", "connection reset",
+        "connection refused", "server disconnected", "peer closed connection",
+        "incomplete chunked read", "readerror", "timeout", "timed out",
+        "bad gateway", "gateway timeout", "502", "504", "524",
+        "transport ended before a terminal response",
+    )
+    output_markers = (
+        "finish_reason=max_tokens", "finish reason=max_tokens",
+        "output token limit", "output limit reached", "max_output_tokens",
+    )
+
+    classifications: set[ModelFailureKind] = set()
+    pending: list[object] = [value]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, dict):
+            if output_limited(current):
+                classifications.add("output_limit")
+            text = json.dumps(current, ensure_ascii=False, default=str).lower()
+            for key in ("error", "exception", "primary_error", "fallback_error"):
+                nested = current.get(key)
+                if nested is not None:
+                    pending.append(nested)
+        else:
+            receipt = getattr(current, "receipt", None)
+            if isinstance(receipt, dict):
+                pending.append(receipt)
+            text = str(current).lower()
+            if isinstance(current, BaseException):
+                for nested in (
+                    getattr(current, "primary_error", None),
+                    getattr(current, "fallback_error", None),
+                    current.__cause__, current.__context__,
+                ):
+                    if nested is not None:
+                        pending.append(nested)
+        if any(marker in text for marker in provider_markers):
+            classifications.add("provider_rejection")
+        if any(marker in text for marker in input_markers):
+            classifications.add("input_context_overflow")
+        if any(marker in text for marker in transport_markers):
+            classifications.add("transport_interrupted")
+        if any(marker in text for marker in output_markers):
+            classifications.add("output_limit")
+
+    for kind in (
+        "provider_rejection", "input_context_overflow", "transport_interrupted", "output_limit",
+    ):
+        if kind in classifications:
+            return kind
+    return "normal_invalid_output"
 
 
 def estimate_input_tokens(text: str) -> int:

@@ -25,6 +25,8 @@ from novel_flywheel.context_policy import (
     adaptive_output_budget,
     authority_packet_sha256,
     build_polish_authority_packet,
+    classify_input_pressure,
+    classify_model_failure,
     estimate_input_tokens,
     expanded_output_budget,
     invalid_terminal_output,
@@ -32,7 +34,6 @@ from novel_flywheel.context_policy import (
     normalize_finish_reason,
     output_limited,
     patch_output_budget,
-    polish_context,
     revision_patch_context,
     render_polish_authority_packet,
     schema_repair_prompt,
@@ -128,6 +129,7 @@ from novel_flywheel.revision import (
     segment_map,
 )
 from novel_flywheel.prose_quality import analyze_prose, compare_voice_metrics, prose_metrics
+from novel_flywheel.prose_policy import load_prose_validation_policy
 from novel_flywheel.style_context import character_fingerprints, ensure_style_profile
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
@@ -4639,44 +4641,9 @@ class WorkflowService:
         ), "")
 
     @staticmethod
-    def _is_polish_output_error(exc: Exception) -> bool:
-        message = describe_error(exc).lower()
-        return any(marker in message for marker in (
-            "empty output", "empty manuscript", "finish_reason=max_tokens",
-            "output exceeds", "明显超长",
-            "remained incomplete after output-limit recovery",
-        ))
-
-    @staticmethod
-    def _is_fatal_model_configuration_error(exc: Exception) -> bool:
-        markers = (
-            "missing api key", "missing_api_key", "invalid api key", "invalid_api_key",
-            "api key is missing", "authentication", "unauthorized", "forbidden",
-            "401", "403", "invalid role binding", "model role is not configured",
-            "role binding is invalid", "binding is corrupt", "provider_not_found",
-            "provider not found", "model_not_found", "model not found",
-        )
-        pending: list[BaseException] = [exc]
-        seen: set[int] = set()
-        while pending:
-            current = pending.pop()
-            if id(current) in seen:
-                continue
-            seen.add(id(current))
-            if any(marker in describe_error(current).lower() for marker in markers):
-                return True
-            for nested in (
-                getattr(current, "primary_error", None),
-                getattr(current, "fallback_error", None),
-                current.__cause__, current.__context__,
-            ):
-                if isinstance(nested, BaseException):
-                    pending.append(nested)
-        return False
-
-    @staticmethod
     def _raise_for_unusable_polish_output(
         text: str, source_characters: int, maximum_characters: int,
+        minimum_characters: int = 0,
     ) -> None:
         receipt = getattr(text, "receipt", {})
         if receipt.get("finish_reason") == "max_tokens":
@@ -4685,6 +4652,12 @@ class WorkflowService:
             raise RuntimeError(
                 f"polish output exceeds allowed maximum ({len(text.strip())} > "
                 f"{maximum_characters})"
+            )
+        if (source_characters >= 200 and minimum_characters > 0
+                and len(text.strip()) < minimum_characters):
+            raise RuntimeError(
+                f"polish output is below allowed minimum ({len(text.strip())} < "
+                f"{minimum_characters})"
             )
 
     @staticmethod
@@ -4701,117 +4674,134 @@ class WorkflowService:
     async def _ordinary_polish_segment(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         source: str, full_prompt: str, compact_prompt: str, suffix: str,
-        maximum_characters: int, configured_fallback: bool,
-        force_compact: bool, metadata: dict,
+        minimum_characters: int, maximum_characters: int, configured_fallback: bool,
+        metadata: dict,
     ) -> tuple[str, bool, bool, bool, int]:
-        full_output_error = False
         consumed_input_tokens = 0
-        if not force_compact:
+
+        async def request(*, prompt: str, fallback: bool, compact: bool,
+                          attempt_suffix: str) -> str:
+            nonlocal consumed_input_tokens
             try:
                 polished = await self._stage(
-                    run_id, run_path, project, "polish", constraints, full_prompt,
-                    suffix=suffix, allow_tools=False,
-                    prefer_configured_fallback=False,
+                    run_id, run_path, project, "polish", constraints, prompt,
+                    suffix=attempt_suffix, allow_tools=False,
+                    prefer_configured_fallback=fallback,
                     output_source_characters=len(source),
-                    primary_only=True,
-                    retry_polish_output_limit=False,
+                    primary_only=not fallback,
+                    retry_polish_output_limit=True,
+                    compact_input=compact,
                 )
                 consumed_input_tokens += int(
                     getattr(polished, "receipt", {}).get("input_tokens", 0) or 0
                 )
                 self._raise_for_unusable_polish_output(
-                    polished, len(source), maximum_characters,
+                    polished, len(source), maximum_characters, minimum_characters,
                 )
-                return polished, False, False, False, consumed_input_tokens
+                return polished
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
                 consumed_input_tokens += self._polish_input_tokens(exc)
-                if self._is_fatal_model_configuration_error(exc):
-                    raise
-                if not self._is_polish_output_error(exc):
-                    raise
-                full_output_error = True
-                primary_error = exc
-        else:
-            primary_error = RuntimeError("compact recovery circuit is active")
+                raise
 
-        self.db.add_run_event(
-            run_id, "warning", "polish_compact_retry",
-            "正在精简要求后重新润色本段",
-            stage="polish", metadata={
-                **metadata, "error": describe_error(primary_error)[:500],
-                "circuit": force_compact,
-            },
-        )
-        try:
-            polished = await self._stage(
-                run_id, run_path, project, "polish", constraints, compact_prompt,
-                suffix=f"{suffix}-compact", allow_tools=False,
-                prefer_configured_fallback=False,
-                output_source_characters=len(source),
-                primary_only=True,
-                retry_polish_output_limit=False,
-            )
-            consumed_input_tokens += int(
-                getattr(polished, "receipt", {}).get("input_tokens", 0) or 0
-            )
-            self._raise_for_unusable_polish_output(
-                polished, len(source), maximum_characters,
-            )
-            return polished, False, full_output_error, False, consumed_input_tokens
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            consumed_input_tokens += self._polish_input_tokens(exc)
-            if self._is_fatal_model_configuration_error(exc):
+        prompt = full_prompt
+        compact_used = False
+        primary_transport_retried = False
+        primary_error: Exception | None = None
+        while True:
+            try:
+                polished = await request(
+                    prompt=prompt, fallback=False, compact=compact_used,
+                    attempt_suffix=(f"{suffix}-input-compact" if compact_used else suffix),
+                )
+                return polished, False, compact_used, False, consumed_input_tokens
+            except asyncio.CancelledError:
                 raise
-            if self._is_polish_transport_error(exc):
-                raise
-            compact_error = exc
+            except Exception as exc:
+                kind = classify_model_failure(exc)
+                if kind == "provider_rejection":
+                    raise
+                if kind == "input_context_overflow" and not compact_used:
+                    compact_used = True
+                    prompt = compact_prompt
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_input_compact_retry",
+                        "当前模型明确拒绝了过长输入，正在保留叙事权威后压缩建议重试",
+                        stage="polish", metadata={
+                            **metadata, "error": describe_error(exc)[:500],
+                            "route": "primary",
+                        },
+                    )
+                    continue
+                if kind in {"input_context_overflow", "output_limit"}:
+                    raise
+                if kind == "transport_interrupted" and not primary_transport_retried:
+                    primary_transport_retried = True
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_transport_retry",
+                        "润色请求因网络中断，正在同一路由使用相同内容重试一次",
+                        stage="polish", metadata={
+                            **metadata, "error": describe_error(exc)[:500],
+                            "route": "primary",
+                        },
+                    )
+                    continue
+                primary_error = exc
+                break
 
         if configured_fallback:
-            self.db.add_run_event(
-                run_id, "warning", "polish_compact_fallback",
-                "首选模型没有返回正文，正在使用备用模型",
-                stage="polish", metadata={
-                    **metadata, "error": describe_error(compact_error)[:500],
-                },
-            )
-            try:
-                polished = await self._stage(
-                    run_id, run_path, project, "polish", constraints, compact_prompt,
-                    suffix=f"{suffix}-compact-fallback", allow_tools=False,
-                    prefer_configured_fallback=True,
-                    output_source_characters=len(source),
-                    retry_polish_output_limit=False,
+            fallback_compact = compact_used
+            fallback_prompt = compact_prompt if fallback_compact else full_prompt
+            while True:
+                self.db.add_run_event(
+                    run_id, "warning", "polish_route_fallback",
+                    "首选润色路由未产生可用正文，正在使用配置的备用路由",
+                    stage="polish", metadata={
+                        **metadata, "error": describe_error(primary_error)[:500],
+                        "compact_input": fallback_compact,
+                    },
                 )
-                consumed_input_tokens += int(
-                    getattr(polished, "receipt", {}).get("input_tokens", 0) or 0
-                )
-                self._raise_for_unusable_polish_output(
-                    polished, len(source), maximum_characters,
-                )
-                return polished, False, full_output_error, True, consumed_input_tokens
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                consumed_input_tokens += self._polish_input_tokens(exc)
-                if self._is_fatal_model_configuration_error(exc):
+                try:
+                    polished = await request(
+                        prompt=fallback_prompt, fallback=True, compact=fallback_compact,
+                        attempt_suffix=f"{suffix}-fallback"
+                        + ("-input-compact" if fallback_compact else ""),
+                    )
+                    return polished, False, fallback_compact, True, consumed_input_tokens
+                except asyncio.CancelledError:
                     raise
-                if self._is_polish_transport_error(exc):
-                    raise
-                compact_error = exc
+                except Exception as exc:
+                    kind = classify_model_failure(exc)
+                    if kind == "provider_rejection":
+                        raise
+                    if kind == "input_context_overflow" and not fallback_compact:
+                        fallback_compact = True
+                        compact_used = True
+                        fallback_prompt = compact_prompt
+                        self.db.add_run_event(
+                            run_id, "warning", "polish_input_compact_retry",
+                            "备用模型明确拒绝了过长输入，正在保留叙事权威后压缩建议重试",
+                            stage="polish", metadata={
+                                **metadata, "error": describe_error(exc)[:500],
+                                "route": "fallback",
+                            },
+                        )
+                        continue
+                    if kind in {"input_context_overflow", "output_limit"}:
+                        raise
+                    primary_error = exc
+                    break
 
         self.db.add_run_event(
             run_id, "warning", "polish_segment_preserved",
             "本段未完成精修，已保留原文并继续",
             stage="polish", metadata={
-                **metadata, "error": describe_error(compact_error)[:500],
+                **metadata, "error": describe_error(primary_error)[:500],
             },
         )
         return (
-            source, True, full_output_error, configured_fallback,
+            source, True, compact_used, configured_fallback,
             consumed_input_tokens,
         )
 
@@ -5207,13 +5197,12 @@ class WorkflowService:
         )
         style_profile = ensure_style_profile(project)
         polished_parts: list[str] = []
+        accepted_history_metrics: list[dict[str, float]] = []
+        prose_policy = load_prose_validation_policy(project.path)
         primary_circuit_open = any(
             event["event_type"] == "polish_circuit_opened"
             for event in self.db.list_run_events(run_id)
         )
-        compact_circuit_open = False
-        compact_output_errors = 0
-        compact_output_route: str | None = None
         preserved_segments = 0
         binding = self.db.get_role_binding("polish") or {}
         retry_signature = self._polish_retry_signature(binding)
@@ -5422,6 +5411,7 @@ class WorkflowService:
             )
             if cached is not None:
                 polished_parts.append(cached)
+                accepted_history_metrics.append(prose_metrics(cached))
                 previous_handoff_state = self._polish_exit_state(cached)
                 self.db.add_run_event(
                     run_id, "success", "polish_checkpoint_reused",
@@ -5458,12 +5448,32 @@ class WorkflowService:
             targeted_group_failed = False
             ordinary_preserved = False
             compact_recovery_used = False
-            compact_fallback_used = False
             ordinary_input_tokens = 0
+            split_recovery_used = False
 
             async def split_failed_segment(exc: Exception) -> str:
+                nonlocal ordinary_preserved, split_recovery_used
                 children = self._split_failed_polish_segment(part)
                 if recovery_depth >= 2 or children is None:
+                    if not targeted:
+                        ordinary_preserved = True
+                        self.db.add_run_event(
+                            run_id, "warning", "polish_capacity_preserved",
+                            "当前父段没有可安全拆分的段落边界，已保留原文并继续",
+                            stage="polish", metadata={
+                                "segment": index, "characters": len(part),
+                                "split_depth": recovery_depth,
+                                "error": describe_error(exc)[:500],
+                            },
+                        )
+                        self.db.add_run_event(
+                            run_id, "warning", "polish_segment_preserved",
+                            "当前片段无法安全拆分，已保留完整父段并继续",
+                            stage="polish", metadata={
+                                "segment": index, "failure_kind": classify_model_failure(exc),
+                            },
+                        )
+                        return part
                     raise exc
                 self.db.add_run_event(
                     run_id, "warning", "polish_segment_split",
@@ -5475,54 +5485,54 @@ class WorkflowService:
                         "error": describe_error(exc),
                     },
                 )
+                child_suffix = f"{part_suffix}-split-{recovery_depth + 1}"
                 recovered = await self._polish_short_segments(
                     run_id, run_path, project, constraints,
                     self.SHORT_SEGMENT_SEPARATOR.join(children), findings_for_window,
-                    suffix=f"{part_suffix}-split-{recovery_depth + 1}",
+                    suffix=child_suffix,
                     structural=False, recovery_depth=recovery_depth + 1,
                     recovery_rule=revision_rule,
                     targeted_context=current_targeted_context if targeted else None,
                 )
+                child_checkpoint_root = (
+                    run_path / "outputs" / "polish-checkpoints" / child_suffix.strip("-")
+                )
+                child_checkpoints = []
+                for child_index in range(1, len(children) + 1):
+                    checkpoint_path = child_checkpoint_root / f"part-{child_index:02d}.json"
+                    try:
+                        child_checkpoints.append(json.loads(
+                            checkpoint_path.read_text(encoding="utf-8")
+                        ))
+                    except (OSError, json.JSONDecodeError):
+                        child_checkpoints.append({})
+                if not all(item.get("accepted") is True for item in child_checkpoints):
+                    ordinary_preserved = True
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_split_child_rejected",
+                        "拆分后的子段没有全部通过验收，整个父段已保留原文",
+                        stage="polish", metadata={
+                            "segment": index,
+                            "child_statuses": [item.get("status") for item in child_checkpoints],
+                        },
+                    )
+                    return part
+                split_recovery_used = True
                 return recovered.replace(self.SHORT_SEGMENT_SEPARATOR, "\n\n")
 
             try:
                 if not targeted:
-                    compact_recovery_used = compact_circuit_open
-                    (polished_part, ordinary_preserved, full_output_error,
-                     compact_fallback_used,
+                    (polished_part, ordinary_preserved, compact_recovery_used,
+                     _ordinary_fallback_used,
                      ordinary_input_tokens) = await self._ordinary_polish_segment(
                         run_id, run_path, project, constraints, part, prompt,
-                        compact_prompt, part_suffix, maximum_characters,
-                        configured_fallback, compact_circuit_open, {
+                        compact_prompt, part_suffix, minimum_characters,
+                        maximum_characters, configured_fallback, {
                             "segment": index, "total": len(parts),
                             "completed": index - 1,
                             "preserved": preserved_segments,
                         },
                     )
-                    compact_recovery_used = bool(
-                        compact_recovery_used or full_output_error
-                    )
-                    if full_output_error:
-                        if compact_output_route == route:
-                            compact_output_errors += 1
-                        else:
-                            compact_output_route = route
-                            compact_output_errors = 1
-                        if compact_output_errors >= 2 and not compact_circuit_open:
-                            compact_circuit_open = True
-                            self.db.add_run_event(
-                                run_id, "warning", "polish_compact_circuit_opened",
-                                "后续片段将直接使用精简要求恢复",
-                                stage="polish", metadata={
-                                    "segment": index, "total": len(parts),
-                                    "completed": index - 1,
-                                    "preserved": preserved_segments,
-                                    "route": route,
-                                },
-                            )
-                    elif not compact_circuit_open:
-                        compact_output_errors = 0
-                        compact_output_route = None
                 else:
                     polished_part = await self._stage(
                         run_id, run_path, project, "polish", constraints, prompt,
@@ -5553,14 +5563,23 @@ class WorkflowService:
                     },
                 )
             except Exception as exc:
-                recoverable = (
-                    self._is_polish_transport_error(exc)
-                    or (targeted and self._is_polish_output_error(exc))
-                )
-                if (self._is_fatal_model_configuration_error(exc)
-                        or not recoverable):
+                failure_kind = classify_model_failure(exc)
+                if failure_kind == "provider_rejection":
                     raise
-                polished_part = await split_failed_segment(exc)
+                if failure_kind in {"input_context_overflow", "output_limit"}:
+                    polished_part = await split_failed_segment(exc)
+                elif failure_kind == "transport_interrupted":
+                    ordinary_preserved = True
+                    polished_part = part
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_segment_preserved",
+                        "润色路由因网络波动全部失败，已保留当前父段且不拆分正文",
+                        stage="polish", metadata={
+                            "segment": index, "error": describe_error(exc)[:500],
+                        },
+                    )
+                else:
+                    raise
             round_input_tokens += (
                 int(getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0)
                 if targeted else ordinary_input_tokens
@@ -5569,6 +5588,9 @@ class WorkflowService:
             assessment = assess_polish_candidate(
                 part, polished_part, required,
                 minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
+                policy=prose_policy,
+                history_metrics=accepted_history_metrics,
+                narrative_context=narrative_context,
             )
             if targeted_group_failed:
                 assessment["accepted"] = False
@@ -5576,6 +5598,12 @@ class WorkflowService:
             if ordinary_preserved:
                 assessment["accepted"] = False
                 assessment["reasons"].append("model_routes_failed")
+            if split_recovery_used:
+                _, duplicate_blocks = remove_consecutive_duplicate_blocks(polished_part)
+                if duplicate_blocks:
+                    assessment["accepted"] = False
+                    assessment["hard_reasons"].append("split_parent_duplicate")
+                    assessment["reasons"].append("split_parent_duplicate")
             rhythm_reasons = {
                 "sentence_rhythm_not_improved",
                 "timestamp_scene_fragment_not_improved",
@@ -5600,118 +5628,100 @@ class WorkflowService:
                     f"passage_protection:{item['id']}"
                     for item in passage_validation["conflicts"]
                 )
-            if (not targeted_group_failed and not ordinary_preserved
-                    and not assessment["accepted"] and configured_fallback
-                    and not prefer_configured and not compact_fallback_used):
+            if (not assessment["accepted"]
+                    and assessment.get("disposition") == "targeted_repair"
+                    and not assessment.get("hard_reasons")
+                    and not locked_failures and not passage_validation["conflicts"]
+                    and not ordinary_preserved and not split_recovery_used):
+                signal_codes = {
+                    code
+                    for signal in assessment.get("soft_signals", [])
+                    for code in signal.get("codes", [signal.get("code")])
+                    if code
+                }
+                evidence_findings = [
+                    finding for finding in local_report["findings"]
+                    if finding.get("code") in signal_codes
+                ]
+                repair_advisory = {
+                    "soft_signals": assessment.get("soft_signals", []),
+                    "evidence_findings": evidence_findings,
+                    "instruction": (
+                        "Edit only the evidenced local spans. Preserve all other wording, "
+                        "events, facts, transitions, and length."
+                    ),
+                }
+                repair_prompt = (
+                    "TARGETED LOCAL PROSE REPAIR. Return revised prose only. Do not rewrite "
+                    "unrelated sentences.\n\n"
+                    + render_polish_authority_packet(
+                        authority_packet, advisory=repair_advisory,
+                    )
+                )
+                repair_compact_prompt = (
+                    "TARGETED LOCAL PROSE REPAIR UNDER INPUT PRESSURE. Return revised prose only.\n\n"
+                    + render_polish_authority_packet(
+                        authority_packet,
+                        advisory={"soft_signals": assessment.get("soft_signals", [])},
+                    )
+                )
                 self.db.add_run_event(
-                    run_id, "warning", "polish_validation_fallback",
-                    f"润色第 {index}/{len(parts)} 段未通过本地验收，正在改用备用模型重试",
+                    run_id, "warning", "polish_targeted_repair",
+                    f"润色第 {index}/{len(parts)} 段仅对有证据的局部问题定向修复",
                     stage="polish", metadata={
-                        "segment": index, "reasons": assessment["reasons"],
+                        "segment": index,
+                        "signal_families": assessment.get("signal_families", []),
+                        "signal_codes": sorted(signal_codes),
+                        "authority_hash": authority_hash,
                     },
                 )
-                fallback_candidate: str | None = None
+                if signal_codes.intersection(rhythm_reasons):
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_rhythm_retry",
+                        f"润色第 {index}/{len(parts)} 段韵律软信号触发局部修复",
+                        stage="polish", metadata={
+                            "segment": index, "reasons": sorted(
+                                signal_codes.intersection(rhythm_reasons)
+                            ),
+                        },
+                    )
                 try:
-                    candidate = await self._stage(
-                        run_id, run_path, project, "polish", constraints,
-                        compact_prompt if compact_recovery_used else prompt,
-                        suffix=f"{part_suffix}-validation-fallback", allow_tools=False,
-                        prefer_configured_fallback=True,
-                        output_source_characters=len(part),
-                        targeted_retry=targeted,
-                        retry_polish_output_limit=targeted,
-                    )
-                    round_input_tokens += int(
-                        getattr(candidate, "receipt", {}).get("input_tokens", 0) or 0
-                    )
-                    if not targeted:
-                        self._raise_for_unusable_polish_output(
-                            candidate, len(part), maximum_characters,
+                    (repair_candidate, repair_preserved, repair_compact_used,
+                     _repair_fallback_used, repair_input_tokens) = (
+                        await self._ordinary_polish_segment(
+                            run_id, run_path, project, constraints, part,
+                            repair_prompt, repair_compact_prompt,
+                            f"{part_suffix}-targeted-repair",
+                            minimum_characters, maximum_characters,
+                            configured_fallback, {
+                                "segment": index, "total": len(parts),
+                                "recovery": "targeted_repair",
+                            },
                         )
-                    fallback_candidate = candidate
+                    )
+                    round_input_tokens += repair_input_tokens
+                    ordinary_preserved = bool(ordinary_preserved or repair_preserved)
+                    compact_recovery_used = bool(
+                        compact_recovery_used or repair_compact_used
+                    )
+                    polished_part = repair_candidate
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
-                    round_input_tokens += self._polish_input_tokens(exc)
-                    if self._is_fatal_model_configuration_error(exc):
+                    failure_kind = classify_model_failure(exc)
+                    if failure_kind == "provider_rejection":
                         raise
-                    if self._is_polish_transport_error(exc):
-                        fallback_candidate = await split_failed_segment(exc)
+                    if failure_kind in {"input_context_overflow", "output_limit"}:
+                        polished_part = await split_failed_segment(exc)
                     else:
-                        self.db.add_run_event(
-                            run_id, "warning", "polish_validation_fallback_failed",
-                            f"润色第 {index}/{len(parts)} 段的备用模型重试失败，已保留原文",
-                            stage="polish", metadata={
-                                "segment": index, "error": describe_error(exc),
-                            },
-                        )
-                if fallback_candidate is not None:
-                    polished_part = fallback_candidate
-                    assessment = assess_polish_candidate(
-                        part, polished_part, required,
-                        minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
-                    )
-                    if targeted:
-                        assessment["reasons"] = [
-                            reason for reason in assessment["reasons"]
-                            if reason not in rhythm_reasons
-                        ]
-                        assessment["accepted"] = not assessment["reasons"]
-                    locked_failures = validate_locked_facts(
-                        part, polished_part, authoritative_state,
-                    )
-                    if locked_failures:
-                        assessment["accepted"] = False
-                        assessment["reasons"].extend(locked_failures)
-                    passage_validation = validate_passage_protections(
-                        part, polished_part, passage_locks,
-                    )
-                    if passage_validation["conflicts"]:
-                        assessment["accepted"] = False
-                        assessment["reasons"].extend(
-                            f"passage_protection:{item['id']}"
-                            for item in passage_validation["conflicts"]
-                        )
-            rhythm_retried = False
-            if (not targeted and not compact_recovery_used
-                    and rhythm_reasons.intersection(assessment["reasons"])):
-                rhythm_retried = True
-                reason = next(item for item in (
-                    "sentence_rhythm_not_improved",
-                    "dialogue_ping_pong_not_improved",
-                    "timestamp_scene_fragment_not_improved",
-                ) if item in assessment["reasons"])
-                labels = {
-                    "sentence_rhythm_not_improved": "连续叙述短句未改善",
-                    "dialogue_ping_pong_not_improved": "连续纯对白未改善",
-                    "timestamp_scene_fragment_not_improved": "场景断句未改善",
-                }
-                self.db.add_run_event(
-                    run_id, "warning", "polish_rhythm_retry",
-                    f"润色第 {index}/{len(parts)} 段{labels[reason]}，正在定向重试",
-                    stage="polish", metadata={"segment": index, "reason": reason},
-                )
-                rhythm_prompt = (
-                    "RHYTHM RETRY: The previous revision retained four or more consecutive "
-                    "short narrative sentences outside dialogue, or split one continuous beat into a timestamp "
-                    "sentence followed by a static scene sentence. Merge that beat into natural "
-                    "continuous prose. Also break up four or more consecutive dialogue-only "
-                    "paragraphs with meaningful action, observation, hesitation, or changed subtext. "
-                    "Keep dialogue and plot facts unchanged. Return only the revised segment.\n\n"
-                    + prompt
-                )
-                polished_part = await self._stage(
-                    run_id, run_path, project, "polish", constraints, rhythm_prompt,
-                    suffix=f"{part_suffix}-rhythm-retry", allow_tools=False,
-                    prefer_configured_fallback=prefer_configured,
-                    output_source_characters=len(part),
-                )
-                round_input_tokens += int(
-                    getattr(polished_part, "receipt", {}).get("input_tokens", 0) or 0
-                )
+                        ordinary_preserved = True
+                        polished_part = part
                 assessment = assess_polish_candidate(
                     part, polished_part, required,
                     minimum_ratio=minimum_ratio, maximum_ratio=maximum_ratio,
+                    policy=prose_policy,
+                    history_metrics=accepted_history_metrics,
+                    narrative_context=narrative_context,
                 )
                 locked_failures = validate_locked_facts(
                     part, polished_part, authoritative_state,
@@ -5728,6 +5738,14 @@ class WorkflowService:
                         f"passage_protection:{item['id']}"
                         for item in passage_validation["conflicts"]
                     )
+                if ordinary_preserved:
+                    assessment["accepted"] = False
+                    if "model_routes_failed" not in assessment["reasons"]:
+                        assessment["reasons"].append("model_routes_failed")
+            if ordinary_preserved:
+                assessment["accepted"] = False
+                if "model_routes_failed" not in assessment["reasons"]:
+                    assessment["reasons"].append("model_routes_failed")
             accepted = bool(assessment["accepted"])
             conditional_length = bool(
                 accepted and targeted and assessment["ratio"] < preferred_minimum_ratio
@@ -5754,6 +5772,15 @@ class WorkflowService:
                     },
                 )
             if not assessment["accepted"]:
+                if split_recovery_used:
+                    self.db.add_run_event(
+                        run_id, "warning", "polish_split_parent_rejected",
+                        "拆分子段合并后未通过父段整体验收，已原子回退为父段原文",
+                        stage="polish", metadata={
+                            "segment": index, "reasons": assessment["reasons"],
+                            "authority_hash": authority_hash,
+                        },
+                    )
                 if passage_validation["conflicts"]:
                     self.db.add_run_event(
                         run_id, "warning", "passage_protection_conflict",
@@ -5789,6 +5816,8 @@ class WorkflowService:
                 )
             polished_part = polished_part.strip()
             polished_parts.append(polished_part)
+            if accepted:
+                accepted_history_metrics.append(prose_metrics(polished_part))
             previous_handoff_state = self._polish_exit_state(polished_part)
             change_evidence = diff_manuscripts(
                 part, polished_part,
@@ -5818,13 +5847,6 @@ class WorkflowService:
                     status="preserved_source", retry_signature=retry_signature,
                     accepted=False,
                     change_evidence=change_evidence,
-                    authority_hash=authority_hash,
-                )
-            elif rhythm_retried:
-                self._save_polish_checkpoint(
-                    checkpoint_root, index, part, part,
-                    status="preserved_after_retry", retry_signature=retry_signature,
-                    accepted=False, change_evidence=change_evidence,
                     authority_hash=authority_hash,
                 )
             if not targeted:
@@ -5900,15 +5922,6 @@ class WorkflowService:
                 )
         atomic_write(run_path / "outputs" / f"polish{suffix}.md", polished)
         return polished
-
-    @staticmethod
-    def _is_polish_transport_error(exc: Exception) -> bool:
-        message = str(exc).lower()
-        return any(marker in message for marker in (
-            "502", "504", "524", "timeout", "timed out", "connecterror",
-            "connection reset", "connection refused", "connection attempts failed",
-            "server disconnected", "bad gateway", "gateway timeout",
-        ))
 
     @classmethod
     def _polish_round_input_cap(cls, structural: bool, segment_count: int) -> int:
@@ -6122,7 +6135,8 @@ class WorkflowService:
                      primary_only: bool = False,
                      retry_polish_output_limit: bool = True,
                      expected_output_characters: int | None = None,
-                     completion_check: Callable[[str], bool] | None = None) -> str:
+                     completion_check: Callable[[str], bool] | None = None,
+                     compact_input: bool = False) -> str:
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -6174,7 +6188,7 @@ class WorkflowService:
             )
             system = f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}\n\n{model_skill_prompt}{style}"
             estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
-            if stage == "polish" and estimated_input_tokens > 12_000:
+            if stage == "polish" and compact_input:
                 model_constraints = ConstraintPromptCompactor(max_chars=4000).compact_for_stage(
                     source_constraints, stage=stage, focus=user,
                 )
@@ -6196,6 +6210,7 @@ class WorkflowService:
                     "prompt_characters": len(model_skill_prompt),
                     "source_prompt_characters": len(skill_run.prompt),
                     "compact_prompt": model_skill_prompt != skill_run.prompt,
+                    "compact_input": compact_input,
                     "constraint_characters": len(model_constraints),
                     "source_constraint_characters": len(source_constraints),
                     "compact_constraints": model_constraints != source_constraints,
@@ -6220,6 +6235,26 @@ class WorkflowService:
                 expected_output_characters=expected_output_characters,
                 input_tokens=estimated_input_tokens,
             )
+            if stage == "polish":
+                context_window = self._provider_context_window(
+                    gateway_role, prefer_configured_fallback,
+                )
+                pressure = classify_input_pressure(
+                    full_input_tokens=estimated_input_tokens,
+                    authority_input_tokens=(estimated_input_tokens if compact_input else 0),
+                    output_reserve=output_budget or 0,
+                    context_window=context_window,
+                )
+                overflow = (
+                    pressure == "split" if compact_input
+                    else pressure in {"compact", "split"}
+                )
+                if overflow:
+                    raise RuntimeError(
+                        "input context overflow preflight: request plus output reserve "
+                        f"requires {estimated_input_tokens + (output_budget or 0)} tokens "
+                        f"for context window {context_window}"
+                    )
             fallback_ceiling = self._provider_output_ceiling(gateway_role, True)
             stage_budget = self._stage_output_budget(stage, output_source_characters)
             effective_ceiling = provider_ceiling or output_budget
@@ -6364,57 +6399,6 @@ class WorkflowService:
             if (retry_polish_output_limit and stage == "polish"
                     and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
-                    and result.receipt.get("finish_reason") == "max_tokens"):
-                used_fallback = bool(
-                    prefer_configured_fallback
-                    or result.receipt.get("fallback_used")
-                    or result.receipt.get("configured_fallback_direct")
-                )
-                previous_budget = fallback_budget if used_fallback else output_budget
-                if targeted_retry:
-                    retry_ceiling = (
-                        fallback_effective_ceiling if used_fallback else effective_ceiling
-                    ) or previous_budget
-                else:
-                    configured_retry_ceiling = (
-                        fallback_ceiling if used_fallback else provider_ceiling
-                    )
-                    retry_ceiling = configured_retry_ceiling or 8192
-                decision = next_retry_action(
-                    failure_kind="output_limit", attempt=1,
-                    current_limit=previous_budget or 1,
-                    provider_limit=retry_ceiling or 1,
-                )
-                retry_budget = (
-                    decision["next_limit"] if targeted_retry
-                    else min(8192, retry_ceiling or 8192)
-                )
-                if not targeted_retry or decision["action"] == "retry_larger":
-                    self.db.add_run_event(
-                        run_id, "warning", "polish_max_tokens_retry",
-                        "当前片段输出不完整，正在提高输出上限后重试",
-                        stage=stage, metadata={
-                            "previous_budget": previous_budget,
-                            "retry_budget": retry_budget,
-                        },
-                    )
-                    if used_fallback and hasattr(
-                        self.gateway, "complete_configured_fallback"
-                    ):
-                        result = await self.gateway.complete_configured_fallback(
-                            gateway_role, system, user, max_output_tokens=retry_budget,
-                        )
-                    else:
-                        result = await self.gateway.complete(
-                            gateway_role, system, user, max_output_tokens=retry_budget,
-                        )
-                    result.receipt.setdefault(
-                        "requested_max_output_tokens", retry_budget,
-                    )
-                    output_limit_expanded_once = True
-            if (retry_polish_output_limit and stage == "polish"
-                    and gateway_role == "polish" and not allow_tools
-                    and not result.text.strip()
                     and result.receipt.get("finish_reason") in {"tool_use", "tool_calls"}):
                 self.db.add_run_event(
                     run_id, "warning", "polish_tool_use_retry",
@@ -6492,7 +6476,10 @@ class WorkflowService:
                     if (not output_limit_expanded_once
                             and retry_budget and retry_budget > previous_budget):
                         self.db.add_run_event(
-                            run_id, "warning", "output_limit_expanded",
+                            run_id, "warning", (
+                                "polish_output_limit_retry"
+                                if stage == "polish" else "output_limit_expanded"
+                            ),
                             f"{stage} output may be truncated; retrying the same route with more headroom",
                             stage=stage, metadata={
                                 "previous_budget": previous_budget,
@@ -6533,6 +6520,9 @@ class WorkflowService:
                                 gateway_role, system, user,
                                 max_output_tokens=retry_budget,
                             )
+                        result.receipt.setdefault(
+                            "requested_max_output_tokens", retry_budget,
+                        )
                     retry_complete = not output_limited(result.receipt)
                     if not retry_complete and completion_check is not None:
                         try:
@@ -6960,6 +6950,16 @@ class WorkflowService:
         model = self.db.get_model(binding.get(model_key, "")) or {}
         ceiling = model.get("max_output_tokens")
         return ceiling if isinstance(ceiling, int) and ceiling > 0 else None
+
+    def _provider_context_window(self, gateway_role: str,
+                                 prefer_configured_fallback: bool) -> int | None:
+        binding = self.db.get_role_binding(gateway_role) or {}
+        model_key = (
+            "fallback_model_id" if prefer_configured_fallback else "primary_model_id"
+        )
+        model = self.db.get_model(binding.get(model_key, "")) or {}
+        window = model.get("context_window")
+        return window if isinstance(window, int) and window > 0 else None
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:

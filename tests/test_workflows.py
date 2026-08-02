@@ -2167,7 +2167,7 @@ async def test_segment_polish_rejects_truncated_output_and_keeps_original(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_structural_polish_retries_invalid_primary_output_with_configured_fallback(
+async def test_structural_polish_hard_reject_preserves_source_without_rewrite_retry(
     tmp_path,
 ) -> None:
     db = Database(tmp_path / "app.db")
@@ -2215,10 +2215,10 @@ async def test_structural_polish_retries_invalid_primary_output_with_configured_
         structural=True, prepared_revision_plan=plan,
     )
 
-    assert WorkflowService._split_segments(polished) == ["B" * 1000, "C" * 1000]
-    assert gateway.routes == ["primary", "configured_fallback"]
-    assert any(
-        event["event_type"] == "polish_validation_fallback"
+    assert WorkflowService._split_segments(polished) == ["A" * 1000, "C" * 1000]
+    assert gateway.routes == ["primary"]
+    assert not any(
+        event["event_type"] in {"polish_validation_fallback", "polish_targeted_repair"}
         for event in db.list_run_events("fallback-repair")
     )
 
@@ -2827,7 +2827,7 @@ async def test_targeted_split_children_keep_local_context_and_chinese_events(tmp
     assert all('"issue_ids":["issue-split"]' in prompt for prompt in child_prompts)
     assert all("COMPACT FULL STORY MAP" not in prompt for prompt in child_prompts)
     events = db.list_run_events("targeted-split")
-    assert any("提高输出上限" in event["message"] for event in events)
+    assert any(event["event_type"] == "polish_output_limit_retry" for event in events)
     assert any("拆分当前片段" in event["message"] for event in events)
 
 
@@ -3441,7 +3441,7 @@ def test_polish_narrative_context_includes_a_linked_payoff() -> None:
 
 
 @pytest.mark.asyncio
-async def test_recoverable_polish_failure_splits_segment_without_draft_fallback(tmp_path) -> None:
+async def test_transport_failure_retries_without_splitting_or_draft_fallback(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
@@ -3478,8 +3478,9 @@ async def test_recoverable_polish_failure_splits_segment_without_draft_fallback(
 
     assert result == "\n\n".join(item.strip() for item in manuscript.split("\n\n"))
     assert gateway.roles and set(gateway.roles) == {"polish"}
-    assert any(event["event_type"] == "polish_segment_split"
-               for event in db.list_run_events("split-retry"))
+    events = db.list_run_events("split-retry")
+    assert any(event["event_type"] == "polish_transport_retry" for event in events)
+    assert not any(event["event_type"] == "polish_segment_split" for event in events)
 
 
 @pytest.mark.asyncio
@@ -3670,7 +3671,8 @@ async def test_targeted_retry_without_configured_ceiling_expands_to_quality_esti
             output_source_characters=1000, targeted_retry=True,
         )
 
-    assert gateway.budgets == [1606, 2774]
+    assert gateway.budgets[0] == 1606
+    assert gateway.budgets[1] == gateway.budgets[0] * 2
     assert 8192 not in gateway.budgets
 
 
@@ -3739,7 +3741,241 @@ def test_polish_segments_are_bounded_and_preserve_paragraph_order() -> None:
 
 
 @pytest.mark.asyncio
-async def test_polish_output_limit_retries_primary_with_compact_prompt(tmp_path) -> None:
+async def test_polish_output_limit_expands_same_prompt_then_splits(tmp_path) -> None:
+    paragraphs = [f"段落{index}保留独立事件。" + chr(64 + index) * 430 for index in range(1, 5)]
+    source = "\n\n".join(paragraphs)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append((user, max_output_tokens))
+            if len(self.calls) <= 2:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                    "output_tokens": max_output_tokens,
+                })
+            return ModelResult(user.split("MANUSCRIPT SEGMENT:\n", 1)[1], {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source
+    assert gateway.calls[0][0] == gateway.calls[1][0]
+    assert gateway.calls[1][1] > gateway.calls[0][1]
+    events = db.list_run_events("polish-recovery")
+    assert sum(event["event_type"] == "polish_output_limit_retry" for event in events) == 1
+    assert any(event["event_type"] == "polish_segment_split" for event in events)
+    assert not any(event["event_type"] == "polish_compact_retry" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_explicit_input_overflow_compacts_without_losing_authority(tmp_path) -> None:
+    source = "她核对账本里的名字，仍不知道密室位置。" * 35
+
+    class Gateway:
+        def __init__(self):
+            self.prompts = []
+
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
+            self.prompts.append(user)
+            if len(self.prompts) == 1:
+                raise RuntimeError("maximum context length exceeded")
+            return ModelResult(source, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+        async def complete(self, *args, **kwargs):
+            raise AssertionError("ordinary polish should keep the selected primary route")
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source
+    assert len(gateway.prompts) == 2
+    assert all(prompt.count(source) == 1 for prompt in gateway.prompts)
+    for field in ("MINIMUM NARRATIVE AUTHORITY", "LOCKED FACTS", "ALLOWED SCOPE"):
+        assert all(field in prompt for prompt in gateway.prompts)
+    events = db.list_run_events("polish-recovery")
+    assert any(event["event_type"] == "polish_input_compact_retry" for event in events)
+    assert not any(event["event_type"] == "polish_segment_split" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_known_context_window_preflights_full_input_before_provider_call(tmp_path) -> None:
+    source = "A complete source segment preserves every event. " * 20
+
+    class Gateway:
+        def __init__(self):
+            self.prompts = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.prompts.append(user)
+            return ModelResult(source, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+    db.save_provider(
+        provider_id="primary", name="Primary", protocol="openai",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="primary-model", provider_id="primary", display_name="Primary",
+        model_name="primary-model", context_window=6000, max_output_tokens=4000,
+    )
+    packet = build_polish_authority_packet(source=source)
+    compact_prompt = WorkflowService._compact_polish_prompt(
+        authority_packet=packet, local_findings=[],
+    )
+    full_prompt = "DISCARDABLE ADVISORY:\n" + "x" * 20_000 + "\n\n" + compact_prompt
+
+    result = await service._ordinary_polish_segment(
+        "polish-recovery", run_path, project, "constraints", source,
+        full_prompt, compact_prompt, "-preflight", 700, 1800, False,
+        {"segment": 1, "total": 1},
+    )
+
+    assert result[0] == source
+    assert result[2] is True
+    assert gateway.prompts == [compact_prompt]
+    assert any(
+        event["event_type"] == "polish_input_compact_retry"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_transport_retries_same_route_then_configured_fallback_without_split(
+    tmp_path,
+) -> None:
+    source = "A complete scene preserves every event and stable transition. " * 20
+
+    class Gateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
+            self.routes.append("primary")
+            raise RuntimeError("ConnectError: connection reset")
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            self.routes.append("fallback")
+            return ModelResult(source, {
+                "model_name": "backup", "configured_fallback_direct": True,
+                "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source.strip()
+    assert gateway.routes == ["primary", "primary", "fallback"]
+    events = db.list_run_events("polish-recovery")
+    assert any(event["event_type"] == "polish_transport_retry" for event in events)
+    assert not any(event["event_type"] == "polish_segment_split" for event in events)
+
+
+@pytest.mark.asyncio
+async def test_one_failed_split_child_preserves_entire_parent(tmp_path) -> None:
+    paragraphs = [(f"Paragraph {index} keeps its distinct event. " * 11).strip()
+                  for index in range(4)]
+    source = "\n\n".join(paragraphs)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            segment = user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
+            if self.calls <= 2:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                })
+            if self.calls == 3:
+                return ModelResult(segment.replace("keeps", "retains", 1), {
+                    "model_name": "primary", "finish_reason": "end_turn",
+                })
+            return ModelResult("too short", {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source
+    checkpoint = json.loads((
+        run_path / "outputs" / "polish-checkpoints" / "initial" / "part-01.json"
+    ).read_text(encoding="utf-8"))
+    assert checkpoint["accepted"] is False
+    assert any(
+        event["event_type"] == "polish_split_child_rejected"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_split_children_must_pass_merged_parent_validation(tmp_path) -> None:
+    left = "\n\n".join((f"Left event {index} remains distinct. " * 11).strip()
+                        for index in range(2))
+    right = "\n\n".join((f"Right event {index} remains distinct. " * 11).strip()
+                         for index in range(2))
+    source = left + "\n\n" + right
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls += 1
+            if self.calls <= 2:
+                return ModelResult("", {
+                    "model_name": "primary", "finish_reason": "max_tokens",
+                })
+            return ModelResult(left, {
+                "model_name": "primary", "finish_reason": "end_turn",
+            })
+
+    gateway = Gateway()
+    db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
+
+    result = await service._polish_short_segments(
+        "polish-recovery", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == source
+    assert any(
+        event["event_type"] == "polish_split_parent_rejected"
+        for event in db.list_run_events("polish-recovery")
+    )
+
+
+@pytest.mark.asyncio
+async def test_polish_output_limit_retries_primary_with_larger_budget(tmp_path) -> None:
     source = "A continuous scene with fixed events and natural sentence rhythm. " * 20
 
     class Gateway:
@@ -3780,17 +4016,16 @@ async def test_polish_output_limit_retries_primary_with_compact_prompt(tmp_path)
     assert result == source.strip()
     assert len(gateway.calls) == 2
     assert gateway.calls[1]["prefer_configured_fallback"] is False
-    assert "只返回修改后的正文，不解释、不分析" in gateway.calls[1]["prompt"]
-    assert "COMPACT FULL STORY MAP" not in gateway.calls[1]["prompt"]
-    assert 8192 not in [call["max_output_tokens"] for call in gateway.calls]
+    assert gateway.calls[1]["prompt"] == gateway.calls[0]["prompt"]
+    assert gateway.calls[1]["max_output_tokens"] > gateway.calls[0]["max_output_tokens"]
     events = db.list_run_events("polish-recovery")
-    assert any(event["event_type"] == "polish_compact_retry" for event in events)
+    assert any(event["event_type"] == "polish_output_limit_retry" for event in events)
     assert not any(event["event_type"] == "polish_segment_split" for event in events)
-    assert not any(event["event_type"] == "polish_max_tokens_retry" for event in events)
+    assert not any(event["event_type"] == "polish_compact_retry" for event in events)
 
 
 @pytest.mark.asyncio
-async def test_polish_nonempty_max_token_output_is_discarded_before_compact_retry(
+async def test_polish_nonempty_max_token_output_is_discarded_before_same_prompt_retry(
     tmp_path,
 ) -> None:
     source = "A complete paragraph preserves every fixed event in natural prose. " * 18
@@ -3825,11 +4060,13 @@ async def test_polish_nonempty_max_token_output_is_discarded_before_compact_retr
 
     assert result == source.strip()
     assert gateway.primary_calls == 2
-    assert not (run_path / "outputs" / "polish-part-01.md").exists()
+    assert (run_path / "outputs" / "polish-part-01.md").read_text(
+        encoding="utf-8"
+    ) == source
 
 
 @pytest.mark.asyncio
-async def test_polish_empty_tool_use_output_enters_compact_recovery(tmp_path) -> None:
+async def test_polish_empty_tool_use_output_retries_without_compacting_input(tmp_path) -> None:
     source = "A complete segment preserves fixed events in naturally paced prose. " * 18
 
     class Gateway:
@@ -3855,15 +4092,15 @@ async def test_polish_empty_tool_use_output_enters_compact_recovery(tmp_path) ->
 
     assert result == source.strip()
     assert len(gateway.prompts) == 2
-    assert "只返回修改后的正文，不解释、不分析" in gateway.prompts[1]
-    assert not any(
+    assert gateway.prompts[1] == gateway.prompts[0]
+    assert any(
         event["event_type"] == "polish_tool_use_retry"
         for event in db.list_run_events("polish-recovery")
     )
 
 
 @pytest.mark.asyncio
-async def test_polish_compact_primary_failure_uses_configured_fallback(tmp_path) -> None:
+async def test_polish_output_limit_without_safe_split_preserves_parent(tmp_path) -> None:
     source = "A witness revisits the scene and verifies every fixed event carefully. " * 18
 
     class Gateway:
@@ -3893,17 +4130,16 @@ async def test_polish_compact_primary_failure_uses_configured_fallback(tmp_path)
     )
 
     assert result == source.strip()
-    assert [route for route, _ in gateway.routes] == [False, False, True]
-    assert "只返回修改后的正文，不解释、不分析" in gateway.routes[1][1]
-    assert gateway.routes[1][1] == gateway.routes[2][1]
+    assert [route for route, _ in gateway.routes] == [False, False]
+    assert gateway.routes[1][1] == gateway.routes[0][1]
     events = db.list_run_events("polish-recovery")
-    assert any(event["event_type"] == "polish_compact_fallback" for event in events)
+    assert any(event["event_type"] == "polish_capacity_preserved" for event in events)
     assert not any(event["event_type"] == "polish_segment_split" for event in events)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("fallback_text", ["", "source"])
-async def test_polish_validation_fallback_max_tokens_preserves_source_without_retry(
+async def test_polish_validation_fallback_max_tokens_expands_then_preserves_source(
     tmp_path, fallback_text,
 ) -> None:
     source = "A locally valid source segment keeps every established event in natural prose. " * 16
@@ -3934,9 +4170,9 @@ async def test_polish_validation_fallback_max_tokens_preserves_source_without_re
     )
 
     assert result == source.strip()
-    assert [route for route, _ in gateway.routes] == ["primary", "fallback"]
-    assert not any(
-        event["event_type"] == "polish_max_tokens_retry"
+    assert [route for route, _ in gateway.routes] == ["primary", "fallback", "fallback"]
+    assert any(
+        event["event_type"] == "polish_output_limit_retry"
         for event in db.list_run_events("polish-recovery")
     )
     checkpoint = json.loads((
@@ -3978,7 +4214,7 @@ async def test_polish_validation_fallback_fatal_error_stops_immediately(tmp_path
 
 
 @pytest.mark.asyncio
-async def test_polish_validation_fallback_transport_error_uses_safe_split(tmp_path) -> None:
+async def test_polish_validation_fallback_transport_error_preserves_without_split(tmp_path) -> None:
     paragraphs = [(str(index) + "A" * 399) for index in range(4)]
     source = "\n\n".join(paragraphs)
 
@@ -4009,8 +4245,8 @@ async def test_polish_validation_fallback_transport_error_uses_safe_split(tmp_pa
     )
 
     assert result == source
-    assert gateway.routes == ["primary", "fallback", "primary", "primary"]
-    assert any(
+    assert gateway.routes == ["primary", "fallback"]
+    assert not any(
         event["event_type"] == "polish_segment_split"
         for event in db.list_run_events("polish-recovery")
     )
@@ -4052,48 +4288,17 @@ async def test_polish_recovery_counts_all_returned_receipt_input_tokens(tmp_path
     with pytest.raises(PolishTokenBudgetError, match="round"):
         await service._polish_short_segments(
             "polish-recovery", run_path, project, "constraints", manuscript, "{}",
-            round_cap_override=300,
+            round_cap_override=200,
         )
 
-    assert gateway.routes == ["primary", "primary", "fallback"]
+    assert gateway.routes == ["primary", "fallback"]
 
 
-@pytest.mark.asyncio
-async def test_polish_recovery_counts_empty_output_receipt_input_tokens(tmp_path) -> None:
-    first = "A complete source segment preserves a stable event in natural prose. " * 16
-    second = "A second source segment must be blocked by the round input cap. " * 16
+def test_polish_recovery_counts_empty_output_exception_receipt_tokens() -> None:
+    error = RuntimeError("polish model returned empty output")
+    error.receipt = {"input_tokens": 110, "finish_reason": "end_turn"}
 
-    class Gateway:
-        def __init__(self):
-            self.routes = []
-
-        @staticmethod
-        def empty_result(model_name):
-            return ModelResult("", {
-                "model_name": model_name, "input_tokens": 110,
-                "finish_reason": "end_turn",
-            })
-
-        async def complete(self, role, system, user, max_output_tokens=None):
-            self.routes.append("primary")
-            return self.empty_result("primary")
-
-        async def complete_configured_fallback(self, role, system, user,
-                                               max_output_tokens=None):
-            self.routes.append("fallback")
-            return self.empty_result("backup")
-
-    gateway = Gateway()
-    _, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
-
-    with pytest.raises(PolishTokenBudgetError, match="round"):
-        await service._polish_short_segments(
-            "polish-recovery", run_path, project, "constraints",
-            WorkflowService.SHORT_SEGMENT_SEPARATOR.join((first, second)), "{}",
-            round_cap_override=300,
-        )
-
-    assert gateway.routes == ["primary", "primary", "fallback"]
+    assert WorkflowService._polish_input_tokens(error) == 110
 
 
 @pytest.mark.asyncio
@@ -4175,7 +4380,7 @@ async def test_polish_full_success_resets_consecutive_output_error_count(tmp_pat
 
 
 @pytest.mark.asyncio
-async def test_polish_obviously_long_output_uses_compact_recovery(tmp_path) -> None:
+async def test_polish_obviously_long_output_uses_same_prompt_fallback(tmp_path) -> None:
     source = "A measured scene preserves every established fact without repetition. " * 18
 
     class Gateway:
@@ -4201,12 +4406,12 @@ async def test_polish_obviously_long_output_uses_compact_recovery(tmp_path) -> N
     )
 
     assert result == source.strip()
-    assert [route for route, _ in gateway.routes] == [False, False]
-    assert "只返回修改后的正文，不解释、不分析" in gateway.routes[1][1]
+    assert [route for route, _ in gateway.routes] == [False, True]
+    assert gateway.routes[1][1] == gateway.routes[0][1]
 
 
 @pytest.mark.asyncio
-async def test_polish_both_compact_routes_fail_preserves_source_and_continues(tmp_path) -> None:
+async def test_polish_unsplittable_output_limit_preserves_source_and_continues(tmp_path) -> None:
     first = "The first segment keeps its established event and measured sentence rhythm. " * 16
     second = "The second segment continues independently with another established event. " * 16
     improved_second = second.replace("continues", "moves forward")
@@ -4243,7 +4448,7 @@ async def test_polish_both_compact_routes_fail_preserves_source_and_continues(tm
     assert result == WorkflowService.SHORT_SEGMENT_SEPARATOR.join((
         first.strip(), improved_second.strip(),
     ))
-    assert gateway.routes == [False, False, True, False]
+    assert gateway.routes == [False, False, False]
     checkpoint = json.loads((
         run_path / "outputs" / "polish-checkpoints" / "initial" / "part-01.json"
     ).read_text(encoding="utf-8"))
@@ -4354,7 +4559,7 @@ async def test_structural_polish_does_not_enter_ordinary_compact_recovery(tmp_pa
 
 
 @pytest.mark.asyncio
-async def test_polish_two_consecutive_output_errors_skip_full_prompt_for_later_segments(
+async def test_polish_two_consecutive_output_errors_keep_full_prompt_for_later_segments(
     tmp_path,
 ) -> None:
     parts = [
@@ -4386,11 +4591,11 @@ async def test_polish_two_consecutive_output_errors_skip_full_prompt_for_later_s
     )
 
     assert len(gateway.prompts) == 5
-    assert "只返回修改后的正文，不解释、不分析" in gateway.prompts[4]
-    assert sum(
+    assert "只返回修改后的正文，不解释、不分析" not in gateway.prompts[4]
+    assert not any(
         event["event_type"] == "polish_compact_circuit_opened"
         for event in db.list_run_events("polish-recovery")
-    ) == 1
+    )
 
     new_run_id = "new-polish-task"
     db.create_run(new_run_id, project.id, "short-story", status="running")
@@ -4448,7 +4653,7 @@ async def test_polish_resume_reuses_accepted_segments_and_retries_preserved_segm
         first.strip(), second.strip(),
     ))
     assert first_result == resumed_result == expected
-    assert gateway.routes == [False, False, False, True, False]
+    assert gateway.routes == [False, False, False, False]
     reused = [
         event for event in db.list_run_events("polish-recovery")
         if event["event_type"] == "polish_checkpoint_reused"
@@ -4662,9 +4867,11 @@ async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(t
     class Gateway:
         def __init__(self):
             self.calls = 0
+            self.prompts = []
 
         async def complete(self, role, system, user, max_output_tokens=None):
             self.calls += 1
+            self.prompts.append(user)
             text = source if self.calls == 1 else "她听清了：侯府三小姐林知晚，那些词忽然都有了陌生的分量。"
             return ModelResult(text, {"model_name": "claude", "finish_reason": "end_turn"})
 
@@ -4681,8 +4888,12 @@ async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(t
 
     assert gateway.calls == 2
     assert result == "她听清了：侯府三小姐林知晚，那些词忽然都有了陌生的分量。"
-    assert any(event["event_type"] == "polish_rhythm_retry"
-               for event in db.list_run_events("retry-rhythm"))
+    events = db.list_run_events("retry-rhythm")
+    assert any(event["event_type"] == "polish_rhythm_retry" for event in events)
+    assert any(event["event_type"] == "polish_targeted_repair" for event in events)
+    assert "TARGETED LOCAL PROSE REPAIR" in gateway.prompts[1]
+    assert "MINIMUM NARRATIVE AUTHORITY" in gateway.prompts[1]
+    assert gateway.prompts[1].count(source) == 1
 
 
 @pytest.mark.asyncio
