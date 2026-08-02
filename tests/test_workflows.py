@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import json
+import re
 from collections.abc import Sequence
 from pathlib import Path
 from types import SimpleNamespace
@@ -506,7 +507,18 @@ class FakeGateway:
                 "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
                 "ending": "完成正式结局", "covered_event_ids": [],
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
-        return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
+        text = next(self.responses)
+        if role == "final_review" and "INITIAL ISSUE LEDGER:" in user:
+            payload = json.loads(text)
+            ledger_text = user.split("INITIAL ISSUE LEDGER:\n", 1)[1].split("\n\n", 1)[0]
+            ledger = json.loads(ledger_text)
+            payload["reconciliations"] = [{
+                "issue_id": item["issue_id"], "status": "resolved",
+                "severity": item.get("severity", "medium"),
+                "evidence": "Human, polished prose.",
+            } for item in ledger]
+            text = json.dumps(payload, ensure_ascii=False)
+        return ModelResult(text, {"role": role, "model_name": f"fake-{role}"})
 
 
 class SetupGateway(FakeGateway):
@@ -827,7 +839,7 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
                 "# Story Plan\n主角调查死亡现场。\n\nSHORT_CAUSAL_CHAIN_JSON_START\n"
                 '{"core_goal":{"content":"复活死去的朋友"},"cycles":[{"obstacle":"缺少灵魂媒介","effort":"调查死亡现场","result":"找到残缺记忆","state_change":"确认灵魂仍在"},{"obstacle":"仪式需要交换生命","effort":"寻找规则漏洞","result":"朋友暂时复活","state_change":"目标表面达成"}],"reversal":{"content":"朋友主动死亡是为了封印","prior_evidence":["死亡记录被销毁"]},"ending":{"surface_goal":"无法永久复活","inner_goal":"主角放下愧疚"}}'
                 "\nSHORT_CAUSAL_CHAIN_JSON_END",
-                "正文草稿",
+                "正文草稿" * 1500,
                 json.dumps({"score": 86, "hard_fail": False, "issues": []}),
                 json.dumps({"score": 84, "hard_fail": False, "issues": []}),
                 "正文终稿",
@@ -1083,9 +1095,56 @@ class SegmentGateway:
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
         self.calls.append({"role": role, "user": user})
-        number = len(self.calls)
+        if "DRAFT_SEMANTIC_VALIDATION" in user:
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            evidence = prose[:12]
+            return ModelResult(json.dumps({
+                "authority_sha256": contract["authority_sha256"],
+                "task_id": contract["task_id"],
+                "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+                "event_receipts": [
+                    {"event_id": event_id, "evidence": evidence}
+                    for event_id in contract["event_ids"]
+                ],
+                "entry": {"satisfied": True, "evidence": evidence},
+                "exit": {"satisfied": True, "evidence": prose[-12:]},
+                "outside_event_ids": [], "causal_order_valid": True,
+                "summary": "本段事件已按契约推进并形成交接。",
+            }, ensure_ascii=False), {
+                "role": role, "model_name": f"fake-{role}", "finish_reason": "stop",
+            })
+        if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+            authority = re.search(r"AUTHORITY SHA256: ([0-9a-f]{64})", user).group(1)
+            draft_sha = re.search(r"DRAFT SHA256: ([0-9a-f]{64})", user).group(1)
+            segments = json.loads(re.search(
+                r"SEGMENT SHA256: (\[[^\n]+\])", user,
+            ).group(1))
+            events = json.loads(re.search(
+                r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+            ).group(1))
+            opening = user.split("OPENING EXCERPT: ", 1)[1].split("\nENDING EXCERPT:", 1)[0]
+            ending = user.split("ENDING EXCERPT: ", 1)[1]
+            return ModelResult(json.dumps({
+                "authority_sha256": authority, "draft_sha256": draft_sha,
+                "segment_sha256": segments, "event_ids": events,
+                "missing_event_ids": [], "duplicate_event_ids": [],
+                "out_of_order_event_ids": [], "causal_order_valid": True,
+                "continuity_valid": True, "ending_valid": True,
+                "commitments_valid": True,
+                "evidence": [
+                    {"kind": "opening", "excerpt": opening[:12]},
+                    {"kind": "ending", "excerpt": ending[-12:]},
+                ],
+                "summary": "全文事件顺序、连续性和结局均有分段证据。",
+            }, ensure_ascii=False), {
+                "role": role, "model_name": f"fake-{role}", "finish_reason": "stop",
+            })
+        number = sum(call["role"] == "draft" for call in self.calls)
         return ModelResult(f"第{number}段" + chr(0x4e00 + number) * 2500, {
-            "role": role, "model_name": f"fake-{role}",
+            "role": role, "model_name": f"fake-{role}", "finish_reason": "stop",
         })
 
 
@@ -1267,8 +1326,12 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     )
 
     assert WorkflowService._short_segment_count(20000) == 8
-    assert gateway.roles == ["draft"] * 8
-    assert all("不要提问" in call["user"] for call in gateway.calls)
+    assert gateway.roles.count("draft") == 8
+    assert gateway.roles.count("review") == 9
+    assert all(
+        "不要提问" in call["user"]
+        for call in gateway.calls if call["role"] == "draft"
+    )
     assert len(WorkflowService._split_segments(draft)) == 8
     assert (run_path / "outputs" / "draft.md").read_text(encoding="utf-8") == draft
     assignments = json.loads(
@@ -1276,6 +1339,143 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     )["segments"]
     assert assignments[0]["event_ids"] == ["EV-00000001"]
     assert assignments[-1]["event_ids"] == ["EV-00000008"]
+    integrity = json.loads(
+        (run_path / "outputs" / "draft-integrity.json").read_text(encoding="utf-8"),
+    )
+    assert integrity["status"] == "passed"
+    assert integrity["authority_sha256"]
+    assert integrity["plan_sha256"] == hashlib.sha256(plan.encode("utf-8")).hexdigest()
+    assert integrity["constraints_sha256"] == hashlib.sha256(
+        "constraints".encode("utf-8")
+    ).hexdigest()
+    assert integrity["story_state_sha256"]
+    assert integrity["draft_sha256"] == hashlib.sha256(draft.encode("utf-8")).hexdigest()
+    assert integrity["expected_event_ids"] == [
+        f"EV-{index:08X}" for index in range(1, 9)
+    ]
+    assert integrity["accepted_event_ids"] == integrity["expected_event_ids"]
+    assert len(integrity["segments"]) == 8
+    assert all(item["text_sha256"] for item in integrity["segments"])
+    assert len(integrity["semantic_segment_receipts"]) == 8
+    assert integrity["whole_semantic_receipt"]["ending_valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_draft_semantic_gate_rejects_a_clean_segment_that_omits_its_event(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Semantic omission", mode="short", genre="suspense",
+        premise="Clean prose must still realize its formal event.", target_words=2500,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway(SegmentGateway):
+        async def complete(self, role, system, user, max_output_tokens=None):
+            result = await super().complete(role, system, user, max_output_tokens)
+            if "DRAFT_SEMANTIC_VALIDATION" in user:
+                payload = json.loads(result.text)
+                payload["event_receipts"] = []
+                return ModelResult(json.dumps(payload, ensure_ascii=False), result.receipt)
+            return result
+
+    service = WorkflowService(
+        db, store, Gateway(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("semantic-omission", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "semantic-omission"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    plan = (
+        "### 第一段：账本出现\n事件ID：EV-00000001\n大纲依据：花穗取得账本\n"
+        "段首承接：花穗进入前厅。\n本段事件：花穗取得账本。\n"
+        "段末交接：花穗拿着账本离开前厅。\n" + "细节" * 60
+    )
+
+    with pytest.raises(ValueError, match="语义完整性"):
+        await service._draft_short_in_segments(
+            "semantic-omission", run_path, project, "constraints", plan,
+        )
+
+    assert not (run_path / "outputs" / "draft.md").exists()
+    assert not (run_path / "outputs" / "draft-checkpoints" / "segment-01.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_second_split_child_never_starts_before_first_child_semantic_acceptance(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Sibling authority", mode="short", genre="suspense",
+        premise="The second child needs a validated first-child exit.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append({"role": role, "user": user})
+            if role == "draft":
+                if "内部子任务 1/2" in user:
+                    text = "甲" * 500
+                elif "内部子任务 2/2" in user:
+                    text = "乙" * 500
+                else:
+                    text = "短" * 100
+                return ModelResult(text, {
+                    "role": role, "model_name": "draft", "finish_reason": "stop",
+                })
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            evidence = prose[:12]
+            return ModelResult(json.dumps({
+                "authority_sha256": contract["authority_sha256"],
+                "task_id": contract["task_id"],
+                "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+                "event_receipts": [],
+                "entry": {"satisfied": True, "evidence": evidence},
+                "exit": {"satisfied": True, "evidence": prose[-12:]},
+                "outside_event_ids": [], "causal_order_valid": True,
+                "summary": "第一子任务没有证明正式事件。",
+            }, ensure_ascii=False), {
+                "role": role, "model_name": "review", "finish_reason": "stop",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("sibling-authority", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "sibling-authority"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    plan = (
+        "### 第一段：两步调查\n事件ID：EV-00000001、EV-00000002\n"
+        "大纲依据：取得账本并质问管事\n段首承接：花穗进入前厅。\n"
+        "本段事件：花穗取得账本，随后质问管事。\n"
+        "段末交接：花穗带着证据离开。\n" + "细节" * 60
+    )
+
+    with pytest.raises(ValueError, match="语义完整性"):
+        await service._draft_short_in_segments(
+            "sibling-authority", run_path, project, "constraints", plan,
+        )
+
+    draft_prompts = [call["user"] for call in gateway.calls if call["role"] == "draft"]
+    assert any("内部子任务 1/2" in prompt for prompt in draft_prompts)
+    assert not any("内部子任务 2/2" in prompt for prompt in draft_prompts)
 
 
 def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() -> None:
@@ -1340,6 +1540,7 @@ async def test_truncated_draft_segment_is_split_into_internal_subtasks(tmp_path)
     text = await service._draft_short_segment_task(
         "adaptive", run_path, project, "constraints", "写完本段事件",
         suffix="-part-01", target=1000, previous_parts=[],
+        event_ids=["EV-00000001", "EV-00000002"],
     )
 
     assert text == "甲" * 500 + "\n\n" + "乙" * 500
@@ -1399,6 +1600,14 @@ async def test_normal_finish_underlength_splits_semantically(tmp_path) -> None:
 
     assert text == "甲" * 500 + "\n\n" + "乙" * 500
     assert len(gateway.calls) == 3
+    assert [
+        int(re.search(r"本次唯一字数目标：约 (\d+) 个正文汉字", call).group(1))
+        for call in gateway.calls
+    ] == [1000, 500, 500]
+    assert all(
+        len(re.findall(r"本次唯一字数目标：约 \d+ 个正文汉字", call)) == 1
+        for call in gateway.calls
+    )
     assert "EV-00000001、EV-00000002" in gateway.calls[1]
     assert "EV-00000003、EV-00000004" in gateway.calls[2]
     split = next(
@@ -1411,6 +1620,119 @@ async def test_normal_finish_underlength_splits_semantically(tmp_path) -> None:
     assert split["metadata"]["event_ids"] == [
         "EV-00000001", "EV-00000002", "EV-00000003", "EV-00000004",
     ]
+    completed = next(
+        item for item in db.list_run_events("normal-short")
+        if item["event_type"] == "draft_task_split_completed"
+    )
+    assert completed["metadata"]["child_targets"] == [500, 500]
+    assert completed["metadata"]["child_event_ids"] == [
+        ["EV-00000001", "EV-00000002"],
+        ["EV-00000003", "EV-00000004"],
+    ]
+    assert completed["metadata"]["combined_sha256"] == hashlib.sha256(
+        text.encode("utf-8")
+    ).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_single_event_underlength_retries_same_scope_instead_of_fake_split(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Indivisible event", mode="short", genre="suspense",
+        premise="One event needs fuller development.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            count = 160 if len(self.calls) == 1 else 1000
+            return ModelResult("甲" * count, {
+                "role": role, "model_name": "scope-retry", "finish_reason": "stop",
+                "transport_complete": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("single-event", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "single-event"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "single-event", run_path, project, "constraints", "完成唯一事件",
+        suffix="-part-01", target=1000, previous_parts=[],
+        event_ids=["EV-00000001"],
+    )
+
+    assert text == "甲" * 1000
+    assert len(gateway.calls) == 2
+    assert all("EV-00000001" in call for call in gateway.calls)
+    assert not any(
+        item["event_type"] == "draft_task_split"
+        for item in db.list_run_events("single-event")
+    )
+
+
+@pytest.mark.asyncio
+async def test_normal_overlength_leaf_is_retried_with_the_same_fresh_target(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Overlong leaf", mode="short", genre="suspense",
+        premise="A provider follows a stale parent target.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            count = 1600 if len(self.calls) == 1 else 1000
+            return ModelResult("乙" * count, {
+                "role": role, "model_name": "stale-target", "finish_reason": "end_turn",
+                "transport_complete": True,
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("overlong-leaf", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "overlong-leaf"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "overlong-leaf", run_path, project, "constraints", "完成本段事件",
+        suffix="-part-02", target=1000, previous_parts=[],
+        event_ids=["EV-00000001", "EV-00000002"],
+    )
+
+    assert text == "乙" * 1000
+    assert len(gateway.calls) == 2
+    assert all(
+        re.findall(r"本次唯一字数目标：约 (\d+) 个正文汉字", call) == ["1000"]
+        for call in gateway.calls
+    )
+    assert not any(
+        item["event_type"] == "draft_task_split"
+        for item in db.list_run_events("overlong-leaf")
+    )
 
 
 @pytest.mark.asyncio
@@ -1479,9 +1801,13 @@ async def test_underlength_without_terminal_evidence_is_not_classified_as_normal
 
         async def complete(self, role, system, user, max_output_tokens=None):
             self.calls.append(user)
-            return ModelResult("正文草稿", {
+            text = "正文草稿" if len(self.calls) == 1 else "甲" * 1000
+            receipt = {
                 "role": role, "model_name": "legacy-without-terminal-state",
-            })
+            }
+            if len(self.calls) > 1:
+                receipt["finish_reason"] = "stop"
+            return ModelResult(text, receipt)
 
     gateway = Gateway()
     service = WorkflowService(
@@ -1497,11 +1823,62 @@ async def test_underlength_without_terminal_evidence_is_not_classified_as_normal
         suffix="-part-01", target=1000, previous_parts=[],
     )
 
-    assert text == "正文草稿"
-    assert len(gateway.calls) == 1
+    assert text == "甲" * 1000
+    assert len(gateway.calls) == 2
+    assert all("CURRENT_TASK_CONTRACT" in call for call in gateway.calls)
     assert not any(
         item["event_type"] == "draft_task_split"
         for item in db.list_run_events("unknown-terminal")
+    )
+
+
+@pytest.mark.asyncio
+async def test_zero_event_scope_retries_in_place_instead_of_creating_empty_children(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="No fake event split", mode="short", genre="suspense",
+        premise="Legacy authority has no stable event IDs.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(user)
+            if len(self.calls) == 1:
+                return ModelResult("甲" * 100, {
+                    "role": role, "model_name": "legacy", "finish_reason": "stop",
+                })
+            return ModelResult("甲" * 1000, {
+                "role": role, "model_name": "legacy", "finish_reason": "stop",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("no-empty-split", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "no-empty-split"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    text = await service._draft_short_segment_task(
+        "no-empty-split", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-01", target=1000, previous_parts=[], event_ids=[],
+    )
+
+    assert text == "甲" * 1000
+    assert len(gateway.calls) == 2
+    assert not any(
+        item["event_type"] == "draft_task_split"
+        for item in db.list_run_events("no-empty-split")
     )
 
 
@@ -1665,6 +2042,52 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
         if stage == "review":
+            if "DRAFT_SEMANTIC_VALIDATION" in user:
+                contract = json.loads(re.search(
+                    r"TASK CONTRACT: (\{[^\n]+\})", user,
+                ).group(1))
+                prose = user.split("PROSE:\n", 1)[1]
+                evidence = prose[:12]
+                return json.dumps({
+                    "authority_sha256": contract["authority_sha256"],
+                    "task_id": contract["task_id"],
+                    "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+                    "event_receipts": [{
+                        "event_id": event_id, "evidence": evidence,
+                    } for event_id in contract["event_ids"]],
+                    "entry": {"satisfied": True, "evidence": evidence},
+                    "exit": {"satisfied": True, "evidence": prose[-12:]},
+                    "outside_event_ids": [], "causal_order_valid": True,
+                    "summary": "段内事件与交接均已核对。",
+                }, ensure_ascii=False)
+            if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+                opening = user.split("OPENING EXCERPT: ", 1)[1].split(
+                    "\nENDING EXCERPT:", 1,
+                )[0]
+                ending = user.split("ENDING EXCERPT: ", 1)[1]
+                return json.dumps({
+                    "authority_sha256": re.search(
+                        r"AUTHORITY SHA256: ([0-9a-f]{64})", user,
+                    ).group(1),
+                    "draft_sha256": re.search(
+                        r"DRAFT SHA256: ([0-9a-f]{64})", user,
+                    ).group(1),
+                    "segment_sha256": json.loads(re.search(
+                        r"SEGMENT SHA256: (\[[^\n]+\])", user,
+                    ).group(1)),
+                    "event_ids": json.loads(re.search(
+                        r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+                    ).group(1)),
+                    "missing_event_ids": [], "duplicate_event_ids": [],
+                    "out_of_order_event_ids": [], "causal_order_valid": True,
+                    "continuity_valid": True, "ending_valid": True,
+                    "commitments_valid": True,
+                    "evidence": [
+                        {"kind": "opening", "excerpt": opening[:12]},
+                        {"kind": "ending", "excerpt": ending[-12:]},
+                    ],
+                    "summary": "整篇顺序、连续性和结局均已核对。",
+                }, ensure_ascii=False)
             raise RuntimeError("stop after resumed draft")
         assert stage == "draft"
         match = __import__("re").search(r"本次只写第 (\d+)/4 段", user)
@@ -5598,14 +6021,192 @@ async def test_long_manuscript_final_review_audits_every_window_without_planning
     )
 
     assert review["score"] > 80
+    assert review["issue_reconciliation_complete"] is True
+    assert review["issues"][0]["issue_id"] == stable_issue_id
+    assert review["issues"][0]["status"] == "resolved"
+    assert review["issues"][0]["reconciliation_evidence"] == (
+        "The repeated wording is gone."
+    )
+    assert review["issues"][0]["reconciled_at"]
     assert audit["reviewed_windows"] == count
     assert audit["coverage"] == 1.0
+    manuscript_hash = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
+    assert all(
+        item["manuscript_sha256"] == manuscript_hash for item in audit["windows"]
+    )
+    assert all(
+        item["window_sha256"] == hashlib.sha256(
+            manuscript[item["start"]:item["end"]].encode("utf-8")
+        ).hexdigest()
+        for item in audit["windows"]
+    )
     assert gateway.roles == ["final_review"] * (count + 1)
     assert "planning" not in gateway.roles
     assert all("WINDOW " in call["user"] for call in gateway.calls[:-1])
     assert all("summary and issues only" in call["user"] for call in gateway.calls[:-1])
     assert all("events" not in call["user"] for call in gateway.calls[:-1])
     assert audit["detail_analysis"]["performed"] is False
+
+
+@pytest.mark.asyncio
+async def test_final_review_reduces_all_evidence_hierarchically_before_global_adjudication(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Hierarchical review", mode="short", genre="suspense",
+        premise="Every window must reach the global verdict.", target_words=20000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    manuscript = "\n\n".join("甲" * 4500 for _ in range(4))
+
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append({"role": role, "user": user})
+            if "FULL MANUSCRIPT WINDOW SUMMARY" in user:
+                return ModelResult(json.dumps({
+                    "summary": "窗" * 220, "issues": [],
+                }, ensure_ascii=False), {
+                    "role": role, "model_name": "reviewer", "finish_reason": "stop",
+                })
+            if "REGIONAL EVIDENCE REDUCTION" in user:
+                covered = json.loads(re.search(
+                    r"COVERED WINDOWS: (\[[^\n]+\])", user,
+                ).group(1))
+                source_sha256 = re.search(
+                    r"SOURCE SHA256: ([0-9a-f]{64})", user,
+                ).group(1)
+                source_issue_ids = json.loads(re.search(
+                    r"SOURCE ISSUE IDS: (\[[^\n]*\])", user,
+                ).group(1))
+                return ModelResult(json.dumps({
+                    "summary": "区域证据已完整归并", "issues": [],
+                    "covered_windows": covered,
+                    "source_sha256": source_sha256,
+                    "source_issue_ids": source_issue_ids,
+                }, ensure_ascii=False), {
+                    "role": role, "model_name": "reviewer", "finish_reason": "stop",
+                })
+            return ModelResult(json.dumps({
+                "dimensions": {"commercial": 88, "story": 87, "prose": 86},
+                "decision": "pass", "issues": [], "reconciliations": [],
+            }, ensure_ascii=False), {
+                "role": role, "model_name": "reviewer", "finish_reason": "stop",
+            })
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    monkeypatch.setattr(
+        service, "_final_review_adjudication_token_limit", lambda *_: 700,
+        raising=False,
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    review, audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", manuscript, {"issues": []},
+    )
+
+    window_count = len(review_windows(manuscript))
+    hierarchy = audit["adjudication_hierarchy"]
+    assert review["decision"] == "pass"
+    assert hierarchy["performed"] is True
+    assert hierarchy["covered_windows"] == list(range(1, window_count + 1))
+    assert hierarchy["levels"]
+    regional_calls = [
+        call for call in gateway.calls if "REGIONAL EVIDENCE REDUCTION" in call["user"]
+    ]
+    assert len(regional_calls) >= 2
+    final_call = next(
+        call for call in reversed(gateway.calls)
+        if "FULL MANUSCRIPT FINAL ADJUDICATION" in call["user"]
+    )
+    assert "区域证据已完整归并" in final_call["user"]
+
+
+@pytest.mark.asyncio
+async def test_hierarchical_review_carries_source_issues_even_when_reducer_drops_them(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Lossless hierarchy", mode="short", genre="suspense",
+        premise="No source issue may disappear during reduction.", target_words=20000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        async def complete(self, role, system, user, max_output_tokens=None):
+            covered = json.loads(re.search(
+                r"COVERED WINDOWS: (\[[^\n]+\])", user,
+            ).group(1))
+            source_sha256 = re.search(
+                r"SOURCE SHA256: ([0-9a-f]{64})", user,
+            ).group(1)
+            source_issue_ids = json.loads(re.search(
+                r"SOURCE ISSUE IDS: (\[[^\n]*\])", user,
+            ).group(1))
+            return ModelResult(json.dumps({
+                "summary": "归并器没有复述问题正文。", "issues": [],
+                "covered_windows": covered,
+                "source_sha256": source_sha256,
+                "source_issue_ids": source_issue_ids,
+            }, ensure_ascii=False), {
+                "role": role, "model_name": "reviewer", "finish_reason": "stop",
+            })
+
+    service = WorkflowService(
+        db, store, Gateway(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    monkeypatch.setattr(
+        service, "_final_review_adjudication_token_limit", lambda *_: 700,
+        raising=False,
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    source_issue = issue_ledger([{
+        "issue_id": "source-issue-1", "category": "timeline", "severity": "high",
+        "evidence": "第二窗日期早于第一窗。", "action": "核对日期。",
+    }], source="window-1")[0]
+    second_evidence = {
+        **source_issue,
+        "evidence": "第三窗再次显示日期倒退。",
+        "location": "第三窗结尾",
+    }
+    evidence = [{
+        "window": index, "covered_windows": [index], "summary": "窗" * 180,
+        "issues": (
+            [source_issue] if index == 1
+            else [second_evidence] if index == 3
+            else []
+        ),
+    } for index in range(1, 5)]
+
+    reduced, audit = await service._hierarchical_final_review_evidence(
+        run_id, run_path, project, "constraints", evidence, "",
+    )
+
+    reduced_issue_ids = {
+        issue["issue_id"] for item in reduced for issue in item.get("issues", [])
+    }
+    assert "source-issue-1" in reduced_issue_ids
+    assert audit["covered_windows"] == [1, 2, 3, 4]
+    carried = next(
+        issue for item in reduced for issue in item.get("issues", [])
+        if issue["issue_id"] == "source-issue-1"
+    )
+    assert {item["evidence"] for item in carried["evidence_records"]} == {
+        "第二窗日期早于第一窗。", "第三窗再次显示日期倒退。",
+    }
 
 
 @pytest.mark.asyncio
@@ -5970,6 +6571,61 @@ async def test_single_window_quality_review_recovers_truncated_json(tmp_path, mo
     assert report["status"] == "passed"
     assert report["final_review_recovery"]["succeeded"] is True
     assert "终审结果精简恢复" in gateway.calls[1]["user"]
+
+
+@pytest.mark.asyncio
+async def test_short_direct_review_cannot_erase_a_prior_issue_by_omission(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Atomic direct review", mode="short", genre="suspense",
+        premise="A short candidate still needs issue reconciliation.", target_words=2000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    final = quality_review(commercial=92, story=92, prose=92, issues=[])
+    service = WorkflowService(
+        db, store, RecordingGateway([final]),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    candidate = "正文内容。" * 300
+    prior = service._review(quality_review(issues=[{
+        "category": "story", "severity": "high",
+        "evidence": "人物尚未作出选择。", "action": "补足人物选择。",
+    }]))
+
+    async def polish(*args, **kwargs):
+        return candidate
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.select_route",
+        lambda *args, **kwargs: {
+            "enhanced": False, "max_corrections": 0, "reasons": ["test"],
+        },
+    )
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {
+        "coverage": 1.0, "windows": review_windows(candidate),
+        "nlp": {"available": True}, "prose": {"blocking_count": 0},
+    })
+
+    with pytest.raises(RuntimeError, match="quality gate"):
+        await service._quality_polish(
+            run_id, run_path, project, "constraints", candidate, prior,
+        )
+
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(
+        encoding="utf-8",
+    ))
+    terminal = report["final_attempts"][0]["review"]
+    assert terminal["issue_reconciliation_complete"] is False
+    assert terminal["issues"][0]["action"] == "补足人物选择。"
+    assert "missing_issue_reconciliation" in terminal["evidence_gate_reasons"]
+    assert load_quality_checkpoint(run_path) is None
 
 
 @pytest.mark.asyncio

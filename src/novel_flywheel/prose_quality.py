@@ -15,6 +15,8 @@ PRODUCTION_PATTERNS = (
     r"SHORT_CAUSAL_CHAIN_JSON_(?:START|END)",
 )
 MIXED_SCRIPT = re.compile(r"(?:[\u4e00-\u9fff][A-Za-z]{2,}|[A-Za-z]{2,}[\u4e00-\u9fff])")
+UNICODE_REPLACEMENT = re.compile("\ufffd")
+INVALID_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 FORMULA_PATTERNS = (
     ("timestamp_scene_fragment", r"[-\u2014]{2}\s*[\u96f6\u3007\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\d]{1,4}[\u70b9\u65f6\u6642:\uff1a][^\u3002\uff01\uff1f\n]{0,12}[\u3002\uff01\uff1f]\s*[^\u201c\u201d\n]{4,45}[\u3002\uff01\uff1f]"),
     ("epiphany_formula", r"这一刻.{0,12}(?:终于)?明白"),
@@ -51,6 +53,10 @@ def analyze_prose(text: str) -> dict[str, Any]:
             findings.append(_finding("production_text", text, match, True))
     for match in MIXED_SCRIPT.finditer(text):
         findings.append(_finding("mixed_script_corruption", text, match, True))
+    for match in UNICODE_REPLACEMENT.finditer(text):
+        findings.append(_finding("unicode_replacement_character", text, match, True))
+    for match in INVALID_CONTROL.finditer(text):
+        findings.append(_finding("invalid_control_character", text, match, True))
     seen_paragraphs: dict[str, re.Match[str]] = {}
     for match in re.finditer(r"(?ms)(?:^|\n\s*\n)([^\n].{23,}?)(?=\n\s*\n|\Z)", text):
         normalized = re.sub(r"\s+", "", match.group(1))

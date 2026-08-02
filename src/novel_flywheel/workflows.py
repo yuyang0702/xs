@@ -9,11 +9,21 @@ import unicodedata
 import uuid
 from contextlib import contextmanager, nullcontext
 from collections.abc import Callable, Sequence
+from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Iterator
 
 from novel_flywheel.db import Database
+from novel_flywheel.draft_split import (
+    DraftTaskContract,
+    exact_event_partition,
+    render_draft_task_prompt,
+    residual_target,
+    target_bounds,
+    validate_semantic_receipt,
+    validate_whole_draft_receipt,
+)
 from novel_flywheel.causal_chain import (
     END as SHORT_CAUSAL_CHAIN_END,
     START as SHORT_CAUSAL_CHAIN_START,
@@ -74,6 +84,8 @@ from novel_flywheel.quality import (
     quality_gate,
     quality_outcome,
     reader_sample,
+    reconcile_review_issues,
+    review_evidence_batches,
     review_windows,
     select_route,
 )
@@ -3233,10 +3245,17 @@ class WorkflowService:
                     if evidence_audit.get("final_review_recovery"):
                         report["final_review_recovery"] = evidence_audit["final_review_recovery"]
                 else:
+                    ledger = issue_ledger(review.get("issues", []))
                     final_input = (
                         quality_profile_prompt(active_profile)
                         + self._causal_chain_review_checks(constraints)
-                        + final_input
+                        + "SINGLE-REQUEST COMPLETE MANUSCRIPT REVIEW. Return strict quality-review "
+                        "JSON plus reconciliations. Every prior issue must appear exactly once with "
+                        "issue_id, status (resolved, partially_resolved, unresolved, uncertain, or "
+                        "preserved), severity, and current-manuscript evidence. Omission never means "
+                        "resolved. Do not rewrite the manuscript.\n\n"
+                        f"INITIAL ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
+                        f"COMPLETE MANUSCRIPT:\n{final_input}"
                     )
                     raw_final_review, final_payload = await self._final_review_json(
                         run_id, run_path, project, constraints, final_input,
@@ -3246,12 +3265,47 @@ class WorkflowService:
                         final_payload, project,
                         getattr(raw_final_review, "receipt", {}),
                     )
+                    prior_issue_ids = [item["issue_id"] for item in ledger]
+                    prior_issue_id_set = set(prior_issue_ids)
+                    raw_reconciliations = final_payload.get("reconciliations", [])
+                    reconciliations = (
+                        raw_reconciliations
+                        if (
+                            isinstance(raw_reconciliations, list)
+                            and all(isinstance(item, dict) for item in raw_reconciliations)
+                        )
+                        else [
+                            item for item in final_payload.get("issues", [])
+                            if isinstance(item, dict)
+                            and item.get("issue_id") in prior_issue_id_set
+                        ]
+                    )
+                    manuscript_sha256 = hashlib.sha256(
+                        review_text.encode("utf-8")
+                    ).hexdigest()
                     evidence_audit = {
                         "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
-                        "windows": [{"index": 1, "start": 0, "end": len(polished),
-                                     "summary": "single-request complete review"}],
+                        "evidence_count": 1,
+                        "prior_issue_ids": prior_issue_ids,
+                        "prior_issues": ledger,
+                        "reconciliations": reconciliations,
+                        "windows": [{
+                            "index": 1, "start": 0, "end": len(review_text),
+                            "summary": "single-request complete review",
+                            "manuscript_sha256": manuscript_sha256,
+                            "window_sha256": manuscript_sha256,
+                        }],
+                        "adjudication_receipt": getattr(raw_final_review, "receipt", {}),
                         "review_mode": "full",
                     }
+                    final_review, gate_reasons = apply_evidence_gate(
+                        final_review, evidence_audit,
+                    )
+                    final_review = reconcile_review_issues(
+                        final_review, ledger, reconciliations,
+                        reviewed_at=datetime.now(timezone.utc).isoformat(),
+                    )
+                    evidence_audit["gate_reasons"] = gate_reasons
                     if final_payload.get("_recovery_mode"):
                         evidence_audit["final_review_recovery"] = {
                             "attempted": True,
@@ -3263,14 +3317,12 @@ class WorkflowService:
                         report["final_review_recovery"] = evidence_audit[
                             "final_review_recovery"
                         ]
+                report["final_review_evidence"] = evidence_audit
                 if attempt == 0:
-                    baseline_review = {
-                        **final_review,
-                        "issues": [
-                            *review.get("issues", []),
-                            *final_review.get("issues", []),
-                        ],
-                    }
+                    # Full and direct terminal reviews already reconcile every
+                    # prior issue. Re-appending the initial ledger here would
+                    # manufacture duplicate identities in incremental baselines.
+                    baseline_review = final_review
                     baseline = build_review_baseline(
                         review_text, current_analysis,
                         evidence_audit.get("windows", []), baseline_review,
@@ -3699,6 +3751,256 @@ class WorkflowService:
             "fallback": error_info(fallback), "compact": error_info(compact),
         }
 
+    def _final_review_adjudication_token_limit(self) -> int:
+        context_window = self._provider_context_window("final_review", False)
+        effective_window = context_window or 32_768
+        return max(4_000, int(effective_window * 0.45))
+
+    @staticmethod
+    def _coalesce_hierarchical_issue_evidence(items: list[dict]) -> list[dict]:
+        """Keep one stable issue identity while retaining every window occurrence."""
+        result = [{**item, "issues": []} for item in items]
+        merged_by_id: dict[str, dict] = {}
+        first_item_by_id: dict[str, int] = {}
+        for item_index, item in enumerate(items):
+            item_windows = (
+                item.get("covered_windows")
+                if isinstance(item.get("covered_windows"), list)
+                else [item.get("window")]
+            )
+            item_windows = [
+                int(window) for window in item_windows if isinstance(window, int)
+            ]
+            for issue in item.get("issues", []):
+                if not isinstance(issue, dict) or not issue.get("issue_id"):
+                    continue
+                issue_id = str(issue["issue_id"])
+                merged = merged_by_id.setdefault(issue_id, {
+                    **issue,
+                    "evidence_records": [],
+                })
+                first_item_by_id.setdefault(issue_id, item_index)
+                records = issue.get("evidence_records")
+                if not isinstance(records, list) or not records:
+                    records = [{
+                        "evidence": issue.get("evidence"),
+                        "location": issue.get("location"),
+                        "action": issue.get("action"),
+                        "severity": issue.get("severity"),
+                        "covered_windows": item_windows,
+                    }]
+                for record in records:
+                    if not isinstance(record, dict):
+                        continue
+                    normalized = {
+                        "evidence": str(record.get("evidence") or ""),
+                        "location": str(record.get("location") or ""),
+                        "action": str(record.get("action") or issue.get("action") or ""),
+                        "severity": str(
+                            record.get("severity") or issue.get("severity") or ""
+                        ),
+                        "covered_windows": sorted({
+                            int(window)
+                            for window in (
+                                record.get("covered_windows")
+                                if isinstance(record.get("covered_windows"), list)
+                                else item_windows
+                            )
+                            if isinstance(window, int)
+                        }),
+                    }
+                    if normalized not in merged["evidence_records"]:
+                        merged["evidence_records"].append(normalized)
+        for issue_id, issue in merged_by_id.items():
+            item_index = first_item_by_id[issue_id]
+            result[item_index]["issues"].append(issue)
+            evidence_windows = {
+                window
+                for record in issue["evidence_records"]
+                for window in record["covered_windows"]
+            }
+            if evidence_windows and isinstance(result[item_index].get("covered_windows"), list):
+                result[item_index]["covered_windows"] = sorted({
+                    *result[item_index]["covered_windows"], *evidence_windows,
+                })
+        return result
+
+    async def _hierarchical_final_review_evidence(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        evidence: list[dict],
+        suffix: str,
+    ) -> tuple[list[dict], dict]:
+        token_limit = self._final_review_adjudication_token_limit()
+        original_windows = sorted(int(item["window"]) for item in evidence)
+        current = [
+            {
+                **item,
+                "issues": issue_ledger(
+                    item.get("issues", []) if isinstance(item.get("issues"), list) else [],
+                    source=f"final-review-window-{item.get('window', 'unknown')}",
+                ),
+            }
+            for item in evidence
+        ]
+        levels = []
+        for level in range(1, 6):
+            current_tokens = estimate_input_tokens(json.dumps(current, ensure_ascii=False))
+            if current_tokens <= token_limit:
+                current = self._coalesce_hierarchical_issue_evidence(current)
+                current_tokens = estimate_input_tokens(json.dumps(current, ensure_ascii=False))
+                return current, {
+                    "performed": bool(levels),
+                    "token_limit": token_limit,
+                    "original_evidence_tokens": estimate_input_tokens(
+                        json.dumps(evidence, ensure_ascii=False)
+                    ),
+                    "final_evidence_tokens": current_tokens,
+                    "covered_windows": original_windows,
+                    "levels": levels,
+                }
+            batches = review_evidence_batches(
+                current, token_limit=max(512, int(token_limit * 0.75)), overlap=1,
+            )
+            reduced = []
+            for batch_index, batch in enumerate(batches, 1):
+                covered_windows = sorted({
+                    int(window)
+                    for item in batch
+                    for window in (
+                        item.get("covered_windows")
+                        if isinstance(item.get("covered_windows"), list)
+                        else [item.get("window")]
+                    )
+                    if isinstance(window, int)
+                })
+                source_json = json.dumps(
+                    batch, ensure_ascii=False, separators=(",", ":"),
+                )
+                source_sha256 = hashlib.sha256(source_json.encode("utf-8")).hexdigest()
+                source_issues_by_id: dict[str, dict] = {}
+                for batch_item in batch:
+                    issue_windows = (
+                        batch_item.get("covered_windows")
+                        if isinstance(batch_item.get("covered_windows"), list)
+                        else [batch_item.get("window")]
+                    )
+                    issue_windows = [
+                        int(window) for window in issue_windows
+                        if isinstance(window, int)
+                    ]
+                    for issue in batch_item.get("issues", []):
+                        if not isinstance(issue, dict) or not issue.get("issue_id"):
+                            continue
+                        issue_id = str(issue["issue_id"])
+                        merged_issue = source_issues_by_id.setdefault(issue_id, {
+                            **issue,
+                            "evidence_records": [],
+                        })
+                        records = issue.get("evidence_records")
+                        if not isinstance(records, list) or not records:
+                            records = [{
+                                "evidence": str(issue.get("evidence") or ""),
+                                "location": str(issue.get("location") or ""),
+                                "action": str(issue.get("action") or ""),
+                                "severity": str(issue.get("severity") or ""),
+                                "covered_windows": issue_windows,
+                            }]
+                        for record in records:
+                            if not isinstance(record, dict):
+                                continue
+                            normalized_record = {
+                                "evidence": str(record.get("evidence") or ""),
+                                "location": str(record.get("location") or ""),
+                                "action": str(record.get("action") or issue.get("action") or ""),
+                                "severity": str(
+                                    record.get("severity") or issue.get("severity") or ""
+                                ),
+                                "covered_windows": sorted({
+                                    int(window)
+                                    for window in (
+                                        record.get("covered_windows")
+                                        if isinstance(record.get("covered_windows"), list)
+                                        else issue_windows
+                                    )
+                                    if isinstance(window, int)
+                                }),
+                            }
+                            if normalized_record not in merged_issue["evidence_records"]:
+                                merged_issue["evidence_records"].append(normalized_record)
+                source_issues = list(source_issues_by_id.values())
+                source_issue_ids = [str(issue["issue_id"]) for issue in source_issues]
+                regional_prompt = (
+                    "REGIONAL EVIDENCE REDUCTION. Do not score and do not rewrite. Preserve every "
+                    "covered window and reconcile cross-window timeline, character/knowledge state, "
+                    "relationships, causality, setup/payoff, and ending obligations. Return one JSON "
+                    "object with summary (under 400 Chinese characters), issues (at most 4 new "
+                    "cross-window issues), covered_windows, source_sha256, and source_issue_ids. "
+                    "Echo the exact manifest values to prove this complete source batch was used; "
+                    "the runtime carries every source issue losslessly. Do not resolve conflicts "
+                    "between evidence_records; report them for global adjudication.\n\n"
+                    f"LEVEL {level} BATCH {batch_index}/{len(batches)}\n"
+                    f"COVERED WINDOWS: {json.dumps(covered_windows)}\n"
+                    f"SOURCE SHA256: {source_sha256}\n"
+                    f"SOURCE ISSUE IDS: {json.dumps(source_issue_ids)}\n"
+                    f"ORDERED EVIDENCE:\n{source_json}"
+                )
+                raw, item = await self._final_review_json(
+                    run_id, run_path, project, constraints, regional_prompt,
+                    suffix=f"{suffix}-hierarchy-{level}-{batch_index}",
+                    recovery_kind="window",
+                )
+                summary = item.get("summary")
+                if not isinstance(summary, str) or not summary.strip():
+                    raise ValueError("Hierarchical final review evidence has no summary")
+                if item.get("covered_windows") != covered_windows:
+                    raise ValueError("Hierarchical final review returned stale window coverage")
+                if item.get("source_sha256") != source_sha256:
+                    raise ValueError("Hierarchical final review returned a stale source hash")
+                if item.get("source_issue_ids") != source_issue_ids:
+                    raise ValueError("Hierarchical final review omitted source issue identities")
+                new_issues = issue_ledger(
+                    self._bound_final_review_window_item(item).get("issues", []),
+                    source=f"final-review-hierarchy-{level}-{batch_index}",
+                )
+                carried_issue_ids = set(source_issue_ids)
+                reduced.append({
+                    "level": level,
+                    "batch": batch_index,
+                    "covered_windows": covered_windows,
+                    "summary": summary.strip()[:400],
+                    "issues": [
+                        *source_issues,
+                        *(issue for issue in new_issues
+                          if str(issue["issue_id"]) not in carried_issue_ids),
+                    ],
+                    "source_issue_ids": source_issue_ids,
+                    "source_sha256": source_sha256,
+                    "receipt": getattr(raw, "receipt", {}),
+                })
+            reduced = self._coalesce_hierarchical_issue_evidence(reduced)
+            covered = sorted({
+                window for item in reduced for window in item["covered_windows"]
+            })
+            if covered != original_windows:
+                raise ValueError("Hierarchical final review omitted manuscript windows")
+            reduced_tokens = estimate_input_tokens(json.dumps(reduced, ensure_ascii=False))
+            levels.append({
+                "level": level,
+                "input_items": len(current),
+                "batches": len(batches),
+                "input_tokens": current_tokens,
+                "output_tokens": reduced_tokens,
+                "covered_windows": covered,
+            })
+            if reduced_tokens >= current_tokens and len(reduced) >= len(current):
+                raise ValueError("Hierarchical final review could not reduce complete evidence")
+            current = reduced
+        raise ValueError("Hierarchical final review exceeded the safe reduction depth")
+
     async def _full_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, initial_review: dict, suffix: str = "",
@@ -3707,6 +4009,7 @@ class WorkflowService:
         constraints = self._constraints_with_platform_rules(project, constraints)
         causal_checks = self._causal_chain_review_checks(constraints)
         windows = review_windows(manuscript)
+        manuscript_sha256 = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
         ledger = issue_ledger(initial_review.get("issues", []))
         evidence = []
         recovery_modes = []
@@ -3741,8 +4044,15 @@ class WorkflowService:
             item["window"] = window["index"]
             item["start"] = window["start"]
             item["end"] = window["end"]
+            item["manuscript_sha256"] = manuscript_sha256
+            item["window_sha256"] = hashlib.sha256(
+                window["text"].encode("utf-8")
+            ).hexdigest()
             item["receipt"] = getattr(raw, "receipt", {})
             item = self._bound_final_review_window_item(item)
+            item["issues"] = issue_ledger(
+                item.get("issues", []), source=f"final-review-window-{window['index']}",
+            )
             if item.get("_recovery_mode"):
                 item["recovery_mode"] = item.pop("_recovery_mode")
             if item.get("recovery_mode"):
@@ -3762,6 +4072,11 @@ class WorkflowService:
             evidence.append(item)
             previous_summary = item["summary"]
 
+        adjudication_evidence, adjudication_hierarchy = (
+            await self._hierarchical_final_review_evidence(
+                run_id, run_path, project, constraints, evidence, suffix,
+            )
+        )
         adjudication_prompt = (
             quality_profile_prompt(profile_for_project(project))
             +
@@ -3769,11 +4084,13 @@ class WorkflowService:
             "map and perform cross-window checks for timeline, character state and knowledge, causal "
             "authority/evidence, relationship transitions, setup/payoff, and premise follow-through. "
             "Return strict quality-review JSON plus reconciliations. Each initial issue must appear once "
-            "with issue_id, status (resolved, partially_resolved, unresolved, or not_found), severity, "
+            "with issue_id, status (resolved, partially_resolved, unresolved, uncertain, or preserved), severity, "
             "and concrete evidence. Omission never means resolved. Do not rewrite the manuscript.\n\n"
+            "When one stable issue has multiple evidence_records, consider every occurrence. "
+            "Contradictory occurrences must remain uncertain or unresolved rather than selecting one.\n\n"
             f"INITIAL ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
             f"{causal_checks}"
-            f"ORDERED WINDOW EVIDENCE:\n{json.dumps(evidence, ensure_ascii=False)}"
+            f"ORDERED WINDOW EVIDENCE:\n{json.dumps(adjudication_evidence, ensure_ascii=False)}"
         )
         raw_final, payload = await self._final_review_json(
             run_id, run_path, project, constraints, adjudication_prompt,
@@ -3816,6 +4133,7 @@ class WorkflowService:
             "reviewed_windows": len(evidence),
             "evidence_count": sum(bool(item.get("summary")) for item in evidence),
             "prior_issue_ids": prior_issue_ids,
+            "prior_issues": ledger,
             "reconciliations": reconciliations,
             "windows": evidence,
             "adjudication_receipt": getattr(raw_final, "receipt", {}),
@@ -3829,6 +4147,7 @@ class WorkflowService:
                     if detail_windows else detail_message
                 ),
             },
+            "adjudication_hierarchy": adjudication_hierarchy,
         }
         if recovery_modes:
             audit["final_review_recovery"] = {
@@ -3841,10 +4160,18 @@ class WorkflowService:
         if reconciliation_summary is not None:
             audit["reconciliation_summary"] = reconciliation_summary
         review, gate_reasons = apply_evidence_gate(review, audit)
+        review = reconcile_review_issues(
+            review,
+            ledger,
+            reconciliations,
+            reviewed_at=datetime.now(timezone.utc).isoformat(),
+        )
         audit["gate_reasons"] = gate_reasons
         audit["reconciliation_counts"] = {
             status: sum(item.get("status") == status for item in audit["reconciliations"])
-            for status in ("resolved", "partially_resolved", "unresolved", "not_found")
+            for status in (
+                "resolved", "partially_resolved", "unresolved", "uncertain", "preserved",
+            )
         }
         atomic_write(
             run_path / "outputs" / f"final-review-evidence{suffix}.json",
@@ -4000,8 +4327,9 @@ class WorkflowService:
             +
             "INCREMENTAL FINAL ADJUDICATION. Reconcile every prior issue and judge only whether "
             "the correction remains globally safe. Return strict quality-review JSON plus "
-            "reconciliations. Every reconciliation status must be exactly resolved, unresolved, "
-            "or uncertain. Set request_full_review=true if evidence is insufficient.\n\n"
+            "reconciliations. Every reconciliation status must be exactly resolved, "
+            "partially_resolved, unresolved, uncertain, or preserved. "
+            "Set request_full_review=true if evidence is insufficient.\n\n"
             f"BASELINE REVIEW:\n{json.dumps(baseline.get('review', {}), ensure_ascii=False)}\n\n"
             f"ISSUE LEDGER:\n{json.dumps(ledger, ensure_ascii=False)}\n\n"
             f"CHANGES:\n{json.dumps(changes, ensure_ascii=False)}\n\n"
@@ -4034,6 +4362,12 @@ class WorkflowService:
             )
             audit.update({"review_mode": "full_fallback", "fallback_reasons": gate_reasons})
             return full_review, audit
+        review = reconcile_review_issues(
+            review,
+            ledger,
+            payload.get("reconciliations", []),
+            reviewed_at=datetime.now(timezone.utc).isoformat(),
+        )
         full_input = sum(len(item.get("text", "")) for item in analysis.get("windows", []))
         reviewed_input = sum(len(item.get("text", "")) for item in analysis.get("windows", [])
                              if item["index"] in selected)
@@ -4289,7 +4623,8 @@ class WorkflowService:
     ) -> list[dict]:
         findings: list[dict] = []
         han = effective_han_characters(part)
-        if han > int(target * 1.45):
+        minimum_han, maximum_han = target_bounds(target)
+        if han > maximum_han:
             findings.append({
                 "code": "overlength",
                 "message": f"本段写了 {han} 个正文汉字，明显超过约 {target} 字的范围",
@@ -4297,7 +4632,7 @@ class WorkflowService:
                 "han_characters": han,
                 "target_characters": target,
             })
-        if han < int(target * 0.45):
+        if han < minimum_han and (han > 0 or not part.strip()):
             findings.append({
                 "code": "underlength",
                 "message": f"本段只有 {han} 个正文汉字，主要事件可能没有写完整",
@@ -4810,29 +5145,153 @@ class WorkflowService:
             consumed_input_tokens,
         )
 
+    async def _verify_draft_semantic_node(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        contract: DraftTaskContract,
+        prose: str,
+        outside_event_ids: list[str],
+        *,
+        suffix: str,
+    ) -> dict:
+        prose_sha256 = hashlib.sha256(prose.encode("utf-8")).hexdigest()
+        prompt = (
+            "DRAFT_SEMANTIC_VALIDATION. Independently verify the immutable prose against its task "
+            "contract. Do not rewrite or score. Return one JSON object with authority_sha256, "
+            "task_id, prose_sha256, event_receipts (one per owned event in exact order, each with "
+            "event_id and an exact prose evidence excerpt), entry and exit objects (satisfied=true "
+            "and exact prose evidence), outside_event_ids (owned by other tasks but consumed here), "
+            "causal_order_valid, and summary. Evidence must be copied exactly from PROSE. If a "
+            "requirement is absent, report it honestly; never infer success from the contract text.\n\n"
+            f"AUTHORITY SHA256: {contract.authority_sha256}\n"
+            f"TASK CONTRACT: {json.dumps(contract.__dict__, ensure_ascii=False)}\n"
+            f"OTHER TASK EVENT IDS: {json.dumps(outside_event_ids)}\n"
+            f"PROSE SHA256: {prose_sha256}\n"
+            f"PROSE:\n{prose}"
+        )
+        raw = await self._stage(
+            run_id, run_path, project, "review", constraints, prompt,
+            suffix=f"{suffix}-semantic", allow_tools=False,
+            expected_output_characters=max(800, len(contract.event_ids) * 320),
+        )
+        try:
+            receipt = validate_semantic_receipt(
+                contract, prose, self._json_object(raw),
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.db.add_run_event(
+                run_id, "error", "draft_semantic_gate_failed",
+                "正文事件、入口或出口缺少可核对原文证据，已停止后续生成",
+                stage="draft", metadata={
+                    "task_id": contract.task_id,
+                    "event_ids": list(contract.event_ids),
+                    "prose_sha256": prose_sha256,
+                    "error": str(exc),
+                },
+            )
+            raise ValueError(
+                f"正文语义完整性检查未通过（{contract.task_id}）：{exc}"
+            ) from exc
+        return receipt
+
+    async def _verify_whole_draft_semantics(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        authority_sha256: str,
+        draft: str,
+        segments: list[str],
+        expected_event_ids: list[str],
+        segment_receipts: list[dict],
+    ) -> dict:
+        draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+        segment_sha256 = [
+            hashlib.sha256(segment.encode("utf-8")).hexdigest() for segment in segments
+        ]
+        evidence_packet = [
+            {
+                "segment": index,
+                "prose_sha256": receipt.get("prose_sha256"),
+                "event_receipts": receipt.get("event_receipts", []),
+                "entry": receipt.get("entry"),
+                "exit": receipt.get("exit"),
+                "summary": receipt.get("summary"),
+            }
+            for index, receipt in enumerate(segment_receipts, 1)
+        ]
+        prompt = (
+            "DRAFT_WHOLE_SEMANTIC_VALIDATION. Independently adjudicate the ordered, hash-bound "
+            "segment evidence as one complete story. Do not rewrite or score. Return one JSON object "
+            "with authority_sha256, draft_sha256, segment_sha256, event_ids, missing_event_ids, "
+            "duplicate_event_ids, out_of_order_event_ids, causal_order_valid, continuity_valid, "
+            "ending_valid, commitments_valid, evidence (exact excerpts already present in the draft), "
+            "and summary. Do not claim success when any transition, causal step, promise, climax, or "
+            "ending cannot be proven by the ordered evidence.\n\n"
+            f"AUTHORITY SHA256: {authority_sha256}\n"
+            f"DRAFT SHA256: {draft_sha256}\n"
+            f"SEGMENT SHA256: {json.dumps(segment_sha256)}\n"
+            f"EXPECTED EVENT IDS: {json.dumps(expected_event_ids)}\n"
+            f"ORDERED SEGMENT EVIDENCE: {json.dumps(evidence_packet, ensure_ascii=False)}\n"
+            f"OPENING EXCERPT: {draft[:1200]}\n"
+            f"ENDING EXCERPT: {draft[-1600:]}"
+        )
+        raw = await self._stage(
+            run_id, run_path, project, "review", constraints, prompt,
+            suffix="-draft-whole-semantic", allow_tools=False,
+            expected_output_characters=max(1200, len(expected_event_ids) * 160),
+        )
+        try:
+            receipt = validate_whole_draft_receipt(
+                authority_sha256, draft, segments, expected_event_ids,
+                self._json_object(raw),
+            )
+        except (json.JSONDecodeError, ValueError) as exc:
+            self.db.add_run_event(
+                run_id, "error", "draft_whole_semantic_gate_failed",
+                "正文整篇因果、连续性或结局证据未通过核对，已停止进入精修",
+                stage="draft", metadata={
+                    "draft_sha256": draft_sha256,
+                    "event_count": len(expected_event_ids),
+                    "error": str(exc),
+                },
+            )
+            raise ValueError(f"正文整篇语义完整性检查未通过：{exc}") from exc
+        return receipt
+
     async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
-                                       constraints: str, plan: str) -> str:
+                                        constraints: str, plan: str) -> str:
         target_words = int(project.metadata["target_words"])
         count = self._short_segment_count(target_words)
         target = math.ceil(target_words / count)
         segment_plans = self._short_plan_segments(plan, count)
         if len(segment_plans) != count:
             raise ValueError("规划稿没有明确每一段负责的事件，尚未生成正文")
-        location_catalog = build_location_catalog(
-            project.path, self.story_states.ensure(project.id, project.path).data,
-        )
+        authoritative_state = self.story_states.ensure(project.id, project.path).data
+        story_state_sha256 = hashlib.sha256(json.dumps(
+            authoritative_state, ensure_ascii=False, sort_keys=True, default=str,
+        ).encode("utf-8")).hexdigest()
+        location_catalog = build_location_catalog(project.path, authoritative_state)
         ownership = "\n".join(
             f"第 {index} 段：{next((line.lstrip('# ').strip() for line in block.splitlines() if line.strip()), '未命名')}"
             for index, block in enumerate(segment_plans, 1)
         )
-        authority_payload = {
+        legacy_authority_payload = {
             "plan": plan,
             "constraints": constraints,
             "target_words": target_words,
             "segment_count": count,
         }
+        authority_payload = {
+            **legacy_authority_payload,
+            "story_state_sha256": story_state_sha256,
+        }
         legacy_authority_hash = hashlib.sha256(json.dumps(
-            authority_payload, ensure_ascii=False, sort_keys=True,
+            legacy_authority_payload, ensure_ascii=False, sort_keys=True,
         ).encode("utf-8")).hexdigest()
         authority_hash = hashlib.sha256(json.dumps({
             **authority_payload,
@@ -4847,6 +5306,12 @@ class WorkflowService:
         checkpoint_root = run_path / "outputs" / "draft-checkpoints"
         parts: list[str] = []
         event_assignments: list[dict] = []
+        all_expected_event_ids = [
+            event_id
+            for segment_plan in segment_plans
+            for event_id in self._short_plan_event_ids(segment_plan)
+        ]
+        segment_semantic_receipts: list[dict] = []
         for index in range(1, count + 1):
             self.db.add_run_event(
                 run_id, "info", "segment_started", f"开始生成正文第 {index}/{count} 段",
@@ -4869,7 +5334,27 @@ class WorkflowService:
             cached_assignment = checkpoint.get("assignment") or {}
             expected_event_ids = self._short_plan_event_ids(segment_plans[index - 1])
             expected_handoff = self._short_plan_handoff(segment_plans[index - 1])
-            if (
+            prompt = (
+                f"整篇分工：\n{ownership}\n\n"
+                "正文必须服从正式规划、设定与因果链。不得提前写后续分段的事件，也不得重写前面已经发生的场景。"
+                "人物、地点、因果和结局均以正式设定为准。开头必须承接上一段结束时的人物位置、动作、"
+                "关系和知情状态；如果当前任务需要换时间或换场景，开头必须用自然过渡交代清楚。"
+            )
+            root_contract = DraftTaskContract(
+                authority_sha256=authority_hash,
+                task_id=f"segment-{index:02d}",
+                parent_task_id="",
+                depth=0,
+                target_han=target,
+                event_ids=tuple(expected_event_ids),
+                scope=f"本次只写第 {index}/{count} 段，唯一负责的正式事件：\n{segment_plans[index - 1]}",
+                entry_state=(
+                    f"上一段计划交接：\n{previous_plan_tail}\n\n"
+                    f"上一段正文结尾：\n{previous_tail}"
+                ),
+                exit_requirement=expected_handoff,
+            )
+            cache_structurally_valid = (
                 checkpoint.get("authority_sha256") in compatible_authority_hashes
                 and checkpoint.get("previous_sha256") == previous_hash
                 and checkpoint.get("segment_plan_sha256") == hashlib.sha256(
@@ -4884,10 +5369,42 @@ class WorkflowService:
                 and not self._draft_segment_issues(
                     cached_part, target, parts, location_catalog,
                 )
-            ):
+            )
+            cached_semantic_receipt = None
+            if cache_structurally_valid and expected_event_ids:
+                try:
+                    cached_semantic_receipt = validate_semantic_receipt(
+                        root_contract, cached_part, checkpoint.get("semantic_receipt"),
+                    )
+                except ValueError:
+                    cached_semantic_receipt = await self._verify_draft_semantic_node(
+                        run_id, run_path, project, constraints, root_contract,
+                        cached_part,
+                        [
+                            event_id for event_id in all_expected_event_ids
+                            if event_id not in expected_event_ids
+                        ],
+                        suffix=f"-part-{index:02d}-checkpoint",
+                    )
+                    checkpoint = {
+                        **checkpoint,
+                        "version": 2,
+                        "semantic_receipt": cached_semantic_receipt,
+                    }
+                    atomic_write(
+                        checkpoint_path,
+                        json.dumps(checkpoint, ensure_ascii=False, indent=2),
+                    )
+            if cache_structurally_valid:
                 parts.append(cached_part)
-                assignment = cached_assignment
+                assignment = {
+                    **cached_assignment,
+                    **({"semantic_receipt": cached_semantic_receipt}
+                       if cached_semantic_receipt else {}),
+                }
                 event_assignments.append(assignment)
+                if cached_semantic_receipt:
+                    segment_semantic_receipts.append(cached_semantic_receipt)
                 atomic_write(
                     run_path / "outputs" / "segment-events.json",
                     json.dumps({"segments": event_assignments}, ensure_ascii=False, indent=2),
@@ -4898,21 +5415,16 @@ class WorkflowService:
                     stage="draft", metadata={"segment": index, "total": count},
                 )
                 continue
-            prompt = (
-                f"整篇分工：\n{ownership}\n\n"
-                f"本次只写第 {index}/{count} 段，本段唯一负责的事件：\n{segment_plans[index - 1]}\n\n"
-                f"目标约 {target} 个正文汉字。只返回可发布的小说正文，不要标题、写作说明、"
-                "状态变化、完结点或总结。不得提前写后续分段的事件，也不得重写前面已经发生的场景。"
-                "人物、地点、因果和结局均以正式设定为准。开头必须承接上一段结束时的人物位置、动作、"
-                "关系和知情状态；如果本段需要换时间或换场景，第一段必须用自然过渡交代清楚。\n\n"
-                f"上一段计划留下的状态：\n{previous_plan_tail}\n\n"
-                f"上一段正文结尾：\n{previous_tail}\n\n不要提问，直接写本段正文。"
-            )
+            semantic_receipt_nodes: list[tuple[DraftTaskContract, dict]] = []
             part = await self._draft_short_segment_task(
                 run_id, run_path, project, constraints, prompt,
                 suffix=f"-part-{index:02d}", target=target,
                 previous_parts=parts, event_ids=expected_event_ids,
-                location_catalog=location_catalog,
+                location_catalog=location_catalog, contract=root_contract,
+                semantic_all_event_ids=(
+                    all_expected_event_ids if expected_event_ids else None
+                ),
+                semantic_receipt_sink=semantic_receipt_nodes,
             )
             issues = (
                 self._draft_segment_issues(part, target, parts, location_catalog)
@@ -4920,34 +5432,24 @@ class WorkflowService:
             )
             if issues:
                 self.db.add_run_event(
-                    run_id, "warning", "draft_segment_gate_retry",
-                    f"正文第 {index}/{count} 段没有通过本地检查，正在重写本段",
+                    run_id, "error", "draft_segment_gate_failed",
+                    f"正文第 {index}/{count} 段未通过契约内检查，已停止后续生成",
                     stage="draft", metadata={"segment": index, "issues": issues},
                 )
-                part = await self._stage(
-                    run_id, run_path, project, "draft", constraints,
-                    f"上次第 {index} 段未通过本地检查：{json.dumps(issues, ensure_ascii=False)}。\n"
-                    "请严格按本段事件分工重新写，只返回小说正文；不要增加其他分段的事件。\n\n"
-                    "开头必须接住上一段的人物位置、动作和知情状态；换时或换场必须自然交代。\n\n"
-                    f"本段计划：\n{segment_plans[index - 1]}\n\n上一段计划交接：\n{previous_plan_tail}"
-                    f"\n\n上一段正文结尾：\n{previous_tail}",
-                    suffix=f"-part-{index:02d}-gate-retry", allow_tools=False,
-                    expected_output_characters=target,
-                    completion_check=lambda value: not self._draft_segment_issues(
-                        value, target, parts, location_catalog,
-                    ),
+                raise ValueError(
+                    f"正文第 {index} 段未通过本地检查，已有进度已保留"
                 )
-                remaining = (
-                    self._draft_segment_issues(part, target, parts, location_catalog)
-                    if count > 1 else []
-                )
-                if remaining:
-                    self.db.add_run_event(
-                        run_id, "error", "draft_segment_gate_failed",
-                        f"正文第 {index}/{count} 段仍有越界、重复或正文异常，已停止后续生成",
-                        stage="draft", metadata={"segment": index, "issues": remaining},
+            verified_nodes = [receipt for _contract, receipt in semantic_receipt_nodes]
+            root_semantic_receipt = None
+            if expected_event_ids:
+                for node_contract, receipt in semantic_receipt_nodes:
+                    if node_contract.task_id == root_contract.task_id:
+                        root_semantic_receipt = receipt
+                if root_semantic_receipt is None:
+                    raise ValueError(
+                        f"正文第 {index} 段缺少父级语义验收回执"
                     )
-                    raise ValueError(f"正文第 {index} 段未通过本地检查，已有进度已保留")
+                segment_semantic_receipts.append(root_semantic_receipt)
             warnings = [
                 finding for finding in self._draft_segment_findings(
                     part, target, parts, location_catalog,
@@ -4967,10 +5469,14 @@ class WorkflowService:
                 "segment": index,
                 "event_ids": self._short_plan_event_ids(segment_plans[index - 1]),
                 "handoff": self._short_plan_handoff(segment_plans[index - 1]),
+                **({
+                    "semantic_receipt": root_semantic_receipt,
+                    "semantic_node_receipts": verified_nodes,
+                } if root_semantic_receipt else {}),
             }
             event_assignments.append(assignment)
             atomic_write(checkpoint_path, json.dumps({
-                "version": 1,
+                "version": 2 if root_semantic_receipt else 1,
                 "authority_sha256": authority_hash,
                 "previous_sha256": previous_hash,
                 "segment_plan_sha256": hashlib.sha256(
@@ -4979,6 +5485,8 @@ class WorkflowService:
                 "text_sha256": hashlib.sha256(part.strip().encode("utf-8")).hexdigest(),
                 "text": part.strip(),
                 "assignment": assignment,
+                **({"semantic_receipt": root_semantic_receipt}
+                   if root_semantic_receipt else {}),
             }, ensure_ascii=False, indent=2))
             atomic_write(
                 run_path / "outputs" / "segment-events.json",
@@ -4992,7 +5500,99 @@ class WorkflowService:
                 },
             )
         draft = self.SHORT_SEGMENT_SEPARATOR.join(parts)
+        expected_event_ids = all_expected_event_ids
+        whole_semantic_receipt = None
+        if expected_event_ids:
+            if len(segment_semantic_receipts) != len(parts):
+                raise ValueError("正文分段缺少完整语义验收回执")
+            whole_semantic_receipt = await self._verify_whole_draft_semantics(
+                run_id, run_path, project, constraints, authority_hash,
+                draft, parts, expected_event_ids, segment_semantic_receipts,
+            )
+            accepted_event_ids = [
+                str(event["event_id"])
+                for receipt in segment_semantic_receipts
+                for event in receipt.get("event_receipts", [])
+            ]
+        else:
+            accepted_event_ids = [
+                event_id
+                for assignment in event_assignments
+                for event_id in assignment.get("event_ids", [])
+            ]
+        integrity_issues = []
+        current_story_state_sha256 = hashlib.sha256(json.dumps(
+            self.story_states.ensure(project.id, project.path).data,
+            ensure_ascii=False, sort_keys=True, default=str,
+        ).encode("utf-8")).hexdigest()
+        if current_story_state_sha256 != story_state_sha256:
+            integrity_issues.append("正文生成期间权威 StoryState 已变化")
+        if len(parts) != count or len(event_assignments) != count:
+            integrity_issues.append("正文段数量与正式分工不一致")
+        if accepted_event_ids != expected_event_ids:
+            integrity_issues.append("正文事件覆盖发生遗漏、重复或顺序变化")
+        for segment_index, part in enumerate(parts):
+            segment_issues = [
+                str(finding["message"])
+                for finding in self._draft_segment_findings(
+                    part, target, parts[:segment_index], location_catalog,
+                )
+                if finding.get("blocking") and finding.get("code") != "underlength"
+            ]
+            if segment_issues:
+                integrity_issues.append(
+                    f"第 {segment_index + 1} 段未通过整段复核：" + "；".join(segment_issues)
+                )
+        segment_receipts = []
+        previous_segment_hash = ""
+        for segment_index, (part, assignment) in enumerate(
+            zip(parts, event_assignments), 1,
+        ):
+            text_hash = hashlib.sha256(part.encode("utf-8")).hexdigest()
+            segment_receipts.append({
+                "segment": segment_index,
+                "event_ids": list(assignment.get("event_ids", [])),
+                "handoff": str(assignment.get("handoff") or ""),
+                "han_characters": effective_han_characters(part),
+                "previous_sha256": previous_segment_hash,
+                "text_sha256": text_hash,
+            })
+            previous_segment_hash = text_hash
+        integrity = {
+            "version": 1,
+            "status": "failed" if integrity_issues else "passed",
+            "authority_sha256": authority_hash,
+            "plan_sha256": hashlib.sha256(plan.encode("utf-8")).hexdigest(),
+            "constraints_sha256": hashlib.sha256(constraints.encode("utf-8")).hexdigest(),
+            "story_state_sha256": story_state_sha256,
+            "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+            "expected_event_ids": expected_event_ids,
+            "accepted_event_ids": accepted_event_ids,
+            "segments": segment_receipts,
+            "semantic_segment_receipts": segment_semantic_receipts,
+            "whole_semantic_receipt": whole_semantic_receipt,
+            "issues": integrity_issues,
+        }
+        atomic_write(
+            run_path / "outputs" / "draft-integrity.json",
+            json.dumps(integrity, ensure_ascii=False, indent=2),
+        )
+        if integrity_issues:
+            self.db.add_run_event(
+                run_id, "error", "draft_integrity_failed",
+                "正文整段与整篇核验未通过，已停止进入后续流程",
+                stage="draft", metadata={"issues": integrity_issues},
+            )
+            raise ValueError("正文整篇完整性检查未通过：" + "；".join(integrity_issues))
         atomic_write(run_path / "outputs" / "draft.md", draft)
+        self.db.add_run_event(
+            run_id, "success", "draft_integrity_passed",
+            "正文全部分段、正式事件与衔接哈希已通过整篇核验",
+            stage="draft", metadata={
+                "segments": len(parts), "event_count": len(accepted_event_ids),
+                "draft_sha256": integrity["draft_sha256"],
+            },
+        )
         return draft
 
     async def _draft_short_segment_task(
@@ -5001,13 +5601,103 @@ class WorkflowService:
         event_ids: list[str] | None = None,
         location_catalog: dict[str, LocationRef] | None = None,
         depth: int = 0,
+        contract: DraftTaskContract | None = None,
+        retry_count: int = 0,
+        node_sink: list[tuple[DraftTaskContract, str]] | None = None,
+        semantic_all_event_ids: list[str] | None = None,
+        semantic_receipt_sink: list[tuple[DraftTaskContract, dict]] | None = None,
     ) -> str:
         """Generate one owned segment and split when one response cannot own it."""
+        owned_event_ids = list(event_ids or [])
+        if contract is None:
+            authority_hash = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+            contract = DraftTaskContract(
+                authority_sha256=authority_hash,
+                task_id=suffix.lstrip("-") or "draft-segment",
+                parent_task_id="",
+                depth=depth,
+                target_han=target,
+                event_ids=tuple(owned_event_ids),
+                scope=(
+                    "完成当前写作段正式事件：" + "、".join(owned_event_ids)
+                    if owned_event_ids else "完成当前写作段的入口、冲突推进与段末交接"
+                ),
+                entry_state=(
+                    previous_parts[-1][-1200:] if previous_parts else "正文开篇，无前置正文"
+                ),
+                exit_requirement="完成本段状态变化，不提前写后续写作段事件",
+            )
+        elif contract.target_han != target or list(contract.event_ids) != owned_event_ids:
+            raise ValueError("正文子任务参数与执行契约不一致")
+        rendered_prompt = render_draft_task_prompt(prompt, contract)
+
+        async def accept_node(value: str) -> str:
+            semantic_receipt = None
+            if semantic_all_event_ids is not None and contract.event_ids:
+                semantic_receipt = await self._verify_draft_semantic_node(
+                    run_id, run_path, project, constraints, contract, str(value),
+                    [
+                        event_id for event_id in semantic_all_event_ids
+                        if event_id not in contract.event_ids
+                    ],
+                    suffix=f"{suffix}-{contract.task_id.replace('/', '-')}",
+                )
+            if node_sink is not None:
+                node_sink.append((contract, str(value)))
+            if semantic_receipt_sink is not None and semantic_receipt is not None:
+                semantic_receipt_sink.append((contract, semantic_receipt))
+            return value
+
+        async def retry_same_scope(findings: list[dict]) -> str:
+            if retry_count >= 1:
+                raise ValueError(
+                    "正文子任务在同一事件范围重试后仍未通过检查："
+                    + "；".join(str(item.get("message") or item.get("code")) for item in findings)
+                )
+            self.db.add_run_event(
+                run_id, "warning", "draft_task_scope_retry",
+                "正文子任务未通过叶子检查，正在保持事件范围重新生成",
+                stage="draft", metadata={
+                    "suffix": suffix, "depth": depth,
+                    "target_characters": target,
+                    "target_range": list(target_bounds(target)),
+                    "event_ids": owned_event_ids,
+                    "issue_codes": [str(item.get("code") or "incomplete") for item in findings],
+                },
+            )
+            retry_contract = DraftTaskContract(
+                authority_sha256=contract.authority_sha256,
+                task_id=f"{contract.task_id}/retry-1",
+                parent_task_id=contract.parent_task_id,
+                depth=contract.depth,
+                target_han=contract.target_han,
+                event_ids=contract.event_ids,
+                scope=contract.scope,
+                entry_state=contract.entry_state,
+                exit_requirement=(
+                    contract.exit_requirement
+                    + "；修正上次检查问题："
+                    + "；".join(str(item.get("message") or item.get("code")) for item in findings)
+                ),
+                previous_sibling_sha256=contract.previous_sibling_sha256,
+            )
+            retried = await self._draft_short_segment_task(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"{suffix}-scope-retry", target=target,
+                previous_parts=previous_parts, event_ids=owned_event_ids,
+                location_catalog=location_catalog, depth=depth,
+                contract=retry_contract, retry_count=retry_count + 1,
+                node_sink=node_sink,
+                semantic_all_event_ids=semantic_all_event_ids,
+                semantic_receipt_sink=semantic_receipt_sink,
+            )
+            return await accept_node(retried)
+
         reason = "output_limit"
         han_characters = 0
         try:
             part = await self._stage(
-                run_id, run_path, project, "draft", constraints, prompt,
+                run_id, run_path, project, "draft", constraints, rendered_prompt,
                 suffix=suffix, allow_tools=False,
                 expected_output_characters=target,
                 completion_check=lambda value: not self._draft_segment_issues(
@@ -5016,36 +5706,55 @@ class WorkflowService:
             )
         except IncompleteModelOutputError as exc:
             han_characters = effective_han_characters(str(exc.partial))
-            if depth >= 2 or target < 800:
+            if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
+                if retry_count < 1:
+                    return await retry_same_scope([{
+                        "code": "output_limit",
+                        "message": "供应商未完整返回当前事件范围",
+                    }])
                 raise
         else:
             receipt = getattr(part, "receipt", {})
             finish_reason = normalize_finish_reason(
                 receipt.get("finish_reason") if isinstance(receipt, dict) else None
             )
-            if finish_reason not in {"stop", "end_turn", "completed", "complete"}:
-                return part
-            underlength = next((
+            findings = [
                 finding for finding in self._draft_segment_findings(
                     part, target, previous_parts, location_catalog,
-                )
-                if finding.get("code") == "underlength" and finding.get("blocking")
+                ) if finding.get("blocking")
+            ]
+            if not findings:
+                return await accept_node(part)
+            underlength = next((
+                finding for finding in findings if finding.get("code") == "underlength"
             ), None)
-            if underlength is None:
-                return part
+            if any(finding.get("code") != "underlength" for finding in findings):
+                return await retry_same_scope(findings)
+            if finish_reason not in {"stop", "end_turn", "completed", "complete"}:
+                return await retry_same_scope([{
+                    **underlength,
+                    "code": "unknown_terminal_underlength",
+                    "message": "供应商没有提供可确认完整结束的状态，不能验收偏短正文",
+                }])
             # Han-count recovery is meaningful only after the response proves it
             # contains Chinese prose. Other-language projects keep using their
             # normal prose/quality gates instead of being split on a zero metric.
             han_characters = int(underlength.get("han_characters") or 0)
             if han_characters <= 0:
-                return part
-            if depth >= 2 or target < 800:
-                return part
+                return await accept_node(part)
+            if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
+                return await retry_same_scope(findings)
             reason = "normal_finish_underlength"
-        owned_event_ids = list(event_ids or [])
         split_at = max(1, math.ceil(len(owned_event_ids) / 2))
         first_event_ids = owned_event_ids[:split_at]
         second_event_ids = owned_event_ids[split_at:]
+        if owned_event_ids and not exact_event_partition(
+            tuple(owned_event_ids), tuple(first_event_ids), tuple(second_event_ids),
+        ):
+            return await retry_same_scope([{
+                "code": "indivisible_event_scope",
+                "message": "当前正式事件不能无损拆成两个连续范围",
+            }])
 
         def event_scope(values: list[str], fallback: str) -> str:
             return "、".join(values) if values else fallback
@@ -5059,6 +5768,7 @@ class WorkflowService:
             ),
             stage="draft", metadata={
                 "suffix": suffix, "depth": depth + 1, "target_characters": target,
+                "target_range": list(target_bounds(target)),
                 "subtasks": 2, "reason": reason,
                 "han_characters": han_characters,
                 "issue_codes": [
@@ -5069,29 +5779,61 @@ class WorkflowService:
             },
         )
         first_target = max(400, target // 2)
+        first_contract = DraftTaskContract(
+            authority_sha256=contract.authority_sha256,
+            task_id=f"{contract.task_id}/sub-1",
+            parent_task_id=contract.task_id,
+            depth=depth + 1,
+            target_han=first_target,
+            event_ids=tuple(first_event_ids),
+            scope=(
+                "内部子任务 1/2：只完成父任务前半的必要因果推进；"
+                f"当前事件范围：{event_scope(first_event_ids, '入口与冲突推进')}；"
+                f"父任务范围：{contract.scope}"
+            ),
+            entry_state=contract.entry_state,
+            exit_requirement="在当前事件范围结束处留下自然交接，不总结且不进入第二子任务事件",
+        )
         first = await self._draft_short_segment_task(
             run_id, run_path, project, constraints,
-            prompt + (
-                "\n\n这是自动拆分后的内部子任务 1/2：只写本段前半的必要因果推进，"
-                "保留事件尚未完成的自然交接点；不要总结，也不要提前进入下一写作段。"
-                f"本子任务唯一负责的正式事件 ID：{event_scope(first_event_ids, '本段入口、冲突推进')}。"
-            ),
+            prompt,
             suffix=f"{suffix}-sub-1", target=first_target,
             previous_parts=previous_parts, event_ids=first_event_ids,
             location_catalog=location_catalog, depth=depth + 1,
+            contract=first_contract, node_sink=node_sink,
+            semantic_all_event_ids=semantic_all_event_ids,
+            semantic_receipt_sink=semantic_receipt_sink,
         )
-        second_target = max(400, target - first_target)
+        first_han = effective_han_characters(first)
+        second_target = residual_target(target, first_han)
+        first_hash = hashlib.sha256(first.strip().encode("utf-8")).hexdigest()
+        second_contract = DraftTaskContract(
+            authority_sha256=contract.authority_sha256,
+            task_id=f"{contract.task_id}/sub-2",
+            parent_task_id=contract.task_id,
+            depth=depth + 1,
+            target_han=second_target,
+            event_ids=tuple(second_event_ids),
+            scope=(
+                "内部子任务 2/2：只完成父任务剩余因果推进与原定段末交接；"
+                f"当前事件范围：{event_scope(second_event_ids, '状态改变与段末交接')}；"
+                f"父任务范围：{contract.scope}"
+            ),
+            entry_state=(
+                f"承接已验收前半，内容哈希 {first_hash}。前半结尾：\n{first[-1200:]}"
+            ),
+            exit_requirement=contract.exit_requirement,
+            previous_sibling_sha256=first_hash,
+        )
         second = await self._draft_short_segment_task(
             run_id, run_path, project, constraints,
-            prompt + (
-                "\n\n这是自动拆分后的内部子任务 2/2：承接下面已经验收的本段前半，"
-                "只完成本段剩余因果推进和原定段末交接；不得重写前半。\n\n"
-                f"本子任务唯一负责的正式事件 ID：{event_scope(second_event_ids, '本段状态改变、段末交接')}。\n\n"
-                f"已验收的本段前半：\n{first}\n\n前半结尾：\n{first[-1200:]}"
-            ),
+            prompt,
             suffix=f"{suffix}-sub-2", target=second_target,
             previous_parts=[*previous_parts, first], event_ids=second_event_ids,
             location_catalog=location_catalog, depth=depth + 1,
+            contract=second_contract, node_sink=node_sink,
+            semantic_all_event_ids=semantic_all_event_ids,
+            semantic_receipt_sink=semantic_receipt_sink,
         )
         combined = f"{first.strip()}\n\n{second.strip()}"
         remaining = self._draft_segment_issues(
@@ -5102,7 +5844,23 @@ class WorkflowService:
                 "自动拆分后的正文段没有通过完整性与衔接检查："
                 + "；".join(remaining)
             )
-        return combined
+        self.db.add_run_event(
+            run_id, "success", "draft_task_split_completed",
+            "自动拆分后的两个正文子任务已通过父段完整性与衔接检查",
+            stage="draft", metadata={
+                "suffix": suffix,
+                "parent_task_id": contract.task_id,
+                "authority_sha256": contract.authority_sha256,
+                "child_targets": [first_target, second_target],
+                "child_event_ids": [first_event_ids, second_event_ids],
+                "child_sha256": [
+                    hashlib.sha256(first.strip().encode("utf-8")).hexdigest(),
+                    hashlib.sha256(second.strip().encode("utf-8")).hexdigest(),
+                ],
+                "combined_sha256": hashlib.sha256(combined.encode("utf-8")).hexdigest(),
+            },
+        )
+        return await accept_node(combined)
 
     async def _polish_short_segments(self, run_id: str, run_path: Path, project: Project,
                                      constraints: str, text: str, findings: str,

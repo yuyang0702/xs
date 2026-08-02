@@ -6,7 +6,7 @@ from collections import Counter
 from collections.abc import Sequence
 from difflib import SequenceMatcher
 
-from novel_flywheel.quality import issue_ledger
+from novel_flywheel.quality import issue_is_mandatory, issue_is_resolved, issue_ledger
 from novel_flywheel.revision import apply_patch_group, repair_mechanical_text
 
 
@@ -220,7 +220,7 @@ def requires_full_review(
 
 def apply_incremental_gate(
     review: dict, baseline: dict, scope: dict, current_analysis: dict,
-    current_manuscript: str, reconciliations: list[dict],
+    current_manuscript: str, reconciliations: object,
 ) -> tuple[dict, list[str]]:
     reasons = incremental_precheck_reasons(
         baseline, current_analysis, current_manuscript,
@@ -235,21 +235,54 @@ def apply_incremental_gate(
         character not in "0123456789abcdef" for character in digest
     ):
         reasons.append("stale_analysis")
+    valid_reconciliation_payload = (
+        isinstance(reconciliations, list)
+        and all(isinstance(item, dict) for item in reconciliations)
+    )
+    reconciliation_items = reconciliations if valid_reconciliation_payload else []
+    if not valid_reconciliation_payload:
+        reasons.append("invalid_issue_reconciliation")
     expected = {item.get("issue_id") for item in baseline.get("issue_ledger", [])}
-    actual = {item.get("issue_id") for item in reconciliations}
+    actual_ids = [item.get("issue_id") for item in reconciliation_items]
+    actual = set(actual_ids)
     if expected - actual:
         reasons.append("missing_issue_reconciliation")
-    allowed_states = {"resolved", "unresolved", "uncertain"}
-    if any(item.get("status") not in allowed_states for item in reconciliations):
+    allowed_states = {
+        "resolved", "partially_resolved", "unresolved", "uncertain", "preserved",
+    }
+    if (
+        len(actual_ids) != len(actual)
+        or bool(actual - expected)
+        or any(
+            item.get("status") not in allowed_states
+            or (
+                item.get("status") == "resolved"
+                and not str(
+                    item.get("evidence") or item.get("reconciliation_evidence") or ""
+                ).strip()
+            )
+            for item in reconciliation_items
+        )
+    ):
         reasons.append("invalid_issue_reconciliation")
     severity_by_id = {
         item.get("issue_id"): str(item.get("severity", "")).lower()
         for item in baseline.get("issue_ledger", [])
     }
+    prior_by_id = {
+        item.get("issue_id"): item for item in baseline.get("issue_ledger", [])
+    }
     if any(
-        item.get("status") in {"unresolved", "uncertain"}
+        item.get("issue_id") in prior_by_id
+        and issue_is_mandatory(prior_by_id[item.get("issue_id")])
+        and not issue_is_resolved(item)
+        for item in reconciliation_items
+    ):
+        reasons.append("unresolved_mandatory_issue")
+    if any(
+        item.get("status") in {"partially_resolved", "unresolved", "uncertain"}
         and severity_by_id.get(item.get("issue_id")) in {"major", "critical", "blocking", "high"}
-        for item in reconciliations
+        for item in reconciliation_items
     ):
         reasons.append("unresolved_major_issue")
     if current_analysis.get("prose", {}).get("blocking_count"):

@@ -29,6 +29,9 @@ STATUS_LABELS = {
     "closed": "已解决（旧记录）",
     "not_found": "未找到证据（旧记录）",
 }
+ACTIVE_ISSUE_STATUSES = {
+    "unresolved", "open", "not_found", "partially_resolved", "uncertain",
+}
 CATEGORY_LABELS = {
     "commercial": "阅读吸引力",
     "commercial_pull": "阅读吸引力",
@@ -96,6 +99,10 @@ def merge_quality_issues(report: dict, review: dict | None = None) -> list[dict]
             "repair_mode": repair_mode,
             "handling_label": handling_label,
             "source_label": source_label,
+            "reconciliation_evidence": str(
+                issue.get("reconciliation_evidence") or ""
+            ),
+            "reconciled_at": str(issue.get("reconciled_at") or ""),
             "evidence": [],
         })
         if SEVERITY_ORDER.get(severity, 2) > SEVERITY_ORDER.get(item["severity"], 2):
@@ -104,9 +111,17 @@ def merge_quality_issues(report: dict, review: dict | None = None) -> list[dict]
             item["status"] = status
             item["status_label"] = STATUS_LABELS.get(status, "状态未知")
         item["mandatory"] = item["mandatory"] or issue_is_mandatory(issue)
+        if issue.get("reconciliation_evidence"):
+            item["reconciliation_evidence"] = str(issue["reconciliation_evidence"])
+        if issue.get("reconciled_at"):
+            item["reconciled_at"] = str(issue["reconciled_at"])
         evidence = {
             "location": str(issue.get("location") or "正文相关位置"),
-            "excerpt": str(issue.get("evidence") or "未提供原文证据"),
+            "excerpt": str(
+                issue.get("reconciliation_evidence")
+                or issue.get("evidence")
+                or "未提供原文证据"
+            ),
             "window": issue.get("window"),
         }
         if evidence not in item["evidence"]:
@@ -183,7 +198,13 @@ def build_quality_summary(project: Any, run_id: str, text: str, report: dict,
             reasons.append(
                 f"有效正文汉字需保持在 {minimum:,}～{maximum:,} 字"
             )
-    issues = merge_quality_issues(report, review)
+    all_issues = merge_quality_issues(report, review)
+    issues = [
+        item for item in all_issues if item["status"] in ACTIVE_ISSUE_STATUSES
+    ]
+    resolved_issues = [
+        item for item in all_issues if item["status"] not in ACTIVE_ISSUE_STATUSES
+    ]
     if active_profile == "zhihu-short-v2" and any(
         item["mandatory"] and not issue_is_resolved(item) for item in issues
     ):
@@ -223,6 +244,7 @@ def build_quality_summary(project: Any, run_id: str, text: str, report: dict,
             ),
         },
         "issues": issues,
+        "resolved_issues": resolved_issues,
         "issue_counts": {
             "total": len(issues),
             "mandatory": sum(
@@ -233,6 +255,7 @@ def build_quality_summary(project: Any, run_id: str, text: str, report: dict,
                 not issue_is_resolved(item) and item["status"] != "preserved"
                 for item in issues
             ),
+            "historical": len(resolved_issues),
         },
         "word_count": word_count,
         "publication_authority": {

@@ -161,6 +161,71 @@ def test_incremental_gate_rejects_invalid_and_unresolved_reconciliation_states()
     assert "unresolved_major_issue" in reasons
 
 
+def test_incremental_gate_rejects_duplicate_and_unexpected_reconciliation_ids():
+    text = "正文"
+    baseline = {
+        "manuscript_hash": hashlib.sha256(text.encode()).hexdigest(),
+        "issue_ledger": [{"issue_id": "issue-a", "severity": "medium"}],
+        "coverage": 1.0,
+    }
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False, "decision": "pass"}, baseline,
+        {"coverage": 1.0, "reviewed_windows": [1], "selected_windows": [1]},
+        _analysis(text), text, [
+            {"issue_id": "issue-a", "status": "resolved"},
+            {"issue_id": "issue-a", "status": "resolved"},
+            {"issue_id": "unknown", "status": "resolved"},
+        ],
+    )
+
+    assert review["hard_fail"] is True
+    assert "invalid_issue_reconciliation" in reasons
+
+
+def test_incremental_gate_fails_closed_on_non_list_reconciliation_payload():
+    text = "正文"
+    baseline = {
+        "manuscript_hash": hashlib.sha256(text.encode()).hexdigest(),
+        "issue_ledger": [{"issue_id": "issue-a", "severity": "medium"}],
+        "coverage": 1.0,
+    }
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False, "decision": "pass"}, baseline,
+        {"coverage": 1.0, "reviewed_windows": [1], "selected_windows": [1]},
+        _analysis(text), text,
+        {"issue-a": {"status": "resolved"}},
+    )
+
+    assert review["hard_fail"] is True
+    assert "invalid_issue_reconciliation" in reasons
+
+
+def test_incremental_gate_cannot_preserve_a_mandatory_prior_issue():
+    text = "正文"
+    baseline = {
+        "manuscript_hash": hashlib.sha256(text.encode()).hexdigest(),
+        "issue_ledger": [{
+            "issue_id": "corruption-1", "category": "production_text",
+            "severity": "low",
+        }],
+        "coverage": 1.0,
+    }
+
+    review, reasons = apply_incremental_gate(
+        {"hard_fail": False, "decision": "pass"}, baseline,
+        {"coverage": 1.0, "reviewed_windows": [1], "selected_windows": [1]},
+        _analysis(text), text, [{
+            "issue_id": "corruption-1", "status": "preserved",
+            "evidence": "建议保留",
+        }],
+    )
+
+    assert review["hard_fail"] is True
+    assert "unresolved_mandatory_issue" in reasons
+
+
 def test_changed_narrative_relation_selects_both_linked_windows():
     windows = [
         {"index": 1, "start": 0, "end": 100, "text": "a"},

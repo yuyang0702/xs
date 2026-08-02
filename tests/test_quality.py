@@ -7,6 +7,8 @@ from novel_flywheel.quality import (
     quality_gate,
     quality_outcome,
     reader_sample,
+    reconcile_review_issues,
+    review_evidence_batches,
     review_windows,
     issue_ledger,
     issue_is_resolved,
@@ -14,6 +16,99 @@ from novel_flywheel.quality import (
     select_route,
     update_issue_status,
 )
+
+
+def test_reconcile_review_issues_moves_explicitly_resolved_prior_issue_to_history() -> None:
+    prior = issue_ledger([{
+        "issue_id": "story-001", "category": "story", "severity": "major",
+        "status": "unresolved", "evidence": "人物动机缺失", "action": "补足动机",
+    }])
+
+    reconciled = reconcile_review_issues(
+        {"issues": []},
+        prior,
+        [{
+            "issue_id": "story-001", "status": "resolved",
+            "evidence": "第三场已经补出人物主动选择",
+        }],
+        reviewed_at="2026-08-02T12:00:00Z",
+    )
+
+    assert reconciled["issue_reconciliation_complete"] is True
+    assert reconciled["issues"] == [{
+        **prior[0],
+        "status": "resolved",
+        "reconciliation_evidence": "第三场已经补出人物主动选择",
+        "reconciled_at": "2026-08-02T12:00:00Z",
+    }]
+
+
+def test_reconcile_review_issues_never_treats_omission_as_resolution() -> None:
+    prior = issue_ledger([{
+        "issue_id": "story-001", "category": "story", "severity": "major",
+        "status": "unresolved", "evidence": "人物动机缺失", "action": "补足动机",
+    }])
+
+    reconciled = reconcile_review_issues({"issues": []}, prior, [])
+
+    assert reconciled["issue_reconciliation_complete"] is False
+    assert reconciled["issues"] == prior
+    assert reconciled["missing_reconciliation_issue_ids"] == ["story-001"]
+
+
+def test_reconcile_review_issues_rejects_duplicate_statuses_for_same_prior_issue() -> None:
+    prior = issue_ledger([{
+        "issue_id": "story-001", "category": "story", "severity": "major",
+        "status": "unresolved", "evidence": "人物动机缺失", "action": "补足动机",
+    }])
+
+    reconciled = reconcile_review_issues(
+        {"issues": []},
+        prior,
+        [
+            {"issue_id": "story-001", "status": "resolved", "evidence": "已补"},
+            {"issue_id": "story-001", "status": "unresolved", "evidence": "仍缺"},
+        ],
+    )
+
+    assert reconciled["issue_reconciliation_complete"] is False
+    assert reconciled["issues"] == prior
+    assert reconciled["duplicate_reconciliation_issue_ids"] == ["story-001"]
+
+
+def test_reconcile_review_issues_requires_current_evidence_for_resolution() -> None:
+    prior = issue_ledger([{
+        "issue_id": "story-001", "category": "story", "severity": "major",
+        "status": "unresolved", "evidence": "人物动机缺失", "action": "补足动机",
+    }])
+
+    reconciled = reconcile_review_issues(
+        {"issues": []}, prior,
+        [{"issue_id": "story-001", "status": "resolved", "evidence": ""}],
+    )
+
+    assert reconciled["issue_reconciliation_complete"] is False
+    assert reconciled["issues"] == prior
+    assert reconciled["invalid_reconciliation_issue_ids"] == ["story-001"]
+
+
+def test_reconcile_review_issues_cannot_preserve_a_mandatory_prior_issue() -> None:
+    prior = issue_ledger([{
+        "issue_id": "corruption-001", "category": "production_text",
+        "severity": "low", "status": "unresolved", "action": "删除正文损坏",
+    }])
+
+    reconciled = reconcile_review_issues(
+        {"issues": []}, prior,
+        [{
+            "issue_id": "corruption-001", "status": "preserved",
+            "evidence": "模型建议保留",
+        }],
+    )
+
+    assert reconciled["issue_reconciliation_complete"] is False
+    assert reconciled["issues"] == prior
+    assert reconciled["invalid_reconciliation_issue_ids"] == ["corruption-001"]
 
 
 def test_issue_ledger_ids_are_stable_when_issue_order_changes() -> None:
@@ -142,6 +237,25 @@ def test_review_windows_cover_full_text_with_overlap() -> None:
                for previous, current in zip(windows, windows[1:]))
 
 
+def test_review_evidence_batches_cover_every_window_with_boundary_overlap() -> None:
+    evidence = [
+        {"window": index, "summary": f"窗口{index}" + "甲" * 180}
+        for index in range(1, 8)
+    ]
+
+    batches = review_evidence_batches(evidence, token_limit=700, overlap=1)
+
+    assert len(batches) >= 2
+    assert {
+        item["window"] for batch in batches for item in batch
+    } == set(range(1, 8))
+    assert all(
+        {item["window"] for item in previous}
+        & {item["window"] for item in current}
+        for previous, current in zip(batches, batches[1:])
+    )
+
+
 def test_evidence_gate_requires_prior_issue_reconciliation() -> None:
     review = normalize_review({
         "dimensions": {"commercial": 92, "story": 92, "prose": 92},
@@ -160,6 +274,26 @@ def test_evidence_gate_requires_prior_issue_reconciliation() -> None:
     assert gated["score"] <= 74
     assert gated["decision"] == "revise"
     assert "missing_issue_reconciliation" in reasons
+
+
+def test_evidence_gate_rejects_duplicate_unknown_and_legacy_reconciliation_writes() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 92, "story": 92, "prose": 92},
+        "decision": "pass", "issues": [],
+    })
+
+    gated, reasons = apply_evidence_gate(review, {
+        "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
+        "evidence_count": 1, "prior_issue_ids": ["initial-001"],
+        "reconciliations": [
+            {"issue_id": "initial-001", "status": "resolved"},
+            {"issue_id": "initial-001", "status": "resolved"},
+            {"issue_id": "unknown-002", "status": "not_found"},
+        ],
+    })
+
+    assert gated["decision"] == "revise"
+    assert "invalid_issue_reconciliation" in reasons
 
 
 def test_evidence_gate_caps_unresolved_major_issue() -> None:
@@ -218,6 +352,29 @@ def test_evidence_gate_caps_category_derived_mandatory_issue() -> None:
     })
 
     assert gated["score"] <= 74
+    assert gated["decision"] == "revise"
+    assert "unresolved_mandatory_issue" in reasons
+
+
+def test_evidence_gate_uses_prior_category_when_model_downgrades_mandatory_issue() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 95, "story": 95, "prose": 95},
+        "decision": "pass", "issues": [],
+    })
+
+    gated, reasons = apply_evidence_gate(review, {
+        "coverage": 1.0, "window_count": 1, "reviewed_windows": 1,
+        "prior_issue_ids": ["corruption-001"], "evidence_count": 1,
+        "prior_issues": [{
+            "issue_id": "corruption-001", "category": "production_text",
+            "severity": "low",
+        }],
+        "reconciliations": [{
+            "issue_id": "corruption-001", "category": "style",
+            "severity": "low", "status": "preserved", "evidence": "建议保留",
+        }],
+    })
+
     assert gated["decision"] == "revise"
     assert "unresolved_mandatory_issue" in reasons
 

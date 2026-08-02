@@ -206,4 +206,47 @@ def test_preserved_advisory_is_not_counted_as_waiting_for_action() -> None:
 
     summary = build_quality_summary(project, "run", "", report, None)
 
-    assert summary["issue_counts"] == {"total": 1, "mandatory": 0, "unresolved": 0}
+    assert summary["issue_counts"] == {
+        "total": 0, "mandatory": 0, "unresolved": 0, "historical": 1,
+    }
+    assert summary["issues"] == []
+    assert summary["resolved_issues"][0]["issue_id"] == "style-1"
+
+
+def test_quality_summary_keeps_only_actionable_states_in_priority_list() -> None:
+    project = SimpleNamespace(mode="short", metadata={})
+    report = {"final_attempts": [{"review": {"issues": [
+        {
+            "issue_id": "open-1", "category": "story", "severity": "major",
+            "status": "partially_resolved", "action": "继续补足人物动机",
+        },
+        {
+            "issue_id": "closed-1", "category": "story", "severity": "major",
+            "status": "resolved", "action": "补足人物动机",
+            "reconciliation_evidence": "第三场已经补出人物主动选择",
+        },
+    ]}}]}
+
+    summary = build_quality_summary(project, "run", "", report, None)
+
+    assert [item["issue_id"] for item in summary["issues"]] == ["open-1"]
+    assert [item["issue_id"] for item in summary["resolved_issues"]] == ["closed-1"]
+    assert summary["issue_counts"] == {
+        "total": 1, "mandatory": 0, "unresolved": 1, "historical": 1,
+    }
+
+
+def test_resolved_history_uses_latest_reconciliation_evidence_and_time() -> None:
+    project = SimpleNamespace(mode="short", metadata={})
+    report = {"final_attempts": [{"review": {"issues": [{
+        "issue_id": "closed-1", "category": "story", "severity": "major",
+        "status": "resolved", "action": "补足人物动机", "evidence": "旧证据",
+        "reconciliation_evidence": "第三场已经补出人物主动选择",
+        "reconciled_at": "2026-08-02T12:00:00Z",
+    }]}}]}
+
+    summary = build_quality_summary(project, "run", "", report, None)
+
+    history = summary["resolved_issues"][0]
+    assert history["reconciled_at"] == "2026-08-02T12:00:00Z"
+    assert history["evidence"][0]["excerpt"] == "第三场已经补出人物主动选择"

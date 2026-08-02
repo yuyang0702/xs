@@ -2,6 +2,8 @@ from typing import Any
 import hashlib
 import json
 
+from novel_flywheel.context_policy import estimate_input_tokens
+
 
 WEIGHTS = {"commercial": 0.45, "story": 0.35, "prose": 0.20}
 MINIMUMS = {"commercial": 75.0, "story": 70.0, "prose": 65.0}
@@ -79,6 +81,36 @@ def review_windows(text: str, target: int = 5000, overlap: int = 400) -> list[di
     return windows
 
 
+def review_evidence_batches(
+    evidence: list[dict], token_limit: int, overlap: int = 1,
+) -> list[list[dict]]:
+    """Partition ordered evidence without sampling, retaining boundary overlap."""
+    if token_limit <= 0 or overlap < 0:
+        raise ValueError("review evidence batch limits must be positive")
+    if not evidence:
+        return []
+    batches: list[list[dict]] = []
+    start = 0
+    while start < len(evidence):
+        end = start
+        while end < len(evidence):
+            candidate = evidence[start:end + 1]
+            tokens = estimate_input_tokens(
+                json.dumps(candidate, ensure_ascii=False, separators=(",", ":"))
+            )
+            if tokens > token_limit and end > start:
+                break
+            end += 1
+            if tokens > token_limit:
+                break
+        batch = evidence[start:end]
+        batches.append(batch)
+        if end >= len(evidence):
+            break
+        start = max(start + 1, end - min(overlap, len(batch) - 1))
+    return batches
+
+
 def issue_ledger(issues: list[dict], source: str = "final_review") -> list[dict]:
     normalized = []
     for issue in issues:
@@ -97,6 +129,90 @@ def issue_ledger(issues: list[dict], source: str = "final_review") -> list[dict]
             "source": issue.get("source") or source,
         })
     return normalized
+
+
+def reconcile_review_issues(
+    review: dict,
+    prior_issues: list[dict],
+    reconciliations: list[dict],
+    *,
+    reviewed_at: str = "",
+) -> dict:
+    """Carry every prior issue into a review unless it is explicitly reconciled."""
+    result = dict(review)
+    prior = issue_ledger(prior_issues)
+    current = issue_ledger(
+        review.get("issues", []) if isinstance(review.get("issues", []), list) else []
+    )
+    prior_by_id = {str(item["issue_id"]): item for item in prior}
+    prior_ids = {str(item["issue_id"]) for item in prior}
+    by_id: dict[str, list[dict]] = {}
+    for item in reconciliations if isinstance(reconciliations, list) else []:
+        if not isinstance(item, dict):
+            continue
+        by_id.setdefault(str(item.get("issue_id") or ""), []).append(item)
+
+    missing = sorted(issue_id for issue_id in prior_ids if not by_id.get(issue_id))
+    duplicates = sorted(
+        issue_id for issue_id in prior_ids if len(by_id.get(issue_id, [])) > 1
+    )
+    unexpected = sorted(issue_id for issue_id in by_id if issue_id not in prior_ids)
+    invalid = sorted(
+        issue_id
+        for issue_id in prior_ids
+        if len(by_id.get(issue_id, [])) == 1
+        and (
+            str(by_id[issue_id][0].get("status") or "").strip().lower()
+            not in ALLOWED_ISSUE_STATUSES
+            or (
+                str(by_id[issue_id][0].get("status") or "").strip().lower()
+                == "resolved"
+                and not str(
+                    by_id[issue_id][0].get("evidence")
+                    or by_id[issue_id][0].get("reconciliation_evidence")
+                    or ""
+                ).strip()
+            )
+            or (
+                str(by_id[issue_id][0].get("status") or "").strip().lower()
+                == "preserved"
+                and issue_is_mandatory(prior_by_id[issue_id])
+            )
+        )
+    )
+    complete = not (missing or duplicates or unexpected or invalid)
+
+    current_by_id = {str(item["issue_id"]): item for item in current}
+    merged: list[dict] = []
+    for prior_item in prior:
+        issue_id = str(prior_item["issue_id"])
+        item = {**prior_item, **current_by_id.pop(issue_id, {})}
+        if complete:
+            reconciliation = by_id[issue_id][0]
+            item["status"] = str(reconciliation["status"]).strip().lower()
+            item["reconciliation_evidence"] = str(
+                reconciliation.get("evidence")
+                or reconciliation.get("reconciliation_evidence")
+                or ""
+            )
+            if reviewed_at:
+                item["reconciled_at"] = reviewed_at
+        else:
+            item["status"] = prior_item["status"]
+        merged.append(item)
+    merged.extend(current_by_id.values())
+
+    result["issues"] = merged
+    result["issue_reconciliation_complete"] = complete
+    if missing:
+        result["missing_reconciliation_issue_ids"] = missing
+    if duplicates:
+        result["duplicate_reconciliation_issue_ids"] = duplicates
+    if unexpected:
+        result["unexpected_reconciliation_issue_ids"] = unexpected
+    if invalid:
+        result["invalid_reconciliation_issue_ids"] = invalid
+    return result
 
 
 def update_issue_status(ledger: list[dict], issue_id: str, status: str,
@@ -121,23 +237,57 @@ def apply_evidence_gate(review: dict, evidence: dict) -> tuple[dict, list[str]]:
     result = dict(review)
     reasons = []
     reconciliations = evidence.get("reconciliations") or []
-    reconciled_ids = {item.get("issue_id") for item in reconciliations}
+    reconciliation_ids = [item.get("issue_id") for item in reconciliations]
+    reconciled_ids = set(reconciliation_ids)
     prior_ids = set(evidence.get("prior_issue_ids") or [])
+    prior_by_id = {
+        str(item.get("issue_id")): item
+        for item in evidence.get("prior_issues", [])
+        if isinstance(item, dict) and item.get("issue_id")
+    }
     if prior_ids - reconciled_ids:
         reasons.append("missing_issue_reconciliation")
+    if (
+        len(reconciliation_ids) != len(reconciled_ids)
+        or bool(reconciled_ids - prior_ids)
+        or any(
+            str(item.get("status") or "").strip().lower()
+            not in ALLOWED_ISSUE_STATUSES
+            or (
+                str(item.get("status") or "").strip().lower() == "resolved"
+                and not str(
+                    item.get("evidence") or item.get("reconciliation_evidence") or ""
+                ).strip()
+            )
+            for item in reconciliations
+        )
+    ):
+        reasons.append("invalid_issue_reconciliation")
     if (evidence.get("coverage", 0) < 1
             or evidence.get("reviewed_windows", 0) != evidence.get("window_count", 0)):
         reasons.append("incomplete_manuscript_coverage")
     if evidence.get("evidence_count", 0) < evidence.get("window_count", 0):
         reasons.append("insufficient_review_evidence")
+    authoritative_reconciliations = [
+        {
+            **item,
+            **{
+                key: prior_by_id[str(item.get("issue_id"))][key]
+                for key in ("category", "severity", "severity_class")
+                if str(item.get("issue_id")) in prior_by_id
+                and key in prior_by_id[str(item.get("issue_id"))]
+            },
+        }
+        for item in reconciliations
+    ]
     unresolved = [
-        item for item in reconciliations
+        item for item in authoritative_reconciliations
         if _canonical_issue_status(item.get("status")) in {
             "unresolved", "partially_resolved", "uncertain",
         }
     ]
     if any(issue_is_mandatory(item) and not issue_is_resolved(item)
-           for item in reconciliations):
+           for item in authoritative_reconciliations):
         reasons.append("unresolved_mandatory_issue")
     if any(str(item.get("severity", "")).lower() in {"major", "critical", "blocking"}
            for item in unresolved):

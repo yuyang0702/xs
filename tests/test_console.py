@@ -140,6 +140,9 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "叙事账本" in script
     assert "问题返修台账" in script
     assert "detail_analysis" in script
+    assert "summary.resolved_issues" in script
+    assert "已解决记录" in script
+    assert "reconciled_at" in script
     assert "已单独复核" in script
     assert 'id="reference-list"' in html
     assert 'id="reference-detail"' in html

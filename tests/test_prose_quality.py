@@ -44,6 +44,13 @@ def test_analyzer_blocks_planning_notes_mixed_script_and_duplicate_paragraphs() 
     assert {"production_text", "mixed_script_corruption", "duplicate_paragraph"} <= codes
 
 
+def test_analyzer_blocks_replacement_glyphs_and_invalid_control_characters() -> None:
+    report = analyze_prose("她推开门，纸页上却只剩�个名字。\x00他没有出声。")
+
+    codes = {item["code"] for item in report["findings"] if item["blocking"]}
+    assert {"unicode_replacement_character", "invalid_control_character"} <= codes
+
+
 def test_analyzer_reports_formulaic_explanation_as_soft_signal() -> None:
     text = "这一刻，他终于明白，这不是逃避，而是命运的选择。" * 3
 

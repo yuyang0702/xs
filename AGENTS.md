@@ -28,6 +28,17 @@
 - Degraded continuation is allowed only for explicitly advisory material that cannot affect narrative truth or downstream validation. Causal chains, continuity state, event assignments, canon, timelines, promises, and ending constraints are never advisory.
 - Regression coverage for a workflow change MUST include truncation at each new model-output boundary and prove that no partial authority is committed, valid upstream checkpoints remain reusable, and downstream drafting does not start until story-wide validation passes.
 
+## Generated Subtask Integrity Gate
+
+- Every generated split, retry, continuation, compaction, fallback, or resumed subtask MUST be rendered from immutable narrative authority plus a fresh current-task contract. A provider call may contain only one executable numeric target and one current event scope; never append child instructions to a rendered parent prompt that still contains the parent target or ownership range.
+- Each contract MUST bind the authority hash, task and parent IDs, depth, current target, exact ordered event IDs, entry state, required exit state, and the preceding accepted sibling hash when applicable. A single indivisible event stays in the same scope for recovery; do not invent token-only child ownership.
+- All normal terminal states and output-limited states MUST enter the same artifact validation. Overlength, underlength, duplicate, corrupt, out-of-scope, or incomplete prose is not accepted merely because the provider reported a normal finish. Never mechanically truncate prose.
+- Validate every leaf, merged parent, complete writing segment, and whole draft independently. Child success cannot substitute for parent or whole-story validation. Promotion requires exact event coverage and order plus consistent causality, StoryState, character and knowledge state, timeline, relationships, setup/payoff, handoffs, and confirmed ending.
+- Semantic acceptance MUST be bound to the immutable authority and exact generated-text hash. Every claimed owned event, entry state, and exit state needs a verifier-provided excerpt that Runtime proves occurs in that exact text; copied plan metadata or self-declared event IDs without prose evidence are not acceptance receipts. Whole-draft reduction MUST preserve source hashes, covered ranges, and every prior issue identity deterministically.
+- Token or context pressure may change the validation topology only. Use complete overlapping windows and hash-bound hierarchical evidence reduction when a whole-story check does not fit; sampling, omitted ranges, stale summaries, or an incomplete global adjudication MUST stop downstream work.
+- Commit generated authority atomically. Failed or ambiguous validation may retain diagnostic output and valid upstream checkpoints, but it MUST NOT replace an accepted parent, segment, whole draft, quality checkpoint, candidate, or formal manuscript.
+- A generated-subtask change is incomplete without regression tests for a stale parent target, recursive overlength, normal-finish invalid output, output-limited output, an indivisible event, child failure, merged-parent failure, whole-draft coverage failure, corruption, and full-coverage review under context pressure.
+
 ## New Feature Integration Gate
 
 - New features must preserve the existing StoryState authority, Runtime-controlled formal writes, model roles and fallbacks, Skill behavior, candidate validation, quality gates, credentials, project files, and run history by default.
