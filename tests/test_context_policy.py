@@ -1,5 +1,6 @@
 import pytest
 
+from novel_flywheel import context_policy
 from novel_flywheel.context_policy import (
     adaptive_output_budget,
     estimate_input_tokens,
@@ -12,6 +13,85 @@ from novel_flywheel.context_policy import (
     schema_repair_prompt,
     stage_output_budget,
 )
+
+
+def authority_api():
+    required = (
+        "PolishAuthorityPacket", "authority_packet_sha256",
+        "build_polish_authority_packet", "classify_input_pressure",
+        "render_polish_authority_packet",
+    )
+    missing = [name for name in required if not hasattr(context_policy, name)]
+    assert not missing, f"missing authority API: {missing}"
+    return context_policy
+
+
+def build_authority_fixture():
+    module = authority_api()
+    return module.build_polish_authority_packet(
+        source="当前完整源段。",
+        event_ids=["EV-00000001"],
+        causal_goal="查明钥匙来源",
+        previous_exit="她已经知道账本存在。",
+        next_entry="下一段才能打开密室。",
+        character_state={"花穗": {"knowledge": "不知道密室位置"}},
+        locked_facts=["钥匙不能丢失", "确认结局：花穗独自离开"],
+        ending_constraints=["确认结局"],
+        promises=["伏笔必须兑现"],
+        narrative_state={"location": "沈府后院"},
+        style_rules=["信息揭示时允许短句"],
+        protected_passages=[{"id": "lock-1", "text": "不能改写的原句"}],
+        allowed_scope={"segment": 2, "minimum_characters": 300, "maximum_characters": 700},
+    )
+
+
+def test_authority_render_keeps_every_required_field_without_slicing() -> None:
+    module = authority_api()
+    packet = build_authority_fixture()
+
+    rendered = module.render_polish_authority_packet(packet)
+
+    for expected in (
+        "当前完整源段。", "EV-00000001", "查明钥匙来源",
+        "她已经知道账本存在。", "下一段才能打开密室。",
+        "不知道密室位置", "钥匙不能丢失", "确认结局",
+        "伏笔必须兑现", "沈府后院", "信息揭示时允许短句", "不能改写的原句",
+    ):
+        assert expected in rendered
+    assert rendered.rstrip().endswith("当前完整源段。")
+
+
+def test_authority_hash_changes_with_story_truth_but_not_advisory_findings() -> None:
+    module = authority_api()
+    packet = build_authority_fixture()
+    changed = module.build_polish_authority_packet(
+        **{**packet.to_dict(), "previous_exit": "她还不知道账本存在。"},
+    )
+
+    assert module.authority_packet_sha256(packet) != module.authority_packet_sha256(changed)
+    assert module.authority_packet_sha256(packet) == module.authority_packet_sha256(packet)
+    assert "可删除的普通建议" in module.render_polish_authority_packet(
+        packet, advisory={"notes": ["可删除的普通建议"]},
+    )
+
+
+@pytest.mark.parametrize(("window", "full", "authority", "reserve", "expected"), [
+    (None, 50_000, 30_000, 8_000, "full"),
+    (20_000, 13_000, 9_000, 3_000, "compact"),
+    (12_000, 9_000, 8_500, 3_000, "split"),
+    (20_000, 8_000, 7_000, 3_000, "full"),
+])
+def test_input_pressure_never_guesses_an_unknown_window(
+    window, full, authority, reserve, expected,
+) -> None:
+    module = authority_api()
+
+    assert module.classify_input_pressure(
+        full_input_tokens=full,
+        authority_input_tokens=authority,
+        output_reserve=reserve,
+        context_window=window,
+    ) == expected
 
 
 def test_input_token_estimator_is_conservative_for_chinese_and_ascii() -> None:

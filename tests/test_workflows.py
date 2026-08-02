@@ -9,6 +9,7 @@ from typing import get_type_hints
 import pytest
 
 from novel_flywheel.db import Database
+from novel_flywheel.context_policy import build_polish_authority_packet
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.models import ModelResult, ModelRoutesExhaustedError
 from novel_flywheel.narrative_ledger import build_narrative_ledger
@@ -38,6 +39,34 @@ REQUIRED_SKILLS = {
     "chapter-writing", "novel-writing", "dialogue", "revision-continuity",
     "humanizer-zh", "story-maintenance",
 }
+
+
+def test_compact_polish_prompt_keeps_lossless_authority_and_one_source_copy() -> None:
+    packet = build_polish_authority_packet(
+        source="Only source prose.",
+        event_ids=["EV-00000001"],
+        previous_exit="Previous accepted exit.",
+        next_entry="Next original entry.",
+        locked_facts=["LOCKED-BEGIN-" + "x" * 3000 + "-LOCKED-END"],
+        ending_constraints=["The confirmed ending remains unchanged."],
+        promises=["The planted key must pay off."],
+        narrative_state={"knowledge": "She has not opened the room."},
+        style_rules=["Use short sentences only at the reveal."],
+        protected_passages=[{"id": "lock-1", "text": "Protected sentence."}],
+        allowed_scope={"segment": 1},
+    )
+
+    prompt = WorkflowService._compact_polish_prompt(
+        authority_packet=packet,
+        local_findings=[{"code": "rhythm"}],
+        review_findings={"issues": []},
+    )
+
+    assert "LOCKED-END" in prompt
+    assert "The planted key must pay off." in prompt
+    assert "Protected sentence." in prompt
+    assert prompt.count("Only source prose.") == 1
+    assert prompt.rstrip().endswith("Only source prose.")
 
 
 def test_incremental_workflow_public_types_are_explicit() -> None:
@@ -4875,6 +4904,20 @@ def test_polish_checkpoint_loader_rejects_source_hash_mismatch(tmp_path) -> None
     WorkflowService._save_polish_checkpoint(root, 1, "old source", "polished")
 
     assert WorkflowService._load_polish_checkpoint(root, 1, "new source") is None
+
+
+def test_polish_checkpoint_rejects_changed_authority_hash(tmp_path) -> None:
+    root = tmp_path / "checkpoints"
+    WorkflowService._save_polish_checkpoint(
+        root, 1, "source", "polished", authority_hash="authority-v1",
+    )
+
+    assert WorkflowService._load_polish_checkpoint(
+        root, 1, "source", authority_hash="authority-v1",
+    ) == "polished"
+    assert WorkflowService._load_polish_checkpoint(
+        root, 1, "source", authority_hash="authority-v2",
+    ) is None
 
 
 def test_initial_short_story_planning_skips_empty_memory_tools() -> None:

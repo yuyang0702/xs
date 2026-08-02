@@ -23,6 +23,8 @@ from novel_flywheel.causal_chain import (
 )
 from novel_flywheel.context_policy import (
     adaptive_output_budget,
+    authority_packet_sha256,
+    build_polish_authority_packet,
     estimate_input_tokens,
     expanded_output_budget,
     invalid_terminal_output,
@@ -32,6 +34,7 @@ from novel_flywheel.context_policy import (
     patch_output_budget,
     polish_context,
     revision_patch_context,
+    render_polish_authority_packet,
     schema_repair_prompt,
     stage_output_budget,
 )
@@ -4535,29 +4538,16 @@ class WorkflowService:
         return path if path.is_file() and path.stat().st_size else None
 
     @staticmethod
-    def _compact_polish_prompt(*, segment: str, previous_context: str,
-                               next_context: str, local_findings: list,
-                               character_voice: str, locked_facts: list,
-                               passage_locks: list, minimum_characters: int,
-                               maximum_characters: int,
-                               review_findings: dict | None = None,
-                               narrative_context: dict | None = None) -> str:
+    def _compact_polish_prompt(*, authority_packet,
+                               local_findings: list,
+                               review_findings: dict | None = None) -> str:
         return (
-            "普通润色精简恢复。只处理当前正文片段，不扩写片段外内容。\n\n"
-            f"前一段结尾（限800字）：\n{previous_context[-800:]}\n\n"
-            f"后一段开头（限800字）：\n{next_context[:800]}\n\n"
-            f"相关人物声音：\n{character_voice[:2400]}\n\n"
-            f"当前片段本地问题：\n"
-            f"{json.dumps(local_findings, ensure_ascii=False)[:2400]}\n\n"
-            f"当前片段相关审稿问题：\n"
-            f"{json.dumps(review_findings or {'issues': []}, ensure_ascii=False)[:1800]}\n\n"
-            f"当前片段叙事状态：\n"
-            f"{json.dumps(narrative_context or {}, ensure_ascii=False)[:1800]}\n\n"
-            f"锁定事实：\n{json.dumps(locked_facts, ensure_ascii=False)[:2400]}\n\n"
-            f"受保护片段：\n{json.dumps(passage_locks, ensure_ascii=False)[:1600]}\n\n"
-            f"正文长度必须在 {minimum_characters} 到 {maximum_characters} 字之间。"
+            "普通润色精简恢复。只处理当前正文片段，不扩写片段外内容。"
             "只返回修改后的正文，不解释、不分析。\n\n"
-            f"MANUSCRIPT SEGMENT:\n{segment}"
+            + render_polish_authority_packet(authority_packet, advisory={
+                "local_findings": local_findings,
+                "review_findings": review_findings or {"issues": []},
+            })
         )
 
     @staticmethod
@@ -5244,27 +5234,6 @@ class WorkflowService:
                 polished_parts.append(part)
                 previous_handoff_state = self._polish_exit_state(part)
                 continue
-            cached = self._load_polish_checkpoint(
-                checkpoint_root, index, part, retry_signature,
-            )
-            if cached is not None:
-                polished_parts.append(cached)
-                previous_handoff_state = self._polish_exit_state(cached)
-                self.db.add_run_event(
-                    run_id, "success", "polish_checkpoint_reused",
-                    f"润色第 {index}/{len(parts)} 段已从检查点恢复",
-                    stage="polish", metadata={"segment": index, "route": "checkpoint"},
-                )
-                if not targeted:
-                    self.db.add_run_event(
-                        run_id, "info", "polish_segment_progress",
-                        f"已完成 {index} / {len(parts)} 段，其中 {preserved_segments} 段保留原文",
-                        stage="polish", metadata={
-                            "segment": index, "total": len(parts),
-                            "completed": index, "preserved": preserved_segments,
-                        },
-                    )
-                continue
             if round_input_tokens >= round_cap:
                 self.db.add_run_event(
                     run_id, "error", "token_budget_exhausted",
@@ -5363,6 +5332,41 @@ class WorkflowService:
                 "Do not repeat adjacent scenes, include analysis, or rewrite material outside "
                 "this manuscript segment."
             )
+            story_entry = story_map[group - 1] if 0 < group <= len(story_map) else {}
+            protected_authority = [{
+                "id": lock.get("id"),
+                "label": lock.get("label"),
+                "mode": lock.get("mode"),
+                "allow_next_change": bool(lock.get("allow_next_change")),
+            } for lock in passage_locks]
+            ending = authoritative_state.get("ending")
+            authority_packet = build_polish_authority_packet(
+                source=part,
+                event_ids=story_entry.get("event_ids", []),
+                causal_goal=str(story_entry.get("handoff") or ""),
+                previous_exit=previous_handoff_state or previous_context,
+                next_entry=next_context,
+                character_state={
+                    "states": authoritative_state.get("character_states", {}),
+                    "voice": voice,
+                },
+                locked_facts=[
+                    *authoritative_state.get("locked_facts", []),
+                    *authoritative_state.get("confirmed_facts", []),
+                    *global_facts,
+                ],
+                ending_constraints=[ending] if ending else [],
+                narrative_state=narrative_context,
+                style_rules=[style_profile],
+                protected_passages=protected_authority,
+                allowed_scope={
+                    "segment": current_targeted_context["segment"],
+                    "minimum_characters": minimum_characters,
+                    "maximum_characters": maximum_characters,
+                    "edit_rule": revision_rule,
+                },
+            )
+            authority_hash = authority_packet_sha256(authority_packet)
             if targeted and (revision_plan or targeted_context):
                 prompt = (
                     f"STYLE PROFILE:\n{style_profile}\n\n"
@@ -5399,45 +5403,41 @@ class WorkflowService:
                 )
             else:
                 prompt = (
-                    f"STYLE PROFILE:\n{style_profile}\n\n"
-                    f"RELEVANT CHARACTER VOICES:\n"
-                    f"{voice}\n\n"
+                    "POLISH THE CURRENT MANUSCRIPT SEGMENT. Return revised prose only.\n"
+                    f"EDIT PERMISSION: {revision_rule + length_contract}\n\n"
                     f"LOCAL PROSE FINDINGS:\n"
                     f"{json.dumps(local_report['findings'], ensure_ascii=False)}\n\n"
-                    + polish_context(
-                        state=authoritative_state,
-                        story_map=story_map,
-                        segment_index=index,
-                        segment_count=len(parts),
-                        segment=part,
-                        previous_tail=previous_tail,
-                        next_head=next_head,
-                        findings=plan_context,
-                        edit_rule=revision_rule + length_contract,
-                    )
-                    + passage_prompt_context(passage_locks)
+                    + plan_context
+                    + render_polish_authority_packet(authority_packet)
                 )
             compact_prompt = self._compact_polish_prompt(
-                segment=part,
-                previous_context=previous_context,
-                next_context=next_context,
+                authority_packet=authority_packet,
                 local_findings=local_report["findings"],
-                character_voice=voice,
-                locked_facts=[
-                    *authoritative_state.get("locked_facts", []),
-                    *authoritative_state.get("confirmed_facts", []),
-                    *global_facts,
-                ],
-                passage_locks=[{
-                    "id": lock.get("id"), "label": lock.get("label"),
-                    "mode": lock.get("mode"),
-                } for lock in passage_locks],
-                minimum_characters=minimum_characters,
-                maximum_characters=maximum_characters,
                 review_findings=window_findings,
-                narrative_context=narrative_context,
             )
             part_suffix = f"{suffix}-part-{index:02d}"
+            cached = self._load_polish_checkpoint(
+                checkpoint_root, index, part, retry_signature,
+                authority_hash=authority_hash,
+            )
+            if cached is not None:
+                polished_parts.append(cached)
+                previous_handoff_state = self._polish_exit_state(cached)
+                self.db.add_run_event(
+                    run_id, "success", "polish_checkpoint_reused",
+                    f"润色第 {index}/{len(parts)} 段已从检查点恢复",
+                    stage="polish", metadata={"segment": index, "route": "checkpoint"},
+                )
+                if not targeted:
+                    self.db.add_run_event(
+                        run_id, "info", "polish_segment_progress",
+                        f"已完成 {index} / {len(parts)} 段，其中 {preserved_segments} 段保留原文",
+                        stage="polish", metadata={
+                            "segment": index, "total": len(parts),
+                            "completed": index, "preserved": preserved_segments,
+                        },
+                    )
+                continue
             priority = bool(targeted or index in {1, len(parts)} or local_report["findings"])
             prefer_configured = bool(
                 targeted and configured_fallback
@@ -5799,6 +5799,7 @@ class WorkflowService:
                 self._save_polish_checkpoint(
                     checkpoint_root, index, part, polished_part,
                     change_evidence=change_evidence,
+                    authority_hash=authority_hash,
                 )
             elif not targeted:
                 if not ordinary_preserved:
@@ -5817,12 +5818,14 @@ class WorkflowService:
                     status="preserved_source", retry_signature=retry_signature,
                     accepted=False,
                     change_evidence=change_evidence,
+                    authority_hash=authority_hash,
                 )
             elif rhythm_retried:
                 self._save_polish_checkpoint(
                     checkpoint_root, index, part, part,
                     status="preserved_after_retry", retry_signature=retry_signature,
                     accepted=False, change_evidence=change_evidence,
+                    authority_hash=authority_hash,
                 )
             if not targeted:
                 self.db.add_run_event(
@@ -6695,7 +6698,8 @@ class WorkflowService:
 
     @staticmethod
     def _load_polish_checkpoint(root: Path, index: int, source: str,
-                                retry_signature: str | None = None) -> str | None:
+                                 retry_signature: str | None = None,
+                                 authority_hash: str | None = None) -> str | None:
         path = root / f"part-{index:02d}.json"
         if not path.is_file():
             return None
@@ -6709,6 +6713,8 @@ class WorkflowService:
             return None
         if (value.get("status") == "preserved_after_retry"
                 and value.get("retry_signature") != retry_signature):
+            return None
+        if authority_hash is not None and value.get("authority_hash") != authority_hash:
             return None
         source_hash = value.get("source_sha256", value.get("source_hash"))
         return polished if source_hash == digest and isinstance(polished, str) else None
@@ -6732,16 +6738,18 @@ class WorkflowService:
 
     @staticmethod
     def _save_polish_checkpoint(root: Path, index: int, source: str, polished: str,
-                                status: str = "accepted",
-                                retry_signature: str | None = None,
-                                accepted: bool = True,
-                                change_evidence: dict | None = None) -> None:
+                                 status: str = "accepted",
+                                 retry_signature: str | None = None,
+                                 accepted: bool = True,
+                                 change_evidence: dict | None = None,
+                                 authority_hash: str | None = None) -> None:
         source_hash = hashlib.sha256(source.encode("utf-8")).hexdigest()
         checkpoint = {
             "polished": polished,
             "accepted": accepted,
             "status": status,
             "retry_signature": retry_signature,
+            "authority_hash": authority_hash,
             "change_evidence": change_evidence or {"ranges": [], "changed_ratio": 0.0},
         }
         checkpoint["source_sha256" if accepted else "source_hash"] = source_hash

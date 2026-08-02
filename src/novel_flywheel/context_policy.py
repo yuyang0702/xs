@@ -1,6 +1,8 @@
 import json
+import hashlib
 import math
 import re
+from dataclasses import asdict, dataclass
 from typing import Any
 
 
@@ -11,6 +13,110 @@ INVALID_TERMINAL_REASONS = {
     "incomplete", "failed", "cancelled", "canceled", "content_filter", "safety",
 }
 AUTO_DISCOVERY_MAX_OUTPUT_TOKENS = 65_536
+
+
+@dataclass(frozen=True)
+class PolishAuthorityPacket:
+    source: str
+    event_ids: tuple[str, ...]
+    causal_goal: str
+    previous_exit: str
+    next_entry: str
+    character_state: dict[str, Any]
+    locked_facts: tuple[Any, ...]
+    ending_constraints: tuple[Any, ...]
+    promises: tuple[Any, ...]
+    narrative_state: dict[str, Any]
+    style_rules: tuple[str, ...]
+    protected_passages: tuple[dict[str, Any], ...]
+    allowed_scope: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def build_polish_authority_packet(
+    *,
+    source: str,
+    event_ids: list[str] | tuple[str, ...] = (),
+    causal_goal: str = "",
+    previous_exit: str = "",
+    next_entry: str = "",
+    character_state: dict[str, Any] | None = None,
+    locked_facts: list[Any] | tuple[Any, ...] = (),
+    ending_constraints: list[Any] | tuple[Any, ...] = (),
+    promises: list[Any] | tuple[Any, ...] = (),
+    narrative_state: dict[str, Any] | None = None,
+    style_rules: list[str] | tuple[str, ...] = (),
+    protected_passages: list[dict[str, Any]] | tuple[dict[str, Any], ...] = (),
+    allowed_scope: dict[str, Any] | None = None,
+) -> PolishAuthorityPacket:
+    if not isinstance(source, str) or not source.strip():
+        raise ValueError("polish authority requires the complete source segment")
+    return PolishAuthorityPacket(
+        source=source,
+        event_ids=tuple(str(item) for item in event_ids if str(item)),
+        causal_goal=str(causal_goal or ""),
+        previous_exit=str(previous_exit or ""),
+        next_entry=str(next_entry or ""),
+        character_state=dict(character_state or {}),
+        locked_facts=tuple(locked_facts),
+        ending_constraints=tuple(ending_constraints),
+        promises=tuple(promises),
+        narrative_state=dict(narrative_state or {}),
+        style_rules=tuple(str(item) for item in style_rules if str(item)),
+        protected_passages=tuple(dict(item) for item in protected_passages),
+        allowed_scope=dict(allowed_scope or {}),
+    )
+
+
+def authority_packet_sha256(packet: PolishAuthorityPacket) -> str:
+    payload = json.dumps(
+        packet.to_dict(), ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def render_polish_authority_packet(
+    packet: PolishAuthorityPacket,
+    *,
+    advisory: dict[str, Any] | None = None,
+) -> str:
+    sections = [
+        "MINIMUM NARRATIVE AUTHORITY:",
+        f"EVENT IDS:\n{json.dumps(packet.event_ids, ensure_ascii=False)}",
+        f"CAUSAL GOAL:\n{packet.causal_goal}",
+        f"PREVIOUS ACCEPTED EXIT:\n{packet.previous_exit}",
+        f"NEXT SOURCE ENTRY:\n{packet.next_entry}",
+        "CHARACTER STATE:\n" + json.dumps(packet.character_state, ensure_ascii=False),
+        "LOCKED FACTS:\n" + json.dumps(packet.locked_facts, ensure_ascii=False),
+        "ENDING CONSTRAINTS:\n" + json.dumps(packet.ending_constraints, ensure_ascii=False),
+        "PROMISES AND PAYOFFS:\n" + json.dumps(packet.promises, ensure_ascii=False),
+        "NARRATIVE STATE:\n" + json.dumps(packet.narrative_state, ensure_ascii=False),
+        "PROJECT STYLE RULES:\n" + json.dumps(packet.style_rules, ensure_ascii=False),
+        "PROTECTED PASSAGES:\n" + json.dumps(packet.protected_passages, ensure_ascii=False),
+        "ALLOWED SCOPE:\n" + json.dumps(packet.allowed_scope, ensure_ascii=False),
+    ]
+    if advisory:
+        sections.append("LOCAL ADVISORY FINDINGS:\n" + _json(advisory, 2400))
+    sections.append(f"MANUSCRIPT SEGMENT:\n{packet.source}")
+    return "\n\n".join(sections)
+
+
+def classify_input_pressure(
+    *,
+    full_input_tokens: int,
+    authority_input_tokens: int,
+    output_reserve: int,
+    context_window: int | None,
+) -> str:
+    if not context_window:
+        return "full"
+    if authority_input_tokens + output_reserve >= context_window * 0.80:
+        return "split"
+    if full_input_tokens + output_reserve >= context_window * 0.75:
+        return "compact"
+    return "full"
 
 
 def estimate_input_tokens(text: str) -> int:
