@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 from collections.abc import Sequence
+from dataclasses import asdict, replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import get_type_hints
@@ -11,6 +12,11 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.context_policy import build_polish_authority_packet
+from novel_flywheel.execution_manifest import (
+    bind_previous_exit_hashes,
+    execution_manifest_sha256,
+    parse_execution_manifest,
+)
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.models import ModelResult, ModelRoutesExhaustedError
 from novel_flywheel.narrative_ledger import build_narrative_ledger
@@ -22,10 +28,12 @@ from novel_flywheel.quality_records import load_quality_checkpoint, write_qualit
 from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.revision import segment_map
+from novel_flywheel.revision_operations import RevisionOperationError
 from novel_flywheel.scene_continuity import LocationRef
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.workflows import (
+    DraftSemanticValidationError,
     IncompleteModelOutputError,
     PolishTokenBudgetError,
     RevisionPlanError,
@@ -33,6 +41,7 @@ from novel_flywheel.workflows import (
     TargetedGroupError,
     WorkflowService,
 )
+from novel_flywheel.draft_split import DraftTaskContract
 
 
 REQUIRED_SKILLS = {
@@ -501,6 +510,51 @@ class FakeGateway:
         self.roles.append(role)
         self.systems.append(system)
         assert "Skill instructions" in system
+        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+            return ModelResult(
+                json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
+                {"role": role, "model_name": f"fake-{role}"},
+            )
+        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+            return ModelResult(
+                execution_manifest_receipt_from_prompt(user),
+                {"role": role, "model_name": f"fake-{role}"},
+            )
+        if "DRAFT_SEMANTIC_VALIDATION" in user:
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            return ModelResult(
+                json.dumps(draft_semantic_receipt(contract, prose), ensure_ascii=False),
+                {"role": role, "model_name": f"fake-{role}"},
+            )
+        if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+            authority = re.search(r"AUTHORITY SHA256: ([0-9a-f]{64})", user).group(1)
+            draft_sha = re.search(r"DRAFT SHA256: ([0-9a-f]{64})", user).group(1)
+            segments = json.loads(re.search(
+                r"SEGMENT SHA256: (\[[^\n]+\])", user,
+            ).group(1))
+            events = json.loads(re.search(
+                r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+            ).group(1))
+            opening = user.split("OPENING EXCERPT: ", 1)[1].split(
+                "\nENDING EXCERPT:", 1,
+            )[0]
+            ending = user.split("ENDING EXCERPT: ", 1)[1]
+            return ModelResult(json.dumps({
+                "authority_sha256": authority, "draft_sha256": draft_sha,
+                "segment_sha256": segments, "event_ids": events,
+                "missing_event_ids": [], "duplicate_event_ids": [],
+                "out_of_order_event_ids": [], "causal_order_valid": True,
+                "continuity_valid": True, "ending_valid": True,
+                "commitments_valid": True,
+                "evidence": [
+                    {"kind": "opening", "excerpt": opening[:12]},
+                    {"kind": "ending", "excerpt": ending[-12:]},
+                ],
+                "summary": "全文节拍顺序、连续性和结局均已核对。",
+            }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return ModelResult(json.dumps({
                 "core_goal": "完成正式规划中的目标",
@@ -519,6 +573,222 @@ class FakeGateway:
             } for item in ledger]
             text = json.dumps(payload, ensure_ascii=False)
         return ModelResult(text, {"role": role, "model_name": f"fake-{role}"})
+
+
+def execution_manifest_body_from_prompt(user: str) -> dict:
+    expected = json.loads(user.split("EXPECTED EVENT IDS:\n", 1)[1].split("\n\n", 1)[0])
+    count = int(user.split("SEGMENT COUNT: ", 1)[1].splitlines()[0])
+    total = max(len(expected), count)
+    occurrences = {}
+    beats = []
+    per_segment = {number: [] for number in range(1, count + 1)}
+    for index in range(total):
+        source_index = min(len(expected) - 1, index * len(expected) // total)
+        source = expected[source_index]
+        occurrences[source] = occurrences.get(source, 0) + 1
+        beat_id = f"{source}/{occurrences[source]:02d}"
+        segment = min(count, index * count // total + 1)
+        beats.append({
+            "beat_id": beat_id, "source_event_id": source, "order": index + 1,
+            "action": f"执行正式事件 {source}",
+            "preconditions": ["承接上一原子节拍"],
+            "postconditions": [source], "owner_segment": segment,
+            "source_evidence": source,
+        })
+        per_segment[segment].append(beat_id)
+    segments = []
+    previous_state = ""
+    all_ids = [item["beat_id"] for item in beats]
+    for number in range(1, count + 1):
+        owned = per_segment[number]
+        exit_state = next(
+            item["source_event_id"] for item in reversed(beats)
+            if item["beat_id"] in owned
+        )
+        segments.append({
+            "segment": number,
+            "beat_ids": owned,
+            "entry_state": [{
+                "state": previous_state or "opening",
+                "inherited_from": "opening" if number == 1 else f"segment-{number - 1:02d}",
+            }],
+            "exit_state": [{
+                "state": exit_state, "produced_by": owned[-1],
+            }],
+            "previous_exit_sha256": "" if number == 1 else "a" * 64,
+            "prohibited_future_beat_ids": [
+                beat_id for beat_id in all_ids
+                if beats[all_ids.index(beat_id)]["owner_segment"] > number
+            ],
+        })
+        previous_state = exit_state
+    return bind_previous_exit_hashes({"beats": beats, "segments": segments})
+
+
+def execution_manifest_receipt_from_prompt(user: str) -> str:
+    raw = user.split("EXECUTION MANIFEST:\n", 1)[1].split(
+        "\n\nAUTHORITY TEXT:\n", 1,
+    )[0]
+    manifest = parse_execution_manifest(json.loads(raw))
+    return json.dumps({
+        "authority_sha256": manifest.authority_sha256,
+        "manifest_sha256": execution_manifest_sha256(manifest),
+        "beat_receipts": [{
+            "beat_id": beat.beat_id, "evidence": beat.source_evidence,
+            "actor_action_valid": True,
+        } for beat in manifest.beats],
+        "segment_receipts": [{
+            "segment": segment.segment, "boundary_valid": True,
+            "evidence": segment.exit_state[0].state,
+        } for segment in manifest.segments],
+        "formal_plot_unchanged": True,
+        "summary": "执行索引与正式资料一致。",
+    }, ensure_ascii=False)
+
+
+def draft_semantic_receipt(contract: dict, prose: str) -> dict:
+    evidence = prose[:12]
+    order_evidence = prose if len(prose) <= 80 else prose[:80]
+    atomic = bool(contract.get("beat_ids"))
+    payload = {
+        "authority_sha256": contract["authority_sha256"],
+        "task_id": contract["task_id"],
+        "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+        "entry": {"satisfied": True, "evidence": evidence},
+        "exit": {"satisfied": True, "evidence": prose[-12:]},
+        "causal_order_valid": True,
+        "causal_order_evidence": order_evidence,
+        "summary": "本段事件、状态、顺序和交接均已核对。",
+    }
+    if atomic:
+        payload.update({
+            "execution_manifest_sha256": contract["execution_manifest_sha256"],
+            "beat_receipts": [{
+                "beat_id": beat_id,
+                "evidence": evidence,
+                "actor_action_valid": True,
+                "actor_action_evidence": evidence,
+                "state_valid": True,
+                "state_evidence": evidence,
+                "scene_order_valid": True,
+                "scene_order_evidence": order_evidence,
+            } for beat_id in contract["beat_ids"]],
+            "outside_beat_ids": [],
+            "future_beat_ids": [],
+            "viewpoint_valid": True,
+            "viewpoint_evidence": evidence,
+        })
+    else:
+        payload.update({
+            "event_receipts": [{
+                "event_id": event_id, "evidence": evidence,
+            } for event_id in contract["event_ids"]],
+            "outside_event_ids": [],
+        })
+    return payload
+
+
+def write_test_execution_manifest(
+    service: WorkflowService, project, run_path: Path, constraints: str,
+    plan: str, segment_count: int, chain: dict | None = None,
+    use_plan_event_ids: bool = True, state_override: dict | None = None,
+):
+    state = service.story_states.ensure(project.id, project.path)
+    authority_state = state_override if state_override is not None else state.data
+    chain = chain or {
+        "core_goal": "完成测试规划",
+        "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+        "ending": "完成测试结局",
+    }
+    plan_event_ids = list(dict.fromkeys(
+        event_id
+        for block in service._short_plan_segments(plan, segment_count)
+        for event_id in service._short_plan_event_ids(block)
+    ))
+    formal_events = [{
+        "id": event_id, "order": index,
+        "label": f"测试正式事件 {event_id}",
+        "section": "测试规划", "kind": "narrative",
+    } for index, event_id in enumerate(plan_event_ids, 1)] if use_plan_event_ids else []
+    hashes, authority_text, events = service._short_execution_authority(
+        project, state.revision, authority_state, constraints, plan, chain,
+        formal_events, segment_count,
+    )
+    expected = [item["id"] for item in events]
+    prompt = (
+        "EXPECTED EVENT IDS:\n" + json.dumps(expected)
+        + f"\n\nSEGMENT COUNT: {segment_count}\n"
+    )
+    payload = {
+        **execution_manifest_body_from_prompt(prompt),
+        "version": 2, "status": "ready", **hashes,
+        "semantic_receipt": {}, "repair_attempts": 0,
+    }
+    manifest = parse_execution_manifest(payload)
+    receipt = {
+        "authority_sha256": manifest.authority_sha256,
+        "manifest_sha256": execution_manifest_sha256(manifest),
+        "beat_receipts": [{
+            "beat_id": beat.beat_id, "evidence": beat.source_evidence,
+            "actor_action_valid": True,
+        } for beat in manifest.beats],
+        "segment_receipts": [{
+            "segment": segment.segment, "boundary_valid": True,
+            "evidence": segment.exit_state[0].state,
+        } for segment in manifest.segments],
+        "formal_plot_unchanged": True,
+        "summary": "测试执行索引与规划一致。",
+    }
+    manifest = replace(manifest, semantic_receipt=receipt)
+    atomic = __import__(
+        "novel_flywheel.storage", fromlist=["atomic_write"],
+    ).atomic_write
+    atomic(
+        run_path / "outputs" / "short-execution-index.json",
+        json.dumps(asdict(manifest), ensure_ascii=False, indent=2),
+    )
+    return manifest
+
+
+def save_test_complete_short_checkpoint(
+    service: WorkflowService, project, outputs: Path, context: dict,
+    constraints: str = "test constraints", state_override: dict | None = None,
+) -> None:
+    plan = (outputs / "planning.md").read_text(encoding="utf-8")
+    draft = (outputs / "draft.md").read_text(encoding="utf-8")
+    chain = {
+        "core_goal": "完成测试规划",
+        "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+        "ending": "完成测试结局",
+    }
+    manifest = write_test_execution_manifest(
+        service, project, outputs.parent, constraints, plan,
+        int(context["segment_count"]), chain=chain, use_plan_event_ids=False,
+        state_override=state_override,
+    )
+    manifest_hash = execution_manifest_sha256(manifest)
+    integrity = {
+        "version": 3, "status": "passed",
+        "execution_manifest_sha256": manifest_hash,
+        "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+        "plan_sha256": hashlib.sha256(plan.encode("utf-8")).hexdigest(),
+        "base_constraints_sha256": context["constraints_sha256"],
+        "story_state_sha256": context["story_state_sha256"],
+        "semantic_segment_receipts": [],
+        "issues": [],
+    }
+    atomic = __import__(
+        "novel_flywheel.storage", fromlist=["atomic_write"],
+    ).atomic_write
+    atomic(
+        outputs / "short-causal-chain.json",
+        json.dumps(chain, ensure_ascii=False, indent=2),
+    )
+    atomic(
+        outputs / "draft-integrity.json",
+        json.dumps(integrity, ensure_ascii=False, indent=2),
+    )
+    service._save_short_checkpoint(outputs, context)
 
 
 class SetupGateway(FakeGateway):
@@ -778,7 +1048,8 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
 
     assert result["status"] == "completed"
     assert gateway.roles == [
-        "planning", "planning", "draft", "review", "review", "polish",
+        "planning", "planning", "planning", "review", "draft", "review",
+        "review", "review", "review", "polish", "review", "review",
         "final_review", "maintenance",
     ]
     assert (project.path / "manuscript" / "story.md").read_text(encoding="utf-8") == "# Final Story\nHuman, polished prose."
@@ -851,6 +1122,57 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
             self.roles.append(role)
             self.systems.append(system)
             self.users.append(user)
+            if "SHORT_EXECUTION_MANIFEST_V2" in user:
+                return ModelResult(
+                    json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
+                    {"role": role, "model_name": f"fake-{role}"},
+                )
+            if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+                return ModelResult(
+                    execution_manifest_receipt_from_prompt(user),
+                    {"role": role, "model_name": f"fake-{role}"},
+                )
+            if "DRAFT_SEMANTIC_VALIDATION" in user:
+                contract = json.loads(re.search(
+                    r"TASK CONTRACT: (\{[^\n]+\})", user,
+                ).group(1))
+                prose = user.split("PROSE:\n", 1)[1]
+                return ModelResult(
+                    json.dumps(
+                        draft_semantic_receipt(contract, prose), ensure_ascii=False,
+                    ),
+                    {"role": role, "model_name": f"fake-{role}"},
+                )
+            if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+                authority = re.search(
+                    r"AUTHORITY SHA256: ([0-9a-f]{64})", user,
+                ).group(1)
+                draft_sha = re.search(
+                    r"DRAFT SHA256: ([0-9a-f]{64})", user,
+                ).group(1)
+                segment_hashes = json.loads(re.search(
+                    r"SEGMENT SHA256: (\[[^\n]+\])", user,
+                ).group(1))
+                event_ids = json.loads(re.search(
+                    r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+                ).group(1))
+                opening = user.split("OPENING EXCERPT: ", 1)[1].split(
+                    "\nENDING EXCERPT:", 1,
+                )[0]
+                ending = user.split("ENDING EXCERPT: ", 1)[1]
+                return ModelResult(json.dumps({
+                    "authority_sha256": authority, "draft_sha256": draft_sha,
+                    "segment_sha256": segment_hashes, "event_ids": event_ids,
+                    "missing_event_ids": [], "duplicate_event_ids": [],
+                    "out_of_order_event_ids": [], "causal_order_valid": True,
+                    "continuity_valid": True, "ending_valid": True,
+                    "commitments_valid": True,
+                    "evidence": [
+                        {"kind": "opening", "excerpt": opening[:12]},
+                        {"kind": "ending", "excerpt": ending[-12:]},
+                    ],
+                    "summary": "全文节拍顺序和结局均已核对。",
+                }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
             return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
 
     gateway = CausalGateway()
@@ -1023,6 +1345,51 @@ class RecordingGateway:
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
         self.calls.append({"role": role, "system": system, "user": user})
+        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+            return ModelResult(
+                json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
+                {"role": role, "model_name": f"fake-{role}"},
+            )
+        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+            return ModelResult(
+                execution_manifest_receipt_from_prompt(user),
+                {"role": role, "model_name": f"fake-{role}"},
+            )
+        if "DRAFT_SEMANTIC_VALIDATION" in user:
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            return ModelResult(
+                json.dumps(draft_semantic_receipt(contract, prose), ensure_ascii=False),
+                {"role": role, "model_name": f"fake-{role}"},
+            )
+        if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+            authority = re.search(r"AUTHORITY SHA256: ([0-9a-f]{64})", user).group(1)
+            draft_sha = re.search(r"DRAFT SHA256: ([0-9a-f]{64})", user).group(1)
+            segments = json.loads(re.search(
+                r"SEGMENT SHA256: (\[[^\n]+\])", user,
+            ).group(1))
+            events = json.loads(re.search(
+                r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+            ).group(1))
+            opening = user.split("OPENING EXCERPT: ", 1)[1].split(
+                "\nENDING EXCERPT:", 1,
+            )[0]
+            ending = user.split("ENDING EXCERPT: ", 1)[1]
+            return ModelResult(json.dumps({
+                "authority_sha256": authority, "draft_sha256": draft_sha,
+                "segment_sha256": segments, "event_ids": events,
+                "missing_event_ids": [], "duplicate_event_ids": [],
+                "out_of_order_event_ids": [], "causal_order_valid": True,
+                "continuity_valid": True, "ending_valid": True,
+                "commitments_valid": True,
+                "evidence": [
+                    {"kind": "opening", "excerpt": opening[:12]},
+                    {"kind": "ending", "excerpt": ending[-12:]},
+                ],
+                "summary": "全文节拍顺序、连续性和结局均已核对。",
+            }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return ModelResult(json.dumps({
                 "core_goal": "完成正式规划中的目标",
@@ -1100,20 +1467,9 @@ class SegmentGateway:
                 r"TASK CONTRACT: (\{[^\n]+\})", user,
             ).group(1))
             prose = user.split("PROSE:\n", 1)[1]
-            evidence = prose[:12]
-            return ModelResult(json.dumps({
-                "authority_sha256": contract["authority_sha256"],
-                "task_id": contract["task_id"],
-                "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
-                "event_receipts": [
-                    {"event_id": event_id, "evidence": evidence}
-                    for event_id in contract["event_ids"]
-                ],
-                "entry": {"satisfied": True, "evidence": evidence},
-                "exit": {"satisfied": True, "evidence": prose[-12:]},
-                "outside_event_ids": [], "causal_order_valid": True,
-                "summary": "本段事件已按契约推进并形成交接。",
-            }, ensure_ascii=False), {
+            return ModelResult(json.dumps(
+                draft_semantic_receipt(contract, prose), ensure_ascii=False,
+            ), {
                 "role": role, "model_name": f"fake-{role}", "finish_reason": "stop",
             })
         if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
@@ -1246,7 +1602,7 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
 
     assert result["status"] == "completed"
     assert gateway.roles.count("reader_review") == 1
-    assert gateway.roles.count("review") == 1
+    assert gateway.roles.count("review") == 6
     events = db.list_run_events(result["id"])
     fallback = next(item for item in events if item["event_type"] == "reader_fallback")
     assert fallback["severity"] == "warning"
@@ -1321,6 +1677,9 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
         f"本段只负责事件{index}，完成结果{index}并留下下一段问题。" + "细节" * 40
         for index in range(1, 9)
     )
+    manifest = write_test_execution_manifest(
+        service, project, run_path, "constraints", plan, 8,
+    )
     draft = await service._draft_short_in_segments(
         "segmented", run_path, project, "constraints", plan,
     )
@@ -1337,8 +1696,8 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     assignments = json.loads(
         (run_path / "outputs" / "segment-events.json").read_text(encoding="utf-8"),
     )["segments"]
-    assert assignments[0]["event_ids"] == ["EV-00000001"]
-    assert assignments[-1]["event_ids"] == ["EV-00000008"]
+    assert assignments[0]["event_ids"] == [manifest.segments[0].beat_ids[0]]
+    assert assignments[-1]["event_ids"] == [manifest.segments[-1].beat_ids[0]]
     integrity = json.loads(
         (run_path / "outputs" / "draft-integrity.json").read_text(encoding="utf-8"),
     )
@@ -1351,7 +1710,7 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     assert integrity["story_state_sha256"]
     assert integrity["draft_sha256"] == hashlib.sha256(draft.encode("utf-8")).hexdigest()
     assert integrity["expected_event_ids"] == [
-        f"EV-{index:08X}" for index in range(1, 9)
+        beat_id for segment in manifest.segments for beat_id in segment.beat_ids
     ]
     assert integrity["accepted_event_ids"] == integrity["expected_event_ids"]
     assert len(integrity["segments"]) == 8
@@ -1379,7 +1738,7 @@ async def test_draft_semantic_gate_rejects_a_clean_segment_that_omits_its_event(
             result = await super().complete(role, system, user, max_output_tokens)
             if "DRAFT_SEMANTIC_VALIDATION" in user:
                 payload = json.loads(result.text)
-                payload["event_receipts"] = []
+                payload["beat_receipts"] = []
                 return ModelResult(json.dumps(payload, ensure_ascii=False), result.receipt)
             return result
 
@@ -1395,6 +1754,9 @@ async def test_draft_semantic_gate_rejects_a_clean_segment_that_omits_its_event(
         "段首承接：花穗进入前厅。\n本段事件：花穗取得账本。\n"
         "段末交接：花穗拿着账本离开前厅。\n" + "细节" * 60
     )
+    write_test_execution_manifest(
+        service, project, run_path, "constraints", plan, 1,
+    )
 
     with pytest.raises(ValueError, match="语义完整性"):
         await service._draft_short_in_segments(
@@ -1403,6 +1765,80 @@ async def test_draft_semantic_gate_rejects_a_clean_segment_that_omits_its_event(
 
     assert not (run_path / "outputs" / "draft.md").exists()
     assert not (run_path / "outputs" / "draft-checkpoints" / "segment-01.json").exists()
+
+
+@pytest.mark.asyncio
+async def test_draft_semantic_failure_rewrites_same_scope_and_accepts_second_version(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Semantic rewrite", mode="short", genre="suspense",
+        premise="A segment needs one complete rewrite.", target_words=2500,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.drafts = 0
+            self.reviews = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            if role == "draft":
+                self.drafts += 1
+                return ModelResult(
+                    ("旧" if self.drafts == 1 else "新") * 2500,
+                    {"model_name": "draft", "finish_reason": "stop"},
+                )
+            self.reviews += 1
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            receipt = draft_semantic_receipt(contract, prose)
+            receipt["exit"]["satisfied"] = self.reviews > 1
+            return ModelResult(
+                json.dumps(receipt, ensure_ascii=False),
+                {"model_name": "review", "finish_reason": "stop"},
+            )
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("semantic-rewrite", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "semantic-rewrite"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-01", parent_task_id="", depth=0,
+        target_han=2500, event_ids=("EV-00000001",),
+        scope="只写核实身份", entry_state="花穗仍在前厅",
+        exit_requirement="核实身份的人已经出发",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=("EV-00000001/01",), viewpoint="third-limited",
+    )
+    receipts = []
+
+    result = await service._draft_short_segment_task(
+        "semantic-rewrite", run_path, project, "必须保持第三人称限知视角。",
+        "当前段正式资料", suffix="-part-01", target=2500,
+        previous_parts=[], event_ids=["EV-00000001/01"], contract=contract,
+        semantic_all_event_ids=["EV-00000001/01"],
+        semantic_receipt_sink=receipts,
+    )
+
+    assert result.startswith("新")
+    assert gateway.drafts == gateway.reviews == 2
+    assert len(receipts) == 1
+    assert any(
+        item["event_type"] == "draft_task_scope_retry"
+        for item in db.list_run_events("semantic-rewrite")
+    )
 
 
 @pytest.mark.asyncio
@@ -1466,6 +1902,9 @@ async def test_second_split_child_never_starts_before_first_child_semantic_accep
         "大纲依据：取得账本并质问管事\n段首承接：花穗进入前厅。\n"
         "本段事件：花穗取得账本，随后质问管事。\n"
         "段末交接：花穗带着证据离开。\n" + "细节" * 60
+    )
+    write_test_execution_manifest(
+        service, project, run_path, "constraints", plan, 1,
     )
 
     with pytest.raises(ValueError, match="语义完整性"):
@@ -1996,10 +2435,12 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
         source_outputs / "short-causal-chain.json",
         json.dumps(chain, ensure_ascii=False, indent=2),
     )
-    WorkflowService._write_short_execution_index(
-        project.path / "runs" / "failed-prefix", project, state.revision,
-        state.data, constraints, plan, chain, 4,
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    manifest = write_test_execution_manifest(
+        service, project, project.path / "runs" / "failed-prefix",
+        constraints, plan, 4, chain=chain, use_plan_event_ids=False,
     )
+    manifest_hash = execution_manifest_sha256(manifest)
     augmented_constraints = constraints + (
         "\n\n# Short Story Causal Chain\n\n"
         + __import__("novel_flywheel.causal_chain", fromlist=["compact_causal_chain"])
@@ -2008,15 +2449,31 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
     authority_hash = hashlib.sha256(json.dumps({
         "plan": plan, "constraints": augmented_constraints,
         "target_words": 10000, "segment_count": 4,
+        "story_state_sha256": hashlib.sha256(json.dumps(
+            state.data, ensure_ascii=False, sort_keys=True, default=str,
+        ).encode("utf-8")).hexdigest(),
+        "execution_manifest_sha256": manifest_hash,
+        "location_catalog": [],
     }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     previous = ""
     for number, character in ((1, "甲"), (2, "乙")):
         text = character * 2500
         block = WorkflowService._short_plan_segments(plan, 4)[number - 1]
+        beat_ids = list(manifest.segments[number - 1].beat_ids)
+        saved_receipt = draft_semantic_receipt({
+            "authority_sha256": authority_hash,
+            "execution_manifest_sha256": manifest_hash,
+            "task_id": f"segment-{number:02d}",
+            "beat_ids": beat_ids,
+            "event_ids": list(dict.fromkeys(
+                beat_id.split("/", 1)[0] for beat_id in beat_ids
+            )),
+        }, text)
         atomic(
             source_outputs / "draft-checkpoints" / f"segment-{number:02d}.json",
             json.dumps({
-                "version": 1, "authority_sha256": authority_hash,
+                "version": 3, "authority_sha256": authority_hash,
+                "execution_manifest_sha256": manifest_hash,
                 "previous_sha256": (
                     hashlib.sha256(previous.encode("utf-8")).hexdigest()
                     if previous else ""
@@ -2024,20 +2481,49 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
                 "segment_plan_sha256": hashlib.sha256(block.encode("utf-8")).hexdigest(),
                 "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
                 "text": text,
-                "assignment": {
-                    "segment": number,
-                    "event_ids": [f"EV-{number:08X}"],
-                    "handoff": WorkflowService._short_plan_handoff(block),
-                },
-            }, ensure_ascii=False, indent=2),
+                    "assignment": {
+                        "segment": number,
+                        "event_ids": beat_ids,
+                    "source_event_ids": list(dict.fromkeys(
+                        next(
+                            beat.source_event_id for beat in manifest.beats
+                            if beat.beat_id == beat_id
+                        )
+                        for beat_id in manifest.segments[number - 1].beat_ids
+                    )),
+                        "handoff": manifest.segments[number - 1].exit_state[0].state,
+                    },
+                    "semantic_receipt": saved_receipt,
+                }, ensure_ascii=False, indent=2),
         )
         previous = text
     db.update_run("failed-prefix", "failed", error="provider interrupted segment 3")
 
-    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    first_checkpoint_path = source_outputs / "draft-checkpoints" / "segment-01.json"
+    first_checkpoint_text = first_checkpoint_path.read_text(encoding="utf-8")
+    tampered = json.loads(first_checkpoint_text)
+    tampered["execution_manifest_sha256"] = "f" * 64
+    atomic(first_checkpoint_path, json.dumps(tampered, ensure_ascii=False, indent=2))
+    assert service._find_short_partial_checkpoint(
+        project, "resume-prefix", state.revision, state.data, constraints, 4,
+    ) is None
+    atomic(first_checkpoint_path, first_checkpoint_text)
+
     assert service._find_short_partial_checkpoint(
         project, "resume-prefix", state.revision, state.data, constraints, 4,
     ) == source_outputs
+    second_checkpoint_path = source_outputs / "draft-checkpoints" / "segment-02.json"
+    second_checkpoint_text = second_checkpoint_path.read_text(encoding="utf-8")
+    invalid_second = json.loads(second_checkpoint_text)
+    invalid_second["semantic_receipt"]["beat_receipts"] = []
+    atomic(
+        second_checkpoint_path,
+        json.dumps(invalid_second, ensure_ascii=False, indent=2),
+    )
+    assert service._find_short_partial_checkpoint(
+        project, "resume-prefix", state.revision, state.data, constraints, 4,
+    ) == source_outputs
+    atomic(second_checkpoint_path, second_checkpoint_text)
     generated_segments = []
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
@@ -2047,19 +2533,9 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
                     r"TASK CONTRACT: (\{[^\n]+\})", user,
                 ).group(1))
                 prose = user.split("PROSE:\n", 1)[1]
-                evidence = prose[:12]
-                return json.dumps({
-                    "authority_sha256": contract["authority_sha256"],
-                    "task_id": contract["task_id"],
-                    "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
-                    "event_receipts": [{
-                        "event_id": event_id, "evidence": evidence,
-                    } for event_id in contract["event_ids"]],
-                    "entry": {"satisfied": True, "evidence": evidence},
-                    "exit": {"satisfied": True, "evidence": prose[-12:]},
-                    "outside_event_ids": [], "causal_order_valid": True,
-                    "summary": "段内事件与交接均已核对。",
-                }, ensure_ascii=False)
+                return json.dumps(
+                    draft_semantic_receipt(contract, prose), ensure_ascii=False,
+                )
             if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
                 opening = user.split("OPENING EXCERPT: ", 1)[1].split(
                     "\nENDING EXCERPT:", 1,
@@ -2546,7 +3022,8 @@ async def test_polish_stage_sends_compact_skill_prompt_only(tmp_path) -> None:
     assert "Never flatten character voice" in gateway.calls[0]["system"]
     assert "Preserve irregular human voice" in gateway.calls[0]["system"]
     assert "REMOVE_THIS_EXAMPLE" not in gateway.calls[0]["system"]
-    assert "Skill instructions for chapter-writing" in gateway.calls[1]["system"]
+    assert "Skill instructions and story authority" in gateway.calls[1]["system"]
+    assert "MANDATORY_NARRATIVE_RULES" in gateway.calls[1]["system"]
     assert "Preserve irregular human voice" in gateway.calls[1]["system"]
     receipts = db.list_skill_receipts()
     assert sum(item["skill_name"] == "better-writing" for item in receipts) == 2
@@ -5537,6 +6014,13 @@ def test_failed_short_story_resumes_from_best_candidate(tmp_path) -> None:
     best = separator.join(["improved one", "improved two"])
     (outputs / "draft.md").write_text(original, encoding="utf-8")
     (outputs / "best-candidate.md").write_text(best, encoding="utf-8")
+    (outputs / "polish-integrity.json").write_text(json.dumps({
+        "status": "passed",
+        "draft_sha256": hashlib.sha256(best.encode("utf-8")).hexdigest(),
+    }), encoding="utf-8")
+    WorkflowService._save_quality_checkpoint(
+        outputs.parent, best, {"score": 90, "issues": []}, 1, "passed",
+    )
 
     text, source = WorkflowService._short_checkpoint_manuscript(outputs, 2)
 
@@ -5642,13 +6126,60 @@ def test_resume_prefers_complete_outputs_from_same_run(tmp_path) -> None:
     context = service._short_checkpoint_context(
         project, state.revision, state.data, store.load_constraints(project.id), 4,
     )
-    service._save_short_checkpoint(outputs, context)
+    save_test_complete_short_checkpoint(
+        service, project, outputs, context, store.load_constraints(project.id),
+    )
 
     checkpoint = service._find_short_checkpoint(project, run_id, 4, context)
     review = service._find_short_stage_output(project, run_id, "review.md")
 
     assert checkpoint == outputs
     assert review == outputs / "review.md"
+
+    restored = project.path / "runs" / "new-run" / "outputs"
+    plan, restored_draft, source, causal_chain = service._restore_short_checkpoint(
+        outputs, restored, context,
+    )
+    assert (plan, restored_draft, source) == (
+        "complete plan", draft, "draft.md",
+    )
+    assert causal_chain["core_goal"] == "完成测试规划"
+    for filename in (
+        "short-causal-chain.json", "short-execution-index.json",
+        "draft-integrity.json", "short-checkpoint.json",
+    ):
+        assert (restored / filename).is_file()
+
+
+def test_short_checkpoint_rejects_tampered_manifest_receipt(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Tampered receipt", mode="short", genre="suspense",
+        premise="A stale receipt must not resume.", target_words=10000,
+    ))
+    db.create_run("source-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "source-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "draft.md").write_text(
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
+        encoding="utf-8",
+    )
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    constraints = store.load_constraints(project.id)
+    context = service._short_checkpoint_context(
+        project, state.revision, state.data, constraints, 4,
+    )
+    save_test_complete_short_checkpoint(service, project, outputs, context, constraints)
+    index_path = outputs / "short-execution-index.json"
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["semantic_receipt"]["beat_receipts"] = []
+    index_path.write_text(json.dumps(index, ensure_ascii=False), encoding="utf-8")
+
+    assert service._find_short_checkpoint(project, "new-run", 4, context) is None
 
 
 @pytest.mark.parametrize(("status", "reusable"), [
@@ -5681,7 +6212,9 @@ def test_cross_run_short_checkpoint_requires_resumable_terminal_status(
     context = service._short_checkpoint_context(
         project, state.revision, state.data, store.load_constraints(project.id), 4,
     )
-    service._save_short_checkpoint(outputs, context)
+    save_test_complete_short_checkpoint(
+        service, project, outputs, context, store.load_constraints(project.id),
+    )
 
     checkpoint = service._find_short_checkpoint(
         project, "explicit-new-run", 4, context,
@@ -5743,7 +6276,10 @@ def test_short_checkpoint_rejects_changed_outline_with_same_event_ids(tmp_path) 
     old_context = service._short_checkpoint_context(
         project, state.revision, old_state, "same constraints", 4,
     )
-    service._save_short_checkpoint(outputs, old_context)
+    save_test_complete_short_checkpoint(
+        service, project, outputs, old_context, "same constraints",
+        state_override=old_state,
+    )
     changed_state = {
         **old_state,
         "outline": {
@@ -5783,7 +6319,9 @@ def test_short_checkpoint_rejects_changed_generation_authority(tmp_path, change)
     old_context = service._short_checkpoint_context(
         project, state.revision, state.data, "old constraints", 4,
     )
-    service._save_short_checkpoint(outputs, old_context)
+    save_test_complete_short_checkpoint(
+        service, project, outputs, old_context, "old constraints",
+    )
     current_context = service._short_checkpoint_context(
         project,
         state.revision + (change == "revision"),
@@ -5842,6 +6380,10 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
     )
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
+        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+            return json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False)
+        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+            return execution_manifest_receipt_from_prompt(user)
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return json.dumps({
                 "core_goal": "完成目标",
@@ -5854,10 +6396,41 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
             raise RuntimeError("fresh review requested")
         raise AssertionError(f"unexpected stage: {stage}")
 
-    async def fake_draft(*args):
-        return WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
+    async def fake_draft(run_id, run_path, *args):
+        draft = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
             ["甲" * 500, "乙" * 500, "丙" * 500, "丁" * 500]
         )
+        manifest = parse_execution_manifest(json.loads(
+            (run_path / "outputs" / "short-execution-index.json").read_text(
+                encoding="utf-8",
+            )
+        ))
+        current_project, current_constraints, current_plan = args[:3]
+        current_state = service.story_states.ensure(
+            current_project.id, current_project.path,
+        ).data
+        (run_path / "outputs" / "draft-integrity.json").write_text(
+            json.dumps({
+                "version": 3, "status": "passed",
+                "execution_manifest_sha256": execution_manifest_sha256(manifest),
+                "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+                "plan_sha256": hashlib.sha256(
+                    current_plan.encode("utf-8"),
+                ).hexdigest(),
+                "base_constraints_sha256": hashlib.sha256(
+                    current_constraints.split(
+                        "\n\n# Short Story Causal Chain\n\n", 1,
+                    )[0].encode("utf-8"),
+                ).hexdigest(),
+                "story_state_sha256": hashlib.sha256(json.dumps(
+                    current_state, ensure_ascii=False, sort_keys=True, default=str,
+                ).encode("utf-8")).hexdigest(),
+                "semantic_segment_receipts": [],
+                "issues": [],
+            }, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return draft
 
     async def stale_review_used(*args, **kwargs):
         raise RuntimeError("stale review reused")
@@ -5902,6 +6475,10 @@ async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_
     prompts = []
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
+        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+            return json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False)
+        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+            return execution_manifest_receipt_from_prompt(user)
         prompts.append(user)
         return "没有分段标题的初稿" if len(prompts) == 1 else repaired
 
@@ -7018,6 +7595,50 @@ def _short_revision_service(
     return service, project, source, ledger, state
 
 
+def _attach_short_revision_semantic_authority(
+    service: WorkflowService, project, source: str,
+) -> tuple[object, dict]:
+    quality_path = project.path / "runs" / "quality-source"
+    plan = (
+        "### 第一段：核对证词\n事件ID：EV-00000001\n"
+        "大纲依据：林晚核对证词。\n段首承接：林晚已经进入档案馆。\n"
+        "本段事件：林晚核对证词并确认时间。\n"
+        "段末交接：林晚带着确认结果离开档案馆。\n" + "细节" * 60
+    )
+    manifest = write_test_execution_manifest(
+        service, project, quality_path, "constraints", plan, 1,
+    )
+    integrity = {
+        "version": 4,
+        "status": "passed",
+        "authority_sha256": manifest.authority_sha256,
+        "execution_manifest_sha256": execution_manifest_sha256(manifest),
+        "draft_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
+        "semantic_segment_receipts": [],
+        "issues": [],
+    }
+    contract = service._manifest_segment_contract(
+        project, manifest, integrity, manifest.segments[0], source, 1,
+    )
+    integrity["semantic_segment_receipts"] = [
+        draft_semantic_receipt(asdict(contract), source),
+    ]
+    integrity_path = quality_path / "outputs" / "polish-integrity.json"
+    integrity_path.write_text(
+        json.dumps(integrity, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    (quality_path / "outputs" / "draft-integrity.json").write_text(
+        json.dumps(integrity, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    checkpoint = load_quality_checkpoint(quality_path)
+    checkpoint["narrative_integrity"] = {
+        "path": "outputs/polish-integrity.json",
+        "sha256": hashlib.sha256(integrity_path.read_bytes()).hexdigest(),
+    }
+    write_quality_checkpoint(quality_path, checkpoint)
+    return manifest, integrity
+
+
 def _short_revision_patch(request, old_text, new_text):
     return json.dumps({
         "manuscript_hash": request["candidate_hash"],
@@ -7554,6 +8175,312 @@ async def test_short_revision_writes_contract_before_model_and_waits_without_fin
         encoding="utf-8",
     ) == "正式稿不得修改。"
     assert StoryStateStore(service.db).get(project.id) == state
+
+
+@pytest.mark.asyncio
+async def test_short_revision_repairs_atomic_drift_before_user_confirmation(
+    tmp_path, monkeypatch,
+) -> None:
+    source = (
+        "雨落在档案馆外，林晚逐页核对证词和时间。" * 30
+        + "甲问题原句。"
+        + "她确认记录无误，带着结果离开。" * 20
+    )
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "high",
+            "evidence": "甲问题原句。",
+            "action": "说明林晚如何完成核对",
+        }], source=source,
+    )
+    _attach_short_revision_semantic_authority(service, project, source)
+    issue_id = ledger[0]["issue_id"]
+    calls = []
+    semantic_repair_calls = 0
+
+    async def stage(*args, **kwargs):
+        nonlocal semantic_repair_calls
+        stage_name, prompt = args[3], args[5]
+        calls.append((stage_name, prompt))
+        if stage_name == "revision_plan":
+            request = json.loads(prompt)
+            if request["schema"] == "targeted-repair-group-v1":
+                return _short_revision_patch(
+                    request, "甲问题原句。", "花穗来核对。",
+                )
+            assert request["schema"] == "targeted-atomic-semantic-repair-v1"
+            assert request["semantic_failures"]
+            semantic_repair_calls += 1
+            return _short_revision_patch(
+                request, "甲问题原句。",
+                "林晚来核对。\ufffd" if semantic_repair_calls == 1 else "林晚来核对。",
+            )
+        assert stage_name == "review"
+        contract = json.loads(re.search(
+            r"TASK CONTRACT: (\{[^\n]+\})", prompt,
+        ).group(1))
+        prose = prompt.split("PROSE:\n", 1)[1]
+        receipt = draft_semantic_receipt(contract, prose)
+        if "花穗来核对" in prose:
+            receipt["beat_receipts"][0]["actor_action_valid"] = False
+        return json.dumps(receipt, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-atomic-drift",
+    )
+
+    assert result["status"] == "waiting_confirmation"
+    assert "林晚来核对。" in result["candidate"]
+    assert "花穗来核对。" not in result["candidate"]
+    assert "\ufffd" not in result["candidate"]
+    assert semantic_repair_calls == 2
+    assert [stage_name for stage_name, _ in calls] == [
+        "revision_plan", "review", "revision_plan", "review",
+        "revision_plan", "review",
+    ]
+    assert any(
+        event["event_type"] == "short_revision_semantic_repaired"
+        for event in service.db.list_run_events("repair-atomic-drift")
+    )
+
+
+@pytest.mark.asyncio
+async def test_short_revision_semantic_repair_cannot_expand_beyond_original_anchor(
+    tmp_path, monkeypatch,
+) -> None:
+    source = (
+        "雨落在档案馆外，林晚逐页核对证词和时间。" * 30
+        + "甲问题原句。"
+        + "她确认记录无误，带着结果离开。" * 20
+    )
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "high",
+            "evidence": "甲问题原句。",
+            "action": "说明林晚如何完成核对",
+        }], source=source,
+    )
+    _attach_short_revision_semantic_authority(service, project, source)
+    issue_id = ledger[0]["issue_id"]
+    semantic_repair_calls = 0
+    review_calls = 0
+
+    async def stage(*args, **kwargs):
+        nonlocal semantic_repair_calls, review_calls
+        stage_name, prompt = args[3], args[5]
+        if stage_name == "revision_plan":
+            request = json.loads(prompt)
+            if request["schema"] == "targeted-repair-group-v1":
+                return _short_revision_patch(
+                    request, "甲问题原句。", "花穗来核对。",
+                )
+            semantic_repair_calls += 1
+            if semantic_repair_calls == 1:
+                return _short_revision_patch(
+                    request, "她确认记录无误", "她忽然烧掉记录",
+                )
+            return _short_revision_patch(
+                request, "甲问题原句。", "林晚来核对。",
+            )
+        review_calls += 1
+        contract = json.loads(re.search(
+            r"TASK CONTRACT: (\{[^\n]+\})", prompt,
+        ).group(1))
+        prose = prompt.split("PROSE:\n", 1)[1]
+        receipt = draft_semantic_receipt(contract, prose)
+        if "花穗来核对" in prose:
+            receipt["beat_receipts"][0]["actor_action_valid"] = False
+        return json.dumps(receipt, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-atomic-scope",
+    )
+
+    assert result["status"] == "waiting_confirmation"
+    assert "林晚来核对。" in result["candidate"]
+    assert "她忽然烧掉记录" not in result["candidate"]
+    assert semantic_repair_calls == 2
+    assert review_calls == 2
+
+
+@pytest.mark.asyncio
+async def test_short_revision_whole_semantic_failure_stops_before_final_review(
+    tmp_path, monkeypatch,
+) -> None:
+    source = (
+        "雨落在档案馆外，林晚逐页核对证词和时间。" * 30
+        + "甲问题原句。"
+        + "她确认记录无误，带着结果离开。" * 20
+    )
+    service, project, _source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "high",
+            "evidence": "甲问题原句。",
+            "action": "说明林晚如何完成核对",
+        }], source=source,
+    )
+    _attach_short_revision_semantic_authority(service, project, source)
+    issue_id = ledger[0]["issue_id"]
+
+    async def stage(*args, **kwargs):
+        prompt = args[5]
+        if args[3] == "revision_plan":
+            request = json.loads(prompt)
+            return _short_revision_patch(
+                request, "甲问题原句。", "林晚来核对。",
+            )
+        contract = json.loads(re.search(
+            r"TASK CONTRACT: (\{[^\n]+\})", prompt,
+        ).group(1))
+        prose = prompt.split("PROSE:\n", 1)[1]
+        return json.dumps(
+            draft_semantic_receipt(contract, prose), ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-whole-semantic",
+    )
+    service.decide_short_revision_group(
+        result["id"], issue_id, "adopted", result["candidate_hash"],
+    )
+    final_review_calls = []
+
+    async def fail_whole(*args, **kwargs):
+        assert kwargs["verify_whole"] is True
+        raise DraftSemanticValidationError("whole-story", [{
+            "code": "causal_order",
+            "message": "合并后事件顺序发生倒退",
+        }])
+
+    async def forbidden_final_review(*args, **kwargs):
+        final_review_calls.append(True)
+        raise AssertionError("final review must not run after semantic failure")
+
+    monkeypatch.setattr(service, "_verify_atomic_candidate_semantics", fail_whole)
+    monkeypatch.setattr(
+        service, "_incremental_manuscript_review", forbidden_final_review,
+    )
+    with pytest.raises(RevisionOperationError) as exc_info:
+        await service.finalize_short_revision(result["id"])
+
+    assert exc_info.value.code == "revision_semantic_gate_failed"
+    assert final_review_calls == []
+    assert service.db.get_run(result["id"])["status"] == "waiting_local_fix"
+    assert load_quality_checkpoint(
+        project.path / "runs" / result["id"],
+    ) is None
+
+
+@pytest.mark.asyncio
+async def test_polish_semantic_drift_is_repaired_before_source_fallback(
+    tmp_path, monkeypatch,
+) -> None:
+    source = (
+        "雨落在档案馆外，林晚逐页核对证词和时间。" * 30
+        + "她确认记录无误，带着结果离开。" * 20
+    )
+    rejected = source.replace("林晚逐页核对", "错误执行者逐页核对", 1)
+    repaired = source.replace("逐页核对", "仔细核对", 1)
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source=source,
+    )
+    manifest, _integrity = _attach_short_revision_semantic_authority(
+        service, project, source,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    calls = []
+    semantic_repair_calls = 0
+    original_assessment = __import__(
+        "novel_flywheel.workflows", fromlist=["assess_polish_candidate"],
+    ).assess_polish_candidate
+
+    def accept_semantic_test_candidate(*args, **kwargs):
+        assessment = original_assessment(*args, **kwargs)
+        if len(args) > 1 and args[1] == rejected:
+            assessment["accepted"] = True
+            assessment["reasons"] = []
+            assessment["hard_reasons"] = []
+        return assessment
+
+    async def stage(*args, **kwargs):
+        nonlocal semantic_repair_calls
+        stage_name, prompt = args[3], args[5]
+        calls.append((stage_name, prompt))
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in prompt:
+            semantic_repair_calls += 1
+            if semantic_repair_calls == 1:
+                return repaired + "\ufffd"
+            return repaired
+        if "DRAFT_SEMANTIC_VALIDATION" in prompt:
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", prompt,
+            ).group(1))
+            prose = prompt.split("PROSE:\n", 1)[1]
+            receipt = draft_semantic_receipt(contract, prose)
+            if "错误执行者" in prose:
+                receipt["beat_receipts"][0]["actor_action_valid"] = False
+            return json.dumps(receipt, ensure_ascii=False)
+        if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in prompt:
+            authority = re.search(
+                r"AUTHORITY SHA256: ([0-9a-f]{64})", prompt,
+            ).group(1)
+            draft_sha = re.search(
+                r"DRAFT SHA256: ([0-9a-f]{64})", prompt,
+            ).group(1)
+            segment_sha = json.loads(re.search(
+                r"SEGMENT SHA256: (\[[^\n]+\])", prompt,
+            ).group(1))
+            beat_ids = list(manifest.segments[0].beat_ids)
+            opening = prompt.split(
+                "OPENING EXCERPT: ", 1,
+            )[1].split("\nENDING EXCERPT:", 1)[0]
+            ending = prompt.split("ENDING EXCERPT: ", 1)[1]
+            return json.dumps({
+                "authority_sha256": authority,
+                "draft_sha256": draft_sha,
+                "segment_sha256": segment_sha,
+                "event_ids": beat_ids,
+                "missing_event_ids": [],
+                "duplicate_event_ids": [],
+                "out_of_order_event_ids": [],
+                "causal_order_valid": True,
+                "continuity_valid": True,
+                "ending_valid": True,
+                "commitments_valid": True,
+                "evidence": [
+                    {"excerpt": opening[:12]},
+                    {"excerpt": ending[-12:]},
+                ],
+                "summary": "返修后整篇连续。",
+            }, ensure_ascii=False)
+        assert stage_name == "polish"
+        return rejected
+
+    monkeypatch.setattr(service, "_stage", stage)
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.assess_polish_candidate",
+        accept_semantic_test_candidate,
+    )
+    result = await service._polish_short_segments(
+        "quality-source", run_path, project, "constraints", source, "{}",
+    )
+
+    assert result == repaired
+    assert semantic_repair_calls == 2
+    assert any(
+        event["event_type"] == "polish_semantic_repaired"
+        for event in service.db.list_run_events("quality-source")
+    )
+    assert not any(
+        event["event_type"] == "polish_segment_preserved"
+        for event in service.db.list_run_events("quality-source")
+    )
 
 
 @pytest.mark.asyncio

@@ -860,6 +860,16 @@ def test_console_validates_polish_progress_and_hides_internal_events(tmp_path) -
     )[0]
     assert ".filter(item=>!hiddenRunEventTypes.has(item.event_type))" in run_log
     assert "escapeHtml(polishRunEventMessage(item))" in run_log
+    assert "runEventDetails(item)" in run_log
+    details = script.split("function runEventDetails", 1)[1].split(
+        "function renderRunLog", 1,
+    )[0]
+    for diagnostic in (
+        "metadata.issues", "metadata.repair_attempt", "metadata.context_layers",
+        "metadata.preserved_segments", "metadata.restart_segment",
+    ):
+        assert diagnostic in details
+    assert 'class="log-details"' in run_log
     assert 'items[index-1].severity!=="error"' in run_log
     assert "Skill completed without file proposals" in script
     assert "再次初始化只会继续未完成阶段" in script

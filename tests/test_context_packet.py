@@ -7,9 +7,53 @@ import pytest
 from novel_flywheel.context_packet import (
     build_stage_context_packet,
     context_packet_sha256,
+    extract_mandatory_rules,
     render_stage_context_packet,
+    render_stage_system_context,
     validate_rule_coverage,
 )
+
+
+def test_temporal_before_after_rules_are_not_mistaken_for_examples() -> None:
+    rules, _duplicates = extract_mandatory_rules(
+        "Never reveal her identity before the climax.\n"
+        "After the bell, the hero must leave the hall.",
+        "",
+        stage="draft",
+    )
+
+    assert [rule.text for rule in rules] == [
+        "Never reveal her identity before the climax.",
+        "After the bell, the hero must leave the hall.",
+    ]
+
+
+def test_explicit_invariant_deduplication_keeps_companion_rule_on_same_line() -> None:
+    rules, _duplicates = extract_mandatory_rules(
+        "Viewpoint: first person; Never reveal the witness before the ending.",
+        "",
+        stage="draft",
+        explicit_invariants={"viewpoint": "first person"},
+    )
+
+    assert [rule.text for rule in rules] == [
+        "viewpoint: first person",
+        "Never reveal the witness before the ending.",
+    ]
+
+
+def test_unmarked_rules_inside_hard_rule_section_remain_mandatory() -> None:
+    rules, _duplicates = extract_mandatory_rules(
+        "# HARD RULES\nNarrate in first person.\nAlice is Bob's mother.\n"
+        "# Optional Notes\nTry a brisk opening.",
+        "",
+        stage="draft",
+    )
+
+    assert [rule.text for rule in rules] == [
+        "Narrate in first person.",
+        "Alice is Bob's mother.",
+    ]
 
 
 def large_repeated_constraints() -> str:
@@ -127,3 +171,14 @@ def test_context_metrics_report_each_layer_without_guessing_provider_capacity() 
         "advisory",
     }
     assert "context_window" not in packet.metrics
+
+
+def test_system_layer_keeps_authority_without_duplicating_current_user_payload() -> None:
+    packet = build_packet()
+
+    rendered = render_stage_system_context(packet)
+
+    assert "MANDATORY_NARRATIVE_RULES" in rendered
+    assert "GLOBAL_STORY_SKELETON" in rendered
+    assert "CURRENT_USER_PAYLOAD_SHA256" in rendered
+    assert packet.relevant_context not in rendered

@@ -8,6 +8,7 @@ from novel_flywheel.draft_split import (
     exact_event_partition,
     render_draft_task_prompt,
     residual_target,
+    semantic_receipt_issues,
     target_bounds,
     validate_semantic_receipt,
     validate_whole_draft_receipt,
@@ -113,6 +114,7 @@ def test_semantic_receipt_must_bind_exact_prose_and_prove_every_owned_event() ->
         "exit": {"satisfied": True, "evidence": "当面质问管事"},
         "outside_event_ids": [],
         "causal_order_valid": True,
+        "causal_order_evidence": "花穗在前厅接过账本。她核对印章后，当面质问管事",
         "summary": "花穗取得账本并由核验推进到质问。",
     }
 
@@ -135,6 +137,80 @@ def test_semantic_receipt_must_bind_exact_prose_and_prove_every_owned_event() ->
         validate_semantic_receipt(
             contract, prose, {**receipt, "causal_order_valid": False},
         )
+
+
+def test_atomic_beat_receipt_rejects_future_beat_and_wrong_viewpoint() -> None:
+    prose = "我看着沈老夫人派人出府核实身份，转身守在账房外。"
+    contract = _contract(
+        event_ids=("EV-8E4BBA17",),
+        beat_ids=("EV-8E4BBA17/01",),
+        execution_manifest_sha256="b" * 64,
+        viewpoint="first-person",
+        prohibited_future_beat_ids=("EV-8E4BBA17/02",),
+    )
+    receipt = {
+        "authority_sha256": contract.authority_sha256,
+        "execution_manifest_sha256": contract.execution_manifest_sha256,
+        "task_id": contract.task_id,
+        "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+        "beat_receipts": [{
+            "beat_id": "EV-8E4BBA17/01", "evidence": "沈老夫人派人出府核实身份",
+            "actor_action_valid": True,
+            "actor_action_evidence": "沈老夫人派人出府核实身份",
+            "state_valid": True,
+            "state_evidence": "我看着沈老夫人派人出府核实身份",
+            "scene_order_valid": True,
+            "scene_order_evidence": "沈老夫人派人出府核实身份，转身守在账房外",
+        }],
+        "entry": {"satisfied": True, "evidence": "我看着沈老夫人"},
+        "exit": {"satisfied": True, "evidence": "转身守在账房外"},
+        "outside_beat_ids": [],
+        "future_beat_ids": [],
+        "viewpoint_valid": True,
+        "viewpoint_evidence": "我看着沈老夫人",
+        "causal_order_valid": True,
+        "causal_order_evidence": "沈老夫人派人出府核实身份，转身守在账房外",
+        "summary": "本段只执行派人核实这一原子节拍。",
+    }
+
+    assert validate_semantic_receipt(contract, prose, receipt)["beat_receipts"]
+    with pytest.raises(ValueError, match="future beat"):
+        validate_semantic_receipt(
+            contract, prose, {**receipt, "future_beat_ids": ["EV-8E4BBA17/02"]},
+        )
+    with pytest.raises(ValueError, match="viewpoint"):
+        validate_semantic_receipt(
+            contract, prose, {**receipt, "viewpoint_valid": False},
+        )
+
+
+def test_semantic_receipt_reports_all_independent_contract_failures() -> None:
+    prose = "我看着沈老夫人派人出府。"
+    contract = _contract(
+        event_ids=("EV-8E4BBA17",), beat_ids=("EV-8E4BBA17/01",),
+        execution_manifest_sha256="b" * 64, viewpoint="first-person",
+    )
+    receipt = {
+        "authority_sha256": contract.authority_sha256,
+        "execution_manifest_sha256": contract.execution_manifest_sha256,
+        "task_id": contract.task_id,
+        "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+        "beat_receipts": [],
+        "entry": {"satisfied": False, "evidence": ""},
+        "exit": {"satisfied": False, "evidence": ""},
+        "outside_beat_ids": ["EV-99999999/01"],
+        "future_beat_ids": ["EV-8E4BBA17/02"],
+        "viewpoint_valid": False,
+        "causal_order_valid": False,
+        "summary": "",
+    }
+
+    codes = {item["code"] for item in semantic_receipt_issues(contract, prose, receipt)}
+
+    assert {
+        "beat_coverage", "entry_state", "exit_state", "outside_beat",
+        "future_beat", "viewpoint", "causal_order", "missing_summary",
+    } <= codes
 
 
 def test_whole_draft_receipt_requires_exact_segment_and_event_manifests() -> None:

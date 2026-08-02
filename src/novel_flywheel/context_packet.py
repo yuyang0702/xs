@@ -19,8 +19,18 @@ _KNOWN_INVARIANT_MARKERS = (
     "确认结局", "confirmed ending", "知识边界", "认知边界",
     "knowledge boundary", "locked fact", "锁定事实",
 )
+_HARD_SECTION_MARKERS = (
+    "hard rule", "hard rules", "mandatory", "requirements", "locked fact",
+    "locked facts", "confirmed fact", "confirmed facts", "must include",
+    "must avoid", "强制规则", "硬性规则", "锁定事实", "确认事实", "必须包含",
+    "必须避免",
+)
 _EXAMPLE_MARKERS = (
-    "example", "examples", "示例", "改写前", "改写后", "before", "after",
+    "example", "examples", "示例", "改写前", "改写后",
+)
+_EXAMPLE_LINE = re.compile(
+    r"^(?:example|examples|示例|改写前|改写后)\s*[:：]",
+    re.IGNORECASE,
 )
 
 
@@ -69,6 +79,8 @@ def _rule_lines(value: str) -> list[str]:
     result = []
     in_example_section = False
     example_level = 0
+    in_hard_section = False
+    hard_level = 0
     for line in str(value or "").splitlines():
         stripped = line.strip()
         if not stripped:
@@ -83,11 +95,28 @@ def _rule_lines(value: str) -> list[str]:
                 continue
             if in_example_section and level <= example_level:
                 in_example_section = False
+            if any(marker in title for marker in _HARD_SECTION_MARKERS):
+                in_hard_section = True
+                hard_level = level
+                continue
+            if in_hard_section and level <= hard_level:
+                in_hard_section = False
         lowered = stripped.casefold()
-        if in_example_section or any(marker in lowered for marker in _EXAMPLE_MARKERS):
+        if in_example_section or _EXAMPLE_LINE.match(lowered):
             continue
-        if any(marker in lowered for marker in (*_HARD_MARKERS, *_KNOWN_INVARIANT_MARKERS)):
-            result.append(re.sub(r"^[#>*+\-\s]+", "", stripped).strip())
+        stripped = re.sub(r"^[#>*+\-\s]+", "", stripped).strip()
+        clauses = [
+            clause.strip()
+            for clause in re.split(r"[;；]+|(?<=[。！？!?])\s*", stripped)
+            if clause.strip()
+        ]
+        for clause in clauses:
+            clause_lowered = clause.casefold()
+            if in_hard_section or any(
+                marker in clause_lowered
+                for marker in (*_HARD_MARKERS, *_KNOWN_INVARIANT_MARKERS)
+            ):
+                result.append(clause)
     return result
 
 
@@ -161,6 +190,21 @@ def _advisory_excerpt(value: str, limit: int) -> str:
     return result or text[:limit]
 
 
+def _advisory_without_mandatory_rules(
+    value: str, rules: tuple[MandatoryRule, ...],
+) -> str:
+    normalized_rules = {_normalize_rule(rule.text) for rule in rules}
+    kept = []
+    for line in str(value or "").splitlines():
+        normalized = _normalize_rule(line)
+        if normalized and any(
+            normalized == rule or rule in normalized for rule in normalized_rules
+        ):
+            continue
+        kept.append(line)
+    return "\n".join(kept)
+
+
 def _contract_text(contract: dict[str, Any]) -> str:
     return json.dumps(
         contract, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
@@ -198,7 +242,9 @@ def build_stage_context_packet(
     )
     if not rules:
         raise ValueError("context packet contains no mandatory narrative rules")
-    advisory_excerpt = _advisory_excerpt(advisory, advisory_max_chars)
+    advisory_excerpt = _advisory_excerpt(
+        _advisory_without_mandatory_rules(advisory, rules), advisory_max_chars,
+    )
     layer_text = {
         "current_contract": _contract_text(current_contract),
         "mandatory_rules": _rules_text(rules),
@@ -251,6 +297,24 @@ def render_stage_context_packet(packet: StageContextPacket) -> str:
     sections.append("CONTEXT_SOURCE_HASHES:\n" + json.dumps(
         packet.source_hashes, ensure_ascii=False, sort_keys=True,
     ))
+    return "\n\n".join(sections)
+
+
+def render_stage_system_context(packet: StageContextPacket) -> str:
+    """Render non-user layers while binding the unchanged user payload by hash."""
+    sections = [
+        "CURRENT_TASK_ENVELOPE:\n" + _contract_text(packet.current_contract),
+        "MANDATORY_NARRATIVE_RULES:\n" + _rules_text(packet.mandatory_rules),
+        "GLOBAL_STORY_SKELETON:\n" + packet.global_skeleton,
+    ]
+    if packet.advisory:
+        sections.append("ADVISORY_CONTEXT:\n" + packet.advisory)
+    sections.extend([
+        "CURRENT_USER_PAYLOAD_SHA256:\n" + packet.source_hashes["relevant_context"],
+        "CONTEXT_SOURCE_HASHES:\n" + json.dumps(
+            packet.source_hashes, ensure_ascii=False, sort_keys=True,
+        ),
+    ])
     return "\n\n".join(sections)
 
 

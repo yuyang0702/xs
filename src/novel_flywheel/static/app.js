@@ -2766,13 +2766,35 @@ function polishRunEventMessage(item) {
   }
   return polishRecoveryMessages[item.event_type]||readableRunMessage(item.message||`${item.event_type||"event"}: 未返回可用诊断信息`);
 }
+function runEventDetails(item) {
+  const metadata=item?.metadata||{},details=[];
+  if(Array.isArray(metadata.issues))metadata.issues.forEach(issue=>{
+    const message=typeof issue==="string"?issue:(issue?.message||issue?.code||"");
+    if(message)details.push(message);
+  });
+  const attempt=Number(metadata.attempt??metadata.repair_attempt);
+  if(Number.isFinite(attempt)&&attempt>0)details.push(`自动修正尝试：第 ${attempt} 次`);
+  if(metadata.context_layers&&typeof metadata.context_layers==="object"){
+    const layers=Object.entries(metadata.context_layers).map(([name,value])=>
+      `${name} ${Number(value?.characters||0).toLocaleString()} 字符`
+    );
+    if(layers.length)details.push(`上下文分层：${layers.join("；")}`);
+  }
+  const preserved=Number(metadata.preserved??metadata.preserved_segments);
+  if(Number.isFinite(preserved)&&preserved>0)details.push(`已保留 ${preserved} 个验收片段`);
+  const restart=Number(metadata.restart_segment??metadata.next_segment);
+  if(Number.isFinite(restart)&&restart>0)details.push(`将从第 ${restart} 段继续`);
+  return [...new Set(details)];
+}
 function renderRunLog(events) {
   const visibleEvents=events.filter(item=>!hiddenRunEventTypes.has(item.event_type)).filter(
     (item,index,items)=>index===0||item.severity!=="error"||items[index-1].severity!=="error"||
       polishRunEventMessage(item)!==polishRunEventMessage(items[index-1])
   );
   $("#run-log").innerHTML = visibleEvents.length ? visibleEvents.map(item => {
-    return `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(runLabel(item.stage || item.event_type))}</span><span>${escapeHtml(polishRunEventMessage(item))}</span></div>`;
+    const details=runEventDetails(item);
+    const detailHtml=details.length?`<ul class="log-details">${details.map(value=>`<li>${escapeHtml(value)}</li>`).join("")}</ul>`:"";
+    return `<div class="log-row ${escapeHtml(item.severity)}"><span class="log-time">${escapeHtml(formatLocalTimestamp(item.created_at, true))}</span><span class="log-stage">${escapeHtml(runLabel(item.stage || item.event_type))}</span><span>${escapeHtml(polishRunEventMessage(item))}${detailHtml}</span></div>`;
   }).join("") : '<p class="skill-meta">等待第一条运行日志...</p>';
   $("#run-log").scrollTop = $("#run-log").scrollHeight;
 }

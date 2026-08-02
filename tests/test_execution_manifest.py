@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 
 import pytest
 
 from novel_flywheel.execution_manifest import (
     execution_manifest_issues,
+    execution_manifest_receipt_binding_issues,
     execution_manifest_sha256,
     legacy_execution_index_requires_rebuild,
     parse_execution_manifest,
+    validate_execution_manifest_receipt,
 )
 
 
@@ -21,7 +25,7 @@ AUTHORITY = {
 
 
 def manifest_payload() -> dict:
-    return {
+    payload = {
         "version": 2,
         "status": "ready",
         **AUTHORITY,
@@ -96,7 +100,7 @@ def manifest_payload() -> dict:
                         "produced_by": "EV-8E4BBA17/02",
                     },
                 ],
-                "previous_exit_sha256": "e" * 64,
+                "previous_exit_sha256": "pending",
                 "prohibited_future_beat_ids": [],
             },
         ],
@@ -107,6 +111,17 @@ def manifest_payload() -> dict:
         },
         "repair_attempts": 0,
     }
+    payload["segments"][1]["previous_exit_sha256"] = hashlib.sha256(
+        json.dumps(
+            [{
+                "state": item["state"],
+                "produced_by": item.get("produced_by", ""),
+                "inherited_from": item.get("inherited_from", ""),
+            } for item in payload["segments"][0]["exit_state"]], ensure_ascii=False,
+            sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    return payload
 
 
 def validate(payload: dict) -> list[dict]:
@@ -144,6 +159,24 @@ def test_exit_state_cannot_be_produced_by_a_beat_owned_by_the_next_segment() -> 
     } in issues
 
 
+def test_new_exit_state_requires_an_owned_producer() -> None:
+    payload = manifest_payload()
+    payload["segments"][0]["exit_state"][0].pop("produced_by")
+
+    issues = validate(payload)
+
+    assert any(item["code"] == "exit_producer_missing" for item in issues)
+
+
+def test_segment_must_prohibit_the_exact_later_beat_set() -> None:
+    payload = manifest_payload()
+    payload["segments"][0]["prohibited_future_beat_ids"] = []
+
+    issues = validate(payload)
+
+    assert any(item["code"] == "future_beat_prohibition_mismatch" for item in issues)
+
+
 def test_manifest_reports_all_independent_ownership_and_boundary_failures() -> None:
     payload = manifest_payload()
     payload["beats"][1]["owner_segment"] = 2
@@ -158,6 +191,15 @@ def test_manifest_reports_all_independent_ownership_and_boundary_failures() -> N
         "exit_producer_not_owned",
         "adjacent_boundary_mismatch",
     } <= codes
+
+
+def test_adjacent_segment_must_bind_exact_previous_exit_hash() -> None:
+    payload = manifest_payload()
+    payload["segments"][1]["previous_exit_sha256"] = "f" * 64
+
+    issues = validate(payload)
+
+    assert any(item["code"] == "previous_exit_hash_mismatch" for item in issues)
 
 
 @pytest.mark.parametrize("value", [None, {}, {"version": 1}, {"version": "2"}])
@@ -175,3 +217,96 @@ def test_parser_rejects_duplicate_beat_ids_before_workflow_use() -> None:
 
     with pytest.raises(ValueError, match="duplicate beat_id"):
         parse_execution_manifest(payload)
+
+
+def semantic_receipt(payload: dict, authority_text: str) -> dict:
+    manifest = parse_execution_manifest(payload)
+    return {
+        "authority_sha256": manifest.authority_sha256,
+        "manifest_sha256": execution_manifest_sha256(manifest),
+        "beat_receipts": [
+            {
+                "beat_id": beat.beat_id,
+                "evidence": beat.source_evidence,
+                "actor_action_valid": True,
+            }
+            for beat in manifest.beats
+        ],
+        "segment_receipts": [
+            {
+                "segment": segment.segment,
+                "boundary_valid": True,
+                "evidence": segment.exit_state[0].state,
+            }
+            for segment in manifest.segments
+        ],
+        "formal_plot_unchanged": True,
+        "summary": "节拍动作、所有权与相邻边界均符合正式资料。",
+    }
+
+
+def manifest_authority_text(payload: dict) -> str:
+    return "\n".join([
+        *(beat["source_evidence"] for beat in payload["beats"]),
+        *(
+            assertion["state"]
+            for segment in payload["segments"]
+            for assertion in segment["exit_state"]
+        ),
+    ])
+
+
+def test_semantic_receipt_binds_every_beat_and_segment_to_exact_authority() -> None:
+    payload = manifest_payload()
+    authority_text = manifest_authority_text(payload)
+
+    receipt = validate_execution_manifest_receipt(
+        parse_execution_manifest(payload),
+        authority_text,
+        semantic_receipt(payload, authority_text),
+    )
+
+    assert [item["beat_id"] for item in receipt["beat_receipts"]] == [
+        item["beat_id"] for item in payload["beats"]
+    ]
+
+
+def test_semantic_receipt_rejects_evidence_not_present_in_authority() -> None:
+    payload = manifest_payload()
+    authority_text = manifest_authority_text(payload)
+    receipt = semantic_receipt(payload, authority_text)
+    receipt["beat_receipts"][1]["evidence"] = "规划和大纲都没有这句话"
+
+    with pytest.raises(ValueError, match="beat evidence is not bound"):
+        validate_execution_manifest_receipt(
+            parse_execution_manifest(payload), authority_text, receipt,
+        )
+
+
+def test_semantic_receipt_rejects_stale_manifest_hash() -> None:
+    payload = manifest_payload()
+    authority_text = manifest_authority_text(payload)
+    receipt = semantic_receipt(payload, authority_text)
+    receipt["manifest_sha256"] = "f" * 64
+
+    with pytest.raises(ValueError, match="manifest hash is stale"):
+        validate_execution_manifest_receipt(
+            parse_execution_manifest(payload), authority_text, receipt,
+        )
+
+
+def test_saved_manifest_receipt_must_remain_bound_to_exact_manifest() -> None:
+    payload = manifest_payload()
+    authority_text = manifest_authority_text(payload)
+    payload["semantic_receipt"] = semantic_receipt(payload, authority_text)
+    manifest = parse_execution_manifest(payload)
+
+    assert execution_manifest_receipt_binding_issues(manifest) == []
+
+    payload["semantic_receipt"]["beat_receipts"] = payload[
+        "semantic_receipt"
+    ]["beat_receipts"][:-1]
+    issues = execution_manifest_receipt_binding_issues(
+        parse_execution_manifest(payload),
+    )
+    assert any(item["code"] == "receipt_beat_coverage" for item in issues)
