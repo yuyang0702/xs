@@ -5691,13 +5691,14 @@ class WorkflowService:
                     f"润色第 {index}/{len(parts)} 段{labels[reason]}，正在定向重试",
                     stage="polish", metadata={"segment": index, "reason": reason},
                 )
-                rhythm_prompt = prompt + (
-                    "\n\nRHYTHM RETRY: The previous revision retained four or more consecutive "
+                rhythm_prompt = (
+                    "RHYTHM RETRY: The previous revision retained four or more consecutive "
                     "short narrative sentences outside dialogue, or split one continuous beat into a timestamp "
                     "sentence followed by a static scene sentence. Merge that beat into natural "
                     "continuous prose. Also break up four or more consecutive dialogue-only "
                     "paragraphs with meaningful action, observation, hesitation, or changed subtext. "
-                    "Keep dialogue and plot facts unchanged. Return only the revised segment."
+                    "Keep dialogue and plot facts unchanged. Return only the revised segment.\n\n"
+                    + prompt
                 )
                 polished_part = await self._stage(
                     run_id, run_path, project, "polish", constraints, rhythm_prompt,

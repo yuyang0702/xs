@@ -3,8 +3,13 @@ import hashlib
 import re
 import math
 import unicodedata
+from statistics import median
 from typing import Any
 
+from novel_flywheel.prose_policy import (
+    ProseValidationPolicy,
+    infer_narrative_beat_tags,
+)
 from novel_flywheel.prose_quality import analyze_prose
 
 
@@ -201,33 +206,69 @@ def normalize_chinese_prose(text: str) -> tuple[str, list[str]]:
     return normalized, repairs
 
 
-def assess_polish_candidate(source: str, candidate: str,
-                            required_literals: list[str] | None = None,
-                            minimum_ratio: float = 0.70,
-                            maximum_ratio: float = 1.60) -> dict[str, Any]:
+def _robust_boundary(values: list[float], *, floor: float) -> float:
+    if not values:
+        return floor
+    center = median(values)
+    deviation = median(abs(value - center) for value in values)
+    return center + max(floor, 3 * deviation)
+
+
+def assess_polish_candidate(
+    source: str,
+    candidate: str,
+    required_literals: list[str] | None = None,
+    minimum_ratio: float = 0.70,
+    maximum_ratio: float = 1.60,
+    *,
+    policy: ProseValidationPolicy | None = None,
+    history_metrics: list[dict[str, float]] | None = None,
+    narrative_context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     candidate = candidate.strip()
     ratio = len(candidate) / max(1, len(source.strip()))
     report = analyze_prose(candidate)
-    reasons = []
+    source_report = analyze_prose(source)
+    policy = policy or ProseValidationPolicy()
+    history = [item for item in (history_metrics or [])[-5:] if isinstance(item, dict)]
+    hard_reasons: list[str] = []
+    soft_by_family: dict[str, dict[str, Any]] = {}
+
+    def add_soft(family: str, code: str, *, severe: bool = False,
+                 evidence: dict[str, Any] | None = None) -> None:
+        current = soft_by_family.get(family)
+        if current is None:
+            soft_by_family[family] = {
+                "family": family,
+                "code": code,
+                "severe": severe,
+                "evidence": evidence or {},
+                "codes": [code],
+            }
+            return
+        current["severe"] = bool(current["severe"] or severe)
+        if code not in current["codes"]:
+            current["codes"].append(code)
+
     if len(source.strip()) >= 200 and (ratio < minimum_ratio or ratio > maximum_ratio):
-        reasons.append("length_ratio")
+        hard_reasons.append("length_ratio")
     if report["blocking_count"]:
-        reasons.append("production_text")
+        hard_reasons.append("production_text")
     for literal in required_literals or []:
         if literal and literal in source and literal not in candidate:
-            reasons.append(f"missing_literal:{literal}")
-    source_report = analyze_prose(source)
-    if report["targeted_count"] > source_report["targeted_count"] + 2:
-        reasons.append("style_regression")
+            hard_reasons.append(f"missing_literal:{literal}")
     source_metrics = source_report["metrics"]
     candidate_metrics = report["metrics"]
     source_codes = {item["code"] for item in source_report["findings"]}
     candidate_codes = {item["code"] for item in report["findings"]}
     if "timestamp_scene_fragment" in source_codes & candidate_codes:
-        reasons.append("timestamp_scene_fragment_not_improved")
+        add_soft("scene_transition", "timestamp_scene_fragment_not_improved", severe=True)
     if (source_metrics["dialogue_turn_run"] >= 4
             and candidate_metrics["dialogue_turn_run"] >= 4):
-        reasons.append("dialogue_ping_pong_not_improved")
+        add_soft("dialogue", "dialogue_ping_pong_not_improved", severe=True)
+
+    rhythm_code = ""
+    rhythm_severe = False
     if source_metrics["short_sentence_run"] >= 4:
         rhythm_improved = (
             candidate_metrics["short_sentence_run"]
@@ -236,17 +277,98 @@ def assess_polish_candidate(source: str, candidate: str,
             <= source_metrics["short_sentence_ratio"] - 0.05
         )
         if not rhythm_improved:
-            reasons.append("sentence_rhythm_not_improved")
+            rhythm_code = "sentence_rhythm_not_improved"
+            rhythm_severe = True
+
+    history_ratios = [float(item.get("short_sentence_ratio", 0.0)) for item in history]
+    ratio_boundary = max(
+        float(source_metrics["short_sentence_ratio"]) + policy.absolute_ratio_floor,
+        _robust_boundary(history_ratios, floor=policy.absolute_ratio_floor),
+    )
+    new_short_units = (
+        int(candidate_metrics["short_sentence_count"])
+        - int(source_metrics["short_sentence_count"])
+    )
+    ratio_risk = (
+        new_short_units >= policy.minimum_new_units
+        and candidate_metrics["short_sentence_ratio"] > ratio_boundary
+    )
+    short_run_risk = (
+        candidate_metrics["short_sentence_run"]
+        > max(3.0, float(source_metrics["short_sentence_run"]) + 2.0)
+    )
+    paragraph_run_risk = (
+        candidate_metrics["one_sentence_paragraph_run"]
+        > max(2.0, float(source_metrics["one_sentence_paragraph_run"]) + 2.0)
+    )
     if re.search(r"[。！？.!?]", source) and (
-        candidate_metrics["short_sentence_run"] > max(3, source_metrics["short_sentence_run"])
-        or candidate_metrics["short_sentence_ratio"]
-        > source_metrics["short_sentence_ratio"] + 0.05
-        or candidate_metrics["one_sentence_paragraph_run"]
-        > max(2, source_metrics["one_sentence_paragraph_run"])
+        ratio_risk or short_run_risk or paragraph_run_risk
     ):
-        reasons.append("sentence_rhythm_regression")
+        rhythm_code = rhythm_code or "sentence_rhythm_regression"
+        rhythm_severe = bool(
+            rhythm_severe
+            or candidate_metrics["short_sentence_run"] >= 4
+            or candidate_metrics["one_sentence_paragraph_run"] >= 4
+            or candidate_metrics["one_sentence_paragraph_ratio"] >= 0.5
+        )
+    if rhythm_code:
+        add_soft("rhythm", rhythm_code, severe=rhythm_severe, evidence={
+            "source_short_sentence_ratio": source_metrics["short_sentence_ratio"],
+            "candidate_short_sentence_ratio": candidate_metrics["short_sentence_ratio"],
+            "short_sentence_ratio_boundary": round(ratio_boundary, 3),
+            "new_short_units": new_short_units,
+            "short_sentence_run": candidate_metrics["short_sentence_run"],
+            "one_sentence_paragraph_run": candidate_metrics["one_sentence_paragraph_run"],
+        })
+
+    rhythm_findings = {"uniform_short_sentence_run", "one_sentence_paragraph_run"}
+    new_non_rhythm_codes = (candidate_codes - source_codes) - rhythm_findings
+    if (report["targeted_count"] > source_report["targeted_count"] + 2
+            and new_non_rhythm_codes):
+        add_soft("style", "style_regression", severe=True, evidence={
+            "new_codes": sorted(new_non_rhythm_codes),
+        })
+
+    soft_signals = list(soft_by_family.values())
+    beat_tags = infer_narrative_beat_tags(narrative_context or {})
+    style_allowances: list[dict[str, Any]] = []
+    actionable = list(soft_signals)
+    if ("rhythm" in soft_by_family and not policy.conflicts
+            and beat_tags.intersection(policy.authorized_short_beats)):
+        style_allowances.append({
+            "family": "rhythm",
+            "authorized_beats": sorted(beat_tags.intersection(
+                policy.authorized_short_beats
+            )),
+            "policy_sources": list(policy.source_ids),
+        })
+        actionable = [item for item in actionable if item["family"] != "rhythm"]
+
+    if hard_reasons:
+        disposition = "reject"
+    elif len(actionable) >= 2 or any(item["severe"] for item in actionable):
+        disposition = "targeted_repair"
+    elif style_allowances and not actionable:
+        disposition = "pass_with_style_allowance"
+    else:
+        disposition = "pass"
+
+    reasons = list(hard_reasons)
+    if disposition == "targeted_repair":
+        reasons.extend(item["code"] for item in actionable)
     return {
-        "accepted": not reasons, "reasons": reasons, "ratio": round(ratio, 3),
+        "accepted": disposition in {"pass", "pass_with_style_allowance"},
+        "disposition": disposition,
+        "reasons": reasons,
+        "hard_reasons": hard_reasons,
+        "soft_signals": soft_signals,
+        "signal_families": [item["family"] for item in soft_signals],
+        "style_allowances": style_allowances,
+        "baseline": {
+            "history_count": len(history),
+            "short_sentence_ratio_boundary": round(ratio_boundary, 3),
+        },
+        "ratio": round(ratio, 3),
         "length_bounds": {
             "minimum_ratio": minimum_ratio, "maximum_ratio": maximum_ratio,
         },

@@ -3,6 +3,7 @@ import hashlib
 
 import pytest
 
+from novel_flywheel.prose_policy import ProseValidationPolicy
 from novel_flywheel.revision import (
     assess_polish_candidate,
     align_revision_plan_targets,
@@ -342,6 +343,76 @@ def test_polish_candidate_rejects_short_sentence_rhythm_regression() -> None:
 
     assert rejected["accepted"] is False
     assert "sentence_rhythm_regression" in rejected["reasons"]
+
+
+def test_polish_candidate_collapses_related_rhythm_evidence_into_one_family() -> None:
+    source = "A measured sentence carries the action forward with enough context. " * 8
+    candidate = (
+        "Door opened. He entered. Light moved. Rain fell. She stopped. "
+        "A measured sentence carries the action forward with enough context. " * 6
+    )
+
+    result = assess_polish_candidate(source, candidate)
+
+    assert result["disposition"] == "targeted_repair"
+    assert result["signal_families"] == ["rhythm"]
+    assert [item["family"] for item in result["soft_signals"]] == ["rhythm"]
+    assert not ({"style_regression", "sentence_rhythm_regression"} <= set(result["reasons"]))
+
+
+def test_project_style_can_authorize_local_short_rhythm_but_not_hard_loss() -> None:
+    source = "A measured sentence carries the action forward with enough context. " * 8
+    candidate = (
+        "Door opened. He entered. Light moved. Rain fell. She stopped. "
+        "A measured sentence carries the action forward with enough context. " * 6
+    )
+    policy = ProseValidationPolicy(
+        source_ids=("prose_baseline:2",),
+        authorized_short_beats=frozenset({"information_reveal"}),
+    )
+
+    allowed = assess_polish_candidate(
+        source, candidate, policy=policy,
+        narrative_context={"reveals": ["the hidden identity is exposed"]},
+    )
+    rejected = assess_polish_candidate(
+        "She leaves with the brass key.", "She leaves.",
+        required_literals=["brass key"], policy=policy,
+        narrative_context={"reveals": ["the hidden identity is exposed"]},
+    )
+
+    assert allowed["accepted"] is True
+    assert allowed["disposition"] == "pass_with_style_allowance"
+    assert allowed["reasons"] == []
+    assert allowed["style_allowances"][0]["policy_sources"] == ["prose_baseline:2"]
+    assert rejected["accepted"] is False
+    assert rejected["disposition"] == "reject"
+    assert "missing_literal:brass key" in rejected["hard_reasons"]
+
+
+def test_small_single_metric_shift_is_advisory_not_a_repair_target() -> None:
+    source = "A measured sentence carries enough context. " * 8
+    candidate = "Stop. Wait. " + source
+
+    result = assess_polish_candidate(source, candidate)
+
+    assert result["accepted"] is True
+    assert result["disposition"] == "pass"
+    assert result["signal_families"] == []
+
+
+def test_history_metrics_raise_boundary_without_weakening_source_integrity() -> None:
+    source = "A measured sentence carries enough context. " * 8
+    candidate = "Stop. Wait. Listen. " + source
+    history = [{"short_sentence_ratio": 0.30} for _ in range(5)]
+
+    result = assess_polish_candidate(
+        source, candidate, history_metrics=history,
+    )
+
+    assert result["accepted"] is True
+    assert result["baseline"]["history_count"] == 5
+    assert result["baseline"]["short_sentence_ratio_boundary"] == 0.4
 
 
 def test_polish_candidate_must_improve_existing_short_sentence_run() -> None:
