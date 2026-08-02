@@ -4,6 +4,9 @@ from typing import Any
 
 
 SEGMENT_SEPARATOR = "<!-- NOVEL_FLYWHEEL_SEGMENT -->"
+SENTENCE_TERMINATOR = re.compile(
+    r"(?:……|\.\.\.|[。！？.!?]+)[”’\"'）)】》〉〕］}]*"
+)
 PRODUCTION_PATTERNS = (
     r"以下(?:是|为).{0,20}(?:润色|修改|改写)(?:后|的)?(?:版本|正文)",
     r"(?:本片段|这个片段).{0,30}(?:不含|已经|修改)",
@@ -113,8 +116,11 @@ def prose_metrics(text: str) -> dict[str, float]:
     clean = text.replace(SEGMENT_SEPARATOR, "")
     narrative = re.sub(r'[“\"][^”\"\n]*[”\"]', "", clean)
     narrative = re.sub(r"(?m)^\s*#.*$", "", narrative)
-    sentences = [item.strip() for item in re.split(r"[。！？.!?]+", narrative) if item.strip()]
-    lengths = [len(item) for item in sentences]
+    sentences = split_prose_sentences(narrative)
+    all_sentences = split_prose_sentences(
+        re.sub(r"(?m)^\s*#.*$", "", clean)
+    )
+    lengths = [len(SENTENCE_TERMINATOR.sub("", item).strip()) for item in sentences]
     short_run = run = 0
     for length in lengths:
         run = run + 1 if length <= 14 else 0
@@ -122,14 +128,24 @@ def prose_metrics(text: str) -> dict[str, float]:
     dialogue_chars = sum(len(item) for item in re.findall(r"[“\"][^”\"\n]+[”\"]", clean))
     paragraph_run = dialogue_run = run = 0
     dialogue_current = 0
-    for paragraph in (item.strip() for item in re.split(r"\n\s*\n", clean)):
+    paragraphs = [item.strip() for item in re.split(r"\n\s*\n", clean) if item.strip()]
+    one_sentence_paragraph_count = 0
+    for paragraph in paragraphs:
         is_single = (bool(paragraph) and not paragraph.startswith(("#", "“", '"'))
                      and _sentence_count(paragraph) == 1)
+        one_sentence_paragraph_count += int(is_single)
         run = run + 1 if is_single else 0
         paragraph_run = max(paragraph_run, run)
         dialogue_current = dialogue_current + 1 if paragraph.startswith(("“", '"')) else 0
         dialogue_run = max(dialogue_run, dialogue_current)
     return {
+        "sentence_count": float(len(all_sentences)),
+        "short_sentence_count": float(sum(length <= 14 for length in lengths)),
+        "paragraph_count": float(len(paragraphs)),
+        "one_sentence_paragraph_count": float(one_sentence_paragraph_count),
+        "one_sentence_paragraph_ratio": round(
+            one_sentence_paragraph_count / max(1, len(paragraphs)), 3,
+        ),
         "mean_sentence_length": round(mean(lengths), 2) if lengths else 0,
         "short_sentence_ratio": round(
             sum(length <= 14 for length in lengths) / len(lengths), 3,
@@ -143,7 +159,22 @@ def prose_metrics(text: str) -> dict[str, float]:
 
 
 def _sentence_count(text: str) -> int:
-    return len(re.findall(r"[。！？.!?](?:[”\"']|$)", text.strip()))
+    return len(split_prose_sentences(text))
+
+
+def split_prose_sentences(text: str) -> list[str]:
+    normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+    sentences: list[str] = []
+    start = 0
+    for match in SENTENCE_TERMINATOR.finditer(normalized):
+        sentence = normalized[start:match.end()].strip()
+        if sentence:
+            sentences.append(sentence)
+        start = match.end()
+    tail = normalized[start:].strip()
+    if tail:
+        sentences.append(tail)
+    return sentences
 
 
 def compare_voice_metrics(current: dict[str, float], history: list[dict[str, float]]) -> dict[str, Any]:

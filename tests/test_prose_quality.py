@@ -1,4 +1,26 @@
+import pytest
+
 from novel_flywheel.prose_quality import analyze_prose, compare_voice_metrics, prose_metrics
+
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("她推开门。屋里没有人。灯却亮着。", 3),
+    ("“你来了？”她问。\n\n他点头。", 3),
+    ("First sentence. Second sentence! Third?", 3),
+    ("第一句！）第二句？】第三句。", 3),
+    ("第一句。\r\n\r\n第二句。", 2),
+])
+def test_sentence_metrics_count_common_prose_boundaries(text: str, expected: int) -> None:
+    assert prose_metrics(text).get("sentence_count") == expected
+
+
+def test_multi_sentence_chinese_paragraph_does_not_extend_single_paragraph_run() -> None:
+    text = "她停住。风从门缝钻进来。\n\n他回头。\n\n灯灭了。"
+
+    metrics = prose_metrics(text)
+
+    assert metrics.get("sentence_count") == 4
+    assert metrics["one_sentence_paragraph_run"] == 2
 
 
 def test_analyzer_blocks_model_process_text_and_locates_segment() -> None:

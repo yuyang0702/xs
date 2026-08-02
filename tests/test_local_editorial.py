@@ -1,8 +1,19 @@
 from novel_flywheel.local_editorial import analyze_prose
+from novel_flywheel.prose_quality import prose_metrics
 
 
 def finding_ids(text: str) -> set[str]:
     return {item["rule_id"] for item in analyze_prose(text)["findings"]}
+
+
+def test_editorial_and_polish_metrics_share_sentence_boundaries() -> None:
+    text = "她推开门。屋里没人！\n\n“你来了？”他问。"
+
+    editorial = analyze_prose(text)["metrics"]
+    polish = prose_metrics(text)
+
+    assert editorial["sentence_count"] == 4
+    assert polish.get("sentence_count") == editorial["sentence_count"]
 
 
 def test_detects_checklist_judgment_with_exact_evidence_offsets() -> None:

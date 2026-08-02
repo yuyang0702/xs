@@ -1,6 +1,8 @@
 import re
 from collections import Counter
 
+from novel_flywheel.prose_quality import split_prose_sentences
+
 
 ANALYZER = "local-editorial"
 VERSION = "2"
@@ -107,11 +109,13 @@ def analyze_prose(text: str, baseline: dict | None = None) -> dict[str, object]:
 
 def _sentences(text: str) -> list[tuple[str, int, int]]:
     result = []
-    for match in _SENTENCE.finditer(text):
-        sentence = match.group().strip()
-        if sentence:
-            offset = match.start() + len(match.group()) - len(match.group().lstrip())
-            result.append((sentence, offset, offset + len(sentence)))
+    cursor = 0
+    for sentence in split_prose_sentences(text):
+        offset = text.find(sentence, cursor)
+        if offset < 0:
+            offset = cursor
+        result.append((sentence, offset, offset + len(sentence)))
+        cursor = offset + len(sentence)
     return result
 
 
