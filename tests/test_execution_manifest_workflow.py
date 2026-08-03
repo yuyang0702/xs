@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from novel_flywheel.db import Database
+from novel_flywheel.draft_split import DraftTaskContract
 from novel_flywheel.execution_manifest import (
     execution_manifest_sha256,
     parse_execution_manifest,
@@ -176,7 +177,7 @@ async def test_execution_manifest_repairs_owner_conflict_before_draft(tmp_path) 
             encoding="utf-8",
         )
     )
-    assert manifest.version == saved["version"] == 3
+    assert manifest.version == saved["version"] == 4
     assert manifest.repair_attempts == saved["repair_attempts"] == 1
     assert saved["status"] == "ready"
     assert saved["semantic_receipt"]["formal_plot_unchanged"] is True
@@ -318,3 +319,355 @@ async def test_semantic_failure_stops_after_minimal_and_full_segment_rebuild(tmp
     assert saved["repair_budgets"]["semantic_repairs"] == 2
     assert saved["repair_budgets"]["schema_repairs"] == 0
     assert saved["repair_budgets"]["integrity_repairs"] == 0
+
+
+@pytest.mark.asyncio
+async def test_formatted_receipt_evidence_is_bound_without_manifest_rebuild(
+    tmp_path,
+) -> None:
+    service, project, run_path, state = make_service(tmp_path)
+    calls = {"planning": 0, "review": 0}
+
+    async def fake_stage(*args, **kwargs):
+        stage = args[3]
+        prompt = args[5]
+        calls[stage] += 1
+        if stage == "planning":
+            return json.dumps(manifest_body(1), ensure_ascii=False)
+        receipt = json.loads(receipt_for_prompt(prompt))
+        receipt["beat_receipts"][0]["evidence"] = "审核模型复述的节拍证据"
+        receipt["segment_receipts"][0].update({
+            "evidence": "段末交接：\n- 核实身份的人已经出发",
+        })
+        return json.dumps(receipt, ensure_ascii=False)
+
+    service._stage = fake_stage
+    manifest = await service._ensure_short_execution_manifest(
+        "manifest-run", run_path, project, "constraints", 7, state,
+        "### 第 1 段：核实\n**段末交接**：核实身份的人已经出发",
+        {"core_goal": "查清误认", "ending": "核实身份的人已经出发"},
+        [{
+            "id": EVENT_ID, "order": 1, "label": "误认身份被核实",
+            "section": "第一章", "kind": "narrative",
+        }],
+        1,
+    )
+
+    assert manifest.status == "ready"
+    assert calls == {"planning": 1, "review": 1}
+    assert manifest.semantic_receipt["beat_receipts"][0]["evidence"] == (
+        "沈老夫人派人外出核实花穗身份"
+    )
+    assert manifest.semantic_receipt["segment_receipts"][0]["evidence"] == (
+        "**段末交接**：核实身份的人已经出发"
+    )
+    assert not any(
+        item["event_type"] == "planning_manifest_fragment_repair"
+        for item in service.db.list_run_events("manifest-run")
+    )
+
+
+@pytest.mark.asyncio
+async def test_unbound_receipt_exhaustion_preserves_content_without_rebuild(
+    tmp_path,
+) -> None:
+    service, project, run_path, state = make_service(tmp_path)
+    calls = {"planning": 0, "review": 0}
+
+    async def fake_stage(*args, **kwargs):
+        stage = args[3]
+        prompt = args[5]
+        calls[stage] += 1
+        if stage == "planning":
+            segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+            return json.dumps(manifest_body(segment), ensure_ascii=False)
+        receipt = json.loads(receipt_for_prompt(prompt))
+        if receipt["segment_receipts"][0]["segment"] == 2:
+            receipt["segment_receipts"][0].update({
+                "evidence": "权威资料中不存在的边界证据",
+            })
+        return json.dumps(receipt, ensure_ascii=False)
+
+    service._stage = fake_stage
+    with pytest.raises(ValueError, match="审核回执未通过"):
+        await service._ensure_short_execution_manifest(
+            "manifest-run", run_path, project, "constraints", 7, state,
+            (
+                "### 第 1 段：核实\n**段末交接**：核实身份的人已经出发\n\n"
+                "### 第 2 段：账房\n**段末交接**：花穗确认误认是人为安排"
+            ),
+            {"core_goal": "查清误认", "ending": "花穗确认误认是人为安排"},
+            [{
+                "id": EVENT_ID, "order": 1, "label": "误认身份被核实",
+                "section": "第一章", "kind": "narrative",
+            }],
+            2,
+        )
+
+    saved = json.loads(
+        (run_path / "outputs" / "short-execution-index.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert calls == {"planning": 2, "review": 4}
+    assert saved["content_status"] == "content_valid"
+    assert saved["receipt_status"] == "failed"
+    assert saved["repair_budgets"]["semantic_repairs"] == 0
+    assert len(saved["beats"]) == 2
+    assert [item["segment"] for item in saved["segments"]] == [1, 2]
+    events = service.db.list_run_events("manifest-run")
+    assert len([
+        item for item in events
+        if item["event_type"] == "planning_manifest_receipt_protocol_retry"
+    ]) == 2
+    assert any(
+        item["event_type"] == "planning_manifest_receipt_failed"
+        for item in events
+    )
+    assert not any(
+        item["event_type"] == "planning_manifest_fragment_repair"
+        for item in events
+    )
+
+
+@pytest.mark.asyncio
+async def test_semantic_repair_reentering_schema_failure_recovers_before_ready(
+    tmp_path,
+) -> None:
+    service, project, run_path, state = make_service(tmp_path)
+    calls = {"planning": 0, "review": 0}
+    initial_review_failed = False
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal initial_review_failed
+        stage = args[3]
+        prompt = args[5]
+        calls[stage] += 1
+        if stage == "review":
+            receipt = json.loads(receipt_for_prompt(prompt))
+            if not initial_review_failed:
+                initial_review_failed = True
+                receipt["beat_receipts"][0]["actor_action_valid"] = False
+            return json.dumps(receipt, ensure_ascii=False)
+
+        segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        body = manifest_body(segment)
+        if (
+            segment == 1
+            and "SEMANTIC REPAIR DIRECTIVE:" in prompt
+            and "LOCAL REPAIR ISSUES" not in prompt
+        ):
+            body["segments"][0]["exit_state"][0]["produced_by"] = (
+                "narrative_overview"
+            )
+        return json.dumps(body, ensure_ascii=False)
+
+    service._stage = fake_stage
+    manifest = await service._ensure_short_execution_manifest(
+        "manifest-run", run_path, project, "constraints", 7, state,
+        (
+            "### 第 1 段：核实\n段末交接：核实身份的人已经出发\n\n"
+            "### 第 2 段：账房\n段末交接：花穗确认误认是人为安排"
+        ),
+        {"core_goal": "查清误认", "ending": "花穗确认误认是人为安排"},
+        [{
+            "id": EVENT_ID, "order": 1, "label": "误认身份被核实",
+            "section": "第一章", "kind": "narrative",
+        }],
+        2,
+    )
+
+    saved = json.loads(
+        (run_path / "outputs" / "short-execution-index.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert manifest.status == saved["status"] == "ready"
+    assert saved["version"] == 4
+    assert saved["repair_attempts"] == 2
+    assert saved["segments"][0]["exit_state"][0]["produced_by"] == [
+        f"{EVENT_ID}/01",
+    ]
+    assert calls == {"planning": 4, "review": 3}
+    events = service.db.list_run_events("manifest-run")
+    assert any(
+        item["event_type"] == "planning_manifest_fragment_repair"
+        and item["metadata"].get("repair_mode") == "minimal_patch"
+        and item["metadata"].get("schema_repairs") == 1
+        for item in events
+    )
+    assert any(item["event_type"] == "planning_manifest_ready" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_draft_semantic_evidence_retry_keeps_prose_immutable(tmp_path) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    prose = "沈老夫人派人外出核实花穗身份，核实身份的人已经出发。"
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-01",
+        parent_task_id="manifest-run",
+        depth=0,
+        target_han=30,
+        event_ids=(EVENT_ID,),
+        scope="核实身份",
+        entry_state="沈老夫人决定核实身份",
+        exit_requirement="核实身份的人已经出发",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=(f"{EVENT_ID}/01",),
+        viewpoint="",
+        prohibited_future_beat_ids=(),
+    )
+    calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        evidence = "沈老夫人派人外出核实花穗身份"
+        exit_evidence = "核实身份的人已经出发"
+        payload = {
+            "authority_sha256": contract.authority_sha256,
+            "execution_manifest_sha256": contract.execution_manifest_sha256,
+            "task_id": contract.task_id,
+            "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+            "beat_receipts": [{
+                "beat_id": f"{EVENT_ID}/01",
+                "evidence": evidence,
+                "actor_action_valid": True,
+                "actor_action_evidence": evidence,
+                "state_valid": True,
+                "state_evidence": exit_evidence,
+                "scene_order_valid": True,
+                "scene_order_evidence": evidence,
+            }],
+            "outside_beat_ids": [],
+            "future_beat_ids": [],
+            "entry": {"satisfied": True, "evidence": evidence},
+            "exit": {"satisfied": True, "evidence": exit_evidence},
+            "causal_order_valid": True,
+            "causal_order_evidence": evidence,
+            "summary": "当前正文满足原子节拍合同。",
+        }
+        if calls == 1:
+            payload["beat_receipts"][0]["actor_action_evidence"] = (
+                "审核模型误写了正文中不存在的证据"
+            )
+        return json.dumps(payload, ensure_ascii=False)
+
+    service._stage = fake_stage
+    receipt = await service._verify_draft_semantic_node(
+        "manifest-run", run_path, project, "constraints", contract, prose, [],
+        suffix="-protocol", failure_stage="draft",
+    )
+
+    assert calls == 2
+    assert receipt["prose_sha256"] == hashlib.sha256(prose.encode("utf-8")).hexdigest()
+    events = service.db.list_run_events("manifest-run")
+    assert any(
+        item["event_type"] == "semantic_receipt_protocol_retry"
+        for item in events
+    )
+
+
+@pytest.mark.asyncio
+async def test_whole_draft_semantic_protocol_retry_keeps_draft_immutable(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    segments = [
+        "沈老夫人派人外出核实花穗身份，核实身份的人已经出发。",
+        "花穗查到二十两早已支出，确认误认是人为安排。",
+    ]
+    draft = "\n\n".join(segments)
+    authority_sha256 = "a" * 64
+    event_ids = [EVENT_ID, "EV-8E4BBA18"]
+    draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+    segment_sha256 = [
+        hashlib.sha256(segment.encode("utf-8")).hexdigest()
+        for segment in segments
+    ]
+    calls = 0
+    prompts: list[str] = []
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        prompts.append(args[5])
+        if calls == 1:
+            return "not json"
+        return json.dumps({
+            "authority_sha256": authority_sha256,
+            "draft_sha256": draft_sha256,
+            "segment_sha256": segment_sha256,
+            "event_ids": event_ids,
+            "missing_event_ids": [],
+            "duplicate_event_ids": [],
+            "out_of_order_event_ids": [],
+            "causal_order_valid": True,
+            "continuity_valid": True,
+            "ending_valid": True,
+            "commitments_valid": True,
+            "evidence": [{
+                "kind": "causal_transition",
+                "excerpt": "核实身份的人已经出发",
+            }, {
+                "kind": "ending",
+                "excerpt": "确认误认是人为安排",
+            }],
+            "summary": "整篇事件顺序、因果、连续性和结局均有正文证据。",
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    receipt = await service._verify_whole_draft_semantics(
+        "manifest-run", run_path, project, "constraints", authority_sha256,
+        draft, segments, event_ids, [{}, {}], failure_stage="draft",
+    )
+
+    assert calls == 2
+    assert receipt["draft_sha256"] == draft_sha256
+    assert receipt["segment_sha256"] == segment_sha256
+    assert draft in "\n".join(prompts)
+    assert "WHOLE RECEIPT PROTOCOL ISSUES" in prompts[1]
+    events = service.db.list_run_events("manifest-run")
+    retry = next(
+        item for item in events
+        if item["event_type"] == "whole_semantic_receipt_protocol_retry"
+    )
+    assert retry["metadata"]["draft_sha256"] == draft_sha256
+
+
+@pytest.mark.asyncio
+async def test_causal_chain_repair_reenters_json_and_semantic_validation(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    calls = 0
+    valid_chain = {
+        "core_goal": "查清误认",
+        "cycles": [{
+            "obstacle": "身份线索不足",
+            "effort": "核实来历",
+            "result": "找到支出记录",
+            "state_change": "误认开始显露人为痕迹",
+        }],
+        "ending": {"surface_goal": "查清误认"},
+        "covered_event_ids": [],
+    }
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls < 3:
+            return "not json"
+        return json.dumps(valid_chain, ensure_ascii=False)
+
+    service._stage = fake_stage
+    chain = await service._ensure_short_causal_chain(
+        "manifest-run", run_path, project, "constraints", "# 已验收规划", [], None,
+    )
+
+    assert calls == 3
+    assert chain == valid_chain
+    assert json.loads(
+        (run_path / "outputs" / "short-causal-chain.json").read_text(encoding="utf-8")
+    ) == valid_chain

@@ -9,9 +9,12 @@ import pytest
 
 from novel_flywheel.execution_manifest import (
     ShortExecutionManifest,
+    bind_execution_manifest_receipt_evidence,
     execution_manifest_issues,
+    execution_manifest_payload,
     execution_manifest_receipt_issues,
     execution_manifest_receipt_binding_issues,
+    execution_manifest_receipt_issues_are_protocol_only,
     execution_manifest_sha256,
     legacy_execution_index_requires_rebuild,
     merge_execution_manifest_fragments,
@@ -156,7 +159,11 @@ def test_v2_manifest_hash_omits_v3_optional_fields_for_saved_receipt_compatibili
             "presentation_order", "story_time", "timeline", "actor",
             "location", "viewpoint", "knowledge_delta", "relationship_delta",
         ):
-            beat.pop(field)
+                beat.pop(field)
+    for segment in old_payload["segments"]:
+        for assertion in segment["entry_state"] + segment["exit_state"]:
+            producers = assertion["produced_by"]
+            assertion["produced_by"] = producers[0] if producers else ""
     expected = hashlib.sha256(json.dumps(
         old_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
@@ -244,6 +251,65 @@ def test_current_v3_manifest_does_not_require_rebuild() -> None:
     assert legacy_execution_index_requires_rebuild(payload) is False
 
 
+def test_current_v4_manifest_does_not_require_rebuild() -> None:
+    payload = manifest_payload()
+    payload["version"] = 4
+    for segment in payload["segments"]:
+        for assertion in segment["exit_state"]:
+            assertion["produced_by"] = [assertion["produced_by"]]
+
+    assert legacy_execution_index_requires_rebuild(payload) is False
+
+
+def test_v3_scalar_producer_round_trip_is_idempotent_and_hash_stable() -> None:
+    payload = manifest_payload()
+    payload["version"] = 3
+    manifest = parse_execution_manifest(payload)
+
+    first = execution_manifest_payload(manifest)
+    reparsed = parse_execution_manifest(first)
+    second = execution_manifest_payload(reparsed)
+
+    assert first == second
+    assert execution_manifest_sha256(reparsed) == execution_manifest_sha256(manifest)
+    assert isinstance(first["segments"][0]["exit_state"][0]["produced_by"], str)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("EV-9D165428/01", ("EV-9D165428/01",)),
+        (
+            "EV-9D165428/01， EV-8E4BBA17/01",
+            ("EV-9D165428/01", "EV-8E4BBA17/01"),
+        ),
+        (
+            ["EV-9D165428/01", "EV-8E4BBA17/01"],
+            ("EV-9D165428/01", "EV-8E4BBA17/01"),
+        ),
+    ],
+)
+def test_v4_normalizes_single_list_and_delimited_multi_producers(
+    value: object, expected: tuple[str, ...],
+) -> None:
+    payload = manifest_payload()
+    payload["version"] = 4
+    payload["segments"][0]["exit_state"][0]["produced_by"] = value
+
+    assertion = parse_execution_manifest(payload).segments[0].exit_state[0]
+
+    assert assertion.produced_by == expected
+
+
+def test_v4_rejects_non_beat_producer_labels() -> None:
+    payload = manifest_payload()
+    payload["version"] = 4
+    payload["segments"][0]["exit_state"][0]["produced_by"] = "narrative_overview"
+
+    with pytest.raises(ValueError, match="must use EV-XXXXXXXX/NN"):
+        parse_execution_manifest(payload)
+
+
 def test_parser_rejects_duplicate_beat_ids_before_workflow_use() -> None:
     payload = manifest_payload()
     payload["beats"].append(copy.deepcopy(payload["beats"][0]))
@@ -314,6 +380,39 @@ def test_semantic_receipt_rejects_evidence_not_present_in_authority() -> None:
         validate_execution_manifest_receipt(
             parse_execution_manifest(payload), authority_text, receipt,
         )
+
+
+def test_runtime_binds_beat_and_formatted_segment_evidence_to_exact_authority() -> None:
+    payload = manifest_payload()
+    manifest = parse_execution_manifest(payload)
+    exact_boundary = "**段末交接**：花穗确认误认是人为安排"
+    authority_text = manifest_authority_text(payload) + "\n" + exact_boundary
+    receipt = semantic_receipt(payload, authority_text)
+    receipt["beat_receipts"][0]["evidence"] = "审核模型改写过的节拍证据"
+    receipt["segment_receipts"][0].update({
+        "evidence": "段末交接：\n- 花穗确认误认是人为安排",
+    })
+
+    bound = bind_execution_manifest_receipt_evidence(
+        manifest, authority_text, receipt,
+        segment_evidence_candidates={1: {"SEG-01-E001": exact_boundary}},
+    )
+
+    assert isinstance(bound, dict)
+    assert bound["beat_receipts"][0]["evidence"] == (
+        manifest.beats[0].source_evidence
+    )
+    assert bound["segment_receipts"][0]["evidence"] == exact_boundary
+    assert execution_manifest_receipt_issues(manifest, authority_text, bound) == []
+
+
+def test_receipt_protocol_classifier_separates_binding_from_semantic_failure() -> None:
+    assert execution_manifest_receipt_issues_are_protocol_only([{
+        "code": "receipt_segment_evidence_unbound",
+    }]) is True
+    assert execution_manifest_receipt_issues_are_protocol_only([{
+        "code": "receipt_beat_actor_action",
+    }]) is False
 
 
 def test_semantic_receipt_rejects_stale_manifest_hash() -> None:
@@ -398,6 +497,27 @@ def test_semantic_receipt_reports_hash_actor_boundary_and_plot_errors_together()
     } <= codes
 
 
+def test_semantic_receipt_preserves_field_level_failure_diagnostics() -> None:
+    payload = manifest_payload()
+    authority_text = manifest_authority_text(payload)
+    receipt = semantic_receipt(payload, authority_text)
+    receipt["beat_receipts"][0].update({
+        "actor_action_valid": False,
+        "invalid_fields": ["location", "knowledge_delta"],
+        "reason": "地点和人物判断没有正式资料依据",
+    })
+
+    issue = next(
+        item for item in execution_manifest_receipt_issues(
+            parse_execution_manifest(payload), authority_text, receipt,
+        )
+        if item["code"] == "receipt_beat_actor_action"
+    )
+
+    assert issue["invalid_fields"] == ["location", "knowledge_delta"]
+    assert issue["reason"] == "地点和人物判断没有正式资料依据"
+
+
 def test_fragment_merge_rebinds_global_ids_order_handoffs_and_future_bans() -> None:
     first_payload = manifest_payload()
     first_payload["version"] = 3
@@ -416,7 +536,7 @@ def test_fragment_merge_rebinds_global_ids_order_handoffs_and_future_bans() -> N
     second_payload["segments"] = [copy.deepcopy(second_payload["segments"][1])]
     first_fragment = parse_execution_manifest(first_payload)
     previous_exit_sha256 = state_assertions_sha256(
-        first_fragment.segments[0].exit_state,
+        first_fragment.segments[0].exit_state, version=3,
     )
     second_payload["segments"][0].update({
         "beat_ids": ["EV-8E4BBA17/01"],
@@ -435,7 +555,31 @@ def test_fragment_merge_rebinds_global_ids_order_handoffs_and_future_bans() -> N
     assert [beat.order for beat in merged.beats] == [1, 2, 3]
     assert [beat.presentation_order for beat in merged.beats] == [1, 2, 3]
     assert merged.segments[0].prohibited_future_beat_ids == ("EV-8E4BBA17/02",)
-    assert merged.segments[1].previous_exit_sha256 == previous_exit_sha256
+    assert merged.version == 4
+    assert merged.segments[1].previous_exit_sha256 == state_assertions_sha256(
+        merged.segments[0].exit_state, version=4,
+    )
+
+
+def test_fragment_merge_preserves_and_rebinds_every_composite_producer() -> None:
+    payload = manifest_payload()
+    payload["version"] = 4
+    payload["status"] = "fragment_ready"
+    payload["beats"] = payload["beats"][:2]
+    payload["segments"] = payload["segments"][:1]
+    payload["segments"][0]["prohibited_future_beat_ids"] = []
+    payload["segments"][0]["exit_state"][0]["produced_by"] = [
+        "EV-9D165428/01", "EV-8E4BBA17/01",
+    ]
+
+    merged = merge_execution_manifest_fragments(
+        [parse_execution_manifest(payload)],
+        authority_hashes=AUTHORITY, segment_count=1,
+    )
+
+    assert merged.segments[0].exit_state[0].produced_by == (
+        "EV-9D165428/01", "EV-8E4BBA17/01",
+    )
 
 
 def test_v3_optional_contract_supports_nonlinear_nonhuman_execution() -> None:

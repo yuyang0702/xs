@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import re
+import unicodedata
 from typing import Any
 
 
@@ -35,7 +36,7 @@ class AtomicBeat:
 @dataclass(frozen=True)
 class StateAssertion:
     state: str
-    produced_by: str = ""
+    produced_by: tuple[str, ...] = ()
     inherited_from: str = ""
 
 
@@ -117,6 +118,33 @@ def _event_id(value: object, field: str) -> str:
     return result
 
 
+def _producer_ids(value: object, field: str) -> tuple[str, ...]:
+    """Normalize one or more beat producers without dropping composite causality."""
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        normalized = unicodedata.normalize("NFKC", value).strip()
+        if not normalized:
+            return ()
+        values: list[object] = re.split(r"[,;、]+", normalized)
+    elif isinstance(value, (list, tuple)):
+        values = list(value)
+        if not values:
+            return ()
+    else:
+        raise ValueError(f"{field} must be a beat ID or a list of beat IDs")
+
+    result: list[str] = []
+    for index, item in enumerate(values):
+        normalized = unicodedata.normalize("NFKC", str(item or "")).strip().upper()
+        if not normalized:
+            raise ValueError(f"{field}[{index}] must not be empty")
+        beat_id = _beat_id(normalized, f"{field}[{index}]")
+        if beat_id not in result:
+            result.append(beat_id)
+    return tuple(result)
+
+
 def _state_assertions(value: object, field: str) -> tuple[StateAssertion, ...]:
     if not isinstance(value, list) or not value:
         raise ValueError(f"{field} must be a non-empty list")
@@ -124,12 +152,11 @@ def _state_assertions(value: object, field: str) -> tuple[StateAssertion, ...]:
     for index, item in enumerate(value):
         if not isinstance(item, dict):
             raise ValueError(f"{field}[{index}] must be an object")
-        produced_by = str(item.get("produced_by") or "").strip().upper()
-        if produced_by:
-            produced_by = _beat_id(produced_by, f"{field}[{index}].produced_by")
         assertions.append(StateAssertion(
             state=_text(item.get("state"), f"{field}[{index}].state"),
-            produced_by=produced_by,
+            produced_by=_producer_ids(
+                item.get("produced_by"), f"{field}[{index}].produced_by",
+            ),
             inherited_from=str(item.get("inherited_from") or "").strip(),
         ))
     return tuple(assertions)
@@ -139,8 +166,8 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
     if not isinstance(value, dict):
         raise ValueError("execution manifest must be a JSON object")
     version = value.get("version")
-    if version not in {2, 3}:
-        raise ValueError("execution manifest version must be 2 or 3")
+    if version not in {2, 3, 4}:
+        raise ValueError("execution manifest version must be 2, 3 or 4")
     raw_beats = value.get("beats")
     raw_segments = value.get("segments")
     if not isinstance(raw_beats, list) or not raw_beats:
@@ -258,9 +285,42 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
     )
 
 
-def execution_manifest_sha256(manifest: ShortExecutionManifest) -> str:
+def _state_assertion_payload(assertion: StateAssertion, *, version: int) -> dict[str, Any]:
+    produced_by: object
+    if version >= 4:
+        produced_by = list(assertion.produced_by)
+    else:
+        produced_by = (
+            assertion.produced_by[0] if len(assertion.produced_by) == 1
+            else ", ".join(assertion.produced_by)
+        )
+    return {
+        "state": assertion.state,
+        "produced_by": produced_by,
+        "inherited_from": assertion.inherited_from,
+    }
+
+
+def _json_compatible(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _json_compatible(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_compatible(item) for item in value]
+    return value
+
+
+def execution_manifest_payload(manifest: ShortExecutionManifest) -> dict[str, Any]:
+    """Serialize manifests in their version-specific canonical representation."""
     payload = asdict(manifest)
-    payload.pop("semantic_receipt", None)
+    for raw_segment, segment in zip(payload.get("segments", []), manifest.segments):
+        raw_segment["entry_state"] = [
+            _state_assertion_payload(item, version=manifest.version)
+            for item in segment.entry_state
+        ]
+        raw_segment["exit_state"] = [
+            _state_assertion_payload(item, version=manifest.version)
+            for item in segment.exit_state
+        ]
     if manifest.version == 2:
         for beat in payload.get("beats", []):
             for field in (
@@ -268,15 +328,23 @@ def execution_manifest_sha256(manifest: ShortExecutionManifest) -> str:
                 "location", "viewpoint", "knowledge_delta", "relationship_delta",
             ):
                 beat.pop(field, None)
+    return _json_compatible(payload)
+
+
+def execution_manifest_sha256(manifest: ShortExecutionManifest) -> str:
+    payload = execution_manifest_payload(manifest)
+    payload.pop("semantic_receipt", None)
     encoded = json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
-def state_assertions_sha256(assertions: tuple[StateAssertion, ...]) -> str:
+def state_assertions_sha256(
+    assertions: tuple[StateAssertion, ...], *, version: int = 3,
+) -> str:
     encoded = json.dumps(
-        [asdict(item) for item in assertions],
+        [_state_assertion_payload(item, version=version) for item in assertions],
         ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -293,10 +361,12 @@ def bind_previous_exit_hashes(value: dict[str, Any]) -> dict[str, Any]:
         (item for item in segments if isinstance(item, dict)),
         key=lambda item: int(item.get("segment") or 0),
     )
+    version = int(value.get("version") or 3)
     previous_exit: tuple[StateAssertion, ...] | None = None
     for item in ordered:
         item["previous_exit_sha256"] = (
-            state_assertions_sha256(previous_exit) if previous_exit else ""
+            state_assertions_sha256(previous_exit, version=version)
+            if previous_exit else ""
         )
         previous_exit = _state_assertions(
             item.get("exit_state"), "segments.exit_state",
@@ -310,6 +380,120 @@ def _bound_evidence(authority_text: str, value: object, field: str) -> str:
     if not evidence or evidence not in authority_text:
         raise ValueError(f"execution manifest {field} evidence is not bound to authority")
     return evidence
+
+
+EXECUTION_MANIFEST_RECEIPT_PROTOCOL_CODES = frozenset({
+    "receipt_schema",
+    "receipt_authority_hash",
+    "receipt_manifest_hash",
+    "receipt_beat_schema",
+    "receipt_beat_coverage",
+    "receipt_beat_evidence_unbound",
+    "receipt_beat_evidence_mismatch",
+    "receipt_segment_schema",
+    "receipt_segment_coverage",
+    "receipt_segment_evidence_unbound",
+    "receipt_summary",
+})
+
+
+def execution_manifest_receipt_issues_are_protocol_only(
+    issues: list[dict],
+) -> bool:
+    """Return whether failures belong only to the review receipt protocol."""
+    return bool(issues) and all(
+        str(item.get("code") or "") in EXECUTION_MANIFEST_RECEIPT_PROTOCOL_CODES
+        for item in issues
+    )
+
+
+def _evidence_match_key(value: object) -> str:
+    """Normalize presentation-only variants for evidence selection."""
+    normalized = unicodedata.normalize("NFKC", str(value or ""))
+    normalized = normalized.replace("\r\n", "\n").replace("\r", "\n")
+    lines: list[str] = []
+    for raw_line in normalized.splitlines():
+        line = raw_line.strip()
+        line = re.sub(r"^(?:#{1,6}\s+|>\s*)", "", line)
+        line = re.sub(r"^(?:[-+]\s+|\d+[.)、]\s*)", "", line)
+        line = line.replace("**", "").replace("__", "").replace("`", "")
+        line = re.sub(r"\s+", "", line)
+        if line:
+            lines.append(line)
+    return "".join(lines)
+
+
+def bind_execution_manifest_receipt_evidence(
+    manifest: ShortExecutionManifest,
+    authority_text: str,
+    receipt: object,
+    *,
+    segment_evidence_candidates: dict[int, dict[str, str]] | None = None,
+) -> object:
+    """Bind receipt evidence to immutable Runtime-owned authority excerpts.
+
+    Beat evidence is never model-authored: the Runtime copies the exact source
+    evidence already validated on the manifest. Segment evidence may select a
+    Runtime-provided candidate by ID. For backward compatibility, a formatted
+    model excerpt can be mapped to one exact candidate when the normalized text
+    contains that candidate without changing narrative content.
+    """
+    if not isinstance(receipt, dict):
+        return receipt
+    result = dict(receipt)
+    beat_by_id = {beat.beat_id: beat for beat in manifest.beats}
+    raw_beat_receipts = receipt.get("beat_receipts")
+    if isinstance(raw_beat_receipts, list):
+        bound_beats: list[object] = []
+        for raw_item in raw_beat_receipts:
+            if not isinstance(raw_item, dict):
+                bound_beats.append(raw_item)
+                continue
+            item = dict(raw_item)
+            beat_id = str(item.get("beat_id") or "").strip().upper()
+            beat = beat_by_id.get(beat_id)
+            if beat is not None:
+                item["beat_id"] = beat.beat_id
+                item["evidence"] = beat.source_evidence
+            bound_beats.append(item)
+        result["beat_receipts"] = bound_beats
+
+    raw_segment_receipts = receipt.get("segment_receipts")
+    if isinstance(raw_segment_receipts, list):
+        bound_segments: list[object] = []
+        candidate_groups = segment_evidence_candidates or {}
+        for raw_item in raw_segment_receipts:
+            if not isinstance(raw_item, dict):
+                bound_segments.append(raw_item)
+                continue
+            item = dict(raw_item)
+            try:
+                segment_number = int(item.get("segment"))
+            except (TypeError, ValueError):
+                bound_segments.append(item)
+                continue
+            candidates = candidate_groups.get(segment_number, {})
+            evidence_id = str(item.get("evidence_id") or "").strip()
+            selected = candidates.get(evidence_id, "")
+            evidence = str(item.get("evidence") or "").strip()
+            if not selected and evidence and evidence in authority_text:
+                selected = evidence
+            if not selected and evidence and candidates:
+                evidence_key = _evidence_match_key(evidence)
+                matches = [
+                    candidate for candidate in candidates.values()
+                    if (
+                        (candidate_key := _evidence_match_key(candidate))
+                        and candidate_key in evidence_key
+                    )
+                ]
+                if matches:
+                    selected = max(matches, key=lambda item: len(_evidence_match_key(item)))
+            if selected:
+                item["evidence"] = selected
+            bound_segments.append(item)
+        result["segment_receipts"] = bound_segments
+    return result
 
 
 def validate_execution_manifest_receipt(
@@ -405,11 +589,29 @@ def execution_manifest_receipt_issues(
         item = receipts_by_id.get(beat.beat_id)
         if item is None:
             continue
-        if item.get("actor_action_valid") is not True:
+        raw_invalid_fields = item.get("invalid_fields")
+        invalid_fields = (
+            [str(field).strip() for field in raw_invalid_fields if str(field).strip()]
+            if isinstance(raw_invalid_fields, list) else []
+        )
+        field_verdicts = item.get("field_verdicts")
+        if isinstance(field_verdicts, dict):
+            invalid_fields.extend(
+                str(field).strip() for field, valid in field_verdicts.items()
+                if valid is not True and str(field).strip()
+            )
+        invalid_fields = list(dict.fromkeys(invalid_fields))
+        if item.get("actor_action_valid") is not True or invalid_fields:
+            metadata: dict[str, object] = {"beat_id": beat.beat_id}
+            if invalid_fields:
+                metadata["invalid_fields"] = invalid_fields
+            reason = str(item.get("reason") or "").strip()
+            if reason:
+                metadata["reason"] = reason[:800]
             issues.append(_issue(
                 "receipt_beat_actor_action",
                 f"execution manifest beat actor/action is invalid: {beat.beat_id}",
-                beat_id=beat.beat_id,
+                **metadata,
             ))
         if beat.source_evidence not in authority_text:
             issues.append(_issue(
@@ -675,9 +877,8 @@ def execution_manifest_issues(
         owned = set(segment.beat_ids)
         entry_states = {assertion.state for assertion in segment.entry_state}
         for assertion in segment.exit_state:
-            producer = assertion.produced_by
-            producer_beat = beat_by_id.get(producer) if producer else None
-            if not producer:
+            producers = assertion.produced_by
+            if not producers:
                 if not assertion.inherited_from:
                     issues.append(_issue(
                         "exit_producer_missing",
@@ -692,16 +893,18 @@ def execution_manifest_issues(
                         segment=segment.segment,
                         state=assertion.state,
                     ))
-            if producer and (
-                producer not in owned
-                or producer_beat is None
-                or producer_beat.owner_segment != segment.segment
-            ):
-                issues.append(_issue(
-                    "exit_producer_not_owned",
-                    f"第 {segment.segment} 段出口状态由其他段负责的节拍产生",
-                    segment=segment.segment, beat_id=producer,
-                ))
+            for producer in producers:
+                producer_beat = beat_by_id.get(producer)
+                if (
+                    producer not in owned
+                    or producer_beat is None
+                    or producer_beat.owner_segment != segment.segment
+                ):
+                    issues.append(_issue(
+                        "exit_producer_not_owned",
+                        f"第 {segment.segment} 段出口状态由其他段负责的节拍产生",
+                        segment=segment.segment, beat_id=producer,
+                    ))
         prohibited = set(segment.prohibited_future_beat_ids)
         expected_future = tuple(
             beat.beat_id
@@ -740,7 +943,9 @@ def execution_manifest_issues(
         ))
 
     for previous, current in zip(segments, segments[1:]):
-        expected_previous_hash = state_assertions_sha256(previous.exit_state)
+        expected_previous_hash = state_assertions_sha256(
+            previous.exit_state, version=manifest.version,
+        )
         if current.previous_exit_sha256 != expected_previous_hash:
             issues.append(_issue(
                 "previous_exit_hash_mismatch",
@@ -857,7 +1062,8 @@ def execution_manifest_fragment_issues(
     entry_states = {assertion.state for assertion in segment.entry_state}
     previous_states = {assertion.state for assertion in previous_exit_state}
     expected_previous_hash = (
-        state_assertions_sha256(previous_exit_state) if previous_exit_state else ""
+        state_assertions_sha256(previous_exit_state, version=manifest.version)
+        if previous_exit_state else ""
     )
     if segment.previous_exit_sha256 != expected_previous_hash:
         issues.append(_issue(
@@ -873,8 +1079,8 @@ def execution_manifest_fragment_issues(
             missing_states=sorted(previous_states - entry_states),
         ))
     for assertion in segment.exit_state:
-        producer = assertion.produced_by
-        if not producer:
+        producers = assertion.produced_by
+        if not producers:
             if not assertion.inherited_from:
                 issues.append(_issue(
                     "exit_producer_missing",
@@ -887,12 +1093,13 @@ def execution_manifest_fragment_issues(
                     "继承的出口状态必须已经存在于当前段入口状态",
                     segment=owner_segment, state=assertion.state,
                 ))
-        elif producer not in owned or producer not in beat_by_id:
-            issues.append(_issue(
-                "exit_producer_not_owned",
-                f"第 {owner_segment} 段出口状态由其他段负责的节拍产生",
-                segment=owner_segment, beat_id=producer,
-            ))
+        for producer in producers:
+            if producer not in owned or producer not in beat_by_id:
+                issues.append(_issue(
+                    "exit_producer_not_owned",
+                    f"第 {owner_segment} 段出口状态由其他段负责的节拍产生",
+                    segment=owner_segment, beat_id=producer,
+                ))
     return issues
 
 
@@ -936,13 +1143,17 @@ def merge_execution_manifest_fragments(
             ))
         entry_state = tuple(replace(
             assertion,
-            produced_by=previous_id_map.get(
-                assertion.produced_by, assertion.produced_by,
+            produced_by=tuple(
+                previous_id_map.get(producer, producer)
+                for producer in assertion.produced_by
             ),
         ) for assertion in segment.entry_state)
         exit_state = tuple(replace(
             assertion,
-            produced_by=id_map.get(assertion.produced_by, assertion.produced_by),
+            produced_by=tuple(
+                id_map.get(producer, producer)
+                for producer in assertion.produced_by
+            ),
         ) for assertion in segment.exit_state)
         segment_rows.append((
             segment.segment, entry_state, exit_state, current_ids,
@@ -957,7 +1168,8 @@ def merge_execution_manifest_fragments(
             entry_state=entry_state,
             exit_state=exit_state,
             previous_exit_sha256=(
-                state_assertions_sha256(previous_exit) if previous_exit else ""
+                state_assertions_sha256(previous_exit, version=4)
+                if previous_exit else ""
             ),
             prohibited_future_beat_ids=tuple(
                 beat.beat_id for beat in beats if beat.owner_segment > number
@@ -965,7 +1177,7 @@ def merge_execution_manifest_fragments(
         ))
         previous_exit = exit_state
     return ShortExecutionManifest(
-        version=3,
+        version=4,
         status="ready",
         authority_sha256=authority_hashes["authority_sha256"],
         outline_sha256=authority_hashes["outline_sha256"],
@@ -981,7 +1193,7 @@ def merge_execution_manifest_fragments(
 def legacy_execution_index_requires_rebuild(value: object) -> bool:
     return not (
         isinstance(value, dict)
-        and value.get("version") == 3
+        and value.get("version") in {3, 4}
         and isinstance(value.get("beats"), list)
         and bool(value.get("beats"))
         and isinstance(value.get("segments"), list)

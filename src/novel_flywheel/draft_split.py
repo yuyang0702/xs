@@ -142,7 +142,7 @@ def semantic_receipt_issues(
         not isinstance(item, dict) for item in evidence_receipts
     ):
         add(
-            "beat_evidence" if atomic else "event_evidence",
+            "beat_receipt_schema" if atomic else "event_receipt_schema",
             f"semantic receipt {receipt_field} evidence is invalid",
         )
     else:
@@ -339,6 +339,61 @@ def validate_semantic_receipt(
     }
 
 
+def whole_draft_receipt_issues(
+    authority_sha256: str,
+    draft: str,
+    segments: list[str],
+    event_ids: list[str],
+    receipt: object,
+) -> list[dict]:
+    """Separate reviewer protocol defects from actual whole-story failures."""
+    issues: list[dict] = []
+
+    def add(code: str, message: str) -> None:
+        issues.append({"code": code, "message": message})
+
+    if not isinstance(receipt, dict):
+        return [{
+            "code": "receipt_schema",
+            "message": "whole draft receipt must be a JSON object",
+        }]
+    if receipt.get("authority_sha256") != authority_sha256:
+        add("authority_hash", "whole draft authority hash is stale")
+    draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+    if receipt.get("draft_sha256") != draft_sha256:
+        add("draft_hash", "whole draft hash is stale")
+    segment_sha256 = [
+        hashlib.sha256(segment.encode("utf-8")).hexdigest() for segment in segments
+    ]
+    if receipt.get("segment_sha256") != segment_sha256:
+        add("segment_manifest", "whole draft segment manifest is incomplete")
+    if receipt.get("event_ids") != event_ids:
+        add("event_manifest", "whole draft event manifest is incomplete")
+    for field in ("missing_event_ids", "duplicate_event_ids", "out_of_order_event_ids"):
+        if receipt.get(field) != []:
+            add(field, f"whole draft {field} is not empty")
+    for field in (
+        "causal_order_valid", "continuity_valid", "ending_valid", "commitments_valid",
+    ):
+        if receipt.get(field) is not True:
+            add(field, f"whole draft {field} is not satisfied")
+    evidence = receipt.get("evidence")
+    if not isinstance(evidence, list) or not evidence:
+        add("evidence_schema", "whole draft evidence is missing")
+        evidence = []
+    for item in evidence:
+        if not isinstance(item, dict):
+            add("evidence_schema", "whole draft evidence is invalid")
+            continue
+        excerpt = str(item.get("excerpt") or "").strip()
+        if not excerpt or excerpt not in draft:
+            add("evidence_unbound", "whole draft evidence is not bound to prose")
+    summary = str(receipt.get("summary") or "").strip()
+    if not summary:
+        add("missing_summary", "whole draft summary is missing")
+    return issues
+
+
 def validate_whole_draft_receipt(
     authority_sha256: str,
     draft: str,
@@ -347,44 +402,26 @@ def validate_whole_draft_receipt(
     receipt: object,
 ) -> dict:
     """Fail closed unless a global verdict covers exact segment and event manifests."""
-    if not isinstance(receipt, dict):
-        raise ValueError("whole draft receipt must be a JSON object")
-    if receipt.get("authority_sha256") != authority_sha256:
-        raise ValueError("whole draft authority hash is stale")
+    issues = whole_draft_receipt_issues(
+        authority_sha256, draft, segments, event_ids, receipt,
+    )
+    if issues:
+        raise ValueError("; ".join(item["message"] for item in issues))
+    assert isinstance(receipt, dict)
     draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
-    if receipt.get("draft_sha256") != draft_sha256:
-        raise ValueError("whole draft hash is stale")
     segment_sha256 = [
         hashlib.sha256(segment.encode("utf-8")).hexdigest() for segment in segments
     ]
-    if receipt.get("segment_sha256") != segment_sha256:
-        raise ValueError("whole draft segment manifest is incomplete")
-    if receipt.get("event_ids") != event_ids:
-        raise ValueError("whole draft event manifest is incomplete")
-    for field in ("missing_event_ids", "duplicate_event_ids", "out_of_order_event_ids"):
-        if receipt.get(field) != []:
-            raise ValueError(f"whole draft {field} is not empty")
-    for field in (
-        "causal_order_valid", "continuity_valid", "ending_valid", "commitments_valid",
-    ):
-        if receipt.get(field) is not True:
-            raise ValueError(f"whole draft {field} is not satisfied")
-    evidence = receipt.get("evidence")
-    if not isinstance(evidence, list) or not evidence:
-        raise ValueError("whole draft evidence is missing")
-    normalized_evidence = []
-    for item in evidence:
-        if not isinstance(item, dict):
-            raise ValueError("whole draft evidence is invalid")
-        normalized_evidence.append({
+    normalized_evidence = [
+        {
             "kind": str(item.get("kind") or "global")[:80],
             "excerpt": _exact_prose_evidence(
                 draft, item.get("excerpt"), "whole draft",
             ),
-        })
+        }
+        for item in receipt["evidence"]
+    ]
     summary = str(receipt.get("summary") or "").strip()
-    if not summary:
-        raise ValueError("whole draft summary is missing")
     return {
         **receipt,
         "draft_sha256": draft_sha256,
