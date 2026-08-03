@@ -10,7 +10,7 @@ from typing import Any
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.model_output import canonical_model_label, parse_json_object
 from novel_flywheel.narrative_attraction import (
     compact_attraction_guidance,
     local_attraction_candidates,
@@ -33,6 +33,20 @@ STYLE_RULE_FIELDS = {
     "viewpoint", "narrative_distance", "sentence_rhythm", "paragraph_rhythm",
     "dialogue", "psychology", "action_sensation", "professional_detail",
     "forbidden_patterns",
+}
+STYLE_RULE_FIELD_ALIASES = {
+    **{field: field for field in STYLE_RULE_FIELDS},
+    "pov": "viewpoint", "point_of_view": "viewpoint", "视角": "viewpoint",
+    "叙事视角": "viewpoint", "distance": "narrative_distance",
+    "叙事距离": "narrative_distance", "sentence_cadence": "sentence_rhythm",
+    "句式节奏": "sentence_rhythm", "句子节奏": "sentence_rhythm",
+    "paragraph_cadence": "paragraph_rhythm", "段落节奏": "paragraph_rhythm",
+    "对话": "dialogue", "对白": "dialogue", "心理": "psychology",
+    "心理描写": "psychology", "action_and_sensation": "action_sensation",
+    "动作感官": "action_sensation", "动作与感官": "action_sensation",
+    "technical_detail": "professional_detail", "专业细节": "professional_detail",
+    "avoid_patterns": "forbidden_patterns", "禁用模式": "forbidden_patterns",
+    "应避免模式": "forbidden_patterns",
 }
 STYLE_SOURCE_TYPES = {"reference_work", "popular_sample"}
 OUTLINE_PROJECT_FIELDS = (
@@ -1853,7 +1867,9 @@ class LearningSystem:
         missing = [key for key in WINDOW_RESULT_FIELDS if not isinstance(value.get(key), list)]
         if missing:
             raise ValueError("窗口分析缺少列表字段：" + "、".join(missing))
+        unrecognized_style_evidence = []
         for key in WINDOW_RESULT_FIELDS:
+            accepted_items = []
             for item in value[key]:
                 if not isinstance(item, dict):
                     raise ValueError(f"窗口分析字段 {key} 必须只包含对象")
@@ -1863,8 +1879,22 @@ class LearningSystem:
                 required = [name for name in required_fields if item.get(name) is None]
                 if required:
                     raise ValueError(f"窗口分析字段 {key} 的项目缺少：" + "、".join(required))
-                if key == "style_evidence" and item.get("field") not in STYLE_RULE_FIELDS:
-                    raise ValueError("窗口分析的文笔类别无法识别")
+                if key == "style_evidence":
+                    raw_field = item.get("field")
+                    field = canonical_model_label(
+                        raw_field, STYLE_RULE_FIELD_ALIASES,
+                    )
+                    if field is None:
+                        unrecognized_style_evidence.append(dict(item))
+                        continue
+                    item = dict(item)
+                    item["field"] = field
+                    if str(raw_field) != field:
+                        item["raw_field"] = raw_field
+                accepted_items.append(item)
+            value[key] = accepted_items
+        if unrecognized_style_evidence:
+            value["unrecognized_style_evidence"] = unrecognized_style_evidence
         return value
 
     @staticmethod
@@ -1959,13 +1989,23 @@ class LearningSystem:
             if not isinstance(style_profile.get("uncertainties"), list):
                 raise ValueError("文笔候选缺少不确定项列表")
             valid_rules = []
+            unrecognized_rules = []
             for rule in style_profile["rules"]:
                 if not isinstance(rule, dict):
                     continue
-                if rule.get("field") not in STYLE_RULE_FIELDS:
+                raw_field = rule.get("field")
+                field = canonical_model_label(
+                    raw_field, STYLE_RULE_FIELD_ALIASES,
+                )
+                if field is None:
+                    unrecognized_rules.append(dict(rule))
                     continue
                 if not str(rule.get("rule") or "").strip():
                     continue
+                rule = dict(rule)
+                rule["field"] = field
+                if str(raw_field) != field:
+                    rule["raw_field"] = raw_field
                 windows = rule.get("supporting_windows")
                 if not isinstance(windows, list) or any(
                     not isinstance(number, int) or number < 1 for number in windows
@@ -1974,6 +2014,8 @@ class LearningSystem:
                 rule["supporting_windows"] = windows
                 valid_rules.append(rule)
             style_profile["rules"] = valid_rules[:4]
+            if unrecognized_rules:
+                style_profile["unrecognized_rules"] = unrecognized_rules
         attraction = value["attraction_map"]
         if attraction:
             missing = [key for key in (

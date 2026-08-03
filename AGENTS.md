@@ -19,6 +19,14 @@
 - A parser change is incomplete without table-driven tests for the canonical form, at least two realistic variants, malformed and ambiguous input that fail closed, and a regression fixture or minimal reproduction for any production failure that prompted the change.
 - Update `docs/maintenance.md` whenever this compatibility contract gains a new accepted representation or changes failure behavior.
 
+## Generated Semantic Metadata Authority Gate
+
+- Every generated field MUST be classified before validation as descriptive metadata, a machine-control field, or a narrative invariant. A free-form category, label, dimension, reason, evidence kind, or diagnostic phrase is descriptive metadata and MUST NOT gain blocking authority merely because it resembles an enum.
+- Preserve descriptive metadata losslessly as raw values. When useful, also store recognized canonical values and unrecognized values separately. Unknown Unicode, Chinese, English, genre-specific, or provider-specific descriptions MUST remain auditable and MUST NOT trigger plan, draft, polish, or revision regeneration.
+- Runtime derives authorization and severity from stable authority: hashes, ordered IDs, exact Runtime-owned evidence, deterministic coverage, and explicit narrative invariants. Model classifications and descriptive labels are diagnostic suggestions only. If descriptions contradict complete invariant verdicts, retry or adjudicate only the immutable receipt; do not mutate prose or consume semantic-repair budget.
+- Machine-control fields such as patch operations, repair kinds, review decisions, and deterministic check kinds remain closed for safety. Normalize documented aliases at one boundary, preserve the raw control label when it differs, and retry only the machine contract when an unknown or malformed control remains. Never guess an unsafe operation from free prose and never turn a control-protocol defect into a narrative rewrite.
+- Parser regression coverage MUST include arbitrary unknown Unicode descriptions, known aliases in at least two languages where applicable, a descriptor/invariant contradiction, a real production-shaped failure, normalization idempotence, and successful continuation through the next authoritative boundary.
+
 ## Story-Wide Narrative Integrity Gate
 
 - Every workflow, retry, fallback, resume, parser repair, and context-compaction change MUST preserve story-wide causality, character and knowledge state, timeline order, relationship progression, setup/payoff coverage, and the confirmed ending. Passing a local format check is never sufficient when the change can affect downstream narrative logic.

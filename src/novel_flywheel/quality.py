@@ -3,6 +3,7 @@ import hashlib
 import json
 
 from novel_flywheel.context_policy import estimate_input_tokens
+from novel_flywheel.model_output import canonical_model_label
 
 
 WEIGHTS = {"commercial": 0.45, "story": 0.35, "prose": 0.20}
@@ -25,6 +26,14 @@ ALLOWED_ISSUE_STATUSES = {
 }
 LEGACY_ISSUE_STATUS_MAP = {
     "closed": "resolved", "open": "unresolved", "not_found": "unresolved",
+}
+REVIEW_DECISION_ALIASES = {
+    "pass": "pass", "passed": "pass", "approve": "pass",
+    "通过": "pass", "合格": "pass", "无需修改": "pass",
+    "revise": "revise", "revision": "revise", "needs_revision": "revise",
+    "修改": "revise", "需修改": "revise", "定向修改": "revise",
+    "rewrite": "rewrite", "rebuild": "rewrite", "major_rewrite": "rewrite",
+    "重写": "rewrite", "整体重写": "rewrite", "结构重写": "rewrite",
 }
 
 
@@ -364,10 +373,10 @@ def normalize_review(value: dict) -> dict:
     result["score"] = round(sum(normalized[name] * WEIGHTS[name] for name in WEIGHTS), 2)
     model_hard_fail = bool(result.get("hard_fail", False))
     result["hard_fail"] = model_hard_fail
-    decision = result.get("decision", "revise")
-    if decision not in {"pass", "revise", "rewrite"}:
-        raise ValueError("Review decision must be pass, revise, or rewrite")
-    result["decision"] = decision
+    raw_decision = result.get("decision", "revise")
+    model_decision = canonical_model_label(raw_decision, REVIEW_DECISION_ALIASES)
+    result["raw_decision"] = raw_decision
+    result["model_decision"] = model_decision or "unrecognized"
     result["issues"] = _issues(result.get("issues", []))
     blockers = [
         item for item in result["issues"]
@@ -375,6 +384,23 @@ def normalize_review(value: dict) -> dict:
     ]
     categorized = [item for item in result["issues"] if "severity_class" in item]
     result["hard_fail"] = bool(blockers) or (model_hard_fail and not categorized)
+    if model_decision is None:
+        below_threshold = result["score"] < 75 or any(
+            normalized[name] < minimum for name, minimum in MINIMUMS.items()
+        )
+        unresolved = any(
+            not issue_is_resolved(item) for item in result["issues"]
+        )
+        decision = (
+            "rewrite" if result["hard_fail"]
+            else "revise" if below_threshold or unresolved
+            else "pass"
+        )
+        result["decision_source"] = "runtime_scores_and_issues"
+    else:
+        decision = model_decision
+        result["decision_source"] = "normalized_model_control"
+    result["decision"] = decision
     if result["decision"] == "rewrite" and categorized and not blockers:
         result["decision"] = "revise"
     return result

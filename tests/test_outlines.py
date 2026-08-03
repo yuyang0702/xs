@@ -139,6 +139,20 @@ def test_semantic_outline_decisions_accept_wrappers_and_reject_ambiguity() -> No
         )
 
 
+def test_semantic_outline_decisions_normalize_aliases_and_degrade_unknown_labels() -> None:
+    decisions = OutlineService._semantic_decisions(json.dumps({
+        "decisions": [
+            {"id": "change-1", "type": "顺序变化", "explanation": "位置后移"},
+            {"id": "change-2", "type": "局部重组", "explanation": "需要人工复核"},
+        ],
+    }, ensure_ascii=False), {"change-1", "change-2"})
+
+    assert decisions[0]["type"] == "reordered"
+    assert decisions[0]["raw_type"] == "顺序变化"
+    assert decisions[1]["type"] == "uncertain"
+    assert decisions[1]["raw_type"] == "局部重组"
+
+
 def test_canon_conflicts_require_a_choice_and_can_keep_project_facts(tmp_path) -> None:
     _db, projects, project, service = setup_outline_service(tmp_path)
     metadata_path = project.path / "project.json"

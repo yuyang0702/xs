@@ -16,8 +16,7 @@ PLANNING_ADAPTATION_PROTOCOL_CODES = frozenset({
     "segment_identity",
     "event_schema",
     "event_coverage",
-    "classification",
-    "changed_dimensions",
+    "adaptation_receipt_conflict",
     "invariant_schema",
     "evidence_binding",
     "adaptation_reason",
@@ -191,6 +190,17 @@ def _string_list(value: object) -> list[str] | None:
     return result
 
 
+def _runtime_event_classification(
+    invariants: object, dimensions: object, *, fallback: str = "unresolved",
+) -> str:
+    if not isinstance(invariants, dict) or set(invariants) != set(INVARIANT_FIELDS) \
+            or any(not isinstance(invariants[field], bool) for field in INVARIANT_FIELDS):
+        return fallback
+    if any(invariants[field] is not True for field in INVARIANT_FIELDS):
+        return "structural"
+    return "equivalent" if isinstance(dimensions, list) and dimensions else "unchanged"
+
+
 def planning_adaptation_evidence_candidates(
     plan_segment: str, segment: int,
 ) -> dict[str, str]:
@@ -293,18 +303,47 @@ def normalize_planning_adaptation_receipt(
         item["event_id"] = unicodedata.normalize(
             "NFKC", str(item.get("event_id") or ""),
         ).strip().upper()
-        classification = _CLASSIFICATION_ALIASES.get(
-            _normalized_label(item.get("classification")),
+        raw_classification = unicodedata.normalize(
+            "NFKC", str(item.get(
+                "raw_classification", item.get("classification"),
+            ) or ""),
+        ).strip()
+        model_classification = _CLASSIFICATION_ALIASES.get(
+            _normalized_label(raw_classification),
         )
-        if classification:
-            item["classification"] = classification
-        raw_dimensions = _string_list(item.get("changed_dimensions"))
-        if raw_dimensions is not None:
-            dimensions: list[str] = []
-            for dimension in raw_dimensions:
-                canonical = _DIMENSION_ALIASES.get(_normalized_label(dimension))
-                dimensions.append(canonical or _normalized_label(dimension))
-            item["changed_dimensions"] = list(dict.fromkeys(dimensions))
+        item["raw_classification"] = raw_classification
+        item["model_classification"] = (
+            model_classification or _normalized_label(raw_classification)
+        )
+        raw_dimension_value = item.get(
+            "raw_changed_dimensions", item.get("changed_dimensions"),
+        )
+        raw_dimensions = _string_list(raw_dimension_value)
+        if raw_dimensions is None:
+            raw_dimensions = []
+            if raw_dimension_value is not None:
+                item["raw_changed_dimensions_unparsed"] = raw_dimension_value
+        raw_dimensions = list(dict.fromkeys(raw_dimensions))
+        canonical_dimensions: list[str] = []
+        unrecognized_dimensions: list[str] = []
+        normalized_dimensions: list[str] = []
+        for dimension in raw_dimensions:
+            canonical = _DIMENSION_ALIASES.get(_normalized_label(dimension))
+            if canonical:
+                canonical_dimensions.append(canonical)
+                normalized_dimensions.append(canonical)
+            else:
+                unrecognized_dimensions.append(dimension)
+                normalized_dimensions.append(dimension)
+        item["raw_changed_dimensions"] = raw_dimensions
+        item["canonical_dimensions"] = list(dict.fromkeys(canonical_dimensions))
+        item["unrecognized_dimensions"] = list(dict.fromkeys(
+            unrecognized_dimensions
+        ))
+        # Keep the legacy field readable, but never use its vocabulary as an
+        # authorization boundary. Known aliases remain canonical for backward
+        # compatibility; unknown descriptions stay lossless.
+        item["changed_dimensions"] = list(dict.fromkeys(normalized_dimensions))
         evidence_ids = _string_list(
             item.get("plan_evidence_ids", item.get("plan_evidence_id")),
         )
@@ -323,6 +362,18 @@ def normalize_planning_adaptation_receipt(
                 if canonical:
                     invariants[canonical] = _boolean(value)
             item["invariants"] = invariants
+        invariants = item.get("invariants")
+        runtime_classification = _runtime_event_classification(
+            invariants, raw_dimensions,
+            fallback=model_classification or "unresolved",
+        )
+        if runtime_classification != (model_classification or "unresolved") \
+                or runtime_classification in {"unchanged", "equivalent", "structural"}:
+            item["classification"] = runtime_classification
+            item["classification_source"] = "runtime_invariants"
+        else:
+            item["classification"] = model_classification or "unresolved"
+            item["classification_source"] = "model_pending_invariant_validation"
         reviews.append(item)
     result["event_reviews"] = reviews
     return result
@@ -362,22 +413,9 @@ def planning_adaptation_receipt_issues(
         )
     for item in raw_reviews:
         event_id = str(item.get("event_id") or "").upper()
-        classification = str(item.get("classification") or "")
-        if classification not in {"unchanged", "presentation", "equivalent", "structural"}:
-            add(
-                "classification", "规划适配回执包含未知的调整类别",
-                event_id=event_id,
-            )
-            continue
+        classification = str(item.get("classification") or "unresolved")
         dimensions = item.get("changed_dimensions")
-        if not isinstance(dimensions, list) or any(
-            str(value) not in _DIMENSION_ALIASES.values() for value in dimensions
-        ):
-            add(
-                "changed_dimensions", "规划适配回执的变化维度不受支持",
-                event_id=event_id,
-            )
-            continue
+        dimensions = dimensions if isinstance(dimensions, list) else []
         evidence_ids = item.get("plan_evidence_ids")
         bound_evidence = item.get("plan_evidence")
         if (
@@ -401,16 +439,22 @@ def planning_adaptation_receipt_issues(
         false_invariants = [
             field for field in INVARIANT_FIELDS if invariants[field] is not True
         ]
-        structural_dimensions = sorted(set(dimensions) & STRUCTURAL_DIMENSIONS)
-        allowed_dimensions = (
-            set() if classification == "unchanged"
-            else PRESENTATION_DIMENSIONS if classification == "presentation"
-            else EQUIVALENT_DIMENSIONS if classification == "equivalent"
-            else set(dimensions)
+        described_structural = sorted(
+            set(item.get("canonical_dimensions") or []) & STRUCTURAL_DIMENSIONS
         )
-        unsupported = sorted(set(dimensions) - set(allowed_dimensions))
-        if classification == "structural" or false_invariants \
-                or structural_dimensions or unsupported:
+        model_classification = str(item.get("model_classification") or "")
+        if not false_invariants and (
+            model_classification == "structural" or described_structural
+        ):
+            add(
+                "adaptation_receipt_conflict",
+                "规划适配回执的变化描述与逐项剧情不变量互相矛盾，需要只重审回执",
+                event_id=event_id,
+                model_classification=model_classification,
+                described_structural_dimensions=described_structural,
+                raw_changed_dimensions=list(item.get("raw_changed_dimensions") or []),
+            )
+        if false_invariants:
             add(
                 "planning_structural_drift",
                 "规划改变了正式事件的剧情功能、人物主动性、因果或后续状态",
@@ -557,7 +601,7 @@ def effective_event_contracts(
         reviews.setdefault(
             str(review.get("event_id") or "").upper(), [],
         ).append(review)
-    rank = {"unchanged": 0, "presentation": 1, "equivalent": 2, "structural": 3}
+    rank = {"unchanged": 0, "equivalent": 1, "structural": 2}
     result = []
     for contract in formal_contracts:
         event = dict(contract)
@@ -570,14 +614,48 @@ def effective_event_contracts(
             if str(item).strip()
         ))
         if event_reviews and evidence:
+            review_classifications = [
+                _runtime_event_classification(
+                    review.get("invariants"),
+                    review.get(
+                        "raw_changed_dimensions", review.get("changed_dimensions", []),
+                    ),
+                    fallback=(
+                        "equivalent"
+                        if str(review.get("classification") or "") == "presentation"
+                        else str(review.get("classification") or "unchanged")
+                    ),
+                )
+                for review in event_reviews
+            ]
             classification = max(
-                (str(review.get("classification") or "unchanged") for review in event_reviews),
+                review_classifications,
                 key=lambda value: rank.get(value, 99),
             )
             dimensions = list(dict.fromkeys(
                 str(item)
                 for review in event_reviews
                 for item in review.get("changed_dimensions", [])
+            ))
+            raw_dimensions = list(dict.fromkeys(
+                str(item)
+                for review in event_reviews
+                for item in review.get("raw_changed_dimensions", [])
+            ))
+            canonical_dimensions = list(dict.fromkeys(
+                str(item)
+                for review in event_reviews
+                for item in review.get("canonical_dimensions", [])
+            ))
+            unrecognized_dimensions = list(dict.fromkeys(
+                str(item)
+                for review in event_reviews
+                for item in review.get("unrecognized_dimensions", [])
+            ))
+            model_classifications = list(dict.fromkeys(
+                str(review.get("raw_classification") or "").strip()
+                for review in event_reviews
+                if str(review.get("raw_classification") or "").strip()
             ))
             invariants = {
                 field: all(
@@ -592,6 +670,10 @@ def effective_event_contracts(
             event["adaptation"] = {
                 "classification": classification,
                 "changed_dimensions": dimensions,
+                "raw_changed_dimensions": raw_dimensions,
+                "canonical_dimensions": canonical_dimensions,
+                "unrecognized_dimensions": unrecognized_dimensions,
+                "model_classifications": model_classifications,
                 "invariants": invariants,
                 "reason": "；".join(dict.fromkeys(
                     str(review.get("reason") or "").strip()

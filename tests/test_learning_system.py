@@ -17,6 +17,45 @@ def setup_system(tmp_path):
     return db, library, projects, LearningSystem(db, library, projects)
 
 
+def test_model_window_style_field_aliases_and_unknown_descriptions_are_non_blocking() -> None:
+    value = LearningSystem._window_result(json.dumps({
+        "events": [], "state_changes": [], "reader_questions": [],
+        "turning_points": [], "relationship_changes": [],
+        "style_evidence": [
+            {
+                "field": "心理描写", "start": 0, "end": 4,
+                "fact": "动作先于判断", "interpretation": "情绪有证据",
+            },
+            {
+                "field": "氛围张力", "start": 5, "end": 9,
+                "fact": "环境逐步收紧", "interpretation": "形成压力",
+            },
+        ],
+    }, ensure_ascii=False))
+
+    assert value["style_evidence"][0]["field"] == "psychology"
+    assert value["style_evidence"][0]["raw_field"] == "心理描写"
+    assert value["unrecognized_style_evidence"][0]["field"] == "氛围张力"
+
+
+def test_synthesis_unknown_style_rule_is_preserved_but_not_executed() -> None:
+    value = LearningSystem._synthesis_result(json.dumps({
+        "mechanisms": [], "attraction_map": {},
+        "style_profile": {
+            "summary": "保留可核对的文笔规则",
+            "rules": [{
+                "field": "自定义氛围", "rule": "逐步增加环境压力",
+                "when_to_use": "危险接近时", "avoid": "不要突然宣布危险",
+                "supporting_windows": [1],
+            }],
+            "uncertainties": [],
+        },
+    }, ensure_ascii=False))
+
+    assert value["style_profile"]["rules"] == []
+    assert value["style_profile"]["unrecognized_rules"][0]["field"] == "自定义氛围"
+
+
 def test_analysis_creates_evidenced_mechanisms_and_reuses_windows(tmp_path) -> None:
     _db, library, _projects, system = setup_system(tmp_path)
     source = library.import_text(

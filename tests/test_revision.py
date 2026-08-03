@@ -102,6 +102,35 @@ def test_normalize_repair_contract_validates_and_preserves_review_fields() -> No
         assert normalized[key] == value[key]
 
 
+def test_repair_contract_normalizes_descriptive_machine_aliases_losslessly() -> None:
+    manuscript = "父亲交出银锁。"
+    value = {
+        "manuscript_hash": hashlib.sha256(manuscript.encode()).hexdigest(),
+        "groups": [{
+            "group_id": "issue-lock",
+            "issue_ids": ["issue-lock"],
+            "kind": "语义修复",
+            "requires_user_confirmation": True,
+            "patches": [{
+                "operation": "在后插入",
+                "old_text": manuscript,
+                "new_text": "众人都看见了。",
+            }],
+        }],
+    }
+
+    normalized = normalize_repair_contract(value, manuscript, {"issue-lock"})
+    group = normalized["groups"][0]
+    patch = group["patches"][0]
+
+    assert group["kind"] == "semantic"
+    assert group["raw_kind"] == "语义修复"
+    assert patch["operation"] == "insert_after"
+    assert patch["raw_operation"] == "在后插入"
+    assert value["groups"][0]["kind"] == "语义修复"
+    assert value["groups"][0]["patches"][0]["operation"] == "在后插入"
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
@@ -281,6 +310,22 @@ def test_normalize_revision_plan_drops_mechanical_quote_checks() -> None:
     }, segment_count=1)
 
     assert plan["checks"] == [{"kind": "forbidden_text", "value": "forbidden event"}]
+
+
+def test_normalize_revision_plan_accepts_check_aliases_but_keeps_control_strict() -> None:
+    plan = normalize_revision_plan({
+        "checks": [
+            {"kind": "必须保留", "value": "银锁"},
+            {"kind": "必须删除", "value": "铜锁"},
+            {"kind": "模型自由说明", "value": "不应成为机器操作"},
+        ],
+        "tasks": [{"segments": [1], "instruction": "修正道具连续性。"}],
+    }, segment_count=1, require_checks=True)
+
+    assert plan["checks"] == [
+        {"kind": "required_text", "raw_kind": "必须保留", "value": "银锁"},
+        {"kind": "forbidden_text", "raw_kind": "必须删除", "value": "铜锁"},
+    ]
 
 
 def test_normalize_chinese_prose_repairs_safe_typography_only() -> None:

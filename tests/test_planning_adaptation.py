@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 
+import pytest
+
 from novel_flywheel.planning_adaptation import (
     INVARIANT_FIELDS,
     effective_event_contracts,
@@ -304,6 +306,111 @@ def test_cross_genre_environment_actor_and_nonlinear_time_remain_supported() -> 
         expected_event_ids=[EVENT_ID],
         evidence_candidates=candidates,
     ) == []
+
+
+@pytest.mark.parametrize("dimensions", [
+    ["触发方式", "局部证据取得方式"],
+    ["局部顺序", "场景表现", "次要动作", "心理呈现"],
+    ["trigger", "description", "secondary_action"],
+    ["description", "dialogue", "causal_explanation"],
+    ["evidence_acquisition"],
+])
+def test_production_shaped_free_dimension_names_never_own_blocking_power(
+    dimensions,
+) -> None:
+    plan = (
+        "### 第 1 段：宴席试探\n\n事件ID：EV-221A4437\n\n"
+        "本段事件：花穗在宴席上应对试探，仍亲自决定下一步行动。"
+    )
+    receipt, candidates, authority_sha256, planning_sha256 = receipt_for(
+        plan, classification="模型自定义的局部展开", changed_dimensions=dimensions,
+    )
+
+    normalized = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+
+    review = normalized["event_reviews"][0]
+    assert review["classification"] == "equivalent"
+    assert review["classification_source"] == "runtime_invariants"
+    assert review["raw_changed_dimensions"] == dimensions
+    assert set(review["unrecognized_dimensions"]).issubset(set(dimensions))
+    assert planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256=authority_sha256,
+        planning_sha256=planning_sha256,
+        segment=1,
+        expected_event_ids=[EVENT_ID],
+        evidence_candidates=candidates,
+    ) == []
+
+
+def test_unknown_model_classification_is_derived_from_invariants_and_description() -> None:
+    plan = "### 第 1 段：查账\n\n事件ID：EV-221A4437\n\n本段事件：花穗亲自核账。"
+    receipt, candidates, authority_sha256, planning_sha256 = receipt_for(
+        plan,
+        classification="局部戏剧化但方向不变",
+        changed_dimensions=["心理呈现"],
+    )
+
+    normalized = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+    review = normalized["event_reviews"][0]
+
+    assert review["raw_classification"] == "局部戏剧化但方向不变"
+    assert review["model_classification"] == "局部戏剧化但方向不变"
+    assert review["classification"] == "equivalent"
+    assert planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256=authority_sha256,
+        planning_sha256=planning_sha256,
+        segment=1,
+        expected_event_ids=[EVENT_ID],
+        evidence_candidates=candidates,
+    ) == []
+
+
+def test_descriptor_invariant_conflict_retries_only_the_receipt() -> None:
+    plan = "### 第 1 段：查账\n\n事件ID：EV-221A4437\n\n本段事件：花穗亲自核账。"
+    receipt, candidates, authority_sha256, planning_sha256 = receipt_for(
+        plan,
+        classification="equivalent",
+        changed_dimensions=["primary_actor_agency"],
+    )
+    normalized = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+
+    issues = planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256=authority_sha256,
+        planning_sha256=planning_sha256,
+        segment=1,
+        expected_event_ids=[EVENT_ID],
+        evidence_candidates=candidates,
+    )
+
+    assert [item["code"] for item in issues] == ["adaptation_receipt_conflict"]
+    assert planning_adaptation_issues_are_protocol_only(issues)
+
+
+def test_receipt_normalization_is_idempotent_with_unknown_unicode_metadata() -> None:
+    plan = "### 第 1 段：查账\n\n事件ID：EV-221A4437\n\n本段事件：花穗亲自核账。"
+    receipt, candidates, _authority_sha256, _planning_sha256 = receipt_for(
+        plan,
+        classification="✨局部呈现✨",
+        changed_dimensions=["心理呈现", "证据取得方式", "🧭转场感"],
+    )
+
+    first = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+    second = normalize_planning_adaptation_receipt(
+        first, evidence_candidates=candidates,
+    )
+
+    assert second == first
 
 
 def test_whole_story_gate_rejects_adjacent_handoff_regression() -> None:

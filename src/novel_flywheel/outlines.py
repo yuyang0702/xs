@@ -10,7 +10,7 @@ import unicodedata
 from pathlib import Path
 
 from novel_flywheel.db import Database
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.model_output import canonical_model_label, parse_json_object
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
@@ -25,6 +25,14 @@ OUTLINE_EVENT_SKIP_TERMS = (
     "主要人物", "关键配角", "核心设定", "核心矛盾", "说明", "提示",
 )
 OUTLINE_EVENT_KINDS = {"narrative", "structure", "theme", "directive"}
+OUTLINE_CHANGE_TYPE_ALIASES = {
+    "changed": "changed", "change": "changed", "modified": "changed",
+    "content_changed": "changed", "已修改": "changed", "内容变化": "changed",
+    "reordered": "reordered", "reorder": "reordered", "moved": "reordered",
+    "order_changed": "reordered", "顺序变化": "reordered", "已调序": "reordered",
+    "uncertain": "uncertain", "unknown": "uncertain", "needs_review": "uncertain",
+    "不确定": "uncertain", "需复核": "uncertain", "无法判断": "uncertain",
+}
 _OUTLINE_THEME_SECTIONS = {
     "主题", "主题设计", "主题与情感线", "情感线", "人物弧光", "角色弧光",
 }
@@ -1399,11 +1407,13 @@ class OutlineService:
         for item in decisions:
             if not isinstance(item, dict) or item.get("id") not in allowed_ids:
                 continue
-            change_type = item.get("type")
-            if change_type not in {"changed", "reordered", "uncertain"}:
-                continue
+            raw_change_type = item.get("type")
+            change_type = canonical_model_label(
+                raw_change_type, OUTLINE_CHANGE_TYPE_ALIASES,
+            ) or "uncertain"
             cleaned.append({
                 "id": item["id"], "type": change_type,
+                "raw_type": raw_change_type,
                 "explanation": str(item.get("explanation") or "模型未补充说明")[:500],
                 "impact": str(item.get("impact") or "尚未说明具体影响")[:500],
             })

@@ -390,6 +390,47 @@ def test_normalize_review_computes_weighted_score() -> None:
     assert review["score"] == 82.5
 
 
+def test_unknown_review_decision_is_diagnostic_and_runtime_derives_control() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 88, "story": 84, "prose": 82},
+        "hard_fail": False,
+        "decision": "整体表现已经稳定",
+        "issues": [],
+    })
+
+    assert review["raw_decision"] == "整体表现已经稳定"
+    assert review["model_decision"] == "unrecognized"
+    assert review["decision"] == "pass"
+    assert review["decision_source"] == "runtime_scores_and_issues"
+
+
+def test_unknown_review_decision_cannot_hide_a_runtime_blocker() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 90, "story": 90, "prose": 90},
+        "hard_fail": False,
+        "decision": "大体可用",
+        "issues": [{
+            "category": "production_text", "severity": "low",
+            "status": "unresolved", "action": "删除编辑说明",
+        }],
+    })
+
+    assert review["hard_fail"] is True
+    assert review["decision"] == "rewrite"
+    assert quality_outcome(review)[0] == "failed"
+
+
+def test_chinese_review_decision_alias_normalizes_without_changing_control() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 82, "story": 78, "prose": 76},
+        "decision": "定向修改",
+        "issues": [{"category": "style", "action": "收紧一处表达"}],
+    })
+
+    assert review["model_decision"] == "revise"
+    assert review["decision"] == "revise"
+
+
 def test_quality_gate_enforces_overall_dimensions_and_hard_fail() -> None:
     review = normalize_review({
         "dimensions": {"commercial": 74, "story": 95, "prose": 95},

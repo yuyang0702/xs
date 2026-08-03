@@ -229,6 +229,116 @@ async def test_receipt_protocol_failure_retries_receipt_without_mutating_plan(
 
 
 @pytest.mark.asyncio
+async def test_failed_run_revalidates_unknown_dimension_receipt_locally_then_continues(
+    tmp_path,
+) -> None:
+    service, project, run_path, state, contracts = make_service(tmp_path)
+    event_id = contracts[0]["id"]
+    plan = plan_for(event_id, "花穗在细节试探后仍亲自核实库房异常。")
+    outline_sha = hashlib.sha256(
+        state["outline"]["content"].encode("utf-8"),
+    ).hexdigest()
+    plan_sha = hashlib.sha256(plan.encode("utf-8")).hexdigest()
+    candidates = planning_adaptation_evidence_candidates(plan, 1)
+    evidence_id = next(
+        key for key, value in candidates.items() if "本段事件" in value
+    )
+    raw_receipt = {
+        "authority_sha256": planning_adaptation_segment_authority_sha256(
+            outline_sha256=outline_sha,
+            planning_sha256=plan_sha,
+            segment=1,
+            event_contracts=contracts,
+            plan_segment=plan,
+        ),
+        "planning_sha256": plan_sha,
+        "segment": 1,
+        "event_reviews": [{
+            "event_id": event_id,
+            "classification": "presentation",
+            "changed_dimensions": [
+                "scene_presentation", "secondary_action", "心理呈现",
+            ],
+            "invariants": {field: True for field in INVARIANT_FIELDS},
+            "plan_evidence_ids": [evidence_id],
+            "reason": "只增加表现和心理细节，人物主动性与事件结果保持。",
+        }],
+        "segment_order_preserved": True,
+        "formal_direction_preserved": True,
+        "summary": "正式事件的功能、执行者、因果和后续状态保持。",
+    }
+    (run_path / "outputs" / "review-plan-adaptation-segment-01-initial-3.md").write_text(
+        json.dumps(raw_receipt, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    calls: list[str] = []
+
+    async def fake_stage(*args, **kwargs):
+        prompt = args[5]
+        calls.append(prompt)
+        assert "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V1" in prompt
+        return whole_adaptation_receipt(prompt)
+
+    service._stage = fake_stage
+    accepted_plan, artifact, changed = await service._ensure_short_plan_adaptations(
+        "adaptation-run", run_path, project, "constraints", state,
+        plan, [], 1,
+    )
+
+    assert accepted_plan == plan
+    assert changed is False
+    assert artifact and artifact["status"] == "ready"
+    assert len(calls) == 1
+    review = artifact["segments"][0]["event_reviews"][0]
+    assert review["classification"] == "equivalent"
+    assert review["unrecognized_dimensions"] == [
+        "scene_presentation", "secondary_action", "心理呈现",
+    ]
+    assert any(
+        item["event_type"] == "planning_adaptation_receipt_revalidated"
+        for item in service.db.list_run_events("adaptation-run")
+    )
+
+
+def test_failed_adaptation_resume_reuses_exact_plan_before_any_planning_call(
+    tmp_path,
+) -> None:
+    service, project, run_path, state, contracts = make_service(tmp_path)
+    plan = plan_for(contracts[0]["id"], "花穗亲自核实库房异常。")
+    plan_sha = hashlib.sha256(plan.encode("utf-8")).hexdigest()
+    outline_sha = hashlib.sha256(
+        state["outline"]["content"].encode("utf-8"),
+    ).hexdigest()
+    (run_path / "outputs" / "planning.md").write_text(plan, encoding="utf-8")
+    artifact_path = run_path / "outputs" / "planning-adaptations.json"
+    artifact = {
+        "version": 1,
+        "status": "failed",
+        "outline_sha256": outline_sha,
+        "planning_sha256": plan_sha,
+        "segment_count": 1,
+        "segments": [],
+        "whole_story_receipt": {},
+        "issues": [{"code": "changed_dimensions"}],
+    }
+    artifact_path.write_text(
+        json.dumps(artifact, ensure_ascii=False), encoding="utf-8",
+    )
+
+    resumed = service._resumable_current_planning_adaptation_plan(
+        run_path, project, state, 1, "current-context",
+    )
+
+    assert resumed == (plan, None, True)
+    artifact["generation_context_sha256"] = "old-context"
+    artifact_path.write_text(
+        json.dumps(artifact, ensure_ascii=False), encoding="utf-8",
+    )
+    assert service._resumable_current_planning_adaptation_plan(
+        run_path, project, state, 1, "current-context",
+    ) is None
+
+
+@pytest.mark.asyncio
 async def test_whole_story_handoff_failure_repairs_only_affected_segment(
     tmp_path,
 ) -> None:

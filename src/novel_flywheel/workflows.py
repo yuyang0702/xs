@@ -166,6 +166,7 @@ from novel_flywheel.revision import (
     apply_patch_group,
     align_revision_plan_targets,
     assess_polish_candidate,
+    canonical_patch_operation,
     check_revision_constraints,
     check_source_local_constraints,
     compact_polish_findings,
@@ -1321,31 +1322,63 @@ class WorkflowService:
                         request = self._semantic_patch_request(
                             contract, issue, group_id, candidate,
                         )
-                        raw = await self._stage(
-                            run_id, run_path, project, "revision_plan",
-                            constraints,
-                            json.dumps(request, ensure_ascii=False),
-                            suffix=f"-repair-{group_id}",
-                            allow_tools=False,
-                            output_source_characters=len(
-                                request.get("target_excerpt", ""),
-                            ),
-                            targeted_retry=True,
-                        )
-                        try:
-                            value = normalize_repair_contract(
-                                self._json_object(raw), candidate, {group_id},
+                        contract_error: ValueError | None = None
+                        patch_group = None
+                        for protocol_attempt in range(2):
+                            protocol_request = dict(request)
+                            if contract_error is not None:
+                                protocol_request["protocol_repair"] = {
+                                    "error": str(contract_error)[:500],
+                                    "instruction": (
+                                        "候选稿和修改目标保持不变，只重新返回完整 JSON 修改合同。"
+                                        "operation 使用 replace、insert_before 或 insert_after；"
+                                        "kind 使用 semantic。"
+                                    ),
+                                }
+                            raw = await self._stage(
+                                run_id, run_path, project, "revision_plan",
+                                constraints,
+                                json.dumps(protocol_request, ensure_ascii=False),
+                                suffix=(
+                                    f"-repair-{group_id}"
+                                    if protocol_attempt == 0 else
+                                    f"-repair-{group_id}-protocol-{protocol_attempt + 1}"
+                                ),
+                                allow_tools=False,
+                                output_source_characters=len(
+                                    request.get("target_excerpt", ""),
+                                ),
+                                targeted_retry=True,
                             )
-                            if len(value["groups"]) != 1:
-                                raise ValueError("模型必须一次只返回一个修改组")
-                            patch_group = value["groups"][0]
-                            if (
-                                patch_group.get("group_id") != group_id
-                                or patch_group.get("issue_ids") != [group_id]
-                                or patch_group.get("kind") != "semantic"
-                            ):
-                                raise ValueError("模型返回的修改组与当前问题不一致")
-                        except ValueError:
+                            try:
+                                value = normalize_repair_contract(
+                                    self._json_object(raw), candidate, {group_id},
+                                )
+                                if len(value["groups"]) != 1:
+                                    raise ValueError("模型必须一次只返回一个修改组")
+                                current_group = value["groups"][0]
+                                if (
+                                    current_group.get("group_id") != group_id
+                                    or current_group.get("issue_ids") != [group_id]
+                                    or current_group.get("kind") != "semantic"
+                                ):
+                                    raise ValueError("模型返回的修改组与当前问题不一致")
+                            except ValueError as exc:
+                                contract_error = exc
+                                if protocol_attempt == 0:
+                                    self.db.add_run_event(
+                                        run_id, "info",
+                                        "short_revision_contract_retry",
+                                        "正文保持不变，正在只重新获取当前修改组的机器执行合同",
+                                        stage="repair_groups", metadata={
+                                            "group_id": group_id,
+                                            "error": str(exc)[:500],
+                                        },
+                                    )
+                                continue
+                            patch_group = current_group
+                            break
+                        if patch_group is None:
                             record.update({
                                 "status": "rejected",
                                 "message": (
@@ -1379,6 +1412,7 @@ class WorkflowService:
                                 metadata={
                                     "group_id": group_id,
                                     "category": "contract_validation",
+                                    "error": str(contract_error or "")[:500],
                                 },
                             )
                             continue
@@ -1983,19 +2017,49 @@ class WorkflowService:
                 "anchor_candidates": anchor_candidates,
                 "instructions": EXPANSION_CONTRACT,
             }
-            raw_plan = await self._stage(
-                run_id, run_path, project, "revision_plan", constraints,
-                json.dumps(request, ensure_ascii=False),
-                suffix=f"-expand-plan-{group_id}", allow_tools=False,
-                output_source_characters=budget["deficit_han"],
-                targeted_retry=True,
-            )
-            try:
-                scenes = self._normalize_expansion_plan(
-                    self._json_object(raw_plan), candidate,
-                    budget["deficit_han"], allowed_anchors,
+            scenes = None
+            plan_error: ValueError | None = None
+            for protocol_attempt in range(2):
+                protocol_request = dict(request)
+                if plan_error is not None:
+                    protocol_request["protocol_repair"] = {
+                        "error": str(plan_error)[:500],
+                        "instruction": (
+                            "候选稿、缺口和场景目标保持不变，只重新返回完整 JSON 扩写计划。"
+                            "operation 使用 insert_before 或 insert_after。"
+                        ),
+                    }
+                raw_plan = await self._stage(
+                    run_id, run_path, project, "revision_plan", constraints,
+                    json.dumps(protocol_request, ensure_ascii=False),
+                    suffix=(
+                        f"-expand-plan-{group_id}"
+                        if protocol_attempt == 0 else
+                        f"-expand-plan-{group_id}-protocol-{protocol_attempt + 1}"
+                    ),
+                    allow_tools=False,
+                    output_source_characters=budget["deficit_han"],
+                    targeted_retry=True,
                 )
-            except ValueError:
+                try:
+                    scenes = self._normalize_expansion_plan(
+                        self._json_object(raw_plan), candidate,
+                        budget["deficit_han"], allowed_anchors,
+                    )
+                except ValueError as exc:
+                    plan_error = exc
+                    if protocol_attempt == 0:
+                        self.db.add_run_event(
+                            run_id, "info", "short_expansion_contract_retry",
+                            "正文保持不变，正在只重新获取扩写场景的机器执行合同",
+                            stage="repair_groups", metadata={
+                                "group_id": group_id,
+                                "error": str(exc)[:500],
+                            },
+                        )
+                    continue
+                break
+            if scenes is None:
                 raise ExpansionRejectedError(
                     "expansion_contract_rejected",
                     "expansion_contract_validation",
@@ -2147,7 +2211,11 @@ class WorkflowService:
                 )
             ):
                 raise ValueError("扩写场景锚点必须唯一")
-            if scene.get("operation") not in {"insert_before", "insert_after"}:
+            raw_operation = scene.get(
+                "raw_operation", scene.get("operation"),
+            )
+            operation = canonical_patch_operation(raw_operation)
+            if operation not in {"insert_before", "insert_after"}:
                 raise ValueError("扩写场景只能使用插入操作")
             if scene.get("requires_full_review") is not True:
                 raise ValueError("扩写场景必须要求全文复核")
@@ -2163,6 +2231,8 @@ class WorkflowService:
             anchors.add(anchor)
             normalized.append({
                 **scene,
+                "raw_operation": raw_operation,
+                "operation": operation,
                 "new_facts": [fact.strip() for fact in new_facts],
             })
         if sum(scene["target_han"] for scene in normalized) != deficit_han:
@@ -2976,28 +3046,49 @@ class WorkflowService:
                     },
                 }, ensure_ascii=False, indent=2)
                 expected_plan_characters = max(3000, 1200 * segment_count)
-                proactive_split = self._route_requires_semantic_split(
-                    "planning", expected_plan_characters,
+                resumable_adaptation_plan = (
+                    self._resumable_current_planning_adaptation_plan(
+                        run_path, project, state.data, segment_count,
+                        checkpoint_context["generation_context_sha256"],
+                    )
                 )
-                try:
-                    if proactive_split:
-                        raise IncompleteModelOutputError(
-                            "planning", StageText("", {"finish_reason": "predicted_limit"}),
+                if resumable_adaptation_plan is not None:
+                    plan, causal_chain, legacy_context = resumable_adaptation_plan
+                    self.db.add_run_event(
+                        run_id, "success", "planning_adaptation_plan_reused",
+                        "已复用当前失败任务中哈希匹配的完整规划，继续本地重验适配回执",
+                        stage="planning", metadata={
+                            "planning_sha256": hashlib.sha256(
+                                plan.encode("utf-8"),
+                            ).hexdigest(),
+                            "legacy_context_inferred": legacy_context,
+                        },
+                    )
+                else:
+                    proactive_split = self._route_requires_semantic_split(
+                        "planning", expected_plan_characters,
+                    )
+                    try:
+                        if proactive_split:
+                            raise IncompleteModelOutputError(
+                                "planning", StageText(
+                                    "", {"finish_reason": "predicted_limit"},
+                                ),
+                            )
+                        plan = await self._stage(
+                            run_id, run_path, project, "planning", constraints, brief,
+                            allow_tools=self._planning_uses_tools(state),
+                            expected_output_characters=expected_plan_characters,
+                            completion_check=lambda value: self._short_plan_output_complete(
+                                project, state.data, value, segment_count,
+                            ),
                         )
-                    plan = await self._stage(
-                        run_id, run_path, project, "planning", constraints, brief,
-                        allow_tools=self._planning_uses_tools(state),
-                        expected_output_characters=expected_plan_characters,
-                        completion_check=lambda value: self._short_plan_output_complete(
-                            project, state.data, value, segment_count,
-                        ),
-                    )
-                except IncompleteModelOutputError:
-                    plan = await self._plan_short_in_batches(
-                        run_id, run_path, project, constraints, brief,
-                        state.data, segment_count,
-                    )
-                plan, causal_chain = self._extract_short_causal_chain(run_id, plan)
+                    except IncompleteModelOutputError:
+                        plan = await self._plan_short_in_batches(
+                            run_id, run_path, project, constraints, brief,
+                            state.data, segment_count,
+                        )
+                    plan, causal_chain = self._extract_short_causal_chain(run_id, plan)
                 plan_issues = self._short_plan_issues(
                     project, state.data, plan, segment_count,
                 )
@@ -3093,6 +3184,9 @@ class WorkflowService:
                     await self._ensure_short_plan_adaptations(
                         run_id, run_path, project, constraints, state.data, plan,
                         formal_outline_events, segment_count,
+                        generation_context_sha256=(
+                            checkpoint_context["generation_context_sha256"]
+                        ),
                     )
                 )
                 if plan_changed:
@@ -3442,6 +3536,149 @@ class WorkflowService:
             if isinstance(item, dict) and str(item.get("id") or "").strip()
         ]
 
+    @staticmethod
+    def _stored_planning_adaptation_payloads(
+        run_path: Path, *, segment: int | None = None, whole: bool = False,
+    ) -> list[tuple[dict, str]]:
+        """Return prior receipt payloads without trusting their old verdict."""
+        outputs = run_path / "outputs"
+        payloads: list[tuple[dict, str]] = []
+        artifact_path = outputs / "planning-adaptations.json"
+        try:
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            artifact = None
+        if isinstance(artifact, dict):
+            if whole:
+                receipt = artifact.get("whole_story_receipt")
+                if isinstance(receipt, dict) and receipt:
+                    payloads.append((receipt, artifact_path.name))
+            else:
+                for receipt in artifact.get("segments", []):
+                    if not isinstance(receipt, dict):
+                        continue
+                    try:
+                        receipt_segment = int(receipt.get("segment") or 0)
+                    except (TypeError, ValueError):
+                        continue
+                    if receipt_segment == segment:
+                        payloads.append((receipt, artifact_path.name))
+        pattern = (
+            "review-plan-adaptation-whole-*.md"
+            if whole else
+            f"review-plan-adaptation-segment-{int(segment or 0):02d}-*.md"
+        )
+        try:
+            paths = sorted(
+                outputs.glob(pattern),
+                key=lambda path: (path.stat().st_mtime_ns, path.name),
+                reverse=True,
+            )
+        except OSError:
+            paths = []
+        for path in paths:
+            try:
+                raw = path.read_text(encoding="utf-8")
+                payload = parse_json_object(
+                    raw, label=f"Stored planning adaptation receipt {path.name}",
+                )
+            except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            payloads.append((payload, path.name))
+        return payloads
+
+    def _resumable_current_planning_adaptation_plan(
+        self, run_path: Path, project: Project, state: dict,
+        segment_count: int, generation_context_sha256: str,
+    ) -> tuple[str, dict | None, bool] | None:
+        """Reuse the immutable plan behind a failed adaptation receipt."""
+        outputs = run_path / "outputs"
+        artifact_path = outputs / "planning-adaptations.json"
+        planning_path = outputs / "planning.md"
+        try:
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            raw_plan = planning_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        if not isinstance(artifact, dict) or artifact.get("status") != "failed" \
+                or artifact.get("version") != 1 \
+                or artifact.get("segment_count") != segment_count:
+            return None
+        stored_context = str(artifact.get("generation_context_sha256") or "")
+        if stored_context and stored_context != generation_context_sha256:
+            return None
+        try:
+            plan, causal_chain = extract_short_causal_chain(raw_plan)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return None
+        outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        if (
+            artifact.get("outline_sha256")
+            != hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
+            or artifact.get("planning_sha256")
+            != hashlib.sha256(plan.encode("utf-8")).hexdigest()
+            or self._short_plan_issues(project, state, plan, segment_count)
+        ):
+            return None
+        return plan, causal_chain, not bool(stored_context)
+
+    def _revalidate_stored_planning_adaptation_segment(
+        self, run_path: Path, *, authority_sha256: str,
+        planning_sha256: str, segment: int, expected_event_ids: list[str],
+        evidence_candidates: dict[str, str],
+    ) -> tuple[dict, list[dict], str] | None:
+        for payload, source in self._stored_planning_adaptation_payloads(
+            run_path, segment=segment,
+        ):
+            normalized = normalize_planning_adaptation_receipt(
+                payload, evidence_candidates=evidence_candidates,
+            )
+            issues = planning_adaptation_receipt_issues(
+                normalized,
+                authority_sha256=authority_sha256,
+                planning_sha256=planning_sha256,
+                segment=segment,
+                expected_event_ids=expected_event_ids,
+                evidence_candidates=evidence_candidates,
+            )
+            if any(
+                str(item.get("code") or "") == "adaptation_receipt_conflict"
+                for item in issues
+            ):
+                # A current-authority contradiction requires a fresh semantic
+                # adjudication. Do not search backward for a more convenient
+                # historical verdict about the same immutable plan.
+                return None
+            if not any(
+                str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
+                for item in issues
+            ):
+                return dict(normalized), issues, source
+        return None
+
+    def _revalidate_stored_planning_adaptation_whole(
+        self, run_path: Path, *, authority_sha256: str,
+        planning_sha256: str, segment_count: int,
+        expected_event_ids: list[str],
+    ) -> tuple[dict, list[dict], str] | None:
+        for payload, source in self._stored_planning_adaptation_payloads(
+            run_path, whole=True,
+        ):
+            normalized = normalize_planning_adaptation_whole_receipt(payload)
+            issues = planning_adaptation_whole_receipt_issues(
+                normalized,
+                authority_sha256=authority_sha256,
+                planning_sha256=planning_sha256,
+                segment_count=segment_count,
+                expected_event_ids=expected_event_ids,
+            )
+            if not any(
+                str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
+                for item in issues
+            ):
+                return dict(normalized), issues, source
+        return None
+
     async def _review_short_plan_adaptation_segment(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         *, outline_sha256: str, planning_sha256: str, segment: int,
@@ -3456,6 +3693,24 @@ class WorkflowService:
             event_contracts=event_contracts,
             plan_segment=plan_segment,
         )
+        stored = self._revalidate_stored_planning_adaptation_segment(
+            run_path,
+            authority_sha256=authority_sha256,
+            planning_sha256=planning_sha256,
+            segment=segment,
+            expected_event_ids=event_ids,
+            evidence_candidates=candidates,
+        )
+        if stored is not None:
+            receipt, issues, source = stored
+            self.db.add_run_event(
+                run_id, "info", "planning_adaptation_receipt_revalidated",
+                "已有规划适配回执已按当前不变量规则完成本地重新验收",
+                stage="review", metadata={
+                    "segment": segment, "source": source, "issues": issues,
+                },
+            )
+            return receipt, issues, 0
         last_issues: list[dict] = []
         protocol_retries = 0
         for attempt in range(3):
@@ -3463,7 +3718,9 @@ class WorkflowService:
                 "SHORT_PLAN_ADAPTATION_REVIEW_V1\n"
                 "只审核当前正式写作段，判断规划对正式大纲的实现是否属于允许的等价展开。"
                 "不要要求逐字照搬，也不能以更好写、更有戏剧性为理由改变剧情功能。\n"
-                "分类只能是 unchanged、presentation、equivalent、structural。"
+                "classification 建议使用 unchanged、equivalent 或 structural，但它只用于诊断；"
+                "changed_dimensions 可以使用准确、简短的自然语言名称，不必猜固定词表。"
+                "Runtime 最终只依据逐项不变量、原文证据、事件覆盖和顺序作出授权。"
                 "presentation 只允许对话、描写、过渡、次要动作、次要道具和场景表现变化；"
                 "equivalent 还允许触发方式、次要参与者、局部地点、证据取得方式和不影响依赖的局部顺序变化。"
                 "任何主要执行者主动性、事件功能、因果依赖、入口/出口状态、知情状态、关系状态、"
@@ -3556,6 +3813,21 @@ class WorkflowService:
             str(item.get("id") or "").strip().upper()
             for item in formal_contracts
         ]
+        stored = self._revalidate_stored_planning_adaptation_whole(
+            run_path,
+            authority_sha256=authority_sha256,
+            planning_sha256=planning_sha256,
+            segment_count=segment_count,
+            expected_event_ids=expected_event_ids,
+        )
+        if stored is not None:
+            receipt, issues, source = stored
+            self.db.add_run_event(
+                run_id, "info", "planning_adaptation_whole_receipt_revalidated",
+                "已有整篇规划适配回执已按当前跨段不变量完成本地重新验收",
+                stage="review", metadata={"source": source, "issues": issues},
+            )
+            return receipt, issues, 0
         last_issues: list[dict] = []
         protocol_retries = 0
         for attempt in range(3):
@@ -3703,6 +3975,7 @@ class WorkflowService:
     def _planning_adaptation_artifact_valid(
         self, artifact: object, state: dict, plan: str,
         formal_outline_events: list[dict], segment_count: int,
+        generation_context_sha256: str | None = None,
     ) -> bool:
         if not isinstance(artifact, dict) or artifact.get("version") != 1 \
                 or artifact.get("status") != "ready":
@@ -3716,6 +3989,12 @@ class WorkflowService:
             artifact.get("outline_sha256") != outline_sha256
             or artifact.get("planning_sha256") != planning_sha256
             or artifact.get("segment_count") != segment_count
+            or (
+                generation_context_sha256 is not None
+                and artifact.get("generation_context_sha256") not in {
+                    None, "", generation_context_sha256,
+                }
+            )
         ):
             return False
         formal_contracts = self._planning_adaptation_contracts(
@@ -3938,7 +4217,7 @@ class WorkflowService:
     async def _ensure_short_plan_adaptations(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         state: dict, plan: str, formal_outline_events: list[dict],
-        segment_count: int,
+        segment_count: int, *, generation_context_sha256: str | None = None,
     ) -> tuple[str, dict | None, bool]:
         contracts = self._planning_adaptation_contracts(state, formal_outline_events)
         if not contracts or not all(str(item.get("evidence") or "").strip() for item in contracts):
@@ -3950,6 +4229,7 @@ class WorkflowService:
             cached = None
         if self._planning_adaptation_artifact_valid(
             cached, state, plan, formal_outline_events, segment_count,
+            generation_context_sha256,
         ):
             self.db.add_run_event(
                 run_id, "success", "planning_adaptation_reused",
@@ -4057,6 +4337,7 @@ class WorkflowService:
             "outline_sha256": hashlib.sha256(outline_content.encode("utf-8")).hexdigest(),
             "planning_sha256": hashlib.sha256(candidate.encode("utf-8")).hexdigest(),
             "segment_count": segment_count,
+            "generation_context_sha256": generation_context_sha256,
             "segments": receipts,
             "whole_story_receipt": whole_receipt,
             "protocol_repairs": protocol_repairs,

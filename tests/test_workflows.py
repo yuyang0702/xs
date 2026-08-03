@@ -8265,7 +8265,7 @@ async def test_expansion_plan_contract_rejection_stays_local(
     )
 
     group = result["groups"][ledger[0]["issue_id"]]
-    assert calls == ["revision_plan"]
+    assert calls == ["revision_plan", "revision_plan"]
     assert result["status"] == "waiting_local_fix"
     assert group["status"] == "rejected"
     assert group["failures"] == [{
@@ -8273,6 +8273,57 @@ async def test_expansion_plan_contract_rejection_stays_local(
         "code": "expansion_contract_rejected",
     }]
     assert "final_review" not in calls
+
+
+@pytest.mark.asyncio
+async def test_expansion_plan_protocol_retry_recovers_alias_without_changing_authority(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, ledger, _state, anchors = _expansion_service(
+        tmp_path,
+    )
+    valid_plan = _expansion_plan(anchors[0])
+    valid_plan["operation"] = "在后插入"
+    calls = []
+
+    async def stage(*args, **kwargs):
+        request = json.loads(args[5])
+        calls.append(args[3])
+        if args[3] == "revision_plan":
+            if calls.count("revision_plan") == 1:
+                invalid = dict(valid_plan)
+                invalid.pop("purpose")
+                return json.dumps({"scenes": [invalid]}, ensure_ascii=False)
+            assert request["candidate_hash"] == hashlib.sha256(
+                source.encode("utf-8"),
+            ).hexdigest()
+            assert "protocol_repair" in request
+            return json.dumps({"scenes": [valid_plan]}, ensure_ascii=False)
+        return json.dumps(
+            _expansion_draft(valid_plan, _expansion_scene_text(2000)),
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(service, "_stage", stage)
+    result = await service.run_short_revision(
+        project.id, [ledger[0]["issue_id"]],
+        run_id="expand-protocol-recovery",
+    )
+
+    assert calls == ["revision_plan", "revision_plan", "draft"]
+    assert result["status"] == "waiting_confirmation"
+    assert result["candidate"].startswith(source)
+    records = json.loads((
+        project.path / "runs" / "expand-protocol-recovery"
+        / "outputs" / "patch-groups.json"
+    ).read_text(encoding="utf-8"))["groups"]
+    scene = records[0]["patch_group"]["expansion_contracts"][0]
+    assert scene["operation"] == "insert_after"
+    assert scene["raw_operation"] == "在后插入"
+    assert any(
+        item["event_type"] == "short_expansion_contract_retry"
+        for item in service.db.list_run_events("expand-protocol-recovery")
+    )
 
 
 @pytest.mark.parametrize("invalid_case", [
@@ -9430,13 +9481,61 @@ async def test_short_revision_marks_invalid_model_contract_as_local_rejection(
         "patch": 0,
         "code": "repair_contract_rejected",
     }]
-    assert rejected_event["metadata"] == {
-        "group_id": issue_id,
-        "category": "contract_validation",
-    }
+    assert rejected_event["metadata"]["group_id"] == issue_id
+    assert rejected_event["metadata"]["category"] == "contract_validation"
+    assert rejected_event["metadata"]["error"]
     assert model_output not in rejected_event["message"]
+    assert "short_revision_contract_retry" in event_types
     assert "short_revision_group_rejected" in event_types
     assert "short_revision_group_failed" not in event_types
+
+
+@pytest.mark.asyncio
+async def test_short_revision_contract_retry_recovers_control_aliases_only(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, ledger, _state = _short_revision_service(
+        tmp_path, [{
+            "category": "logic_continuity",
+            "severity": "medium",
+            "evidence": "甲问题原句。",
+            "action": "修复甲问题。",
+        }],
+    )
+    issue_id = ledger[0]["issue_id"]
+    calls = 0
+
+    async def contract(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        request = json.loads(args[5])
+        if calls == 1:
+            return json.dumps({"groups": []})
+        assert "protocol_repair" in request
+        value = json.loads(_short_revision_patch(
+            request, "甲问题原句。", "甲问题说明。",
+        ))
+        value["groups"][0]["kind"] = "语义修复"
+        value["groups"][0]["patches"][0]["operation"] = "替换"
+        return json.dumps(value, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage", contract)
+    result = await service.run_short_revision(
+        project.id, [issue_id], run_id="repair-contract-recovery",
+    )
+
+    assert calls == 2
+    assert result["status"] == "waiting_confirmation"
+    assert result["candidate"] == source.replace("甲问题原句。", "甲问题说明。")
+    records = json.loads((
+        project.path / "runs" / "repair-contract-recovery"
+        / "outputs" / "patch-groups.json"
+    ).read_text(encoding="utf-8"))["groups"]
+    group = records[0]["patch_group"]
+    assert group["kind"] == "semantic"
+    assert group["raw_kind"] == "语义修复"
+    assert group["patches"][0]["operation"] == "replace"
+    assert group["patches"][0]["raw_operation"] == "替换"
 
 
 @pytest.mark.asyncio

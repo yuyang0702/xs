@@ -11,6 +11,7 @@ from novel_flywheel.prose_policy import (
     infer_narrative_beat_tags,
 )
 from novel_flywheel.prose_quality import analyze_prose
+from novel_flywheel.model_output import canonical_model_label
 
 
 CHECK_KINDS = {"required_text", "forbidden_text"}
@@ -18,6 +19,34 @@ SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 CJK = r"\u3400-\u9fff"
 PATCH_OPERATIONS = {"replace", "insert_before", "insert_after"}
 REPAIR_KINDS = {"semantic", "mechanical"}
+REPAIR_KIND_ALIASES = {
+    "semantic": "semantic", "semantic_repair": "semantic",
+    "content": "semantic", "narrative": "semantic",
+    "targeted_revision": "semantic", "语义": "semantic",
+    "语义修复": "semantic", "内容": "semantic", "剧情": "semantic",
+    "mechanical": "mechanical", "mechanical_repair": "mechanical",
+    "format": "mechanical", "typography": "mechanical",
+    "deterministic": "mechanical", "机械": "mechanical",
+    "机械修复": "mechanical", "格式": "mechanical", "排版": "mechanical",
+}
+PATCH_OPERATION_ALIASES = {
+    "replace": "replace", "replacement": "replace", "substitute": "replace",
+    "rewrite": "replace", "替换": "replace", "改写": "replace", "修改": "replace",
+    "insert_before": "insert_before", "add_before": "insert_before",
+    "prepend": "insert_before", "before": "insert_before",
+    "前插": "insert_before", "前置插入": "insert_before", "在前插入": "insert_before",
+    "insert_after": "insert_after", "add_after": "insert_after",
+    "append": "insert_after", "after": "insert_after",
+    "后插": "insert_after", "后置插入": "insert_after", "在后插入": "insert_after",
+}
+CHECK_KIND_ALIASES = {
+    "required_text": "required_text", "must_include": "required_text",
+    "contains": "required_text", "preserve_text": "required_text",
+    "必须包含": "required_text", "必须保留": "required_text", "保留文本": "required_text",
+    "forbidden_text": "forbidden_text", "must_not_include": "forbidden_text",
+    "exclude": "forbidden_text", "remove_text": "forbidden_text",
+    "禁止出现": "forbidden_text", "必须删除": "forbidden_text", "删除文本": "forbidden_text",
+}
 REPAIR_LABELS = {
     "ascii_dialogue_quotes": "ASCII 对话引号",
     "cjk_spacing": "汉字间多余空格",
@@ -43,6 +72,18 @@ _SEGMENT_LABEL = re.compile(
     rf")(?=$|[\s:：·—–\-（(])",
     re.IGNORECASE,
 )
+
+
+def canonical_repair_kind(value: object) -> str | None:
+    return canonical_model_label(value, REPAIR_KIND_ALIASES)
+
+
+def canonical_patch_operation(value: object) -> str | None:
+    return canonical_model_label(value, PATCH_OPERATION_ALIASES)
+
+
+def canonical_check_kind(value: object) -> str | None:
+    return canonical_model_label(value, CHECK_KIND_ALIASES)
 
 
 def parse_segment_number(value: Any, *, allow_scene: bool = True) -> int | None:
@@ -110,10 +151,11 @@ def normalize_repair_contract(value: dict, manuscript: str,
                               issue_ids: set[str]) -> dict:
     if not isinstance(value, dict):
         raise ValueError("Repair contract must be an object")
+    result = copy.deepcopy(value)
     manuscript_hash = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
-    if value.get("manuscript_hash") != manuscript_hash:
+    if result.get("manuscript_hash") != manuscript_hash:
         raise ValueError("Repair contract manuscript_hash is stale")
-    groups = value.get("groups")
+    groups = result.get("groups")
     if not isinstance(groups, list) or not groups:
         raise ValueError("Repair contract must contain a group")
     for group in groups:
@@ -127,21 +169,32 @@ def normalize_repair_contract(value: dict, manuscript: str,
             raise ValueError("Repair contract references an unknown issue")
         if len(set(linked_ids)) != 1:
             raise ValueError("Repair contract group mixes unrelated issue IDs")
-        kind = group.get("kind", "semantic")
+        raw_kind = group.get("kind", "semantic")
+        kind = canonical_repair_kind(raw_kind)
         if kind not in REPAIR_KINDS:
             raise ValueError("Repair contract group kind is unsupported")
+        if str(raw_kind) != kind:
+            group["raw_kind"] = raw_kind
+        group["kind"] = kind
         if not group.get("requires_user_confirmation"):
             raise ValueError("Repair contract group requires user confirmation")
         patches = group.get("patches")
         if not isinstance(patches, list) or not patches:
             raise ValueError("Repair contract group must contain a patch")
         for patch in patches:
-            if not isinstance(patch, dict) or patch.get("operation") not in PATCH_OPERATIONS:
+            if not isinstance(patch, dict):
                 raise ValueError("Repair contract patch operation is unsupported")
+            raw_operation = patch.get("operation")
+            operation = canonical_patch_operation(raw_operation)
+            if operation not in PATCH_OPERATIONS:
+                raise ValueError("Repair contract patch operation is unsupported")
+            if str(raw_operation) != operation:
+                patch["raw_operation"] = raw_operation
+            patch["operation"] = operation
             old = patch.get("old_text")
             if not isinstance(old, str) or not old or manuscript.count(old) != 1:
                 raise ValueError("Repair contract old_text must be unique")
-    return copy.deepcopy(value)
+    return result
 
 
 def repair_mechanical_text(text: str) -> dict:
@@ -528,10 +581,14 @@ def normalize_revision_plan(value: dict[str, Any], segment_count: int,
     for item in value.get("checks", []):
         if not isinstance(item, dict):
             continue
-        kind, text = item.get("kind"), item.get("value")
+        raw_kind, text = item.get("kind"), item.get("value")
+        kind = canonical_check_kind(raw_kind)
         if (kind in CHECK_KINDS and isinstance(text, str) and text.strip()
                 and not (kind == "forbidden_text" and text.strip() in {'"', "'"})):
-            checks.append({"kind": kind, "value": text.strip()})
+            check = {"kind": kind, "value": text.strip()}
+            if str(raw_kind) != kind:
+                check["raw_kind"] = raw_kind
+            checks.append(check)
     tasks = []
     for item in value.get("tasks", []):
         if not isinstance(item, dict):

@@ -1,6 +1,18 @@
 import pytest
 
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.model_output import (
+    canonical_model_label,
+    normalize_model_label,
+    parse_json_object,
+)
+
+
+def test_model_control_labels_normalize_width_case_spacing_and_aliases() -> None:
+    aliases = {"insert_after": "insert_after", "在后插入": "insert_after"}
+
+    assert normalize_model_label(" ＩＮＳＥＲＴ－ＡＦＴＥＲ ") == "insert_after"
+    assert canonical_model_label("在后插入", aliases) == "insert_after"
+    assert canonical_model_label("自由描述", aliases) is None
 
 
 @pytest.mark.parametrize("text", [

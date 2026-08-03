@@ -1,11 +1,26 @@
 from __future__ import annotations
 
 import json
+import re
 import unicodedata
+from collections.abc import Mapping
 from typing import Any
 
 
 _JSON_TOKEN_CHARACTERS = frozenset('{}[]:,.+-0123456789truefalsnulEe \t\r\n')
+
+
+def normalize_model_label(value: object) -> str:
+    """Normalize a generated control label without touching free-form prose."""
+    text = unicodedata.normalize("NFKC", str(value or "")).strip().casefold()
+    return re.sub(r"[\s\-]+", "_", text)
+
+
+def canonical_model_label(
+    value: object, aliases: Mapping[str, str],
+) -> str | None:
+    """Return a documented control value or None for an unknown description."""
+    return aliases.get(normalize_model_label(value))
 
 
 def _normalize_json_syntax(text: str) -> str:
