@@ -7,8 +7,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.outlines import (
     OutlineService, extract_outline_characters, local_outline_manifest,
-    narrative_outline_events, normalize_outline_manifest, outline_event_kind,
-    outline_events,
+    narrative_outline_event_contracts, narrative_outline_events,
+    normalize_outline_manifest, outline_event_kind, outline_events,
 )
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.reference_library import ReferenceLibrary
@@ -242,7 +242,7 @@ def test_outline_events_separate_story_beats_from_structure_and_directives() -> 
         "保持第一人称": "directive",
     }
     assert [item["label"] for item in narrative_outline_events(events)] == [
-        "开篇钩子", "第1章·身份露馅", "冲突升级",
+        "开篇钩子", "冲突升级",
     ]
 
     assert all("kind" not in item for item in events)
@@ -257,14 +257,14 @@ def test_narrative_outline_events_falls_back_to_sparse_chapter_headings() -> Non
     assert narrative_outline_events(events) == events
 
 
-def test_narrative_outline_events_keeps_titled_chapter_in_mixed_sparse_outline() -> None:
+def test_narrative_outline_events_treats_titled_chapter_with_children_as_container() -> None:
     events = outline_events(
         "# 大纲\n\n## 第一章：误入\n**开篇钩子**：被错抬进府。\n\n"
         "## 第二章：真相揭晓\n"
     )
 
     assert [item["label"] for item in narrative_outline_events(events)] == [
-        "第一章：误入", "开篇钩子", "第二章：真相揭晓",
+        "开篇钩子", "第二章：真相揭晓",
     ]
 
 
@@ -300,6 +300,58 @@ def test_narrative_outline_events_does_not_require_act_before_titled_chapter() -
     assert [item["label"] for item in narrative_outline_events(events)] == [
         "第1章·一顶轿子抬错了人", "第2章·账册露出破绽",
     ]
+
+
+def test_narrative_outline_event_contracts_exclude_eight_production_style_chapters() -> None:
+    counts = [4, 4, 4, 4, 4, 3, 3, 3]
+    blocks = ["# 短篇正式大纲", "", "## 章节规划"]
+    event_labels = []
+    for chapter, count in enumerate(counts, 1):
+        blocks.append(f"### 第{chapter}章·章节标题{chapter}")
+        for event in range(1, count + 1):
+            label = f"事件{chapter}-{event}"
+            event_labels.append(label)
+            blocks.append(f"**{label}**：人物执行本事件并产生可核对结果。")
+        blocks.append("")
+    content = "\n".join(blocks)
+
+    all_events = outline_events(content)
+    contracts = narrative_outline_event_contracts(content)
+    original_ids = {item["label"]: item["id"] for item in all_events}
+
+    assert len(contracts) == 29
+    assert [item["label"] for item in contracts] == event_labels
+    assert all(not item["label"].startswith("第") for item in contracts)
+    assert [item["id"] for item in contracts] == [
+        original_ids[label] for label in event_labels
+    ]
+    changed = narrative_outline_event_contracts(
+        content.replace("产生可核对结果", "产生更具体且可核对的结果"),
+    )
+    assert [item["id"] for item in changed] == [item["id"] for item in contracts]
+
+
+@pytest.mark.parametrize(
+    ("content", "labels"),
+    [
+        (
+            "# Outline\n\n## Act I\n### Chapter 1: Arrival\n"
+            "**Inciting event**: The envoy lands.\n",
+            ["Inciting event"],
+        ),
+        (
+            "# Outline\n\n## Act I\n### Chapter 1: Arrival\n"
+            "### Chapter 2: Discovery\n",
+            ["Chapter 1: Arrival", "Chapter 2: Discovery"],
+        ),
+    ],
+)
+def test_narrative_outline_events_support_english_nested_and_sparse_structure(
+    content: str, labels: list[str],
+) -> None:
+    assert [
+        item["label"] for item in narrative_outline_event_contracts(content)
+    ] == labels
 
 
 @pytest.mark.parametrize("section", ["世界崩塌", "背景真相揭晓", "情感线索浮现"])

@@ -510,12 +510,18 @@ class FakeGateway:
         self.roles.append(role)
         self.systems.append(system)
         assert "Skill instructions" in system
-        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_V2" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
+        ):
             return ModelResult(
                 json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
                 {"role": role, "model_name": f"fake-{role}"},
             )
-        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3" in user
+        ):
             return ModelResult(
                 execution_manifest_receipt_from_prompt(user),
                 {"role": role, "model_name": f"fake-{role}"},
@@ -576,6 +582,62 @@ class FakeGateway:
 
 
 def execution_manifest_body_from_prompt(user: str) -> dict:
+    if "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user:
+        expected = json.loads(
+            user.split("EXPECTED EVENT IDS:\n", 1)[1].split("\n\n", 1)[0]
+        )
+        segment = int(user.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        contracts = json.loads(
+            user.split("CURRENT EVENT CONTRACTS:\n", 1)[1].split(
+                "\n\nCURRENT ACCEPTED PLAN SEGMENT:\n", 1,
+            )[0]
+        )
+        contract_by_id = {
+            str(item["id"]).upper(): item for item in contracts
+        }
+        previous_exit = json.loads(
+            user.split("PREVIOUS ACCEPTED EXIT STATE:\n", 1)[1].split(
+                "\n\nVIEWPOINT AND TIMELINE AUTHORITY:\n", 1,
+            )[0]
+        )
+        beats = []
+        for index, source in enumerate(expected, 1):
+            evidence = str(contract_by_id[source].get("evidence") or source)
+            beats.append({
+                "beat_id": f"{source}/01",
+                "source_event_id": source,
+                "order": index,
+                "presentation_order": index,
+                "action": f"执行当前正式段事件 {source}",
+                "preconditions": ["承接当前段入口"],
+                "postconditions": [f"完成 {source}"],
+                "owner_segment": segment,
+                "source_evidence": evidence,
+            })
+        entry_state = previous_exit or [{
+            "state": "opening", "inherited_from": "opening",
+        }]
+        return {
+            "beats": beats,
+            "segments": [{
+                "segment": segment,
+                "beat_ids": [item["beat_id"] for item in beats],
+                "entry_state": [
+                    {
+                        "state": item["state"],
+                        "inherited_from": item.get("inherited_from")
+                        or f"segment-{segment - 1:02d}",
+                    }
+                    for item in entry_state
+                ],
+                "exit_state": [{
+                    "state": f"完成 {expected[-1]}",
+                    "produced_by": beats[-1]["beat_id"],
+                }],
+                "previous_exit_sha256": "",
+                "prohibited_future_beat_ids": [],
+            }],
+        }
     expected = json.loads(user.split("EXPECTED EVENT IDS:\n", 1)[1].split("\n\n", 1)[0])
     count = int(user.split("SEGMENT COUNT: ", 1)[1].splitlines()[0])
     total = max(len(expected), count)
@@ -639,7 +701,10 @@ def execution_manifest_receipt_from_prompt(user: str) -> str:
         } for beat in manifest.beats],
         "segment_receipts": [{
             "segment": segment.segment, "boundary_valid": True,
-            "evidence": segment.exit_state[0].state,
+            "evidence": next(
+                beat.source_evidence for beat in reversed(manifest.beats)
+                if beat.owner_segment == segment.segment
+            ),
         } for segment in manifest.segments],
         "formal_plot_unchanged": True,
         "summary": "执行索引与正式资料一致。",
@@ -721,7 +786,7 @@ def write_test_execution_manifest(
     )
     payload = {
         **execution_manifest_body_from_prompt(prompt),
-        "version": 2, "status": "ready", **hashes,
+        "version": 3, "status": "ready", **hashes,
         "semantic_receipt": {}, "repair_attempts": 0,
     }
     manifest = parse_execution_manifest(payload)
@@ -1122,12 +1187,18 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
             self.roles.append(role)
             self.systems.append(system)
             self.users.append(user)
-            if "SHORT_EXECUTION_MANIFEST_V2" in user:
+            if (
+                "SHORT_EXECUTION_MANIFEST_V2" in user
+                or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
+            ):
                 return ModelResult(
                     json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
                     {"role": role, "model_name": f"fake-{role}"},
                 )
-            if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+            if (
+                "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user
+                or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3" in user
+            ):
                 return ModelResult(
                     execution_manifest_receipt_from_prompt(user),
                     {"role": role, "model_name": f"fake-{role}"},
@@ -1345,12 +1416,18 @@ class RecordingGateway:
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
         self.calls.append({"role": role, "system": system, "user": user})
-        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_V2" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
+        ):
             return ModelResult(
                 json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
                 {"role": role, "model_name": f"fake-{role}"},
             )
-        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3" in user
+        ):
             return ModelResult(
                 execution_manifest_receipt_from_prompt(user),
                 {"role": role, "model_name": f"fake-{role}"},
@@ -6380,9 +6457,15 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
     )
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
-        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_V2" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
+        ):
             return json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False)
-        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3" in user
+        ):
             return execution_manifest_receipt_from_prompt(user)
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return json.dumps({
@@ -6475,9 +6558,15 @@ async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_
     prompts = []
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
-        if "SHORT_EXECUTION_MANIFEST_V2" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_V2" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
+        ):
             return json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False)
-        if "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user:
+        if (
+            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3" in user
+        ):
             return execution_manifest_receipt_from_prompt(user)
         prompts.append(user)
         return "没有分段标题的初稿" if len(prompts) == 1 else repaired

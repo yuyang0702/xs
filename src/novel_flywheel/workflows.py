@@ -28,12 +28,16 @@ from novel_flywheel.draft_split import (
 )
 from novel_flywheel.execution_manifest import (
     ShortExecutionManifest,
-    bind_previous_exit_hashes,
+    StateAssertion,
+    execution_manifest_fragment_issues,
     execution_manifest_issues,
+    execution_manifest_receipt_issues,
     execution_manifest_receipt_binding_issues,
     execution_manifest_sha256,
     legacy_execution_index_requires_rebuild,
+    merge_execution_manifest_fragments,
     parse_execution_manifest,
+    state_assertions_sha256,
     validate_execution_manifest_receipt,
 )
 from novel_flywheel.causal_chain import (
@@ -74,6 +78,7 @@ from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.outlines import (
     canon_profile,
     detect_canon_conflicts,
+    narrative_outline_event_contracts,
     narrative_outline_events,
     outline_events,
 )
@@ -3358,22 +3363,76 @@ class WorkflowService:
         outline = state.get("outline") if isinstance(state, dict) else {}
         outline = outline if isinstance(outline, dict) else {}
         outline_content = str(outline.get("content") or "")
-        events = narrative_outline_events(formal_outline_events)
+        events = (
+            narrative_outline_event_contracts(outline_content)
+            if outline_content.strip() else []
+        )
+        if not events:
+            events = narrative_outline_events(formal_outline_events)
+        normalized_events: list[dict] = []
+        for order, item in enumerate(events, 1):
+            event = dict(item)
+            event_id = str(event.get("id") or "").strip().upper()
+            if not event_id:
+                continue
+            evidence = str(event.get("evidence") or "").strip()
+            if not evidence:
+                label = str(event.get("label") or "").strip()
+                evidence = label if label and label in outline_content else outline_content
+                evidence = evidence.strip() or label or event_id
+            normalized_events.append({
+                **event,
+                "id": event_id,
+                "order": order,
+                "presentation_order": order,
+                "source_order": int(event.get("source_order") or event.get("order") or order),
+                "kind": "narrative",
+                "source": str(event.get("source") or "formal_outline"),
+                "evidence": evidence,
+                "story_time": str(event.get("story_time") or "").strip(),
+                "timeline": str(event.get("timeline") or "").strip(),
+                "actor": str(event.get("actor") or "").strip(),
+                "location": str(event.get("location") or "").strip(),
+                "viewpoint": str(event.get("viewpoint") or "").strip(),
+                "knowledge_delta": list(event.get("knowledge_delta") or []),
+                "relationship_delta": list(event.get("relationship_delta") or []),
+            })
+        events = normalized_events
         if not events:
             plan_segments = WorkflowService._short_plan_segments(plan, segment_count)
             if not plan_segments:
                 plan_segments = [plan]
+            fallback_blocks: dict[str, list[str]] = {}
+            fallback_order: list[str] = []
+            for index, block in enumerate(plan_segments, 1):
+                event_ids = WorkflowService._short_plan_event_ids(block)
+                if not event_ids:
+                    event_ids = ["EV-" + hashlib.sha1(
+                        f"{project.id}|{index}|{block}".encode("utf-8"),
+                    ).hexdigest()[:8].upper()]
+                for event_id in event_ids:
+                    if event_id not in fallback_blocks:
+                        fallback_blocks[event_id] = []
+                        fallback_order.append(event_id)
+                    fallback_blocks[event_id].append(block)
             events = [{
-                "id": "EV-" + hashlib.sha1(
-                    f"{project.id}|{index}|{block}".encode("utf-8"),
-                ).hexdigest()[:8].upper(),
+                "id": event_id,
                 "order": index,
-                "label": f"已验收规划第 {index} 段事件",
+                "label": f"已验收规划事件 {event_id}",
                 "section": "已验收规划",
                 "kind": "narrative",
                 "source": "accepted_plan_fallback",
-                "evidence": block,
-            } for index, block in enumerate(plan_segments, 1)]
+                "evidence": "\n\n".join(fallback_blocks[event_id]),
+                "presentation_order": index,
+                "source_order": index,
+                "story_time": "",
+                "timeline": "",
+                "actor": "",
+                "location": "",
+                "viewpoint": "",
+                "knowledge_delta": [],
+                "relationship_delta": [],
+            } for index, event_id in enumerate(fallback_order, 1)]
         outline_sha = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
         planning_sha = hashlib.sha256(plan.encode("utf-8")).hexdigest()
         causal_json = json.dumps(
@@ -3403,13 +3462,276 @@ class WorkflowService:
         }
         authority_text = (
             "FORMAL OUTLINE:\n" + outline_content
-            + "\n\nFORMAL OUTLINE EVENTS:\n"
+            + "\n\nNARRATIVE EVENT CONTRACTS:\n"
             + json.dumps(events, ensure_ascii=False, indent=2)
             + "\n\nACCEPTED PLAN:\n" + plan
             + "\n\nCAUSAL CHAIN:\n"
             + json.dumps(causal_chain, ensure_ascii=False, indent=2)
         )
         return hashes, authority_text, events
+
+    @staticmethod
+    def _short_manifest_fragment_authority(
+        event_contracts: list[dict], plan_segment: str, causal_chain: dict,
+        previous_exit: tuple[StateAssertion, ...], narrative_authority: dict,
+    ) -> str:
+        return (
+            "CURRENT EVENT CONTRACTS:\n"
+            + json.dumps(event_contracts, ensure_ascii=False, indent=2)
+            + "\n\nCURRENT ACCEPTED PLAN SEGMENT:\n" + plan_segment
+            + "\n\nWHOLE-STORY CAUSAL AUTHORITY:\n"
+            + json.dumps(causal_chain, ensure_ascii=False, indent=2)
+            + "\n\nPREVIOUS ACCEPTED EXIT STATE:\n"
+            + json.dumps(
+                [asdict(item) for item in previous_exit],
+                ensure_ascii=False, indent=2,
+            )
+            + "\n\nVIEWPOINT AND TIMELINE AUTHORITY:\n"
+            + json.dumps(narrative_authority, ensure_ascii=False, indent=2)
+        )
+
+    @staticmethod
+    def _short_manifest_fragment_schema(segment: int) -> dict:
+        return {
+            "beats": [{
+                "beat_id": "EV-XXXXXXXX/NN",
+                "source_event_id": "EV-XXXXXXXX",
+                "order": 1,
+                "presentation_order": 1,
+                "actor": "人物、群体、环境、制度、系统或未知",
+                "location": "正式资料明确的地点；没有则为空字符串",
+                "action": "不改变执行者的一个原子动作",
+                "preconditions": ["动作发生前已经成立的状态"],
+                "postconditions": ["该动作直接产生的状态"],
+                "owner_segment": segment,
+                "source_evidence": "逐字摘自对应 CURRENT EVENT CONTRACT 的 evidence",
+                "story_time": "仅在正式资料明确时填写；倒叙不得改成顺叙",
+                "timeline": "多时间线标识；没有则为空字符串",
+                "viewpoint": "正式资料明确的视角；没有则为空字符串",
+                "knowledge_delta": ["本节拍明确造成的知情变化"],
+                "relationship_delta": ["本节拍明确造成的关系变化"],
+            }],
+            "segments": [{
+                "segment": segment,
+                "beat_ids": ["当前段按展示顺序拥有的全部节拍 ID"],
+                "entry_state": [{
+                    "state": "进入当前段前已经成立的状态",
+                    "inherited_from": "opening 或上一正式段",
+                }],
+                "exit_state": [{
+                    "state": "当前段结束时成立的状态",
+                    "produced_by": "当前段拥有的 EV-XXXXXXXX/NN",
+                }],
+                "previous_exit_sha256": "由 Runtime 绑定，返回空字符串即可",
+                "prohibited_future_beat_ids": [],
+            }],
+        }
+
+    async def _generate_short_execution_fragment(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        hashes: dict[str, str], segment: int, event_contracts: list[dict],
+        plan_segment: str, causal_chain: dict,
+        previous_exit: tuple[StateAssertion, ...],
+        previous_fragment_sha256: str, future_event_ids: list[str],
+        narrative_authority: dict, *, semantic_directive: str = "",
+        previous_body: dict | None = None,
+        max_schema_repairs: int = 2, max_integrity_repairs: int = 2,
+    ) -> tuple[ShortExecutionManifest | None, dict, list[dict], dict]:
+        expected_event_ids = [
+            str(item.get("id") or "").strip().upper()
+            for item in event_contracts
+        ]
+        fragment_authority = self._short_manifest_fragment_authority(
+            event_contracts, plan_segment, causal_chain, previous_exit,
+            narrative_authority,
+        )
+        base_prompt = (
+            "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3\n"
+            "这是 Runtime 拆出的单一正式写作段子任务，只返回一个 JSON 对象。"
+            "不得改写正式大纲、规划、因果链或上一段出口；不得提前消费后续事件。\n"
+            "原子节拍必须保持正式资料的展示顺序。倒叙、多时间线和多视角作品也按展示顺序执行，"
+            "story_time 与 timeline 只记录故事内时间，不得据此重排。"
+            "actor 可以是人物、群体、环境、制度、系统或未知；有原文依据才填写可选状态变化。\n"
+            f"AUTHORITY SHA256: {hashes['authority_sha256']}\n"
+            f"TASK ID: manifest-segment-{segment:02d}\n"
+            f"PARENT TASK ID: {run_id}\nDEPTH: 1\n"
+            f"CURRENT SEGMENT: {segment}\n"
+            f"PREVIOUS ACCEPTED FRAGMENT SHA256: {previous_fragment_sha256}\n"
+            "EXPECTED EVENT IDS:\n"
+            + json.dumps(expected_event_ids, ensure_ascii=False)
+            + "\n\nFUTURE EVENT IDS (FORBIDDEN IN THIS TASK):\n"
+            + json.dumps(future_event_ids, ensure_ascii=False)
+            + "\n\nREQUIRED EXIT FROM ACCEPTED PLAN:\n"
+            + self._short_plan_handoff(plan_segment)
+            + "\n\nOUTPUT BODY SCHEMA:\n"
+            + json.dumps(
+                self._short_manifest_fragment_schema(segment),
+                ensure_ascii=False, indent=2,
+            )
+            + "\n\nFRAGMENT AUTHORITY TEXT:\n" + fragment_authority
+        )
+        if semantic_directive:
+            base_prompt += "\n\nSEMANTIC REPAIR DIRECTIVE:\n" + semantic_directive
+        if previous_body:
+            base_prompt += (
+                "\n\nPREVIOUS VALID-SCHEMA FRAGMENT:\n"
+                + json.dumps(previous_body, ensure_ascii=False, indent=2)
+            )
+
+        schema_repairs = 0
+        integrity_repairs = 0
+        call_number = 0
+        last_issues: list[dict] = []
+        last_body: dict = dict(previous_body or {})
+        while True:
+            call_number += 1
+            prompt = base_prompt
+            if last_issues:
+                prompt += (
+                    "\n\nLOCAL REPAIR ISSUES (fix every item):\n"
+                    + json.dumps(last_issues, ensure_ascii=False, indent=2)
+                    + "\n\nLAST RETURNED BODY:\n"
+                    + json.dumps(last_body, ensure_ascii=False, indent=2)
+                )
+            raw = await self._stage(
+                run_id, run_path, project, "planning", constraints, prompt,
+                suffix=f"-execution-segment-{segment:02d}-{call_number}",
+                allow_tools=False,
+                expected_output_characters=max(1800, 850 * len(event_contracts)),
+            )
+            try:
+                body = parse_json_object(
+                    raw, label=f"Execution manifest segment {segment}",
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                last_issues = [{
+                    "code": "invalid_manifest_json", "message": str(exc)[:500],
+                }]
+                if schema_repairs >= max_schema_repairs:
+                    break
+                schema_repairs += 1
+            else:
+                last_body = body
+                raw_segments = body.get("segments")
+                if isinstance(raw_segments, list) and len(raw_segments) == 1 \
+                        and isinstance(raw_segments[0], dict):
+                    segment_body = dict(raw_segments[0])
+                    segment_body["previous_exit_sha256"] = (
+                        state_assertions_sha256(previous_exit)
+                        if previous_exit else ""
+                    )
+                    body = {**body, "segments": [segment_body]}
+                    last_body = body
+                payload = {
+                    **body, "version": 3, "status": "fragment_ready", **hashes,
+                    "semantic_receipt": {},
+                    "repair_attempts": schema_repairs + integrity_repairs,
+                }
+                try:
+                    fragment = parse_execution_manifest(payload)
+                except (TypeError, ValueError) as exc:
+                    last_issues = [{
+                        "code": "invalid_manifest_schema", "message": str(exc)[:500],
+                    }]
+                    if schema_repairs >= max_schema_repairs:
+                        break
+                    schema_repairs += 1
+                else:
+                    last_issues = execution_manifest_fragment_issues(
+                        fragment,
+                        owner_segment=segment,
+                        expected_event_ids=expected_event_ids,
+                        authority_hashes=hashes,
+                        expected_events=event_contracts,
+                        previous_exit_state=previous_exit,
+                    )
+                    if not last_issues:
+                        return fragment, {
+                            "schema_repairs": schema_repairs,
+                            "integrity_repairs": integrity_repairs,
+                        }, [], last_body
+                    if integrity_repairs >= max_integrity_repairs:
+                        break
+                    integrity_repairs += 1
+            self.db.add_run_event(
+                run_id, "info", "planning_manifest_fragment_repair",
+                f"正在修正规划执行索引第 {segment} 段，正式大纲保持不变",
+                stage="planning", metadata={
+                    "segment": segment,
+                    "schema_repairs": schema_repairs,
+                    "integrity_repairs": integrity_repairs,
+                    "issues": last_issues,
+                },
+            )
+        return None, {
+            "schema_repairs": schema_repairs,
+            "integrity_repairs": integrity_repairs,
+        }, last_issues, last_body
+
+    async def _review_short_execution_fragment(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        fragment: ShortExecutionManifest, fragment_authority: str,
+        segment: int, *, suffix: str,
+    ) -> tuple[dict, list[dict]]:
+        expected_manifest_hash = execution_manifest_sha256(fragment)
+        protocol_codes = {
+            "receipt_schema", "receipt_authority_hash", "receipt_manifest_hash",
+            "receipt_beat_schema", "receipt_beat_coverage",
+            "receipt_segment_schema", "receipt_segment_coverage",
+            "receipt_summary",
+        }
+        last_issues: list[dict] = []
+        for receipt_attempt in range(2):
+            prompt = (
+                "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3\n"
+                "只核对当前正式段，只返回一个 JSON 语义回执。逐项检查人物/非人物执行者、动作、"
+                "视角、地点、展示顺序、故事时间、知情与关系变化、入口/出口状态。"
+                "不能因为题材不同而猜测未写明的规则；倒叙不得按故事时间重排。\n"
+                "下面两个哈希由 Runtime 准确计算，必须原样回填，不要自行计算：\n"
+                f"EXPECTED AUTHORITY SHA256: {fragment.authority_sha256}\n"
+                f"EXPECTED MANIFEST SHA256: {expected_manifest_hash}\n"
+                "字段：authority_sha256、manifest_sha256、beat_receipts"
+                "[{beat_id,evidence,actor_action_valid}]、segment_receipts"
+                "[{segment,boundary_valid,evidence}]、formal_plot_unchanged、summary。"
+                "beat evidence 必须等于节拍 source_evidence；边界 evidence 必须逐字来自"
+                "当前规划段或事件合同。\n\nEXECUTION MANIFEST:\n"
+                + json.dumps(asdict(fragment), ensure_ascii=False, indent=2)
+                + "\n\nAUTHORITY TEXT:\n" + fragment_authority
+            )
+            if last_issues:
+                prompt += (
+                    "\n\nRECEIPT PROTOCOL ISSUES:\n"
+                    + json.dumps(last_issues, ensure_ascii=False, indent=2)
+                )
+            raw = await self._stage(
+                run_id, run_path, project, "review", constraints, prompt,
+                suffix=f"-execution-segment-{segment:02d}-{suffix}-{receipt_attempt + 1}",
+                allow_tools=False,
+                expected_output_characters=max(1000, 260 * len(fragment.beats)),
+            )
+            try:
+                receipt_payload = parse_json_object(
+                    raw, label=f"Execution manifest receipt segment {segment}",
+                )
+            except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                receipt_payload = {}
+                last_issues = [{
+                    "code": "receipt_schema", "message": str(exc)[:500],
+                }]
+            else:
+                last_issues = execution_manifest_receipt_issues(
+                    fragment, fragment_authority, receipt_payload,
+                )
+                if not last_issues:
+                    return validate_execution_manifest_receipt(
+                        fragment, fragment_authority, receipt_payload,
+                    ), []
+            if receipt_attempt == 0 and all(
+                item.get("code") in protocol_codes for item in last_issues
+            ):
+                continue
+            break
+        return {}, last_issues
 
     async def _ensure_short_execution_manifest(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
@@ -3420,10 +3742,26 @@ class WorkflowService:
             project, state_revision, state, constraints, plan, causal_chain,
             formal_outline_events, segment_count,
         )
-        expected_event_ids = [
-            str(item.get("id") or "").strip().upper()
-            for item in expected_events if str(item.get("id") or "").strip()
-        ]
+        expected_event_ids = [str(item["id"]).upper() for item in expected_events]
+        event_by_id = {str(item["id"]).upper(): item for item in expected_events}
+        plan_segments = self._short_plan_segments(plan, segment_count)
+        if len(plan_segments) != segment_count:
+            raise ValueError("规划分段不完整，无法派生逐段执行索引")
+        owned_event_ids = [self._short_plan_event_ids(block) for block in plan_segments]
+        if segment_count == 1 and not owned_event_ids[0]:
+            owned_event_ids[0] = list(expected_event_ids)
+        elif len(expected_event_ids) == 1 and all(not group for group in owned_event_ids):
+            owned_event_ids = [list(expected_event_ids) for _block in plan_segments]
+        invalid_ids = sorted({
+            event_id for group in owned_event_ids for event_id in group
+            if event_id not in event_by_id
+        })
+        if invalid_ids or any(not group for group in owned_event_ids):
+            raise ValueError(
+                "规划事件归属不完整，无法派生逐段执行索引："
+                + ("、".join(invalid_ids) if invalid_ids else "存在没有事件 ID 的正式段")
+            )
+
         index_path = run_path / "outputs" / "short-execution-index.json"
         try:
             existing_payload = json.loads(index_path.read_text(encoding="utf-8"))
@@ -3435,6 +3773,7 @@ class WorkflowService:
                 issues = execution_manifest_issues(
                     existing, expected_event_ids=expected_event_ids,
                     segment_count=segment_count, authority_hashes=hashes,
+                    expected_events=expected_events,
                 )
                 receipt = validate_execution_manifest_receipt(
                     existing, authority_text, existing.semantic_receipt,
@@ -3445,176 +3784,290 @@ class WorkflowService:
                 if not issues and existing.status == "ready":
                     return replace(existing, semantic_receipt=receipt)
 
-        pending = {
-            "version": 2, "status": "manifest_pending", **hashes,
+        atomic_write(index_path, json.dumps({
+            "version": 3, "status": "manifest_pending", **hashes,
             "beats": [], "segments": [], "semantic_receipt": {},
             "repair_attempts": 0,
+        }, ensure_ascii=False, indent=2))
+        checkpoints = run_path / "outputs" / "execution-manifest-fragments"
+        narrative_authority = {
+            "presentation_order": expected_event_ids,
+            "timeline_events": state.get("timeline_events", []),
+            "viewpoint_rule": str(
+                state.get("viewpoint") or state.get("narrative_viewpoint") or ""
+            ),
+            "nonlinear_rule": (
+                "展示顺序是执行顺序；story_time/timeline 只描述故事内时间，"
+                "不得把倒叙、插叙、双时间线改成时间顺序。"
+            ),
         }
-        atomic_write(index_path, json.dumps(pending, ensure_ascii=False, indent=2))
-        schema = {
-            "beats": [{
-                "beat_id": "EV-XXXXXXXX/NN",
-                "source_event_id": "EV-XXXXXXXX",
-                "order": 1,
-                "action": "一个明确角色完成的一个原子动作",
-                "preconditions": ["动作发生前已经成立的状态"],
-                "postconditions": ["该动作直接产生的状态"],
-                "owner_segment": 1,
-                "source_evidence": "必须逐字存在于 AUTHORITY TEXT 的短证据",
-            }],
-            "segments": [{
-                "segment": 1,
-                "beat_ids": ["EV-XXXXXXXX/01"],
-                "entry_state": [{
-                    "state": "进入本段前已经成立的状态",
-                    "inherited_from": "opening 或 segment-NN",
-                }],
-                "exit_state": [{
-                    "state": "本段结束时成立的状态",
-                    "produced_by": "必须属于本段的 EV-XXXXXXXX/NN",
-                }],
-                "previous_exit_sha256": "由 Runtime 绑定；模型返回空字符串即可",
-                "prohibited_future_beat_ids": ["尚未轮到本段执行的节拍 ID"],
-            }],
+        fragments: list[ShortExecutionManifest] = []
+        fragment_receipts: list[dict] = []
+        repair_totals = {
+            "schema_repairs": 0, "integrity_repairs": 0, "semantic_repairs": 0,
         }
-        base_prompt = (
-            "SHORT_EXECUTION_MANIFEST_V2\n"
-            "根据已经验收的正式大纲、规划和因果链，建立本次运行专用的原子节拍执行索引。"
-            "只返回一个 JSON 对象，不要 Markdown 围栏或解释；不要改写正式大纲。\n"
-            "每个正式事件可拆成多个 EV-XXXXXXXX/NN 原子节拍；每个节拍只能归属一个分段。"
-            "出口状态只能由当前分段拥有的节拍产生；下一段继承状态，不能再次执行动作。"
-            "必须覆盖全部正式事件且保持先后顺序。source_evidence 必须逐字取自 AUTHORITY TEXT。\n\n"
-            f"EXPECTED EVENT IDS:\n{json.dumps(expected_event_ids, ensure_ascii=False)}\n\n"
-            f"SEGMENT COUNT: {segment_count}\n\n"
-            f"OUTPUT BODY SCHEMA:\n{json.dumps(schema, ensure_ascii=False, indent=2)}\n\n"
-            f"AUTHORITY TEXT:\n{authority_text}"
-        )
-        last_issues: list[dict] = []
+        previous_exit: tuple[StateAssertion, ...] = ()
+        previous_fragment_hash = ""
+        failure_issues: list[dict] = []
         last_body: dict = {}
-        for attempt in range(3):
-            prompt = base_prompt
-            if attempt:
-                prompt += (
-                    "\n\nREPAIR ATTEMPT " + str(attempt)
-                    + ": 修正上次全部问题，不得只修第一项。\nISSUES:\n"
-                    + json.dumps(last_issues, ensure_ascii=False, indent=2)
-                    + "\n\nPREVIOUS BODY:\n"
-                    + json.dumps(last_body, ensure_ascii=False, indent=2)
+        try:
+            for segment, (plan_segment, event_ids) in enumerate(
+                zip(plan_segments, owned_event_ids), 1,
+            ):
+                contracts = [event_by_id[event_id] for event_id in event_ids]
+                future_event_ids = list(dict.fromkeys(
+                    event_id
+                    for later in owned_event_ids[segment:]
+                    for event_id in later
+                ))
+                fragment_authority = self._short_manifest_fragment_authority(
+                    contracts, plan_segment, causal_chain, previous_exit,
+                    narrative_authority,
                 )
-            raw = await self._stage(
-                run_id, run_path, project, "planning", constraints, prompt,
-                suffix=f"-execution-manifest-{attempt + 1}", allow_tools=False,
-                expected_output_characters=max(3000, 1200 * segment_count),
-            )
-            try:
-                body = parse_json_object(raw, label="Short execution manifest")
-            except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                body = {}
-                last_issues = [{
-                    "code": "invalid_manifest_json", "message": str(exc)[:500],
-                }]
-            else:
+                fragment_authority_hash = hashlib.sha256(
+                    fragment_authority.encode("utf-8"),
+                ).hexdigest()
+                checkpoint_path = checkpoints / f"segment-{segment:02d}.json"
+                fragment = None
+                receipt: dict = {}
                 try:
-                    body = bind_previous_exit_hashes(body)
-                except (TypeError, ValueError) as exc:
-                    last_body = body
-                    last_issues = [{
-                        "code": "invalid_segment_boundary_state",
-                        "message": str(exc)[:500],
-                    }]
-                    body = {}
-                last_body = body
-                candidate_payload = {
-                    **body, "version": 2, "status": "ready", **hashes,
-                    "semantic_receipt": {}, "repair_attempts": attempt,
-                }
-                try:
-                    manifest = parse_execution_manifest(candidate_payload)
-                except (TypeError, ValueError) as exc:
-                    last_issues = [{
-                        "code": "invalid_manifest_schema", "message": str(exc)[:500],
-                    }]
-                else:
-                    last_issues = execution_manifest_issues(
-                        manifest, expected_event_ids=expected_event_ids,
-                        segment_count=segment_count, authority_hashes=hashes,
+                    cached_payload = json.loads(
+                        checkpoint_path.read_text(encoding="utf-8"),
                     )
-                    if not last_issues:
-                        review_prompt = (
-                            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION\n"
-                            "只返回 JSON 语义回执。逐项核对角色与动作是否与正式资料一致、"
-                            "每段出口是否确由本段节拍产生、相邻边界是否连续、正式大纲是否未被改写。"
-                            "每个 evidence 必须逐字摘自 AUTHORITY TEXT。\n"
-                            "字段：authority_sha256、manifest_sha256、beat_receipts"
-                            "[{beat_id,evidence,actor_action_valid}]、segment_receipts"
-                            "[{segment,boundary_valid,evidence}]、formal_plot_unchanged、summary。\n\n"
-                            "EXECUTION MANIFEST:\n"
-                            + json.dumps(asdict(manifest), ensure_ascii=False, indent=2)
-                            + "\n\nAUTHORITY TEXT:\n" + authority_text
+                    if (
+                        cached_payload.get("checkpoint_version") != 1
+                        or cached_payload.get("previous_fragment_sha256")
+                        != previous_fragment_hash
+                        or cached_payload.get("fragment_authority_sha256")
+                        != fragment_authority_hash
+                    ):
+                        raise ValueError("execution manifest fragment checkpoint is stale")
+                    cached = parse_execution_manifest(cached_payload.get("manifest"))
+                    if cached_payload.get("manifest_sha256") != execution_manifest_sha256(
+                        cached,
+                    ):
+                        raise ValueError("execution manifest fragment checkpoint is corrupt")
+                    cached_issues = execution_manifest_fragment_issues(
+                        cached, owner_segment=segment,
+                        expected_event_ids=event_ids,
+                        authority_hashes=hashes,
+                        expected_events=contracts,
+                        previous_exit_state=previous_exit,
+                    )
+                    cached_receipt = validate_execution_manifest_receipt(
+                        cached, fragment_authority, cached.semantic_receipt,
+                    )
+                except (OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError):
+                    pass
+                else:
+                    if not cached_issues and cached.status == "fragment_ready":
+                        fragment = replace(cached, semantic_receipt=cached_receipt)
+                        receipt = cached_receipt
+
+                if fragment is None:
+                    fragment, stats, failure_issues, last_body = (
+                        await self._generate_short_execution_fragment(
+                            run_id, run_path, project, constraints, hashes,
+                            segment, contracts, plan_segment, causal_chain,
+                            previous_exit, previous_fragment_hash,
+                            future_event_ids, narrative_authority,
                         )
-                        raw_receipt = await self._stage(
-                            run_id, run_path, project, "review", constraints,
-                            review_prompt, suffix=f"-execution-manifest-{attempt + 1}",
-                            allow_tools=False,
-                            expected_output_characters=max(1800, 500 * segment_count),
+                    )
+                    for key in ("schema_repairs", "integrity_repairs"):
+                        repair_totals[key] += stats[key]
+                    if fragment is None:
+                        raise ValueError(
+                            f"规划执行索引第 {segment} 段未通过结构、覆盖或边界检查"
                         )
-                        try:
-                            receipt_payload = parse_json_object(
-                                raw_receipt, label="Execution manifest receipt",
+                    receipt, semantic_issues = await self._review_short_execution_fragment(
+                        run_id, run_path, project, constraints, fragment,
+                        fragment_authority, segment, suffix="initial",
+                    )
+                    for semantic_repair in range(2):
+                        if not semantic_issues:
+                            break
+                        repair_totals["semantic_repairs"] += 1
+                        mode = "minimal_patch" if semantic_repair == 0 else "segment_rebuild"
+                        directive = (
+                            "只修正下列语义问题，保留所有已通过节拍、执行者、展示顺序和边界。"
+                            if semantic_repair == 0 else
+                            "前一次最小修正仍未通过。重新构建当前完整正式段 fragment，"
+                            "但事件范围、展示顺序、入口和要求出口不得改变。"
+                        ) + "\n" + json.dumps(
+                            semantic_issues, ensure_ascii=False, indent=2,
+                        )
+                        seed = None if semantic_repair else {
+                            "beats": [asdict(item) for item in fragment.beats],
+                            "segments": [asdict(item) for item in fragment.segments],
+                        }
+                        repaired, stats, failure_issues, last_body = (
+                            await self._generate_short_execution_fragment(
+                                run_id, run_path, project, constraints, hashes,
+                                segment, contracts, plan_segment, causal_chain,
+                                previous_exit, previous_fragment_hash,
+                                future_event_ids, narrative_authority,
+                                semantic_directive=directive, previous_body=seed,
+                                max_schema_repairs=0, max_integrity_repairs=0,
                             )
-                            receipt = validate_execution_manifest_receipt(
-                                manifest, authority_text, receipt_payload,
+                        )
+                        for key in ("schema_repairs", "integrity_repairs"):
+                            repair_totals[key] += stats[key]
+                        if repaired is None:
+                            semantic_issues = failure_issues
+                            continue
+                        fragment = repaired
+                        receipt, semantic_issues = (
+                            await self._review_short_execution_fragment(
+                                run_id, run_path, project, constraints, fragment,
+                                fragment_authority, segment, suffix=mode,
                             )
-                        except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                            last_issues = [{
-                                "code": "semantic_manifest_conflict",
-                                "message": str(exc)[:500],
-                            }]
-                        else:
-                            manifest = replace(manifest, semantic_receipt=receipt)
-                            atomic_write(index_path, json.dumps(
-                                asdict(manifest), ensure_ascii=False, indent=2,
-                            ))
-                            self.db.add_run_event(
-                                run_id, "success", "planning_manifest_ready",
-                                "规划执行索引已通过结构与语义核对",
-                                stage="planning", metadata={
-                                    "repair_attempts": attempt,
-                                    "beat_count": len(manifest.beats),
-                                    "segment_count": len(manifest.segments),
-                                },
-                            )
-                            return manifest
+                        )
+                    if semantic_issues:
+                        failure_issues = semantic_issues
+                        raise ValueError(
+                            f"规划执行索引第 {segment} 段语义核对仍未通过"
+                        )
+                    fragment = replace(fragment, semantic_receipt=receipt)
+                    atomic_write(checkpoint_path, json.dumps({
+                        "checkpoint_version": 1,
+                        "authority_sha256": hashes["authority_sha256"],
+                        "previous_fragment_sha256": previous_fragment_hash,
+                        "fragment_authority_sha256": fragment_authority_hash,
+                        "manifest_sha256": execution_manifest_sha256(fragment),
+                        "manifest": asdict(fragment),
+                    }, ensure_ascii=False, indent=2))
+                    self.db.add_run_event(
+                        run_id, "success", "planning_manifest_fragment_ready",
+                        f"规划执行索引第 {segment} 段已通过独立核对",
+                        stage="planning", metadata={
+                            "segment": segment, "beat_count": len(fragment.beats),
+                        },
+                    )
+
+                fragments.append(fragment)
+                fragment_receipts.append(receipt)
+                previous_exit = fragment.segments[0].exit_state
+                previous_fragment_hash = execution_manifest_sha256(fragment)
+
+            manifest = merge_execution_manifest_fragments(
+                fragments, authority_hashes=hashes,
+                segment_count=segment_count,
+                repair_attempts=sum(repair_totals.values()),
+            )
+            failure_issues = execution_manifest_issues(
+                manifest, expected_event_ids=expected_event_ids,
+                segment_count=segment_count, authority_hashes=hashes,
+                expected_events=expected_events,
+            )
+            if failure_issues:
+                raise ValueError("合并后的规划执行索引未通过整篇检查")
+
+            merged_beat_receipts: list[dict] = []
+            merged_segment_receipts: list[dict] = []
+            final_beats_by_segment = {
+                number: [
+                    beat for beat in manifest.beats if beat.owner_segment == number
+                ] for number in range(1, segment_count + 1)
+            }
+            fragment_audit = []
+            for number, (fragment, receipt, plan_segment) in enumerate(
+                zip(fragments, fragment_receipts, plan_segments), 1,
+            ):
+                local_beats = sorted(fragment.beats, key=lambda item: item.order)
+                final_beats = final_beats_by_segment[number]
+                local_receipts = {
+                    str(item.get("beat_id") or "").upper(): item
+                    for item in receipt.get("beat_receipts", [])
+                }
+                if len(local_beats) != len(final_beats):
+                    raise ValueError("合并后的节拍数量与已审核 fragment 不一致")
+                for local, final in zip(local_beats, final_beats):
+                    if local.source_event_id != final.source_event_id:
+                        raise ValueError("合并后的节拍事件归属发生变化")
+                    item = local_receipts[local.beat_id]
+                    merged_beat_receipts.append({
+                        "beat_id": final.beat_id,
+                        "evidence": final.source_evidence,
+                        "actor_action_valid": item.get("actor_action_valid") is True,
+                    })
+                segment_receipt = receipt["segment_receipts"][0]
+                evidence = str(segment_receipt.get("evidence") or "").strip()
+                if not evidence or evidence not in authority_text:
+                    evidence = next(
+                        (line.strip() for line in plan_segment.splitlines()
+                         if line.strip() and line.strip() in authority_text),
+                        plan_segment.strip(),
+                    )
+                merged_segment_receipts.append({
+                    "segment": number,
+                    "boundary_valid": segment_receipt.get("boundary_valid") is True,
+                    "evidence": evidence,
+                })
+                fragment_audit.append({
+                    "segment": number,
+                    "fragment_sha256": execution_manifest_sha256(fragment),
+                    "summary": str(receipt.get("summary") or "")[:300],
+                })
+            aggregate_receipt = {
+                "authority_sha256": manifest.authority_sha256,
+                "manifest_sha256": execution_manifest_sha256(manifest),
+                "beat_receipts": merged_beat_receipts,
+                "segment_receipts": merged_segment_receipts,
+                "formal_plot_unchanged": all(
+                    item.get("formal_plot_unchanged") is True
+                    for item in fragment_receipts
+                ),
+                "summary": "全部正式段已独立审核，并通过 Runtime 合并后的整篇覆盖、顺序与边界核验。",
+                "fragment_receipts": fragment_audit,
+            }
+            receipt = validate_execution_manifest_receipt(
+                manifest, authority_text, aggregate_receipt,
+            )
+            manifest = replace(manifest, semantic_receipt=receipt)
+            atomic_write(index_path, json.dumps(
+                asdict(manifest), ensure_ascii=False, indent=2,
+            ))
+        except ValueError as exc:
+            failed_beats = [
+                asdict(beat) for fragment in fragments for beat in fragment.beats
+            ]
+            failed_segments = [
+                asdict(segment_row)
+                for fragment in fragments for segment_row in fragment.segments
+            ]
+            if not failed_beats and isinstance(last_body, dict):
+                failed_beats = list(last_body.get("beats") or [])
+                failed_segments = list(last_body.get("segments") or [])
+            atomic_write(index_path, json.dumps({
+                "version": 3, "status": "failed", **hashes,
+                "beats": failed_beats, "segments": failed_segments,
+                "semantic_receipt": {},
+                "repair_attempts": sum(repair_totals.values()),
+                "repair_budgets": repair_totals,
+                "issues": failure_issues or [{
+                    "code": "manifest_failure", "message": str(exc)[:500],
+                }],
+            }, ensure_ascii=False, indent=2))
             self.db.add_run_event(
-                run_id, "warning", "planning_manifest_conflict",
-                "规划执行索引存在事件归属或分段边界冲突",
+                run_id, "error", "planning_manifest_failed",
+                "规划执行索引仍有事件、执行者、顺序或边界问题，已在正文开始前停止",
                 stage="planning", metadata={
-                    "attempt": attempt + 1, "issues": last_issues,
+                    "issues": failure_issues, "repair_budgets": repair_totals,
                 },
             )
-            if attempt < 2:
-                self.db.add_run_event(
-                    run_id, "info", "planning_manifest_repair",
-                    "正在自动修正规划执行索引，正式大纲保持不变",
-                    stage="planning", metadata={
-                        "repair_attempt": attempt + 1, "issues": last_issues,
-                    },
-                )
+            raise ValueError("规划执行索引未通过分段与整篇语义检查，尚未生成正文") from exc
 
-        failed = {
-            "version": 2, "status": "failed", **hashes,
-            "beats": last_body.get("beats", []) if isinstance(last_body, dict) else [],
-            "segments": last_body.get("segments", []) if isinstance(last_body, dict) else [],
-            "semantic_receipt": {}, "repair_attempts": 2,
-            "issues": last_issues,
-        }
-        atomic_write(index_path, json.dumps(failed, ensure_ascii=False, indent=2))
         self.db.add_run_event(
-            run_id, "error", "planning_manifest_failed",
-            "规划执行索引仍有事件归属或分段边界问题，已在正文开始前停止",
-            stage="planning", metadata={"issues": last_issues},
+            run_id, "success", "planning_manifest_ready",
+            "规划执行索引已按正式段生成，并通过整篇结构与语义核对",
+            stage="planning", metadata={
+                "beat_count": len(manifest.beats),
+                "segment_count": len(manifest.segments),
+                "repair_budgets": repair_totals,
+                "manifest_version": manifest.version,
+            },
         )
-        raise ValueError("规划执行索引未通过结构与语义检查，尚未生成正文")
+        return manifest
 
     async def _quality_polish(self, run_id: str, run_path: Path, project: Project,
                               constraints: str, draft: str, review: dict,
@@ -5587,6 +6040,7 @@ class WorkflowService:
                     ],
                     segment_count=segment_count,
                     authority_hashes=hashes,
+                    expected_events=expected_events,
                 )
                 validate_execution_manifest_receipt(
                     execution_manifest, authority_text,

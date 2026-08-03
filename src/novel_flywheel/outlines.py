@@ -47,8 +47,9 @@ _OUTLINE_CHAPTER_LABEL = re.compile(
     flags=re.IGNORECASE,
 )
 _OUTLINE_STRUCTURE_LABEL = re.compile(
-    r"^(?:第[一二三四五六七八九十百零〇两0-9０-９]+[幕卷部]"
-    r"|(?:act|part|volume)\s*[0-9０-９ivx]+)(?:\b|[·：:\s])",
+    r"^(?:第[一二三四五六七八九十百零〇两0-9０-９]+(?:幕|卷|部|篇|阶段|单元|场)"
+    r"|(?:act|part|volume|book|phase|arc|section|sequence|scene)"
+    r"\s*[0-9０-９ivx]+)(?:\b|[·：:\s])",
     flags=re.IGNORECASE,
 )
 
@@ -456,46 +457,79 @@ def _outline_anchor_level(label: str) -> int:
 
 
 def narrative_outline_events(events: list[dict]) -> list[dict]:
-    """Return story beats, falling back within each sparse chapter or section."""
-    classified: list[tuple[dict, str, int]] = []
+    """Return executable story events, using structural headings only as sparse fallbacks."""
+    classified: list[tuple[dict, str, int, int]] = []
     for event in events:
         kind = str(event.get("kind") or "")
         if kind not in OUTLINE_EVENT_KINDS:
             kind = outline_event_kind(event.get("section", ""), event.get("label", ""))
         label = str(event.get("label") or "").strip()
-        classified.append((event, kind, _outline_anchor_level(label)))
+        classified.append((
+            event, kind, _outline_anchor_level(label),
+            int(event.get("_source_level") or 0),
+        ))
 
     result = []
-    for index, (event, kind, level) in enumerate(classified):
+    for index, (event, kind, level, source_level) in enumerate(classified):
+        if source_level:
+            following_has_nested_event = False
+            for (
+                _following, following_kind, _following_level,
+                following_source_level,
+            ) in classified[index + 1:]:
+                if (
+                    following_source_level
+                    and following_source_level <= source_level
+                ):
+                    break
+                if following_kind == "narrative" and (
+                    not following_source_level
+                    or following_source_level > source_level
+                ):
+                    following_has_nested_event = True
+                    break
+            if following_has_nested_event:
+                continue
+        if level:
+            following_has_executable_descendant = False
+            for (
+                _following, following_kind, following_level,
+                _following_source_level,
+            ) in classified[index + 1:]:
+                if following_level >= level:
+                    break
+                if (
+                    following_level
+                    or following_kind == "narrative" and not following_level
+                ):
+                    following_has_executable_descendant = True
+                    break
+            if (
+                not following_has_executable_descendant
+                and kind in {"narrative", "structure"}
+            ):
+                result.append(event)
+            continue
         if kind == "narrative":
-            result.append(event)
-            continue
-        if kind != "structure" or not level:
-            continue
-        following_has_narrative = False
-        for _following, following_kind, following_level in classified[index + 1:]:
-            if following_level >= level:
-                break
-            if following_kind == "narrative":
-                following_has_narrative = True
-                break
-        if not following_has_narrative:
             result.append(event)
     return result
 
 
-def outline_events(content: str) -> list[dict[str, str | int]]:
-    """Build stable event IDs from explicit event labels in a confirmed outline."""
-    events = []
+def _outline_event_records(content: str) -> list[dict]:
+    """Build stable outline records with transient hierarchy and exact evidence blocks."""
+    lines = _visible_outline_markdown(content).splitlines()
+    events: list[dict] = []
     section = ""
     occurrences: dict[str, int] = {}
-    for line in _visible_outline_markdown(content).splitlines():
+    for line_index, line in enumerate(lines):
         heading = re.match(
             r"^(?P<marks>#{2,4})[ \t]+(?P<label>.+?)\s*$", line.strip(),
         )
+        source_level = 0
         if heading:
             label = heading.group("label").strip()
             level = len(heading.group("marks"))
+            source_level = level
             if level == 2:
                 section = label
             candidate = label if (
@@ -521,8 +555,57 @@ def outline_events(content: str) -> list[dict[str, str | int]]:
         events.append({
             "id": "EV-" + hashlib.sha1(identity.encode("utf-8")).hexdigest()[:8],
             "order": len(events) + 1, "label": candidate, "section": section,
+            "_line_index": line_index,
+            "_source_level": source_level,
         })
+    for index, event in enumerate(events):
+        start = int(event["_line_index"])
+        end = (
+            int(events[index + 1]["_line_index"])
+            if index + 1 < len(events) else len(lines)
+        )
+        event["evidence"] = "\n".join(lines[start:end]).strip()
     return events
+
+
+def outline_events(content: str) -> list[dict[str, str | int]]:
+    """Build stable event IDs from explicit event labels in a confirmed outline."""
+    return [{
+        key: value for key, value in event.items()
+        if not key.startswith("_") and key != "evidence"
+    } for event in _outline_event_records(content)]
+
+
+def narrative_outline_event_contracts(content: str) -> list[dict]:
+    """Derive lossless, genre-neutral executable events without changing stored outlines."""
+    records = _outline_event_records(content)
+    selected_ids = {
+        str(item.get("id") or "") for item in narrative_outline_events(records)
+    }
+    selected = [
+        item for item in records if str(item.get("id") or "") in selected_ids
+    ]
+    contracts = []
+    for order, item in enumerate(selected, 1):
+        contracts.append({
+            "id": str(item["id"]),
+            "order": order,
+            "source_order": int(item["order"]),
+            "label": str(item["label"]),
+            "section": str(item["section"]),
+            "kind": "narrative",
+            "source": "formal_outline",
+            "evidence": str(item.get("evidence") or item["label"]),
+            "presentation_order": order,
+            "story_time": "",
+            "timeline": "",
+            "actor": "",
+            "location": "",
+            "viewpoint": "",
+            "knowledge_delta": [],
+            "relationship_delta": [],
+        })
+    return contracts
 
 
 def _confirmed_value(state: dict, key: str) -> str:
