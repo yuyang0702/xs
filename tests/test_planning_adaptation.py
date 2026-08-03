@@ -6,6 +6,7 @@ import pytest
 
 from novel_flywheel.planning_adaptation import (
     INVARIANT_FIELDS,
+    LEGACY_PLANNING_ADAPTATION_VERSION,
     effective_event_contracts,
     normalize_planning_adaptation_receipt,
     normalize_planning_adaptation_whole_receipt,
@@ -393,6 +394,122 @@ def test_descriptor_invariant_conflict_retries_only_the_receipt() -> None:
 
     assert [item["code"] for item in issues] == ["adaptation_receipt_conflict"]
     assert planning_adaptation_issues_are_protocol_only(issues)
+
+
+def test_soft_noncausal_order_is_authorized_without_rewriting_plan() -> None:
+    plan = "### 第 1 段：交错展示\n\n事件ID：EV-221A4437\n\n本段事件：先展示结果，再回切到同场景的核验过程。"
+    invariants = invariant_payload()
+    invariants["timeline_order"] = False
+    receipt, candidates, authority_sha256, planning_sha256 = receipt_for(
+        plan, changed_dimensions=["micro_order"], invariants=invariants,
+    )
+    review = receipt["event_reviews"][0]
+    review["order_dependency"] = "soft"
+    review["dependency_event_ids"] = []
+
+    normalized = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+
+    assert normalized["event_reviews"][0]["soft_order_authorized"] is True
+    assert planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256=authority_sha256,
+        planning_sha256=planning_sha256,
+        segment=1,
+        expected_event_ids=[EVENT_ID],
+        evidence_candidates=candidates,
+    ) == []
+
+
+def test_unknown_order_dependency_retries_receipt_without_rewriting_plan() -> None:
+    plan = "### 第 1 段：倒叙\n\n事件ID：EV-221A4437\n\n本段事件：倒叙展示核验。"
+    invariants = invariant_payload()
+    invariants["timeline_order"] = False
+    receipt, candidates, authority_sha256, planning_sha256 = receipt_for(
+        plan, changed_dimensions=["timeline_order"], invariants=invariants,
+    )
+    normalized = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+
+    issues = planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256=authority_sha256,
+        planning_sha256=planning_sha256,
+        segment=1,
+        expected_event_ids=[EVENT_ID],
+        evidence_candidates=candidates,
+    )
+
+    assert [item["code"] for item in issues] == [
+        "adaptation_order_uncertain",
+    ]
+    assert planning_adaptation_issues_are_protocol_only(issues)
+
+
+def test_hard_cross_segment_dependency_uses_full_outline_authority() -> None:
+    plan = "### 第 2 段：后果\n\n事件ID：EV-221A4437\n\n本段事件：结果被错误地放到原因之前。"
+    invariants = invariant_payload()
+    invariants["timeline_order"] = False
+    receipt, candidates, authority_sha256, planning_sha256 = receipt_for(
+        plan, changed_dimensions=["timeline_order"], invariants=invariants,
+    )
+    review = receipt["event_reviews"][0]
+    review["order_dependency"] = "hard"
+    review["dependency_event_ids"] = ["ev-previous1"]
+    normalized = normalize_planning_adaptation_receipt(
+        receipt, evidence_candidates=candidates,
+    )
+
+    issues = planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256=authority_sha256,
+        planning_sha256=planning_sha256,
+        segment=1,
+        expected_event_ids=[EVENT_ID],
+        evidence_candidates=candidates,
+        authority_event_ids=["EV-PREVIOUS1", EVENT_ID],
+    )
+
+    assert [item["code"] for item in issues] == ["planning_structural_drift"]
+    assert issues[0]["invalid_invariants"] == ["timeline_order"]
+
+
+def test_v2_segment_authority_reuses_unaffected_segment_but_binds_boundaries() -> None:
+    values = {
+        "outline_sha256": "a" * 64,
+        "segment": 2,
+        "event_contracts": [formal_contract()],
+        "plan_segment": "### 第 2 段：核验",
+        "previous_handoff": "第一段出口",
+        "next_entry": "第三段入口",
+        "generation_context_sha256": "c" * 64,
+    }
+    first = planning_adaptation_segment_authority_sha256(
+        planning_sha256="1" * 64, **values,
+    )
+    unrelated_plan_changed = planning_adaptation_segment_authority_sha256(
+        planning_sha256="2" * 64, **values,
+    )
+    adjacent_boundary_changed = planning_adaptation_segment_authority_sha256(
+        planning_sha256="2" * 64,
+        **{**values, "previous_handoff": "改变后的第一段出口"},
+    )
+    legacy_first = planning_adaptation_segment_authority_sha256(
+        planning_sha256="1" * 64,
+        version=LEGACY_PLANNING_ADAPTATION_VERSION,
+        **values,
+    )
+    legacy_changed = planning_adaptation_segment_authority_sha256(
+        planning_sha256="2" * 64,
+        version=LEGACY_PLANNING_ADAPTATION_VERSION,
+        **values,
+    )
+
+    assert first == unrelated_plan_changed
+    assert first != adjacent_boundary_changed
+    assert legacy_first != legacy_changed
 
 
 def test_receipt_normalization_is_idempotent_with_unknown_unicode_metadata() -> None:

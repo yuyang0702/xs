@@ -7,7 +7,8 @@ import unicodedata
 from typing import Any
 
 
-PLANNING_ADAPTATION_VERSION = 1
+PLANNING_ADAPTATION_VERSION = 2
+LEGACY_PLANNING_ADAPTATION_VERSION = 1
 
 PLANNING_ADAPTATION_PROTOCOL_CODES = frozenset({
     "receipt_schema",
@@ -17,6 +18,8 @@ PLANNING_ADAPTATION_PROTOCOL_CODES = frozenset({
     "event_schema",
     "event_coverage",
     "adaptation_receipt_conflict",
+    "adaptation_order_uncertain",
+    "adaptation_order_evidence",
     "invariant_schema",
     "evidence_binding",
     "adaptation_reason",
@@ -152,6 +155,25 @@ _INVARIANT_ALIASES = {
     "伏笔与结局": "promise_ending",
 }
 
+_ORDER_DEPENDENCY_ALIASES = {
+    "hard": "hard",
+    "required": "hard",
+    "causal": "hard",
+    "硬依赖": "hard",
+    "因果依赖": "hard",
+    "soft": "soft",
+    "presentation": "soft",
+    "independent": "soft",
+    "软顺序": "soft",
+    "展示顺序": "soft",
+    "可调整": "soft",
+    "unknown": "unknown",
+    "uncertain": "unknown",
+    "needs_review": "unknown",
+    "不确定": "unknown",
+    "需复核": "unknown",
+}
+
 
 def _normalized_label(value: object) -> str:
     text = unicodedata.normalize("NFKC", str(value or "")).strip().casefold()
@@ -242,15 +264,25 @@ def planning_adaptation_evidence_candidates(
 def planning_adaptation_segment_authority_sha256(
     *, outline_sha256: str, planning_sha256: str, segment: int,
     event_contracts: list[dict], plan_segment: str,
+    previous_handoff: str = "", next_entry: str = "",
+    generation_context_sha256: str = "",
+    version: int = PLANNING_ADAPTATION_VERSION,
 ) -> str:
     payload = {
-        "version": PLANNING_ADAPTATION_VERSION,
+        "version": version,
         "outline_sha256": outline_sha256,
-        "planning_sha256": planning_sha256,
         "segment": segment,
         "event_contracts": event_contracts,
         "plan_segment": plan_segment,
     }
+    if version == LEGACY_PLANNING_ADAPTATION_VERSION:
+        payload["planning_sha256"] = planning_sha256
+    else:
+        payload.update({
+            "previous_handoff": previous_handoff,
+            "next_entry": next_entry,
+            "generation_context_sha256": generation_context_sha256,
+        })
     encoded = json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")
@@ -260,9 +292,10 @@ def planning_adaptation_segment_authority_sha256(
 def planning_adaptation_whole_authority_sha256(
     *, outline_sha256: str, planning_sha256: str,
     segment_receipts: list[dict],
+    version: int = PLANNING_ADAPTATION_VERSION,
 ) -> str:
     payload = {
-        "version": PLANNING_ADAPTATION_VERSION,
+        "version": version,
         "outline_sha256": outline_sha256,
         "planning_sha256": planning_sha256,
         "segment_receipts": segment_receipts,
@@ -344,6 +377,20 @@ def normalize_planning_adaptation_receipt(
         # authorization boundary. Known aliases remain canonical for backward
         # compatibility; unknown descriptions stay lossless.
         item["changed_dimensions"] = list(dict.fromkeys(normalized_dimensions))
+        raw_order_dependency = item.get("order_dependency")
+        order_dependency = _ORDER_DEPENDENCY_ALIASES.get(
+            _normalized_label(raw_order_dependency),
+        )
+        if raw_order_dependency is not None:
+            item["raw_order_dependency"] = raw_order_dependency
+        if order_dependency:
+            item["order_dependency"] = order_dependency
+        dependency_event_ids = _string_list(item.get("dependency_event_ids"))
+        if dependency_event_ids is not None:
+            item["dependency_event_ids"] = [
+                unicodedata.normalize("NFKC", value).strip().upper()
+                for value in dependency_event_ids
+            ]
         evidence_ids = _string_list(
             item.get("plan_evidence_ids", item.get("plan_evidence_id")),
         )
@@ -363,6 +410,17 @@ def normalize_planning_adaptation_receipt(
                     invariants[canonical] = _boolean(value)
             item["invariants"] = invariants
         invariants = item.get("invariants")
+        if isinstance(invariants, dict) and order_dependency == "soft" \
+                and invariants.get("timeline_order") is False \
+                and all(
+                    invariants.get(field) is True
+                    for field in INVARIANT_FIELDS if field != "timeline_order"
+                ):
+            item["raw_invariants"] = dict(invariants)
+            invariants = dict(invariants)
+            invariants["timeline_order"] = True
+            item["invariants"] = invariants
+            item["soft_order_authorized"] = True
         runtime_classification = _runtime_event_classification(
             invariants, raw_dimensions,
             fallback=model_classification or "unresolved",
@@ -383,6 +441,8 @@ def planning_adaptation_receipt_issues(
     receipt: object, *, authority_sha256: str, planning_sha256: str,
     segment: int, expected_event_ids: list[str],
     evidence_candidates: dict[str, str],
+    authority_version: int = PLANNING_ADAPTATION_VERSION,
+    authority_event_ids: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
 
@@ -394,7 +454,8 @@ def planning_adaptation_receipt_issues(
         return issues
     if receipt.get("authority_sha256") != authority_sha256:
         add("authority_hash", "规划适配回执没有绑定当前正式大纲和规划段")
-    if receipt.get("planning_sha256") != planning_sha256:
+    if authority_version == LEGACY_PLANNING_ADAPTATION_VERSION \
+            and receipt.get("planning_sha256") != planning_sha256:
         add("planning_hash", "规划适配回执绑定的规划稿已经过期")
     if receipt.get("segment") != segment:
         add("segment_identity", "规划适配回执返回了错误的正式段编号")
@@ -406,6 +467,9 @@ def planning_adaptation_receipt_issues(
         return issues
     returned_ids = [str(item.get("event_id") or "").upper() for item in raw_reviews]
     expected_ids = [str(item).upper() for item in expected_event_ids]
+    dependency_authority_ids = {
+        str(item).upper() for item in (authority_event_ids or expected_event_ids)
+    }
     if returned_ids != expected_ids:
         add(
             "event_coverage", "规划适配回执没有按顺序覆盖当前段全部正式事件",
@@ -439,6 +503,27 @@ def planning_adaptation_receipt_issues(
         false_invariants = [
             field for field in INVARIANT_FIELDS if invariants[field] is not True
         ]
+        if false_invariants == ["timeline_order"]:
+            order_dependency = str(item.get("order_dependency") or "unknown")
+            dependency_event_ids = item.get("dependency_event_ids")
+            if order_dependency == "unknown":
+                add(
+                    "adaptation_order_uncertain",
+                    "规划顺序变化尚未说明是硬因果依赖还是可调整展示顺序，需要只重审回执",
+                    event_id=event_id,
+                )
+                continue
+            if order_dependency == "hard" and (
+                not isinstance(dependency_event_ids, list)
+                or not dependency_event_ids
+                or any(value not in dependency_authority_ids for value in dependency_event_ids)
+            ):
+                add(
+                    "adaptation_order_evidence",
+                    "规划顺序被判为硬依赖，但回执没有绑定有效的依赖事件 ID",
+                    event_id=event_id,
+                )
+                continue
         described_structural = sorted(
             set(item.get("canonical_dimensions") or []) & STRUCTURAL_DIMENSIONS
         )

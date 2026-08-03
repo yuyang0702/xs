@@ -12,6 +12,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
+from itertools import combinations
 from pathlib import Path
 from typing import Iterator
 
@@ -87,6 +88,8 @@ from novel_flywheel.outlines import (
     outline_events,
 )
 from novel_flywheel.planning_adaptation import (
+    LEGACY_PLANNING_ADAPTATION_VERSION,
+    PLANNING_ADAPTATION_VERSION,
     PLANNING_ADAPTATION_PROTOCOL_CODES,
     effective_event_contracts,
     normalize_planning_adaptation_receipt,
@@ -97,6 +100,16 @@ from novel_flywheel.planning_adaptation import (
     planning_adaptation_segment_authority_sha256,
     planning_adaptation_whole_authority_sha256,
     planning_adaptation_whole_receipt_issues,
+)
+from novel_flywheel.planning_recovery import (
+    new_planning_recovery_state,
+    planning_candidate_comparison,
+    planning_issue_keys,
+    planning_issue_segments,
+    planning_recovery_state_matches,
+    read_planning_recovery,
+    record_planning_candidate,
+    write_planning_recovery,
 )
 from novel_flywheel.memory import StoryMemory
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript, compact_analysis
@@ -3056,7 +3069,7 @@ class WorkflowService:
                     plan, causal_chain, legacy_context = resumable_adaptation_plan
                     self.db.add_run_event(
                         run_id, "success", "planning_adaptation_plan_reused",
-                        "已复用当前失败任务中哈希匹配的完整规划，继续本地重验适配回执",
+                        "已复用哈希匹配且问题最少的完整规划候选，继续本地检查和适配审核",
                         stage="planning", metadata={
                             "planning_sha256": hashlib.sha256(
                                 plan.encode("utf-8"),
@@ -3089,97 +3102,20 @@ class WorkflowService:
                             state.data, segment_count,
                         )
                     plan, causal_chain = self._extract_short_causal_chain(run_id, plan)
-                plan_issues = self._short_plan_issues(
-                    project, state.data, plan, segment_count,
+                original_local_plan = plan
+                plan = await self._recover_short_plan_local_gate(
+                    run_id, run_path, project, constraints, brief, state.data,
+                    plan, segment_count, expected_plan_characters,
+                    generation_context_sha256=(
+                        checkpoint_context["generation_context_sha256"]
+                    ),
                 )
-                if plan_issues:
-                    self.db.add_run_event(
-                        run_id, "warning", "planning_gate_retry",
-                        "规划稿没有通过本地检查，正在修正后再进入正文",
-                        stage="planning", metadata={"issues": plan_issues},
-                    )
-                    repair_prompt = (
-                        "请修正下面的规划稿。必须保留正式大纲的故事方向，为每个分段明确分配互不重复的事件，"
-                        f"必须恰好写 {segment_count} 个分段，标题依次使用“### 第 1 段：标题”"
-                        f"到“### 第 {segment_count} 段：标题”；"
-                        "并使用正式人物和地点名称。每段都要写明“段首承接”“本段事件”“段末交接”；"
-                        "每个正式大纲事件 ID 都必须覆盖且顺序不能倒退；连续分段可以共同完成同一事件，"
-                        "并写明“大纲依据”；"
-                        "段首和段末必须交代人物位置、正在做什么、关系变化和已经知道什么。"
-                        "只返回完整修正版规划稿。\n\n"
-                        f"需要修正：{json.dumps(plan_issues, ensure_ascii=False)}\n\n"
-                        f"当前规划稿：\n{plan}"
-                    )
-                    try:
-                        repaired_plan = await self._stage(
-                            run_id, run_path, project, "planning", constraints,
-                            repair_prompt,
-                            suffix="-gate-repair", allow_tools=False,
-                            expected_output_characters=expected_plan_characters,
-                            completion_check=lambda value: self._short_plan_output_complete(
-                                project, state.data, value, segment_count,
-                            ),
-                        )
-                    except IncompleteModelOutputError:
-                        repaired_plan = await self._plan_short_in_batches(
-                            run_id, run_path, project, constraints,
-                            brief + "\n\nREPAIR REQUIREMENTS:\n" + repair_prompt,
-                            state.data, segment_count,
-                        )
-                    plan, repaired_chain = self._extract_short_causal_chain(
-                        run_id, repaired_plan,
-                    )
-                    causal_chain = repaired_chain or causal_chain
-                    remaining = self._short_plan_issues(
-                        project, state.data, plan, segment_count,
-                    )
-                    if remaining:
-                        self.db.add_run_event(
-                            run_id, "warning", "planning_gate_rebuild",
-                            "规划稿最小修正仍未通过，正在依据正式资料重新构建完整规划",
-                            stage="planning", metadata={"issues": remaining},
-                        )
-                        rebuild_prompt = (
-                            brief
-                            + "\n\nFULL PLANNING REBUILD. Discard every invalid planning "
-                            "candidate from this run and rebuild the complete plan only from "
-                            "the formal outline, confirmed StoryState, project constraints, "
-                            "and generation contract above. Return the entire plan, not a patch. "
-                            "Preserve the confirmed story direction and ending. Correct all "
-                            "remaining local gate issues:\n"
-                            + json.dumps(remaining, ensure_ascii=False, indent=2)
-                        )
-                        try:
-                            rebuilt_plan = await self._stage(
-                                run_id, run_path, project, "planning", constraints,
-                                rebuild_prompt,
-                                suffix="-gate-rebuild", allow_tools=False,
-                                expected_output_characters=expected_plan_characters,
-                                completion_check=lambda value: (
-                                    self._short_plan_output_complete(
-                                        project, state.data, value, segment_count,
-                                    )
-                                ),
-                            )
-                        except IncompleteModelOutputError:
-                            rebuilt_plan = await self._plan_short_in_batches(
-                                run_id, run_path, project, constraints,
-                                rebuild_prompt, state.data, segment_count,
-                            )
-                        plan, rebuilt_chain = self._extract_short_causal_chain(
-                            run_id, rebuilt_plan,
-                        )
-                        causal_chain = rebuilt_chain
-                        remaining = self._short_plan_issues(
-                            project, state.data, plan, segment_count,
-                        )
-                    if remaining:
-                        self.db.add_run_event(
-                            run_id, "error", "planning_gate_failed",
-                            "规划稿经过最小修正和完整重建后仍有设定或分段问题，已在生成正文前停止",
-                            stage="planning", metadata={"issues": remaining},
-                        )
-                        raise ValueError("规划稿未通过设定和分段检查，尚未生成正文")
+                if plan != original_local_plan:
+                    # An embedded causal chain belongs to the exact plan that
+                    # produced it. Local repair may preserve most segments, but
+                    # it still changes causal authority, so regenerate the chain
+                    # from the final accepted plan instead of reusing stale data.
+                    causal_chain = None
                 plan, planning_adaptation, plan_changed = (
                     await self._ensure_short_plan_adaptations(
                         run_id, run_path, project, constraints, state.data, plan,
@@ -3519,6 +3455,345 @@ class WorkflowService:
         return candidate
 
     @staticmethod
+    def _short_plan_local_issue_records(issues: list[str]) -> list[dict]:
+        """Turn deterministic local messages into stable monotonic identities."""
+        records: list[dict] = []
+
+        def add(code: str, message: str, *, segment: int = 0,
+                event_id: str = "") -> None:
+            records.append({
+                "code": code,
+                "segment": segment,
+                "event_id": event_id,
+                "message": message,
+            })
+
+        for value in issues:
+            message = str(value or "").strip()
+            if not message:
+                continue
+            if message.startswith("规划稿附带的因果链"):
+                add("local_causal_chain_marker", message)
+                continue
+            if message.startswith("人物或地点与正式设定不一致"):
+                detail = message.split("：", 1)[-1]
+                labels = [
+                    item.split("（", 1)[0].strip()
+                    for item in re.split(r"[、,，]", detail)
+                    if item.strip()
+                ]
+                if labels:
+                    for label in labels:
+                        add(f"local_canon_conflict:{label}", message)
+                else:
+                    add("local_canon_conflict", message)
+                continue
+            if "分段标题必须恰好" in message:
+                add("local_segment_heading_format", message)
+                continue
+            if "需要明确列出第" in message and "各自负责的事件" in message:
+                add("local_segment_coverage", message)
+                continue
+            if message.startswith("有分段没有写清"):
+                add("local_segment_detail", message)
+                continue
+            if "段缺少事件ID" in message:
+                prefix = message.split("段缺少", 1)[0]
+                numbers = [int(item) for item in re.findall(r"\d+", prefix)]
+                if numbers:
+                    for number in numbers:
+                        add("local_required_fields", message, segment=number)
+                else:
+                    add("local_required_fields", message)
+                continue
+            event_ids = [
+                item.upper() for item in re.findall(
+                    r"EV-[0-9a-f]{8}", message, flags=re.IGNORECASE,
+                )
+            ]
+            if message.startswith("规划稿使用了不存在的事件 ID"):
+                for event_id in event_ids or [""]:
+                    add("local_invalid_event_id", message, event_id=event_id)
+                continue
+            if message.startswith("这些正式大纲事件还没有分配到写作段"):
+                for event_id in event_ids or [""]:
+                    add("local_missing_event", message, event_id=event_id)
+                continue
+            if message.startswith("写作段认领的大纲事件顺序发生倒退"):
+                identity = "->".join(event_ids) or "unknown"
+                add(f"local_event_order:{identity}", message)
+                continue
+            if message.startswith("不同分段承担了过于相似的事件"):
+                add("local_segment_duplication", message)
+                continue
+            digest = hashlib.sha256(message.encode("utf-8")).hexdigest()[:16]
+            add(f"local_unknown:{digest}", message)
+        return records
+
+    @classmethod
+    def _select_monotonic_short_plan_candidate(
+        cls, project: Project, state: dict, best_plan: str, candidate: str,
+        segment_count: int,
+    ) -> tuple[str, list[str], dict]:
+        """Keep the smallest changed segment set that strictly reduces issues."""
+        best_issues = cls._short_plan_issues(
+            project, state, best_plan, segment_count,
+        )
+        best_records = cls._short_plan_local_issue_records(best_issues)
+        possibilities: list[tuple[tuple, str, list[str], dict]] = []
+
+        def consider(value: str, selected_segments: list[int]) -> None:
+            current_issues = cls._short_plan_issues(
+                project, state, value, segment_count,
+            )
+            comparison = planning_candidate_comparison(
+                best_records,
+                cls._short_plan_local_issue_records(current_issues),
+            )
+            if not comparison["improved"]:
+                return
+            issue_count = len(comparison["candidate_issue_keys"])
+            rank = (
+                issue_count,
+                len(selected_segments),
+                tuple(selected_segments),
+                hashlib.sha256(value.encode("utf-8")).hexdigest(),
+            )
+            possibilities.append((rank, value, current_issues, {
+                **comparison,
+                "selected_segments": selected_segments,
+                "preserved_segments": [
+                    number for number in range(1, segment_count + 1)
+                    if number not in selected_segments
+                ],
+                "candidate_sha256": hashlib.sha256(
+                    candidate.encode("utf-8"),
+                ).hexdigest(),
+                "selected_plan_sha256": hashlib.sha256(
+                    value.encode("utf-8"),
+                ).hexdigest(),
+            }))
+
+        best_segments = cls._short_plan_segments(best_plan, segment_count)
+        candidate_segments = cls._short_plan_segments(candidate, segment_count)
+        if (
+            segment_count > 1
+            and len(best_segments) == segment_count
+            and len(candidate_segments) == segment_count
+        ):
+            changed = [
+                number for number, (before, after) in enumerate(
+                    zip(best_segments, candidate_segments, strict=True), 1,
+                ) if before != after
+            ]
+            for size in range(1, len(changed) + 1):
+                for selected in combinations(changed, size):
+                    merged = best_plan
+                    try:
+                        for number in selected:
+                            merged = cls._replace_short_plan_segment(
+                                merged, segment_count, number,
+                                candidate_segments[number - 1],
+                            )
+                    except ValueError:
+                        continue
+                    consider(merged, list(selected))
+        else:
+            consider(candidate, list(range(1, segment_count + 1)))
+
+        if possibilities:
+            _rank, selected, issues, comparison = min(
+                possibilities, key=lambda item: item[0],
+            )
+            return selected, issues, comparison
+        comparison = planning_candidate_comparison(
+            best_records,
+            cls._short_plan_local_issue_records(
+                cls._short_plan_issues(project, state, candidate, segment_count),
+            ),
+        )
+        return best_plan, best_issues, {
+            **comparison,
+            "selected_segments": [],
+            "preserved_segments": list(range(1, segment_count + 1)),
+            "candidate_sha256": hashlib.sha256(
+                candidate.encode("utf-8"),
+            ).hexdigest(),
+            "selected_plan_sha256": hashlib.sha256(
+                best_plan.encode("utf-8"),
+            ).hexdigest(),
+        }
+
+    async def _recover_short_plan_local_gate(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        brief: str, state: dict, plan: str, segment_count: int,
+        expected_plan_characters: int, *, generation_context_sha256: str,
+    ) -> str:
+        """Resolve local plan defects without allowing repair regression."""
+        best_plan = plan
+        best_issues = self._short_plan_issues(
+            project, state, best_plan, segment_count,
+        )
+        if not best_issues:
+            return best_plan
+        outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        outline_sha256 = hashlib.sha256(
+            outline_content.encode("utf-8"),
+        ).hexdigest()
+        recovered = read_planning_recovery(run_path / "outputs")
+        recovery_state = None
+        if recovered is not None:
+            stored_state, stored_plan = recovered
+            if (
+                stored_plan == best_plan
+                and planning_recovery_state_matches(
+                    stored_state,
+                    outline_sha256=outline_sha256,
+                    generation_context_sha256=generation_context_sha256,
+                    segment_count=segment_count,
+                )
+                and str(stored_state.get("status") or "").startswith((
+                    "local_", "recoverable_",
+                ))
+            ):
+                recovery_state = stored_state
+        if recovery_state is None:
+            recovery_state = new_planning_recovery_state(
+                outline_sha256=outline_sha256,
+                generation_context_sha256=generation_context_sha256,
+                segment_count=segment_count,
+                plan=best_plan,
+                issues=self._short_plan_local_issue_records(best_issues),
+            )
+        recovery_state["status"] = "local_repair"
+        recovery_state["best_issues"] = self._short_plan_local_issue_records(
+            best_issues,
+        )
+        recovery_state["best_issue_keys"] = sorted(planning_issue_keys(
+            recovery_state["best_issues"],
+        ))
+        recovery_state["local_issue_messages"] = best_issues
+        write_planning_recovery(run_path / "outputs", recovery_state, best_plan)
+
+        for attempt in range(1, 3):
+            event_type = (
+                "planning_gate_retry" if attempt == 1
+                else "planning_gate_targeted_retry"
+            )
+            message = (
+                "规划稿没有通过本地检查，正在只修正必要分段后再进入正文"
+                if attempt == 1 else
+                "规划本地问题尚未完全收敛，正在再次只处理剩余问题"
+            )
+            self.db.add_run_event(
+                run_id, "warning", event_type, message,
+                stage="planning", metadata={
+                    "attempt": attempt,
+                    "issues": best_issues,
+                    "best_issue_keys": sorted(planning_issue_keys(
+                        self._short_plan_local_issue_records(best_issues),
+                    )),
+                },
+            )
+            repair_prompt = (
+                "SHORT_PLAN_LOCAL_RECOVERY_V2\n"
+                f"LOCAL RECOVERY ATTEMPT: {attempt}\n"
+                "请修正下面的规划稿。只允许修改解决所列问题所必需的完整分段；已经有效的分段必须逐字保留。"
+                "不得改变正式大纲的故事方向、人物主动性、因果、视角、结局承诺或事件顺序。"
+                f"必须恰好写 {segment_count} 个分段，标题依次使用“### 第 1 段：标题”"
+                f"到“### 第 {segment_count} 段：标题”；每段写明事件ID、大纲依据、段首承接、"
+                "本段事件和段末交接。每个正式大纲事件 ID 必须按原顺序覆盖，连续分段可以共同完成"
+                "同一事件。段首和段末必须交代人物位置、当前行动、关系和已知信息。"
+                "只返回完整规划稿，不要说明。\n\n"
+                f"剩余问题：{json.dumps(best_issues, ensure_ascii=False)}\n\n"
+                f"当前最佳规划稿：\n{best_plan}"
+            )
+            try:
+                raw_candidate = await self._stage(
+                    run_id, run_path, project, "planning", constraints,
+                    repair_prompt,
+                    suffix="-gate-repair" if attempt == 1 else f"-gate-repair-{attempt}",
+                    allow_tools=False,
+                    expected_output_characters=expected_plan_characters,
+                    completion_check=lambda value: self._short_plan_output_complete(
+                        project, state, value, segment_count,
+                    ),
+                )
+            except IncompleteModelOutputError:
+                raw_candidate = await self._plan_short_in_batches(
+                    run_id, run_path, project, constraints,
+                    brief + "\n\nLOCAL RECOVERY REQUIREMENTS:\n" + repair_prompt,
+                    state, segment_count,
+                )
+            candidate, _candidate_chain = self._extract_short_causal_chain(
+                run_id, raw_candidate,
+            )
+            selected, selected_issues, comparison = (
+                self._select_monotonic_short_plan_candidate(
+                    project, state, best_plan, candidate, segment_count,
+                )
+            )
+            accepted = selected != best_plan and bool(comparison["improved"])
+            recovery_state = record_planning_candidate(
+                recovery_state,
+                plan=selected if accepted else candidate,
+                issues=self._short_plan_local_issue_records(
+                    selected_issues if accepted else self._short_plan_issues(
+                        project, state, candidate, segment_count,
+                    ),
+                ),
+                comparison=comparison,
+                source=f"local-{attempt}",
+                accepted=accepted,
+            )
+            if accepted:
+                best_plan = selected
+                best_issues = selected_issues
+                recovery_state["local_issue_messages"] = best_issues
+                write_planning_recovery(
+                    run_path / "outputs", recovery_state, best_plan,
+                )
+                self.db.add_run_event(
+                    run_id, "success", "planning_gate_candidate_improved",
+                    (
+                        "规划本地问题已全部解决，未受影响分段保持不变"
+                        if not best_issues else
+                        "规划本地问题集合已严格缩小，未受影响分段保持不变"
+                    ),
+                    stage="planning", metadata=comparison,
+                )
+                if not best_issues:
+                    recovery_state["status"] = "local_ready"
+                    write_planning_recovery(
+                        run_path / "outputs", recovery_state, best_plan,
+                    )
+                    return best_plan
+            else:
+                write_planning_recovery(
+                    run_path / "outputs", recovery_state, best_plan,
+                )
+                self.db.add_run_event(
+                    run_id, "warning", "planning_gate_candidate_rejected_regression",
+                    "规划修复候选没有严格减少问题或引入了新问题，已恢复此前最佳规划",
+                    stage="planning", metadata=comparison,
+                )
+
+        recovery_state["status"] = "recoverable_failed"
+        recovery_state["local_issue_messages"] = best_issues
+        write_planning_recovery(run_path / "outputs", recovery_state, best_plan)
+        self.db.add_run_event(
+            run_id, "error", "planning_gate_failed",
+            "规划本地修正未能单调收敛，已保留问题最少的完整规划并在正文前停止",
+            stage="planning", metadata={
+                "issues": best_issues,
+                "best_issue_keys": sorted(planning_issue_keys(
+                    self._short_plan_local_issue_records(best_issues),
+                )),
+            },
+        )
+        raise ValueError("规划稿未通过设定和分段检查，尚未生成正文")
+
+    @staticmethod
     def _planning_adaptation_contracts(
         state: dict, formal_outline_events: list[dict],
     ) -> list[dict]:
@@ -3591,41 +3866,108 @@ class WorkflowService:
         self, run_path: Path, project: Project, state: dict,
         segment_count: int, generation_context_sha256: str,
     ) -> tuple[str, dict | None, bool] | None:
-        """Reuse the immutable plan behind a failed adaptation receipt."""
-        outputs = run_path / "outputs"
-        artifact_path = outputs / "planning-adaptations.json"
-        planning_path = outputs / "planning.md"
-        try:
-            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
-            raw_plan = planning_path.read_text(encoding="utf-8")
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            return None
-        if not isinstance(artifact, dict) or artifact.get("status") != "failed" \
-                or artifact.get("version") != 1 \
-                or artifact.get("segment_count") != segment_count:
-            return None
-        stored_context = str(artifact.get("generation_context_sha256") or "")
-        if stored_context and stored_context != generation_context_sha256:
-            return None
-        try:
-            plan, causal_chain = extract_short_causal_chain(raw_plan)
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return None
+        """Reuse the best hash-bound plan from this or a prior failed task."""
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
-        if (
-            artifact.get("outline_sha256")
-            != hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
-            or artifact.get("planning_sha256")
-            != hashlib.sha256(plan.encode("utf-8")).hexdigest()
-            or self._short_plan_issues(project, state, plan, segment_count)
-        ):
+        outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
+        candidates = [run_path / "outputs"]
+        for run in self.db.list_runs(project.id):
+            if run.get("id") == run_path.name or run.get("workflow") != "short-story" \
+                    or run.get("status") not in {"failed", "cancelled"}:
+                continue
+            candidates.append(project.path / "runs" / run["id"] / "outputs")
+        for outputs in candidates:
+            recovered = read_planning_recovery(outputs)
+            if recovered is not None:
+                recovery_state, plan = recovered
+                if planning_recovery_state_matches(
+                    recovery_state,
+                    outline_sha256=outline_sha256,
+                    generation_context_sha256=generation_context_sha256,
+                    segment_count=segment_count,
+                ):
+                    return plan, None, False
+
+            artifact_path = outputs / "planning-adaptations.json"
+            planning_path = outputs / "planning.md"
+            try:
+                artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+                raw_plan = planning_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(artifact, dict) or artifact.get("status") != "failed" \
+                    or artifact.get("version") not in {
+                        LEGACY_PLANNING_ADAPTATION_VERSION,
+                        PLANNING_ADAPTATION_VERSION,
+                    } or artifact.get("segment_count") != segment_count:
+                continue
+            stored_context = str(artifact.get("generation_context_sha256") or "")
+            if artifact.get("version") == PLANNING_ADAPTATION_VERSION \
+                    and stored_context != generation_context_sha256:
+                continue
+            if artifact.get("version") == LEGACY_PLANNING_ADAPTATION_VERSION \
+                    and stored_context and stored_context != generation_context_sha256:
+                continue
+            try:
+                plan, causal_chain = extract_short_causal_chain(raw_plan)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                continue
+            targeted = self._legacy_targeted_planning_candidate(
+                outputs, project, state, plan, segment_count,
+            )
+            if targeted is not None:
+                plan = targeted
+                causal_chain = None
+            if (
+                artifact.get("outline_sha256") != outline_sha256
+                or self._short_plan_issues(project, state, plan, segment_count)
+            ):
+                continue
+            if targeted is None and artifact.get("planning_sha256") \
+                    != hashlib.sha256(plan.encode("utf-8")).hexdigest():
+                continue
+            return plan, causal_chain, not bool(stored_context)
+        return None
+
+    def _legacy_targeted_planning_candidate(
+        self, outputs: Path, project: Project, state: dict, plan: str,
+        segment_count: int,
+    ) -> str | None:
+        """Reconstruct a pre-v2 targeted candidate as untrusted recovery input."""
+        replacements: dict[int, str] = {}
+        for path in sorted(outputs.glob("planning-adaptation-segment-*.md")):
+            match = re.fullmatch(
+                r"planning-adaptation-segment-(\d{2})\.md", path.name,
+            )
+            if not match:
+                continue
+            segment = int(match.group(1))
+            try:
+                value = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            blocks = self._short_plan_segments_for_range(value, segment, segment)
+            if len(blocks) == 1:
+                replacements[segment] = blocks[0]
+        if not replacements:
             return None
-        return plan, causal_chain, not bool(stored_context)
+        candidate = plan
+        try:
+            for segment, block in sorted(replacements.items()):
+                candidate = self._replace_short_plan_segment(
+                    candidate, segment_count, segment, block,
+                )
+        except ValueError:
+            return None
+        if self._short_plan_issues(project, state, candidate, segment_count):
+            return None
+        return candidate
 
     def _revalidate_stored_planning_adaptation_segment(
         self, run_path: Path, *, authority_sha256: str,
         planning_sha256: str, segment: int, expected_event_ids: list[str],
         evidence_candidates: dict[str, str],
+        authority_version: int = PLANNING_ADAPTATION_VERSION,
+        authority_event_ids: list[str] | None = None,
     ) -> tuple[dict, list[dict], str] | None:
         for payload, source in self._stored_planning_adaptation_payloads(
             run_path, segment=segment,
@@ -3640,6 +3982,8 @@ class WorkflowService:
                 segment=segment,
                 expected_event_ids=expected_event_ids,
                 evidence_candidates=evidence_candidates,
+                authority_version=authority_version,
+                authority_event_ids=authority_event_ids,
             )
             if any(
                 str(item.get("code") or "") == "adaptation_receipt_conflict"
@@ -3653,13 +3997,27 @@ class WorkflowService:
                 str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
                 for item in issues
             ):
-                return dict(normalized), issues, source
+                rebound = dict(normalized)
+                previous_planning_sha256 = str(
+                    rebound.get("planning_sha256") or ""
+                )
+                if (
+                    authority_version >= PLANNING_ADAPTATION_VERSION
+                    and previous_planning_sha256 != planning_sha256
+                ):
+                    rebound["revalidated_from_planning_sha256"] = (
+                        previous_planning_sha256
+                    )
+                    rebound["planning_sha256"] = planning_sha256
+                rebound["authority_version"] = authority_version
+                return rebound, issues, source
         return None
 
     def _revalidate_stored_planning_adaptation_whole(
         self, run_path: Path, *, authority_sha256: str,
         planning_sha256: str, segment_count: int,
         expected_event_ids: list[str],
+        authority_version: int = PLANNING_ADAPTATION_VERSION,
     ) -> tuple[dict, list[dict], str] | None:
         for payload, source in self._stored_planning_adaptation_payloads(
             run_path, whole=True,
@@ -3683,6 +4041,10 @@ class WorkflowService:
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         *, outline_sha256: str, planning_sha256: str, segment: int,
         event_contracts: list[dict], plan_segment: str, suffix: str,
+        previous_handoff: str = "", next_entry: str = "",
+        generation_context_sha256: str = "",
+        authority_version: int = PLANNING_ADAPTATION_VERSION,
+        authority_event_ids: list[str] | None = None,
     ) -> tuple[dict, list[dict], int]:
         event_ids = [str(item.get("id") or "").strip().upper() for item in event_contracts]
         candidates = planning_adaptation_evidence_candidates(plan_segment, segment)
@@ -3692,6 +4054,10 @@ class WorkflowService:
             segment=segment,
             event_contracts=event_contracts,
             plan_segment=plan_segment,
+            previous_handoff=previous_handoff,
+            next_entry=next_entry,
+            generation_context_sha256=generation_context_sha256,
+            version=authority_version,
         )
         stored = self._revalidate_stored_planning_adaptation_segment(
             run_path,
@@ -3700,6 +4066,8 @@ class WorkflowService:
             segment=segment,
             expected_event_ids=event_ids,
             evidence_candidates=candidates,
+            authority_version=authority_version,
+            authority_event_ids=authority_event_ids,
         )
         if stored is not None:
             receipt, issues, source = stored
@@ -3715,7 +4083,7 @@ class WorkflowService:
         protocol_retries = 0
         for attempt in range(3):
             prompt = (
-                "SHORT_PLAN_ADAPTATION_REVIEW_V1\n"
+                "SHORT_PLAN_ADAPTATION_REVIEW_V2\n"
                 "只审核当前正式写作段，判断规划对正式大纲的实现是否属于允许的等价展开。"
                 "不要要求逐字照搬，也不能以更好写、更有戏剧性为理由改变剧情功能。\n"
                 "classification 建议使用 unchanged、equivalent 或 structural，但它只用于诊断；"
@@ -3728,19 +4096,27 @@ class WorkflowService:
                 "每个事件必须逐项返回 invariants：event_function、primary_actor_agency、"
                 "causal_dependencies、entry_state、exit_state、knowledge_state、relationship_state、"
                 "viewpoint、timeline_order、promise_ending。允许的分类中这些值必须全部为 true。\n"
-                "只返回一个 JSON 对象，字段为 authority_sha256、planning_sha256、segment、"
+                "若 timeline_order 为 false，必须额外返回 order_dependency（hard、soft 或 unknown）"
+                "和 dependency_event_ids；soft 表示仅展示顺序变化，hard 必须绑定形成依赖的事件 ID。\n"
+                "segment_order_preserved 只判断正式事件及其依赖顺序，不把同一事件内部的非依赖展示顺序变化判为 false。\n"
+                "只返回一个 JSON 对象，字段为 authority_sha256、planning_sha256、authority_version、segment、"
                 "event_reviews、segment_order_preserved、formal_direction_preserved、summary。"
                 "event_reviews 每项包含 event_id、classification、changed_dimensions、invariants、"
                 "plan_evidence_ids、reason。plan_evidence_ids 只能从 Runtime 候选中选择，"
                 "不得复述、拼接或改写规划原文。\n"
                 f"EXPECTED AUTHORITY SHA256: {authority_sha256}\n"
                 f"EXPECTED PLANNING SHA256: {planning_sha256}\n"
+                f"EXPECTED AUTHORITY VERSION: {authority_version}\n"
                 f"CURRENT SEGMENT: {segment}\n"
                 "EXPECTED EVENT IDS:\n"
                 + json.dumps(event_ids, ensure_ascii=False)
+                + "\n\nALLOWED DEPENDENCY EVENT IDS:\n"
+                + json.dumps(authority_event_ids or event_ids, ensure_ascii=False)
                 + "\n\nFORMAL EVENT CONTRACTS:\n"
                 + json.dumps(event_contracts, ensure_ascii=False, indent=2)
                 + "\n\nCURRENT ACCEPTED PLAN SEGMENT:\n" + plan_segment
+                + "\n\nPREVIOUS ACCEPTED HANDOFF:\n" + previous_handoff
+                + "\n\nNEXT SEGMENT ENTRY:\n" + next_entry
                 + "\n\nPLAN EVIDENCE CANDIDATES:\n"
                 + json.dumps(candidates, ensure_ascii=False, indent=2)
             )
@@ -3769,6 +4145,17 @@ class WorkflowService:
                 receipt = normalize_planning_adaptation_receipt(
                     payload, evidence_candidates=candidates,
                 )
+                if isinstance(receipt, dict):
+                    receipt["authority_version"] = authority_version
+                    receipt["segment_sha256"] = hashlib.sha256(
+                        plan_segment.encode("utf-8"),
+                    ).hexdigest()
+                    receipt["boundary_sha256"] = hashlib.sha256(json.dumps({
+                        "previous_handoff": previous_handoff,
+                        "next_entry": next_entry,
+                    }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                        "utf-8",
+                    )).hexdigest()
                 last_issues = planning_adaptation_receipt_issues(
                     receipt,
                     authority_sha256=authority_sha256,
@@ -3776,6 +4163,8 @@ class WorkflowService:
                     segment=segment,
                     expected_event_ids=event_ids,
                     evidence_candidates=candidates,
+                    authority_version=authority_version,
+                    authority_event_ids=authority_event_ids,
                 )
                 protocol_issues = [
                     item for item in last_issues
@@ -3803,11 +4192,13 @@ class WorkflowService:
         *, outline_sha256: str, planning_sha256: str,
         formal_contracts: list[dict], plan: str,
         segment_receipts: list[dict], segment_count: int, suffix: str,
+        authority_version: int = PLANNING_ADAPTATION_VERSION,
     ) -> tuple[dict, list[dict], int]:
         authority_sha256 = planning_adaptation_whole_authority_sha256(
             outline_sha256=outline_sha256,
             planning_sha256=planning_sha256,
             segment_receipts=segment_receipts,
+            version=authority_version,
         )
         expected_event_ids = [
             str(item.get("id") or "").strip().upper()
@@ -3819,6 +4210,7 @@ class WorkflowService:
             planning_sha256=planning_sha256,
             segment_count=segment_count,
             expected_event_ids=expected_event_ids,
+            authority_version=authority_version,
         )
         if stored is not None:
             receipt, issues, source = stored
@@ -3832,7 +4224,7 @@ class WorkflowService:
         protocol_retries = 0
         for attempt in range(3):
             prompt = (
-                "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V1\n"
+                "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2\n"
                 "各正式段已经分别通过等价展开核对。现在只审核它们合并后的整篇关系，"
                 "防止两个局部都合理的调整组合后破坏因果、相邻交接、人物知情、关系推进、"
                 "视角/时间线、伏笔回收或确认结局。只返回一个 JSON 对象。\n"
@@ -3844,6 +4236,7 @@ class WorkflowService:
                 "若有问题，affected_segments 和 affected_event_ids 必须准确指出最小修正范围。\n"
                 f"EXPECTED AUTHORITY SHA256: {authority_sha256}\n"
                 f"EXPECTED PLANNING SHA256: {planning_sha256}\n"
+                f"EXPECTED AUTHORITY VERSION: {authority_version}\n"
                 "EXPECTED SEGMENTS:\n"
                 + json.dumps(list(range(1, segment_count + 1)), ensure_ascii=False)
                 + "\n\nEXPECTED EVENT IDS:\n"
@@ -3875,6 +4268,8 @@ class WorkflowService:
                 }]
             else:
                 receipt = normalize_planning_adaptation_whole_receipt(payload)
+                if isinstance(receipt, dict):
+                    receipt["authority_version"] = authority_version
                 last_issues = planning_adaptation_whole_receipt_issues(
                     receipt,
                     authority_sha256=authority_sha256,
@@ -3906,6 +4301,8 @@ class WorkflowService:
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         state: dict, plan: str, formal_outline_events: list[dict],
         segment_count: int, *, suffix: str,
+        generation_context_sha256: str = "",
+        authority_version: int = PLANNING_ADAPTATION_VERSION,
     ) -> tuple[list[dict], dict, list[dict], int]:
         formal_contracts = self._planning_adaptation_contracts(
             state, formal_outline_events,
@@ -3919,6 +4316,10 @@ class WorkflowService:
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
         outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
         planning_sha256 = hashlib.sha256(plan.encode("utf-8")).hexdigest()
+        authority_event_ids = [
+            str(item.get("id") or "").strip().upper()
+            for item in formal_contracts
+        ]
         plan_segments = self._short_plan_segments(plan, segment_count)
         receipts: list[dict] = []
         whole_receipt: dict = {}
@@ -3945,6 +4346,17 @@ class WorkflowService:
                 event_contracts=contracts,
                 plan_segment=plan_segment,
                 suffix=suffix,
+                previous_handoff=(
+                    self._short_plan_handoff(plan_segments[segment - 2])
+                    if segment > 1 else "opening"
+                ),
+                next_entry=(
+                    self._short_plan_field(plan_segments[segment], "opening")
+                    if segment < len(plan_segments) else "ending"
+                ),
+                generation_context_sha256=generation_context_sha256,
+                authority_version=authority_version,
+                authority_event_ids=authority_event_ids,
             )
             protocol_retries += retries
             if receipt:
@@ -3966,6 +4378,7 @@ class WorkflowService:
                     segment_receipts=receipts,
                     segment_count=segment_count,
                     suffix=suffix,
+                    authority_version=authority_version,
                 )
             )
             protocol_retries += retries
@@ -3977,26 +4390,32 @@ class WorkflowService:
         formal_outline_events: list[dict], segment_count: int,
         generation_context_sha256: str | None = None,
     ) -> bool:
-        if not isinstance(artifact, dict) or artifact.get("version") != 1 \
-                or artifact.get("status") != "ready":
+        if not isinstance(artifact, dict) or artifact.get("version") not in {
+            LEGACY_PLANNING_ADAPTATION_VERSION, PLANNING_ADAPTATION_VERSION,
+        } or artifact.get("status") != "ready":
             return False
+        authority_version = int(artifact.get("version") or 0)
         if artifact.get("issues") not in (None, []):
             return False
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
         outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
         planning_sha256 = hashlib.sha256(plan.encode("utf-8")).hexdigest()
+        stored_generation_context = artifact.get("generation_context_sha256")
         if (
             artifact.get("outline_sha256") != outline_sha256
             or artifact.get("planning_sha256") != planning_sha256
             or artifact.get("segment_count") != segment_count
-            or (
-                generation_context_sha256 is not None
-                and artifact.get("generation_context_sha256") not in {
-                    None, "", generation_context_sha256,
-                }
-            )
         ):
             return False
+        if generation_context_sha256 is not None:
+            if authority_version >= PLANNING_ADAPTATION_VERSION \
+                    and stored_generation_context != generation_context_sha256:
+                return False
+            if authority_version == LEGACY_PLANNING_ADAPTATION_VERSION \
+                    and stored_generation_context not in {
+                        None, "", generation_context_sha256,
+                    }:
+                return False
         formal_contracts = self._planning_adaptation_contracts(
             state, formal_outline_events,
         )
@@ -4022,6 +4441,18 @@ class WorkflowService:
                 segment=segment,
                 event_contracts=[dict(item) for item in contracts if item],
                 plan_segment=plan_segment,
+                previous_handoff=(
+                    self._short_plan_handoff(plan_segments[segment - 2])
+                    if segment > 1 else "opening"
+                ),
+                next_entry=(
+                    self._short_plan_field(plan_segments[segment], "opening")
+                    if segment < len(plan_segments) else "ending"
+                ),
+                generation_context_sha256=str(
+                    artifact.get("generation_context_sha256") or ""
+                ),
+                version=authority_version,
             )
             normalized = normalize_planning_adaptation_receipt(
                 receipt, evidence_candidates=candidates,
@@ -4033,6 +4464,11 @@ class WorkflowService:
                 segment=segment,
                 expected_event_ids=event_ids,
                 evidence_candidates=candidates,
+                authority_version=authority_version,
+                authority_event_ids=[
+                    str(item.get("id") or "").strip().upper()
+                    for item in formal_contracts
+                ],
             ):
                 return False
         whole_receipt = normalize_planning_adaptation_whole_receipt(
@@ -4042,6 +4478,7 @@ class WorkflowService:
             outline_sha256=outline_sha256,
             planning_sha256=planning_sha256,
             segment_receipts=receipts,
+            version=authority_version,
         )
         if planning_adaptation_whole_receipt_issues(
             whole_receipt,
@@ -4059,7 +4496,8 @@ class WorkflowService:
     async def _repair_short_plan_adaptation_segments(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         state: dict, plan: str, formal_outline_events: list[dict],
-        segment_count: int, issues: list[dict],
+        segment_count: int, issues: list[dict], *, mode: str = "targeted",
+        attempt: int = 1,
     ) -> str:
         formal_contracts = self._planning_adaptation_contracts(
             state, formal_outline_events,
@@ -4070,39 +4508,11 @@ class WorkflowService:
         }
         candidate = plan
         original_segments = self._short_plan_segments(plan, segment_count)
-
-        def integer(value: object) -> int:
-            try:
-                return int(value or 0)
-            except (TypeError, ValueError):
-                return 0
-
-        def issue_segments(item: dict) -> set[int]:
-            result: set[int] = set()
-            direct = integer(item.get("segment"))
-            if direct > 0:
-                result.add(direct)
-            raw_affected = item.get("affected_segments")
-            if isinstance(raw_affected, list):
-                result.update(
-                    number for number in (integer(value) for value in raw_affected)
-                    if number > 0
-                )
-            raw_event_ids = item.get("affected_event_ids")
-            if isinstance(raw_event_ids, list):
-                expected = {
-                    str(value or "").strip().upper() for value in raw_event_ids
-                    if str(value or "").strip()
-                }
-                for number, block in enumerate(original_segments, 1):
-                    if expected.intersection(self._short_plan_event_ids(block)):
-                        result.add(number)
-            return result
-
-        affected_values: set[int] = set()
-        for item in issues:
-            affected_values.update(issue_segments(item))
-        affected = sorted(affected_values)
+        segment_event_ids = {
+            number: self._short_plan_event_ids(block)
+            for number, block in enumerate(original_segments, 1)
+        }
+        affected = sorted(planning_issue_segments(issues, segment_event_ids))
         if issues and not affected:
             raise ValueError("规划适配问题没有提供可执行的受影响分段范围")
         for segment in affected:
@@ -4116,7 +4526,8 @@ class WorkflowService:
                 if event_id in contract_by_id
             ]
             current_issues = [
-                item for item in issues if segment in issue_segments(item)
+                item for item in issues
+                if segment in planning_issue_segments([item], segment_event_ids)
             ]
             previous_handoff = (
                 self._short_plan_handoff(plan_segments[segment - 2])
@@ -4126,13 +4537,25 @@ class WorkflowService:
                 self._short_plan_field(plan_segments[segment], "opening")
                 if segment < len(plan_segments) else "ending"
             )
+            protocol = (
+                "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_V2"
+                if mode == "rebuild" else
+                "SHORT_PLAN_EQUIVALENCE_TARGETED_REPAIR_V2"
+            )
+            instruction = (
+                "从正式事件合同重新构建当前完整段。当前段只作为可保留素材，不能继承其中被指出的"
+                "推断、顺序、口供、视角或关系因果。先逐项落实正式事件，再补充不改变不变量的创作细节。"
+                if mode == "rebuild" else
+                "保留当前段已经有效的对话、细节、节奏和可写性，只修正回执指出的最小范围。"
+            )
             prompt = (
-                "SHORT_PLAN_EQUIVALENCE_TARGETED_REPAIR_V1\n"
+                protocol + "\n"
                 f"只返回完整的“### 第 {segment} 段：标题”规划块，不要返回其他段、说明或因果链。"
-                "保留当前段已经有效的对话、细节、节奏和可写性，只修正会改变主要执行者、剧情功能、"
-                "因果依赖、入口/出口、知情、关系、视角、时间顺序、伏笔或结局的问题。"
-                "允许保留经过核对可等价的触发方式、次要参与者、局部地点和场景展开。"
-                "事件 ID 必须保持原集合和原顺序，不能提前消费后续事件。\n"
+                + instruction
+                + "不得改变主要执行者、剧情功能、因果依赖、入口/出口、知情、关系、视角、"
+                "依赖性时间顺序、伏笔或结局。允许等价的触发方式、次要参与者、局部地点、"
+                "对话、描写和不影响依赖的展示顺序。事件 ID 必须保持原集合和原顺序，"
+                "不能提前消费后续事件。\n"
                 f"EXPECTED SEGMENT: {segment}\nEXPECTED EVENT IDS:\n"
                 + json.dumps(event_ids, ensure_ascii=False)
                 + "\n\nFORMAL EVENT CONTRACTS:\n"
@@ -4162,7 +4585,12 @@ class WorkflowService:
 
             repaired = await self._stage(
                 run_id, run_path, project, "planning", constraints, prompt,
-                suffix=f"-adaptation-segment-{segment:02d}", allow_tools=False,
+                suffix=(
+                    f"-adaptation-segment-{segment:02d}-attempt-{attempt}"
+                    if mode == "targeted" else
+                    f"-adaptation-segment-rebuild-{segment:02d}-attempt-{attempt}"
+                ),
+                allow_tools=False,
                 expected_output_characters=max(1600, len(current)),
                 completion_check=complete,
             )
@@ -4174,46 +4602,6 @@ class WorkflowService:
             )
         return candidate
 
-    async def _rebuild_short_plan_for_adaptation(
-        self, run_id: str, run_path: Path, project: Project, constraints: str,
-        state: dict, plan: str, formal_outline_events: list[dict],
-        segment_count: int, issues: list[dict],
-    ) -> str:
-        contracts = self._planning_adaptation_contracts(state, formal_outline_events)
-        prompt = (
-            "SHORT_PLAN_EQUIVALENCE_FULL_REBUILD_V1\n"
-            "重新构建完整短篇规划，只返回完整规划稿，不返回说明或因果链。"
-            f"必须恰好包含第 1 至第 {segment_count} 段，每段都要有事件ID、大纲依据、"
-            "段首承接、本段事件、段末交接。可以丰富表现细节，也可以采用等价触发和场景展开，"
-            "但必须保留每个正式事件的剧情功能、主要执行者主动性、因果依赖、入口/出口、知情与关系状态、"
-            "视角、依赖性时间顺序、伏笔和结局。保留当前规划中已经有效的创意，不要机械缩写。\n"
-            "FORMAL EVENT CONTRACTS WITH IMMUTABLE EVIDENCE:\n"
-            + json.dumps(contracts, ensure_ascii=False, indent=2)
-            + "\n\nREMAINING STRUCTURAL DRIFT ISSUES:\n"
-            + json.dumps(issues, ensure_ascii=False, indent=2)
-            + "\n\nCURRENT PLAN TO SALVAGE:\n" + plan
-        )
-        expected_characters = max(3000, 1200 * segment_count)
-        try:
-            rebuilt = await self._stage(
-                run_id, run_path, project, "planning", constraints, prompt,
-                suffix="-adaptation-full-rebuild", allow_tools=False,
-                expected_output_characters=expected_characters,
-                completion_check=lambda value: self._short_plan_output_complete(
-                    project, state, value, segment_count,
-                ),
-            )
-        except IncompleteModelOutputError:
-            rebuilt = await self._plan_short_in_batches(
-                run_id, run_path, project, constraints, prompt,
-                state, segment_count,
-            )
-        try:
-            rebuilt_plan, _chain = extract_short_causal_chain(rebuilt)
-        except (ValueError, json.JSONDecodeError):
-            rebuilt_plan = rebuilt
-        return rebuilt_plan.strip()
-
     async def _ensure_short_plan_adaptations(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         state: dict, plan: str, formal_outline_events: list[dict],
@@ -4222,7 +4610,8 @@ class WorkflowService:
         contracts = self._planning_adaptation_contracts(state, formal_outline_events)
         if not contracts or not all(str(item.get("evidence") or "").strip() for item in contracts):
             return plan, None, False
-        artifact_path = run_path / "outputs" / "planning-adaptations.json"
+        outputs = run_path / "outputs"
+        artifact_path = outputs / "planning-adaptations.json"
         try:
             cached = json.loads(artifact_path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError):
@@ -4239,9 +4628,45 @@ class WorkflowService:
             return plan, dict(cached), False
 
         original_plan = plan
-        candidate = plan
         protocol_repairs = 0
-        semantic_repairs = 0
+        outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
+        context_sha256 = generation_context_sha256 or ""
+
+        def protocol_failure(values: list[dict]) -> bool:
+            return any(
+                str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
+                for item in values
+            )
+
+        async def evaluate(candidate: str, suffix: str) -> tuple[list[dict], dict, list[dict]]:
+            nonlocal protocol_repairs
+            receipts_value, whole_value, issues_value, retries = (
+                await self._review_short_plan_adaptations(
+                    run_id, run_path, project, constraints, state, candidate,
+                    formal_outline_events, segment_count, suffix=suffix,
+                    generation_context_sha256=context_sha256,
+                    authority_version=PLANNING_ADAPTATION_VERSION,
+                )
+            )
+            protocol_repairs += retries
+            return receipts_value, whole_value, issues_value
+
+        def recovery_scope(candidate: str, values: list[dict]) -> dict[str, list[int]]:
+            segments = self._short_plan_segments(candidate, segment_count)
+            event_ids = {
+                number: self._short_plan_event_ids(block)
+                for number, block in enumerate(segments, 1)
+            }
+            affected = sorted(planning_issue_segments(values, event_ids))
+            return {
+                "affected_segments": affected,
+                "preserved_segments": [
+                    number for number in range(1, segment_count + 1)
+                    if number not in affected
+                ],
+            }
+
         self.db.add_run_event(
             run_id, "info", "planning_adaptation_review_started",
             "正在核对规划中的等价展开、跨段因果和结局承诺",
@@ -4250,98 +4675,164 @@ class WorkflowService:
                 "event_count": len(contracts),
             },
         )
-        receipts, whole_receipt, issues, retries = await self._review_short_plan_adaptations(
-            run_id, run_path, project, constraints, state, candidate,
-            formal_outline_events, segment_count, suffix="initial",
+        best_plan = plan
+        pending_state = new_planning_recovery_state(
+            outline_sha256=outline_sha256,
+            generation_context_sha256=context_sha256,
+            segment_count=segment_count,
+            plan=best_plan,
+            issues=[],
         )
-        protocol_repairs += retries
+        pending_state["status"] = "review_pending"
+        write_planning_recovery(outputs, pending_state, best_plan)
+        best_receipts, best_whole_receipt, best_issues = await evaluate(
+            best_plan, "initial",
+        )
+        recovery_state = new_planning_recovery_state(
+            outline_sha256=outline_sha256,
+            generation_context_sha256=context_sha256,
+            segment_count=segment_count,
+            plan=best_plan,
+            issues=best_issues,
+        )
+        write_planning_recovery(outputs, recovery_state, best_plan)
 
-        def protocol_failure(values: list[dict]) -> bool:
-            return any(
-                str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
-                for item in values
-            )
-
-        if not protocol_failure(issues) and issues:
-            semantic_repairs += 1
+        terminal_issues: list[dict] | None = None
+        targeted_attempts = 0
+        rebuild_attempts = 0
+        while best_issues and not protocol_failure(best_issues):
+            if targeted_attempts < 2:
+                mode = "targeted"
+                targeted_attempts += 1
+                attempt = targeted_attempts
+                event_type = "planning_adaptation_targeted_repair"
+                message = "规划存在结构性偏移，正在只修正受影响的正式段"
+            elif rebuild_attempts < 1:
+                mode = "rebuild"
+                rebuild_attempts += 1
+                attempt = rebuild_attempts
+                event_type = "planning_adaptation_segment_rebuild"
+                message = "局部修正未继续收敛，正在依据正式事件合同重建受影响的完整段"
+            else:
+                break
+            scope = recovery_scope(best_plan, best_issues)
             self.db.add_run_event(
-                run_id, "warning", "planning_adaptation_targeted_repair",
-                "规划存在结构性偏移，正在只修正受影响的正式段",
-                stage="planning", metadata={"issues": issues},
+                run_id, "warning", event_type, message,
+                stage="planning", metadata={
+                    "attempt": attempt,
+                    "mode": mode,
+                    "issues": best_issues,
+                    "best_issue_keys": sorted(planning_issue_keys(best_issues)),
+                    **scope,
+                },
             )
             try:
-                repaired_candidate = await self._repair_short_plan_adaptation_segments(
-                    run_id, run_path, project, constraints, state, candidate,
-                    formal_outline_events, segment_count, issues,
+                candidate = await self._repair_short_plan_adaptation_segments(
+                    run_id, run_path, project, constraints, state, best_plan,
+                    formal_outline_events, segment_count, best_issues,
+                    mode=mode, attempt=attempt,
                 )
             except (IncompleteModelOutputError, ValueError) as exc:
-                issues = [{
-                    "code": "planning_targeted_repair_failed",
-                    "message": str(exc)[:500],
-                    "segment": int(item.get("segment") or 0),
-                } for item in issues[:1]] or [{
-                    "code": "planning_targeted_repair_failed",
-                    "message": str(exc)[:500],
-                }]
-                receipts = []
-                whole_receipt = {}
-            else:
-                candidate = repaired_candidate
-                local_issues = self._short_plan_issues(
-                    project, state, candidate, segment_count,
+                comparison = {
+                    "improved": False,
+                    "previous_issue_keys": sorted(planning_issue_keys(best_issues)),
+                    "candidate_issue_keys": sorted(planning_issue_keys(best_issues)),
+                    "introduced_issue_keys": [],
+                    "resolved_issue_keys": [],
+                    "retained_issue_keys": sorted(planning_issue_keys(best_issues)),
+                    "reason": "candidate_generation_failed",
+                    "error": str(exc)[:500],
+                    **scope,
+                }
+                recovery_state = record_planning_candidate(
+                    recovery_state, plan=best_plan, issues=best_issues,
+                    comparison=comparison, source=f"{mode}-{attempt}",
+                    accepted=False,
                 )
-                if local_issues:
-                    issues = [{
-                        "code": "planning_local_gate", "message": message,
-                    } for message in local_issues]
-                    receipts = []
-                    whole_receipt = {}
-                else:
-                    receipts, whole_receipt, issues, retries = await self._review_short_plan_adaptations(
-                        run_id, run_path, project, constraints, state, candidate,
-                        formal_outline_events, segment_count, suffix="targeted",
-                    )
-                    protocol_repairs += retries
+                write_planning_recovery(outputs, recovery_state, best_plan)
+                self.db.add_run_event(
+                    run_id, "warning", "planning_candidate_rejected",
+                    "规划修复候选没有完整生成，已保留此前问题更少的最佳规划",
+                    stage="planning", metadata=comparison,
+                )
+                continue
 
-        if not protocol_failure(issues) and issues:
-            semantic_repairs += 1
-            self.db.add_run_event(
-                run_id, "warning", "planning_adaptation_full_rebuild",
-                "规划定向修正仍有结构性偏移，正在依据正式事件合同重建完整规划",
-                stage="planning", metadata={"issues": issues},
-            )
-            candidate = await self._rebuild_short_plan_for_adaptation(
-                run_id, run_path, project, constraints, state, candidate,
-                formal_outline_events, segment_count, issues,
-            )
             local_issues = self._short_plan_issues(
                 project, state, candidate, segment_count,
             )
             if local_issues:
-                issues = [{
-                    "code": "planning_local_gate", "message": message,
-                } for message in local_issues]
-                receipts = []
-                whole_receipt = {}
+                candidate_receipts: list[dict] = []
+                candidate_whole_receipt: dict = {}
+                candidate_issues = [{
+                    "code": "planning_local_gate",
+                    "message": value,
+                } for value in local_issues]
             else:
-                receipts, whole_receipt, issues, retries = await self._review_short_plan_adaptations(
-                    run_id, run_path, project, constraints, state, candidate,
-                    formal_outline_events, segment_count, suffix="rebuild",
+                candidate_receipts, candidate_whole_receipt, candidate_issues = (
+                    await evaluate(candidate, f"{mode}-{attempt}")
                 )
-                protocol_repairs += retries
+            if protocol_failure(candidate_issues):
+                terminal_issues = candidate_issues
+                self.db.add_run_event(
+                    run_id, "error", "planning_candidate_receipt_failed",
+                    "候选规划保持隔离，但其审核回执未能完成，已保留最佳规划",
+                    stage="planning", metadata={"issues": candidate_issues},
+                )
+                break
+            comparison = planning_candidate_comparison(
+                best_issues, candidate_issues,
+            )
+            comparison = {**comparison, **scope}
+            accepted = not candidate_issues or bool(comparison["improved"])
+            recovery_state = record_planning_candidate(
+                recovery_state, plan=candidate, issues=candidate_issues,
+                comparison=comparison, source=f"{mode}-{attempt}",
+                accepted=accepted,
+            )
+            if accepted:
+                best_plan = candidate
+                best_receipts = candidate_receipts
+                best_whole_receipt = candidate_whole_receipt
+                best_issues = candidate_issues
+                write_planning_recovery(outputs, recovery_state, best_plan)
+                self.db.add_run_event(
+                    run_id, "success", "planning_candidate_improved",
+                    (
+                        "规划修复候选已解决全部结构问题"
+                        if not best_issues else
+                        "规划修复候选的问题集合已严格缩小，已更新最佳规划"
+                    ),
+                    stage="planning", metadata=comparison,
+                )
+            else:
+                write_planning_recovery(outputs, recovery_state, best_plan)
+                self.db.add_run_event(
+                    run_id, "warning", "planning_candidate_rejected_regression",
+                    "规划修复候选没有取得严格进展或引入了新问题，已恢复最佳规划",
+                    stage="planning", metadata=comparison,
+                )
 
-        outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        issues = terminal_issues if terminal_issues is not None else best_issues
+        receipts = best_receipts
+        whole_receipt = best_whole_receipt
+        recovery_state["status"] = "ready" if not issues else "recoverable_failed"
+        recovery_state["best_issues"] = best_issues
+        recovery_state["best_issue_keys"] = sorted(planning_issue_keys(best_issues))
+        write_planning_recovery(outputs, recovery_state, best_plan)
+        semantic_repairs = int(recovery_state.get("semantic_attempts") or 0)
         artifact = {
-            "version": 1,
+            "version": PLANNING_ADAPTATION_VERSION,
             "status": "failed" if issues else "ready",
-            "outline_sha256": hashlib.sha256(outline_content.encode("utf-8")).hexdigest(),
-            "planning_sha256": hashlib.sha256(candidate.encode("utf-8")).hexdigest(),
+            "outline_sha256": outline_sha256,
+            "planning_sha256": hashlib.sha256(best_plan.encode("utf-8")).hexdigest(),
             "segment_count": segment_count,
             "generation_context_sha256": generation_context_sha256,
             "segments": receipts,
             "whole_story_receipt": whole_receipt,
             "protocol_repairs": protocol_repairs,
             "semantic_repairs": semantic_repairs,
+            "best_issue_keys": sorted(planning_issue_keys(best_issues)),
+            "recovery_state": "planning-recovery-state.json",
             "issues": issues,
         }
         atomic_write(
@@ -4357,7 +4848,7 @@ class WorkflowService:
                 (
                     "规划内容未被改动，但等价展开审核回执仍不完整，已停止后续生成"
                     if is_protocol else
-                    "规划经过定向修正和完整重建后仍改变正式剧情结构，已停止后续生成"
+                    "规划经过局部修正和完整段重建后仍有结构问题，已保留最佳规划并停止后续生成"
                 ),
                 stage="planning", metadata={
                     "issues": issues,
@@ -4368,7 +4859,7 @@ class WorkflowService:
             raise ValueError(
                 "规划等价展开审核回执未通过，规划内容保持不变"
                 if is_protocol else
-                "规划未能在保留创作展开的同时维持正式剧情结构"
+                "规划恢复尚未收敛，最佳候选和有效上游进度已保留"
             )
         counts: dict[str, int] = {}
         for receipt in receipts:
@@ -4384,7 +4875,7 @@ class WorkflowService:
                 "semantic_repairs": semantic_repairs,
             },
         )
-        return candidate, artifact, candidate != original_plan
+        return best_plan, artifact, best_plan != original_plan
 
     @classmethod
     def _short_plan_segments_for_range(

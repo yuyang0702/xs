@@ -2994,6 +2994,133 @@ def test_adjacent_segments_may_continue_the_same_formal_outline_event() -> None:
     assert not any("换了场景" in item for item in bridged_issues)
 
 
+def test_local_planning_recovery_merges_only_the_segment_needed_for_improvement(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Monotonic local plan", mode="short", genre="suspense",
+        premise="A local repair must not damage unrelated segments.",
+        target_words=10000,
+    ))
+
+    def block(number: int, *, handoff: bool = True, suffix: str = "原稿") -> str:
+        tail = f"段末交接：状态{number}已经成立。\n" if handoff else ""
+        return (
+            f"### 第 {number} 段：事件{number}\n"
+            f"事件ID：EV-{number:08x}\n"
+            f"大纲依据：事件{number}\n"
+            f"段首承接：人物承接状态{number}。\n"
+            f"本段事件：人物推进事件{number}。\n"
+            f"{tail}{suffix}" + chr(0x4e00 + number) * 100
+        )
+
+    original_segments = [block(number) for number in range(1, 5)]
+    original_segments[1] = block(2, handoff=False)
+    best = "\n\n".join(original_segments)
+    candidate_segments = [
+        block(1, suffix="候选擅自重写"),
+        block(2, suffix="只需采用的修正"),
+        block(3, suffix="候选擅自重写"),
+        block(4, handoff=False, suffix="候选引入的新问题"),
+    ]
+    candidate = "\n\n".join(candidate_segments)
+
+    selected, issues, comparison = (
+        WorkflowService._select_monotonic_short_plan_candidate(
+            project, {}, best, candidate, 4,
+        )
+    )
+
+    selected_segments = WorkflowService._short_plan_segments(selected, 4)
+    assert issues == []
+    assert comparison["improved"] is True
+    assert comparison["selected_segments"] == [2]
+    assert selected_segments[0] == original_segments[0]
+    assert "只需采用的修正" in selected_segments[1]
+    assert selected_segments[2] == original_segments[2]
+    assert selected_segments[3] == original_segments[3]
+
+
+@pytest.mark.asyncio
+async def test_local_planning_recovery_resumes_the_lowest_issue_candidate(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Resumable local plan", mode="short", genre="suspense",
+        premise="An interrupted local repair resumes from the best candidate.",
+        target_words=10000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    db.create_run("local-resume", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "local-resume"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    def block(number: int, *, handoff: bool) -> str:
+        tail = f"段末交接：状态{number}已经成立。\n" if handoff else ""
+        return (
+            f"### 第 {number} 段：事件{number}\n"
+            f"事件ID：EV-{number:08x}\n大纲依据：事件{number}\n"
+            f"段首承接：人物承接状态{number}。\n"
+            f"本段事件：人物推进事件{number}。\n{tail}"
+            + chr(0x4e00 + number) * 110
+        )
+
+    initial = "\n\n".join(
+        block(number, handoff=number not in {2, 3}) for number in range(1, 5)
+    )
+    partial = "\n\n".join(
+        block(number, handoff=number != 3) for number in range(1, 5)
+    )
+    complete = "\n\n".join(
+        block(number, handoff=True) for number in range(1, 5)
+    )
+    calls = 0
+
+    async def interrupted_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return partial
+        raise ConnectionError("local planning repair interrupted")
+
+    service._stage = interrupted_stage
+    with pytest.raises(ConnectionError, match="interrupted"):
+        await service._recover_short_plan_local_gate(
+            "local-resume", run_path, project, "constraints", "brief", {},
+            initial, 4, 4800, generation_context_sha256="context-v2",
+        )
+
+    resumed = service._resumable_current_planning_adaptation_plan(
+        run_path, project, {}, 4, "context-v2",
+    )
+    assert resumed == (partial, None, False)
+
+    async def completing_stage(*args, **kwargs):
+        return complete
+
+    service._stage = completing_stage
+    accepted = await service._recover_short_plan_local_gate(
+        "local-resume", run_path, project, "constraints", "brief", {},
+        partial, 4, 4800, generation_context_sha256="context-v2",
+    )
+
+    assert accepted == complete
+    recovery = json.loads(
+        (run_path / "outputs" / "planning-recovery-state.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert [item["accepted"] for item in recovery["candidates"]] == [True, True]
+    assert recovery["status"] == "local_ready"
+
+
 def test_draft_findings_keep_underlength_blocking_without_guessing_unknown_locations() -> None:
     findings = WorkflowService._draft_segment_findings(
         "月面基地的灯亮了。" * 5,
@@ -6307,6 +6434,7 @@ def test_short_checkpoint_binds_and_restores_planning_adaptation(tmp_path) -> No
                 segment=number,
                 event_contracts=[contract],
                 plan_segment=plan_segment,
+                version=1,
             ),
             "planning_sha256": plan_sha,
             "segment": number,
@@ -6327,6 +6455,7 @@ def test_short_checkpoint_binds_and_restores_planning_adaptation(tmp_path) -> No
         outline_sha256=outline_sha,
         planning_sha256=plan_sha,
         segment_receipts=segment_receipts,
+        version=1,
     )
     adaptation = {
         "version": 1,
@@ -6701,7 +6830,7 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
 
 
 @pytest.mark.asyncio
-async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_chain(
+async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_chain(
     tmp_path,
 ) -> None:
     db = Database(tmp_path / "app.db")
@@ -6735,6 +6864,15 @@ async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_
             or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4" in user
         ):
             return execution_manifest_receipt_from_prompt(user)
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            return json.dumps({
+                "core_goal": "按修正后的规划重建因果链",
+                "cycles": [{
+                    "obstacle": "阻碍", "effort": "行动", "result": "推进",
+                    "state_change": "修正后的规划状态成立",
+                }],
+                "ending": "完成结局", "covered_event_ids": [],
+            }, ensure_ascii=False)
         prompts.append(user)
         return "没有分段标题的初稿" if len(prompts) == 1 else repaired
 
@@ -6772,11 +6910,16 @@ async def test_planning_repair_becomes_checkpoint_plan_and_keeps_initial_causal_
     saved = project.path / "runs" / "repair-plan" / "outputs" / "planning.md"
     assert saved.read_text(encoding="utf-8") == repaired
     assert captured["plan"] == repaired
-    assert "保留最初因果链" in captured["constraints"]
+    assert "按修正后的规划重建因果链" in captured["constraints"]
+    assert "保留最初因果链" not in captured["constraints"]
     assert saved_chains == [{
-        "core_goal": "保留最初因果链",
-        "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+        "core_goal": "按修正后的规划重建因果链",
+        "cycles": [{
+            "obstacle": "阻碍", "effort": "行动", "result": "推进",
+            "state_change": "修正后的规划状态成立",
+        }],
         "ending": "完成结局",
+        "covered_event_ids": [],
     }]
     assert "segment_heading_format" in prompts[0]
     assert "### 第 1 段" in prompts[1]
@@ -6818,7 +6961,7 @@ async def test_failed_planning_repair_does_not_persist_causal_chain(tmp_path) ->
 
 
 @pytest.mark.asyncio
-async def test_planning_full_rebuild_recovers_after_minimal_repair_failure(
+async def test_planning_second_monotonic_repair_recovers_after_no_progress_candidate(
     tmp_path,
 ) -> None:
     db = Database(tmp_path / "app.db")
@@ -6826,7 +6969,7 @@ async def test_planning_full_rebuild_recovers_after_minimal_repair_failure(
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Rebuild plan", mode="short", genre="suspense",
-        premise="A full rebuild recovers the plan.", target_words=10000,
+        premise="A second monotonic repair recovers the plan.", target_words=10000,
     ))
     service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
     rebuilt = "\n\n".join(
@@ -6863,7 +7006,11 @@ async def test_planning_full_rebuild_recovers_after_minimal_repair_failure(
                 "ending": "确认记录", "covered_event_ids": [],
             }, ensure_ascii=False)
         planning_calls += 1
-        return rebuilt if "FULL PLANNING REBUILD" in prompt else "没有分段标题"
+        return (
+            rebuilt
+            if "LOCAL RECOVERY ATTEMPT: 2" in prompt
+            else "没有分段标题"
+        )
 
     async def stop_after_planning(*args, **kwargs):
         nonlocal captured_constraints
@@ -6902,7 +7049,11 @@ async def test_planning_full_rebuild_recovers_after_minimal_repair_failure(
     assert "完成核对" in captured_constraints
     assert "被丢弃旧规划的因果链" not in captured_constraints
     assert any(
-        event["event_type"] == "planning_gate_rebuild"
+        event["event_type"] == "planning_gate_candidate_rejected_regression"
+        for event in db.list_run_events("planning-full-rebuild")
+    )
+    assert any(
+        event["event_type"] == "planning_gate_candidate_improved"
         for event in db.list_run_events("planning-full-rebuild")
     )
 @pytest.mark.asyncio
