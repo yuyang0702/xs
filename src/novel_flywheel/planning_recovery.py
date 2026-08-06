@@ -9,6 +9,7 @@ from novel_flywheel.storage import atomic_write
 
 
 PLANNING_RECOVERY_VERSION = 1
+PLANNING_RECOVERY_ENVELOPE_VERSION = 1
 
 
 def planning_issue_keys(issues: list[dict]) -> set[str]:
@@ -87,19 +88,62 @@ def planning_issue_segments(
 
 
 def planning_candidate_comparison(
-    previous_issues: list[dict], candidate_issues: list[dict],
+    previous_issues: list[dict], candidate_issues: list[dict], *,
+    changed_segments: set[int] | list[int] | tuple[int, ...] | None = None,
+    segment_event_ids: dict[int, list[str]] | None = None,
 ) -> dict[str, Any]:
-    """Accept only a strict semantic improvement with no new hard failure."""
+    """Accept only a strict semantic improvement with no attributable regression.
+
+    The historical two-argument form compares the complete hard-issue set.  A
+    repair workflow may additionally provide the segments whose bytes actually
+    changed.  In that mode, a finding wholly owned by an unchanged segment is
+    retained as a latent baseline issue instead of being blamed on the current
+    candidate.  Unscoped and cross-boundary findings remain attributable to the
+    candidate so whole-plan safety is never weakened.
+    """
     previous = planning_issue_keys(previous_issues)
     candidate = planning_issue_keys(candidate_issues)
-    introduced = sorted(candidate - previous)
-    resolved = sorted(previous - candidate)
+    changed = {
+        number for number in (
+            _integer(value) for value in (changed_segments or [])
+        ) if number
+    }
+    if changed_segments is None:
+        previous_attributable = previous
+        candidate_attributable = candidate
+        previous_latent: set[str] = set()
+        candidate_latent: set[str] = set()
+    else:
+        if segment_event_ids is None:
+            raise ValueError(
+                "segment_event_ids is required for attribution-aware comparison"
+            )
+        previous_attributable, previous_latent = _partition_planning_issue_keys(
+            previous_issues,
+            changed_segments=changed,
+            segment_event_ids=segment_event_ids,
+        )
+        candidate_attributable, candidate_latent = _partition_planning_issue_keys(
+            candidate_issues,
+            changed_segments=changed,
+            segment_event_ids=segment_event_ids,
+        )
+    introduced = sorted(candidate_attributable - previous_attributable)
+    resolved = sorted(previous_attributable - candidate_attributable)
     retained = sorted(previous & candidate)
     improved = bool(resolved) and not introduced
     return {
         "improved": improved,
         "previous_issue_keys": sorted(previous),
         "candidate_issue_keys": sorted(candidate),
+        "changed_segments": sorted(changed),
+        "previous_attributable_issue_keys": sorted(previous_attributable),
+        "candidate_attributable_issue_keys": sorted(candidate_attributable),
+        "attributable_issue_keys": sorted(candidate_attributable),
+        "previous_latent_issue_keys": sorted(previous_latent),
+        "latent_baseline_issue_keys": sorted(candidate_latent),
+        "newly_discovered_latent_issue_keys": sorted(candidate_latent - previous),
+        "observed_new_issue_keys": sorted(candidate - previous),
         "introduced_issue_keys": introduced,
         "resolved_issue_keys": resolved,
         "retained_issue_keys": retained,
@@ -109,6 +153,39 @@ def planning_candidate_comparison(
             else "no_semantic_progress"
         ),
     }
+
+
+def merge_planning_issue_ledgers(
+    previous_issues: list[dict], candidate_issues: list[dict], *,
+    changed_segments: set[int] | list[int] | tuple[int, ...],
+    segment_event_ids: dict[int, list[str]],
+) -> list[dict]:
+    """Merge a candidate review without erasing known issues on unchanged text.
+
+    The candidate review is authoritative for changed segments, their adjacent
+    boundary findings, and whole-plan findings.  For byte-identical segments,
+    newly observed candidate findings are kept and previously known findings
+    omitted by a later nondeterministic review are also retained.  This makes
+    the best-plan issue ledger monotonic without treating diagnostics as canon.
+    """
+    changed = {
+        number for number in (
+            _integer(value) for value in changed_segments
+        ) if number
+    }
+    result = json.loads(json.dumps(candidate_issues, ensure_ascii=False))
+    known_keys = planning_issue_keys(result)
+    for issue in previous_issues:
+        if not isinstance(issue, dict):
+            continue
+        owned = planning_issue_segments([issue], segment_event_ids)
+        if not owned or owned.intersection(changed):
+            continue
+        missing = planning_issue_keys([issue]) - known_keys
+        for retained in _planning_issue_records_for_keys(issue, missing):
+            result.append(retained)
+            known_keys.update(planning_issue_keys([retained]))
+    return result
 
 
 def planning_recovery_state_matches(
@@ -142,6 +219,7 @@ def new_planning_recovery_state(
         "semantic_attempts": 0,
         "no_progress_rounds": 0,
         "candidates": [],
+        "execution_failures": [],
     }
 
 
@@ -150,10 +228,28 @@ def record_planning_candidate(
     comparison: dict[str, Any], source: str, accepted: bool,
 ) -> dict[str, Any]:
     result = json.loads(json.dumps(state, ensure_ascii=False))
+    previous = planning_issue_keys(list(state.get("best_issues") or []))
+    candidate_keys = planning_issue_keys(issues)
+    comparison_introduced = comparison.get("introduced_issue_keys")
+    introduced_keys = (
+        sorted({str(value) for value in comparison_introduced})
+        if isinstance(comparison_introduced, list)
+        else sorted(candidate_keys - previous)
+    )
+    issue_records = json.loads(json.dumps(issues, ensure_ascii=False))
     result.setdefault("candidates", []).append({
         "source": source,
         "planning_sha256": _hash(plan),
-        "issue_keys": sorted(planning_issue_keys(issues)),
+        "issue_keys": sorted(candidate_keys),
+        # Keep the lossless diagnostic receipt available to the next repair
+        # attempt. Keys remain the acceptance authority; these records are
+        # no-regression guidance and must never become canon by themselves.
+        "issues": issue_records,
+        "introduced_issues": [
+            item for item in issue_records
+            if planning_issue_keys([item]) & set(introduced_keys)
+        ],
+        "introduced_issue_keys": introduced_keys,
         "accepted": bool(accepted),
         "comparison": comparison,
     })
@@ -171,9 +267,29 @@ def record_planning_candidate(
 def write_planning_recovery(
     outputs: Path, state: dict[str, Any], best_plan: str,
 ) -> None:
-    """Persist the recoverable candidate and its ledger as one hash-bound pair."""
+    """Persist the recoverable candidate and ledger as one atomic envelope.
+
+    The historical projection files remain for audit and compatibility, but
+    recovery reads the single envelope first.  A process exit between legacy
+    projection writes therefore cannot destroy the newest valid checkpoint.
+    """
     if state.get("best_plan_sha256") != _hash(best_plan):
         raise ValueError("Planning recovery state does not bind the best plan")
+    state_json = json.dumps(
+        state, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    pair_sha256 = hashlib.sha256(
+        (state_json + "\n" + best_plan).encode("utf-8"),
+    ).hexdigest()
+    atomic_write(
+        outputs / "planning-recovery.json",
+        json.dumps({
+            "envelope_version": PLANNING_RECOVERY_ENVELOPE_VERSION,
+            "pair_sha256": pair_sha256,
+            "state": state,
+            "best_plan": best_plan,
+        }, ensure_ascii=False, indent=2, sort_keys=True),
+    )
     atomic_write(outputs / "planning-best.md", best_plan)
     atomic_write(
         outputs / "planning-recovery-state.json",
@@ -182,6 +298,31 @@ def write_planning_recovery(
 
 
 def read_planning_recovery(outputs: Path) -> tuple[dict, str] | None:
+    try:
+        envelope = json.loads(
+            (outputs / "planning-recovery.json").read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        envelope = None
+    if isinstance(envelope, dict) and envelope.get(
+        "envelope_version"
+    ) == PLANNING_RECOVERY_ENVELOPE_VERSION:
+        state = envelope.get("state")
+        plan = envelope.get("best_plan")
+        if isinstance(state, dict) and isinstance(plan, str):
+            state_json = json.dumps(
+                state, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+            )
+            pair_sha256 = hashlib.sha256(
+                (state_json + "\n" + plan).encode("utf-8"),
+            ).hexdigest()
+            if (
+                envelope.get("pair_sha256") == pair_sha256
+                and state.get("best_plan_sha256") == _hash(plan)
+            ):
+                return state, plan
+
+    # Backward-compatible V1 pair for runs created before the envelope existed.
     try:
         state = json.loads(
             (outputs / "planning-recovery-state.json").read_text(encoding="utf-8")
@@ -200,6 +341,44 @@ def _integer(value: object) -> int:
     except (TypeError, ValueError):
         return 0
     return result if result > 0 else 0
+
+
+def _partition_planning_issue_keys(
+    issues: list[dict], *, changed_segments: set[int],
+    segment_event_ids: dict[int, list[str]],
+) -> tuple[set[str], set[str]]:
+    attributable: set[str] = set()
+    latent: set[str] = set()
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        keys = planning_issue_keys([issue])
+        owned = planning_issue_segments([issue], segment_event_ids)
+        if not owned or owned.intersection(changed_segments):
+            attributable.update(keys)
+        else:
+            latent.update(keys)
+    return attributable, latent
+
+
+def _planning_issue_records_for_keys(
+    issue: dict, wanted_keys: set[str],
+) -> list[dict]:
+    if not wanted_keys:
+        return []
+    for field in ("invalid_invariants", "invalid_dimensions"):
+        values = issue.get(field)
+        if not isinstance(values, list) or not values:
+            continue
+        result: list[dict] = []
+        for value in values:
+            clone = json.loads(json.dumps(issue, ensure_ascii=False))
+            clone[field] = [value]
+            if planning_issue_keys([clone]).intersection(wanted_keys):
+                result.append(clone)
+        return result
+    clone = json.loads(json.dumps(issue, ensure_ascii=False))
+    return [clone] if planning_issue_keys([clone]).intersection(wanted_keys) else []
 
 
 def _string_values(value: object) -> list[str]:

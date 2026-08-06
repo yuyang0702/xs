@@ -8,6 +8,7 @@ from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.skill_runtime import (
     SkillContract, SkillRuntimeService, SkillRuntimeToolbox, StoryCli,
+    _close_location_backlinks,
     expected_initialization_characters, initialization_stage_issues,
     initialization_answers, initialization_context_hash,
 )
@@ -374,6 +375,43 @@ def test_bootstrap_character_preflight_rejects_wrong_inverse_relationship(tmp_pa
     assert any("反向关系类型不一致" in issue for issue in issues)
 
 
+def test_character_relationship_preflight_accepts_crlf_before_semantic_validation(
+    tmp_path,
+) -> None:
+    _db, project = make_project(tmp_path)
+    answers = {"outline_manifest": {"characters": [
+        {"name": "花穗", "role": "protagonist"},
+        {"name": "裴砚行", "role": "deuteragonist"},
+    ]}}
+    profiles = {
+        "characters/hua-sui.md": (
+            "---\nname: 花穗\nrole: protagonist\nrelationships:\n"
+            "  - character: pei-yan-xing\n    type: love-interest\n"
+            "---\n# 花穗\n"
+        ),
+        "characters/pei-yan-xing.md": (
+            "---\nname: 裴砚行\nrole: deuteragonist\nrelationships:\n"
+            "  - character: hua-sui\n    type: rival\n"
+            "---\n# 裴砚行\n"
+        ),
+        "characters/_index.md": (
+            "---\ntype: character-registry\n---\n# Characters\n\n"
+            "## Relationship Map\n\n花穗与裴砚行：欢喜冤家。\n"
+        ),
+    }
+    proposals = [
+        {"relative_path": relative, "content": content.replace("\n", "\r\n"), "status": "pending"}
+        for relative, content in profiles.items()
+    ]
+
+    issues = initialization_stage_issues(
+        project, "character-management", answers, proposals,
+    )
+
+    assert any("反向关系类型不一致" in issue for issue in issues)
+    assert not any("无法安全解析" in issue for issue in issues)
+
+
 def test_bootstrap_character_apply_defers_forward_location_links(tmp_path) -> None:
     db, project = make_project(tmp_path)
     db.create_skill_execution("run", project.id, "character-management", "hash")
@@ -443,6 +481,157 @@ def test_bootstrap_runtime_preserves_character_relationships_and_locations(tmp_p
     assert "relationships:\n  - character: rival\n    type: enemy" in content
     assert "locations:\n  - missing-place" in content
     assert "tags:\n  - lead" in content
+
+
+def test_bootstrap_worldbuilding_closes_production_location_backlinks(tmp_path) -> None:
+    db, project = make_project(tmp_path)
+    characters = project.path / "characters"
+    (characters / "hua-sui.md").write_bytes(
+        (
+            "---\r\nname: 花穗\r\nrole: protagonist\r\nlocations:\r\n"
+            "  - shen-fu-chu-fang\r\n---\r\n# 花穗\r\n"
+        ).encode("utf-8")
+    )
+    (characters / "pei-yanxing.md").write_text(
+        "---\nname: 裴砚行\nrole: deuteragonist\nlocations: []\n---\n# 裴砚行\n",
+        encoding="utf-8",
+    )
+    db.create_skill_execution("run", project.id, "worldbuilding", "hash", "running")
+
+    expected = {
+        "hua-sui": {
+            "shen-fu-chu-fang", "shen-fu-ku-fang",
+            "shen-fu-xia-fang", "shen-fu-zhang-fang",
+        },
+        "pei-yanxing": {"shen-fu-zhang-fang"},
+    }
+    commands = []
+
+    def runner(command):
+        commands.append(command[0])
+        if command[0] != "links":
+            return "ok"
+        for character_id, location_ids in expected.items():
+            character = (characters / f"{character_id}.md").read_text(encoding="utf-8")
+            missing = sorted(location_id for location_id in location_ids if location_id not in character)
+            if missing:
+                raise RuntimeError(
+                    f"{character_id} is missing location backlinks: {', '.join(missing)}"
+                )
+        return "Links are valid: 0 errors, 0 warnings"
+
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("worldbuilding"),
+        StoryCli(project, runner), bootstrap=True,
+        answers={"confirmed_outline": {"content": "# 大纲"}, "outline_manifest": {}},
+    )
+    locations = {
+        "shen-fu-chu-fang": ["hua-sui"],
+        "shen-fu-ku-fang": ["hua-sui"],
+        "shen-fu-xia-fang": ["hua-sui"],
+        "shen-fu-zhang-fang": ["hua-sui", "pei-yanxing"],
+    }
+    for location_id, notable_characters in locations.items():
+        toolbox.execute("create_file_proposal", {
+            "relative_path": f"worldbuilding/locations/{location_id}.md",
+            "content": (
+                f"---\nname: {location_id}\ntype: building\nnotable-characters:\n"
+                + "".join(f"  - {item}\n" for item in notable_characters)
+                + f"---\n# {location_id}\n"
+            ),
+        })
+    toolbox.execute("update_registry_proposal", {
+        "relative_path": "worldbuilding/_index.md",
+        "content": (
+            "---\ntype: world-registry\n---\n# Worldbuilding\n\n"
+            + "\n".join(
+                f"[{location_id}](locations/{location_id}.md)"
+                for location_id in locations
+            )
+            + "\n"
+        ),
+    })
+
+    toolbox.apply()
+
+    assert commands == ["reindex", "links", "validate"]
+    hua_sui = (characters / "hua-sui.md").read_text(encoding="utf-8")
+    pei_yanxing = (characters / "pei-yanxing.md").read_text(encoding="utf-8")
+    assert all(location_id in hua_sui for location_id in expected["hua-sui"])
+    assert all(location_id in pei_yanxing for location_id in expected["pei-yanxing"])
+    assert hua_sui.count("shen-fu-chu-fang") == 1
+    assert b"\r\n" in (characters / "hua-sui.md").read_bytes()
+    assert b"\r\r\n" not in (characters / "hua-sui.md").read_bytes()
+
+
+def test_location_backlink_closure_is_idempotent_and_preserves_accepted_formatting(
+    tmp_path,
+) -> None:
+    _db, project = make_project(tmp_path)
+    character = project.path / "characters" / "hero.md"
+    location = project.path / "worldbuilding" / "locations" / "home.md"
+    location.parent.mkdir(parents=True, exist_ok=True)
+    character.write_text(
+        "---\nname: Hero\nrole: protagonist\nlocations: ['home']\n---\n# Hero\n",
+        encoding="utf-8",
+    )
+    location.write_bytes(
+        (
+            "---\r\nname: Home\r\ntype: building\r\n"
+            "notable-characters: []\r\n---\r\n# Home\r\n"
+        ).encode("utf-8")
+    )
+    original_character = character.read_bytes()
+
+    first = _close_location_backlinks(project)
+    after_first = location.read_bytes()
+    second = _close_location_backlinks(project)
+
+    assert first == [location]
+    assert second == []
+    assert character.read_bytes() == original_character
+    assert b"\r\n  - hero\r\n" in after_first
+    assert b"\r\r\n" not in after_first
+    assert location.read_bytes() == after_first
+
+
+def test_worldbuilding_backlink_closure_rolls_back_malformed_character_metadata(
+    tmp_path,
+) -> None:
+    db, project = make_project(tmp_path)
+    character = project.path / "characters" / "hero.md"
+    original = (
+        "---\nname: Hero\nrole: protagonist\nlocations: []\n"
+        "locations:\n  - home\n---\n# Hero\n"
+    )
+    character.write_text(original, encoding="utf-8")
+    db.create_skill_execution("run", project.id, "worldbuilding", "hash", "running")
+    toolbox = SkillRuntimeToolbox(
+        db, project, "run", SkillContract.for_skill("worldbuilding"),
+        StoryCli(project, lambda command: "ok"), bootstrap=True,
+        answers={"confirmed_outline": {"content": "# Outline"}, "outline_manifest": {}},
+    )
+    toolbox.execute("create_file_proposal", {
+        "relative_path": "worldbuilding/locations/home.md",
+        "content": (
+            "---\nname: Home\ntype: building\nnotable-characters:\n"
+            "  - hero\n---\n# Home\n"
+        ),
+    })
+    toolbox.execute("update_registry_proposal", {
+        "relative_path": "worldbuilding/_index.md",
+        "content": (
+            "---\ntype: world-registry\n---\n# Worldbuilding\n\n"
+            "[home](locations/home.md)\n"
+        ),
+    })
+
+    with pytest.raises(ValueError, match="duplicated"):
+        toolbox.apply()
+
+    assert character.read_text(encoding="utf-8") == original
+    assert not (project.path / "worldbuilding" / "locations" / "home.md").exists()
+    assert db.get_skill_execution("run")["status"] == "recoverable"
 
 
 def test_bootstrap_runtime_preserves_artifact_relationships(tmp_path) -> None:

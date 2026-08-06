@@ -118,6 +118,11 @@ class MissingPrimaryKeyRegistry:
         raise AssertionError((provider_id, model_id))
 
 
+class MissingBothKeysRegistry:
+    def resolve(self, provider_id, model_id):
+        raise ValueError(f"missing_api_key: {provider_id}")
+
+
 def fallback_receipt_fields(result):
     return {
         key: result.receipt[key]
@@ -194,6 +199,28 @@ async def test_gateway_uses_fallback_when_primary_key_is_missing(tmp_path) -> No
         "fallback_from_provider_id": "primary-provider",
         "fallback_from_model_id": "primary-model",
     }
+
+
+@pytest.mark.asyncio
+async def test_gateway_preserves_both_route_errors_when_primary_and_fallback_keys_are_missing(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+
+    with pytest.raises(ModelRoutesExhaustedError) as caught:
+        await ModelGateway(db, MissingBothKeysRegistry()).complete(
+            "planning", "rules", "plan",
+        )
+
+    assert "missing_api_key: primary-provider" in str(caught.value)
+    assert "missing_api_key: fallback-provider" in str(caught.value)
+    assert "missing_api_key: primary-provider" in str(caught.value.primary_error)
+    assert "missing_api_key: fallback-provider" in str(caught.value.fallback_error)
 
 
 @pytest.mark.asyncio

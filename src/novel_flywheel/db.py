@@ -6,6 +6,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Iterator
 
+from novel_flywheel.production_incidents import classify_production_failure
+
 
 WIZARD_MUTATION_LOCK = threading.RLock()
 
@@ -821,6 +823,184 @@ class Database:
             event["metadata"] = json.loads(event.pop("metadata_json"))
             events.append(event)
         return events
+
+    @staticmethod
+    def _incident_metadata(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
+        try:
+            metadata = json.loads(row["metadata_json"] or "{}")
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        classified = classify_production_failure(
+            str(row["message"] or ""),
+            workflow=str(row["workflow"] or ""),
+            stage=str(row["stage"] or row["current_stage"] or ""),
+        )
+        if metadata.get("incident_key") and metadata.get("incident_family"):
+            # Early versions grouped every context preflight under one family.
+            # Refine only when the original terminal evidence proves that the
+            # event-owned recovery had already reached an indivisible scope.
+            # This is a read-time compatibility upgrade; historical rows and
+            # their occurrence timestamps remain untouched.
+            if (
+                metadata.get("incident_family")
+                == "model.context_capacity_preflight"
+                and classified.get("incident_family")
+                == "model.context_capacity_indivisible_scope"
+            ):
+                return {**metadata, **classified}
+            return metadata
+        return {**metadata, **classified}
+
+    def record_run_failure(
+        self, run_id: str, event_type: str, message: str, *,
+        stage: str | None, incident: dict[str, str],
+    ) -> dict[str, Any]:
+        """Atomically record one terminal failure and its recurrence metadata."""
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT e.run_id, e.metadata_json, e.message, e.stage, e.created_at, "
+                "r.workflow, r.current_stage "
+                "FROM run_events e JOIN runs r ON r.id=e.run_id "
+                "WHERE e.severity='error' "
+                "AND e.event_type IN ('failed', 'short_revision_failed') "
+                "ORDER BY e.id",
+            ).fetchall()
+            legacy_rows = connection.execute(
+                "SELECT r.id AS run_id, COALESCE(e.message, r.error) AS message, "
+                "COALESCE(e.stage, r.current_stage) AS stage, "
+                "COALESCE(e.metadata_json, '{}') AS metadata_json, "
+                "r.updated_at AS created_at, r.workflow, r.current_stage "
+                "FROM runs r LEFT JOIN run_events e ON e.id=("
+                "SELECT MAX(le.id) FROM run_events le "
+                "WHERE le.run_id=r.id AND le.severity='error') "
+                "WHERE r.status='failed' AND r.error IS NOT NULL AND r.id<>? "
+                "AND NOT EXISTS (SELECT 1 FROM run_events terminal "
+                "WHERE terminal.run_id=r.id AND terminal.severity='error' "
+                "AND terminal.event_type IN ('failed', 'short_revision_failed')) "
+                "ORDER BY r.updated_at",
+                (run_id,),
+            ).fetchall()
+            rows = sorted(
+                [*legacy_rows, *rows],
+                key=lambda row: (row["created_at"], row["run_id"]),
+            )
+            same_key = []
+            same_family = []
+            for row in rows:
+                metadata = self._incident_metadata(row)
+                if metadata.get("incident_key") == incident["incident_key"]:
+                    same_key.append(row)
+                if metadata.get("incident_family") == incident["incident_family"]:
+                    same_family.append(row)
+            now = connection.execute("SELECT datetime('now')").fetchone()[0]
+            first_seen = same_key[0]["created_at"] if same_key else now
+            metadata: dict[str, Any] = {
+                **incident,
+                "occurrence_count": len(same_key) + 1,
+                "family_occurrence_count": len(same_family) + 1,
+                "first_seen_at": first_seen,
+                "last_seen_at": now,
+            }
+            if same_key or same_family:
+                recognized_scope = (
+                    "同一流程阶段"
+                    if same_key else "其他流程阶段"
+                )
+                connection.execute(
+                    "INSERT INTO run_events(run_id, severity, event_type, stage, message, "
+                    "metadata_json, created_at) VALUES (?, 'warning', "
+                    "'production_incident_recognized', ?, ?, ?, datetime('now'))",
+                    (
+                        run_id, stage,
+                        f"已识别为历史同类问题（{recognized_scope}）："
+                        f"{incident['incident_title']}。"
+                        f"已知处置：{incident['known_resolution']}",
+                        json.dumps(metadata, ensure_ascii=False),
+                    ),
+                )
+            connection.execute(
+                "INSERT INTO run_events(run_id, severity, event_type, stage, message, "
+                "metadata_json, created_at) VALUES (?, 'error', ?, ?, ?, ?, datetime('now'))",
+                (
+                    run_id, event_type, stage, message,
+                    json.dumps(metadata, ensure_ascii=False),
+                ),
+            )
+        return metadata
+
+    def list_production_incidents(
+        self, project_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Aggregate new and legacy terminal failure events by stable incident key."""
+        where = (
+            "AND r.project_id=?" if project_id is not None else ""
+        )
+        arguments: tuple[Any, ...] = (project_id,) if project_id is not None else ()
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT e.run_id, e.message, e.stage, e.metadata_json, e.created_at, "
+                "r.project_id, r.workflow, r.current_stage "
+                "FROM run_events e JOIN runs r ON r.id=e.run_id "
+                "WHERE e.severity='error' "
+                "AND e.event_type IN ('failed', 'short_revision_failed') "
+                f"{where} ORDER BY e.id",
+                arguments,
+            ).fetchall()
+            legacy_rows = connection.execute(
+                "SELECT r.id AS run_id, COALESCE(e.message, r.error) AS message, "
+                "COALESCE(e.stage, r.current_stage) AS stage, "
+                "COALESCE(e.metadata_json, '{}') AS metadata_json, "
+                "r.updated_at AS created_at, r.project_id, r.workflow, r.current_stage "
+                "FROM runs r LEFT JOIN run_events e ON e.id=("
+                "SELECT MAX(le.id) FROM run_events le "
+                "WHERE le.run_id=r.id AND le.severity='error') "
+                "WHERE r.status='failed' AND r.error IS NOT NULL "
+                "AND NOT EXISTS (SELECT 1 FROM run_events terminal "
+                "WHERE terminal.run_id=r.id AND terminal.severity='error' "
+                "AND terminal.event_type IN ('failed', 'short_revision_failed')) "
+                f"{where} ORDER BY r.updated_at",
+                arguments,
+            ).fetchall()
+        rows = sorted(
+            [*legacy_rows, *rows],
+            key=lambda row: (row["created_at"], row["run_id"]),
+        )
+        grouped: dict[str, dict[str, Any]] = {}
+        family_counts: dict[str, int] = {}
+        for row in rows:
+            metadata = self._incident_metadata(row)
+            key = str(metadata["incident_key"])
+            family = str(metadata["incident_family"])
+            family_counts[family] = family_counts.get(family, 0) + 1
+            item = grouped.setdefault(key, {
+                "incident_key": key,
+                "incident_family": family,
+                "incident_title": metadata.get("incident_title", "生产失败"),
+                "known_resolution": metadata.get("known_resolution", ""),
+                "occurrence_count": 0,
+                "first_seen_at": row["created_at"],
+                "last_seen_at": row["created_at"],
+                "latest_run_id": row["run_id"],
+                "latest_project_id": row["project_id"],
+                "latest_workflow": row["workflow"],
+                "latest_stage": row["stage"] or row["current_stage"],
+                "latest_message": row["message"],
+            })
+            item["occurrence_count"] += 1
+            item["last_seen_at"] = row["created_at"]
+            item["latest_run_id"] = row["run_id"]
+            item["latest_project_id"] = row["project_id"]
+            item["latest_workflow"] = row["workflow"]
+            item["latest_stage"] = row["stage"] or row["current_stage"]
+            item["latest_message"] = row["message"]
+        for item in grouped.values():
+            item["family_occurrence_count"] = family_counts[item["incident_family"]]
+        return sorted(
+            grouped.values(), key=lambda item: (item["last_seen_at"], item["incident_key"]),
+            reverse=True,
+        )
 
     def interrupt_active_runs(self) -> int:
         with self.connect() as connection:

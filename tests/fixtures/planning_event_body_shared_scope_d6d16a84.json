@@ -1,0 +1,13 @@
+{
+  "run_id": "d6d16a84698e4e9b8850fea98ed68d70",
+  "workflow": "short-story",
+  "stage": "planning",
+  "message": "规划正式事件缺少足以核对执行者、动作和结果的正文（EV-A42514C2）",
+  "incident_family": "planning.event_body_integrity",
+  "root_cause": "相邻正式事件 EV-A42514C2 与 EV-CBFB58B0 在同一完整正文中共同完成，旧边界检查把相邻 ID 之间的标点误判为第一事件正文缺失。",
+  "expected_recovery": "允许相邻事件 ID 绑定同一段足够完整的执行正文；其他缺失、重复或顺序错误仍只重建受影响完整规划段，并在因果链前重新验证。",
+  "affected_event_ids": [
+    "EV-A42514C2",
+    "EV-CBFB58B0"
+  ]
+}

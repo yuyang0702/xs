@@ -1,0 +1,17 @@
+{
+  "run_id": "d785dd5c711c4bc785caec10977cf6bb",
+  "workflow": "short-story",
+  "stage": "planning",
+  "incident_family": "model.context_capacity_preflight",
+  "message": "input context overflow preflight: lossless story authority plus output reserve requires 32695 tokens for context window 32768; topology=split",
+  "context_window": 32768,
+  "estimated_input_tokens": 20407,
+  "authority_input_tokens": 18514,
+  "output_reserve_tokens": 12288,
+  "segment_count": 6,
+  "formal_event_count": 29,
+  "affected_segment_count": 5,
+  "hard_issue_key_count": 41,
+  "repair_mode": "targeted_evidence_patch",
+  "expected_recovery": "reserve output for the bounded patch instead of the full planning stage, retain the best plan and issue ledger, repair one complete affected segment at a time, then re-run local, adjacent, and whole-plan validation before downstream drafting"
+}

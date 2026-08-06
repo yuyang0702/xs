@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
+import novel_flywheel.planning_recovery as recovery_module
+
 from novel_flywheel.planning_recovery import (
+    merge_planning_issue_ledgers,
     new_planning_recovery_state,
     planning_candidate_comparison,
     planning_issue_keys,
@@ -69,6 +74,72 @@ def test_candidate_advances_only_on_strict_subset_without_new_issue() -> None:
     assert rejected["reason"] == "introduced_hard_issue"
 
 
+def test_candidate_attribution_keeps_latent_issue_on_unchanged_segment() -> None:
+    previous = [issue(
+        "planning_structural_drift", segment=2, event_id="EV-TWO",
+        invalid_invariants=["viewpoint"],
+    )]
+    candidate = [issue(
+        "planning_structural_drift", segment=3, event_id="EV-THREE",
+        invalid_invariants=["causal_dependencies"],
+    )]
+    segment_event_ids = {
+        1: ["EV-ONE"],
+        2: ["EV-TWO"],
+        3: ["EV-THREE"],
+    }
+
+    comparison = planning_candidate_comparison(
+        previous, candidate,
+        changed_segments={2},
+        segment_event_ids=segment_event_ids,
+    )
+    merged = merge_planning_issue_ledgers(
+        previous, candidate,
+        changed_segments={2},
+        segment_event_ids=segment_event_ids,
+    )
+
+    assert comparison["improved"] is True
+    assert comparison["introduced_issue_keys"] == []
+    assert comparison["resolved_issue_keys"] == [
+        "planning:segment-02:EV-TWO:invariant:viewpoint",
+    ]
+    assert comparison["latent_baseline_issue_keys"] == [
+        "planning:segment-03:EV-THREE:invariant:causal_dependencies",
+    ]
+    assert planning_issue_keys(merged) == planning_issue_keys(candidate)
+
+
+def test_candidate_attribution_rejects_new_boundary_or_changed_scope_issue() -> None:
+    previous = [issue(
+        "planning_structural_drift", segment=2, event_id="EV-TWO",
+        invalid_invariants=["viewpoint"],
+    )]
+    boundary = [{
+        "code": "planning_whole_story_drift",
+        "affected_segments": [2, 3],
+        "affected_event_ids": ["EV-TWO", "EV-THREE"],
+    }]
+    segment_event_ids = {
+        1: ["EV-ONE"],
+        2: ["EV-TWO"],
+        3: ["EV-THREE"],
+    }
+
+    comparison = planning_candidate_comparison(
+        previous, boundary,
+        changed_segments={2},
+        segment_event_ids=segment_event_ids,
+    )
+
+    assert comparison["improved"] is False
+    assert comparison["reason"] == "introduced_hard_issue"
+    assert comparison["introduced_issue_keys"] == [
+        "planning:whole:planning_whole_story_drift:segments-2,3:events-EV-THREE,EV-TWO",
+    ]
+
+
 def test_cross_segment_issue_repairs_every_owned_segment() -> None:
     segments = {
         1: ["EV-ONE"],
@@ -85,7 +156,7 @@ def test_cross_segment_issue_repairs_every_owned_segment() -> None:
     assert planning_issue_segments(issues, segments) == {1, 2, 3}
 
 
-def test_recovery_pair_rejects_tampered_best_plan(tmp_path) -> None:
+def test_recovery_envelope_ignores_tampered_legacy_projection(tmp_path) -> None:
     plan = "  ### 第 1 段：有效规划\n"
     state = new_planning_recovery_state(
         outline_sha256="a" * 64,
@@ -110,9 +181,105 @@ def test_recovery_pair_rejects_tampered_best_plan(tmp_path) -> None:
     (tmp_path / "planning-best.md").write_text(
         improved + "\n被篡改", encoding="utf-8",
     )
+    assert read_planning_recovery(tmp_path) == (state, improved)
+
+    envelope_path = tmp_path / "planning-recovery.json"
+    envelope = json.loads(envelope_path.read_text(encoding="utf-8"))
+    envelope["pair_sha256"] = "0" * 64
+    envelope_path.write_text(
+        json.dumps(envelope, ensure_ascii=False), encoding="utf-8",
+    )
     assert read_planning_recovery(tmp_path) is None
 
     persisted = json.loads(
         (tmp_path / "planning-recovery-state.json").read_text(encoding="utf-8")
     )
     assert persisted["status"] == "running"
+
+
+def test_recovery_envelope_survives_interruption_during_legacy_projection(
+    tmp_path, monkeypatch,
+) -> None:
+    plan = "### 第 1 段：原子恢复规划"
+    state = new_planning_recovery_state(
+        outline_sha256="a" * 64,
+        generation_context_sha256="b" * 64,
+        segment_count=1,
+        plan=plan,
+        issues=[issue("planning_structural_drift")],
+    )
+    real_atomic_write = recovery_module.atomic_write
+    calls = 0
+
+    def interrupted_write(path, content):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("process exited before legacy projection")
+        real_atomic_write(path, content)
+
+    monkeypatch.setattr(recovery_module, "atomic_write", interrupted_write)
+    with pytest.raises(OSError, match="legacy projection"):
+        write_planning_recovery(tmp_path, state, plan)
+
+    assert read_planning_recovery(tmp_path) == (state, plan)
+
+
+def test_production_shaped_regressions_keep_four_issue_best_and_lossless_ledger() -> None:
+    initial = [
+        issue(
+            "planning_structural_drift",
+            segment=(index % 6) + 1,
+            event_id=f"EV-{index:02d}",
+            invalid_invariants=["event_function"],
+            message=f"initial-{index}",
+        ) for index in range(25)
+    ]
+    reduced = initial[:4]
+    ten = reduced + [
+        issue(
+            "planning_structural_drift", segment=2,
+            event_id=f"EV-NEW-{index:02d}",
+            invalid_invariants=["promise_ending"],
+            message=f"introduced-ten-{index}",
+        ) for index in range(6)
+    ]
+    sixteen = reduced + [
+        issue(
+            "planning_structural_drift", segment=3,
+            event_id=f"EV-REBUILD-{index:02d}",
+            invalid_invariants=["knowledge_state"],
+            message=f"introduced-sixteen-{index}",
+        ) for index in range(12)
+    ]
+    state = new_planning_recovery_state(
+        outline_sha256="a" * 64,
+        generation_context_sha256="b" * 64,
+        segment_count=6,
+        plan="initial",
+        issues=initial,
+    )
+    comparison = planning_candidate_comparison(initial, reduced)
+    state = record_planning_candidate(
+        state, plan="best-four", issues=reduced, comparison=comparison,
+        source="targeted-1", accepted=True,
+    )
+    comparison = planning_candidate_comparison(reduced, ten)
+    state = record_planning_candidate(
+        state, plan="regressed-ten", issues=ten, comparison=comparison,
+        source="targeted-2", accepted=False,
+    )
+    comparison = planning_candidate_comparison(reduced, sixteen)
+    state = record_planning_candidate(
+        state, plan="regressed-sixteen", issues=sixteen,
+        comparison=comparison, source="rebuild-1", accepted=False,
+    )
+
+    assert len(state["best_issue_keys"]) == 4
+    assert [item["accepted"] for item in state["candidates"]] == [
+        True, False, False,
+    ]
+    assert len(state["candidates"][1]["issues"]) == 10
+    assert len(state["candidates"][1]["introduced_issues"]) == 6
+    assert len(state["candidates"][2]["issues"]) == 16
+    assert len(state["candidates"][2]["introduced_issues"]) == 12

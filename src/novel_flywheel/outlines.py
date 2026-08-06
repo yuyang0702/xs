@@ -616,6 +616,142 @@ def narrative_outline_event_contracts(content: str) -> list[dict]:
     return contracts
 
 
+_EVENT_REACTION_TERMS = (
+    "反应", "回应", "回答", "答道", "答：", "答:", "追问", "反问", "询问",
+    "站出来", "说话", "开口", "沉默", "点头", "摇头", "承认", "否认",
+    "reply", "respond", "answer", "ask", "react", "admit", "deny",
+)
+_EVENT_OUTCOME_TERMS = (
+    "结果", "最终", "最后", "宣布", "认下", "成为", "查出", "发现", "揭露",
+    "确认", "决定", "完成", "导致", "因此", "于是", "获准", "公开",
+    "result", "finally", "announce", "become", "discover", "confirm", "decide",
+)
+_EVENT_COMMITMENT_TERMS = (
+    "承诺", "保证", "发誓", "表明心意", "往后", "以后", "从今", "今后",
+    "愿意", "会护", "会帮", "会陪", "认作", "收为", "娶", "嫁", "求亲",
+    "promise", "commit", "vow", "from now", "will protect", "will stay",
+)
+
+_CHARACTER_TITLE_SUFFIXES = (
+    "老夫人", "大小姐", "二小姐", "三小姐", "小姐", "夫人", "老爷",
+    "少爷", "公子", "王爷", "太后", "皇帝", "皇后", "贵妃", "陛下",
+    "掌柜", "管事", "嬷嬷", "丫鬟", "婆子", "小厮", "师父", "师兄",
+    "师姐", "长老", "族长", "村长", "院长", "将军", "侯爷", "国公",
+    "世子", "王妃",
+)
+
+
+def _outline_character_identity_stable(name: str) -> bool:
+    """Return whether exact-name absence is safe to use as a hard precheck.
+
+    Role and kinship titles may be realized through a later confirmed name or
+    another natural form of address.  They remain in the recovery checklist,
+    but model semantic review owns equivalence instead of a literal matcher.
+    """
+    normalized = unicodedata.normalize("NFKC", str(name or "")).strip()
+    if not normalized:
+        return False
+    if re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,29}", normalized):
+        return not re.search(
+            r"(?i)\b(?:lady|lord|madam|master|mistress|mother|father|"
+            r"grandmother|grandfather|duke|duchess|prince|princess|king|queen)\b",
+            normalized,
+        )
+    return not normalized.endswith(_CHARACTER_TITLE_SUFFIXES)
+
+
+def _outline_event_obligation_units(evidence: str) -> list[str]:
+    """Split one formal event into exact author-owned semantic checklist lines."""
+    units: list[str] = []
+    for raw_line in _visible_outline_markdown(str(evidence or "")).splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        labelled = re.match(
+            r"^(?:[-*+]\s*)?\*\*[^*\n]+\*\*\s*[：:]\s*(?P<detail>.*)$",
+            line,
+        )
+        if labelled:
+            detail = labelled.group("detail").strip()
+            if detail:
+                units.append(detail)
+            continue
+        bullet = re.match(r"^[-*+]\s+(?P<detail>.+)$", line)
+        if bullet:
+            units.append(bullet.group("detail").strip())
+            continue
+        if units:
+            units[-1] = f"{units[-1]} {line}".strip()
+        else:
+            units.append(line)
+    return [value for value in units if value]
+
+
+def _event_obligation_kinds(text: str) -> list[str]:
+    normalized = unicodedata.normalize("NFKC", str(text or "")).casefold()
+    kinds = ["action"]
+    if any(term.casefold() in normalized for term in _EVENT_REACTION_TERMS):
+        kinds.append("reaction")
+    if any(term.casefold() in normalized for term in _EVENT_OUTCOME_TERMS):
+        kinds.append("outcome")
+    if any(term.casefold() in normalized for term in _EVENT_COMMITMENT_TERMS):
+        kinds.append("commitment")
+    return kinds
+
+
+def narrative_outline_event_obligations(content: str) -> dict[str, dict]:
+    """Project composite formal events into a compact recovery checklist.
+
+    This is not a second outline and does not interpret free-form prose as new
+    canon.  It only preserves exact event-owned lines and explicitly named cast
+    members already present in the confirmed outline.  The checklist helps a
+    repair call avoid implementing one reaction while silently dropping another.
+    """
+    cast = [
+        str(item.get("name") or "").strip()
+        for item in extract_outline_characters(content)
+        if str(item.get("name") or "").strip()
+    ]
+    stable_cast = {
+        name for name in cast if _outline_character_identity_stable(name)
+    }
+    result: dict[str, dict] = {}
+    for contract in narrative_outline_event_contracts(content):
+        event_id = str(contract.get("id") or "").strip()
+        obligations: list[dict] = []
+        required_participants: list[str] = []
+        for index, excerpt in enumerate(
+            _outline_event_obligation_units(str(contract.get("evidence") or "")), 1,
+        ):
+            normalized = unicodedata.normalize("NFKC", excerpt)
+            participants = sorted(
+                (name for name in cast if name in normalized),
+                key=lambda name: (normalized.find(name), cast.index(name)),
+            )
+            for participant in participants:
+                if participant not in required_participants:
+                    required_participants.append(participant)
+            obligations.append({
+                "id": f"{event_id.upper()}-B{index:02d}",
+                "kinds": _event_obligation_kinds(excerpt),
+                "required_participants": participants,
+                "source_excerpt": excerpt,
+                "source_sha256": hashlib.sha256(
+                    excerpt.encode("utf-8"),
+                ).hexdigest(),
+            })
+        result[event_id] = {
+            "event_id": event_id,
+            "label": str(contract.get("label") or event_id),
+            "required_participants": required_participants,
+            "identity_stable_participants": [
+                name for name in required_participants if name in stable_cast
+            ],
+            "obligations": obligations,
+        }
+    return result
+
+
 def _confirmed_value(state: dict, key: str) -> str:
     for item in state.get("confirmed_facts", []):
         if isinstance(item, dict) and item.get("key") == key:

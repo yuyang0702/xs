@@ -8,6 +8,8 @@ from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
 )
+from novel_flywheel.production_incidents import production_incident_catalog
+from novel_flywheel.narrative_contract import ensure_narrative_contract
 from novel_flywheel.skill_runtime import initialization_answers, initialization_stage_issues
 
 router = APIRouter(prefix="/api", tags=["runs"])
@@ -58,11 +60,23 @@ def _ensure_initialized(project_id: str, request: Request) -> None:
         })
 
 
+def _ensure_narrative_contract(project_id: str, request: Request) -> None:
+    project = request.app.state.projects.get(project_id)
+    contract = ensure_narrative_contract(project)
+    if contract.status == "needs_confirmation":
+        raise HTTPException(status_code=409, detail={
+            "code": "narrator_confirmation_required",
+            "message": "第一人称叙述者无法唯一确定，请先选择本书中代表“我”的人物。",
+            "candidates": [dict(item) for item in contract.candidates],
+        })
+
+
 @router.post("/projects/{project_id}/runs/short", status_code=status.HTTP_202_ACCEPTED)
 async def start_short_run(project_id: str, request: Request) -> dict:
     _ensure_project(project_id, request)
     _ensure_confirmed_outline(project_id, request)
     _ensure_initialized(project_id, request)
+    _ensure_narrative_contract(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_short(project_id, run_id=run_id)
@@ -75,6 +89,7 @@ async def start_long_setup(project_id: str, request: Request) -> dict:
     _ensure_project(project_id, request)
     _ensure_confirmed_outline(project_id, request)
     _ensure_initialized(project_id, request)
+    _ensure_narrative_contract(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_long_setup(project_id, run_id=run_id)
@@ -116,6 +131,7 @@ async def start_long_chapter(project_id: str, payload: ChapterRun, request: Requ
     _ensure_project(project_id, request)
     _ensure_confirmed_outline(project_id, request)
     _ensure_initialized(project_id, request)
+    _ensure_narrative_contract(project_id, request)
 
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_chapter(
@@ -183,6 +199,15 @@ async def resume_run(run_id: str, request: Request) -> dict:
 @router.get("/projects/{project_id}/runs")
 def list_runs(project_id: str, request: Request) -> list[dict]:
     return request.app.state.registry.db.list_runs(project_id)
+
+
+@router.get("/projects/{project_id}/production-incidents")
+def list_production_incidents(project_id: str, request: Request) -> dict:
+    _ensure_project(project_id, request)
+    return {
+        "incidents": request.app.state.registry.db.list_production_incidents(project_id),
+        "known_families": production_incident_catalog(),
+    }
 
 
 @router.get("/runs/{run_id}")

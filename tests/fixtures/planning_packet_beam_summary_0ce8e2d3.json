@@ -1,0 +1,66 @@
+{
+  "run_id_prefix": "0ce8e2d3",
+  "stage": "planning",
+  "expected_segment": 5,
+  "expected_event_ids": ["EV-1522AB0E"],
+  "current_segment": "### 第 5 段：当众坦白，归属落定\n\n事件ID：EV-1522AB0E\n\n大纲依据：公开表态的后果与花穗归属落定。\n\n段首承接：花穗已经当众坦白真实身份，厅中众人等待沈老夫人决定。\n\n本段事件：\n6. **沈老夫人宣布认义女**（EV-1522AB0E）。沈老夫人站了起来。她没有急着说原谅，也没有把核验人员那叠薄薄的记录当成最后裁决。她先问厅里的人：冯管事的亏空是谁查出来的，被克扣口粮的下人是谁护下来的，所有人都想把麻烦推远时又是谁肯站出来认下自己做过的事。厅里没人回答，因为答案就站在正中央。沈老夫人这才宣布：核验没有压倒性证据，信物也没有对得上号的谱系——花穗是不是蕙芷，已经问不出来了。但她说：‘花穗虽非沈家所出之女，但从今日起是沈府的义女——用她自己的名字，不必再叫蕙芷。’她把血脉和担当分开来称，说血脉是天给的，担当却是人自己挣来的。花穗查出的账、护过的人和当众坦白时没有替自己藏下的二十两，都成了这项决定的因果，而不是厅堂上一时心软的装饰。\n\n这句话掷地有声，不是商量，是决定。那些被花穗帮过的下人原本跪在门外，听见老夫人的话以后，不知道是谁先往前挪了半步。洗衣婆子、烧火丫头和杂役小厮呼啦啦跪了一片，衣摆擦过地砖的声音连成一阵。他们叫的不是‘三小姐’，而是‘花姑娘’。这个称呼既承认她不是走失的蕙芷，也承认这些日子替他们挡过的事都是真的。花穗先看见烧火丫头通红的眼睛，又看见洗衣婆子粗糙的手按在地上。她想叫他们起来，喉咙却像被一团热气堵住，只能把手指更深地攥进袖口。\n\n花穗的鼻子猛地一酸。她咬着牙没让眼泪掉下来。在集市上学会的事还记得——不能当着人哭，哭了价就砍不下来了。她仍旧用那套市井里练出的本能撑住自己，不肯让厅里的人把她的眼泪误会成求情，也不肯让这个新身份抹掉她从前的日子。可她攥着袖口想，娘要是看到现在，大概会先骂她走了狗屎运，再问沈府有没有按月给银子。这个念头让她差点笑出来，也让她第一次意识到，自己留下不是因为冒充成功，而是因为所有人终于用花穗这个名字认下了她做过的事。\n\n她没有因此忘记袖中的匿名信。冯管事承认下毒与旧账，却始终否认写过恐吓信，说明厅堂里的认亲只能解决归属，不能解决仍藏在暗处的人。花穗接受义女身份的同时，也把继续追查当成自己对这个新位置承担的第一件事。她不提前揭开写信人的身份，不替下一段完成追查，只确认自己不会再拿了银子就跑。\n\n段末交接：花穗以自己的名字成为沈府义女，但匿名信仍待追查。",
+  "beam_plan_payload": {
+    "segment_index": 5,
+    "event_ids": ["EV-1522AB0E"],
+    "handoff_in": "上一段完成公开坦白，沈老夫人准备宣布决定。",
+    "beam_plan": {
+      "EV-1522AB0E": {
+        "obligations_fulfilled": [
+          {
+            "obligation_id": "EV-1522AB0E-B01",
+            "kinds": ["action", "reaction", "outcome", "commitment"],
+            "participants_used": ["沈老夫人", "花穗"],
+            "approach": "沈老夫人正式认花穗为沈府义女；下人改口称花姑娘；花穗用不能当众哭的市井习惯压住眼泪。"
+          }
+        ],
+        "resolution": "本事件只负责认亲、下人回应和花穗反应，不提前解决匿名信。"
+      }
+    },
+    "handoff_out": "花穗以自己的名字成为沈府义女，匿名信仍未解决并移交下一段。"
+  },
+  "obligation_checklists": {
+    "EV-1522AB0E": {
+      "event_id": "EV-1522AB0E",
+      "required_participants": ["沈老夫人", "花穗"],
+      "identity_stable_participants": ["沈老夫人", "花穗"],
+      "obligations": [
+        {
+          "id": "EV-1522AB0E-B01",
+          "kinds": ["action", "reaction", "outcome", "commitment"],
+          "required_participants": ["沈老夫人", "花穗"]
+        }
+      ]
+    }
+  },
+  "invalid_variants": {
+    "missing_owned_event": {
+      "segment_index": 5,
+      "event_ids": ["EV-1522AB0E"],
+      "handoff_in": "入口",
+      "beam_plan": {
+        "EV-DEADBEEF": {
+          "resolution": "错误事件摘要。"
+        }
+      },
+      "handoff_out": "出口"
+    },
+    "missing_summary_body": {
+      "segment_index": 5,
+      "event_ids": ["EV-1522AB0E"],
+      "handoff_in": "入口",
+      "beam_plan": {
+        "EV-1522AB0E": {
+          "obligations_fulfilled": []
+        }
+      },
+      "handoff_out": "出口"
+    },
+    "truncated_json": "```json\n{\"segment_index\":5,\"event_ids\":[\"EV-1522AB0E\"],\"beam_plan\":{",
+    "multiple_payloads": "{\"segment_index\":5,\"event_ids\":[\"EV-1522AB0E\"],\"handoff_in\":\"入口一\",\"beam_plan\":{\"EV-1522AB0E\":{\"resolution\":\"摘要一\"}},\"handoff_out\":\"出口一\"}\n{\"segment_index\":5,\"event_ids\":[\"EV-1522AB0E\"],\"handoff_in\":\"入口二\",\"beam_plan\":{\"EV-1522AB0E\":{\"resolution\":\"摘要二\"}},\"handoff_out\":\"出口二\"}"
+  }
+}

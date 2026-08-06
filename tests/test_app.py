@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
-from novel_flywheel.launcher import data_dir_fingerprint
+from novel_flywheel.launcher import data_dir_fingerprint, runtime_fingerprint
 from novel_flywheel.secrets import MemorySecretStore
 
 
@@ -14,6 +14,7 @@ def test_health(tmp_path) -> None:
         "status": "ok",
         "service": "novel-flywheel-console",
         "data_dir_fingerprint": data_dir_fingerprint(tmp_path),
+        "runtime_fingerprint": runtime_fingerprint(),
     }
     assert str(tmp_path) not in response.text
 

@@ -2780,7 +2780,8 @@ function runEventDetails(item) {
     );
     if(layers.length)details.push(`上下文分层：${layers.join("；")}`);
   }
-  const preserved=Number(metadata.preserved??metadata.preserved_segments);
+  const preservedValue=metadata.preserved??metadata.preserved_segments;
+  const preserved=Array.isArray(preservedValue)?preservedValue.length:Number(preservedValue);
   if(Number.isFinite(preserved)&&preserved>0)details.push(`已保留 ${preserved} 个验收片段`);
   const restart=Number(metadata.restart_segment??metadata.next_segment);
   if(Number.isFinite(restart)&&restart>0)details.push(`将从第 ${restart} 段继续`);

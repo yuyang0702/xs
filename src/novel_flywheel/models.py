@@ -79,7 +79,16 @@ class ModelGateway:
                     raise
                 except Exception as retry_exc:
                     exc = retry_exc
-            fallback = self._resolve_configured_fallback(binding)
+            try:
+                fallback = self._resolve_configured_fallback(binding)
+            except asyncio.CancelledError:
+                raise
+            except Exception as fallback_exc:
+                # A missing or invalid fallback credential is part of the
+                # route failure.  Do not let fallback resolution replace the
+                # primary error with a bare ValueError; recovery layers need
+                # both route failures to classify the incident correctly.
+                raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
             if fallback is None:
                 raise
             try:
@@ -205,7 +214,12 @@ class ModelGateway:
                     )
                     if recovered is not None:
                         return recovered
-            fallback = self._resolve_configured_fallback(binding)
+            try:
+                fallback = self._resolve_configured_fallback(binding)
+            except asyncio.CancelledError:
+                raise
+            except Exception as fallback_exc:
+                raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
             if fallback is None:
                 raise
             repair_context = self._prepare_toolbox_fallback(toolbox, exc)

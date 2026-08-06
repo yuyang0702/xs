@@ -9,12 +9,14 @@ from typing import Callable
 
 
 def atomic_write(path: Path, content: str,
-                 replace: Callable[[Path, Path], None] = os.replace) -> None:
+                 replace: Callable[[Path, Path], None] = os.replace, *,
+                 preserve_newlines: bool = False) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent, suffix=".tmp", delete=False,
+            mode="w", encoding="utf-8", newline="" if preserve_newlines else None,
+            dir=path.parent, suffix=".tmp", delete=False,
         ) as handle:
             handle.write(content)
             handle.flush()

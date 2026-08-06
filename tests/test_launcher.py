@@ -31,18 +31,26 @@ def test_launcher_reserves_requested_port_until_server_starts(tmp_path) -> None:
 
 def test_launcher_reuses_same_console_instead_of_random_port(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(launcher, "reserve_port", lambda port: None)
-    monkeypatch.setattr(launcher, "probe_existing_console", lambda port, fingerprint: True)
+    monkeypatch.setattr(
+        launcher, "probe_existing_console",
+        lambda port, fingerprint, expected_runtime=None: True,
+    )
     opened = []
 
     result = launcher.resolve_launch(8765, tmp_path, opened.append)
 
-    assert result == {"action": "reuse", "url": "http://127.0.0.1:8765"}
+    assert result == {
+        "action": "reuse", "url": "http://127.0.0.1:8765", "port": 8765,
+    }
     assert opened == ["http://127.0.0.1:8765"]
 
 
 def test_launcher_refuses_foreign_process_on_8765(tmp_path, monkeypatch) -> None:
     monkeypatch.setattr(launcher, "reserve_port", lambda port: None)
-    monkeypatch.setattr(launcher, "probe_existing_console", lambda port, fingerprint: False)
+    monkeypatch.setattr(
+        launcher, "probe_existing_console",
+        lambda port, fingerprint, expected_runtime=None: False,
+    )
 
     with pytest.raises(SystemExit, match="8765端口已被其他程序占用"):
         launcher.resolve_launch(8765, tmp_path, lambda url: None)
@@ -142,9 +150,31 @@ def test_probe_requires_matching_service_and_data_directory(monkeypatch) -> None
     monkeypatch.setattr(launcher, "urlopen", lambda url, timeout: Response())
 
     assert launcher.probe_existing_console(8765, "same-data") is True
+    assert launcher.probe_existing_console(8765, "same-data", "new-runtime") is False
+    payload[0]["runtime_fingerprint"] = "new-runtime"
+    assert launcher.probe_existing_console(8765, "same-data", "new-runtime") is True
     assert launcher.probe_existing_console(8765, "other-data") is False
     payload[0] = ["foreign-service"]
     assert launcher.probe_existing_console(8765, "same-data") is False
+
+
+def test_launcher_starts_new_port_for_stale_same_data_runtime(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(launcher, "reserve_port", lambda port: None)
+    monkeypatch.setattr(launcher, "runtime_fingerprint", lambda: "new-runtime")
+    monkeypatch.setattr(
+        launcher, "probe_existing_console",
+        lambda port, fingerprint, expected_runtime=None: expected_runtime is None,
+    )
+    monkeypatch.setattr(
+        launcher, "_reserve_next_port", lambda port: (port + 1, object()),
+    )
+    opened = []
+    result = launcher.resolve_launch(8765, tmp_path, opened.append)
+
+    assert result["action"] == "start"
+    assert result["port"] == 8766
+    assert result["replaced_stale_runtime"] is True
+    assert opened == []
 
 
 def test_runtime_environment_never_relocates_windows_credentials(tmp_path, monkeypatch) -> None:

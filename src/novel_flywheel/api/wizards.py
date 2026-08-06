@@ -386,10 +386,11 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
                 project_id, skill_name, skill.content_hash,
             )
             issues = initialization_stage_issues(project, skill_name, runtime_answers)
-            if completed_before and not issues:
+            if not issues:
                 request.app.state.registry.db.add_run_event(
                     run_id, "success", "skill_skipped",
-                    f"{skill_name} 已完整完成，本次无需重复生成。", stage=skill_name,
+                    f"{skill_name} 资料已经完整，本次无需重复生成。", stage=skill_name,
+                    metadata={"completed_execution_found": bool(completed_before)},
                 )
                 continue
             if completed_before and issues:

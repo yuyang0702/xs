@@ -1046,6 +1046,11 @@ def test_finalize_review_failure_preserves_decisions_and_same_run_can_retry(
     }
     assert "private provider failure" not in failed.text
     assert db.get_run(run_id)["status"] == "failed"
+    terminal = next(
+        item for item in reversed(db.list_run_events(run_id))
+        if item["event_type"] == "short_revision_failed"
+    )
+    assert terminal["metadata"]["incident_family"] == "review.final_review_unavailable"
     summary = client.get(f"/api/runs/{run_id}/revision").json()
     assert next(
         item for item in summary["groups"]

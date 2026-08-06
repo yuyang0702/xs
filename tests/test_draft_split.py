@@ -43,6 +43,22 @@ def test_rendered_child_prompt_has_one_fresh_target_and_exact_current_contract()
     assert "花穗拿到账本" in prompt
 
 
+def test_rendered_child_prompt_keeps_the_bound_first_person_narrator() -> None:
+    prompt = render_draft_task_prompt(
+        "规划材料仍以花穗称呼主角。",
+        _contract(
+            narrative_mode="first_person_limited",
+            narrator_character_id="hua-sui",
+            narrator_name="花穗",
+            self_reference="我",
+        ),
+    )
+
+    assert "叙述者是花穗（hua-sui）" in prompt
+    assert "花穗自身必须使用“我”叙述" in prompt
+    assert "规划中的第三人称人物名只表示事件权威" in prompt
+
+
 def test_rendered_child_prompt_rejects_authority_with_inherited_numeric_target() -> None:
     with pytest.raises(ValueError, match="stale numeric target"):
         render_draft_task_prompt(

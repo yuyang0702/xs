@@ -1,0 +1,33 @@
+{
+  "run_id": "d7b275cda12345a7a222cfa8c9fa3462",
+  "workflow": "short-story",
+  "stage": "planning",
+  "incident_family": "planning.structure_drift",
+  "previous_count": 41,
+  "candidate_count": 13,
+  "resolved_count": 35,
+  "introduced_count": 7,
+  "retained_count": 6,
+  "candidate_by_segment": {
+    "segment-04": 6,
+    "segment-05": 7
+  },
+  "introduced_by_segment": {
+    "segment-04": 2,
+    "segment-05": 5
+  },
+  "resolved_by_segment": {
+    "segment-02": 5,
+    "segment-03": 4,
+    "segment-04": 11,
+    "segment-05": 9,
+    "segment-06": 6
+  },
+  "retained_by_segment": {
+    "segment-04": 4,
+    "segment-05": 2
+  },
+  "expected_retained_segments": [2, 3, 6],
+  "remaining_repair_segments": [4, 5],
+  "rejection_reason": "introduced_hard_issue"
+}

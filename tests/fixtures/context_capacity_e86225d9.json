@@ -1,0 +1,17 @@
+{
+  "run_id": "e86225d9d6664243b4d8c4e45295144f",
+  "workflow": "short-story",
+  "stage": "review",
+  "incident_family": "model.context_capacity_indivisible_scope",
+  "message": "input context overflow preflight: lossless story authority plus output reserve requires 27242 tokens for context window 32768; topology=compact；规划第 1 段单个事件不可再拆分，已保留完整事件权威",
+  "context_window": 32768,
+  "initial_input_tokens": 24143,
+  "singleton_input_tokens": 23146,
+  "singleton_authority_tokens": 20581,
+  "singleton_output_reserve_tokens": 4096,
+  "segment_count": 6,
+  "formal_event_count": 29,
+  "affected_segment": 1,
+  "affected_segment_event_count": 7,
+  "expected_recovery": "project the packet to exact event-owned authority, then split an oversized singleton by invariant facets without changing narrative ownership"
+}

@@ -153,26 +153,290 @@ def initialization_context_hash(answers: dict) -> str:
 
 
 def _frontmatter_relationships(text: str) -> list[tuple[str, str]]:
-    frontmatter = re.match(r"^---\n([\s\S]*?)\n---", text)
-    if not frontmatter:
+    _prefix, body, _before_close, _rest = _split_frontmatter(text)
+    matches = list(re.finditer(
+        r"(?m)^relationships:(?P<value>[^\r\n]*)(?P<eol>\r\n|\n|\Z)",
+        body,
+    ))
+    if len(matches) > 1:
+        raise ValueError("Frontmatter field relationships is duplicated")
+    if not matches:
         return []
-    block = re.search(
-        r"(?ms)^relationships:\s*\n(?P<items>(?:(?:  -|    )[^\r\n]*(?:\r?\n|$))*)",
-        frontmatter.group(1),
-    )
-    if not block:
-        return []
+    match = matches[0]
+    scalar = match.group("value").strip()
+    if scalar:
+        if scalar == "[]":
+            return []
+        raise ValueError("Frontmatter field relationships must use a YAML list")
+    entries: list[dict[str, str]] = []
+    current: dict[str, str] | None = None
+    for line in re.finditer(r"[^\r\n]*(?:\r\n|\n|\Z)", body[match.end():]):
+        visible = line.group(0).rstrip("\r\n")
+        if not visible:
+            continue
+        if not visible[:1].isspace() and not visible.startswith("-"):
+            break
+        item_start = re.fullmatch(
+            r"\s*-\s*([A-Za-z0-9_-]+):\s*(.+?)\s*", visible,
+        )
+        continuation = re.fullmatch(
+            r"\s+([A-Za-z0-9_-]+):\s*(.+?)\s*", visible,
+        )
+        if item_start:
+            if current is not None:
+                entries.append(current)
+            current = {}
+            key, value = item_start.groups()
+        elif continuation and current is not None:
+            key, value = continuation.groups()
+        else:
+            raise ValueError("Frontmatter field relationships contains malformed list content")
+        if key in current:
+            raise ValueError(f"Relationship field {key} is duplicated")
+        current[key] = value.strip().strip("\"'")
+    if current is not None:
+        entries.append(current)
     relationships = []
-    for item in re.split(r"(?m)^  -\s*", block.group("items"))[1:]:
-        fields = {
-            key: value.strip().strip("\"'")
-            for key, value in re.findall(
-                r"(?m)^\s*([A-Za-z0-9_-]+):\s*([^\r\n]+)$", item,
-            )
-        }
-        if fields.get("character") and fields.get("type"):
-            relationships.append((fields["character"], fields["type"]))
+    for fields in entries:
+        if not fields.get("character") or not fields.get("type"):
+            raise ValueError("Each relationship requires character and type")
+        relationships.append((fields["character"], fields["type"]))
     return relationships
+
+
+def _split_frontmatter(text: str) -> tuple[str, str, str, str]:
+    match = re.match(
+        r"\A(?P<prefix>\ufeff?---(?P<eol>\r\n|\n))"
+        r"(?P<body>.*?)(?P<before_close>\r\n|\n)---(?P<rest>(?:\r\n|\n|\Z).*)\Z",
+        text, flags=re.DOTALL,
+    )
+    if not match:
+        raise ValueError("Markdown frontmatter is missing or malformed")
+    return (
+        match.group("prefix"), match.group("body"),
+        match.group("before_close"), match.group("rest"),
+    )
+
+
+def _unquote_reference(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        value = value[1:-1].strip()
+    if not value or not re.fullmatch(r"[\w.-]+", value, flags=re.UNICODE):
+        raise ValueError(f"Reference ID is malformed: {value!r}")
+    return value
+
+
+def _inline_reference_list(value: str) -> list[str]:
+    if not (value.startswith("[") and value.endswith("]")):
+        raise ValueError("Reference list must use a YAML list")
+    inner = value[1:-1].strip()
+    if not inner:
+        return []
+    items = []
+    token = []
+    quote: str | None = None
+    escaped = False
+    for character in inner:
+        if escaped:
+            token.append(character)
+            escaped = False
+            continue
+        if quote == '"' and character == "\\":
+            token.append(character)
+            escaped = True
+            continue
+        if character in {"'", '"'}:
+            if quote is None:
+                quote = character
+            elif quote == character:
+                quote = None
+            token.append(character)
+            continue
+        if character == "," and quote is None:
+            items.append(_unquote_reference("".join(token)))
+            token = []
+            continue
+        token.append(character)
+    if quote is not None or escaped:
+        raise ValueError("Reference list contains an unterminated quoted value")
+    items.append(_unquote_reference("".join(token)))
+    return items
+
+
+def _frontmatter_reference_list(text: str, field: str) -> tuple[list[str], bool]:
+    _prefix, body, _before_close, _rest = _split_frontmatter(text)
+    field_matches = list(re.finditer(
+        rf"(?m)^(?P<field>{re.escape(field)}):(?P<value>[^\r\n]*)(?P<eol>\r\n|\n|\Z)",
+        body,
+    ))
+    if len(field_matches) > 1:
+        raise ValueError(f"Frontmatter field {field} is duplicated")
+    if not field_matches:
+        return [], False
+    match = field_matches[0]
+    scalar = match.group("value").strip()
+    if scalar:
+        values = _inline_reference_list(scalar)
+    else:
+        values = []
+        for line in re.finditer(r"[^\r\n]*(?:\r\n|\n|\Z)", body[match.end():]):
+            raw = line.group(0)
+            visible = raw.rstrip("\r\n")
+            if not visible:
+                continue
+            if not visible[:1].isspace() and not visible.startswith("-"):
+                break
+            item = re.fullmatch(r"\s*-\s*(.+?)\s*", visible)
+            if not item:
+                raise ValueError(f"Frontmatter field {field} contains malformed list content")
+            values.append(_unquote_reference(item.group(1)))
+    if len(values) != len(set(values)):
+        raise ValueError(f"Frontmatter field {field} contains duplicate references")
+    return values, True
+
+
+def _set_frontmatter_reference_list(text: str, field: str, values: list[str]) -> str:
+    prefix, body, before_close, rest = _split_frontmatter(text)
+    unique = list(dict.fromkeys(values))
+    for value in unique:
+        _unquote_reference(value)
+    field_matches = list(re.finditer(
+        rf"(?m)^(?P<field>{re.escape(field)}):(?P<value>[^\r\n]*)(?P<eol>\r\n|\n|\Z)",
+        body,
+    ))
+    if len(field_matches) > 1:
+        raise ValueError(f"Frontmatter field {field} is duplicated")
+    eol = "\r\n" if "\r\n" in prefix else "\n"
+    rendered = field + ":" + "".join(f"{eol}  - {value}" for value in unique)
+    if not field_matches:
+        separator = eol if body else ""
+        updated_body = body + separator + rendered
+        return prefix + updated_body + before_close + "---" + rest
+    match = field_matches[0]
+    _frontmatter_reference_list(text, field)
+    end = match.end()
+    if not match.group("value").strip():
+        for line in re.finditer(r"[^\r\n]*(?:\r\n|\n|\Z)", body[match.end():]):
+            visible = line.group(0).rstrip("\r\n")
+            if visible and not visible[:1].isspace() and not visible.startswith("-"):
+                break
+            end = match.end() + line.end()
+    suffix = body[end:]
+    if suffix and not suffix.startswith(("\n", "\r\n")):
+        rendered += eol
+    updated_body = body[:match.start()] + rendered + suffix
+    return prefix + updated_body + before_close + "---" + rest
+
+
+def _location_reference_issues(
+    characters: dict[str, str], locations: dict[str, str], *,
+    reciprocal_repair_available: bool,
+) -> list[str]:
+    issues = []
+    character_locations: dict[str, list[str]] = {}
+    location_characters: dict[str, list[str]] = {}
+    for character_id, text in characters.items():
+        try:
+            character_locations[character_id] = _frontmatter_reference_list(
+                text, "locations",
+            )[0]
+        except ValueError as exc:
+            issues.append(f"人物 {character_id} 的 locations 无法安全解析：{exc}")
+    for location_id, text in locations.items():
+        try:
+            location_characters[location_id] = _frontmatter_reference_list(
+                text, "notable-characters",
+            )[0]
+        except ValueError as exc:
+            issues.append(f"地点 {location_id} 的 notable-characters 无法安全解析：{exc}")
+    for character_id, location_ids in character_locations.items():
+        for location_id in location_ids:
+            if location_id not in locations:
+                issues.append(f"人物 {character_id} 引用了不存在的地点 {location_id}")
+            elif (
+                not reciprocal_repair_available
+                and character_id not in location_characters.get(location_id, [])
+            ):
+                issues.append(f"地点 {location_id} 缺少人物 {character_id} 的反向链接")
+    for location_id, character_ids in location_characters.items():
+        for character_id in character_ids:
+            if character_id not in characters:
+                issues.append(f"地点 {location_id} 引用了不存在的人物 {character_id}")
+            elif (
+                not reciprocal_repair_available
+                and location_id not in character_locations.get(character_id, [])
+            ):
+                issues.append(f"人物 {character_id} 缺少地点 {location_id} 的反向链接")
+    return list(dict.fromkeys(issues))
+
+
+def _close_location_backlinks(project: Project) -> list[Path]:
+    character_paths = {
+        path.stem: path for path in sorted((project.path / "characters").glob("*.md"))
+        if path.name != "_index.md"
+    }
+    location_paths = {
+        path.stem: path for path in sorted((project.path / "worldbuilding" / "locations").glob("*.md"))
+        if path.name != "_index.md"
+    }
+    character_text = {
+        key: path.read_bytes().decode("utf-8") for key, path in character_paths.items()
+    }
+    location_text = {
+        key: path.read_bytes().decode("utf-8") for key, path in location_paths.items()
+    }
+    issues = _location_reference_issues(
+        character_text, location_text, reciprocal_repair_available=True,
+    )
+    if issues:
+        raise ValueError("地点与人物引用无法安全闭合：" + "；".join(issues))
+    character_locations = {
+        key: _frontmatter_reference_list(text, "locations")[0]
+        for key, text in character_text.items()
+    }
+    location_characters = {
+        key: _frontmatter_reference_list(text, "notable-characters")[0]
+        for key, text in location_text.items()
+    }
+    original_character_locations = {
+        key: list(values) for key, values in character_locations.items()
+    }
+    original_location_characters = {
+        key: list(values) for key, values in location_characters.items()
+    }
+    for character_id, location_ids in character_locations.items():
+        for location_id in location_ids:
+            if character_id not in location_characters[location_id]:
+                location_characters[location_id].append(character_id)
+    for location_id, character_ids in location_characters.items():
+        for character_id in character_ids:
+            if location_id not in character_locations[character_id]:
+                character_locations[character_id].append(location_id)
+    changed = []
+    for character_id, values in character_locations.items():
+        if values == original_character_locations[character_id]:
+            continue
+        updated = _set_frontmatter_reference_list(
+            character_text[character_id], "locations", values,
+        )
+        if updated != character_text[character_id]:
+            atomic_write(
+                character_paths[character_id], updated, preserve_newlines=True,
+            )
+            changed.append(character_paths[character_id])
+    for location_id, values in location_characters.items():
+        if values == original_location_characters[location_id]:
+            continue
+        updated = _set_frontmatter_reference_list(
+            location_text[location_id], "notable-characters", values,
+        )
+        if updated != location_text[location_id]:
+            atomic_write(
+                location_paths[location_id], updated, preserve_newlines=True,
+            )
+            changed.append(location_paths[location_id])
+    return changed
 
 
 def initialization_stage_issues(project: Project, skill_name: str, answers: dict,
@@ -323,10 +587,16 @@ def initialization_stage_issues(project: Project, skill_name: str, answers: dict
         })
         if duplicate_names:
             issues.append(f"这些人物存在重复档案：{'、'.join(duplicate_names)}")
-        relationships_by_id = {
-            Path(item["path"]).stem: _frontmatter_relationships(content(item["path"]))
-            for item in identities
-        }
+        relationships_by_id = {}
+        for item in identities:
+            character_id = Path(item["path"]).stem
+            try:
+                relationships_by_id[character_id] = _frontmatter_relationships(
+                    content(item["path"]),
+                )
+            except ValueError as exc:
+                relationships_by_id[character_id] = []
+                issues.append(f"人物 {character_id} 的 relationships 无法安全解析：{exc}")
         ambiguous_pairs = {
             (source, target)
             for source, relationships in relationships_by_id.items()
@@ -415,6 +685,19 @@ def initialization_stage_issues(project: Project, skill_name: str, answers: dict
             issues.append(f"这些世界设定还没有资料：{'、'.join(missing_world)}")
         if missing_locations:
             issues.append(f"这些故事地点还没有资料：{'、'.join(missing_locations)}")
+        character_profiles = {
+            path.stem: path.read_text(encoding="utf-8")
+            for path in sorted((project.path / "characters").glob("*.md"))
+            if path.name != "_index.md"
+        }
+        location_profiles = {
+            Path(relative).stem: content(relative) for relative in locations
+        }
+        issues.extend(_location_reference_issues(
+            character_profiles,
+            location_profiles,
+            reciprocal_repair_available=proposals is not None,
+        ))
         return issues
 
     if skill_name == "plot-structure":
@@ -633,12 +916,20 @@ class SkillRuntimeToolbox:
             *(path for path in self.project.path.rglob("_index.md")
               if path.relative_to(self.project.path).parts[0] != "snapshots"),
         ]))
+        if self.bootstrap and self.contract.skill_name == "worldbuilding":
+            files = list(dict.fromkeys([
+                *files,
+                *(self.project.path / "characters").glob("*.md"),
+                *(self.project.path / "worldbuilding" / "locations").glob("*.md"),
+            ]))
         snapshot = ProjectSnapshot.create(
             self.project.path, self.project.path / "snapshots" / f"skill-{self.execution_id}", files,
         )
         try:
             for proposal in proposals:
                 atomic_write(self.project.path / proposal["relative_path"], proposal["content"])
+            if self.bootstrap and self.contract.skill_name == "worldbuilding":
+                _close_location_backlinks(self.project)
             commands = (
                 ("reindex", "validate")
                 if self.bootstrap and self.contract.skill_name == "character-management"

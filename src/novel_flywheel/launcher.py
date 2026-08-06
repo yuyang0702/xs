@@ -19,6 +19,18 @@ def data_dir_fingerprint(path: Path) -> str:
     return hashlib.sha256(value).hexdigest()[:16]
 
 
+def runtime_fingerprint() -> str:
+    """Digest the loaded package so stale console processes are not reused."""
+    package_root = Path(__file__).resolve().parent
+    digest = hashlib.sha256()
+    for path in sorted(package_root.rglob("*.py")):
+        digest.update(path.relative_to(package_root).as_posix().encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()[:16]
+
+
 def reserve_port(port: int) -> socket.socket | None:
     listener = socket.socket()
     try:
@@ -36,18 +48,36 @@ def local_url(port: int) -> str:
     return f"http://127.0.0.1:{port}"
 
 
-def probe_existing_console(port: int, fingerprint: str) -> bool:
+def probe_existing_console(
+    port: int, fingerprint: str, expected_runtime: str | None = None,
+) -> bool:
     try:
         with urlopen(f"{local_url(port)}/api/health", timeout=0.75) as response:
             payload = json.loads(response.read())
     except Exception:
         return False
-    return (
+    matches_identity = (
         isinstance(payload, dict)
         and payload.get("status") == "ok"
         and payload.get("service") == "novel-flywheel-console"
         and payload.get("data_dir_fingerprint") == fingerprint
     )
+    if not matches_identity:
+        return False
+    return expected_runtime is None or payload.get("runtime_fingerprint") == expected_runtime
+
+
+def _reserve_next_port(
+    start: int, *, attempts: int = 32,
+) -> tuple[int, socket.socket] | None:
+    for offset in range(1, attempts + 1):
+        candidate = start + offset
+        if candidate > 65535:
+            break
+        listener = reserve_port(candidate)
+        if listener is not None:
+            return candidate, listener
+    return None
 
 
 def resolve_launch(
@@ -58,10 +88,24 @@ def resolve_launch(
     url = local_url(port)
     listener = reserve_port(port)
     if listener is not None:
-        return {"action": "start", "url": url, "socket": listener}
-    if probe_existing_console(port, data_dir_fingerprint(data_dir)):
+        return {"action": "start", "url": url, "port": port, "socket": listener}
+    data_fingerprint = data_dir_fingerprint(data_dir)
+    expected_runtime = runtime_fingerprint()
+    if probe_existing_console(port, data_fingerprint, expected_runtime):
         open_browser(url)
-        return {"action": "reuse", "url": url}
+        return {"action": "reuse", "url": url, "port": port}
+    if probe_existing_console(port, data_fingerprint):
+        replacement = _reserve_next_port(port)
+        if replacement is not None:
+            replacement_port, replacement_listener = replacement
+            replacement_url = local_url(replacement_port)
+            return {
+                "action": "start",
+                "url": replacement_url,
+                "port": replacement_port,
+                "socket": replacement_listener,
+                "replaced_stale_runtime": True,
+            }
     raise SystemExit(f"{port}端口已被其他程序占用，请关闭占用程序后重新启动。")
 
 
@@ -93,7 +137,7 @@ def main() -> None:
             "novel_flywheel.app:create_app",
             factory=True,
             host="127.0.0.1",
-            port=args.port,
+            port=int(launch.get("port") or args.port),
         )
         uvicorn.Server(config).run(sockets=[listener])
     finally:

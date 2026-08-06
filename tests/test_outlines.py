@@ -7,7 +7,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.outlines import (
     OutlineService, extract_outline_characters, local_outline_manifest,
-    narrative_outline_event_contracts, narrative_outline_events,
+    narrative_outline_event_contracts, narrative_outline_event_obligations,
+    narrative_outline_events,
     normalize_outline_manifest, outline_event_kind, outline_events,
 )
 from novel_flywheel.projects import ProjectCreate, ProjectStore
@@ -343,6 +344,36 @@ def test_narrative_outline_event_contracts_exclude_eight_production_style_chapte
         content.replace("产生可核对结果", "产生更具体且可核对的结果"),
     )
     assert [item["id"] for item in changed] == [item["id"] for item in contracts]
+
+
+def test_narrative_event_obligations_preserve_required_participants_and_kinds() -> None:
+    content = (
+        "## 人物设定\n"
+        "### 女主（花穗）\n"
+        "### 男主（裴砚行）\n"
+        "### 重要配角\n"
+        "- **沈老夫人**：沈家主母\n"
+        "- **沈大小姐**：名门闺秀\n\n"
+        "## 章节规划\n"
+        "### 第1章·选择\n"
+        "- **众人的反应**：\n"
+        "  - 沈老夫人最后宣布认下花穗。\n"
+        "  - 沈大小姐站出来替花穗说话。\n"
+        "  - 花穗追问裴砚行，他当众承诺会护着她。\n"
+    )
+
+    contracts = narrative_outline_event_contracts(content)
+    event = next(item for item in contracts if item["label"] == "众人的反应")
+    obligations = narrative_outline_event_obligations(content)[event["id"]]
+
+    assert obligations["required_participants"] == [
+        "沈老夫人", "花穗", "沈大小姐", "裴砚行",
+    ]
+    assert obligations["identity_stable_participants"] == ["花穗", "裴砚行"]
+    assert obligations["obligations"][0]["kinds"] == ["action", "outcome"]
+    assert "reaction" in obligations["obligations"][1]["kinds"]
+    assert "reaction" in obligations["obligations"][2]["kinds"]
+    assert "commitment" in obligations["obligations"][2]["kinds"]
 
 
 @pytest.mark.parametrize(

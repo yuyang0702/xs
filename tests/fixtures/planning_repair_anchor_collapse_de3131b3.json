@@ -1,0 +1,9 @@
+{
+  "run_id": "de3131b3a3e4460e9bd2309d57926bea",
+  "event_id": "EV-5306BA80",
+  "workflow": "short-story",
+  "stage": "planning",
+  "message": "event_body_collapsed: planning repair anchor replaced a complete formal event with one exit sentence",
+  "incident_family": "planning.repair_anchor_collapse",
+  "known_recovery": "shrink broad evidence to the smallest same-event semantic block, reject collapsed body, then rebuild the affected complete segment from the last best plan"
+}

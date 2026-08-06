@@ -1,0 +1,4 @@
+interface:
+  display_name: "小说研发评审团队"
+  short_description: "为小说控制台组织产品、业务、技术和测试协作评审与防回归检查"
+  default_prompt: "使用 $novel-dev-council 对当前小说控制台需求进行团队评审。"

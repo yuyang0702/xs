@@ -321,6 +321,71 @@ def test_initialization_freezes_learning_versions_and_skips_completed_stage(tmp_
     assert snapshot["metadata"]["creative_blueprint"] == 1
 
 
+def test_initialization_skips_complete_stage_without_execution_history(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    ))
+    _wizard, project_data = create_completed_wizard(client)
+    project_id = project_data["id"]
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "正式版", "outline": "# 正式大纲\n\n## 开头\n门被推开。"},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    )
+    project = client.app.state.projects.get(project_id)
+    metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
+    metadata["initialization_skills"] = ["story-init"]
+    (project.path / "project.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    skill = SimpleNamespace(name="story-init", content_hash="hash-story-init")
+
+    class Runtime:
+        calls = []
+
+        async def run(self, requested_project_id, skill_name, answers, bootstrap=False):
+            self.calls.append(skill_name)
+            raise AssertionError("complete formal materials must not be regenerated")
+
+    class CapturingTasks:
+        operation = None
+
+        def start(self, requested_project_id, workflow, operation):
+            db.create_run("complete-materials-run", requested_project_id, workflow, status="queued")
+            self.operation = operation
+            return db.get_run("complete-materials-run")
+
+    async def material_manifest(_project_id):
+        return {"_review": {"status": "local_only", "message": "local"}}
+
+    runtime = Runtime()
+    tasks = CapturingTasks()
+    client.app.state.skill_gate = SimpleNamespace(skills=lambda _path: {"story-init": skill})
+    client.app.state.skill_runtime = runtime
+    client.app.state.run_tasks = tasks
+    client.app.state.outlines.material_manifest = material_manifest
+
+    response = client.post(f"/api/projects/{project_id}/initialize-skills")
+    result = asyncio.run(tasks.operation("complete-materials-run"))
+
+    assert response.status_code == 202
+    assert result == []
+    assert runtime.calls == []
+    skipped = next(
+        item for item in db.list_run_events("complete-materials-run")
+        if item["event_type"] == "skill_skipped"
+    )
+    assert "资料已经完整" in skipped["message"]
+
+
 def test_initialization_rolls_back_all_earlier_stages_when_a_later_stage_fails(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(

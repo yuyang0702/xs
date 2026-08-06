@@ -245,6 +245,56 @@ def adaptive_output_budget(
     return min(desired, ceiling)
 
 
+def bounded_protocol_output_budget(
+    *, expected_output_characters: int | None,
+    input_tokens: int = 0,
+    context_window: int | None = None,
+    declared_output_ceiling: int | None = None,
+) -> int:
+    """Reserve enough room for a closed JSON protocol without creative padding.
+
+    Creative stages deliberately retain their larger adaptive budgets. Protocol
+    receipts have a bounded schema, so reserving a stage-wide 4K/8K minimum can
+    itself force a valid authority packet over the context safety line.
+    """
+    expected_characters = max(256, int(expected_output_characters or 0))
+    # Closed receipts are dominated by short field names, hashes, identifiers,
+    # booleans, and bounded evidence excerpts. Treating every expected
+    # character as a CJK token recreates the creative-stage reserve and can
+    # itself force an otherwise valid authority packet over the context line.
+    expected_tokens = max(256, math.ceil(expected_characters * 0.55))
+    desired = max(768, math.ceil(expected_tokens * 1.35) + 384)
+    ceiling = declared_output_ceiling or AUTO_DISCOVERY_MAX_OUTPUT_TOKENS
+    if context_window:
+        ceiling = min(ceiling, max(1, context_window - input_tokens - 1024))
+    return min(desired, ceiling)
+
+
+def scoped_creative_output_budget(
+    *, expected_output_characters: int | None,
+    input_tokens: int = 0,
+    context_window: int | None = None,
+    declared_output_ceiling: int | None = None,
+) -> int:
+    """Reserve creative headroom for one already bounded semantic scope.
+
+    A complete planning stage legitimately keeps a large stage-wide reserve.
+    A targeted segment rebuild is different: its event ownership and expected
+    size are already fixed, so inheriting the whole planning floor can consume
+    the context window before the provider is called.  This initial reserve is
+    deliberately generous and may still expand through the ordinary
+    output-limit retry; it does not reduce the requested prose or planning
+    scope.
+    """
+    expected_characters = max(512, int(expected_output_characters or 0))
+    expected_tokens = estimate_input_tokens("汉" * expected_characters)
+    desired = max(2_048, math.ceil(expected_tokens * 2.25) + 1_024)
+    ceiling = declared_output_ceiling or AUTO_DISCOVERY_MAX_OUTPUT_TOKENS
+    if context_window:
+        ceiling = min(ceiling, max(1, context_window - input_tokens - 2_048))
+    return min(desired, ceiling)
+
+
 def expanded_output_budget(
     current: int | None,
     *,

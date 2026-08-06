@@ -14,6 +14,10 @@ from pydantic import BaseModel, Field
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.publication import build_zhihu_package, preview_zhihu_package
 from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript
+from novel_flywheel.narrative_contract import (
+    confirm_narrative_contract,
+    ensure_narrative_contract,
+)
 from novel_flywheel.prose_quality import analyze_prose
 from novel_flywheel.quality_records import reconcile_legacy_checkpoint
 from novel_flywheel.quality_summary import build_quality_summary, effective_han_characters
@@ -121,6 +125,10 @@ class PassageProtectionPayload(BaseModel):
     excerpt: str = Field(min_length=1, max_length=30_000)
     mode: Literal["soft", "exact"]
     label: str = Field(default="保护片段", max_length=80)
+
+
+class NarrativeContractPayload(BaseModel):
+    narrator_character_id: str = Field(min_length=1, max_length=160)
 
 
 def _style_sample_status(project: Project, request: Request) -> dict:
@@ -911,6 +919,32 @@ def recommend_quality_references(project_id: str, request: Request) -> dict:
         return request.app.state.quality_references.recommend(project.id, profile_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.get("/projects/{project_id}/narrative-contract")
+def get_narrative_contract(project_id: str, request: Request) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    return ensure_narrative_contract(project).payload()
+
+
+@router.put("/projects/{project_id}/narrative-contract")
+def update_narrative_contract(
+    project_id: str, payload: NarrativeContractPayload, request: Request,
+) -> dict:
+    try:
+        project = get_store(request).get(project_id)
+        return confirm_narrative_contract(
+            project, payload.narrator_character_id,
+        ).payload()
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail={
+            "code": "narrator_confirmation_invalid", "message": str(exc),
+        }) from exc
 
 
 @router.get("/projects/{project_id}/quality-references")

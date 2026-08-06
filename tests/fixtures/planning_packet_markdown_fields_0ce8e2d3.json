@@ -1,0 +1,26 @@
+{
+  "run_id_prefix": "0ce8e2d3",
+  "stage": "planning",
+  "provider_finish_reason": "end_turn",
+  "transport_complete": true,
+  "terminal_error": "planning repair packet failed its complete event contract (segment=5, event_ids=['EV-15C208EE', 'EV-126EE846'])",
+  "incident_family": "parser.generated_artifact_shape",
+  "expected_segment": 5,
+  "expected_event_ids": [
+    "EV-15C208EE",
+    "EV-126EE846"
+  ],
+  "current_segment": "### 第 5 段：当众坦白，归属落定\n\n事件ID：EV-15C208EE、EV-126EE846\n\n大纲依据：身份危机公开后完成核心坦白。\n\n段首承接：核验人员返回沈府，众人在厅中等待。\n\n本段事件：\n1. **身份危机公开**（EV-15C208EE）：核验人员说明证据不足，沈老夫人公开追问花穗。\n2. **核心坦白**（EV-126EE846）：花穗承认真实出身并说明行动动机。\n\n段末交接：花穗完成坦白，众人的回应留给后续正式事件。",
+  "valid_variants": [
+    {
+      "name": "bold_fields_missing_redundant_authority",
+      "payload": "**第 5 段：当众坦白，归属落定**\n\n**覆盖事件**：EV-15C208EE、EV-126EE846\n\n**段首承接：**\n核验人员返回沈府，众人在厅中等待。\n\n**本段事件：**\n1. **身份危机公开**（EV-15C208EE）：核验人员说明证据不足，沈老夫人公开追问花穗。\n2. **核心坦白**（EV-126EE846）：花穗承认真实出身并说明行动动机。\n\n**段末交接：**\n花穗完成坦白，众人的回应留给后续正式事件。"
+    },
+    {
+      "name": "heading_owned_fields_with_nested_event_headings",
+      "payload": "# 第 5 段：当众坦白，归属落定\n\n**事件ID**：EV-15C208EE、EV-126EE846\n\n**大纲依据**：身份危机公开后完成核心坦白。\n\n## 段首承接\n\n> 核验人员返回沈府，众人在厅中等待。\n\n## 本段事件\n\n### 1. 身份危机公开（EV-15C208EE）\n\n核验人员说明证据不足，沈老夫人公开追问花穗。\n\n### 2. 核心坦白（EV-126EE846）\n\n花穗承认真实出身并说明行动动机。\n\n## 段末交接\n\n> 花穗完成坦白，众人的回应留给后续正式事件。\n\n## 本段人物状态追踪\n\n这是一段诊断附录，不属于段末交接。"
+    }
+  ],
+  "invalid_variant": "**第 5 段：当众坦白，归属落定**\n\n**覆盖事件**：EV-15C208EE、EV-126EE846\n\n**段首承接：**\n核验人员返回沈府。\n\n**本段事件：**\n1. 身份危机公开（EV-15C208EE）：沈老夫人追问。\n2. 核心坦白（EV-126EE846）：花穗说出真相。",
+  "expected_recovery": "Normalize harmless Markdown field presentation, inherit only Runtime-owned outline evidence, preserve exact ordered event ownership, and provide exact missing-field feedback when normalization cannot close the contract."
+}

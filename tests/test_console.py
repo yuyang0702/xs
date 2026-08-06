@@ -869,6 +869,7 @@ def test_console_validates_polish_progress_and_hides_internal_events(tmp_path) -
         "metadata.preserved_segments", "metadata.restart_segment",
     ):
         assert diagnostic in details
+    assert "Array.isArray(preservedValue)?preservedValue.length" in details
     assert 'class="log-details"' in run_log
     assert 'items[index-1].severity!=="error"' in run_log
     assert "Skill completed without file proposals" in script

@@ -1,0 +1,16 @@
+{
+  "run_id": "dd0d6d2d981b4316a0c81d901bd38dc1",
+  "workflow": "short-story",
+  "stage": "review",
+  "incident_family": "model.context_capacity_preflight",
+  "message": "input context overflow preflight: lossless story authority plus output reserve requires 31537 tokens for context window 32768; topology=split",
+  "context_window": 32768,
+  "estimated_input_tokens": 24143,
+  "output_reserve_tokens": 7394,
+  "segment_count": 6,
+  "formal_event_count": 29,
+  "affected_segment": 1,
+  "affected_segment_event_count": 7,
+  "provider_capacity_known": false,
+  "expected_recovery": "split the affected segment by ordered formal-event ownership, persist each packet, merge losslessly, and continue to whole-plan review"
+}

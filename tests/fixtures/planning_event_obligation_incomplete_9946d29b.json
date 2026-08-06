@@ -1,0 +1,31 @@
+{
+  "run_id": "9946d29b04fc4fe2970af117b084c8e9",
+  "workflow": "short-story",
+  "stage": "planning",
+  "incident_family": "planning.event_obligation_incomplete",
+  "event_id": "EV-BEAE4985",
+  "message": "planning_required_participant_missing：规划正式复合事件遗漏了正式大纲明确要求的参与者、回应者或承诺方",
+  "formal_requirements": [
+    "沈老夫人认可花穗",
+    "沈大小姐维护花穗",
+    "花穗追问裴砚行",
+    "裴砚行回应并形成公开关系承诺"
+  ],
+  "observed_missing": [
+    "裴砚行"
+  ],
+  "affected_segment": 5,
+  "segment_event_ids": [
+    "EV-15C208EE",
+    "EV-126EE846",
+    "EV-BEAE4985",
+    "EV-1522AB0E"
+  ],
+  "capacity_preflight": {
+    "required_tokens": 25260,
+    "context_window": 32768,
+    "topology": "compact",
+    "required_recovery": "event_owned_recursive_split"
+  },
+  "required_next_boundary": "segment_review_adjacent_boundary_and_whole_plan_review"
+}

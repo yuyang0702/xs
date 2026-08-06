@@ -315,3 +315,31 @@ def test_resume_is_blocked_while_another_project_run_is_active(tmp_path) -> None
     assert response.status_code == 409
     assert response.json()["detail"]["code"] == "project_run_active"
     assert db.get_run("failed-run")["status"] == "failed"
+
+
+def test_production_incident_endpoint_includes_history_and_known_catalog(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    client = TestClient(create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", workflow_service=FakeWorkflows(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Short", "mode": "short", "genre": "suspense",
+        "premise": "Someone vanishes.", "target_words": 5000,
+    }).json()
+    db.create_run("legacy-failure", project["id"], "short-story", status="failed")
+    db.add_run_event(
+        "legacy-failure", "error", "failed",
+        "正文事件、入口或出口缺少可核对原文证据",
+        stage="draft",
+    )
+
+    response = client.get(f"/api/projects/{project['id']}/production-incidents")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["incidents"][0]["incident_family"] == "draft.semantic_receipt_unsatisfied"
+    assert any(
+        item["incident_family"] == "planning.structure_drift"
+        for item in payload["known_families"]
+    )

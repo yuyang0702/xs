@@ -1,0 +1,34 @@
+{
+  "run_id_prefix": "0ce8e2d3",
+  "stage": "planning",
+  "provider_finish_reason": "end_turn",
+  "transport_complete": true,
+  "expected_segment": 5,
+  "expected_event_ids": [
+    "EV-15C208EE",
+    "EV-126EE846"
+  ],
+  "payload": {
+    "segment_label": "第 5 段：当众坦白，归属落定",
+    "segment_order": 5,
+    "events_owned": [
+      {
+        "event_id": "EV-15C208EE",
+        "label": "身份危机的公开",
+        "narrative_summary": "核验人员回禀没有确凿证据，沈老夫人当众追问花穗的真实身份。",
+        "entry_conditions": "核验人员返回沈府，众人在厅中等候。",
+        "exit_conditions": "沈老夫人的追问迫使花穗作出选择。"
+      },
+      {
+        "event_id": "EV-126EE846",
+        "label": "核心坦白",
+        "narrative_summary": "花穗承认自己不是蕙芷，并说明真实出身以及此前行动的真实动机。",
+        "entry_conditions": "所有人等待花穗回答。",
+        "exit_conditions": "花穗完成坦白，众人的公开回应将在后续事件中发生。"
+      }
+    ],
+    "segment_entry_condition": "核验人员已经返回，沈老夫人在正厅等待花穗回答。",
+    "segment_exit_condition": "花穗完成坦白，匿名信与归属问题继续推进。"
+  },
+  "expected_recovery": "Convert the single unambiguous JSON object into one canonical segment block, preserve exact ordered event ownership, and rerun the existing packet, adjacent-boundary, and whole-plan validators."
+}

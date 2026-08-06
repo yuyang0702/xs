@@ -1,0 +1,41 @@
+{
+  "run_id": "62859567af3e4576ba2d577b1eab677a",
+  "workflow": "short-story",
+  "stage": "planning",
+  "incident_family": "planning.recovery_latent_issue_misattributed",
+  "message": "未修改第 3 段的潜伏旧问题被误归因给第 2 段修复候选",
+  "changed_segments": [2],
+  "resolved_issue_keys": [
+    "planning:segment-02:EV-5306BA80:invariant:exit_state",
+    "planning:segment-02:EV-5306BA80:invariant:knowledge_state",
+    "planning:segment-02:EV-5306BA80:invariant:relationship_state",
+    "planning:segment-02:EV-5306BA80:invariant:viewpoint",
+    "planning:segment-02:planning_formal_direction"
+  ],
+  "latent_baseline_segments": [3],
+  "latent_issue_examples": [
+    {
+      "segment": 3,
+      "event_id": "EV-221A4437",
+      "invalid_invariants": [
+        "event_function",
+        "primary_actor_agency",
+        "exit_state",
+        "knowledge_state"
+      ],
+      "reason": "花穗亲自发现倒卖被改为小厮报告。"
+    },
+    {
+      "segment": 3,
+      "event_id": "EV-1944E0CE",
+      "invalid_invariants": [
+        "causal_dependencies",
+        "entry_state",
+        "timeline_order"
+      ],
+      "reason": "盯梢被写在触发发现之前。"
+    }
+  ],
+  "expected_recovery_units": [2, 3],
+  "boundary_regression_must_reject": [2, 3]
+}

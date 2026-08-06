@@ -5,6 +5,7 @@ from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
 )
+from novel_flywheel.narrative_contract import ensure_narrative_contract
 
 
 router = APIRouter(prefix="/api", tags=["revisions"])
@@ -40,6 +41,17 @@ def revision_http_error(exc: RevisionOperationError) -> HTTPException:
 async def start_revision(
     project_id: str, payload: StartRevisionPayload, request: Request,
 ) -> dict:
+    try:
+        project = request.app.state.projects.get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    narrative_contract = ensure_narrative_contract(project)
+    if narrative_contract.status != "ready":
+        raise HTTPException(status_code=409, detail={
+            "code": "narrator_confirmation_required",
+            "message": "第一人称叙述者无法唯一确定，请先选择本书中代表“我”的人物。",
+            "candidates": [dict(item) for item in narrative_contract.candidates],
+        })
     try:
         selected = revision_operations(request).validate_start(
             project_id, payload.issue_ids,

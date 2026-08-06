@@ -55,6 +55,7 @@ from novel_flywheel.causal_chain import (
 from novel_flywheel.context_policy import (
     adaptive_output_budget,
     authority_packet_sha256,
+    bounded_protocol_output_budget,
     build_polish_authority_packet,
     classify_input_pressure,
     classify_model_failure,
@@ -68,6 +69,7 @@ from novel_flywheel.context_policy import (
     revision_patch_context,
     render_polish_authority_packet,
     schema_repair_prompt,
+    scoped_creative_output_budget,
     stage_output_budget,
 )
 from novel_flywheel.context_packet import (
@@ -80,28 +82,53 @@ from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
 from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
 from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.narrative_contract import (
+    ensure_narrative_contract,
+    first_person_prose_issues,
+    render_narrative_contract,
+)
+from novel_flywheel.production_incidents import record_production_failure
 from novel_flywheel.outlines import (
     canon_profile,
     detect_canon_conflicts,
     narrative_outline_event_contracts,
+    narrative_outline_event_obligations,
     narrative_outline_events,
     outline_events,
 )
 from novel_flywheel.planning_adaptation import (
     LEGACY_PLANNING_ADAPTATION_VERSION,
+    PREVIOUS_PLANNING_ADAPTATION_VERSION,
     PLANNING_ADAPTATION_VERSION,
     PLANNING_ADAPTATION_PROTOCOL_CODES,
+    PLANNING_ADAPTATION_EVENT_FACETS,
+    SUPPORTED_PLANNING_ADAPTATION_VERSIONS,
+    WHOLE_STORY_FIELDS,
+    apply_planning_repair_patch,
     effective_event_contracts,
     normalize_planning_adaptation_receipt,
     normalize_planning_adaptation_whole_receipt,
+    normalize_planning_repair_patch,
     planning_adaptation_artifact_sha256,
     planning_adaptation_evidence_candidates,
+    planning_adaptation_event_facet_authority_sha256,
+    planning_adaptation_event_projection,
     planning_adaptation_receipt_issues,
+    planning_event_body_issues,
+    planning_event_body_retention_issues,
+    planning_evidence_quote_valid,
+    repair_planning_event_obligation_ownership,
+    planning_repair_anchor_ids,
+    planning_repair_patch_from_segment,
+    planning_repair_patch_authority_sha256,
     planning_adaptation_segment_authority_sha256,
+    planning_adaptation_segment_packet_authority_sha256,
     planning_adaptation_whole_authority_sha256,
     planning_adaptation_whole_receipt_issues,
+    planning_event_obligation_issues,
 )
 from novel_flywheel.planning_recovery import (
+    merge_planning_issue_ledgers,
     new_planning_recovery_state,
     planning_candidate_comparison,
     planning_issue_keys,
@@ -227,6 +254,43 @@ class TargetedGroupError(RuntimeError):
     pass
 
 
+class ContextCapacityPreflightError(RuntimeError):
+    """The request needs a different topology before a provider call."""
+
+    def __init__(
+        self, *, pressure: str, estimated_input_tokens: int,
+        authority_input_tokens: int, output_reserve: int,
+        context_window: int,
+    ) -> None:
+        super().__init__(
+            "input context overflow preflight: lossless story authority plus "
+            f"output reserve requires {estimated_input_tokens + output_reserve} "
+            f"tokens for context window {context_window}; topology={pressure}"
+        )
+        self.pressure = pressure
+        self.estimated_input_tokens = estimated_input_tokens
+        self.authority_input_tokens = authority_input_tokens
+        self.output_reserve = output_reserve
+        self.context_window = context_window
+
+
+class PlanningRecoveryUnavailableError(RuntimeError):
+    """A semantic planning defect was found, but its repair route was unavailable."""
+
+    def __init__(self, issues: list[dict], execution_failures: list[dict]):
+        self.issues = issues
+        self.execution_failures = execution_failures
+        details = "; ".join(
+            str(item.get("error") or item.get("failure_class") or "unknown")[:240]
+            for item in execution_failures
+            if isinstance(item, dict)
+        )
+        super().__init__(
+            "规划语义问题尚未解决，修复调用不可用；最佳规划和有效上游进度已保留"
+            + (f"（{details}）" if details else "")
+        )
+
+
 class ExpansionRejectedError(ValueError):
     def __init__(self, code: str, category: str, message: str):
         super().__init__(message)
@@ -248,6 +312,16 @@ class IncompleteModelOutputError(RuntimeError):
         self.receipt = partial.receipt
 
 
+class GeneratedArtifactShapeError(ValueError):
+    """A model artifact ended normally but needs protocol-level recovery."""
+
+    def __init__(self, message: str, *, issues: list[dict] | None = None):
+        super().__init__(message)
+        self.issues = [
+            dict(item) for item in (issues or []) if isinstance(item, dict)
+        ]
+
+
 class DraftSemanticValidationError(ValueError):
     def __init__(self, task_id: str, issues: str | list[dict]):
         normalized = (
@@ -260,6 +334,17 @@ class DraftSemanticValidationError(ValueError):
         super().__init__(f"正文语义完整性检查未通过（{task_id}）：{detail}")
         self.task_id = task_id
         self.issues = normalized
+
+
+def _draft_narrative_contract_fields(project: Project) -> dict[str, str]:
+    contract = ensure_narrative_contract(project)
+    return {
+        "viewpoint": render_narrative_contract(contract),
+        "narrative_mode": contract.mode,
+        "narrator_character_id": contract.narrator_character_id,
+        "narrator_name": contract.narrator_name,
+        "self_reference": contract.self_reference,
+    }
 
 
 # ponytail: one local console process needs serialization, not a lock registry.
@@ -301,7 +386,7 @@ class WorkflowService:
 
     def _restore_snapshot_after_failure(
         self, run_id: str, snapshot: ProjectSnapshot,
-    ) -> None:
+    ) -> bool:
         try:
             snapshot.restore()
         except Exception as recovery_error:
@@ -312,6 +397,200 @@ class WorkflowService:
                     "recovery_error": str(recovery_error)[:500],
                 },
             )
+            return False
+        return True
+
+    @staticmethod
+    def _formal_promotion_file_hash(path: Path) -> str | None:
+        return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+    @staticmethod
+    def _formal_promotion_project_path(
+        project: Project, relative: object,
+    ) -> Path:
+        if not isinstance(relative, str) or not relative.strip():
+            raise RuntimeError("正式稿晋升恢复日志包含无效文件路径")
+        project_root = project.path.resolve()
+        path = (project_root / relative).resolve()
+        if not path.is_relative_to(project_root):
+            raise RuntimeError("正式稿晋升恢复日志包含项目外路径")
+        return path
+
+    @staticmethod
+    def _set_formal_promotion_journal_status(
+        journal_path: Path, status: str, **updates,
+    ) -> None:
+        try:
+            journal = json.loads(journal_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return
+        if not isinstance(journal, dict):
+            return
+        journal.update(updates)
+        journal["status"] = status
+        atomic_write(
+            journal_path,
+            json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
+        )
+
+    def _recover_short_formal_promotions(self, project: Project) -> None:
+        """Resolve any process-interrupted formal manuscript promotion.
+
+        A prepared journal means formal files may have been partially written.
+        If StoryState did not advance, restore the pre-promotion snapshot. If
+        StoryState already committed and all file hashes match, finalize the
+        promotion. A later StoryState revision supersedes the stale journal and
+        must never be overwritten by its older snapshot.
+        """
+        for journal_path in sorted(project.path.glob(
+            "runs/*/outputs/formal-promotion-journal.json",
+        )):
+            try:
+                journal = json.loads(journal_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(journal, dict) or journal.get("version") != 1:
+                continue
+            if journal.get("status") not in {"prepared", "files_written"}:
+                continue
+            run_id = str(journal.get("run_id") or journal_path.parents[2].name)
+            base_revision = int(journal.get("base_revision") or -1)
+            target_revision = int(journal.get("target_revision") or -1)
+            files = journal.get("files")
+            if base_revision < 0 or target_revision != base_revision + 1 \
+                    or not isinstance(files, list) or not files:
+                raise RuntimeError("正式稿晋升恢复日志无效，已停止新的写作任务")
+            state = self.story_states.ensure(project.id, project.path)
+            resolved_files: list[tuple[Path, dict]] = []
+            seen_paths: set[Path] = set()
+            for item in files:
+                if not isinstance(item, dict) \
+                        or not isinstance(item.get("new_sha256"), str):
+                    raise RuntimeError("正式稿晋升恢复日志包含无效文件记录")
+                path = self._formal_promotion_project_path(project, item.get("path"))
+                if path in seen_paths:
+                    raise RuntimeError("正式稿晋升恢复日志包含重复文件记录")
+                seen_paths.add(path)
+                resolved_files.append((path, item))
+            required_paths = {
+                (project.path / "manuscript" / "story.md").resolve(),
+                (project.path / "chapters" / "chapter-01.md").resolve(),
+                (project.path / "memory" / "canon.json").resolve(),
+            }
+            if seen_paths != required_paths:
+                raise RuntimeError("正式稿晋升恢复日志的权威文件集合不完整")
+            expected_match = all(
+                self._formal_promotion_file_hash(path) == item["new_sha256"]
+                for path, item in resolved_files
+            )
+            snapshot_relative = journal.get("snapshot_path")
+            if not isinstance(snapshot_relative, str):
+                raise RuntimeError("正式稿晋升恢复日志缺少项目快照位置")
+            snapshot_root = (project.path / snapshot_relative).resolve()
+            snapshots_root = (project.path / "snapshots").resolve()
+            if not snapshot_root.is_relative_to(snapshots_root):
+                raise RuntimeError("正式稿晋升恢复快照不在项目快照目录内")
+            if state.revision == target_revision and expected_match:
+                ProjectSnapshot(project.path, snapshot_root, []).discard()
+                journal["status"] = "committed_recovered"
+                atomic_write(
+                    journal_path,
+                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
+                )
+                self.db.add_run_event(
+                    run_id, "success", "formal_promotion_recovered",
+                    "检测到正式稿与故事状态均已提交，已完成中断后的晋升收尾",
+                    stage="archive",
+                )
+                continue
+            if state.revision == target_revision:
+                recovery_contents: list[tuple[Path, str]] = []
+                recovery_root = (
+                    journal_path.parent / "formal-promotion-payload"
+                ).resolve()
+                try:
+                    for path, item in resolved_files:
+                        recovery_relative = item.get("recovery_path")
+                        if not isinstance(recovery_relative, str):
+                            raise RuntimeError(
+                                "故事状态已提交但正式稿不完整，恢复日志缺少确定性恢复载荷；"
+                                "已保留恢复日志并停止新的写作任务"
+                            )
+                        recovery_path = self._formal_promotion_project_path(
+                            project, recovery_relative,
+                        )
+                        if not recovery_path.is_relative_to(recovery_root):
+                            raise RuntimeError(
+                                "正式稿晋升恢复载荷不在当前运行的载荷目录内"
+                            )
+                        content = recovery_path.read_text(encoding="utf-8")
+                        if hashlib.sha256(content.encode("utf-8")).hexdigest() \
+                                != item["new_sha256"]:
+                            raise RuntimeError("正式稿晋升恢复载荷哈希不匹配")
+                        recovery_contents.append((path, content))
+                except (OSError, UnicodeError) as exc:
+                    raise RuntimeError(
+                        "故事状态已提交但正式稿不完整，且确定性恢复载荷不可用；"
+                        "已保留恢复日志并停止新的写作任务"
+                    ) from exc
+                for path, content in recovery_contents:
+                    atomic_write(path, content)
+                if not all(
+                    self._formal_promotion_file_hash(path) == item["new_sha256"]
+                    for path, item in resolved_files
+                ):
+                    raise RuntimeError(
+                        "故事状态已提交但正式稿确定性恢复后仍不一致；"
+                        "已保留恢复日志并停止新的写作任务"
+                    )
+                ProjectSnapshot(project.path, snapshot_root, []).discard()
+                journal["status"] = "committed_repaired"
+                atomic_write(
+                    journal_path,
+                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
+                )
+                self.db.add_run_event(
+                    run_id, "warning", "formal_promotion_repaired",
+                    "检测到故事状态已提交但正式稿文件不完整，已按哈希绑定载荷恢复",
+                    stage="archive",
+                )
+                continue
+            if state.revision == base_revision:
+                try:
+                    snapshot = ProjectSnapshot.load(project.path, snapshot_root)
+                except ValueError as exc:
+                    raise RuntimeError(
+                        "正式稿晋升中断且原始快照不可用，已停止新的写作任务"
+                    ) from exc
+                snapshot.restore()
+                snapshot.discard()
+                candidate_id = str(journal.get("candidate_id") or "")
+                if candidate_id:
+                    self.story_states.reject(
+                        candidate_id, "formal promotion recovered after process interruption",
+                    )
+                journal["status"] = "rolled_back_recovered"
+                atomic_write(
+                    journal_path,
+                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
+                )
+                self.db.add_run_event(
+                    run_id, "warning", "formal_promotion_rolled_back",
+                    "检测到正式稿晋升在故事状态提交前中断，已恢复原正式稿",
+                    stage="archive",
+                )
+                continue
+            if state.revision > target_revision:
+                # Another later accepted promotion owns the current formal
+                # state. Never restore an older snapshot over it.
+                ProjectSnapshot(project.path, snapshot_root, []).discard()
+                journal["status"] = "superseded"
+                atomic_write(
+                    journal_path,
+                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
+                )
+                continue
+            raise RuntimeError("正式稿晋升恢复状态与 StoryState 版本不一致")
 
     def _analyze_manuscript(
         self, text: str, run_path: Path, project: Project, label: str,
@@ -493,17 +772,36 @@ class WorkflowService:
     async def finalize_short_revision(self, run_id: str) -> dict:
         try:
             return await self._finalize_short_revision(run_id)
-        except RevisionOperationError:
+        except RevisionOperationError as exc:
+            run = self.db.get_run(run_id) or {}
+            if run.get("status") == "failed":
+                stage = str(run.get("current_stage") or "revision_finalize")
+                record_production_failure(
+                    self.db, run_id,
+                    workflow=str(run.get("workflow") or "short-revision"),
+                    stage=stage,
+                    raw_error=describe_error(exc),
+                    user_message=str(run.get("error") or exc.message),
+                    event_type="short_revision_failed",
+                )
             raise
         except asyncio.CancelledError:
             self.db.update_run(run_id, "failed", "revision_finalize")
             raise
-        except Exception:
+        except Exception as exc:
             run = self.db.get_run(run_id)
             if run is not None and run.get("status") != "completed":
                 self.db.update_run(
                     run_id, "failed", "revision_finalize",
                     error="返修终审未完成，已保留修改决定，可以稍后重试。",
+                )
+                record_production_failure(
+                    self.db, run_id,
+                    workflow=str(run.get("workflow") or "short-revision"),
+                    stage="revision_finalize",
+                    raw_error=describe_error(exc),
+                    user_message="返修终审未完成，已保留修改决定，可以稍后重试。",
+                    event_type="short_revision_failed",
                 )
             raise
 
@@ -658,7 +956,12 @@ class WorkflowService:
             ),
             "groups": adopted_groups,
         }
-        minimum_han, maximum_han = self._short_revision_target_range(project)
+        minimum_han, maximum_han = self._short_revision_target_range(
+            project,
+            source_han=effective_han_characters(
+                authority["protected"]["source"],
+            ),
+        )
         gate = evaluate_candidate_gate(
             source=authority["protected"]["source"],
             candidate=candidate,
@@ -1192,11 +1495,11 @@ class WorkflowService:
                     self._json_copy(ledger_by_id[issue_id])
                     for issue_id in selected_ids
                 ]
-                minimum_han, maximum_han = self._short_revision_target_range(
-                    project,
-                )
                 current_han = effective_han_characters(protected["source"])
-                deficit_han = max(0, minimum_han - current_han)
+                nominal_minimum_han, nominal_maximum_han = (
+                    self._short_revision_target_range(project)
+                )
+                deficit_han = max(0, nominal_minimum_han - current_han)
                 causal_chain_artifact = LearningSystem(
                     self.db, self.references, self.projects, self.gateway,
                 ).get_artifact(project.id, "short_causal_chain")
@@ -1254,8 +1557,8 @@ class WorkflowService:
                     ),
                     "length_budget": {
                         "current_han": current_han,
-                        "minimum_han": minimum_han,
-                        "maximum_han": maximum_han,
+                        "minimum_han": nominal_minimum_han,
+                        "maximum_han": nominal_maximum_han,
                         "deficit_han": deficit_han,
                     },
                     "groups": groups,
@@ -1671,7 +1974,10 @@ class WorkflowService:
             gate_contract, patch_results = self._repair_gate_evidence(
                 contract, records,
             )
-            minimum_han, maximum_han = self._short_revision_target_range(project)
+            minimum_han, maximum_han = self._short_revision_target_range(
+                project,
+                source_han=effective_han_characters(protected["source"]),
+            )
             gate = evaluate_candidate_gate(
                 source=protected["source"],
                 candidate=candidate,
@@ -1826,13 +2132,19 @@ class WorkflowService:
             OSError, UnicodeError, json.JSONDecodeError, TypeError, ValueError,
         ):
             return None
-        source_parts = self._split_segments(source)
+        resolved = self._integrity_publication_segments(
+            run_path, integrity, source,
+        )
+        if resolved is None:
+            return None
+        source_parts, integrity_source_text = resolved
         receipts = integrity.get("semantic_segment_receipts")
         if (
             manifest.status != "ready"
             or execution_manifest_receipt_binding_issues(manifest)
             or integrity.get("status") != "passed"
-            or integrity.get("draft_sha256") != self._text_hash(source)
+            or integrity.get("draft_sha256")
+            != self._text_hash(integrity_source_text)
             or integrity.get("execution_manifest_sha256")
             != execution_manifest_sha256(manifest)
             or len(manifest.segments) != len(source_parts)
@@ -1848,12 +2160,28 @@ class WorkflowService:
                     project, manifest, integrity, segment, prose, index,
                 )
                 validate_semantic_receipt(contract, prose, receipt)
+            expected_beat_ids = [
+                beat_id
+                for segment in manifest.segments
+                for beat_id in segment.beat_ids
+            ]
+            validate_whole_draft_receipt(
+                str(
+                    integrity.get("authority_sha256")
+                    or manifest.authority_sha256
+                ),
+                integrity_source_text,
+                source_parts,
+                expected_beat_ids,
+                integrity.get("whole_semantic_receipt"),
+            )
         except (TypeError, ValueError):
             return None
         return {
             "execution_manifest": execution_manifest_payload(manifest),
             "source_integrity": integrity,
             "source_text": source,
+            "source_segments": source_parts,
         }
 
     @staticmethod
@@ -2432,11 +2760,25 @@ class WorkflowService:
         }, results
 
     @staticmethod
-    def _short_revision_target_range(project: Project) -> tuple[int, int]:
+    def _short_revision_target_range(
+        project: Project, *, source_han: int | None = None,
+    ) -> tuple[int, int]:
         target = max(0, int(project.metadata.get("target_words") or 0))
         if project.metadata.get("platform_profile_id") == "zhihu-salt-short":
-            return int(target * 0.9), int(target * 1.1)
-        return target, target
+            minimum, maximum = int(target * 0.9), int(target * 1.1)
+        else:
+            minimum = maximum = target
+        if source_han is not None:
+            # A previously accepted formal manuscript is valid upstream
+            # authority. A targeted non-length repair must not become
+            # impossible merely because that source already sits just outside
+            # today's configured target range. Extend the gate only far
+            # enough to include the accepted source; the candidate still may
+            # not worsen an existing underlength or overlength deviation.
+            source = max(0, int(source_han))
+            minimum = min(minimum, source)
+            maximum = max(maximum, source)
+        return minimum, maximum
 
     def _write_short_revision_report(
         self, store: RepairRunStore, run_id: str, records: list[dict],
@@ -2882,10 +3224,16 @@ class WorkflowService:
 
     async def _short_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "short-story", run_id)
+        try:
+            self._recover_short_formal_promotions(project)
+        except Exception as exc:
+            self.db.update_run(run_id, "failed", "archive", error=str(exc))
+            raise
         state = self.story_states.ensure(project.id, project.path)
         candidate_id = None
         draft_candidate_id = None
         state_committed = False
+        promotion_journal_path: Path | None = None
         formal = [
             project.path / "manuscript" / "story.md",
             project.path / "chapters" / "chapter-01.md",
@@ -2977,7 +3325,7 @@ class WorkflowService:
                 formal_outline = state.data.get("outline") or {}
                 formal_outline_content = str(formal_outline.get("content") or "")
                 formal_outline_events = (
-                    outline_events(formal_outline_content)
+                    narrative_outline_event_contracts(formal_outline_content)
                     if formal_outline_content.strip()
                     else formal_outline.get("events") or []
                 )
@@ -3014,7 +3362,7 @@ class WorkflowService:
                 formal_outline = state.data.get("outline") or {}
                 formal_outline_content = str(formal_outline.get("content") or "")
                 formal_outline_events = (
-                    outline_events(formal_outline_content)
+                    narrative_outline_event_contracts(formal_outline_content)
                     if formal_outline_content.strip()
                     else formal_outline.get("events") or []
                 )
@@ -3236,9 +3584,53 @@ class WorkflowService:
                 {"artifact": "outputs/polish.md"},
             )
             candidate_id = candidate.id
+            chapter_text = self._chapter_file(project, polished)
+            canon_json = json.dumps(canon, ensure_ascii=False, indent=2)
+            promotion_journal_path = (
+                run_path / "outputs" / "formal-promotion-journal.json"
+            )
+            promotion_files = [
+                (formal[0], polished),
+                (formal[1], chapter_text),
+                (formal[2], canon_json),
+            ]
+            promotion_payload_root = (
+                run_path / "outputs" / "formal-promotion-payload"
+            )
+            promotion_file_records = []
+            for index, (path, content) in enumerate(promotion_files):
+                recovery_path = promotion_payload_root / f"{index:02d}-{path.name}"
+                atomic_write(recovery_path, content)
+                promotion_file_records.append({
+                    "path": path.relative_to(project.path).as_posix(),
+                    "new_sha256": hashlib.sha256(
+                        content.encode("utf-8"),
+                    ).hexdigest(),
+                    "recovery_path": recovery_path.relative_to(
+                        project.path,
+                    ).as_posix(),
+                })
+            atomic_write(
+                promotion_journal_path,
+                json.dumps({
+                    "version": 1,
+                    "status": "prepared",
+                    "run_id": run_id,
+                    "candidate_id": candidate.id,
+                    "base_revision": state.revision,
+                    "target_revision": state.revision + 1,
+                    "snapshot_path": snapshot.snapshot_root.relative_to(
+                        project.path,
+                    ).as_posix(),
+                    "files": promotion_file_records,
+                }, ensure_ascii=False, indent=2, sort_keys=True),
+            )
             atomic_write(formal[0], polished)
-            atomic_write(formal[1], self._chapter_file(project, polished))
-            atomic_write(formal[2], json.dumps(canon, ensure_ascii=False, indent=2))
+            atomic_write(formal[1], chapter_text)
+            atomic_write(formal[2], canon_json)
+            self._set_formal_promotion_journal_status(
+                promotion_journal_path, "files_written",
+            )
             self._post_write_maintenance(run_id, project)
             confirmed = []
             for index, fact in enumerate(canon.get("facts", [])):
@@ -3265,6 +3657,11 @@ class WorkflowService:
             }
             committed = self.story_states.commit(candidate.id, state.revision, next_data)
             state_committed = True
+            self._set_formal_promotion_journal_status(
+                promotion_journal_path, "committed",
+                committed_revision=committed.revision,
+            )
+            snapshot.discard()
             self.story_states.reject(draft_candidate.id, "superseded by accepted polish")
             self.db.add_run_event(
                 run_id, "success", "story_state_committed", "正式稿与权威故事状态已提交",
@@ -3278,7 +3675,12 @@ class WorkflowService:
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
             if not state_committed:
-                self._restore_snapshot_after_failure(run_id, snapshot)
+                restored = self._restore_snapshot_after_failure(run_id, snapshot)
+                if restored and promotion_journal_path is not None:
+                    self._set_formal_promotion_journal_status(
+                        promotion_journal_path, "rolled_back",
+                    )
+                    snapshot.discard()
             if candidate_id:
                 self.story_states.reject(candidate_id, "cancelled")
             if draft_candidate_id:
@@ -3287,7 +3689,12 @@ class WorkflowService:
             raise
         except Exception as exc:
             if not state_committed:
-                self._restore_snapshot_after_failure(run_id, snapshot)
+                restored = self._restore_snapshot_after_failure(run_id, snapshot)
+                if restored and promotion_journal_path is not None:
+                    self._set_formal_promotion_journal_status(
+                        promotion_journal_path, "rolled_back",
+                    )
+                    snapshot.discard()
             if candidate_id:
                 self.story_states.reject(candidate_id, str(exc))
             if draft_candidate_id:
@@ -3885,6 +4292,11 @@ class WorkflowService:
                     generation_context_sha256=generation_context_sha256,
                     segment_count=segment_count,
                 ):
+                    current_outputs = run_path / "outputs"
+                    if outputs != current_outputs:
+                        write_planning_recovery(
+                            current_outputs, recovery_state, plan,
+                        )
                     return plan, None, False
 
             artifact_path = outputs / "planning-adaptations.json"
@@ -3895,13 +4307,15 @@ class WorkflowService:
             except (OSError, UnicodeError, json.JSONDecodeError):
                 continue
             if not isinstance(artifact, dict) or artifact.get("status") != "failed" \
-                    or artifact.get("version") not in {
-                        LEGACY_PLANNING_ADAPTATION_VERSION,
-                        PLANNING_ADAPTATION_VERSION,
-                    } or artifact.get("segment_count") != segment_count:
+                    or artifact.get("version") not in \
+                    SUPPORTED_PLANNING_ADAPTATION_VERSIONS \
+                    or artifact.get("segment_count") != segment_count:
                 continue
             stored_context = str(artifact.get("generation_context_sha256") or "")
-            if artifact.get("version") == PLANNING_ADAPTATION_VERSION \
+            if artifact.get("version") in {
+                PREVIOUS_PLANNING_ADAPTATION_VERSION,
+                PLANNING_ADAPTATION_VERSION,
+            } \
                     and stored_context != generation_context_sha256:
                 continue
             if artifact.get("version") == LEGACY_PLANNING_ADAPTATION_VERSION \
@@ -4002,7 +4416,7 @@ class WorkflowService:
                     rebound.get("planning_sha256") or ""
                 )
                 if (
-                    authority_version >= PLANNING_ADAPTATION_VERSION
+                    authority_version >= PREVIOUS_PLANNING_ADAPTATION_VERSION
                     and previous_planning_sha256 != planning_sha256
                 ):
                     rebound["revalidated_from_planning_sha256"] = (
@@ -4045,10 +4459,23 @@ class WorkflowService:
         generation_context_sha256: str = "",
         authority_version: int = PLANNING_ADAPTATION_VERSION,
         authority_event_ids: list[str] | None = None,
+        _capacity_split: bool = True,
+        _authority_override: str | None = None,
+        _prompt_plan_segment: str | None = None,
+        _prompt_evidence_candidates: dict[str, str] | None = None,
+        _story_skeleton_override: str | None = None,
     ) -> tuple[dict, list[dict], int]:
         event_ids = [str(item.get("id") or "").strip().upper() for item in event_contracts]
         candidates = planning_adaptation_evidence_candidates(plan_segment, segment)
-        authority_sha256 = planning_adaptation_segment_authority_sha256(
+        prompt_plan_segment = (
+            _prompt_plan_segment
+            if _prompt_plan_segment is not None else plan_segment
+        )
+        prompt_candidates = (
+            dict(_prompt_evidence_candidates)
+            if _prompt_evidence_candidates is not None else candidates
+        )
+        computed_authority_sha256 = planning_adaptation_segment_authority_sha256(
             outline_sha256=outline_sha256,
             planning_sha256=planning_sha256,
             segment=segment,
@@ -4059,6 +4486,7 @@ class WorkflowService:
             generation_context_sha256=generation_context_sha256,
             version=authority_version,
         )
+        authority_sha256 = _authority_override or computed_authority_sha256
         stored = self._revalidate_stored_planning_adaptation_segment(
             run_path,
             authority_sha256=authority_sha256,
@@ -4071,6 +4499,16 @@ class WorkflowService:
         )
         if stored is not None:
             receipt, issues, source = stored
+            receipt = dict(receipt)
+            receipt["segment_sha256"] = hashlib.sha256(
+                plan_segment.encode("utf-8"),
+            ).hexdigest()
+            receipt["boundary_sha256"] = hashlib.sha256(json.dumps({
+                "previous_handoff": previous_handoff,
+                "next_entry": next_entry,
+            }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8",
+            )).hexdigest()
             self.db.add_run_event(
                 run_id, "info", "planning_adaptation_receipt_revalidated",
                 "已有规划适配回执已按当前不变量规则完成本地重新验收",
@@ -4102,8 +4540,22 @@ class WorkflowService:
                 "只返回一个 JSON 对象，字段为 authority_sha256、planning_sha256、authority_version、segment、"
                 "event_reviews、segment_order_preserved、formal_direction_preserved、summary。"
                 "event_reviews 每项包含 event_id、classification、changed_dimensions、invariants、"
-                "plan_evidence_ids、reason。plan_evidence_ids 只能从 Runtime 候选中选择，"
+                "plan_evidence_ids、plan_evidence_quote、reason。plan_evidence_ids 只能从 Runtime 候选中选择，"
                 "不得复述、拼接或改写规划原文。\n"
+                "NEGATIVE-EVIDENCE RULE: whenever any invariant is false, "
+                "plan_evidence_quote must copy one exact problem phrase of at least six "
+                "semantic characters from the selected current-plan evidence, and reason "
+                "must include that exact phrase. A finding from an older or rejected plan "
+                "is a receipt defect, not current semantic drift.\n"
+                "UNKNOWN-AUTHORITY RULE: an empty actor, viewpoint, location, time, "
+                "knowledge, or relationship field is unknown, not a second canonical fact. "
+                "Judge only whether the plan contradicts explicit formal evidence; do not "
+                "invent missing facts merely to produce a verdict.\n"
+                "ROLE-SEPARATION RULE: executor, intermediary, investigator, witness, and "
+                "hidden principal remain distinct unless the formal contract explicitly "
+                "identifies them as the same entity.\n"
+                "FUTURE-OWNERSHIP RULE: an earlier event must not complete a reveal, decision, "
+                "confrontation, or state change assigned to a later formal event.\n"
                 f"EXPECTED AUTHORITY SHA256: {authority_sha256}\n"
                 f"EXPECTED PLANNING SHA256: {planning_sha256}\n"
                 f"EXPECTED AUTHORITY VERSION: {authority_version}\n"
@@ -4114,11 +4566,11 @@ class WorkflowService:
                 + json.dumps(authority_event_ids or event_ids, ensure_ascii=False)
                 + "\n\nFORMAL EVENT CONTRACTS:\n"
                 + json.dumps(event_contracts, ensure_ascii=False, indent=2)
-                + "\n\nCURRENT ACCEPTED PLAN SEGMENT:\n" + plan_segment
+                + "\n\nCURRENT ACCEPTED PLAN SEGMENT:\n" + prompt_plan_segment
                 + "\n\nPREVIOUS ACCEPTED HANDOFF:\n" + previous_handoff
                 + "\n\nNEXT SEGMENT ENTRY:\n" + next_entry
                 + "\n\nPLAN EVIDENCE CANDIDATES:\n"
-                + json.dumps(candidates, ensure_ascii=False, indent=2)
+                + json.dumps(prompt_candidates, ensure_ascii=False, indent=2)
             )
             if last_issues:
                 prompt += (
@@ -4131,6 +4583,43 @@ class WorkflowService:
                 suffix=f"-plan-adaptation-segment-{segment:02d}-{suffix}-{attempt + 1}",
                 allow_tools=False,
                 expected_output_characters=max(1200, 520 * len(event_contracts)),
+                completion_check=lambda value: (
+                    self._planning_adaptation_segment_receipt_complete(
+                        value,
+                        authority_sha256=authority_sha256,
+                        planning_sha256=planning_sha256,
+                        authority_version=authority_version,
+                        segment=segment,
+                        expected_event_ids=event_ids,
+                        evidence_candidates=candidates,
+                        authority_event_ids=authority_event_ids,
+                        plan_segment=plan_segment,
+                        previous_handoff=previous_handoff,
+                        next_entry=next_entry,
+                    )
+                ),
+                route_capacity_guard=True,
+                story_skeleton_override=_story_skeleton_override,
+                bounded_protocol_output=True,
+                capacity_splitter=(
+                    (lambda details: self._review_short_plan_adaptation_capacity_split(
+                        run_id, run_path, project, constraints,
+                        outline_sha256=outline_sha256,
+                        planning_sha256=planning_sha256,
+                        segment=segment,
+                        event_contracts=event_contracts,
+                        plan_segment=plan_segment,
+                        suffix=suffix,
+                        previous_handoff=previous_handoff,
+                        next_entry=next_entry,
+                        generation_context_sha256=generation_context_sha256,
+                        authority_version=authority_version,
+                        authority_event_ids=authority_event_ids,
+                        segment_authority_sha256=computed_authority_sha256,
+                        details=details,
+                    ))
+                    if _capacity_split else None
+                ),
             )
             try:
                 payload = parse_json_object(
@@ -4165,12 +4654,28 @@ class WorkflowService:
                     evidence_candidates=candidates,
                     authority_version=authority_version,
                     authority_event_ids=authority_event_ids,
+                    plan_segment=plan_segment,
                 )
                 protocol_issues = [
                     item for item in last_issues
                     if str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
                 ]
                 if not protocol_issues:
+                    capacity_metadata = (
+                        receipt.get("capacity_split")
+                        if isinstance(receipt, dict) else None
+                    )
+                    packet_retry_count = (
+                        capacity_metadata.get("protocol_retries")
+                        if isinstance(capacity_metadata, dict) else None
+                    )
+                    if (
+                        isinstance(raw, StageText)
+                        and raw.receipt.get("execution_mode") == "capacity_split"
+                        and isinstance(packet_retry_count, int)
+                        and packet_retry_count >= 0
+                    ):
+                        protocol_retries += packet_retry_count
                     return dict(receipt), last_issues, protocol_retries
                 last_issues = protocol_issues
             if attempt < 2:
@@ -4186,6 +4691,2045 @@ class WorkflowService:
                 continue
             break
         return {}, last_issues, protocol_retries
+
+    @staticmethod
+    def _planning_adaptation_packet_checkpoint_path(
+        run_path: Path, *, segment: int, packet_authority_sha256: str,
+    ) -> Path:
+        return (
+            run_path / "outputs" / "pap"
+            / f"segment-{segment:02d}-{packet_authority_sha256[:24]}.json"
+        )
+
+    @classmethod
+    def _save_planning_adaptation_packet_checkpoint(
+        cls, run_path: Path, *, segment_authority_sha256: str,
+        packet_authority_sha256: str, segment: int,
+        event_ids: list[str], receipt: dict,
+    ) -> None:
+        canonical = json.dumps(
+            receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        )
+        atomic_write(
+            cls._planning_adaptation_packet_checkpoint_path(
+                run_path,
+                segment=segment,
+                packet_authority_sha256=packet_authority_sha256,
+            ),
+            json.dumps({
+                "version": 1,
+                "segment_authority_sha256": segment_authority_sha256,
+                "packet_authority_sha256": packet_authority_sha256,
+                "segment": segment,
+                "event_ids": event_ids,
+                "receipt_sha256": hashlib.sha256(
+                    canonical.encode("utf-8"),
+                ).hexdigest(),
+                "receipt": receipt,
+            }, ensure_ascii=False, indent=2, sort_keys=True),
+        )
+
+    def _load_planning_adaptation_packet_checkpoint(
+        self, run_id: str, run_path: Path, project: Project, *,
+        segment_authority_sha256: str, packet_authority_sha256: str,
+        planning_sha256: str, authority_version: int, segment: int,
+        event_ids: list[str], evidence_candidates: dict[str, str],
+        authority_event_ids: list[str] | None,
+    ) -> tuple[dict, list[dict]] | None:
+        candidates: dict[str, tuple[dict, Path, list[dict]]] = {}
+        for path in project.path.glob("runs/*/outputs/pap/*.json"):
+            try:
+                envelope = json.loads(path.read_text(encoding="utf-8"))
+                if (
+                    not isinstance(envelope, dict)
+                    or envelope.get("version") != 1
+                    or envelope.get("segment_authority_sha256")
+                    != segment_authority_sha256
+                    or envelope.get("packet_authority_sha256")
+                    != packet_authority_sha256
+                    or envelope.get("segment") != segment
+                    or envelope.get("event_ids") != event_ids
+                ):
+                    continue
+                raw_receipt = envelope.get("receipt")
+                canonical = json.dumps(
+                    raw_receipt, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                )
+                if envelope.get("receipt_sha256") != hashlib.sha256(
+                    canonical.encode("utf-8"),
+                ).hexdigest():
+                    continue
+                receipt = normalize_planning_adaptation_receipt(
+                    raw_receipt, evidence_candidates=evidence_candidates,
+                )
+                if not isinstance(receipt, dict):
+                    continue
+                receipt["authority_version"] = authority_version
+                issues = planning_adaptation_receipt_issues(
+                    receipt,
+                    authority_sha256=packet_authority_sha256,
+                    planning_sha256=planning_sha256,
+                    segment=segment,
+                    expected_event_ids=event_ids,
+                    evidence_candidates=evidence_candidates,
+                    authority_version=authority_version,
+                    authority_event_ids=authority_event_ids,
+                )
+                if any(
+                    str(item.get("code") or "")
+                    in PLANNING_ADAPTATION_PROTOCOL_CODES
+                    for item in issues
+                ):
+                    continue
+            except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            candidates.setdefault(digest, (receipt, path, issues))
+        if len(candidates) > 1:
+            self.db.add_run_event(
+                run_id, "warning", "planning_adaptation_packet_checkpoint_ambiguous",
+                "同一规划审核分包发现多份冲突回执，已放弃复用并重新审核",
+                stage="review", metadata={
+                    "segment": segment,
+                    "event_ids": event_ids,
+                    "candidate_count": len(candidates),
+                },
+            )
+            return None
+        if not candidates:
+            return None
+        receipt, source_path, issues = next(iter(candidates.values()))
+        self._save_planning_adaptation_packet_checkpoint(
+            run_path,
+            segment_authority_sha256=segment_authority_sha256,
+            packet_authority_sha256=packet_authority_sha256,
+            segment=segment,
+            event_ids=event_ids,
+            receipt=receipt,
+        )
+        try:
+            source_run = source_path.relative_to(project.path / "runs").parts[0]
+        except (ValueError, IndexError):
+            source_run = "unknown"
+        self.db.add_run_event(
+            run_id, "info", "planning_adaptation_packet_checkpoint_reused",
+            "已复用哈希一致的规划事件审核分包，仅继续未完成范围",
+            stage="review", metadata={
+                "segment": segment,
+                "event_ids": event_ids,
+                "source_run": source_run,
+            },
+        )
+        return receipt, issues
+
+    @staticmethod
+    def _planning_adaptation_facet_checkpoint_path(
+        run_path: Path, *, segment: int, event_id: str, facet: str,
+        facet_authority_sha256: str,
+    ) -> Path:
+        safe_event = re.sub(r"[^A-Z0-9_-]+", "-", event_id.upper()).strip("-")
+        return (
+            run_path / "outputs" / "pap"
+            / f"facet-{segment:02d}-{safe_event}-{facet}-{facet_authority_sha256[:16]}.json"
+        )
+
+    @classmethod
+    def _save_planning_adaptation_facet_checkpoint(
+        cls, run_path: Path, *, packet_authority_sha256: str,
+        facet_authority_sha256: str, segment: int, event_id: str,
+        facet: str, invariant_fields: Sequence[str], receipt: dict,
+    ) -> None:
+        canonical = json.dumps(
+            receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        )
+        atomic_write(
+            cls._planning_adaptation_facet_checkpoint_path(
+                run_path, segment=segment, event_id=event_id, facet=facet,
+                facet_authority_sha256=facet_authority_sha256,
+            ),
+            json.dumps({
+                "version": 1,
+                "packet_authority_sha256": packet_authority_sha256,
+                "facet_authority_sha256": facet_authority_sha256,
+                "segment": segment,
+                "event_id": event_id,
+                "facet": facet,
+                "invariant_fields": list(invariant_fields),
+                "receipt": receipt,
+                "receipt_sha256": hashlib.sha256(
+                    canonical.encode("utf-8"),
+                ).hexdigest(),
+            }, ensure_ascii=False, indent=2),
+        )
+
+    @staticmethod
+    def _planning_adaptation_facet_receipt_valid(
+        value: object, *, facet_authority_sha256: str,
+        planning_sha256: str, authority_version: int, segment: int,
+        event_id: str, facet: str, invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> bool:
+        if not isinstance(value, dict):
+            return False
+        try:
+            returned_segment = int(value.get("segment"))
+            returned_version = int(value.get("authority_version"))
+        except (TypeError, ValueError):
+            return False
+        if (
+            value.get("authority_sha256") != facet_authority_sha256
+            or value.get("planning_sha256") != planning_sha256
+            or returned_version != authority_version
+            or returned_segment != segment
+            or str(value.get("event_id") or "").strip().upper() != event_id
+            or str(value.get("facet") or "").strip() != facet
+        ):
+            return False
+        invariants = value.get("invariants")
+        if not isinstance(invariants, dict) or set(invariants) != set(invariant_fields):
+            return False
+        if any(not isinstance(invariants[field], bool) for field in invariant_fields):
+            return False
+        evidence_ids = value.get("plan_evidence_ids")
+        if (
+            not isinstance(evidence_ids, list) or not evidence_ids
+            or any(str(item) not in evidence_candidates for item in evidence_ids)
+        ):
+            return False
+        return (
+            isinstance(value.get("reason"), str)
+            and bool(value["reason"].strip())
+            and planning_evidence_quote_valid(value, evidence_candidates)
+        )
+
+    def _load_planning_adaptation_facet_checkpoint(
+        self, run_id: str, run_path: Path, project: Project, *,
+        packet_authority_sha256: str, facet_authority_sha256: str,
+        planning_sha256: str, authority_version: int, segment: int,
+        event_id: str, facet: str, invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> dict | None:
+        candidates: dict[str, tuple[dict, Path]] = {}
+        for path in project.path.glob("runs/*/outputs/pap/facet-*.json"):
+            try:
+                envelope = json.loads(path.read_text(encoding="utf-8"))
+                receipt = envelope.get("receipt") if isinstance(envelope, dict) else None
+                canonical = json.dumps(
+                    receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                )
+                if (
+                    not isinstance(envelope, dict)
+                    or envelope.get("version") != 1
+                    or envelope.get("packet_authority_sha256") != packet_authority_sha256
+                    or envelope.get("facet_authority_sha256") != facet_authority_sha256
+                    or envelope.get("segment") != segment
+                    or envelope.get("event_id") != event_id
+                    or envelope.get("facet") != facet
+                    or envelope.get("invariant_fields") != list(invariant_fields)
+                    or envelope.get("receipt_sha256") != hashlib.sha256(
+                        canonical.encode("utf-8"),
+                    ).hexdigest()
+                    or not self._planning_adaptation_facet_receipt_valid(
+                        receipt,
+                        facet_authority_sha256=facet_authority_sha256,
+                        planning_sha256=planning_sha256,
+                        authority_version=authority_version,
+                        segment=segment,
+                        event_id=event_id,
+                        facet=facet,
+                        invariant_fields=invariant_fields,
+                        evidence_candidates=evidence_candidates,
+                    )
+                ):
+                    continue
+            except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            candidates.setdefault(digest, (dict(receipt), path))
+        if len(candidates) != 1:
+            if len(candidates) > 1:
+                self.db.add_run_event(
+                    run_id, "warning", "planning_adaptation_facet_checkpoint_ambiguous",
+                    "同一单事件审核维度发现冲突检查点，已放弃复用并重新审核",
+                    stage="review", metadata={
+                        "segment": segment, "event_id": event_id,
+                        "facet": facet, "candidate_count": len(candidates),
+                    },
+                )
+            return None
+        receipt, source_path = next(iter(candidates.values()))
+        self._save_planning_adaptation_facet_checkpoint(
+            run_path,
+            packet_authority_sha256=packet_authority_sha256,
+            facet_authority_sha256=facet_authority_sha256,
+            segment=segment,
+            event_id=event_id,
+            facet=facet,
+            invariant_fields=invariant_fields,
+            receipt=receipt,
+        )
+        self.db.add_run_event(
+            run_id, "info", "planning_adaptation_facet_checkpoint_reused",
+            "已复用哈希匹配的单事件审核维度，只继续未完成维度",
+            stage="review", metadata={
+                "segment": segment, "event_id": event_id, "facet": facet,
+                "source_run": source_path.relative_to(
+                    project.path / "runs",
+                ).parts[0],
+            },
+        )
+        return receipt
+
+    @staticmethod
+    def _planning_adaptation_facet_window_authority_sha256(
+        *, facet_authority_sha256: str, window_index: int,
+        start: int, end: int, text_sha256: str,
+    ) -> str:
+        return hashlib.sha256(json.dumps({
+            "facet_authority_sha256": facet_authority_sha256,
+            "window_index": int(window_index),
+            "start": int(start),
+            "end": int(end),
+            "text_sha256": text_sha256,
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8",
+        )).hexdigest()
+
+    @staticmethod
+    def _planning_adaptation_facet_window_checkpoint_path(
+        run_path: Path, *, segment: int, event_id: str, facet: str,
+        window_index: int, window_authority_sha256: str,
+    ) -> Path:
+        safe_event = re.sub(r"[^A-Z0-9_-]+", "-", event_id.upper()).strip("-")
+        return (
+            run_path / "outputs" / "pap"
+            / (
+                f"facet-window-{segment:02d}-{safe_event}-{facet}-"
+                f"{window_index:03d}-{window_authority_sha256[:16]}.json"
+            )
+        )
+
+    @classmethod
+    def _save_planning_adaptation_facet_window_checkpoint(
+        cls, run_path: Path, *, facet_authority_sha256: str,
+        window_authority_sha256: str, segment: int, event_id: str,
+        facet: str, window_index: int, start: int, end: int,
+        text_sha256: str, invariant_fields: Sequence[str], receipt: dict,
+    ) -> None:
+        canonical = json.dumps(
+            receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        )
+        atomic_write(
+            cls._planning_adaptation_facet_window_checkpoint_path(
+                run_path, segment=segment, event_id=event_id, facet=facet,
+                window_index=window_index,
+                window_authority_sha256=window_authority_sha256,
+            ),
+            json.dumps({
+                "version": 1,
+                "facet_authority_sha256": facet_authority_sha256,
+                "window_authority_sha256": window_authority_sha256,
+                "segment": segment,
+                "event_id": event_id,
+                "facet": facet,
+                "window_index": window_index,
+                "start": start,
+                "end": end,
+                "text_sha256": text_sha256,
+                "invariant_fields": list(invariant_fields),
+                "receipt": receipt,
+                "receipt_sha256": hashlib.sha256(
+                    canonical.encode("utf-8"),
+                ).hexdigest(),
+            }, ensure_ascii=False, indent=2),
+        )
+
+    @staticmethod
+    def _planning_adaptation_facet_window_receipt_valid(
+        value: object, *, window_authority_sha256: str,
+        planning_sha256: str, authority_version: int, segment: int,
+        event_id: str, facet: str, window_index: int, start: int, end: int,
+        text_sha256: str, invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> bool:
+        if not isinstance(value, dict):
+            return False
+        try:
+            returned_version = int(value.get("authority_version"))
+            returned_segment = int(value.get("segment"))
+            returned_window = int(value.get("window_index"))
+            returned_start = int(value.get("start"))
+            returned_end = int(value.get("end"))
+        except (TypeError, ValueError):
+            return False
+        if (
+            value.get("authority_sha256") != window_authority_sha256
+            or value.get("planning_sha256") != planning_sha256
+            or returned_version != authority_version
+            or returned_segment != segment
+            or str(value.get("event_id") or "").strip().upper() != event_id
+            or str(value.get("facet") or "").strip() != facet
+            or returned_window != window_index
+            or returned_start != start
+            or returned_end != end
+            or value.get("text_sha256") != text_sha256
+        ):
+            return False
+        invariants = value.get("invariants")
+        if not isinstance(invariants, dict) or set(invariants) != set(invariant_fields):
+            return False
+        if any(not isinstance(invariants[field], bool) for field in invariant_fields):
+            return False
+        evidence_ids = value.get("plan_evidence_ids")
+        if not isinstance(evidence_ids, list) or any(
+            str(item) not in evidence_candidates for item in evidence_ids
+        ):
+            return False
+        return (
+            isinstance(value.get("reason"), str)
+            and bool(value["reason"].strip())
+            and planning_evidence_quote_valid(value, evidence_candidates)
+        )
+
+    def _load_planning_adaptation_facet_window_checkpoint(
+        self, run_id: str, run_path: Path, project: Project, *,
+        facet_authority_sha256: str, window_authority_sha256: str,
+        planning_sha256: str, authority_version: int, segment: int,
+        event_id: str, facet: str, window_index: int, start: int, end: int,
+        text_sha256: str, invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> dict | None:
+        candidates: dict[str, tuple[dict, Path]] = {}
+        for path in project.path.glob("runs/*/outputs/pap/facet-window-*.json"):
+            try:
+                envelope = json.loads(path.read_text(encoding="utf-8"))
+                receipt = envelope.get("receipt") if isinstance(envelope, dict) else None
+                canonical = json.dumps(
+                    receipt, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                )
+                if (
+                    not isinstance(envelope, dict)
+                    or envelope.get("version") != 1
+                    or envelope.get("facet_authority_sha256")
+                    != facet_authority_sha256
+                    or envelope.get("window_authority_sha256")
+                    != window_authority_sha256
+                    or envelope.get("segment") != segment
+                    or envelope.get("event_id") != event_id
+                    or envelope.get("facet") != facet
+                    or envelope.get("window_index") != window_index
+                    or envelope.get("start") != start
+                    or envelope.get("end") != end
+                    or envelope.get("text_sha256") != text_sha256
+                    or envelope.get("invariant_fields") != list(invariant_fields)
+                    or envelope.get("receipt_sha256") != hashlib.sha256(
+                        canonical.encode("utf-8"),
+                    ).hexdigest()
+                    or not self._planning_adaptation_facet_window_receipt_valid(
+                        receipt,
+                        window_authority_sha256=window_authority_sha256,
+                        planning_sha256=planning_sha256,
+                        authority_version=authority_version,
+                        segment=segment,
+                        event_id=event_id,
+                        facet=facet,
+                        window_index=window_index,
+                        start=start,
+                        end=end,
+                        text_sha256=text_sha256,
+                        invariant_fields=invariant_fields,
+                        evidence_candidates=evidence_candidates,
+                    )
+                ):
+                    continue
+            except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            candidates.setdefault(digest, (dict(receipt), path))
+        if len(candidates) != 1:
+            if len(candidates) > 1:
+                self.db.add_run_event(
+                    run_id, "warning",
+                    "planning_adaptation_facet_window_checkpoint_ambiguous",
+                    "同一单事件审核窗口发现冲突检查点，已放弃复用并重新审核",
+                    stage="review", metadata={
+                        "segment": segment, "event_id": event_id,
+                        "facet": facet, "window": window_index,
+                        "candidate_count": len(candidates),
+                    },
+                )
+            return None
+        receipt, source_path = next(iter(candidates.values()))
+        self._save_planning_adaptation_facet_window_checkpoint(
+            run_path,
+            facet_authority_sha256=facet_authority_sha256,
+            window_authority_sha256=window_authority_sha256,
+            segment=segment,
+            event_id=event_id,
+            facet=facet,
+            window_index=window_index,
+            start=start,
+            end=end,
+            text_sha256=text_sha256,
+            invariant_fields=invariant_fields,
+            receipt=receipt,
+        )
+        self.db.add_run_event(
+            run_id, "info", "planning_adaptation_facet_window_checkpoint_reused",
+            "已复用哈希匹配的单事件审核窗口，只继续未完成窗口",
+            stage="review", metadata={
+                "segment": segment, "event_id": event_id, "facet": facet,
+                "window": window_index,
+                "source_run": source_path.relative_to(
+                    project.path / "runs",
+                ).parts[0],
+            },
+        )
+        return receipt
+
+    async def _review_short_plan_adaptation_facet_windows(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        *, planning_sha256: str, segment: int, event_contract: dict,
+        plan_segment: str, evidence_candidates: dict[str, str],
+        facet_authority_sha256: str, event_id: str, facet: str,
+        invariant_fields: Sequence[str], authority_version: int,
+    ) -> str:
+        windows = review_windows(plan_segment, target=3600, overlap=500)
+        if not windows or windows[0]["start"] != 0 or windows[-1]["end"] != len(
+            plan_segment,
+        ) or any(
+            int(current["start"]) > int(previous["end"])
+            for previous, current in zip(windows, windows[1:])
+        ):
+            raise ValueError("单事件审核窗口未完整覆盖当前事件原文")
+        contract_sha256 = hashlib.sha256(json.dumps(
+            event_contract, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        receipts: list[dict] = []
+        index_skeleton = self._stage_story_skeleton(
+            project, constraints, run_path, owner_event_ids=[event_id],
+            index_only=True,
+        )
+        for window in windows:
+            window_index = int(window["index"])
+            start = int(window["start"])
+            end = int(window["end"])
+            text = str(window["text"])
+            text_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
+            window_authority = self._planning_adaptation_facet_window_authority_sha256(
+                facet_authority_sha256=facet_authority_sha256,
+                window_index=window_index,
+                start=start,
+                end=end,
+                text_sha256=text_sha256,
+            )
+            window_candidates: dict[str, str] = {}
+            for evidence_id, evidence in evidence_candidates.items():
+                position = plan_segment.find(evidence)
+                if position < 0 or position >= end or position + len(evidence) <= start:
+                    continue
+                excerpt_start = max(start, position) - position
+                excerpt_end = min(end, position + len(evidence)) - position
+                excerpt = evidence[excerpt_start:excerpt_end]
+                if excerpt:
+                    window_candidates[evidence_id] = excerpt
+            stored = self._load_planning_adaptation_facet_window_checkpoint(
+                run_id, run_path, project,
+                facet_authority_sha256=facet_authority_sha256,
+                window_authority_sha256=window_authority,
+                planning_sha256=planning_sha256,
+                authority_version=authority_version,
+                segment=segment,
+                event_id=event_id,
+                facet=facet,
+                window_index=window_index,
+                start=start,
+                end=end,
+                text_sha256=text_sha256,
+                invariant_fields=invariant_fields,
+                evidence_candidates=window_candidates,
+            )
+            if stored is not None:
+                receipts.append(stored)
+                continue
+            prompt = (
+                "SHORT_PLAN_ADAPTATION_EVENT_FACET_WINDOW_REVIEW_V1\n"
+                "Review this complete overlapping evidence window for one indivisible event. "
+                "Do not rewrite. For each requested invariant return false if this window contains "
+                "a contradiction or unauthorized structural change; otherwise return true. The "
+                "Runtime will AND every fully covered window before accepting the facet.\n"
+                f"EXPECTED WINDOW AUTHORITY SHA256: {window_authority}\n"
+                f"EXPECTED FACET AUTHORITY SHA256: {facet_authority_sha256}\n"
+                f"FORMAL EVENT CONTRACT SHA256: {contract_sha256}\n"
+                f"EXPECTED PLANNING SHA256: {planning_sha256}\n"
+                f"EXPECTED AUTHORITY VERSION: {authority_version}\n"
+                f"CURRENT SEGMENT: {segment}\n"
+                f"EVENT ID: {event_id}\n"
+                f"FACET: {facet}\n"
+                f"WINDOW INDEX: {window_index}\n"
+                f"WINDOW RANGE: {start}:{end}\n"
+                f"WINDOW TEXT SHA256: {text_sha256}\n"
+                "EXPECTED INVARIANTS:\n"
+                + json.dumps(list(invariant_fields), ensure_ascii=False)
+                + "\n\nFORMAL EVENT CONTRACT:\n"
+                + json.dumps(event_contract, ensure_ascii=False, indent=2)
+                + "\n\nWINDOW EVIDENCE CANDIDATES:\n"
+                + json.dumps(window_candidates, ensure_ascii=False, indent=2)
+                + "\n\nEXACT PLAN WINDOW:\n" + text
+                + "\n\nRequired fields: authority_sha256, planning_sha256, authority_version, "
+                "segment, event_id, facet, window_index, start, end, text_sha256, "
+                "invariants, changed_dimensions, plan_evidence_ids, plan_evidence_quote, "
+                "reason. If any invariant is false, quote one exact current-window problem "
+                "phrase of at least six semantic characters and include it verbatim in reason."
+            )
+            raw = await self._stage(
+                run_id, run_path, project, "review", constraints, prompt,
+                suffix=(
+                    f"-plan-adaptation-facet-window-{segment:02d}-{event_id}-"
+                    f"{facet}-{window_index:03d}"
+                ),
+                allow_tools=False,
+                expected_output_characters=700,
+                completion_check=lambda value, expected=window_authority, current=window_index, current_start=start, current_end=end, current_text_sha=text_sha256: (
+                    self._planning_adaptation_facet_window_receipt_valid(
+                        parse_json_object(
+                            value, label="Planning adaptation facet window receipt",
+                        ),
+                        window_authority_sha256=expected,
+                        planning_sha256=planning_sha256,
+                        authority_version=authority_version,
+                        segment=segment,
+                        event_id=event_id,
+                        facet=facet,
+                        window_index=current,
+                        start=current_start,
+                        end=current_end,
+                        text_sha256=current_text_sha,
+                        invariant_fields=invariant_fields,
+                        evidence_candidates=window_candidates,
+                    )
+                ),
+                route_capacity_guard=True,
+                story_skeleton_override=index_skeleton,
+                bounded_protocol_output=True,
+            )
+            receipt = parse_json_object(
+                raw, label="Planning adaptation facet window receipt",
+            )
+            if not self._planning_adaptation_facet_window_receipt_valid(
+                receipt,
+                window_authority_sha256=window_authority,
+                planning_sha256=planning_sha256,
+                authority_version=authority_version,
+                segment=segment,
+                event_id=event_id,
+                facet=facet,
+                window_index=window_index,
+                start=start,
+                end=end,
+                text_sha256=text_sha256,
+                invariant_fields=invariant_fields,
+                evidence_candidates=window_candidates,
+            ):
+                raise ValueError("单事件审核窗口回执未绑定完整范围或原文哈希")
+            receipt = dict(receipt)
+            receipts.append(receipt)
+            self._save_planning_adaptation_facet_window_checkpoint(
+                run_path,
+                facet_authority_sha256=facet_authority_sha256,
+                window_authority_sha256=window_authority,
+                segment=segment,
+                event_id=event_id,
+                facet=facet,
+                window_index=window_index,
+                start=start,
+                end=end,
+                text_sha256=text_sha256,
+                invariant_fields=invariant_fields,
+                receipt=receipt,
+            )
+        invariants = {
+            field: all(receipt["invariants"].get(field) is True for receipt in receipts)
+            for field in invariant_fields
+        }
+        evidence_ids = list(dict.fromkeys(
+            str(value)
+            for receipt in receipts
+            for value in receipt.get("plan_evidence_ids", [])
+            if str(value) in evidence_candidates
+        ))
+        if not evidence_ids:
+            raise ValueError("单事件审核窗口没有返回任何绑定到父级候选的原文证据")
+        changed_dimensions = list(dict.fromkeys(
+            str(value).strip()
+            for receipt in receipts
+            for value in receipt.get("changed_dimensions", [])
+            if str(value).strip()
+        ))
+        reasons = list(dict.fromkeys(
+            str(receipt.get("reason") or "").strip()
+            for receipt in receipts
+            if str(receipt.get("reason") or "").strip()
+        ))
+        evidence_quotes = list(dict.fromkeys(
+            str(receipt.get("plan_evidence_quote") or "").strip()
+            for receipt in receipts
+            if any(
+                value is False
+                for value in (receipt.get("invariants") or {}).values()
+            )
+            and str(receipt.get("plan_evidence_quote") or "").strip()
+        ))
+        merged = {
+            "authority_sha256": facet_authority_sha256,
+            "planning_sha256": planning_sha256,
+            "authority_version": authority_version,
+            "segment": segment,
+            "event_id": event_id,
+            "facet": facet,
+            "invariants": invariants,
+            "changed_dimensions": changed_dimensions,
+            "plan_evidence_ids": evidence_ids,
+            "plan_evidence_quote": evidence_quotes[0] if evidence_quotes else "",
+            "reason": (
+                f"已审核 {len(receipts)} 个完整重叠窗口，范围 0:{len(plan_segment)}，"
+                "所有窗口均绑定原文哈希并完成无遗漏归并。"
+                + ("；" + "；".join(reasons) if reasons else "")
+            ),
+            "window_coverage": [{
+                "window_index": int(receipt["window_index"]),
+                "start": int(receipt["start"]),
+                "end": int(receipt["end"]),
+                "text_sha256": str(receipt["text_sha256"]),
+            } for receipt in receipts],
+        }
+        if not self._planning_adaptation_facet_receipt_valid(
+            merged,
+            facet_authority_sha256=facet_authority_sha256,
+            planning_sha256=planning_sha256,
+            authority_version=authority_version,
+            segment=segment,
+            event_id=event_id,
+            facet=facet,
+            invariant_fields=invariant_fields,
+            evidence_candidates=evidence_candidates,
+        ):
+            raise ValueError("单事件审核窗口归并后未形成完整维度回执")
+        self.db.add_run_event(
+            run_id, "success", "planning_adaptation_facet_windows_completed",
+            "单个事件审核维度已按完整重叠原文窗口核对并无损归并",
+            stage="review", metadata={
+                "segment": segment, "event_id": event_id, "facet": facet,
+                "window_count": len(receipts),
+                "covered_characters": len(plan_segment),
+            },
+        )
+        return json.dumps(merged, ensure_ascii=False)
+
+    async def _review_short_plan_adaptation_event_facets(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        *, planning_sha256: str, segment: int, event_contract: dict,
+        plan_segment: str, evidence_candidates: dict[str, str],
+        packet_authority_sha256: str, previous_handoff: str,
+        next_entry: str, authority_version: int,
+        authority_event_ids: list[str] | None,
+        story_skeleton_override: str,
+    ) -> tuple[dict, list[dict], int]:
+        event_id = str(event_contract.get("id") or "").strip().upper()
+        facet_receipts: list[dict] = []
+        retries = 0
+        for facet, invariant_fields in PLANNING_ADAPTATION_EVENT_FACETS.items():
+            facet_authority = planning_adaptation_event_facet_authority_sha256(
+                packet_authority_sha256=packet_authority_sha256,
+                segment=segment,
+                event_id=event_id,
+                facet=facet,
+                invariant_fields=invariant_fields,
+                version=authority_version,
+            )
+            stored = self._load_planning_adaptation_facet_checkpoint(
+                run_id, run_path, project,
+                packet_authority_sha256=packet_authority_sha256,
+                facet_authority_sha256=facet_authority,
+                planning_sha256=planning_sha256,
+                authority_version=authority_version,
+                segment=segment,
+                event_id=event_id,
+                facet=facet,
+                invariant_fields=invariant_fields,
+                evidence_candidates=evidence_candidates,
+            )
+            if stored is not None:
+                facet_receipts.append(stored)
+                continue
+            last_error = ""
+            for attempt in range(2):
+                prompt = (
+                    "SHORT_PLAN_ADAPTATION_EVENT_FACET_REVIEW_V1\n"
+                    "Review one indivisible formal event without changing its narrative ownership. "
+                    "Return one JSON object only. Judge only the requested invariant facet from the "
+                    "exact event-owned plan evidence. Unknown formal fields are unknown, not invented facts.\n"
+                    f"EXPECTED FACET AUTHORITY SHA256: {facet_authority}\n"
+                    f"EXPECTED PLANNING SHA256: {planning_sha256}\n"
+                    f"EXPECTED AUTHORITY VERSION: {authority_version}\n"
+                    f"CURRENT SEGMENT: {segment}\n"
+                    f"EVENT ID: {event_id}\n"
+                    f"FACET: {facet}\n"
+                    "EXPECTED INVARIANTS:\n"
+                    + json.dumps(list(invariant_fields), ensure_ascii=False)
+                    + "\n\nFORMAL EVENT CONTRACT:\n"
+                    + json.dumps(event_contract, ensure_ascii=False, indent=2)
+                    + "\n\nPREVIOUS ACCEPTED HANDOFF:\n" + previous_handoff
+                    + "\n\nNEXT SEGMENT ENTRY:\n" + next_entry
+                    + "\n\nALLOWED DEPENDENCY EVENT IDS:\n"
+                    + json.dumps(authority_event_ids or [event_id], ensure_ascii=False)
+                    + "\n\nCURRENT ACCEPTED EVENT PLAN EVIDENCE:\n" + plan_segment
+                    + "\n\nPLAN EVIDENCE CANDIDATES:\n"
+                    + json.dumps(evidence_candidates, ensure_ascii=False, indent=2)
+                    + "\n\nRequired fields: authority_sha256, planning_sha256, authority_version, "
+                    "segment, event_id, facet, invariants, changed_dimensions, "
+                    "plan_evidence_ids, plan_evidence_quote, reason. invariants must contain "
+                    "exactly the requested names. If any invariant is false, quote one exact "
+                    "current-plan problem phrase of at least six semantic characters and include "
+                    "it verbatim in reason."
+                )
+                if last_error:
+                    prompt += "\n\nPROTOCOL ERROR TO CORRECT:\n" + last_error[:800]
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=(
+                        f"-plan-adaptation-facet-{segment:02d}-{event_id}-{facet}-{attempt + 1}"
+                    ),
+                    allow_tools=False,
+                    expected_output_characters=900,
+                    completion_check=lambda value, expected=facet_authority, fields=invariant_fields, name=facet: (
+                        self._planning_adaptation_facet_receipt_valid(
+                            parse_json_object(value, label="Planning adaptation facet receipt"),
+                            facet_authority_sha256=expected,
+                            planning_sha256=planning_sha256,
+                            authority_version=authority_version,
+                            segment=segment,
+                            event_id=event_id,
+                            facet=name,
+                            invariant_fields=fields,
+                            evidence_candidates=evidence_candidates,
+                        )
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=story_skeleton_override,
+                    bounded_protocol_output=True,
+                    capacity_splitter=lambda _details: (
+                        self._review_short_plan_adaptation_facet_windows(
+                            run_id, run_path, project, constraints,
+                            planning_sha256=planning_sha256,
+                            segment=segment,
+                            event_contract=event_contract,
+                            plan_segment=plan_segment,
+                            evidence_candidates=evidence_candidates,
+                            facet_authority_sha256=facet_authority,
+                            event_id=event_id,
+                            facet=facet,
+                            invariant_fields=invariant_fields,
+                            authority_version=authority_version,
+                        )
+                    ),
+                )
+                try:
+                    receipt = parse_json_object(
+                        raw, label="Planning adaptation facet receipt",
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    last_error = str(exc)
+                else:
+                    if self._planning_adaptation_facet_receipt_valid(
+                        receipt,
+                        facet_authority_sha256=facet_authority,
+                        planning_sha256=planning_sha256,
+                        authority_version=authority_version,
+                        segment=segment,
+                        event_id=event_id,
+                        facet=facet,
+                        invariant_fields=invariant_fields,
+                        evidence_candidates=evidence_candidates,
+                    ):
+                        facet_receipts.append(dict(receipt))
+                        self._save_planning_adaptation_facet_checkpoint(
+                            run_path,
+                            packet_authority_sha256=packet_authority_sha256,
+                            facet_authority_sha256=facet_authority,
+                            segment=segment,
+                            event_id=event_id,
+                            facet=facet,
+                            invariant_fields=invariant_fields,
+                            receipt=dict(receipt),
+                        )
+                        break
+                    last_error = "facet receipt did not bind the requested invariant scope"
+                retries += 1
+            else:
+                raise ValueError(
+                    f"规划第 {segment} 段事件 {event_id} 的 {facet} 分层审核回执无效："
+                    f"{last_error or 'unknown protocol error'}"
+                )
+
+        invariants: dict[str, bool] = {}
+        changed_dimensions: list[str] = []
+        evidence_ids: list[str] = []
+        evidence_quotes: list[str] = []
+        reasons: list[str] = []
+        for receipt in facet_receipts:
+            invariants.update(receipt["invariants"])
+            for value in receipt.get("changed_dimensions", []):
+                text = str(value or "").strip()
+                if text and text not in changed_dimensions:
+                    changed_dimensions.append(text)
+            for value in receipt.get("plan_evidence_ids", []):
+                text = str(value or "").strip()
+                if text and text not in evidence_ids:
+                    evidence_ids.append(text)
+            quote = str(receipt.get("plan_evidence_quote") or "").strip()
+            if (
+                quote
+                and any(
+                    value is False
+                    for value in (receipt.get("invariants") or {}).values()
+                )
+                and quote not in evidence_quotes
+            ):
+                evidence_quotes.append(quote)
+            reason = str(receipt.get("reason") or "").strip()
+            if reason:
+                reasons.append(reason)
+        event_review = {
+            "event_id": event_id,
+            "classification": "equivalent" if changed_dimensions else "unchanged",
+            "changed_dimensions": changed_dimensions,
+            "invariants": invariants,
+            "plan_evidence_ids": evidence_ids,
+            "plan_evidence_quote": evidence_quotes[0] if evidence_quotes else "",
+            "reason": "；".join(reasons),
+        }
+        merged = normalize_planning_adaptation_receipt({
+            "authority_sha256": packet_authority_sha256,
+            "planning_sha256": planning_sha256,
+            "authority_version": authority_version,
+            "segment": segment,
+            "event_reviews": [event_review],
+            "segment_order_preserved": invariants.get("timeline_order") is True,
+            "formal_direction_preserved": all(
+                invariants.get(field) is True
+                for field in (
+                    "event_function", "primary_actor_agency",
+                    "causal_dependencies", "promise_ending",
+                )
+            ),
+            "summary": f"事件 {event_id} 已完成全部审核维度并无损合并。",
+        }, evidence_candidates=evidence_candidates)
+        issues = planning_adaptation_receipt_issues(
+            merged,
+            authority_sha256=packet_authority_sha256,
+            planning_sha256=planning_sha256,
+            segment=segment,
+            expected_event_ids=[event_id],
+            evidence_candidates=evidence_candidates,
+            authority_version=authority_version,
+            authority_event_ids=authority_event_ids,
+            plan_segment=plan_segment,
+        )
+        return dict(merged), issues, retries
+
+    async def _review_short_plan_adaptation_capacity_split(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        *, outline_sha256: str, planning_sha256: str, segment: int,
+        event_contracts: list[dict], plan_segment: str, suffix: str,
+        previous_handoff: str, next_entry: str,
+        generation_context_sha256: str,
+        authority_version: int, authority_event_ids: list[str] | None,
+        segment_authority_sha256: str, details: dict,
+    ) -> str:
+        """Review one segment in event-owned packets and merge losslessly.
+
+        The segment remains the authority.  Only the transport topology changes;
+        every packet is hash-bound to the complete segment authority and its
+        ordered event subset, then the merged receipt is validated against the
+        original full event list before it is returned to the caller.
+        """
+        packet_receipts: list[dict] = []
+        packet_meta: list[dict] = []
+        protocol_retries = 0
+        singleton_facet_recoveries = 0
+
+        async def review_group(group: list[dict]) -> None:
+            nonlocal protocol_retries, singleton_facet_recoveries
+            group_ids = [
+                str(item.get("id") or "").strip().upper() for item in group
+            ]
+            projected_plan, projected_candidates = planning_adaptation_event_projection(
+                plan_segment, segment, group_ids,
+            )
+            packet_story_skeleton = self._stage_story_skeleton(
+                project, constraints, run_path, owner_event_ids=group_ids,
+            )
+            packet_authority = planning_adaptation_segment_packet_authority_sha256(
+                segment_authority_sha256=segment_authority_sha256,
+                segment=segment,
+                event_ids=group_ids,
+                version=authority_version,
+            )
+            stored = self._load_planning_adaptation_packet_checkpoint(
+                run_id, run_path, project,
+                segment_authority_sha256=segment_authority_sha256,
+                packet_authority_sha256=packet_authority,
+                planning_sha256=planning_sha256,
+                authority_version=authority_version,
+                segment=segment,
+                event_ids=group_ids,
+                evidence_candidates=planning_adaptation_evidence_candidates(
+                    plan_segment, segment,
+                ),
+                authority_event_ids=authority_event_ids,
+            )
+            if stored is not None:
+                receipt, issues = stored
+                packet_receipts.append(receipt)
+                packet_meta.append({
+                    "authority_sha256": packet_authority,
+                    "event_ids": group_ids,
+                    "retries": 0,
+                    "reused": True,
+                })
+                return
+            try:
+                receipt, issues, retries = (
+                    await self._review_short_plan_adaptation_segment(
+                        run_id, run_path, project, constraints,
+                        outline_sha256=outline_sha256,
+                        planning_sha256=planning_sha256,
+                        segment=segment,
+                        event_contracts=group,
+                        plan_segment=plan_segment,
+                        suffix=(
+                            f"{suffix}-capacity-{packet_authority[:12]}"
+                        ),
+                        previous_handoff=previous_handoff,
+                        next_entry=next_entry,
+                        generation_context_sha256=generation_context_sha256,
+                        authority_version=authority_version,
+                        authority_event_ids=authority_event_ids,
+                        _capacity_split=False,
+                        _authority_override=packet_authority,
+                        _prompt_plan_segment=projected_plan,
+                        _prompt_evidence_candidates=projected_candidates,
+                        _story_skeleton_override=packet_story_skeleton,
+                    )
+                )
+            except Exception as exc:
+                capacity_failure = (
+                    isinstance(exc, ContextCapacityPreflightError)
+                    or classify_model_failure(str(exc)) == "input_context_overflow"
+                )
+                if not capacity_failure:
+                    raise
+                if (
+                    capacity_failure
+                ) and len(group) > 1:
+                    midpoint = max(1, len(group) // 2)
+                    await review_group(group[:midpoint])
+                    await review_group(group[midpoint:])
+                    return
+                if (
+                    capacity_failure
+                ) and len(group) == 1:
+                    receipt, issues, retries = (
+                        await self._review_short_plan_adaptation_event_facets(
+                            run_id, run_path, project, constraints,
+                            planning_sha256=planning_sha256,
+                            segment=segment,
+                            event_contract=group[0],
+                            plan_segment=projected_plan,
+                            evidence_candidates=projected_candidates,
+                            packet_authority_sha256=packet_authority,
+                            previous_handoff=previous_handoff,
+                            next_entry=next_entry,
+                            authority_version=authority_version,
+                            authority_event_ids=authority_event_ids,
+                            story_skeleton_override=packet_story_skeleton,
+                        )
+                    )
+                    singleton_facet_recoveries += 1
+                elif isinstance(exc, ContextCapacityPreflightError):
+                    raise ValueError(
+                        f"{exc}；规划第 {segment} 段单个事件不可再拆分，"
+                        "已保留完整事件权威"
+                    ) from exc
+                else:
+                    raise
+            protocol_retries += retries
+            protocol_issues = [
+                item for item in issues
+                if str(item.get("code") or "")
+                in PLANNING_ADAPTATION_PROTOCOL_CODES
+            ]
+            if not receipt or protocol_issues:
+                raise ValueError(
+                    f"规划第 {segment} 段分包审核回执无效："
+                    + json.dumps(protocol_issues, ensure_ascii=False)
+                )
+            packet_receipts.append(receipt)
+            self._save_planning_adaptation_packet_checkpoint(
+                run_path,
+                segment_authority_sha256=segment_authority_sha256,
+                packet_authority_sha256=packet_authority,
+                segment=segment,
+                event_ids=group_ids,
+                receipt=receipt,
+            )
+            packet_meta.append({
+                "authority_sha256": packet_authority,
+                "event_ids": group_ids,
+                "retries": retries,
+            })
+
+        await review_group(list(event_contracts))
+        expected_event_ids = [
+            str(item.get("id") or "").strip().upper()
+            for item in event_contracts
+        ]
+        by_event: dict[str, dict] = {}
+        for receipt in packet_receipts:
+            for review in receipt.get("event_reviews", []):
+                event_id = str(review.get("event_id") or "").strip().upper()
+                if event_id in by_event:
+                    raise ValueError(
+                        f"规划第 {segment} 段分包审核重复覆盖事件 {event_id}"
+                    )
+                by_event[event_id] = dict(review)
+        if list(by_event) != expected_event_ids:
+            raise ValueError(
+                f"规划第 {segment} 段分包审核未完整覆盖正式事件"
+            )
+        merged = {
+            "authority_sha256": segment_authority_sha256,
+            "planning_sha256": planning_sha256,
+            "authority_version": authority_version,
+            "segment": segment,
+            "event_reviews": [by_event[event_id] for event_id in expected_event_ids],
+            "segment_order_preserved": all(
+                receipt.get("segment_order_preserved") is True
+                for receipt in packet_receipts
+            ),
+            "formal_direction_preserved": all(
+                receipt.get("formal_direction_preserved") is True
+                for receipt in packet_receipts
+            ),
+            "summary": "；".join(
+                str(receipt.get("summary") or "").strip()
+                for receipt in packet_receipts
+                if str(receipt.get("summary") or "").strip()
+            ) or "容量分包审核已覆盖当前正式段全部事件",
+            "capacity_split": {
+                "pressure": details.get("pressure"),
+                "packets": packet_meta,
+                "protocol_retries": protocol_retries,
+                "singleton_facet_recoveries": singleton_facet_recoveries,
+            },
+            "segment_sha256": hashlib.sha256(
+                plan_segment.encode("utf-8"),
+            ).hexdigest(),
+            "boundary_sha256": hashlib.sha256(json.dumps({
+                "previous_handoff": previous_handoff,
+                "next_entry": next_entry,
+            }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8",
+            )).hexdigest(),
+        }
+        merged_issues = planning_adaptation_receipt_issues(
+            merged,
+            authority_sha256=segment_authority_sha256,
+            planning_sha256=planning_sha256,
+            segment=segment,
+            expected_event_ids=expected_event_ids,
+            evidence_candidates=planning_adaptation_evidence_candidates(
+                plan_segment, segment,
+            ),
+            authority_version=authority_version,
+            authority_event_ids=authority_event_ids,
+            plan_segment=plan_segment,
+        )
+        if any(
+            str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
+            for item in merged_issues
+        ):
+            raise ValueError(
+                "规划分包合并后的完整回执未通过协议校验："
+                + json.dumps(merged_issues, ensure_ascii=False)
+            )
+        self.db.add_run_event(
+            run_id, "success", "planning_adaptation_capacity_split_completed",
+            f"规划第 {segment} 段已按事件所有权完成容量分包并无损合并",
+            stage="review", metadata={
+                "segment": segment,
+                "packet_count": len(packet_meta),
+                "packets": packet_meta,
+                "pressure": details.get("pressure"),
+                "estimated_input_tokens": details.get("estimated_input_tokens"),
+                "output_reserve": details.get("output_reserve"),
+                "singleton_facet_recoveries": singleton_facet_recoveries,
+            },
+        )
+        return json.dumps(merged, ensure_ascii=False)
+
+    def _planning_adaptation_whole_units(
+        self, *, plan: str, formal_contracts: list[dict],
+        segment_receipts: list[dict], segment_count: int,
+    ) -> list[dict]:
+        """Build ordered segment units with lossless local review authority."""
+        segments = self._short_plan_segments(plan, segment_count)
+        if len(segments) != segment_count or len(segment_receipts) != segment_count:
+            return []
+        contract_by_id = {
+            str(item.get("id") or "").strip().upper(): item
+            for item in formal_contracts if isinstance(item, dict)
+        }
+        result: list[dict] = []
+        for number, (block, receipt) in enumerate(
+            zip(segments, segment_receipts, strict=True), 1,
+        ):
+            event_ids = self._short_plan_event_ids(block)
+            contracts = [contract_by_id.get(event_id) for event_id in event_ids]
+            if not event_ids or any(item is None for item in contracts):
+                return []
+            reviews = receipt.get("event_reviews", []) \
+                if isinstance(receipt, dict) else []
+            result.append({
+                "segment": number,
+                "segment_sha256": hashlib.sha256(
+                    block.encode("utf-8"),
+                ).hexdigest(),
+                "event_ids": event_ids,
+                "formal_contracts": [dict(item) for item in contracts if item],
+                "opening": self._short_plan_field(block, "opening"),
+                "handoff": self._short_plan_handoff(block),
+                "local_receipt_sha256": hashlib.sha256(json.dumps(
+                    receipt, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")).hexdigest(),
+                "event_reviews": [{
+                    "event_id": str(review.get("event_id") or ""),
+                    "classification": str(review.get("classification") or ""),
+                    "invariants": dict(review.get("invariants") or {}),
+                    "changed_dimensions": list(
+                        review.get("changed_dimensions") or []
+                    ),
+                    "plan_evidence_ids": list(
+                        review.get("plan_evidence_ids") or []
+                    ),
+                    "plan_evidence": list(review.get("plan_evidence") or []),
+                    "plan_evidence_quote": str(
+                        review.get("plan_evidence_quote") or ""
+                    ),
+                    "reason": str(review.get("reason") or ""),
+                } for review in reviews if isinstance(review, dict)],
+            })
+        return result
+
+    def _planning_adaptation_whole_context(
+        self, *, plan: str, formal_contracts: list[dict],
+        segment_receipts: list[dict], segment_count: int,
+        token_limit: int,
+    ) -> tuple[str, str, int]:
+        """Build a lossless direct context or require hierarchical review."""
+        full = (
+            "FORMAL EVENT CONTRACTS:\n"
+            + json.dumps(formal_contracts, ensure_ascii=False, indent=2)
+            + "\n\nVALIDATED SEGMENT ADAPTATION RECEIPTS:\n"
+            + json.dumps(segment_receipts, ensure_ascii=False, indent=2)
+            + "\n\nCOMPLETE ACCEPTED PLAN:\n" + plan
+        )
+        full_tokens = estimate_input_tokens(full)
+        if full_tokens <= token_limit:
+            return full, "full", full_tokens
+
+        structural_segments = self._planning_adaptation_whole_units(
+            plan=plan,
+            formal_contracts=formal_contracts,
+            segment_receipts=segment_receipts,
+            segment_count=segment_count,
+        )
+        if not structural_segments:
+            # The caller's structural gate owns malformed coverage. Do not
+            # fabricate a compact substitute for an incomplete authority.
+            return full, "full_uncompactable", full_tokens
+        compact = (
+            "HASH-BOUND COMPLETE STRUCTURAL PLAN MAP:\n"
+            + json.dumps(structural_segments, ensure_ascii=False, indent=2)
+        )
+        compact_tokens = estimate_input_tokens(compact)
+        if compact_tokens <= token_limit:
+            return compact, "structural_map", compact_tokens
+
+        # Hash-only representations are useful for coverage accounting but are
+        # not sufficient narrative evidence for a whole-story verdict. Signal
+        # the caller to perform bounded, overlapping regional reviews that each
+        # retain the complete contracts and exact plan evidence in their scope.
+        coverage_segments = [{
+            "segment": item["segment"],
+            "segment_sha256": item["segment_sha256"],
+            "event_ids": item["event_ids"],
+            "opening_sha256": hashlib.sha256(
+                item["opening"].encode("utf-8"),
+            ).hexdigest(),
+            "handoff_sha256": hashlib.sha256(
+                item["handoff"].encode("utf-8"),
+            ).hexdigest(),
+            "local_receipt_sha256": item["local_receipt_sha256"],
+        } for item in structural_segments]
+        manifest = (
+            "HASH-BOUND COMPLETE COVERAGE MANIFEST:\n"
+            + json.dumps(coverage_segments, ensure_ascii=False, indent=2)
+        )
+        return manifest, "hierarchical_required", estimate_input_tokens(manifest)
+
+    @staticmethod
+    def _planning_hierarchy_coverage(values: list[dict]) -> tuple[list[int], list[str]]:
+        segments: list[int] = []
+        event_ids: list[str] = []
+        for item in values:
+            for value in item.get("segment_numbers", [item.get("segment")]):
+                if isinstance(value, int) and value not in segments:
+                    segments.append(value)
+            for value in item.get("event_ids", []):
+                event_id = str(value or "").strip().upper()
+                if event_id and event_id not in event_ids:
+                    event_ids.append(event_id)
+        return segments, event_ids
+
+    @staticmethod
+    def _planning_adaptation_segment_receipt_complete(
+        value: str, *, authority_sha256: str, planning_sha256: str,
+        authority_version: int, segment: int, expected_event_ids: list[str],
+        evidence_candidates: dict[str, str], authority_event_ids: list[str] | None,
+        plan_segment: str, previous_handoff: str, next_entry: str,
+    ) -> bool:
+        """Prove a segment receipt is closed even when the route reports a limit.
+
+        Semantic ``false`` verdicts are complete receipts.  Only parser, binding,
+        coverage, or protocol defects make the artifact incomplete.
+        """
+        try:
+            payload = parse_json_object(
+                value, label=f"Planning adaptation receipt segment {segment}",
+            )
+            receipt = normalize_planning_adaptation_receipt(
+                payload, evidence_candidates=evidence_candidates,
+            )
+            if not isinstance(receipt, dict):
+                return False
+            receipt["authority_version"] = authority_version
+            receipt["segment_sha256"] = hashlib.sha256(
+                plan_segment.encode("utf-8"),
+            ).hexdigest()
+            receipt["boundary_sha256"] = hashlib.sha256(json.dumps({
+                "previous_handoff": previous_handoff,
+                "next_entry": next_entry,
+            }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8",
+            )).hexdigest()
+            issues = planning_adaptation_receipt_issues(
+                receipt,
+                authority_sha256=authority_sha256,
+                planning_sha256=planning_sha256,
+                segment=segment,
+                expected_event_ids=expected_event_ids,
+                evidence_candidates=evidence_candidates,
+                authority_version=authority_version,
+                authority_event_ids=authority_event_ids,
+                plan_segment=plan_segment,
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return False
+        return not any(
+            str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
+            for item in issues
+        )
+
+    @classmethod
+    def _planning_hierarchy_receipt_complete(
+        cls, value: str, *, source_sha256: str,
+        expected_segments: list[int], expected_event_ids: list[str],
+        inherited: list[dict] | None = None,
+    ) -> bool:
+        try:
+            payload = parse_json_object(
+                value, label="Planning adaptation hierarchy receipt",
+            )
+            cls._normalize_planning_hierarchy_receipt(
+                payload,
+                source_sha256=source_sha256,
+                expected_segments=expected_segments,
+                expected_event_ids=expected_event_ids,
+                inherited=inherited,
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return False
+        return True
+
+    @staticmethod
+    def _planning_adaptation_whole_receipt_complete(
+        value: str, *, authority_sha256: str, planning_sha256: str,
+        authority_version: int, segment_count: int,
+        expected_event_ids: list[str],
+    ) -> bool:
+        try:
+            payload = parse_json_object(
+                value, label="Whole planning adaptation receipt",
+            )
+            receipt = normalize_planning_adaptation_whole_receipt(payload)
+            if not isinstance(receipt, dict):
+                return False
+            receipt["authority_version"] = authority_version
+            issues = planning_adaptation_whole_receipt_issues(
+                receipt,
+                authority_sha256=authority_sha256,
+                planning_sha256=planning_sha256,
+                segment_count=segment_count,
+                expected_event_ids=expected_event_ids,
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return False
+        return not any(
+            str(item.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES
+            for item in issues
+        )
+
+    @staticmethod
+    def _planning_hierarchy_event_coverage_valid(
+        owned_groups: list[list[str]], expected_event_ids: list[str],
+    ) -> bool:
+        """Accept complete formal order with adjacent shared-event continuation.
+
+        A formal event may legitimately start in one segment and continue in
+        the next.  Flattening those segment declarations therefore produces
+        adjacent duplicate IDs.  Collapse only consecutive duplicates and
+        require the resulting order to equal the formal event order exactly;
+        this still rejects omissions, unknown IDs, order reversal, and a later
+        re-entry after another event has already begun.
+        """
+        expected = [str(value or "").strip().upper() for value in expected_event_ids]
+        if not expected or any(not value for value in expected):
+            return False
+        flattened: list[str] = []
+        for group in owned_groups:
+            normalized = [str(value or "").strip().upper() for value in group]
+            if not normalized or any(not value for value in normalized):
+                return False
+            if len(normalized) != len(set(normalized)):
+                return False
+            flattened.extend(normalized)
+        collapsed: list[str] = []
+        for event_id in flattened:
+            if not collapsed or event_id != collapsed[-1]:
+                collapsed.append(event_id)
+        return collapsed == expected
+
+    @staticmethod
+    def _planning_hierarchy_unit_key(item: dict) -> tuple:
+        return (
+            int(item.get("segment") or 0),
+            tuple(str(value or "").strip().upper() for value in item.get("event_ids", [])),
+            str(item.get("segment_sha256") or ""),
+            str(item.get("local_receipt_sha256") or ""),
+        )
+
+    @staticmethod
+    def _normalize_planning_hierarchy_receipt(
+        value: object, *, source_sha256: str,
+        expected_segments: list[int], expected_event_ids: list[str],
+        inherited: list[dict] | None = None,
+    ) -> dict:
+        receipt = normalize_planning_adaptation_whole_receipt(value)
+        if not isinstance(receipt, dict):
+            raise ValueError("规划分层审核回执必须是一个 JSON 对象")
+        if receipt.get("source_sha256") != source_sha256:
+            raise ValueError("规划分层审核回执没有绑定当前完整输入包")
+        if receipt.get("segment_numbers") != expected_segments:
+            raise ValueError("规划分层审核回执没有覆盖当前全部分段")
+        if receipt.get("event_ids") != expected_event_ids:
+            raise ValueError("规划分层审核回执没有按顺序覆盖当前全部事件")
+        for field in WHOLE_STORY_FIELDS:
+            if not isinstance(receipt.get(field), bool):
+                raise ValueError("规划分层审核回执缺少完整的整篇不变量")
+        affected_segments = receipt.get("affected_segments")
+        affected_event_ids = receipt.get("affected_event_ids")
+        if not isinstance(affected_segments, list) or any(
+            not isinstance(item, int) or item not in expected_segments
+            for item in affected_segments
+        ):
+            raise ValueError("规划分层审核回执的受影响分段无效")
+        if not isinstance(affected_event_ids, list) or any(
+            str(item).upper() not in expected_event_ids
+            for item in affected_event_ids
+        ):
+            raise ValueError("规划分层审核回执的受影响事件无效")
+        invalid = [
+            field for field in WHOLE_STORY_FIELDS if receipt.get(field) is False
+        ]
+        if invalid and (not affected_segments or not affected_event_ids):
+            raise ValueError("规划分层审核发现问题但没有给出最小受影响范围")
+        if not invalid and (affected_segments or affected_event_ids):
+            raise ValueError("规划分层审核无问题时不得返回受影响范围")
+        for field in (
+            "entry_state", "exit_state", "knowledge_state",
+            "relationship_state", "viewpoint_timeline", "summary",
+        ):
+            text = str(receipt.get(field) or "").strip()
+            if not text:
+                raise ValueError(f"规划分层审核回执缺少 {field}")
+            receipt[field] = text[:800]
+        for field in ("open_promises", "resolved_promises"):
+            values = receipt.get(field)
+            if not isinstance(values, list):
+                raise ValueError(f"规划分层审核回执缺少 {field}")
+            receipt[field] = [str(item or "").strip()[:300] for item in values]
+        receipt["reason"] = str(receipt.get("reason") or "").strip()[:1200]
+
+        # A higher-level reducer may discover additional cross-region issues,
+        # but it may never erase a hard failure already established below.
+        inherited = inherited or []
+        inherited_invalid = {
+            field for item in inherited for field in WHOLE_STORY_FIELDS
+            if item.get(field) is False
+        }
+        if inherited_invalid:
+            for field in inherited_invalid:
+                receipt[field] = False
+            receipt["affected_segments"] = sorted({
+                *affected_segments,
+                *(segment for item in inherited
+                  for segment in item.get("affected_segments", [])
+                  if isinstance(segment, int)),
+            })
+            inherited_event_ids = {
+                str(event_id).upper() for item in inherited
+                for event_id in item.get("affected_event_ids", [])
+                if str(event_id).strip()
+            }
+            receipt["affected_event_ids"] = [
+                event_id for event_id in expected_event_ids
+                if event_id in inherited_event_ids
+                or event_id in {
+                    str(value).upper()
+                    for value in affected_event_ids
+                    if str(value).strip()
+                }
+            ]
+            if not receipt["reason"]:
+                receipt["reason"] = "下层完整审核已经确认存在跨段结构问题。"
+        return receipt
+
+    @staticmethod
+    def _planning_hierarchy_checkpoint_path(
+        run_path: Path, *, kind: str, source_sha256: str,
+    ) -> Path:
+        safe_kind = re.sub(r"[^a-z0-9-]+", "-", kind.lower()).strip("-")
+        kind_code = (
+            "r" if safe_kind == "regional" else
+            "l" + safe_kind.rsplit("-", 1)[-1]
+        )
+        return (
+            run_path / "outputs" / "pah"
+            / f"{kind_code}-{source_sha256[:24]}.json"
+        )
+
+    @classmethod
+    def _save_planning_hierarchy_checkpoint(
+        cls, run_path: Path, *, kind: str, source_sha256: str,
+        expected_segments: list[int], expected_event_ids: list[str], receipt: dict,
+    ) -> None:
+        normalized_json = json.dumps(
+            receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        )
+        payload = {
+            "version": 1,
+            "kind": kind,
+            "source_sha256": source_sha256,
+            "expected_segments": expected_segments,
+            "expected_event_ids": expected_event_ids,
+            "receipt_sha256": hashlib.sha256(
+                normalized_json.encode("utf-8"),
+            ).hexdigest(),
+            "receipt": receipt,
+        }
+        atomic_write(
+            cls._planning_hierarchy_checkpoint_path(
+                run_path, kind=kind, source_sha256=source_sha256,
+            ),
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True),
+        )
+
+    def _load_planning_hierarchy_checkpoint(
+        self, run_id: str, run_path: Path, project: Project, *, kind: str,
+        source_sha256: str, expected_segments: list[int],
+        expected_event_ids: list[str], inherited: list[dict] | None = None,
+    ) -> dict | None:
+        """Reuse only a unique, hash-bound completed hierarchy packet.
+
+        New checkpoints use an explicit envelope.  Legacy stage outputs are
+        also inspected so a task interrupted before this format existed can
+        still resume without replaying already paid, fully validated packets.
+        Conflicting valid receipts are treated as ambiguous and regenerated.
+        """
+        runs_root = project.path / "runs"
+        json_paths = list(runs_root.glob(
+            "*/outputs/pah/*.json",
+        ))
+        markdown_paths = list(runs_root.glob(
+            "*/outputs/review-plan-adaptation-hierarchy-*.md",
+        ))
+        candidates: dict[str, tuple[dict, Path]] = {}
+
+        for path in [*json_paths, *markdown_paths]:
+            try:
+                raw = path.read_text(encoding="utf-8")
+                if path.suffix.lower() == ".json":
+                    envelope = json.loads(raw)
+                    if (
+                        not isinstance(envelope, dict)
+                        or envelope.get("version") != 1
+                        or envelope.get("kind") != kind
+                        or envelope.get("source_sha256") != source_sha256
+                        or envelope.get("expected_segments") != expected_segments
+                        or envelope.get("expected_event_ids") != expected_event_ids
+                    ):
+                        continue
+                    payload = envelope.get("receipt")
+                    normalized_json = json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    if envelope.get("receipt_sha256") != hashlib.sha256(
+                        normalized_json.encode("utf-8"),
+                    ).hexdigest():
+                        continue
+                else:
+                    payload = parse_json_object(
+                        raw, label="Stored planning hierarchy receipt",
+                    )
+                receipt = self._normalize_planning_hierarchy_receipt(
+                    payload,
+                    source_sha256=source_sha256,
+                    expected_segments=expected_segments,
+                    expected_event_ids=expected_event_ids,
+                    inherited=inherited,
+                )
+            except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
+                continue
+            canonical = json.dumps(
+                receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+            )
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            candidates.setdefault(digest, (receipt, path))
+
+        if len(candidates) > 1:
+            self.db.add_run_event(
+                run_id, "warning", "planning_adaptation_hierarchy_checkpoint_ambiguous",
+                "发现同一规划审核输入的多份冲突回执，已放弃复用并重新审核",
+                stage="review", metadata={
+                    "kind": kind,
+                    "source_sha256": source_sha256,
+                    "candidate_count": len(candidates),
+                },
+            )
+            return None
+        if not candidates:
+            return None
+        receipt, source_path = next(iter(candidates.values()))
+        self._save_planning_hierarchy_checkpoint(
+            run_path,
+            kind=kind,
+            source_sha256=source_sha256,
+            expected_segments=expected_segments,
+            expected_event_ids=expected_event_ids,
+            receipt=receipt,
+        )
+        try:
+            source_run = source_path.relative_to(runs_root).parts[0]
+        except (ValueError, IndexError):
+            source_run = "unknown"
+        self.db.add_run_event(
+            run_id, "info", "planning_adaptation_hierarchy_checkpoint_reused",
+            "已复用哈希一致的规划分层审核包，仅继续未完成范围",
+            stage="review", metadata={
+                "kind": kind,
+                "source_sha256": source_sha256,
+                "segments": expected_segments,
+                "event_ids": expected_event_ids,
+                "source_run": source_run,
+            },
+        )
+        return receipt
+
+    async def _planning_adaptation_hierarchical_context(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        *, plan: str, formal_contracts: list[dict],
+        segment_receipts: list[dict], segment_count: int,
+        token_limit: int, suffix: str,
+    ) -> tuple[str, dict, int]:
+        """Review lossless overlapping scopes, then reduce their bound receipts."""
+        index_skeleton = self._stage_story_skeleton(
+            project, constraints, run_path, index_only=True,
+        )
+        segment_units = self._planning_adaptation_whole_units(
+            plan=plan,
+            formal_contracts=formal_contracts,
+            segment_receipts=segment_receipts,
+            segment_count=segment_count,
+        )
+        if not segment_units:
+            raise ValueError("整篇规划无法建立完整的分层审核输入")
+
+        packet_limit = max(1_200, int(token_limit * 0.68))
+        units: list[dict] = []
+        for segment_unit in segment_units:
+            if estimate_input_tokens(json.dumps(
+                segment_unit, ensure_ascii=False, separators=(",", ":"),
+            )) <= packet_limit:
+                units.append(segment_unit)
+                continue
+            reviews_by_id = {
+                str(item.get("event_id") or "").strip().upper(): item
+                for item in segment_unit["event_reviews"]
+            }
+            contracts_by_id = {
+                str(item.get("id") or "").strip().upper(): item
+                for item in segment_unit["formal_contracts"]
+            }
+            for position, event_id in enumerate(segment_unit["event_ids"]):
+                event_unit = {
+                    "segment": segment_unit["segment"],
+                    "segment_sha256": segment_unit["segment_sha256"],
+                    "event_ids": [event_id],
+                    "formal_contracts": [contracts_by_id[event_id]],
+                    "opening": segment_unit["opening"] if position == 0 else "",
+                    "handoff": (
+                        segment_unit["handoff"]
+                        if position == len(segment_unit["event_ids"]) - 1 else ""
+                    ),
+                    "local_receipt_sha256": segment_unit[
+                        "local_receipt_sha256"
+                    ],
+                    "event_reviews": [reviews_by_id[event_id]],
+                }
+                if estimate_input_tokens(json.dumps(
+                    event_unit, ensure_ascii=False, separators=(",", ":"),
+                )) > packet_limit:
+                    raise ValueError(
+                        f"正式规划第 {segment_unit['segment']} 段的单个事件超过"
+                        "当前审核模型可安全承载的上下文范围"
+                    )
+                units.append(event_unit)
+
+        expected_event_ids = [
+            str(item.get("id") or "").strip().upper()
+            for item in formal_contracts
+        ]
+        owned_event_groups = [list(unit.get("event_ids") or []) for unit in units]
+        covered_segments = sorted({
+            int(unit.get("segment")) for unit in units
+            if isinstance(unit.get("segment"), int)
+        })
+        if not self._planning_hierarchy_event_coverage_valid(
+            owned_event_groups, expected_event_ids,
+        ):
+            raise ValueError(
+                "规划分层审核的基础单元存在正式事件遗漏、非相邻重复归属或顺序变化"
+            )
+        if covered_segments != list(range(1, segment_count + 1)):
+            raise ValueError("规划分层审核的基础单元没有覆盖全部正式分段")
+        for unit in units:
+            unit_event_ids = list(unit.get("event_ids") or [])
+            contract_ids = [
+                str(item.get("id") or "").strip().upper()
+                for item in unit.get("formal_contracts", [])
+                if isinstance(item, dict)
+            ]
+            review_ids = [
+                str(item.get("event_id") or "").strip().upper()
+                for item in unit.get("event_reviews", [])
+                if isinstance(item, dict)
+            ]
+            if contract_ids != unit_event_ids or review_ids != unit_event_ids:
+                raise ValueError(
+                    "规划分层审核单元没有同时保留完整正式合同和局部审核回执"
+                )
+            if any(
+                not isinstance(item.get("plan_evidence"), list)
+                or not item.get("plan_evidence")
+                for item in unit.get("event_reviews", [])
+                if isinstance(item, dict)
+            ):
+                raise ValueError("规划分层审核单元缺少精确规划原文证据")
+
+        batches = review_evidence_batches(
+            units, token_limit=packet_limit, overlap=1,
+        )
+        expected_unit_keys = {
+            self._planning_hierarchy_unit_key(unit) for unit in units
+        }
+        batch_unit_keys = {
+            self._planning_hierarchy_unit_key(unit)
+            for batch in batches
+            for unit in batch
+        }
+        if batch_unit_keys != expected_unit_keys:
+            raise ValueError("规划分层审核区域包没有完整覆盖全部正式分段与事件单元")
+        regional: list[dict] = []
+        protocol_retries = 0
+        for batch_number, batch in enumerate(batches, 1):
+            expected_segments, expected_event_ids = (
+                self._planning_hierarchy_coverage(batch)
+            )
+            source = json.dumps(
+                batch, ensure_ascii=False, separators=(",", ":"),
+            )
+            source_sha256 = hashlib.sha256(source.encode("utf-8")).hexdigest()
+            stored_receipt = self._load_planning_hierarchy_checkpoint(
+                run_id, run_path, project,
+                kind="regional",
+                source_sha256=source_sha256,
+                expected_segments=expected_segments,
+                expected_event_ids=expected_event_ids,
+            )
+            if stored_receipt is not None:
+                regional.append(stored_receipt)
+                continue
+            last_error = ""
+            for attempt in range(2):
+                prompt = (
+                    "SHORT_PLAN_ADAPTATION_REGIONAL_REVIEW_V3\n"
+                    "审核一个完整、连续且与相邻包重叠的规划范围。不得改写。输入包保留了"
+                    "当前范围的正式事件合同、精确规划证据、段首入口、段末交接和局部审核"
+                    "回执。返回一个 JSON 对象，字段为 source_sha256、segment_numbers、"
+                    "event_ids、causal_order_preserved、adjacent_handoffs_preserved、"
+                    "knowledge_progression_preserved、relationship_progression_preserved、"
+                    "viewpoint_timeline_preserved、promises_ending_preserved、"
+                    "formal_direction_preserved、affected_segments、affected_event_ids、"
+                    "entry_state、exit_state、knowledge_state、relationship_state、"
+                    "viewpoint_timeline、open_promises、resolved_promises、reason、summary。"
+                    "所有状态摘要必须忠实反映输入范围，不得补造未知事实；若有问题必须给出"
+                    "最小受影响分段和事件。\n"
+                    f"SOURCE SHA256: {source_sha256}\n"
+                    f"EXPECTED SEGMENTS: {json.dumps(expected_segments)}\n"
+                    f"EXPECTED EVENT IDS: {json.dumps(expected_event_ids)}\n\n"
+                    f"ORDERED LOSSLESS REVIEW UNITS:\n{source}"
+                )
+                if last_error:
+                    prompt += (
+                        "\n\n上一份回执仅存在协议错误，输入规划保持不变："
+                        + last_error[:600]
+                    )
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=(
+                        f"-plan-adaptation-hierarchy-{suffix}-regional-"
+                        f"{batch_number:02d}-{attempt + 1}"
+                    ),
+                    allow_tools=False,
+                    expected_output_characters=max(
+                        1400, 180 * len(expected_event_ids),
+                    ),
+                    completion_check=lambda value: (
+                        self._planning_hierarchy_receipt_complete(
+                            value,
+                            source_sha256=source_sha256,
+                            expected_segments=expected_segments,
+                            expected_event_ids=expected_event_ids,
+                        )
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=index_skeleton,
+                    bounded_protocol_output=True,
+                )
+                try:
+                    payload = parse_json_object(
+                        raw, label="Planning adaptation regional receipt",
+                    )
+                    receipt = self._normalize_planning_hierarchy_receipt(
+                        payload,
+                        source_sha256=source_sha256,
+                        expected_segments=expected_segments,
+                        expected_event_ids=expected_event_ids,
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    last_error = str(exc)
+                    if attempt == 0:
+                        protocol_retries += 1
+                        continue
+                    raise ValueError(
+                        "规划分层区域审核回执在重试后仍不完整："
+                        + last_error[:500]
+                    ) from exc
+                self._save_planning_hierarchy_checkpoint(
+                    run_path,
+                    kind="regional",
+                    source_sha256=source_sha256,
+                    expected_segments=expected_segments,
+                    expected_event_ids=expected_event_ids,
+                    receipt=receipt,
+                )
+                regional.append(receipt)
+                break
+
+        levels: list[dict] = []
+        current = regional
+        for level in range(1, 6):
+            evidence = json.dumps(
+                current, ensure_ascii=False, separators=(",", ":"),
+            )
+            coverage = [{
+                "segment": item["segment"],
+                "segment_sha256": item["segment_sha256"],
+                "event_ids": item["event_ids"],
+                "opening_sha256": hashlib.sha256(
+                    item["opening"].encode("utf-8"),
+                ).hexdigest(),
+                "handoff_sha256": hashlib.sha256(
+                    item["handoff"].encode("utf-8"),
+                ).hexdigest(),
+                "local_receipt_sha256": item["local_receipt_sha256"],
+            } for item in segment_units]
+            final_context = (
+                "HASH-BOUND HIERARCHICAL WHOLE-PLAN EVIDENCE:\n" + evidence
+                + "\n\nCOMPLETE COVERAGE MANIFEST:\n"
+                + json.dumps(coverage, ensure_ascii=False, separators=(",", ":"))
+                + "\n\nFORMAL OPENING STATE:\n" + segment_units[0]["opening"]
+                + "\n\nFORMAL FINAL HANDOFF:\n" + segment_units[-1]["handoff"]
+            )
+            if estimate_input_tokens(final_context) <= token_limit:
+                inherited_invalid = sorted({
+                    field for item in current for field in WHOLE_STORY_FIELDS
+                    if item.get(field) is False
+                })
+                inherited_segments = sorted({
+                    segment for item in current
+                    for segment in item.get("affected_segments", [])
+                    if isinstance(segment, int)
+                })
+                inherited_event_ids = {
+                    str(event_id).upper() for item in current
+                    for event_id in item.get("affected_event_ids", [])
+                    if str(event_id).strip()
+                }
+                return final_context, {
+                    "regional_packets": len(regional),
+                    "levels": levels,
+                    "covered_segments": list(range(1, segment_count + 1)),
+                    "covered_event_ids": [
+                        str(item.get("id") or "").strip().upper()
+                        for item in formal_contracts
+                    ],
+                    "inherited_invalid_dimensions": inherited_invalid,
+                    "inherited_affected_segments": inherited_segments,
+                    "inherited_affected_event_ids": [
+                        str(item.get("id") or "").strip().upper()
+                        for item in formal_contracts
+                        if str(item.get("id") or "").strip().upper()
+                        in inherited_event_ids
+                    ],
+                }, protocol_retries
+            reduction_batches = review_evidence_batches(
+                current, token_limit=packet_limit, overlap=1,
+            )
+            if len(reduction_batches) >= len(current) and all(
+                len(batch) == 1 for batch in reduction_batches
+            ):
+                raise ValueError("规划分层审核证据无法在安全上下文内继续归并")
+            reduced: list[dict] = []
+            for batch_number, batch in enumerate(reduction_batches, 1):
+                expected_segments, expected_event_ids = (
+                    self._planning_hierarchy_coverage(batch)
+                )
+                source = json.dumps(
+                    batch, ensure_ascii=False, separators=(",", ":"),
+                )
+                source_sha256 = hashlib.sha256(
+                    source.encode("utf-8"),
+                ).hexdigest()
+                checkpoint_kind = f"reduction-level-{level}"
+                stored_receipt = self._load_planning_hierarchy_checkpoint(
+                    run_id, run_path, project,
+                    kind=checkpoint_kind,
+                    source_sha256=source_sha256,
+                    expected_segments=expected_segments,
+                    expected_event_ids=expected_event_ids,
+                    inherited=batch,
+                )
+                if stored_receipt is not None:
+                    reduced.append(stored_receipt)
+                    continue
+                prompt = (
+                    "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3\n"
+                    "合并相邻且有重叠的规划审核回执，不得改写规划、不得消除下层已确认的"
+                    "结构问题。返回与区域审核相同字段的一个 JSON 对象，并准确回显"
+                    "source_sha256、segment_numbers 和 event_ids。状态摘要必须覆盖整个输入包；"
+                    "下层任一不变量为 false 时对应字段必须保持 false。\n"
+                    f"SOURCE SHA256: {source_sha256}\n"
+                    f"EXPECTED SEGMENTS: {json.dumps(expected_segments)}\n"
+                    f"EXPECTED EVENT IDS: {json.dumps(expected_event_ids)}\n\n"
+                    f"ORDERED HASH-BOUND RECEIPTS:\n{source}"
+                )
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=(
+                        f"-plan-adaptation-hierarchy-{suffix}-level-{level}-"
+                        f"{batch_number:02d}"
+                    ),
+                    allow_tools=False,
+                    expected_output_characters=max(
+                        1400, 160 * len(expected_event_ids),
+                    ),
+                    completion_check=lambda value: (
+                        self._planning_hierarchy_receipt_complete(
+                            value,
+                            source_sha256=source_sha256,
+                            expected_segments=expected_segments,
+                            expected_event_ids=expected_event_ids,
+                            inherited=batch,
+                        )
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=index_skeleton,
+                    bounded_protocol_output=True,
+                )
+                payload = parse_json_object(
+                    raw, label="Planning adaptation hierarchy receipt",
+                )
+                receipt = self._normalize_planning_hierarchy_receipt(
+                    payload,
+                    source_sha256=source_sha256,
+                    expected_segments=expected_segments,
+                    expected_event_ids=expected_event_ids,
+                    inherited=batch,
+                )
+                self._save_planning_hierarchy_checkpoint(
+                    run_path,
+                    kind=checkpoint_kind,
+                    source_sha256=source_sha256,
+                    expected_segments=expected_segments,
+                    expected_event_ids=expected_event_ids,
+                    receipt=receipt,
+                )
+                reduced.append(receipt)
+            levels.append({
+                "level": level,
+                "input_receipts": len(current),
+                "output_receipts": len(reduced),
+            })
+            current = reduced
+        raise ValueError("规划分层审核超过安全归并深度")
 
     async def _review_short_plan_adaptation_whole(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
@@ -4222,6 +6766,54 @@ class WorkflowService:
             return receipt, issues, 0
         last_issues: list[dict] = []
         protocol_retries = 0
+        context_window = self._route_safe_context_window(
+            "review", include_configured_fallback=True,
+        )
+        token_limit = max(2_000, int(context_window * 0.40))
+        whole_context, context_mode, context_tokens = (
+            self._planning_adaptation_whole_context(
+                plan=plan,
+                formal_contracts=formal_contracts,
+                segment_receipts=segment_receipts,
+                segment_count=segment_count,
+                token_limit=token_limit,
+            )
+        )
+        hierarchy_metadata: dict = {}
+        if context_mode == "hierarchical_required":
+            whole_context, hierarchy_metadata, retries = (
+                await self._planning_adaptation_hierarchical_context(
+                    run_id, run_path, project, constraints,
+                    plan=plan,
+                    formal_contracts=formal_contracts,
+                    segment_receipts=segment_receipts,
+                    segment_count=segment_count,
+                    token_limit=token_limit,
+                    suffix=suffix,
+                )
+            )
+            protocol_retries += retries
+            context_mode = "hierarchical"
+            context_tokens = estimate_input_tokens(whole_context)
+        elif context_tokens > token_limit:
+            raise ValueError(
+                "整篇规划审核的完整权威无法在当前模型上下文中安全表达"
+            )
+        if context_mode != "full":
+            self.db.add_run_event(
+                run_id, "info", "planning_adaptation_whole_context_reduced",
+                "整篇规划审核输入接近模型上下文安全线，已按完整事件和交接权威生成哈希绑定结构图",
+                stage="review", metadata={
+                    "mode": context_mode,
+                    "estimated_tokens": context_tokens,
+                    "token_limit": token_limit,
+                    "segment_count": segment_count,
+                    **hierarchy_metadata,
+                },
+            )
+        index_skeleton = self._stage_story_skeleton(
+            project, constraints, run_path, index_only=True,
+        )
         for attempt in range(3):
             prompt = (
                 "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2\n"
@@ -4234,6 +6826,11 @@ class WorkflowService:
                 "promises_ending_preserved、formal_direction_preserved、affected_segments、"
                 "affected_event_ids、reason、summary。所有无问题布尔值必须为 true；"
                 "若有问题，affected_segments 和 affected_event_ids 必须准确指出最小修正范围。\n"
+                "Review adjacent handoffs separately from local event realization. A changed "
+                "neighbor boundary does not invalidate an otherwise byte-identical local "
+                "receipt, but any cross-segment causal or state mismatch must be reported here.\n"
+                "Unknown formal actor, viewpoint, time, location, knowledge, or relationship "
+                "fields must remain unknown; do not invent a canon fact to force agreement.\n"
                 f"EXPECTED AUTHORITY SHA256: {authority_sha256}\n"
                 f"EXPECTED PLANNING SHA256: {planning_sha256}\n"
                 f"EXPECTED AUTHORITY VERSION: {authority_version}\n"
@@ -4241,11 +6838,7 @@ class WorkflowService:
                 + json.dumps(list(range(1, segment_count + 1)), ensure_ascii=False)
                 + "\n\nEXPECTED EVENT IDS:\n"
                 + json.dumps(expected_event_ids, ensure_ascii=False)
-                + "\n\nFORMAL EVENT CONTRACTS:\n"
-                + json.dumps(formal_contracts, ensure_ascii=False, indent=2)
-                + "\n\nVALIDATED SEGMENT ADAPTATION RECEIPTS:\n"
-                + json.dumps(segment_receipts, ensure_ascii=False, indent=2)
-                + "\n\nCOMPLETE ACCEPTED PLAN:\n" + plan
+                + "\n\n" + whole_context
             )
             if last_issues:
                 prompt += (
@@ -4258,6 +6851,19 @@ class WorkflowService:
                 suffix=f"-plan-adaptation-whole-{suffix}-{attempt + 1}",
                 allow_tools=False,
                 expected_output_characters=max(1200, 110 * len(expected_event_ids)),
+                completion_check=lambda value: (
+                    self._planning_adaptation_whole_receipt_complete(
+                        value,
+                        authority_sha256=authority_sha256,
+                        planning_sha256=planning_sha256,
+                        authority_version=authority_version,
+                        segment_count=segment_count,
+                        expected_event_ids=expected_event_ids,
+                    )
+                ),
+                route_capacity_guard=True,
+                story_skeleton_override=index_skeleton,
+                bounded_protocol_output=True,
             )
             try:
                 payload = parse_json_object(raw, label="Whole planning adaptation receipt")
@@ -4270,6 +6876,38 @@ class WorkflowService:
                 receipt = normalize_planning_adaptation_whole_receipt(payload)
                 if isinstance(receipt, dict):
                     receipt["authority_version"] = authority_version
+                    inherited_invalid = hierarchy_metadata.get(
+                        "inherited_invalid_dimensions", [],
+                    )
+                    if inherited_invalid:
+                        for field in inherited_invalid:
+                            if field in WHOLE_STORY_FIELDS:
+                                receipt[field] = False
+                        receipt["affected_segments"] = sorted({
+                            *(receipt.get("affected_segments") or []),
+                            *hierarchy_metadata.get(
+                                "inherited_affected_segments", [],
+                            ),
+                        })
+                        affected_ids = {
+                            str(value).upper()
+                            for value in (receipt.get("affected_event_ids") or [])
+                            if str(value).strip()
+                        } | {
+                            str(value).upper()
+                            for value in hierarchy_metadata.get(
+                                "inherited_affected_event_ids", []
+                            )
+                            if str(value).strip()
+                        }
+                        receipt["affected_event_ids"] = [
+                            event_id for event_id in expected_event_ids
+                            if event_id in affected_ids
+                        ]
+                        if not str(receipt.get("reason") or "").strip():
+                            receipt["reason"] = (
+                                "分层区域审核已经确认存在跨段结构问题。"
+                            )
                 last_issues = planning_adaptation_whole_receipt_issues(
                     receipt,
                     authority_sha256=authority_sha256,
@@ -4390,9 +7028,9 @@ class WorkflowService:
         formal_outline_events: list[dict], segment_count: int,
         generation_context_sha256: str | None = None,
     ) -> bool:
-        if not isinstance(artifact, dict) or artifact.get("version") not in {
-            LEGACY_PLANNING_ADAPTATION_VERSION, PLANNING_ADAPTATION_VERSION,
-        } or artifact.get("status") != "ready":
+        if not isinstance(artifact, dict) or artifact.get("version") not in \
+                SUPPORTED_PLANNING_ADAPTATION_VERSIONS \
+                or artifact.get("status") != "ready":
             return False
         authority_version = int(artifact.get("version") or 0)
         if artifact.get("issues") not in (None, []):
@@ -4408,7 +7046,7 @@ class WorkflowService:
         ):
             return False
         if generation_context_sha256 is not None:
-            if authority_version >= PLANNING_ADAPTATION_VERSION \
+            if authority_version >= PREVIOUS_PLANNING_ADAPTATION_VERSION \
                     and stored_generation_context != generation_context_sha256:
                 return False
             if authority_version == LEGACY_PLANNING_ADAPTATION_VERSION \
@@ -4457,6 +7095,28 @@ class WorkflowService:
             normalized = normalize_planning_adaptation_receipt(
                 receipt, evidence_candidates=candidates,
             )
+            if authority_version >= PLANNING_ADAPTATION_VERSION:
+                expected_segment_sha256 = hashlib.sha256(
+                    plan_segment.encode("utf-8"),
+                ).hexdigest()
+                expected_boundary_sha256 = hashlib.sha256(json.dumps({
+                    "previous_handoff": (
+                        self._short_plan_handoff(plan_segments[segment - 2])
+                        if segment > 1 else "opening"
+                    ),
+                    "next_entry": (
+                        self._short_plan_field(plan_segments[segment], "opening")
+                        if segment < len(plan_segments) else "ending"
+                    ),
+                }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                    "utf-8",
+                )).hexdigest()
+                if (
+                    not isinstance(normalized, dict)
+                    or normalized.get("segment_sha256") != expected_segment_sha256
+                    or normalized.get("boundary_sha256") != expected_boundary_sha256
+                ):
+                    return False
             if planning_adaptation_receipt_issues(
                 normalized,
                 authority_sha256=authority_sha256,
@@ -4469,6 +7129,7 @@ class WorkflowService:
                     str(item.get("id") or "").strip().upper()
                     for item in formal_contracts
                 ],
+                plan_segment=plan_segments[segment - 1],
             ):
                 return False
         whole_receipt = normalize_planning_adaptation_whole_receipt(
@@ -4493,18 +7154,773 @@ class WorkflowService:
             return False
         return True
 
+    def _planning_recovery_feedback_token_budget(
+        self, *, constraints: str, fixed_prompt: str,
+        expected_output_characters: int,
+    ) -> int:
+        """Derive feedback capacity from the smallest configured planning route.
+
+        The layered request includes the current contract both in Runtime's
+        system envelope and in the user message.  Budget for that duplication,
+        compacted constraints, Skill/system overhead, and the full output
+        reserve before assigning any room to rejected-candidate evidence.
+        Larger routes may therefore carry more evidence; a small or unknown
+        route receives a deterministic hash-bound projection instead.
+        """
+        context_window = self._route_safe_context_window(
+            "planning", include_configured_fallback=True,
+        )
+        prompt_tokens = estimate_input_tokens(fixed_prompt)
+        compact_constraint_allowance = min(
+            estimate_input_tokens(constraints), 5_000,
+        )
+        output_reserve = adaptive_output_budget(
+            "planning",
+            expected_output_characters=expected_output_characters,
+            input_tokens=0,
+            context_window=context_window,
+            declared_output_ceiling=min(filter(None, (
+                self._provider_output_ceiling("planning", False),
+                self._provider_output_ceiling("planning", True),
+            )), default=None),
+        ) or 0
+        safe_total = int(context_window * 0.74)
+        fixed_request = (
+            prompt_tokens * 2
+            + compact_constraint_allowance
+            + 2_048
+        )
+        # Feedback is also represented in the layered system packet and the
+        # user prompt, so every token consumes roughly two context tokens.
+        return max(256, (safe_total - output_reserve - fixed_request) // 2)
+
+    @staticmethod
+    def _planning_recovery_candidate_feedback(
+        recovery_state: dict,
+    ) -> list[dict]:
+        """Retain actionable generation failures without making them canon."""
+        result: list[dict] = []
+        for item in recovery_state.get("candidates", []):
+            if not isinstance(item, dict) or item.get("accepted"):
+                continue
+            comparison = dict(item.get("comparison") or {})
+            repair_feedback = [
+                dict(issue) for issue in comparison.get("repair_feedback") or []
+                if isinstance(issue, dict)
+            ]
+            if (
+                str(comparison.get("reason") or "")
+                == "candidate_generation_failed"
+                and not repair_feedback
+            ):
+                continue
+            result.append({
+                "source": str(item.get("source") or ""),
+                "planning_sha256": str(item.get("planning_sha256") or ""),
+                "issue_keys": list(item.get("issue_keys") or []),
+                "introduced_issue_keys": list(
+                    item.get("introduced_issue_keys") or []
+                ),
+                "issues": list(repair_feedback or item.get("issues") or []),
+                "introduced_issues": list(
+                    repair_feedback or item.get("introduced_issues") or []
+                ),
+                "comparison": comparison,
+            })
+        return result
+
+    @staticmethod
+    def _planning_recovery_feedback_for_segment(
+        feedback: list[dict] | None, *, segment: int,
+        segment_event_ids: dict[int, list[str]], token_budget: int = 6000,
+    ) -> list[dict]:
+        """Project a lossless recovery ledger into bounded actionable feedback.
+
+        The persisted ledger remains the complete audit source. The model sees
+        every stable issue key relevant to its current segment plus the useful
+        structured evidence for those keys; unrelated candidate prose is never
+        repeated into the prompt. If raw evidence would exceed the packet
+        budget, it is replaced deterministically by hashes while semantic
+        fields and issue identities remain complete.
+        """
+        if not feedback:
+            return []
+        result: list[dict] = []
+        for record in feedback:
+            if not isinstance(record, dict):
+                continue
+            records = record.get("introduced_issues") or record.get("issues")
+            if not isinstance(records, list):
+                records = []
+            relevant: list[dict] = []
+            seen_keys: set[str] = set()
+            for issue in records:
+                if not isinstance(issue, dict) or segment not in \
+                        planning_issue_segments([issue], segment_event_ids):
+                    continue
+                keys = sorted(planning_issue_keys([issue]))
+                identity = "|".join(keys) or hashlib.sha256(json.dumps(
+                    issue, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")).hexdigest()
+                if identity in seen_keys:
+                    continue
+                seen_keys.add(identity)
+                relevant.append(dict(issue))
+            if not relevant:
+                continue
+            full_record = json.dumps(
+                record, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"),
+            )
+            result.append({
+                "source": str(record.get("source") or ""),
+                "planning_sha256": str(record.get("planning_sha256") or ""),
+                "full_record_sha256": hashlib.sha256(
+                    full_record.encode("utf-8"),
+                ).hexdigest(),
+                "relevant_issue_keys": sorted({
+                    key for issue in relevant
+                    for key in planning_issue_keys([issue])
+                }),
+                "issues": relevant,
+                "comparison_reason": str(
+                    (record.get("comparison") or {}).get("reason") or ""
+                ),
+            })
+
+        serialized = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+        if estimate_input_tokens(serialized) <= token_budget:
+            return result
+
+        # Raw rejected-plan excerpts are the largest repeated material. Their
+        # hashes retain audit identity while the current best-plan anchors in
+        # the repair prompt remain the only writable prose authority.
+        for packet in result:
+            for issue in packet.get("issues", []):
+                evidence = issue.pop("plan_evidence", None)
+                if evidence:
+                    encoded = json.dumps(
+                        evidence, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    issue["plan_evidence_sha256"] = hashlib.sha256(
+                        encoded.encode("utf-8"),
+                    ).hexdigest()
+            packet["projection"] = "hash_bound_no_regression"
+        serialized = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+        if estimate_input_tokens(serialized) <= token_budget:
+            return result
+
+        # Preserve all issue identities and invariant dimensions even under a
+        # pathological ledger. Descriptive messages remain in the full
+        # persisted record addressed by full_record_sha256.
+        compact_fields = {
+            "code", "segment", "event_id", "invalid_invariants",
+            "invalid_dimensions", "affected_segments", "affected_event_ids",
+            "plan_evidence_ids", "classification", "changed_dimensions",
+            "plan_evidence_quote",
+        }
+        for packet in result:
+            packet["issues"] = [{
+                key: value for key, value in issue.items()
+                if key in compact_fields
+            } for issue in packet.get("issues", [])]
+            packet["projection"] = "structured_issue_manifest"
+        serialized = json.dumps(result, ensure_ascii=False, separators=(",", ":"))
+        if estimate_input_tokens(serialized) <= token_budget:
+            return result
+
+        # Collapse repeated candidate wrappers without losing any stable issue
+        # identity. The complete records remain persisted under a ledger hash;
+        # the repair model receives one canonical structured manifestation per
+        # issue key plus the complete ordered key set.
+        issue_by_key: dict[str, dict] = {}
+        for packet in result:
+            for issue in packet.get("issues", []):
+                keys = sorted(planning_issue_keys([issue]))
+                for key in keys:
+                    issue_by_key.setdefault(key, dict(issue))
+        ledger_json = json.dumps(
+            result, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        )
+        aggregate = [{
+            "projection": "structured_issue_manifest",
+            "aggregation": "deduplicated_issue_identity_manifest",
+            "rejected_candidate_count": len(result),
+            "ledger_sha256": hashlib.sha256(
+                ledger_json.encode("utf-8"),
+            ).hexdigest(),
+            "full_record_sha256": hashlib.sha256(
+                ledger_json.encode("utf-8"),
+            ).hexdigest(),
+            "relevant_issue_keys": sorted(issue_by_key),
+            "issues": [issue_by_key[key] for key in sorted(issue_by_key)],
+        }]
+        return aggregate
+
+    @classmethod
+    def _render_short_plan_repair_packet(
+        cls, current: str, *, segment: int, event_ids: list[str],
+        event_body: str, opening: str | None = None,
+        handoff: str | None = None,
+    ) -> str:
+        heading = next((
+            current[match.start():current.find("\n", match.start())].strip()
+            if current.find("\n", match.start()) >= 0 else current[match.start():].strip()
+            for match, number in cls._short_plan_headings(current)
+            if number == segment
+        ), f"### 第 {segment} 段：规划修复")
+        outline = cls._short_plan_field(current, "outline")
+        opening_value = (
+            str(opening).strip() if opening is not None
+            else cls._short_plan_field(current, "opening")
+        )
+        handoff_value = (
+            str(handoff).strip() if handoff is not None
+            else cls._short_plan_field(current, "handoff")
+        )
+        return (
+            f"{heading}\n\n"
+            f"事件ID：{'、'.join(event_ids)}\n\n"
+            f"大纲依据：{outline}\n\n"
+            f"段首承接：{opening_value}\n\n"
+            f"本段事件：\n{str(event_body or '').strip()}\n\n"
+            f"段末交接：{handoff_value}"
+        ).strip()
+
+    @classmethod
+    def _short_plan_event_owned_body(
+        cls, current: str, event_ids: list[str],
+    ) -> str:
+        body = cls._short_plan_field(current, "event")
+        if not body:
+            return ""
+        comparison = cls._short_plan_comparison_view(body)
+        owned_spans: dict[str, tuple[int, int]] = {}
+        event_lines: list[tuple[int, list[str]]] = []
+        offset = 0
+        for line in comparison.splitlines(keepends=True):
+            ids = list(dict.fromkeys(
+                match.group(0).upper()
+                for match in re.finditer(
+                    r"EV-[0-9a-f]{8}", line, flags=re.IGNORECASE,
+                )
+            ))
+            if ids:
+                event_lines.append((offset, ids))
+            offset += len(line)
+        for index, (start, ids) in enumerate(event_lines):
+            if index == 0:
+                start = 0
+            end = event_lines[index + 1][0] if index + 1 < len(event_lines) else len(body)
+            for event_id in ids:
+                if event_id in owned_spans:
+                    owned_spans[event_id] = (-1, -1)
+                else:
+                    owned_spans[event_id] = (start, end)
+        selected: list[str] = []
+        selected_spans: set[tuple[int, int]] = set()
+        for event_id in event_ids:
+            span = owned_spans.get(event_id)
+            if span and span != (-1, -1) and span not in selected_spans:
+                selected.append(body[span[0]:span[1]].strip())
+                selected_spans.add(span)
+                continue
+            selected.append(
+                f"（{event_id}）当前最佳规划没有可独立投影的事件正文；"
+                "请只依据正式事件合同与完成清单重建本事件。"
+            )
+        return "\n\n".join(value for value in selected if value).strip()
+
+    @classmethod
+    def _short_plan_repair_event_projection(
+        cls, current: str, *, segment: int, event_ids: list[str],
+    ) -> str:
+        event_body = cls._short_plan_event_owned_body(current, event_ids)
+        if not event_body:
+            projected, _candidates = planning_adaptation_event_projection(
+                current, segment, event_ids,
+            )
+            event_body = cls._short_plan_field(projected, "event")
+        return cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=event_ids,
+            event_body=event_body,
+        )
+
+    @staticmethod
+    def _renumber_short_plan_event_body(body: str) -> str:
+        number = 0
+
+        def replace(match: re.Match) -> str:
+            nonlocal number
+            number += 1
+            return f"{match.group('indent')}{number}{match.group('separator')} "
+
+        return re.sub(
+            r"(?m)^(?P<indent>[ \t]{0,3})\d+(?P<separator>[.、．)])[ \t]*",
+            replace,
+            str(body or "").strip(),
+        )
+
+    @classmethod
+    def _merge_short_plan_repair_packets(
+        cls, current: str, *, segment: int, event_ids: list[str],
+        packets: list[str],
+    ) -> str:
+        packet_ids = [cls._short_plan_event_ids(packet) for packet in packets]
+        flattened = [event_id for values in packet_ids for event_id in values]
+        if flattened != event_ids or len(flattened) != len(set(flattened)):
+            raise ValueError(
+                f"规划第 {segment} 段容量分包没有无损覆盖原有正式事件顺序"
+            )
+        bodies = [cls._short_plan_field(packet, "event") for packet in packets]
+        if any(not body for body in bodies):
+            raise ValueError(f"规划第 {segment} 段容量分包缺少可合并的事件正文")
+        opening = cls._short_plan_field(packets[0], "opening")
+        handoff = cls._short_plan_field(packets[-1], "handoff")
+        return cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=event_ids,
+            event_body=cls._renumber_short_plan_event_body("\n\n".join(bodies)),
+            opening=opening,
+            handoff=handoff,
+        )
+
+    @staticmethod
+    def _planning_repair_packet_checkpoint_path(
+        run_path: Path, *, segment: int, packet_authority_sha256: str,
+    ) -> Path:
+        return (
+            run_path / "outputs" / "prp"
+            / f"segment-{segment:02d}-{packet_authority_sha256[:24]}.json"
+        )
+
+    @classmethod
+    def _save_planning_repair_packet_checkpoint(
+        cls, run_path: Path, *, parent_authority_sha256: str,
+        packet_authority_sha256: str, segment: int,
+        event_ids: list[str], predecessor_sha256: str, block: str,
+    ) -> None:
+        atomic_write(
+            cls._planning_repair_packet_checkpoint_path(
+                run_path,
+                segment=segment,
+                packet_authority_sha256=packet_authority_sha256,
+            ),
+            json.dumps({
+                "version": 1,
+                "parent_authority_sha256": parent_authority_sha256,
+                "packet_authority_sha256": packet_authority_sha256,
+                "segment": segment,
+                "event_ids": event_ids,
+                "predecessor_sha256": predecessor_sha256,
+                "block_sha256": hashlib.sha256(block.encode("utf-8")).hexdigest(),
+                "block": block,
+            }, ensure_ascii=False, indent=2, sort_keys=True),
+        )
+
+    def _load_planning_repair_packet_checkpoint(
+        self, run_id: str, run_path: Path, project: Project, *,
+        parent_authority_sha256: str, packet_authority_sha256: str,
+        segment: int, event_ids: list[str], predecessor_sha256: str,
+        completion_check: Callable[[str], bool],
+    ) -> str | None:
+        candidates: dict[str, tuple[str, Path]] = {}
+        for path in project.path.glob("runs/*/outputs/prp/*.json"):
+            try:
+                envelope = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if (
+                not isinstance(envelope, dict)
+                or envelope.get("version") != 1
+                or envelope.get("parent_authority_sha256")
+                != parent_authority_sha256
+                or envelope.get("packet_authority_sha256")
+                != packet_authority_sha256
+                or envelope.get("segment") != segment
+                or envelope.get("event_ids") != event_ids
+                or envelope.get("predecessor_sha256") != predecessor_sha256
+            ):
+                continue
+            block = str(envelope.get("block") or "")
+            block_sha256 = hashlib.sha256(block.encode("utf-8")).hexdigest()
+            if (
+                envelope.get("block_sha256") != block_sha256
+                or not completion_check(block)
+            ):
+                continue
+            candidates.setdefault(block_sha256, (block, path))
+        if len(candidates) > 1:
+            self.db.add_run_event(
+                run_id, "warning", "planning_repair_packet_checkpoint_conflict",
+                f"规划第 {segment} 段同一容量分包存在多份不同候选，已放弃复用并重新生成",
+                stage="planning", metadata={
+                    "segment": segment,
+                    "event_ids": event_ids,
+                    "candidate_count": len(candidates),
+                },
+            )
+            return None
+        if not candidates:
+            return None
+        block, source = next(iter(candidates.values()))
+        self.db.add_run_event(
+            run_id, "info", "planning_repair_packet_checkpoint_reused",
+            f"已复用哈希一致的规划第 {segment} 段事件重建分包",
+            stage="planning", metadata={
+                "segment": segment,
+                "event_ids": event_ids,
+                "source_run_id": source.parents[2].name,
+            },
+        )
+        return block
+
+    async def _repair_short_plan_adaptation_capacity_split(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        *, segment: int, current: str, event_ids: list[str],
+        contract_by_id: dict[str, dict], obligation_by_id: dict[str, dict],
+        current_issues: list[dict], segment_feedback: list[dict],
+        previous_handoff: str, next_entry: str, attempt: int,
+        details: dict,
+    ) -> str:
+        """Rebuild one formal segment in event-owned packets without losing authority."""
+        leaf_packets: list[dict] = []
+        parent_authority_sha256 = hashlib.sha256(json.dumps({
+            "version": 1,
+            "segment": segment,
+            "segment_sha256": hashlib.sha256(current.encode("utf-8")).hexdigest(),
+            "event_ids": event_ids,
+            "contracts": [
+                contract_by_id[event_id] for event_id in event_ids
+                if event_id in contract_by_id
+            ],
+            "obligations": [
+                obligation_by_id[event_id] for event_id in event_ids
+                if event_id in obligation_by_id
+            ],
+            "issue_keys": sorted(planning_issue_keys(current_issues)),
+            "feedback_sha256": hashlib.sha256(json.dumps(
+                segment_feedback, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")).hexdigest(),
+            "previous_handoff": previous_handoff,
+            "next_entry": next_entry,
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8"
+        )).hexdigest()
+
+        def issue_event_ids(item: dict) -> set[str]:
+            values = [item.get("event_id")]
+            for key in ("event_ids", "affected_event_ids"):
+                raw = item.get(key)
+                if isinstance(raw, list):
+                    values.extend(raw)
+            return {
+                str(value or "").strip().upper()
+                for value in values if str(value or "").strip()
+            }
+
+        def project_issues(values: list[dict], owned: list[str]) -> list[dict]:
+            owned_set = set(owned)
+            return [
+                dict(item) for item in values
+                if not issue_event_ids(item) or issue_event_ids(item) & owned_set
+            ]
+
+        def project_feedback(values: list[dict], owned: list[str]) -> list[dict]:
+            result: list[dict] = []
+            for raw in values:
+                if not isinstance(raw, dict):
+                    continue
+                item = dict(raw)
+                raw_issues = item.get("issues")
+                if isinstance(raw_issues, list):
+                    filtered = project_issues(
+                        [issue for issue in raw_issues if isinstance(issue, dict)],
+                        owned,
+                    )
+                    if not filtered:
+                        continue
+                    item["issues"] = filtered
+                    item["relevant_issue_keys"] = sorted(
+                        planning_issue_keys(filtered)
+                    )
+                result.append(item)
+            return result
+
+        def packet_complete(value: str, owned: list[str], source: str) -> bool:
+            packet_checklists = {
+                event_id: obligation_by_id[event_id]
+                for event_id in owned if event_id in obligation_by_id
+            }
+            try:
+                normalized = self._normalize_generated_short_plan_segment(
+                    value,
+                    segment=segment,
+                    event_ids=owned,
+                    current=source,
+                    artifact="planning repair packet",
+                )
+            except GeneratedArtifactShapeError:
+                return False
+            return not self._short_plan_packet_contract_issues(
+                normalized,
+                segment=segment,
+                event_ids=owned,
+                source=source,
+                obligation_checklists=packet_checklists,
+            )
+
+        async def repair_group(
+            owned: list[str], predecessor: str | None,
+        ) -> str:
+            source = self._short_plan_repair_event_projection(
+                current, segment=segment, event_ids=owned,
+            )
+            contracts = [
+                contract_by_id[event_id] for event_id in owned
+                if event_id in contract_by_id
+            ]
+            obligations = [
+                obligation_by_id[event_id] for event_id in owned
+                if event_id in obligation_by_id
+            ]
+            owned_issues = project_issues(current_issues, owned)
+            owned_feedback = project_feedback(segment_feedback, owned)
+            predecessor_projection = "opening"
+            predecessor_sha256 = ""
+            if predecessor:
+                predecessor_ids = self._short_plan_event_ids(predecessor)
+                predecessor_projection = self._short_plan_repair_event_projection(
+                    predecessor,
+                    segment=segment,
+                    event_ids=predecessor_ids[-1:],
+                )
+                predecessor_sha256 = hashlib.sha256(
+                    predecessor.encode("utf-8")
+                ).hexdigest()
+            packet_authority_sha256 = hashlib.sha256(json.dumps({
+                "version": 1,
+                "parent_authority_sha256": parent_authority_sha256,
+                "segment": segment,
+                "event_ids": owned,
+                "predecessor_sha256": predecessor_sha256,
+            }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+                "utf-8"
+            )).hexdigest()
+            packet_prompt = (
+                "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_PACKET_V1\n"
+                "This is one event-owned transport packet of a complete formal segment rebuild. "
+                "Return only one complete segment-shaped planning block for the packet event IDs. "
+                "Do not write any parent or sibling event. The Runtime will merge every packet in "
+                "the original formal order and then repeat complete-segment, adjacent-boundary, "
+                "and whole-plan validation.\n"
+                f"EXPECTED SEGMENT: {segment}\n"
+                "EXPECTED PACKET EVENT IDS:\n"
+                + json.dumps(owned, ensure_ascii=False)
+                + "\n\nPARENT SEGMENT EVENT IDS:\n"
+                + json.dumps(event_ids, ensure_ascii=False)
+                + "\n\nFORMAL EVENT CONTRACTS:\n"
+                + json.dumps(contracts, ensure_ascii=False, indent=2)
+                + "\n\nFORMAL EVENT COMPLETION CHECKLIST:\n"
+                + json.dumps(obligations, ensure_ascii=False, indent=2)
+                + "\n\nSTRUCTURAL DRIFT ISSUES FOR THIS PACKET:\n"
+                + json.dumps(owned_issues, ensure_ascii=False, indent=2)
+                + "\n\nREJECTED CANDIDATE NO-REGRESSION FEEDBACK:\n"
+                + json.dumps(owned_feedback, ensure_ascii=False, indent=2)
+                + "\n\nPARENT PREVIOUS HANDOFF:\n" + previous_handoff
+                + "\n\nPARENT NEXT SEGMENT ENTRY TO PRESERVE:\n" + next_entry
+                + "\n\nPREVIOUS ACCEPTED PACKET SHA256:\n" + predecessor_sha256
+                + "\n\nPREVIOUS ACCEPTED PACKET EVENT PROJECTION:\n"
+                + predecessor_projection
+                + "\n\nCURRENT EVENT-OWNED PLAN PROJECTION:\n" + source
+                + "\n\nPreserve event function, primary agency, causal dependencies, entry/exit "
+                "state, knowledge and relationship progression, viewpoint, dependency-sensitive "
+                "order, promises, and ending. Dialogue, description, emotion, rhythm, minor "
+                "participants, local setting, and non-dependent micro-order remain creative space."
+            )
+
+            async def split_again(split_details: dict) -> str:
+                return await split_group(owned, predecessor, split_details)
+
+            stored = self._load_planning_repair_packet_checkpoint(
+                run_id, run_path, project,
+                parent_authority_sha256=parent_authority_sha256,
+                packet_authority_sha256=packet_authority_sha256,
+                segment=segment,
+                event_ids=owned,
+                predecessor_sha256=predecessor_sha256,
+                completion_check=lambda value: packet_complete(
+                    value, owned, source,
+                ),
+            )
+            if stored is not None:
+                leaf_packets.append({
+                    "event_ids": list(owned),
+                    "text_sha256": hashlib.sha256(
+                        stored.encode("utf-8")
+                    ).hexdigest(),
+                    "reused": True,
+                })
+                return stored
+
+            try:
+                repaired = await self._stage(
+                    run_id, run_path, project, "planning", constraints,
+                    packet_prompt,
+                    suffix=(
+                        f"-adaptation-segment-rebuild-{segment:02d}-attempt-{attempt}"
+                        f"-packet-{owned[0]}-{owned[-1]}"
+                    ),
+                    allow_tools=False,
+                    expected_output_characters=max(1000, len(source) + 400),
+                    completion_check=lambda value: packet_complete(
+                        value, owned, source,
+                    ),
+                    route_capacity_guard=True,
+                    capacity_splitter=split_again if len(owned) > 1 else None,
+                    compact_input=True,
+                    story_skeleton_override=self._stage_story_skeleton(
+                        project, constraints, run_path,
+                        owner_event_ids=owned, index_only=True,
+                    ),
+                    scoped_creative_output=True,
+                )
+            except Exception as exc:
+                capacity_failure = (
+                    isinstance(exc, ContextCapacityPreflightError)
+                    or classify_model_failure(str(exc)) == "input_context_overflow"
+                )
+                if capacity_failure and len(owned) > 1:
+                    failure_details = (
+                        {
+                            "pressure": exc.pressure,
+                            "estimated_input_tokens": exc.estimated_input_tokens,
+                            "authority_input_tokens": exc.authority_input_tokens,
+                            "output_reserve": exc.output_reserve,
+                            "context_window": exc.context_window,
+                        }
+                        if isinstance(exc, ContextCapacityPreflightError)
+                        else details
+                    )
+                    return await split_group(
+                        owned, predecessor, failure_details,
+                    )
+                if capacity_failure:
+                    raise ValueError(
+                        f"{exc}；规划第 {segment} 段事件 {owned[0]} 已是不可再拆分的"
+                        "正式事件，完整事件权威已保留"
+                    ) from exc
+                raise
+            block = self._normalize_generated_short_plan_segment(
+                repaired,
+                segment=segment,
+                event_ids=owned,
+                current=source,
+                artifact="planning repair packet",
+            )
+            packet_checklists = {
+                event_id: obligation_by_id[event_id]
+                for event_id in owned if event_id in obligation_by_id
+            }
+            contract_issues = self._short_plan_packet_contract_issues(
+                block,
+                segment=segment,
+                event_ids=owned,
+                source=source,
+                obligation_checklists=packet_checklists,
+            )
+            if contract_issues:
+                raise GeneratedArtifactShapeError(
+                    f"planning repair packet failed its complete event contract "
+                    f"(segment={segment}, event_ids={owned}): "
+                    + "; ".join(
+                        str(item.get("message") or item.get("code"))
+                        for item in contract_issues
+                    ),
+                    issues=contract_issues,
+                )
+            receipt = getattr(repaired, "receipt", {})
+            if not isinstance(receipt, dict) or receipt.get("execution_mode") != "capacity_split":
+                self._save_planning_repair_packet_checkpoint(
+                    run_path,
+                    parent_authority_sha256=parent_authority_sha256,
+                    packet_authority_sha256=packet_authority_sha256,
+                    segment=segment,
+                    event_ids=owned,
+                    predecessor_sha256=predecessor_sha256,
+                    block=block,
+                )
+                leaf_packets.append({
+                    "event_ids": list(owned),
+                    "text_sha256": hashlib.sha256(block.encode("utf-8")).hexdigest(),
+                })
+            return block
+
+        async def split_group(
+            owned: list[str], predecessor: str | None, split_details: dict,
+        ) -> str:
+            if len(owned) <= 1:
+                return await repair_group(owned, predecessor)
+            midpoint = max(1, len(owned) // 2)
+            left_ids = owned[:midpoint]
+            right_ids = owned[midpoint:]
+            left = await repair_group(left_ids, predecessor)
+            right = await repair_group(right_ids, left)
+            return self._merge_short_plan_repair_packets(
+                current,
+                segment=segment,
+                event_ids=owned,
+                packets=[left, right],
+            )
+
+        rebuilt = (
+            await split_group(event_ids, None, details)
+            if len(event_ids) > 1 else
+            await repair_group(event_ids, None)
+        )
+        self.db.add_run_event(
+            run_id, "success", "planning_repair_capacity_split_completed",
+            f"规划第 {segment} 段已按正式事件所有权完成重建分包并无损合并",
+            stage="planning", metadata={
+                "segment": segment,
+                "event_ids": event_ids,
+                "packet_count": len(leaf_packets),
+                "packets": leaf_packets,
+                "pressure": details.get("pressure"),
+                "estimated_input_tokens": details.get("estimated_input_tokens"),
+                "output_reserve": details.get("output_reserve"),
+            },
+        )
+        return rebuilt
+
     async def _repair_short_plan_adaptation_segments(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         state: dict, plan: str, formal_outline_events: list[dict],
         segment_count: int, issues: list[dict], *, mode: str = "targeted",
-        attempt: int = 1,
+        attempt: int = 1, recovery_feedback: list[dict] | None = None,
+        target_segments: list[int] | None = None,
     ) -> str:
         formal_contracts = self._planning_adaptation_contracts(
             state, formal_outline_events,
         )
+        outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        obligation_checklists = narrative_outline_event_obligations(
+            outline_content,
+        )
         contract_by_id = {
             str(item.get("id") or "").strip().upper(): item
             for item in formal_contracts
+        }
+        obligation_by_id = {
+            str(event_id or "").strip().upper(): checklist
+            for event_id, checklist in obligation_checklists.items()
+            if isinstance(checklist, dict)
         }
         candidate = plan
         original_segments = self._short_plan_segments(plan, segment_count)
@@ -4512,7 +7928,13 @@ class WorkflowService:
             number: self._short_plan_event_ids(block)
             for number, block in enumerate(original_segments, 1)
         }
-        affected = sorted(planning_issue_segments(issues, segment_event_ids))
+        issue_segments = planning_issue_segments(issues, segment_event_ids)
+        affected = sorted(
+            segment for segment in (
+                target_segments if target_segments is not None else issue_segments
+            )
+            if segment in issue_segments
+        )
         if issues and not affected:
             raise ValueError("规划适配问题没有提供可执行的受影响分段范围")
         for segment in affected:
@@ -4524,6 +7946,10 @@ class WorkflowService:
             contracts = [
                 contract_by_id[event_id] for event_id in event_ids
                 if event_id in contract_by_id
+            ]
+            obligations = [
+                obligation_by_id[event_id] for event_id in event_ids
+                if event_id in obligation_by_id
             ]
             current_issues = [
                 item for item in issues
@@ -4542,6 +7968,26 @@ class WorkflowService:
                 if mode == "rebuild" else
                 "SHORT_PLAN_EQUIVALENCE_TARGETED_REPAIR_V2"
             )
+            evidence_candidates = planning_adaptation_evidence_candidates(
+                current, segment,
+            )
+            anchor_ids = (
+                planning_repair_anchor_ids(current_issues, evidence_candidates)
+                if mode == "targeted" else []
+            )
+            issue_keys = sorted(planning_issue_keys(current_issues))
+            segment_feedback: list[dict] = []
+            patch_authority = ""
+            repair_expected_output_characters = max(1600, len(current))
+            if anchor_ids:
+                patch_authority = planning_repair_patch_authority_sha256(
+                    planning_sha256=hashlib.sha256(
+                        candidate.encode("utf-8"),
+                    ).hexdigest(),
+                    segment=segment,
+                    issue_keys=issue_keys,
+                    anchor_ids=anchor_ids,
+                )
             instruction = (
                 "从正式事件合同重新构建当前完整段。当前段只作为可保留素材，不能继承其中被指出的"
                 "推断、顺序、口供、视角或关系因果。先逐项落实正式事件，再补充不改变不变量的创作细节。"
@@ -4560,6 +8006,8 @@ class WorkflowService:
                 + json.dumps(event_ids, ensure_ascii=False)
                 + "\n\nFORMAL EVENT CONTRACTS:\n"
                 + json.dumps(contracts, ensure_ascii=False, indent=2)
+                + "\n\nFORMAL EVENT COMPLETION CHECKLIST:\n"
+                + json.dumps(obligations, ensure_ascii=False, indent=2)
                 + "\n\nPREVIOUS ACCEPTED HANDOFF:\n" + previous_handoff
                 + "\n\nNEXT SEGMENT ENTRY TO PRESERVE:\n" + next_entry
                 + "\n\nSTRUCTURAL DRIFT ISSUES:\n"
@@ -4567,21 +8015,164 @@ class WorkflowService:
                 + "\n\nCURRENT PLAN SEGMENT:\n" + current
             )
 
-            def complete(value: str, expected=event_ids, number=segment) -> bool:
-                headings = [
-                    item for _match, item in self._short_plan_headings(value)
-                    if item is not None
-                ]
-                blocks = self._short_plan_segments_for_range(value, number, number)
-                return (
-                    headings == [number]
-                    and len(blocks) == 1
-                    and self._short_plan_event_ids(blocks[0]) == expected
-                    and all(
-                        self._short_plan_field(blocks[0], field)
-                        for field in self.SHORT_PLAN_FIELD_ALIASES
-                    )
+            guardrails = (
+                "\n\nGENERAL NO-REGRESSION RULES:\n"
+                "- Preserve formal event function, primary agency, causal dependencies, "
+                "entry/exit state, knowledge and relationship progression, viewpoint, hard "
+                "timeline dependencies, promises, and ending.\n"
+                "- Do not merge an executor, intermediary, investigator, witness, or hidden "
+                "principal unless the formal contract explicitly says they are the same entity.\n"
+                "- Do not let an earlier event complete a reveal, decision, confrontation, or "
+                "state change owned by a later formal event.\n"
+                "- Empty actor, viewpoint, time, location, knowledge, or relationship fields mean "
+                "unknown authority. Do not invent a canonical fact and do not treat an unstated "
+                "detail as a contradiction unless the formal evidence contradicts it.\n"
+                "- Do not rewrite an event or passage outside the authorized issue scope.\n"
+                "- Dialogue, description, emotional texture, scene rhythm, trigger method, minor "
+                "participants, local setting, and non-dependent micro-order remain creative space.\n"
+            )
+            prompt += guardrails
+            if mode == "rebuild":
+                prompt += (
+                    "\nREBUILD SELF-CHECK BEFORE RETURNING:\n"
+                    "- For every listed structural issue, remove or rewrite the exact semantic "
+                    "claim described by its reason; do not merely add a disclaimer, move the "
+                    "same claim to another event, or leave it as an assumed backstory.\n"
+                    "- Re-read the formal contracts in event order and verify that each event's "
+                    "function, primary actor, causal dependency, entry/exit state, knowledge, "
+                    "relationship, viewpoint, timeline dependency, promise, and ending role is "
+                    "performed at its own event and not completed early or transferred to a "
+                    "neighbor.\n"
+                    "- Before returning, compare the rebuilt segment with the rejected-candidate "
+                    "feedback and ensure no previously rejected invariant or newly introduced "
+                    "hard issue remains in this changed segment or its formal boundary.\n"
                 )
+            if patch_authority:
+                anchors = [{
+                    "evidence_id": evidence_id,
+                    "source_sha256": hashlib.sha256(
+                        evidence_candidates[evidence_id].encode("utf-8"),
+                    ).hexdigest(),
+                    "text": evidence_candidates[evidence_id],
+                } for evidence_id in anchor_ids]
+                repair_expected_output_characters = max(
+                    1200,
+                    sum(len(anchor["text"]) for anchor in anchors) + 800,
+                )
+                prompt = (
+                    protocol + "\nSHORT_PLAN_EVIDENCE_PATCH_V3\n"
+                    "Return only one JSON object with authority_sha256, segment, replacements, "
+                    "and summary. Each replacement must contain exactly one authorized "
+                    "evidence_id, its source_sha256, and replacement text. Replace only the "
+                    "smallest quoted anchor needed to resolve the listed issues; do not return "
+                    "the full segment.\n"
+                    f"EXPECTED PATCH AUTHORITY SHA256: {patch_authority}\n"
+                    f"EXPECTED SEGMENT: {segment}\n"
+                    "EXPECTED ISSUE KEYS:\n"
+                    + json.dumps(issue_keys, ensure_ascii=False)
+                    + "\n\nAUTHORIZED ORIGINAL ANCHORS:\n"
+                    + json.dumps(anchors, ensure_ascii=False, indent=2)
+                    + "\n\nFORMAL EVENT CONTRACTS:\n"
+                    + json.dumps(contracts, ensure_ascii=False, indent=2)
+                    + "\n\nFORMAL EVENT COMPLETION CHECKLIST:\n"
+                    + json.dumps(obligations, ensure_ascii=False, indent=2)
+                    + "\n\nPREVIOUS ACCEPTED HANDOFF:\n" + previous_handoff
+                    + "\n\nNEXT SEGMENT ENTRY TO PRESERVE:\n" + next_entry
+                    + "\n\nSTRUCTURAL DRIFT ISSUES:\n"
+                    + json.dumps(current_issues, ensure_ascii=False, indent=2)
+                    + guardrails
+                )
+                prompt += "\n\nCURRENT PLAN SEGMENT:\n" + current
+
+            feedback_budget = self._planning_recovery_feedback_token_budget(
+                constraints=constraints,
+                fixed_prompt=prompt,
+                expected_output_characters=repair_expected_output_characters,
+            )
+            segment_feedback = self._planning_recovery_feedback_for_segment(
+                recovery_feedback,
+                segment=segment,
+                segment_event_ids=segment_event_ids,
+                token_budget=feedback_budget,
+            )
+            current_authority = "\n\nCURRENT PLAN SEGMENT:\n" + current
+            if current_authority in prompt:
+                prompt = prompt.replace(current_authority, "", 1)
+            if segment_feedback:
+                prompt += (
+                    "\n\nREJECTED CANDIDATE NO-REGRESSION FEEDBACK:\n"
+                    + json.dumps(segment_feedback, ensure_ascii=False, indent=2)
+                    + "\nThese records are failure evidence only, never story canon. "
+                    "Start from the current best-plan authority in this prompt; do not inherit "
+                    "wording or facts from a rejected candidate, and do not reintroduce its "
+                    "issue keys.\n"
+                )
+            # Keep the current best segment last. Rejected-candidate evidence is
+            # diagnostic only and must never be parsed as writable story text.
+            prompt += current_authority
+
+            def complete_segment(
+                value: str, expected=event_ids, number=segment,
+            ) -> bool:
+                candidate_value = value
+                if not patch_authority:
+                    try:
+                        candidate_value = (
+                            self._normalize_generated_short_plan_segment(
+                                value,
+                                segment=number,
+                                event_ids=expected,
+                                current=current,
+                                artifact="planning repair candidate",
+                            )
+                        )
+                    except GeneratedArtifactShapeError:
+                        return False
+                return not self._short_plan_packet_contract_issues(
+                    candidate_value,
+                    segment=number,
+                    event_ids=expected,
+                    source=current,
+                    obligation_checklists=obligation_checklists,
+                )
+
+            def normalized_patch(value: str) -> dict | None:
+                if not patch_authority:
+                    return None
+                try:
+                    payload = parse_json_object(
+                        value, label=f"Planning repair patch segment {segment}",
+                    )
+                    return normalize_planning_repair_patch(
+                        payload,
+                        authority_sha256=patch_authority,
+                        segment=segment,
+                        evidence_candidates=evidence_candidates,
+                        allowed_anchor_ids=anchor_ids,
+                        current_segment=current,
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    if not complete_segment(value):
+                        return None
+                    try:
+                        full_segment = self._short_plan_segments_for_range(
+                            value, segment, segment,
+                        )[0]
+                        return planning_repair_patch_from_segment(
+                            full_segment,
+                            authority_sha256=patch_authority,
+                            segment=segment,
+                            evidence_candidates=evidence_candidates,
+                            allowed_anchor_ids=anchor_ids,
+                            current_segment=current,
+                        )
+                    except (IndexError, ValueError):
+                        return None
+
+            def complete(value: str) -> bool:
+                if patch_authority:
+                    return normalized_patch(value) is not None
+                return complete_segment(value)
 
             repaired = await self._stage(
                 run_id, run_path, project, "planning", constraints, prompt,
@@ -4591,12 +8182,76 @@ class WorkflowService:
                     f"-adaptation-segment-rebuild-{segment:02d}-attempt-{attempt}"
                 ),
                 allow_tools=False,
-                expected_output_characters=max(1600, len(current)),
+                expected_output_characters=repair_expected_output_characters,
                 completion_check=complete,
+                route_capacity_guard=True,
+                compact_input=True,
+                story_skeleton_override=self._stage_story_skeleton(
+                    project, constraints, run_path,
+                    owner_event_ids=event_ids, index_only=True,
+                ),
+                bounded_protocol_output=bool(patch_authority),
+                scoped_creative_output=not bool(patch_authority),
+                capacity_splitter=(
+                    (lambda details: self._repair_short_plan_adaptation_capacity_split(
+                        run_id, run_path, project, constraints,
+                        segment=segment,
+                        current=current,
+                        event_ids=event_ids,
+                        contract_by_id=contract_by_id,
+                        obligation_by_id=obligation_by_id,
+                        current_issues=current_issues,
+                        segment_feedback=segment_feedback,
+                        previous_handoff=previous_handoff,
+                        next_entry=next_entry,
+                        attempt=attempt,
+                        details=details,
+                    ))
+                    if not patch_authority else None
+                ),
             )
-            if not complete(repaired):
+            if patch_authority and not complete(repaired):
                 raise ValueError(f"规划第 {segment} 段定向修正没有完整返回")
-            block = self._short_plan_segments_for_range(repaired, segment, segment)[0]
+            patch = normalized_patch(repaired)
+            if patch is not None:
+                block = apply_planning_repair_patch(
+                    current, patch, evidence_candidates,
+                )
+                if not complete_segment(block):
+                    raise ValueError(
+                        f"Planning repair patch for segment {segment} changed its "
+                        "formal event set or required segment fields"
+                    )
+            else:
+                if patch_authority:
+                    raise ValueError(
+                        f"规划第 {segment} 段已经具备精确证据锚点，"
+                        "不能退回整段改写扩大修改范围"
+                    )
+                block = self._normalize_generated_short_plan_segment(
+                    repaired,
+                    segment=segment,
+                    event_ids=event_ids,
+                    current=current,
+                    artifact="planning repair candidate",
+                )
+                contract_issues = self._short_plan_packet_contract_issues(
+                    block,
+                    segment=segment,
+                    event_ids=event_ids,
+                    source=current,
+                    obligation_checklists=obligation_checklists,
+                )
+                if contract_issues:
+                    raise GeneratedArtifactShapeError(
+                        f"planning repair candidate failed its complete segment "
+                        f"contract (segment={segment}, event_ids={event_ids}): "
+                        + "; ".join(
+                            str(item.get("message") or item.get("code"))
+                            for item in contract_issues
+                        ),
+                        issues=contract_issues,
+                    )
             candidate = self._replace_short_plan_segment(
                 candidate, segment_count, segment, block,
             )
@@ -4630,8 +8285,56 @@ class WorkflowService:
         original_plan = plan
         protocol_repairs = 0
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        obligation_checklists = narrative_outline_event_obligations(
+            outline_content,
+        )
         outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
         context_sha256 = generation_context_sha256 or ""
+
+        def auto_bind_obligation_continuations(
+            candidate: str,
+            allowed_segments: set[int] | None = None,
+        ) -> tuple[str, list[dict]]:
+            """Merge an unlabelled required response into its formal event.
+
+            This is a deterministic ownership repair, not a plot rewrite.  It
+            handles the common layout where a composite event's final response
+            is rendered as the next numbered item without repeating the event
+            ID.  Ambiguous items remain untouched for model repair.
+            """
+            current = candidate
+            repairs: list[dict] = []
+            segments = self._short_plan_segments(current, segment_count)
+            if len(segments) != segment_count:
+                return candidate, repairs
+            for segment in range(1, segment_count + 1):
+                if allowed_segments is not None and segment not in allowed_segments:
+                    continue
+                block = segments[segment - 1]
+                event_ids = self._short_plan_event_ids(block)
+                if not event_ids:
+                    continue
+                repaired, segment_repairs = repair_planning_event_obligation_ownership(
+                    block, event_ids, obligation_checklists,
+                )
+                if repaired == block or not segment_repairs:
+                    continue
+                current = self._replace_short_plan_segment(
+                    current, segment_count, segment, repaired,
+                )
+                segments = self._short_plan_segments(current, segment_count)
+                repairs.extend({"segment": segment, **item} for item in segment_repairs)
+            return current, repairs
+
+        seeded_recovery = read_planning_recovery(outputs)
+        seeded_state = seeded_recovery[0] if seeded_recovery is not None else None
+        if not planning_recovery_state_matches(
+            seeded_state,
+            outline_sha256=outline_sha256,
+            generation_context_sha256=context_sha256,
+            segment_count=segment_count,
+        ) or seeded_recovery is None or seeded_recovery[1] != plan:
+            seeded_state = None
 
         def protocol_failure(values: list[dict]) -> bool:
             return any(
@@ -4639,8 +8342,57 @@ class WorkflowService:
                 for item in values
             )
 
+        def deterministic_obligation_issues(candidate: str) -> list[dict]:
+            values: list[dict] = []
+            for segment, block in enumerate(
+                self._short_plan_segments(candidate, segment_count), 1,
+            ):
+                event_ids = self._short_plan_event_ids(block)
+                for issue in planning_event_obligation_issues(
+                    block, event_ids, obligation_checklists,
+                ):
+                    values.append({**issue, "segment": segment})
+            return values
+
+        def merge_initial_issue_evidence(values: list[dict]) -> list[dict]:
+            combined: list[dict] = []
+            seen: set[str] = set()
+            seeded_issues = (
+                list(seeded_state.get("best_issues") or [])
+                if isinstance(seeded_state, dict) else []
+            )
+            for issue in [*seeded_issues, *values]:
+                if not isinstance(issue, dict):
+                    continue
+                if str(issue.get("code") or "") in PLANNING_ADAPTATION_PROTOCOL_CODES:
+                    continue
+                identity = json.dumps(
+                    issue, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                )
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                combined.append(dict(issue))
+            return combined
+
         async def evaluate(candidate: str, suffix: str) -> tuple[list[dict], dict, list[dict]]:
             nonlocal protocol_repairs
+            obligation_issues = deterministic_obligation_issues(candidate)
+            if obligation_issues:
+                issues_value = (
+                    merge_initial_issue_evidence(obligation_issues)
+                    if suffix == "initial" else obligation_issues
+                )
+                self.db.add_run_event(
+                    run_id, "warning", "planning_event_obligation_precheck_failed",
+                    "规划正式复合事件尚未覆盖全部必需参与者与回应，正在直接重建所属完整正式段",
+                    stage="planning", metadata={
+                        "issues": obligation_issues,
+                        "review_deferred": True,
+                    },
+                )
+                return [], {}, issues_value
             receipts_value, whole_value, issues_value, retries = (
                 await self._review_short_plan_adaptations(
                     run_id, run_path, project, constraints, state, candidate,
@@ -4667,6 +8419,36 @@ class WorkflowService:
                 ],
             }
 
+        def recovery_units(candidate: str, values: list[dict]) -> list[tuple[int, ...]]:
+            segments = self._short_plan_segments(candidate, segment_count)
+            event_ids = {
+                number: self._short_plan_event_ids(block)
+                for number, block in enumerate(segments, 1)
+            }
+            components: list[set[int]] = []
+            for issue in values:
+                owned = set(planning_issue_segments([issue], event_ids))
+                if not owned:
+                    continue
+                overlapping = [
+                    component for component in components
+                    if component.intersection(owned)
+                ]
+                merged = set(owned)
+                for component in overlapping:
+                    merged.update(component)
+                    components.remove(component)
+                components.append(merged)
+            all_affected = planning_issue_segments(values, event_ids)
+            claimed = set().union(*components) if components else set()
+            components.extend(
+                {segment} for segment in sorted(all_affected - claimed)
+            )
+            return sorted(
+                (tuple(sorted(component)) for component in components),
+                key=lambda unit: (unit[0], len(unit), unit),
+            )
+
         self.db.add_run_event(
             run_id, "info", "planning_adaptation_review_started",
             "正在核对规划中的等价展开、跨段因果和结局承诺",
@@ -4683,6 +8465,22 @@ class WorkflowService:
             plan=best_plan,
             issues=[],
         )
+        if seeded_state is not None:
+            pending_state["candidates"] = list(
+                seeded_state.get("candidates") or []
+            )
+            pending_state["execution_failures"] = list(
+                seeded_state.get("execution_failures") or []
+            )
+            pending_state["semantic_attempts"] = int(
+                seeded_state.get("semantic_attempts") or 0
+            )
+            pending_state["resumed_recovery_sha256"] = hashlib.sha256(
+                json.dumps(
+                    seeded_state, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8"),
+            ).hexdigest()
         pending_state["status"] = "review_pending"
         write_planning_recovery(outputs, pending_state, best_plan)
         best_receipts, best_whole_receipt, best_issues = await evaluate(
@@ -4695,44 +8493,112 @@ class WorkflowService:
             plan=best_plan,
             issues=best_issues,
         )
+        if seeded_state is not None:
+            recovery_state["candidates"] = list(
+                seeded_state.get("candidates") or []
+            )
+            recovery_state["execution_failures"] = list(
+                seeded_state.get("execution_failures") or []
+            )
+            recovery_state["semantic_attempts"] = int(
+                seeded_state.get("semantic_attempts") or 0
+            )
+            recovery_state["resumed_recovery_sha256"] = (
+                pending_state["resumed_recovery_sha256"]
+            )
         write_planning_recovery(outputs, recovery_state, best_plan)
 
-        terminal_issues: list[dict] | None = None
-        targeted_attempts = 0
-        rebuild_attempts = 0
+        targeted_attempts: dict[tuple[int, ...], int] = {}
+        rebuild_attempts: dict[tuple[int, ...], int] = {}
         while best_issues and not protocol_failure(best_issues):
-            if targeted_attempts < 2:
+            scope = recovery_scope(best_plan, best_issues)
+            units = recovery_units(best_plan, best_issues)
+            current_segments = self._short_plan_segments(
+                best_plan, segment_count,
+            )
+            current_event_ids = {
+                number: self._short_plan_event_ids(block)
+                for number, block in enumerate(current_segments, 1)
+            }
+            forced_rebuild = {
+                unit for unit in units
+                if any(
+                    str(issue.get("code") or "")
+                    == "planning_required_participant_missing"
+                    and set(unit).intersection(
+                        planning_issue_segments([issue], current_event_ids)
+                    )
+                    for issue in best_issues if isinstance(issue, dict)
+                )
+            }
+            targetable = [
+                unit for unit in units
+                if unit not in forced_rebuild
+                if targeted_attempts.get(unit, 0) < 2
+            ]
+            rebuildable = [
+                unit for unit in units
+                if rebuild_attempts.get(unit, 0) < 2
+            ]
+            if targetable:
+                minimum_attempts = min(
+                    targeted_attempts.get(unit, 0)
+                    for unit in targetable
+                )
+                target_unit = min(
+                    unit for unit in targetable
+                    if targeted_attempts.get(unit, 0) == minimum_attempts
+                )
                 mode = "targeted"
-                targeted_attempts += 1
-                attempt = targeted_attempts
+                attempt = targeted_attempts.get(target_unit, 0) + 1
+                targeted_attempts[target_unit] = attempt
                 event_type = "planning_adaptation_targeted_repair"
                 message = "规划存在结构性偏移，正在只修正受影响的正式段"
-            elif rebuild_attempts < 1:
+            elif rebuildable:
+                target_unit = min(rebuildable)
                 mode = "rebuild"
-                rebuild_attempts += 1
-                attempt = rebuild_attempts
+                attempt = rebuild_attempts.get(target_unit, 0) + 1
+                rebuild_attempts[target_unit] = attempt
                 event_type = "planning_adaptation_segment_rebuild"
                 message = "局部修正未继续收敛，正在依据正式事件合同重建受影响的完整段"
             else:
                 break
-            scope = recovery_scope(best_plan, best_issues)
+            target_segment = target_unit[0] if len(target_unit) == 1 else None
+            unit_label = "-".join(f"{segment:02d}" for segment in target_unit)
             self.db.add_run_event(
                 run_id, "warning", event_type, message,
                 stage="planning", metadata={
                     "attempt": attempt,
                     "mode": mode,
+                    "candidate_segment": target_segment,
+                    "candidate_segments": list(target_unit),
                     "issues": best_issues,
                     "best_issue_keys": sorted(planning_issue_keys(best_issues)),
                     **scope,
                 },
             )
             try:
+                recovery_feedback = self._planning_recovery_candidate_feedback(
+                    recovery_state,
+                )
                 candidate = await self._repair_short_plan_adaptation_segments(
                     run_id, run_path, project, constraints, state, best_plan,
                     formal_outline_events, segment_count, best_issues,
                     mode=mode, attempt=attempt,
+                    recovery_feedback=recovery_feedback,
+                    target_segments=list(target_unit),
                 )
-            except (IncompleteModelOutputError, ValueError) as exc:
+            except (
+                ContextCapacityPreflightError,
+                IncompleteModelOutputError,
+                ModelRoutesExhaustedError,
+                ValueError,
+            ) as exc:
+                failure_class = classify_model_failure(exc)
+                repair_feedback = [
+                    dict(item) for item in getattr(exc, "issues", [])
+                    if isinstance(item, dict)
+                ]
                 comparison = {
                     "improved": False,
                     "previous_issue_keys": sorted(planning_issue_keys(best_issues)),
@@ -4742,13 +8608,30 @@ class WorkflowService:
                     "retained_issue_keys": sorted(planning_issue_keys(best_issues)),
                     "reason": "candidate_generation_failed",
                     "error": str(exc)[:500],
+                    "failure_class": failure_class,
+                    "candidate_segment": target_segment,
+                    "candidate_segments": list(target_unit),
+                    "repair_feedback": repair_feedback,
                     **scope,
                 }
                 recovery_state = record_planning_candidate(
                     recovery_state, plan=best_plan, issues=best_issues,
-                    comparison=comparison, source=f"{mode}-{attempt}",
+                    comparison=comparison,
+                    source=f"{mode}-{attempt}-segments-{unit_label}",
                     accepted=False,
                 )
+                if (
+                    failure_class != "normal_invalid_output"
+                    or isinstance(exc, GeneratedArtifactShapeError)
+                ):
+                    recovery_state.setdefault("execution_failures", []).append({
+                        "failure_class": failure_class,
+                        "error": str(exc)[:500],
+                        "attempt": attempt,
+                        "mode": mode,
+                        "candidate_segment": target_segment,
+                        "candidate_segments": list(target_unit),
+                    })
                 write_planning_recovery(outputs, recovery_state, best_plan)
                 self.db.add_run_event(
                     run_id, "warning", "planning_candidate_rejected",
@@ -4757,10 +8640,57 @@ class WorkflowService:
                 )
                 continue
 
+            candidate, ownership_repairs = auto_bind_obligation_continuations(
+                candidate, set(target_unit),
+            )
+            if ownership_repairs:
+                self.db.add_run_event(
+                    run_id, "info", "planning_event_obligation_auto_repaired",
+                    "已将修复候选中的连续回应并入所属正式事件后再做结构核对",
+                    stage="planning", metadata={"repairs": ownership_repairs},
+                )
+            best_segments_before = self._short_plan_segments(
+                best_plan, segment_count,
+            )
+            candidate_segments_after = self._short_plan_segments(
+                candidate, segment_count,
+            )
+            if (
+                len(best_segments_before) == segment_count
+                and len(candidate_segments_after) == segment_count
+            ):
+                changed_segments = [
+                    number for number, (before, after) in enumerate(
+                        zip(
+                            best_segments_before,
+                            candidate_segments_after,
+                            strict=True,
+                        ), 1,
+                    ) if before != after
+                ]
+            else:
+                changed_segments = list(target_unit)
+            segment_event_ids = {
+                number: self._short_plan_event_ids(block)
+                for number, block in enumerate(best_segments_before, 1)
+            }
+            unauthorized_changes = sorted(
+                set(changed_segments) - set(target_unit)
+            )
             local_issues = self._short_plan_issues(
                 project, state, candidate, segment_count,
             )
-            if local_issues:
+            if unauthorized_changes:
+                candidate_receipts = []
+                candidate_whole_receipt = {}
+                candidate_issues = [{
+                    "code": "planning_unauthorized_segment_change",
+                    "segment": segment,
+                    "message": (
+                        f"规划修复候选改动了未授权的第 {segment} 段"
+                    ),
+                } for segment in unauthorized_changes]
+            elif local_issues:
                 candidate_receipts: list[dict] = []
                 candidate_whole_receipt: dict = {}
                 candidate_issues = [{
@@ -4772,29 +8702,123 @@ class WorkflowService:
                     await evaluate(candidate, f"{mode}-{attempt}")
                 )
             if protocol_failure(candidate_issues):
-                terminal_issues = candidate_issues
+                comparison = {
+                    "improved": False,
+                    "previous_issue_keys": sorted(planning_issue_keys(best_issues)),
+                    "candidate_issue_keys": sorted(planning_issue_keys(candidate_issues)),
+                    "introduced_issue_keys": sorted(
+                        planning_issue_keys(candidate_issues)
+                        - planning_issue_keys(best_issues)
+                    ),
+                    "resolved_issue_keys": [],
+                    "retained_issue_keys": sorted(planning_issue_keys(best_issues)),
+                    "reason": "candidate_receipt_failed",
+                    "candidate_segment": target_segment,
+                    "candidate_segments": list(target_unit),
+                    **scope,
+                }
+                recovery_state = record_planning_candidate(
+                    recovery_state, plan=best_plan, issues=best_issues,
+                    comparison=comparison,
+                    source=f"{mode}-{attempt}-segments-{unit_label}",
+                    accepted=False,
+                )
+                write_planning_recovery(outputs, recovery_state, best_plan)
                 self.db.add_run_event(
                     run_id, "error", "planning_candidate_receipt_failed",
                     "候选规划保持隔离，但其审核回执未能完成，已保留最佳规划",
-                    stage="planning", metadata={"issues": candidate_issues},
+                    stage="planning", metadata={
+                        "issues": candidate_issues,
+                        **comparison,
+                    },
                 )
-                break
+                continue
             comparison = planning_candidate_comparison(
                 best_issues, candidate_issues,
+                changed_segments=set(changed_segments),
+                segment_event_ids=segment_event_ids,
             )
-            comparison = {**comparison, **scope}
-            accepted = not candidate_issues or bool(comparison["improved"])
+            latent_keys = set(comparison["latent_baseline_issue_keys"])
+            latent_segments = sorted({
+                segment
+                for issue in candidate_issues
+                if planning_issue_keys([issue]).intersection(latent_keys)
+                for segment in planning_issue_segments(
+                    [issue], segment_event_ids,
+                )
+                if segment not in changed_segments
+            })
+            merged_candidate_issues = merge_planning_issue_ledgers(
+                best_issues, candidate_issues,
+                changed_segments=set(changed_segments),
+                segment_event_ids=segment_event_ids,
+            )
+            comparison = {
+                **comparison,
+                **scope,
+                "candidate_segment": target_segment,
+                "candidate_segments": list(target_unit),
+                "changed_segments": changed_segments,
+                "changed_segment_sha256": {
+                    str(segment): {
+                        "previous": hashlib.sha256(
+                            best_segments_before[segment - 1].encode("utf-8"),
+                        ).hexdigest(),
+                        "candidate": hashlib.sha256(
+                            candidate_segments_after[segment - 1].encode("utf-8"),
+                        ).hexdigest(),
+                    }
+                    for segment in changed_segments
+                    if (
+                        1 <= segment <= len(best_segments_before)
+                        and segment <= len(candidate_segments_after)
+                    )
+                },
+                "latent_baseline_segments": latent_segments,
+                "latent_baseline_segment_sha256": {
+                    str(segment): hashlib.sha256(
+                        best_segments_before[segment - 1].encode("utf-8"),
+                    ).hexdigest()
+                    for segment in latent_segments
+                    if 1 <= segment <= len(best_segments_before)
+                },
+                "merged_candidate_issue_keys": sorted(
+                    planning_issue_keys(merged_candidate_issues)
+                ),
+            }
+            accepted = not merged_candidate_issues or bool(comparison["improved"])
             recovery_state = record_planning_candidate(
-                recovery_state, plan=candidate, issues=candidate_issues,
-                comparison=comparison, source=f"{mode}-{attempt}",
+                recovery_state, plan=candidate, issues=merged_candidate_issues,
+                comparison=comparison,
+                source=f"{mode}-{attempt}-segments-{unit_label}",
                 accepted=accepted,
             )
             if accepted:
                 best_plan = candidate
                 best_receipts = candidate_receipts
                 best_whole_receipt = candidate_whole_receipt
-                best_issues = candidate_issues
+                best_issues = merged_candidate_issues
+                targeted_attempts = {}
+                rebuild_attempts = {}
                 write_planning_recovery(outputs, recovery_state, best_plan)
+                if comparison["newly_discovered_latent_issue_keys"]:
+                    self.db.add_run_event(
+                        run_id, "info", "planning_latent_issues_discovered",
+                        "已保留当前段的有效修复，并将未修改段中新发现的旧问题转入独立修复",
+                        stage="planning", metadata={
+                            "changed_segments": changed_segments,
+                            "latent_baseline_segments": latent_segments,
+                            "latent_baseline_issue_keys": comparison[
+                                "latent_baseline_issue_keys"
+                            ],
+                            "newly_discovered_latent_issue_keys": comparison[
+                                "newly_discovered_latent_issue_keys"
+                            ],
+                            "latent_baseline_segment_sha256": comparison[
+                                "latent_baseline_segment_sha256"
+                            ],
+                        },
+                    )
                 self.db.add_run_event(
                     run_id, "success", "planning_candidate_improved",
                     (
@@ -4812,7 +8836,7 @@ class WorkflowService:
                     stage="planning", metadata=comparison,
                 )
 
-        issues = terminal_issues if terminal_issues is not None else best_issues
+        issues = best_issues
         receipts = best_receipts
         whole_receipt = best_whole_receipt
         recovery_state["status"] = "ready" if not issues else "recoverable_failed"
@@ -4831,6 +8855,9 @@ class WorkflowService:
             "whole_story_receipt": whole_receipt,
             "protocol_repairs": protocol_repairs,
             "semantic_repairs": semantic_repairs,
+            "execution_failures": list(
+                recovery_state.get("execution_failures") or []
+            ),
             "best_issue_keys": sorted(planning_issue_keys(best_issues)),
             "recovery_state": "planning-recovery-state.json",
             "issues": issues,
@@ -4839,6 +8866,23 @@ class WorkflowService:
             artifact_path, json.dumps(artifact, ensure_ascii=False, indent=2),
         )
         if issues:
+            execution_failures = [
+                item for item in (recovery_state.get("execution_failures") or [])
+                if isinstance(item, dict)
+            ]
+            if execution_failures:
+                self.db.add_run_event(
+                    run_id, "error", "planning_adaptation_unavailable",
+                    "规划语义问题尚未解决，修复调用不可用；已保留最佳规划和有效上游进度",
+                    stage="planning", metadata={
+                        "issues": issues,
+                        "execution_failures": execution_failures,
+                        "semantic_repairs": semantic_repairs,
+                    },
+                )
+                raise PlanningRecoveryUnavailableError(
+                    issues, execution_failures,
+                )
             is_protocol = protocol_failure(issues)
             self.db.add_run_event(
                 run_id, "error", (
@@ -4889,6 +8933,900 @@ class WorkflowService:
             boundary = headings[position + 1][0].start() if position + 1 < len(headings) else len(value)
             blocks.append(value[match.start():boundary].strip())
         return blocks
+
+    @classmethod
+    def _require_short_plan_segment(
+        cls, value: str, segment: int, *, artifact: str,
+    ) -> str:
+        """Return one parsed segment or raise a recoverable contract error.
+
+        Generated output is never indexed before its presentation syntax has
+        been normalized and its cardinality has been checked.  Callers in the
+        planning recovery loop catch ``ValueError`` and retry only the current
+        repair scope from the retained best plan.
+        """
+        blocks = cls._short_plan_segments_for_range(value, segment, segment)
+        if len(blocks) != 1:
+            headings = [
+                number for _match, number in cls._short_plan_headings(value)
+                if number is not None
+            ]
+            raise GeneratedArtifactShapeError(
+                f"{artifact} missing exactly one recognizable segment heading "
+                f"(expected={segment}, parsed={headings})"
+            )
+        return blocks[0]
+
+    @classmethod
+    def _short_plan_heading_field(
+        cls, segment: str, field: str,
+    ) -> tuple[str, int]:
+        """Read a plan field rendered as a standalone Markdown heading.
+
+        This is presentation normalization only.  A field heading owns text
+        until the next heading of the same or a higher level, so nested event
+        headings remain part of ``本段事件`` while later peer sections do not
+        leak into ``段末交接``.
+        """
+        comparison = cls._short_plan_comparison_view(segment)
+        aliases = [
+            unicodedata.normalize("NFKC", label)
+            for label in cls.SHORT_PLAN_FIELD_ALIASES[field]
+        ]
+        labels = "|".join(re.escape(label) for label in aliases)
+        pattern = re.compile(
+            rf"(?im)^[ \t]{{0,3}}(?P<marks>#{{1,6}})[ \t]+"
+            rf"(?:\*{{1,2}}|_{{1,2}}|`)?[ \t]*(?:{labels})[ \t]*"
+            rf"(?:\*{{1,2}}|_{{1,2}}|`)?[ \t]*(?:[:：][ \t]*)?$"
+        )
+        values: list[str] = []
+        for match in pattern.finditer(comparison):
+            start = match.end()
+            if start < len(segment) and segment[start:start + 2] == "\r\n":
+                start += 2
+            elif start < len(segment) and segment[start] in "\r\n":
+                start += 1
+            level = len(match.group("marks"))
+            boundary = re.search(
+                rf"(?m)^[ \t]{{0,3}}#{{1,{level}}}(?:[ \t]+|$)",
+                comparison[start:],
+            )
+            end = start + boundary.start() if boundary else len(segment)
+            value = segment[start:end].strip()
+            if value:
+                values.append(value)
+        return (values[0] if len(values) == 1 else "", len(values))
+
+    @classmethod
+    def _short_plan_variant_label_matches(
+        cls, value: str, aliases: tuple[str, ...],
+    ) -> list[re.Match[str]]:
+        labels = "|".join(
+            re.escape(unicodedata.normalize("NFKC", label))
+            for label in aliases
+        )
+        pattern = re.compile(
+            rf"(?im)^[ \t]{{0,3}}"
+            rf"(?:#{{1,6}}[ \t]+)?(?:[-+*][ \t]+)?"
+            rf"(?:\*{{1,2}}|_{{1,2}}|`)?[ \t]*"
+            rf"(?:{labels})(?=[ \t（(\*_`:：]|$)"
+            rf"(?:[ \t]*[（(][^\r\n（）(){{}}]{{0,120}}[）)])?"
+            rf"[ \t]*(?:\*{{1,2}}|_{{1,2}}|`)?[ \t]*"
+            rf"(?:[:：][ \t]*)?(?P<inline>[^\r\n]*)$"
+        )
+        return list(pattern.finditer(cls._short_plan_comparison_view(value)))
+
+    @classmethod
+    def _short_plan_variant_label_value(
+        cls, value: str, aliases: tuple[str, ...], *,
+        boundary_aliases: tuple[str, ...] = (),
+        inline_only: bool = False,
+        stop_at_next_heading: bool = False,
+    ) -> tuple[str, int]:
+        matches = cls._short_plan_variant_label_matches(value, aliases)
+        if len(matches) != 1:
+            return "", len(matches)
+        match = matches[0]
+        inline_start, inline_end = match.span("inline")
+        inline = value[inline_start:inline_end].strip()
+        if inline_only:
+            return inline, 1
+        start = match.end()
+        if value[start:start + 2] == "\r\n":
+            start += 2
+        elif start < len(value) and value[start] in "\r\n":
+            start += 1
+        comparison = cls._short_plan_comparison_view(value)
+        boundaries: list[int] = []
+        if boundary_aliases:
+            for boundary in cls._short_plan_variant_label_matches(
+                value, boundary_aliases,
+            ):
+                if boundary.start() > match.start():
+                    boundaries.append(boundary.start())
+        if stop_at_next_heading:
+            heading = re.search(
+                r"(?im)^[ \t]{0,3}(?:#{1,6}[ \t]+\S.*|"
+                r"(?:\*{2}|__)[^\r\n*]{1,160}(?:\*{2}|__)[ \t]*"
+                r"(?:[:：][ \t]*)?)$",
+                comparison[start:],
+            )
+            if heading:
+                boundaries.append(start + heading.start())
+        end = min(boundaries) if boundaries else len(value)
+        body = value[start:end].strip()
+        return "\n".join(part for part in (inline, body) if part).strip(), 1
+
+    @classmethod
+    def _normalize_generated_short_plan_markdown_packet(
+        cls, value: str, *, segment: int, event_ids: list[str],
+        current: str, artifact: str,
+    ) -> str:
+        """Normalize a provider's explicit segment-only Markdown packet."""
+        marker_matches = cls._short_plan_variant_label_matches(
+            value, ("segment-only plan", "segment only plan", "segment-only", "segment only"),
+        )
+        identity_aliases = ("段标识", "段标签", "segment identity", "segment label")
+        identity_matches = cls._short_plan_variant_label_matches(
+            value, identity_aliases,
+        )
+        declared_segment: int | None = None
+        if len(identity_matches) == 1:
+            identity_value, _ = cls._short_plan_variant_label_value(
+                value, identity_aliases, inline_only=False,
+                boundary_aliases=("事件ID", "正式事件ID", "段首承接", "开场承接",
+                                  "本段事件", "核心事件", "负责事件", "段末交接",
+                                  "交接状态", "段末状态"),
+            )
+            declared_segment = parse_segment_number(
+                identity_value, allow_scene=False,
+            )
+        if declared_segment != segment:
+            issue = {
+                "code": "planning_packet_segment_identity",
+                "message": (
+                    f"{artifact} has no unambiguous segment identity: "
+                    f"expected {segment}, received {declared_segment}"
+                ),
+                "segment": segment,
+                "event_ids": [str(item).upper() for item in event_ids],
+                "blocking": True,
+            }
+            raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
+
+        expected = [str(item).strip().upper() for item in event_ids]
+        opening_aliases = (
+            cls.SHORT_PLAN_FIELD_ALIASES["opening"]
+            + ("段前接续", "段前承接")
+        )
+        event_aliases = (
+            cls.SHORT_PLAN_FIELD_ALIASES["event"]
+            + ("本包事件", "段内事件", "本包内事件")
+        )
+        handoff_aliases = cls.SHORT_PLAN_FIELD_ALIASES["handoff"]
+        declared_value, declared_count = cls._short_plan_variant_label_value(
+            value, cls.SHORT_PLAN_FIELD_ALIASES["event_id"], inline_only=True,
+        )
+        declared_ids = [item.upper() for item in re.findall(
+            r"EV-[0-9A-F]{8}", declared_value, flags=re.IGNORECASE,
+        )]
+        if declared_count != 1 or declared_ids != expected:
+            issue = {
+                "code": "planning_packet_event_ownership",
+                "message": (
+                    f"{artifact} changed explicit ordered event ownership: "
+                    f"expected {expected}, received {declared_ids}"
+                ),
+                "segment": segment,
+                "event_ids": expected,
+                "expected_event_ids": expected,
+                "actual_event_ids": declared_ids,
+                "blocking": True,
+            }
+            raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
+
+        opening, opening_count = cls._short_plan_variant_label_value(
+            value, opening_aliases,
+            boundary_aliases=event_aliases + handoff_aliases,
+        )
+        event_body, event_count = cls._short_plan_variant_label_value(
+            value, event_aliases, boundary_aliases=handoff_aliases,
+        )
+        handoff, handoff_count = cls._short_plan_variant_label_value(
+            value, handoff_aliases,
+            stop_at_next_heading=True,
+        )
+        missing = []
+        if opening_count != 1 or not opening:
+            missing.append("opening")
+        if event_count != 1 or not event_body:
+            missing.append("event")
+        if handoff_count != 1 or not handoff:
+            missing.append("handoff")
+        if missing:
+            issue = {
+                "code": "planning_packet_field_missing",
+                "message": f"{artifact} lacks complete packet fields: {missing}",
+                "segment": segment,
+                "event_ids": expected,
+                "fields": missing,
+                "blocking": True,
+            }
+            raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
+
+        # References to adjacent formal events are allowed in packet prose;
+        # only the explicit ownership line controls packet identity. Remove
+        # those references from the body before adding exactly one owner ID.
+        clean_body = event_body
+        for event_id in set(re.findall(
+            r"EV-[0-9A-F]{8}", clean_body, flags=re.IGNORECASE,
+        )):
+            clean_body = re.sub(
+                rf"{re.escape(event_id)}", "", clean_body,
+                flags=re.IGNORECASE,
+            )
+        clean_body = re.sub(
+            r"(?m)^[ \t]{0,3}#{1,6}[ \t]+", "", clean_body,
+        ).strip()
+        event_body = (
+            f"1. **正式事件**（{expected[0]}）：{clean_body}"
+        )
+        normalized = cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=expected,
+            event_body=event_body,
+            opening=opening,
+            handoff=handoff,
+        )
+        return cls._require_short_plan_segment(
+            normalized, segment, artifact=f"normalized {artifact}",
+        )
+
+    @classmethod
+    def _generated_short_plan_markdown_projection(
+        cls, block: str, *, segment: int, event_ids: list[str],
+        current: str, artifact: str,
+    ) -> str:
+        """Project harmless Markdown field variants into the canonical block."""
+        expected = [str(event_id).strip().upper() for event_id in event_ids]
+        received = cls._short_plan_event_ids(block)
+        if received != expected or len(received) != len(set(received)):
+            issue = {
+                "code": "planning_packet_event_ownership",
+                "message": (
+                    f"{artifact} changed ordered event ownership: "
+                    f"expected {expected}, received {received}"
+                ),
+                "segment": segment,
+                "event_ids": expected,
+                "blocking": True,
+            }
+            raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
+
+        canonical = {
+            field: cls._short_plan_field(block, field)
+            for field in cls.SHORT_PLAN_FIELD_ALIASES
+        }
+        if all(canonical.values()):
+            return block
+
+        heading_counts: dict[str, int] = {}
+        for field in ("opening", "event", "handoff"):
+            if canonical[field]:
+                continue
+            value, count = cls._short_plan_heading_field(block, field)
+            heading_counts[field] = count
+            canonical[field] = re.sub(
+                r"(?m)^[ \t]{0,3}#{1,6}[ \t]+", "", value,
+            ).strip()
+
+        # Event IDs and outline evidence are Runtime-owned authority.  A
+        # generated packet may vary their presentation or omit the redundant
+        # outline field, but it may not replace either value.
+        canonical["event_id"] = "、".join(expected)
+        canonical["outline"] = (
+            canonical["outline"]
+            or cls._short_plan_field(current, "outline")
+        )
+        missing = [
+            field for field in cls.SHORT_PLAN_FIELD_ALIASES
+            if not canonical.get(field)
+        ]
+        ambiguous = [
+            field for field, count in heading_counts.items() if count > 1
+        ]
+        if missing or ambiguous:
+            issues: list[dict] = []
+            if missing:
+                issues.append({
+                    "code": "planning_packet_field_missing",
+                    "message": (
+                        f"{artifact} lacks complete plan fields: {missing}"
+                    ),
+                    "segment": segment,
+                    "event_ids": expected,
+                    "fields": missing,
+                    "blocking": True,
+                })
+            if ambiguous:
+                issues.append({
+                    "code": "planning_packet_field_ambiguous",
+                    "message": (
+                        f"{artifact} repeats heading-owned plan fields: "
+                        f"{ambiguous}"
+                    ),
+                    "segment": segment,
+                    "event_ids": expected,
+                    "fields": ambiguous,
+                    "blocking": True,
+                })
+            raise GeneratedArtifactShapeError(
+                "; ".join(str(item["message"]) for item in issues),
+                issues=issues,
+            )
+
+        normalized = cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=expected,
+            event_body=canonical["event"],
+            opening=canonical["opening"],
+            handoff=canonical["handoff"],
+        )
+        return cls._require_short_plan_segment(
+            normalized, segment, artifact=f"normalized {artifact}",
+        )
+
+    @staticmethod
+    def _parse_short_plan_event_array(value: str, *, artifact: str) -> list[dict]:
+        """Read exactly one JSON event array from a provider presentation wrapper.
+
+        This is deliberately narrower than the object parser: an array packet
+        is accepted only when the whole payload is one array (optionally inside
+        one fenced block or HTML comment).  We never scan prose and pick the
+        first array because that would make ownership ambiguous.
+        """
+        source = str(value or "").lstrip("\ufeff").strip()
+        if source.startswith("<!--") and source.endswith("-->"):
+            source = source[4:-3].strip()
+        if source.startswith("```") and source.endswith("```"):
+            lines = source.splitlines()
+            if len(lines) < 3 or not lines[-1].strip().startswith("```"):
+                raise ValueError(f"{artifact} JSON array fence is incomplete")
+            source = "\n".join(lines[1:-1]).strip()
+        try:
+            payload = json.loads(source)
+        except (TypeError, json.JSONDecodeError) as exc:
+            raise ValueError(f"{artifact} is not one JSON event array") from exc
+        if not isinstance(payload, list):
+            raise ValueError(f"{artifact} JSON packet must be an event array")
+        if not payload or not all(isinstance(item, dict) for item in payload):
+            raise ValueError(f"{artifact} JSON event array contains invalid items")
+        return payload
+
+    @staticmethod
+    def _short_plan_json_event_narrative(item: dict) -> str:
+        """Project descriptive event fields into one auditable event body."""
+        pieces: list[str] = []
+        for key in (
+            "narrative_summary", "event_body", "summary", "causal_plan",
+            "resolution", "causal_trigger", "approach",
+        ):
+            value = str(item.get(key) or "").strip()
+            if value:
+                pieces.append(value)
+                break
+        beats = item.get("beats")
+        if isinstance(beats, list):
+            for beat in beats:
+                if not isinstance(beat, dict):
+                    continue
+                for key in (
+                    "function", "causal_trigger", "core_content", "exit_state",
+                    "causal_plan", "resolution", "approach",
+                ):
+                    value = str(beat.get(key) or "").strip()
+                    if value:
+                        pieces.append(value)
+        obligations = (
+            item.get("obligations_covered")
+            or item.get("obligations_delivered")
+            or item.get("obligations_fulfilled")
+        )
+        if isinstance(obligations, list):
+            for obligation in obligations:
+                if not isinstance(obligation, dict):
+                    continue
+                value = str(
+                    obligation.get("how_covered")
+                    or obligation.get("how")
+                    or obligation.get("approach")
+                    or ""
+                ).strip()
+                if value:
+                    pieces.append(value)
+                for key in ("kinds", "participants_used", "required_participants"):
+                    detail = obligation.get(key)
+                    if isinstance(detail, list) and detail:
+                        pieces.append("、".join(str(item) for item in detail))
+        checks = item.get("adjacent_checks")
+        if isinstance(checks, dict):
+            for key in ("causal_alignment_note", "notes", "handoff_note"):
+                value = str(checks.get(key) or "").strip()
+                if value:
+                    pieces.append(value)
+        narrative = "\n".join(pieces).strip()
+        for event_id in set(re.findall(
+            r"EV-[0-9A-F]{8}", narrative, flags=re.IGNORECASE,
+        )):
+            narrative = re.sub(
+                rf"{re.escape(event_id)}", "", narrative,
+                flags=re.IGNORECASE,
+            )
+        return re.sub(r"\n{3,}", "\n\n", narrative).strip()
+
+    @classmethod
+    def _short_plan_beam_summary_event_body(
+        cls, current: str, normalized_events: list[tuple[str, str, str]],
+        expected: list[str], *, artifact: str,
+    ) -> str:
+        """Apply a structured beam summary without replacing accepted prose.
+
+        Some providers answer a complete-segment rebuild request with a
+        ``beam_plan`` object that contains only obligations and boundary
+        decisions.  Those values are useful repair instructions, but they are
+        not a complete narrative realization.  Treating them as the event body
+        collapses the current best plan.  The accepted event-owned body remains
+        authority; the provider summary is appended only to its matching event
+        as an explicit obligation/boundary amendment.  The caller still runs
+        retention, obligation, handoff, and whole-plan validation afterwards.
+        """
+        source_body = cls._short_plan_field(current, "event")
+        current_ids = cls._short_plan_event_ids(current)
+        source_issues = planning_event_body_issues(current, expected)
+        if not source_body or current_ids != expected or source_issues:
+            issue = {
+                "code": "planning_packet_summary_authority_missing",
+                "message": (
+                    f"{artifact} is a structured summary but the retained "
+                    "event body cannot be projected without ambiguity"
+                ),
+                "event_ids": expected,
+                "actual_event_ids": current_ids,
+                "source_issues": source_issues,
+                "blocking": True,
+            }
+            raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
+
+        body_ids = [
+            match.group(0).upper() for match in re.finditer(
+                r"EV-[0-9A-F]{8}", source_body, flags=re.IGNORECASE,
+            )
+        ]
+        pieces: list[str] = []
+        for event_id, _label, narrative in normalized_events:
+            if len(expected) == 1 and not body_ids:
+                source_piece = (
+                    f"1. **正式事件**（{event_id}）：{source_body}"
+                )
+            else:
+                source_piece = cls._short_plan_event_owned_body(
+                    current, [event_id],
+                )
+                owned_ids = [
+                    match.group(0).upper() for match in re.finditer(
+                        r"EV-[0-9A-F]{8}", source_piece,
+                        flags=re.IGNORECASE,
+                    )
+                ]
+                if owned_ids != [event_id]:
+                    issue = {
+                        "code": "planning_packet_summary_authority_missing",
+                        "message": (
+                            f"{artifact} cannot bind its structured summary "
+                            f"to exactly one retained event body ({event_id})"
+                        ),
+                        "event_id": event_id,
+                        "event_ids": expected,
+                        "actual_event_ids": owned_ids,
+                        "blocking": True,
+                    }
+                    raise GeneratedArtifactShapeError(
+                        issue["message"], issues=[issue],
+                    )
+            pieces.append(
+                f"{source_piece.rstrip()}\n\n"
+                f"   - **结构化义务与边界**：{narrative}"
+            )
+        return cls._renumber_short_plan_event_body("\n\n".join(pieces))
+
+    @classmethod
+    def _short_plan_retention_source(
+        cls, current: str, *, segment: int, event_ids: list[str],
+    ) -> str:
+        """Compare packet retention against the same event-owned authority.
+
+        A capacity packet may own one event while ``current`` is still the
+        complete multi-event segment. Comparing those two bodies directly
+        makes every legitimate packet look like it deleted its siblings. Only
+        project when the requested IDs form the same exact ordered subset and
+        the resulting packet retains a complete independently owned body.
+        """
+        expected = [str(item).strip().upper() for item in event_ids]
+        current_ids = cls._short_plan_event_ids(current)
+        if current_ids == expected:
+            return current
+        requested = set(expected)
+        if [item for item in current_ids if item in requested] != expected:
+            return current
+        projected = cls._short_plan_repair_event_projection(
+            current, segment=segment, event_ids=expected,
+        )
+        if (
+            cls._short_plan_event_ids(projected) != expected
+            or planning_event_body_issues(projected, expected)
+        ):
+            return current
+        return projected
+
+    @classmethod
+    def _normalize_generated_short_plan_segment(
+        cls, value: str, *, segment: int, event_ids: list[str],
+        current: str, artifact: str,
+    ) -> str:
+        """Normalize one unambiguous generated planning packet.
+
+        Markdown remains canonical. A single JSON object may be accepted as a
+        presentation variant only when it declares the same segment and exact
+        ordered event ownership and provides complete event bodies plus entry
+        and exit state. The normalized block still re-enters every existing
+        semantic validator and never becomes a second narrative authority.
+        """
+        try:
+            canonical_block = cls._require_short_plan_segment(
+                value, segment, artifact=artifact,
+            )
+            expected = [
+                str(event_id).strip().upper() for event_id in event_ids
+            ]
+            if (
+                cls._short_plan_event_ids(canonical_block) == expected
+                and all(
+                    cls._short_plan_field(canonical_block, field)
+                    for field in cls.SHORT_PLAN_FIELD_ALIASES
+                )
+            ):
+                return canonical_block
+            numbered_headings = [
+                (match, number)
+                for match, number in cls._short_plan_headings(value)
+                if number is not None
+            ]
+            position = next(
+                index for index, (_match, number) in enumerate(numbered_headings)
+                if number == segment
+            )
+            start = numbered_headings[position][0].start()
+            end = (
+                numbered_headings[position + 1][0].start()
+                if position + 1 < len(numbered_headings) else len(value)
+            )
+            block = value[start:end].strip() or canonical_block
+            return cls._generated_short_plan_markdown_projection(
+                block,
+                segment=segment,
+                event_ids=event_ids,
+                current=current,
+                artifact=artifact,
+            )
+        except GeneratedArtifactShapeError as markdown_error:
+            marker_present = bool(cls._short_plan_variant_label_matches(
+                value,
+                ("segment-only plan", "segment only plan", "segment-only", "segment only"),
+            ))
+            identity_present = bool(cls._short_plan_variant_label_matches(
+                value, ("段标识", "段标签", "segment identity", "segment label"),
+            ))
+            if marker_present or identity_present:
+                return cls._normalize_generated_short_plan_markdown_packet(
+                    value,
+                    segment=segment,
+                    event_ids=event_ids,
+                    current=current,
+                    artifact=artifact,
+                )
+            try:
+                payload = parse_json_object(
+                    value, label=f"{artifact} JSON packet",
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                try:
+                    payload = cls._parse_short_plan_event_array(
+                        value, artifact=artifact,
+                    )
+                except ValueError:
+                    raise markdown_error
+
+        is_event_array = isinstance(payload, list)
+        is_beam_summary = False
+        beam_has_complete_narrative = False
+        raw_events = payload if is_event_array else payload.get(
+            "events_owned", payload.get("events")
+        )
+        if isinstance(payload, dict) and (
+            raw_events is None or raw_events == []
+        ):
+            beam_plan = payload.get("beam_plan")
+            if isinstance(beam_plan, dict) and beam_plan:
+                is_beam_summary = True
+                projected_events: list[dict] = []
+                for event_id, details in beam_plan.items():
+                    if not isinstance(details, dict):
+                        raise GeneratedArtifactShapeError(
+                            f"{artifact} JSON beam plan contains a non-object event"
+                        )
+                    projected = dict(details)
+                    projected.setdefault("event_id", event_id)
+                    projected.setdefault("label", event_id)
+                    projected_events.append(projected)
+                raw_events = projected_events
+                beam_has_complete_narrative = all(
+                    bool(str(
+                        item.get("event_body")
+                        or item.get("narrative_summary")
+                        or ""
+                    ).strip())
+                    for item in projected_events
+                )
+        if not isinstance(raw_events, list) or not raw_events:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet has no owned events"
+            )
+
+        def declared_segment_numbers(item: dict) -> set[int]:
+            label = str(
+                item.get("segment_label")
+                or item.get("segment_title")
+                or ""
+            ).strip()
+            label_number = (
+                parse_segment_number(label, allow_scene=False) if label else None
+            )
+            raw_order = item.get(
+                "segment_order",
+                item.get("segment", item.get("segment_index")),
+            )
+            try:
+                declared_order = (
+                    int(raw_order) if raw_order not in (None, "") else None
+                )
+            except (TypeError, ValueError):
+                declared_order = None
+            return {
+                number for number in (label_number, declared_order)
+                if number is not None
+            }
+
+        if is_event_array:
+            per_event_numbers = [
+                declared_segment_numbers(item) for item in raw_events
+            ]
+            declared_numbers = {
+                number for numbers in per_event_numbers for number in numbers
+            }
+            if any(numbers != {segment} for numbers in per_event_numbers):
+                declared_numbers = {None}
+        else:
+            packet_ids = payload.get("packet_event_ids", payload.get("event_ids"))
+            if packet_ids is not None:
+                if isinstance(packet_ids, str):
+                    packet_ids = re.findall(
+                        r"EV-[0-9A-F]{8}", packet_ids, flags=re.IGNORECASE,
+                    )
+                if not isinstance(packet_ids, list):
+                    packet_ids = []
+                normalized_packet_ids = [
+                    str(item).strip().upper() for item in packet_ids
+                ]
+                expected_packet_ids = [
+                    str(item).strip().upper() for item in event_ids
+                ]
+                if normalized_packet_ids != expected_packet_ids:
+                    raise GeneratedArtifactShapeError(
+                        f"{artifact} JSON packet changed explicit event ownership "
+                        f"(expected={expected_packet_ids}, received={normalized_packet_ids})"
+                    )
+            declared_numbers = declared_segment_numbers(payload)
+        if not declared_numbers or declared_numbers != {segment}:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet has ambiguous segment identity "
+                f"(expected={segment}, declared={sorted(declared_numbers)})"
+            )
+        normalized_events: list[tuple[str, str, str]] = []
+        for item in raw_events:
+            if not isinstance(item, dict):
+                raise GeneratedArtifactShapeError(
+                    f"{artifact} JSON packet contains a non-object event"
+                )
+            event_id = str(
+                item.get("event_id") or item.get("id") or ""
+            ).strip().upper()
+            label_value = str(item.get("label") or event_id).strip()
+            narrative = cls._short_plan_json_event_narrative(item)
+            if not event_id or not narrative:
+                raise GeneratedArtifactShapeError(
+                    f"{artifact} JSON packet event lacks identity or narrative body"
+                )
+            normalized_events.append((event_id, label_value, narrative))
+        owned = [item[0] for item in normalized_events]
+        expected = [str(event_id).strip().upper() for event_id in event_ids]
+        if owned != expected or len(owned) != len(set(owned)):
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet changed ordered event ownership "
+                f"(expected={expected}, received={owned})"
+            )
+
+        first_event = raw_events[0]
+        last_event = raw_events[-1]
+        if is_event_array:
+            opening = str(
+                first_event.get("entry_handoff")
+                or first_event.get("segment_entry_condition")
+                or first_event.get("entry_conditions")
+                or first_event.get("entry_state")
+                or ""
+            ).strip()
+            handoff = str(
+                last_event.get("exit_handoff")
+                or last_event.get("segment_exit_condition")
+                or last_event.get("exit_conditions")
+                or last_event.get("exit_state")
+                or ""
+            ).strip()
+        else:
+            opening = str(
+                payload.get("segment_entry_condition")
+                or payload.get("opening")
+                or payload.get("entry_state")
+                or payload.get("entry_handoff")
+                or payload.get("handoff_in")
+                or first_event.get("entry_conditions")
+                or first_event.get("entry_state")
+                or ""
+            ).strip()
+            handoff = str(
+                payload.get("segment_exit_condition")
+                or payload.get("handoff")
+                or payload.get("exit_state")
+                or payload.get("exit_handoff")
+                or payload.get("handoff_out")
+                or last_event.get("exit_conditions")
+                or last_event.get("exit_state")
+                or ""
+            ).strip()
+        if not opening or not handoff:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet lacks complete entry or exit state"
+            )
+        projected_event_body = "\n\n".join(
+            f"{index}. **{label_value if label_value.upper() != event_id else '正式事件'}**"
+            f"（{event_id}）：{narrative}"
+            for index, (event_id, label_value, narrative) in enumerate(
+                normalized_events, 1,
+            )
+        )
+        event_body = projected_event_body
+        if is_beam_summary and not beam_has_complete_narrative:
+            retention_source = cls._short_plan_retention_source(
+                current, segment=segment, event_ids=expected,
+            )
+            event_body = cls._short_plan_beam_summary_event_body(
+                retention_source, normalized_events, expected,
+                artifact=artifact,
+            )
+        elif is_beam_summary:
+            retention_source = cls._short_plan_retention_source(
+                current, segment=segment, event_ids=expected,
+            )
+            provisional = cls._render_short_plan_repair_packet(
+                current,
+                segment=segment,
+                event_ids=expected,
+                event_body=projected_event_body,
+                opening=opening,
+                handoff=handoff,
+            )
+            collapsed = any(
+                item.get("code") == "event_body_collapsed"
+                for item in planning_event_body_retention_issues(
+                    retention_source, provisional, expected,
+                )
+            )
+            if collapsed:
+                event_body = cls._short_plan_beam_summary_event_body(
+                    retention_source, normalized_events, expected,
+                    artifact=artifact,
+                )
+        normalized = cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=expected,
+            event_body=event_body,
+            opening=opening,
+            handoff=handoff,
+        )
+        return cls._require_short_plan_segment(
+            normalized, segment, artifact=f"normalized {artifact}",
+        )
+
+    @classmethod
+    def _short_plan_packet_contract_issues(
+        cls, value: str, *, segment: int, event_ids: list[str],
+        source: str, obligation_checklists: dict[str, dict] | None = None,
+    ) -> list[dict]:
+        """Return actionable protocol and semantic issues for one packet."""
+        expected = [str(event_id).strip().upper() for event_id in event_ids]
+        issues: list[dict] = []
+
+        def add(item: dict) -> None:
+            bound = dict(item)
+            bound.setdefault("segment", segment)
+            if not bound.get("event_id") and not bound.get("event_ids"):
+                bound["event_ids"] = expected
+            bound.setdefault("blocking", True)
+            issues.append(bound)
+
+        headings = [
+            number for _match, number in cls._short_plan_headings(value)
+            if number is not None
+        ]
+        blocks = cls._short_plan_segments_for_range(value, segment, segment)
+        if headings != [segment] or len(blocks) != 1:
+            add({
+                "code": "planning_packet_segment_shape",
+                "message": (
+                    "规划修复分包必须只包含当前正式段；"
+                    f"expected={[segment]}, received={headings}"
+                ),
+            })
+            return issues
+        block = blocks[0]
+        received = cls._short_plan_event_ids(block)
+        if received != expected or len(received) != len(set(received)):
+            add({
+                "code": "planning_packet_event_ownership",
+                "message": (
+                    "规划修复分包改变了正式事件所有权或顺序；"
+                    f"expected={expected}, received={received}"
+                ),
+                "expected_event_ids": expected,
+                "actual_event_ids": received,
+            })
+        missing = [
+            field for field in cls.SHORT_PLAN_FIELD_ALIASES
+            if not cls._short_plan_field(block, field)
+        ]
+        if missing:
+            add({
+                "code": "planning_packet_field_missing",
+                "message": f"规划修复分包缺少完整字段：{missing}",
+                "fields": missing,
+            })
+        for item in planning_event_body_issues(block, expected):
+            add(item)
+        for item in planning_event_obligation_issues(
+            block, expected, obligation_checklists,
+        ):
+            add(item)
+        retention_source = cls._short_plan_retention_source(
+            source, segment=segment, event_ids=expected,
+        )
+        for item in planning_event_body_retention_issues(
+            retention_source, block, expected,
+        ):
+            add(item)
+        return issues
 
     def _save_short_causal_chain(
         self, run_id: str, project: Project, chain: dict,
@@ -4964,11 +9902,180 @@ class WorkflowService:
             except (TypeError, ValueError, json.JSONDecodeError):
                 return False
 
+        async def split_causal_chain(_details: dict) -> str:
+            """Generate contiguous event-owned causal packets and merge losslessly."""
+            event_groups: list[list[dict]] = []
+            chunk_size = max(1, (len(required_events) + 1) // 2)
+            for start in range(0, len(required_events), chunk_size):
+                event_groups.append(required_events[start:start + chunk_size])
+            if not event_groups:
+                raise ValueError("causal chain has no formal events to split")
+
+            packet_dir = run_path / "outputs" / "causal-chain-packets"
+            packet_dir.mkdir(parents=True, exist_ok=True)
+            plan_sha256 = hashlib.sha256(plan.encode("utf-8")).hexdigest()
+            plan_segments = self._short_plan_segments(
+                plan, self._short_segment_count(target_words),
+            )
+            packets: list[dict] = []
+
+            def packet_valid(value: dict, expected_ids: list[str]) -> bool:
+                if not isinstance(value, dict):
+                    return False
+                covered = [
+                    str(item).upper() for item in value.get("covered_event_ids", [])
+                    if str(item).strip()
+                ]
+                cycles = value.get("cycles")
+                if covered != expected_ids or not isinstance(cycles, list) or not cycles:
+                    return False
+                return all(
+                    isinstance(item, dict)
+                    and all(str(item.get(key) or "").strip()
+                            for key in ("obstacle", "effort", "result"))
+                    for item in cycles
+                )
+
+            for packet_index, group in enumerate(event_groups, 1):
+                expected_ids = [
+                    str(item.get("id") or "").strip().upper() for item in group
+                ]
+                checkpoint_path = packet_dir / f"packet-{packet_index:02d}.json"
+                if checkpoint_path.is_file():
+                    try:
+                        checkpoint = json.loads(
+                            checkpoint_path.read_text(encoding="utf-8")
+                        )
+                    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                        checkpoint = None
+                    if (
+                        isinstance(checkpoint, dict)
+                        and checkpoint.get("plan_sha256") == plan_sha256
+                        and checkpoint.get("event_ids") == expected_ids
+                        and packet_valid(checkpoint.get("packet"), expected_ids)
+                    ):
+                        packets.append(dict(checkpoint["packet"]))
+                        self.db.add_run_event(
+                            run_id, "success", "causal_chain_packet_reused",
+                            f"已复用因果链第 {packet_index} 个事件分包",
+                            stage="planning", metadata={
+                                "packet": packet_index, "event_ids": expected_ids,
+                            },
+                        )
+                        continue
+
+                relevant_plan = [
+                    segment for segment in plan_segments
+                    if any(
+                        event_id in self._short_plan_event_ids(segment)
+                        for event_id in expected_ids
+                    )
+                ]
+                packet_prompt = (
+                    "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V1\n"
+                    "只为当前连续正式事件生成因果链分包。只返回一个 JSON 对象。"
+                    "不得生成当前事件范围之外的事件、事实或结局；必须覆盖当前事件 ID，"
+                    "并为每轮填写 obstacle、effort、result、state_change。"
+                    "只有第一个分包填写 opening/core_goal，只有最后一个分包填写 ending；"
+                    "其他全局字段可为空数组或空字符串，Runtime 会按正式事件顺序合并。\n"
+                    f"PLAN SHA256: {plan_sha256}\n"
+                    f"PACKET INDEX: {packet_index}\n"
+                    "EXPECTED EVENT IDS:\n"
+                    + json.dumps(expected_ids, ensure_ascii=False)
+                    + "\n\nFORMAL EVENTS:\n"
+                    + json.dumps(group, ensure_ascii=False, indent=2)
+                    + "\n\nACCEPTED PLAN PROJECTION:\n"
+                    + ("\n\n".join(relevant_plan) or json.dumps(group, ensure_ascii=False))
+                )
+
+                def packet_complete(text: str) -> bool:
+                    try:
+                        return packet_valid(
+                            parse_json_object(text, label="Causal chain event packet"),
+                            expected_ids,
+                        )
+                    except (TypeError, ValueError, json.JSONDecodeError):
+                        return False
+
+                packet_raw = await self._stage(
+                    run_id, run_path, project, "planning", constraints,
+                    packet_prompt,
+                    suffix=f"-causal-chain-packet-{packet_index:02d}",
+                    allow_tools=False,
+                    expected_output_characters=max(1200, len(relevant_plan) * 900),
+                    completion_check=packet_complete,
+                    route_capacity_guard=True,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    story_skeleton_override=self._stage_story_skeleton(
+                        project, constraints, run_path,
+                        owner_event_ids=expected_ids, index_only=True,
+                    ),
+                )
+                packet = parse_json_object(
+                    packet_raw, label="Causal chain event packet",
+                )
+                if not packet_valid(packet, expected_ids):
+                    raise ValueError(
+                        f"因果链第 {packet_index} 个分包未覆盖准确事件范围"
+                    )
+                atomic_write(
+                    checkpoint_path,
+                    json.dumps({
+                        "version": 1,
+                        "plan_sha256": plan_sha256,
+                        "event_ids": expected_ids,
+                        "packet": packet,
+                    }, ensure_ascii=False, indent=2),
+                )
+                packets.append(packet)
+
+            merged: dict[str, object] = {
+                "core_goal": "",
+                "opening": {},
+                "cycles": [],
+                "accidents": [],
+                "reversal": {},
+                "ending": "",
+                "question_chain": [],
+                "relationship_arc": [],
+                "covered_event_ids": [],
+            }
+            for index, packet in enumerate(packets):
+                if not merged["core_goal"] and packet.get("core_goal"):
+                    merged["core_goal"] = packet.get("core_goal")
+                if index == 0 and packet.get("opening"):
+                    merged["opening"] = packet.get("opening")
+                if isinstance(packet.get("cycles"), list):
+                    merged["cycles"].extend(packet["cycles"])
+                if isinstance(packet.get("accidents"), list):
+                    merged["accidents"].extend(packet["accidents"])
+                if packet.get("reversal"):
+                    merged["reversal"] = packet.get("reversal")
+                if index == len(packets) - 1 and packet.get("ending"):
+                    merged["ending"] = packet.get("ending")
+                for field in ("question_chain", "relationship_arc"):
+                    value = packet.get(field)
+                    if isinstance(value, list):
+                        merged[field].extend(value)
+                    elif value and not merged[field]:
+                        merged[field] = value
+                merged["covered_event_ids"].extend(
+                    packet.get("covered_event_ids") or []
+                )
+            if not valid(merged, require_coverage=True):
+                raise ValueError("因果链事件分包无损合并后未通过整链校验")
+            return json.dumps(merged, ensure_ascii=False)
+
         raw = await self._stage(
             run_id, run_path, project, "planning", constraints, prompt,
             suffix="-causal-chain", allow_tools=False,
             expected_output_characters=max(2500, len(plan) // 2),
             completion_check=complete,
+            route_capacity_guard=True,
+            capacity_splitter=split_causal_chain,
+            bounded_protocol_output=True,
+            compact_input=True,
         )
         try:
             chain = parse_json_object(raw, label="Short causal chain")
@@ -4997,6 +10104,10 @@ class WorkflowService:
                 suffix=f"-causal-chain-repair-{repair_attempt}", allow_tools=False,
                 expected_output_characters=max(2500, len(plan) // 2),
                 completion_check=complete,
+                route_capacity_guard=True,
+                capacity_splitter=split_causal_chain,
+                bounded_protocol_output=True,
+                compact_input=True,
             )
             try:
                 chain = parse_json_object(repaired, label="Short causal chain")
@@ -6289,9 +11400,96 @@ class WorkflowService:
         )
         raise RuntimeError("Editorial quality gate did not pass within the correction limit")
 
-    @staticmethod
+    @classmethod
+    def _integrity_publication_segments(
+        cls, run_path: Path, integrity: dict, publication: str,
+    ) -> tuple[list[str], str] | None:
+        """Resolve internal semantic segments for a marker-free publication.
+
+        Published prose intentionally omits Runtime's segment sentinel. New
+        integrity artifacts carry exact character lengths; older artifacts can
+        still be rebound through their hash-matching segmented draft or polish
+        file. In either case every recovered segment must match its stored text
+        hash and rejoin byte-for-byte to the protected publication text.
+        """
+        segment_records = integrity.get("segments")
+        if not isinstance(segment_records, list) or not segment_records:
+            return None
+        expected_count = len(segment_records)
+        draft_sha256 = str(integrity.get("draft_sha256") or "")
+
+        def valid(parts: list[str], source_text: str) -> bool:
+            publication_sha256 = integrity.get("publication_sha256")
+            return bool(
+                len(parts) == expected_count
+                and "\n\n".join(parts) == publication
+                and (
+                    not isinstance(publication_sha256, str)
+                    or publication_sha256
+                    == hashlib.sha256(publication.encode("utf-8")).hexdigest()
+                )
+                and hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+                == draft_sha256
+                and all(
+                    isinstance(record, dict)
+                    and record.get("text_sha256") == hashlib.sha256(
+                        part.encode("utf-8"),
+                    ).hexdigest()
+                    for record, part in zip(
+                        segment_records, parts, strict=True,
+                    )
+                )
+            )
+
+        lengths = integrity.get("publication_segment_lengths")
+        if (
+            isinstance(lengths, list)
+            and len(lengths) == expected_count
+            and all(isinstance(value, int) and value > 0 for value in lengths)
+        ):
+            parts = []
+            cursor = 0
+            valid_boundaries = True
+            for index, length in enumerate(lengths):
+                end = cursor + length
+                parts.append(publication[cursor:end])
+                cursor = end
+                if index < expected_count - 1:
+                    if publication[cursor:cursor + 2] != "\n\n":
+                        valid_boundaries = False
+                        break
+                    cursor += 2
+            if valid_boundaries and cursor == len(publication):
+                for source_text in (
+                    publication,
+                    cls.SHORT_SEGMENT_SEPARATOR.join(parts),
+                ):
+                    if valid(parts, source_text):
+                        return parts, source_text
+
+        outputs = run_path / "outputs"
+        candidates = [
+            outputs / "best-candidate.md",
+            outputs / "draft.md",
+            *sorted(outputs.glob("polish*.md")),
+        ]
+        seen: set[Path] = set()
+        for path in candidates:
+            if path in seen:
+                continue
+            seen.add(path)
+            try:
+                source_text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            parts = cls._split_segments(source_text)
+            if valid(parts, source_text):
+                return parts, source_text
+        return None
+
+    @classmethod
     def _save_quality_checkpoint(
-        run_path: Path, manuscript: str, review: dict,
+        cls, run_path: Path, manuscript: str, review: dict,
         attempt: int | None, outcome: str,
     ) -> None:
         with QUALITY_CHECKPOINT_LOCK:
@@ -6307,9 +11505,12 @@ class WorkflowService:
                     candidate = json.loads(path.read_text(encoding="utf-8"))
                 except (OSError, UnicodeError, json.JSONDecodeError):
                     continue
-                if (
-                    candidate.get("status") == "passed"
-                    and candidate.get("draft_sha256") == digest
+                if candidate.get("status") == "passed" and (
+                    candidate.get("draft_sha256") == digest
+                    or candidate.get("publication_sha256") == digest
+                    or cls._integrity_publication_segments(
+                        run_path, candidate, manuscript,
+                    ) is not None
                 ):
                     narrative_integrity = {
                         "path": f"outputs/{path.name}",
@@ -6342,10 +11543,16 @@ class WorkflowService:
         prompt: str, suffix: str, recovery_kind: str = "review",
     ) -> tuple[str, dict]:
         stage_error: RuntimeError | None = None
+        index_skeleton = self._stage_story_skeleton(
+            project, constraints, run_path, index_only=True,
+        )
         try:
             raw = await self._stage(
                 run_id, run_path, project, "final_review", constraints, prompt,
                 suffix=suffix, allow_tools=False,
+                route_capacity_guard=True,
+                story_skeleton_override=index_skeleton,
+                bounded_protocol_output=True,
             )
         except RuntimeError as exc:
             if not str(exc).startswith("final_review model returned empty output"):
@@ -6376,6 +11583,9 @@ class WorkflowService:
                         run_id, run_path, project, "final_review", constraints, prompt,
                         suffix=f"{suffix}-json-fallback", allow_tools=False,
                         prefer_configured_fallback=True,
+                        route_capacity_guard=True,
+                        story_skeleton_override=index_skeleton,
+                        bounded_protocol_output=True,
                     )
                     return fallback_raw, self._json_object(fallback_raw)
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
@@ -6395,6 +11605,9 @@ class WorkflowService:
                 compact_raw = await self._stage(
                     run_id, run_path, project, "final_review", constraints,
                     compact_prompt, suffix=f"{suffix}-compact-recovery", allow_tools=False,
+                    route_capacity_guard=True,
+                    story_skeleton_override=index_skeleton,
+                    bounded_protocol_output=True,
                 )
                 compact_payload = self._json_object(compact_raw)
             except (json.JSONDecodeError, ValueError, RuntimeError) as compact_error:
@@ -7222,13 +12435,28 @@ class WorkflowService:
     @classmethod
     def _short_plan_headings(cls, plan: str) -> list[tuple[re.Match, int | None]]:
         comparison = cls._short_plan_comparison_view(plan)
-        return [
+        headings: list[tuple[re.Match, int | None]] = [
             (match, parse_segment_number(match.group("title"), allow_scene=False))
             for match in re.finditer(
                 r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
                 comparison,
             )
         ]
+        wrapped_patterns = (
+            r"(?m)^[ ]{0,3}(?P<marks>\*\*|__)[ \t]*"
+            r"(?P<title>\S.*?)[ \t]*(?P=marks)"
+            r"(?P<tail>[ \t]*(?:[:：·•—–-][^\r\n]*)?)[ \t]*$",
+            r"(?im)^[ ]{0,3}<(?P<marks>strong|b)>[ \t]*"
+            r"(?P<title>\S.*?)[ \t]*</(?P=marks)>"
+            r"(?P<tail>[ \t]*(?:[:：·•—–-][^\r\n]*)?)[ \t]*$",
+        )
+        for pattern in wrapped_patterns:
+            for match in re.finditer(pattern, comparison):
+                title = match.group("title") + str(match.group("tail") or "")
+                number = parse_segment_number(title, allow_scene=False)
+                if number is not None:
+                    headings.append((match, number))
+        return sorted(headings, key=lambda item: item[0].start())
 
     @classmethod
     def _short_plan_comparison_view(cls, text: str) -> str:
@@ -7308,15 +12536,34 @@ class WorkflowService:
                 )
         formal_outline = state.get("outline") or {}
         outline = str(formal_outline.get("content") or "")
-        event_map = (
-            outline_events(outline)
-            if outline.strip()
-            else formal_outline.get("events") or []
-        )
-        required_events = narrative_outline_events(event_map)
+        if outline.strip():
+            # Keep this gate on the same executable-event authority used by
+            # planning adaptation and the execution manifest. The public
+            # ``outline_events`` projection omits hierarchy metadata; feeding
+            # it back into ``narrative_outline_events`` can therefore promote
+            # a structural heading such as ``## 第 1 段`` into a required
+            # story event after its nested events have already been selected.
+            required_events = narrative_outline_event_contracts(outline)
+            # Structural headings, themes, and writing directives are valid
+            # outline references for traceability, but they never become
+            # required executable events or participate in story order. Keep
+            # the broad registry only for unknown-ID validation and use the
+            # hierarchy-aware contracts for coverage and chronology.
+            event_map = outline_events(outline)
+        else:
+            event_map = formal_outline.get("events") or []
+            required_events = narrative_outline_events(event_map)
         if event_map and len(segments) == count:
             valid = {str(item["id"]).upper() for item in event_map}
             claimed = [cls._short_plan_event_ids(segment) for segment in segments]
+            for segment_number, (segment_text, event_ids) in enumerate(
+                zip(segments, claimed, strict=True), 1,
+            ):
+                for issue in planning_event_body_issues(segment_text, event_ids):
+                    issues.append(
+                        f"第 {segment_number} 段：{issue['message']}"
+                        f"（{issue.get('event_id') or '事件顺序'}）"
+                    )
             flattened = [event_id for group in claimed for event_id in group]
             invalid = sorted(set(flattened) - valid)
             if invalid:
@@ -7864,7 +13111,7 @@ class WorkflowService:
             formal_outline = state.get("outline") or {}
             formal_outline_content = str(formal_outline.get("content") or "")
             formal_outline_events = (
-                outline_events(formal_outline_content)
+                narrative_outline_event_contracts(formal_outline_content)
                 if formal_outline_content.strip()
                 else formal_outline.get("events") or []
             )
@@ -7977,7 +13224,7 @@ class WorkflowService:
                         exit_requirement=handoff,
                         execution_manifest_sha256=manifest_hash,
                         beat_ids=tuple(beat_ids),
-                        viewpoint=str(project.metadata.get("pov") or ""),
+                        **_draft_narrative_contract_fields(project),
                         prohibited_future_beat_ids=(
                             manifest_segment.prohibited_future_beat_ids
                         ),
@@ -8361,16 +13608,16 @@ class WorkflowService:
             ),
             execution_manifest_sha256=execution_manifest_sha256(manifest),
             beat_ids=tuple(beat_ids),
-            viewpoint=str(project.metadata.get("pov") or ""),
+            **_draft_narrative_contract_fields(project),
             prohibited_future_beat_ids=(
                 manifest_segment.prohibited_future_beat_ids
             ),
         )
 
-    @staticmethod
+    @classmethod
     def _semantic_authority_bundle(
-        semantic_authority: object,
-    ) -> tuple[ShortExecutionManifest, dict]:
+        cls, semantic_authority: object,
+    ) -> tuple[ShortExecutionManifest, dict, list[str]]:
         if not isinstance(semantic_authority, dict):
             raise ValueError("候选稿没有可复核的原子节拍权威资料")
         manifest = parse_execution_manifest(
@@ -8378,21 +13625,115 @@ class WorkflowService:
         )
         source_integrity = semantic_authority.get("source_integrity")
         source_text = semantic_authority.get("source_text")
+        source_segments = semantic_authority.get("source_segments")
         if not isinstance(source_integrity, dict):
             raise ValueError("候选稿缺少可复核的语义完整性资料")
+        if not (
+            isinstance(source_segments, list)
+            and source_segments
+            and all(isinstance(item, str) and item for item in source_segments)
+        ):
+            source_segments = cls._split_segments(
+                source_text if isinstance(source_text, str) else "",
+            )
+        clean_source = "\n\n".join(source_segments)
+        segmented_source = cls.SHORT_SEGMENT_SEPARATOR.join(source_segments)
+        integrity_source_hashes = {
+            hashlib.sha256(value.encode("utf-8")).hexdigest()
+            for value in (clean_source, segmented_source)
+        }
         if (
             not isinstance(source_text, str)
             or not source_text
-            or source_integrity.get("draft_sha256")
-            != hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+            or source_text not in {clean_source, segmented_source}
+            or source_integrity.get("draft_sha256") not in integrity_source_hashes
             or manifest.status != "ready"
             or execution_manifest_receipt_binding_issues(manifest)
             or source_integrity.get("status") != "passed"
             or source_integrity.get("execution_manifest_sha256")
             != execution_manifest_sha256(manifest)
+            or len(source_segments) != len(manifest.segments)
         ):
             raise ValueError("候选稿绑定的原子节拍权威资料已经失效")
-        return manifest, source_integrity
+        return manifest, source_integrity, list(source_segments)
+
+    @classmethod
+    def _candidate_segments_from_clean_source(
+        cls, source: str, candidate: str, source_segments: list[str],
+    ) -> list[str]:
+        """Project a marker-free candidate back onto immutable segment borders."""
+        if len(source_segments) == 1:
+            return [candidate.strip()] if candidate.strip() else []
+        segmented_source = cls.SHORT_SEGMENT_SEPARATOR.join(source_segments)
+        if source == segmented_source:
+            candidate_segments = cls._split_segments(candidate)
+            if len(candidate_segments) != len(source_segments):
+                raise DraftSemanticValidationError("story-boundary", [{
+                    "code": "segment_boundary",
+                    "message": "返修或润色结果改变了正式分段边界",
+                    "expected_segments": len(source_segments),
+                    "actual_segments": len(candidate_segments),
+                }])
+            return candidate_segments
+
+        clean_source = "\n\n".join(source_segments)
+        if source != clean_source:
+            raise ValueError("候选稿与原子节拍权威的发布态正文不一致")
+        if candidate == source:
+            return list(source_segments)
+
+        opcodes = SequenceMatcher(
+            None, source, candidate, autojunk=False,
+        ).get_opcodes()
+        separator_ranges = []
+        cursor = 0
+        for part in source_segments[:-1]:
+            cursor += len(part)
+            separator_ranges.append((cursor, cursor + 2))
+            cursor += 2
+
+        candidate_separators = []
+        for start, end in separator_ranges:
+            match = next((
+                (i1, i2, j1, j2)
+                for tag, i1, i2, j1, j2 in opcodes
+                if tag == "equal" and i1 <= start and end <= i2
+            ), None)
+            if match is None:
+                raise DraftSemanticValidationError("story-boundary", [{
+                    "code": "segment_boundary",
+                    "message": "返修或润色结果改动了正式分段交界",
+                    "source_range": [start, end],
+                }])
+            i1, _i2, j1, _j2 = match
+            candidate_start = j1 + start - i1
+            candidate_end = j1 + end - i1
+            if candidate[candidate_start:candidate_end] != "\n\n":
+                raise DraftSemanticValidationError("story-boundary", [{
+                    "code": "segment_boundary",
+                    "message": "返修或润色结果改动了正式分段交界",
+                    "source_range": [start, end],
+                }])
+            candidate_separators.append((candidate_start, candidate_end))
+
+        parts = []
+        cursor = 0
+        for start, end in candidate_separators:
+            parts.append(candidate[cursor:start])
+            cursor = end
+        parts.append(candidate[cursor:])
+        if (
+            len(parts) != len(source_segments)
+            or any(not part.strip() for part in parts)
+            or "\n\n".join(parts) != candidate
+        ):
+            raise DraftSemanticValidationError("story-boundary", [{
+                "code": "segment_boundary",
+                "message": "返修或润色结果无法还原完整正式分段",
+                "expected_segments": len(source_segments),
+                "actual_segments": len(parts),
+            }])
+        return parts
 
     async def _verify_atomic_candidate_semantics(
         self,
@@ -8408,11 +13749,17 @@ class WorkflowService:
         failure_stage: str,
         verify_whole: bool,
     ) -> dict:
-        manifest, source_integrity = self._semantic_authority_bundle(
-            semantic_authority,
+        manifest, source_integrity, authority_source_parts = (
+            self._semantic_authority_bundle(semantic_authority)
         )
-        source_parts = self._split_segments(source)
-        candidate_parts = self._split_segments(candidate)
+        source_parts = self._candidate_segments_from_clean_source(
+            str(semantic_authority.get("source_text") or ""),
+            source,
+            authority_source_parts,
+        )
+        candidate_parts = self._candidate_segments_from_clean_source(
+            source, candidate, source_parts,
+        )
         if (
             len(source_parts) != len(candidate_parts)
             or len(candidate_parts) != len(manifest.segments)
@@ -8485,12 +13832,34 @@ class WorkflowService:
                     candidate, candidate_parts, expected_beat_ids, receipts,
                     failure_stage=failure_stage,
                 )
+        segment_integrity = []
+        previous_hash = ""
+        for index, (candidate_part, manifest_segment) in enumerate(
+            zip(candidate_parts, manifest.segments, strict=True), 1,
+        ):
+            text_hash = self._text_hash(candidate_part)
+            segment_integrity.append({
+                "segment": index,
+                "event_ids": list(manifest_segment.beat_ids),
+                "handoff": "；".join(
+                    item.state for item in manifest_segment.exit_state
+                ),
+                "han_characters": effective_han_characters(candidate_part),
+                "previous_sha256": previous_hash,
+                "text_sha256": text_hash,
+            })
+            previous_hash = text_hash
         return {
             **source_integrity,
             "version": 5,
             "status": "passed",
             "source_draft_sha256": self._text_hash(source),
             "draft_sha256": self._text_hash(candidate),
+            "publication_sha256": self._text_hash(candidate),
+            "publication_segment_lengths": [
+                len(part) for part in candidate_parts
+            ],
+            "segments": segment_integrity,
             "execution_manifest_sha256": execution_manifest_sha256(manifest),
             "accepted_event_ids": expected_beat_ids,
             "semantic_segment_receipts": receipts,
@@ -8510,7 +13879,7 @@ class WorkflowService:
         adopted_records: list[dict],
         initial_issues: list[dict],
     ) -> dict:
-        """Keep the largest deterministic adopted subset that still passes whole-story review."""
+        """Keep a bounded deterministic adopted subset that passes whole-story review."""
 
         def replay(selected: list[dict]) -> tuple[str, list[dict], list[dict]]:
             candidate = source
@@ -8614,6 +13983,111 @@ class WorkflowService:
             raise last_error
         raise ValueError("无法构造通过整篇语义复核的返修组合")
 
+    async def _recover_polish_semantic_subset(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        source: str,
+        source_parts: list[str],
+        candidate_parts: list[str],
+        manifest: ShortExecutionManifest,
+        source_integrity: dict,
+        candidate_receipts: list[dict],
+        source_receipts: list[dict],
+        source_whole_receipt: dict,
+        expected_beat_ids: list[str],
+    ) -> dict:
+        """Retain a bounded deterministic whole-story-safe polish subset."""
+        changed_segments = [
+            index for index, (source_part, candidate_part) in enumerate(
+                zip(source_parts, candidate_parts, strict=True), 1,
+            )
+            if source_part != candidate_part
+        ]
+        authority_sha256 = str(
+            source_integrity.get("authority_sha256")
+            or manifest.authority_sha256
+        )
+        seen: set[tuple[int, ...]] = set()
+
+        async def verify(selected: list[int]) -> dict | None:
+            identity = tuple(sorted(selected))
+            if identity in seen:
+                return None
+            seen.add(identity)
+            selected_set = set(identity)
+            trial_parts = [
+                candidate_part if index in selected_set else source_part
+                for index, (source_part, candidate_part) in enumerate(
+                    zip(source_parts, candidate_parts, strict=True), 1,
+                )
+            ]
+            trial_receipts = [
+                candidate_receipts[index - 1]
+                if index in selected_set else source_receipts[index - 1]
+                for index in range(1, len(source_parts) + 1)
+            ]
+            trial = self.SHORT_SEGMENT_SEPARATOR.join(trial_parts)
+            if not identity:
+                return {
+                    "parts": trial_parts,
+                    "receipts": trial_receipts,
+                    "whole_receipt": source_whole_receipt,
+                    "retained_segments": [],
+                }
+            try:
+                whole_receipt = await self._verify_whole_draft_semantics(
+                    run_id, run_path, project, constraints,
+                    authority_sha256, trial, trial_parts, expected_beat_ids,
+                    trial_receipts, failure_stage="polish",
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                return None
+            return {
+                "parts": trial_parts,
+                "receipts": trial_receipts,
+                "whole_receipt": whole_receipt,
+                "retained_segments": list(identity),
+            }
+
+        # A single conflicting unit is the common production shape. Try every
+        # one-unit rollback first so the first passing result retains n-1 safe
+        # segments without an exponential subset search.
+        for rejected_segment in reversed(changed_segments):
+            recovered = await verify([
+                segment for segment in changed_segments
+                if segment != rejected_segment
+            ])
+            if recovered is not None:
+                recovered["rejected_segments"] = [
+                    segment for segment in changed_segments
+                    if segment not in recovered["retained_segments"]
+                ]
+                return recovered
+
+        # Multiple interacting conflicts use a linear monotonic rebuild from
+        # the already accepted source. Each accepted addition becomes the next
+        # trial base, so a failed middle segment cannot prevent a later safe
+        # segment from being retained.
+        retained: list[int] = []
+        best = await verify([])
+        for segment in changed_segments:
+            recovered = await verify([*retained, segment])
+            if recovered is not None:
+                retained = list(recovered["retained_segments"])
+                best = recovered
+        if best is None:
+            raise ValueError("验收前正文无法通过润色子集恢复的整篇语义复核")
+        best["rejected_segments"] = [
+            segment for segment in changed_segments
+            if segment not in set(best["retained_segments"])
+        ]
+        return best
+
     async def _repair_short_revision_semantic_group(
         self,
         run_id: str,
@@ -8629,11 +14103,16 @@ class WorkflowService:
         initial_error: DraftSemanticValidationError,
     ) -> tuple[dict, dict, dict]:
         semantic_authority = contract.get("semantic_authority")
-        manifest, source_integrity = self._semantic_authority_bundle(
-            semantic_authority,
+        manifest, source_integrity, authority_source_parts = (
+            self._semantic_authority_bundle(semantic_authority)
         )
-        before_parts = self._split_segments(candidate_before)
-        rejected_parts = self._split_segments(rejected_candidate)
+        authority_source = str(semantic_authority.get("source_text") or "")
+        before_parts = self._candidate_segments_from_clean_source(
+            authority_source, candidate_before, authority_source_parts,
+        )
+        rejected_parts = self._candidate_segments_from_clean_source(
+            candidate_before, rejected_candidate, before_parts,
+        )
         authorized_segments: set[int] = set()
         for patch in rejected_patch_group.get("patches", []):
             if not isinstance(patch, dict):
@@ -8785,9 +14264,19 @@ class WorkflowService:
                     suffix=f"-repair-{group_id}-atomic-{attempt}",
                     failure_stage="repair_groups", verify_whole=False,
                 )
-                changed_segments = {
+                all_changed_segments = {
                     int(index)
                     for index in repaired_integrity.get("changed_segments", [])
+                }
+                repaired_parts = self._candidate_segments_from_clean_source(
+                    candidate_before, repaired_result["text"], before_parts,
+                )
+                changed_segments = {
+                    index
+                    for index, (before_part, repaired_part) in enumerate(
+                        zip(before_parts, repaired_parts, strict=True), 1,
+                    )
+                    if before_part != repaired_part
                 }
                 if (
                     not changed_segments
@@ -8796,7 +14285,6 @@ class WorkflowService:
                     raise ValueError(
                         "语义返修越过了当前修改组授权的正式段范围"
                     )
-                repaired_parts = self._split_segments(repaired_result["text"])
                 quality_blockers = []
                 for index in sorted(changed_segments):
                     quality_assessment = assess_polish_candidate(
@@ -8851,7 +14339,8 @@ class WorkflowService:
                     "group_id": group_id,
                     "attempt": attempt,
                     "mode": mode,
-                    "changed_segments": repaired_integrity["changed_segments"],
+                    "changed_segments": sorted(changed_segments),
+                    "candidate_changed_segments": sorted(all_changed_segments),
                 },
             )
             return repaired_group, repaired_result, repaired_integrity
@@ -9049,6 +14538,12 @@ class WorkflowService:
                 expected_output_characters=max(
                     800, len(contract.beat_ids or contract.event_ids) * 320,
                 ),
+                route_capacity_guard=True,
+                story_skeleton_override=self._stage_story_skeleton(
+                    project, constraints, run_path,
+                    owner_event_ids=list(contract.event_ids), index_only=True,
+                ),
+                bounded_protocol_output=True,
             )
             try:
                 raw_receipt = self._json_object(raw)
@@ -9171,6 +14666,11 @@ class WorkflowService:
                 + ("-receipt-retry" if receipt_attempt else ""),
                 allow_tools=False,
                 expected_output_characters=max(1200, len(expected_event_ids) * 160),
+                route_capacity_guard=True,
+                story_skeleton_override=self._stage_story_skeleton(
+                    project, constraints, run_path, index_only=True,
+                ),
+                bounded_protocol_output=True,
             )
             try:
                 raw_receipt = self._json_object(raw)
@@ -9352,7 +14852,7 @@ class WorkflowService:
                 exit_requirement=expected_handoff,
                 execution_manifest_sha256=execution_manifest_hash,
                 beat_ids=tuple(expected_event_ids),
-                viewpoint=str(project.metadata.get("pov") or ""),
+                **_draft_narrative_contract_fields(project),
                 prohibited_future_beat_ids=manifest_segment.prohibited_future_beat_ids,
             )
             cache_structurally_valid = (
@@ -9647,6 +15147,7 @@ class WorkflowService:
                     previous_parts[-1][-1200:] if previous_parts else "正文开篇，无前置正文"
                 ),
                 exit_requirement="完成本段状态变化，不提前写后续写作段事件",
+                **_draft_narrative_contract_fields(project),
             )
         elif (
             contract.target_han != target
@@ -9656,6 +15157,9 @@ class WorkflowService:
         rendered_prompt = render_draft_task_prompt(prompt, contract)
 
         async def accept_node(value: str) -> str:
+            narrative_issues = first_person_prose_issues(contract, str(value))
+            if narrative_issues:
+                raise DraftSemanticValidationError(contract.task_id, narrative_issues)
             semantic_receipt = None
             if semantic_all_event_ids is not None and contract.event_ids:
                 owned_semantic_ids = set(contract.beat_ids or contract.event_ids)
@@ -9731,6 +15235,10 @@ class WorkflowService:
                 execution_manifest_sha256=contract.execution_manifest_sha256,
                 beat_ids=contract.beat_ids,
                 viewpoint=contract.viewpoint,
+                narrative_mode=contract.narrative_mode,
+                narrator_character_id=contract.narrator_character_id,
+                narrator_name=contract.narrator_name,
+                self_reference=contract.self_reference,
                 prohibited_future_beat_ids=contract.prohibited_future_beat_ids,
             )
             retried = await self._draft_short_segment_task(
@@ -9872,6 +15380,10 @@ class WorkflowService:
             execution_manifest_sha256=contract.execution_manifest_sha256,
             beat_ids=tuple(first_event_ids) if contract.beat_ids else (),
             viewpoint=contract.viewpoint,
+            narrative_mode=contract.narrative_mode,
+            narrator_character_id=contract.narrator_character_id,
+            narrator_name=contract.narrator_name,
+            self_reference=contract.self_reference,
             prohibited_future_beat_ids=tuple(dict.fromkeys([
                 *second_event_ids, *contract.prohibited_future_beat_ids,
             ])) if contract.beat_ids else (),
@@ -9905,6 +15417,10 @@ class WorkflowService:
             execution_manifest_sha256=contract.execution_manifest_sha256,
             beat_ids=tuple(second_event_ids) if contract.beat_ids else (),
             viewpoint=contract.viewpoint,
+            narrative_mode=contract.narrative_mode,
+            narrator_character_id=contract.narrator_character_id,
+            narrator_name=contract.narrator_name,
+            self_reference=contract.self_reference,
             prohibited_future_beat_ids=contract.prohibited_future_beat_ids,
         )
         second = await self._draft_short_segment_task(
@@ -10829,7 +16345,7 @@ class WorkflowService:
                         execution_manifest,
                     ),
                     beat_ids=tuple(beat_ids),
-                    viewpoint=str(project.metadata.get("pov") or ""),
+                    **_draft_narrative_contract_fields(project),
                     prohibited_future_beat_ids=(
                         manifest_segment.prohibited_future_beat_ids
                     ),
@@ -10998,17 +16514,54 @@ class WorkflowService:
                 rejected_sha256 = hashlib.sha256(
                     polished.encode("utf-8"),
                 ).hexdigest()
-                candidate_groups = list(original_parts)
-                semantic_receipts = source_semantic_receipts
-                polished = text
+                recovered_subset = await self._recover_polish_semantic_subset(
+                    run_id, run_path, project, constraints,
+                    text, original_parts, candidate_groups,
+                    execution_manifest, source_draft_integrity,
+                    semantic_receipts, source_semantic_receipts,
+                    whole_receipt, expected_beat_ids,
+                )
+                candidate_groups = list(recovered_subset["parts"])
+                semantic_receipts = list(recovered_subset["receipts"])
+                whole_receipt = dict(recovered_subset["whole_receipt"])
+                retained_segments = list(
+                    recovered_subset["retained_segments"]
+                )
+                rejected_segments = list(
+                    recovered_subset["rejected_segments"]
+                )
+                polished = self.SHORT_SEGMENT_SEPARATOR.join(candidate_groups)
+                for rejected_group in rejected_segments:
+                    for part_index, part_group in enumerate(part_groups, 1):
+                        if part_group != rejected_group:
+                            continue
+                        self._save_polish_checkpoint(
+                            checkpoint_root, part_index,
+                            parts[part_index - 1], parts[part_index - 1],
+                            status="whole_semantic_conflict_preserved",
+                            retry_signature=retry_signature,
+                            accepted=False,
+                            authority_hash=part_authority_hashes.get(part_index),
+                        )
+                subset_retained = bool(retained_segments)
                 self.db.add_run_event(
-                    run_id, "warning", "polish_whole_semantic_preserved",
-                    "润色合并稿未能保持整篇因果，已恢复全部验收前正文并继续后续流程",
+                    run_id, "warning", (
+                        "polish_semantic_subset_restored"
+                        if subset_retained else
+                        "polish_whole_semantic_preserved"
+                    ),
+                    (
+                        "已隔离造成整篇冲突的润色段，其余通过复核的润色继续进入后续流程"
+                        if subset_retained else
+                        "润色合并稿未能保持整篇因果，已恢复全部验收前正文并继续后续流程"
+                    ),
                     stage="polish", metadata={
                         "rejected_draft_sha256": rejected_sha256,
                         "restored_draft_sha256": hashlib.sha256(
-                            text.encode("utf-8"),
+                            polished.encode("utf-8"),
                         ).hexdigest(),
+                        "retained_segments": retained_segments,
+                        "rejected_segments": rejected_segments,
                         "failure_class": classify_model_failure(whole_error),
                         "error": str(whole_error)[:500],
                     },
@@ -11036,6 +16589,12 @@ class WorkflowService:
                 "status": "passed",
                 "source_draft_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
                 "draft_sha256": hashlib.sha256(polished.encode("utf-8")).hexdigest(),
+                "publication_sha256": hashlib.sha256(
+                    "\n\n".join(candidate_groups).encode("utf-8"),
+                ).hexdigest(),
+                "publication_segment_lengths": [
+                    len(part) for part in candidate_groups
+                ],
                 "segments": segment_integrity,
                 "accepted_event_ids": expected_beat_ids,
                 "semantic_segment_receipts": semantic_receipts,
@@ -11320,8 +16879,40 @@ class WorkflowService:
             f"Quality revision halted; preserved best candidate ({reason})"
         ) from error
 
+    @staticmethod
+    def _semantic_owner_event_ids(value: str) -> list[str]:
+        return list(dict.fromkeys(
+            match.group(0).upper()
+            for match in re.finditer(
+                r"(?<![A-Z0-9_-])EV-[A-Z0-9_-]+(?![A-Z0-9_-])",
+                str(value or ""), flags=re.IGNORECASE,
+            )
+        ))
+
+    @classmethod
+    def _project_authority_text(
+        cls, value: str, owner_event_ids: Sequence[str],
+    ) -> str:
+        text = str(value or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+        owners = {str(item).strip().upper() for item in owner_event_ids if str(item).strip()}
+        if not text or not owners:
+            return text
+        selected = []
+        for block in (
+            item.strip()
+            for item in re.split(r"\n[ \t]*\n+", text)
+            if item.strip()
+        ):
+            block_ids = set(cls._semantic_owner_event_ids(block))
+            if block_ids & owners:
+                selected.append(block)
+        return "\n\n".join(selected)
+
     def _stage_story_skeleton(
         self, project: Project, constraints: str, run_path: Path | None = None,
+        *, relevant_context: str = "",
+        owner_event_ids: Sequence[str] | None = None,
+        index_only: bool = False,
     ) -> str:
         state = self.story_states.ensure(project.id, project.path).data
         outline = state.get("outline") if isinstance(state.get("outline"), dict) else {}
@@ -11379,6 +16970,111 @@ class WorkflowService:
                         "expected_event_ids", "accepted_event_ids", "segments", "issues",
                     )
                 }
+        requested_owner_ids = list(dict.fromkeys(
+            str(item).strip().upper()
+            for item in (
+                owner_event_ids
+                if owner_event_ids is not None
+                else self._semantic_owner_event_ids(relevant_context)
+            )
+            if str(item).strip()
+        ))
+        # Automatic projection is only safe for a bounded current ownership
+        # scope. Some whole-story prompts intentionally enumerate every event.
+        if owner_event_ids is None and len(requested_owner_ids) > 12:
+            requested_owner_ids = []
+        outline_text = str(outline.get("content") or "")
+        full_outline_ids = self._semantic_owner_event_ids(outline_text)
+        if index_only:
+            projected_outline = ""
+            projected_causal = ""
+            if isinstance(execution_manifest, dict):
+                try:
+                    parsed_index_manifest = parse_execution_manifest(
+                        execution_manifest,
+                    )
+                except (TypeError, ValueError):
+                    execution_manifest = None
+                else:
+                    requested_set = set(requested_owner_ids)
+                    indexed_beats = [
+                        beat for beat in parsed_index_manifest.beats
+                        if not requested_set or (
+                            beat.beat_id.upper() in requested_set
+                            or beat.source_event_id.upper() in requested_set
+                        )
+                    ]
+                    indexed_beat_ids = {beat.beat_id for beat in indexed_beats}
+                    execution_manifest = {
+                        "version": parsed_index_manifest.version,
+                        "status": parsed_index_manifest.status,
+                        "authority_sha256": parsed_index_manifest.authority_sha256,
+                        "manifest_sha256": execution_manifest_sha256(
+                            parsed_index_manifest,
+                        ),
+                        "beat_index": [{
+                            "beat_id": beat.beat_id,
+                            "source_event_id": beat.source_event_id,
+                            "owner_segment": beat.owner_segment,
+                            "order": beat.order,
+                        } for beat in indexed_beats],
+                        "segment_index": [{
+                            "segment": item.segment,
+                            "beat_ids": [
+                                beat_id for beat_id in item.beat_ids
+                                if not requested_set or beat_id in indexed_beat_ids
+                            ],
+                        } for item in parsed_index_manifest.segments if (
+                            not requested_set
+                            or any(beat_id in indexed_beat_ids for beat_id in item.beat_ids)
+                        )],
+                    }
+            if isinstance(draft_integrity, dict):
+                draft_integrity = {
+                    key: draft_integrity.get(key)
+                    for key in (
+                        "version", "status", "authority_sha256",
+                        "execution_manifest_sha256", "draft_sha256",
+                        "expected_event_ids", "accepted_event_ids", "issues",
+                    )
+                }
+        elif requested_owner_ids:
+            projected_outline = self._project_authority_text(
+                outline_text, requested_owner_ids,
+            )
+            projected_causal = self._project_authority_text(
+                causal, requested_owner_ids,
+            )
+            if isinstance(execution_manifest, dict):
+                segments = execution_manifest.get("segments")
+                if isinstance(segments, list):
+                    execution_manifest = {
+                        **execution_manifest,
+                        "segments": [
+                            item for item in segments
+                            if isinstance(item, dict) and set(
+                                self._semantic_owner_event_ids(json.dumps(
+                                    item, ensure_ascii=False,
+                                ))
+                            ) & set(requested_owner_ids)
+                        ],
+                    }
+            if isinstance(draft_integrity, dict):
+                segments = draft_integrity.get("segments")
+                if isinstance(segments, list):
+                    draft_integrity = {
+                        **draft_integrity,
+                        "segments": [
+                            item for item in segments
+                            if isinstance(item, dict) and set(
+                                str(value).strip().upper()
+                                for value in item.get("event_ids", [])
+                            ) & set(requested_owner_ids)
+                        ],
+                    }
+        else:
+            projected_outline = outline_text
+            projected_causal = causal
         payload = {
             "project": {
                 key: project.metadata.get(key)
@@ -11388,12 +17084,28 @@ class WorkflowService:
                 )
                 if project.metadata.get(key) not in (None, "")
             },
-            "formal_outline": str(outline.get("content") or ""),
+            "formal_outline": projected_outline,
+            "authority_projection": {
+                "owner_event_ids": requested_owner_ids,
+                "formal_outline_sha256": hashlib.sha256(
+                    outline_text.encode("utf-8"),
+                ).hexdigest(),
+                "formal_event_ids": full_outline_ids,
+                "causal_chain_sha256": hashlib.sha256(
+                    causal.encode("utf-8"),
+                ).hexdigest(),
+                "projection_mode": (
+                    "hash_bound_index"
+                    if index_only else (
+                        "event_owned_exact_blocks" if requested_owner_ids else "complete"
+                    )
+                ),
+            },
             "confirmed_facts": state.get("confirmed_facts", []),
             "locked_facts": state.get("locked_facts", []),
             "ending": state.get("ending"),
             "character_states": state.get("character_states", {}),
-            "causal_chain": causal,
+            "causal_chain": projected_causal,
             "execution_manifest": execution_manifest,
             "draft_integrity": draft_integrity,
         }
@@ -11456,7 +17168,26 @@ class WorkflowService:
                      retry_polish_output_limit: bool = True,
                      expected_output_characters: int | None = None,
                      completion_check: Callable[[str], bool] | None = None,
-                     compact_input: bool = False) -> str:
+                     compact_input: bool = False,
+                     route_capacity_guard: bool = False,
+                     capacity_splitter: Callable[[dict], object] | None = None,
+                     story_skeleton_override: str | None = None,
+                     bounded_protocol_output: bool = False,
+                     scoped_creative_output: bool = False) -> str:
+        if bounded_protocol_output and scoped_creative_output:
+            raise ValueError(
+                "a model call cannot use protocol and creative output budgets together"
+            )
+        if (
+            route_capacity_guard
+            and capacity_splitter is None
+            and not bounded_protocol_output
+            and not scoped_creative_output
+        ):
+            raise ValueError(
+                "route_capacity_guard requires a semantic splitter, bounded "
+                "protocol output, or scoped creative output"
+            )
         self.db.update_run(run_id, "running", stage)
         self.db.add_run_event(run_id, "info", "stage_started", f"开始执行 {stage}", stage=stage)
         required = REQUIRED_SKILLS[stage]
@@ -11492,6 +17223,22 @@ class WorkflowService:
                 stage, output_source_characters, gateway_role,
                 prefer_configured_fallback,
                 expected_output_characters=expected_output_characters,
+                bounded_protocol_output=bounded_protocol_output,
+                scoped_creative_output=scoped_creative_output,
+            )
+            preliminary_fallback_budget = (
+                self._output_budget_for_call(
+                    stage, output_source_characters, gateway_role, True,
+                    expected_output_characters=expected_output_characters,
+                    bounded_protocol_output=bounded_protocol_output,
+                    scoped_creative_output=scoped_creative_output,
+                )
+                if route_capacity_guard and not prefer_configured_fallback
+                and not primary_only else None
+            )
+            preliminary_route_reserve = max(
+                preliminary_output_budget or 0,
+                preliminary_fallback_budget or 0,
             )
             compact_context = layered_context
             model_skill_prompt = (
@@ -11519,8 +17266,19 @@ class WorkflowService:
             context_packet = None
             if layered_context:
                 story_state = self.story_states.ensure(project.id, project.path).data
+                narrative_contract = ensure_narrative_contract(project)
+                if (
+                    narrative_contract.status != "ready"
+                    and stage in {"draft", "polish", "revision_plan", "final_review"}
+                ):
+                    raise ValueError(
+                        "第一人称叙述者尚未确认；请选择本书中代表“我”的人物后继续原流程"
+                    )
                 explicit_invariants = {
                     "viewpoint": project.metadata.get("pov"),
+                    "narrative_contract": render_narrative_contract(
+                        narrative_contract,
+                    ),
                     "tone": project.metadata.get("tone"),
                     "must_include": project.metadata.get("must_include"),
                     "must_avoid": project.metadata.get("must_avoid"),
@@ -11546,11 +17304,16 @@ class WorkflowService:
                     skill_prompt=skill_run.prompt,
                     explicit_invariants=explicit_invariants,
                     relevant_context=user,
-                    global_skeleton=self._stage_story_skeleton(
-                        project, source_constraints, run_path,
+                    global_skeleton=(
+                        story_skeleton_override
+                        if story_skeleton_override is not None
+                        else self._stage_story_skeleton(
+                            project, source_constraints, run_path,
+                            relevant_context=user,
+                        )
                     ),
                     advisory=advisory,
-                    output_reserve=preliminary_output_budget or 0,
+                    output_reserve=preliminary_route_reserve,
                     advisory_max_chars=3000 if compact_input else 8000,
                 )
                 coverage_issues = validate_rule_coverage(context_packet)
@@ -11590,15 +17353,92 @@ class WorkflowService:
                 prefer_configured_fallback,
                 expected_output_characters=expected_output_characters,
                 input_tokens=estimated_input_tokens,
+                bounded_protocol_output=bounded_protocol_output,
+                scoped_creative_output=scoped_creative_output,
+            )
+            fallback_output_budget = (
+                self._output_budget_for_call(
+                    stage, output_source_characters, gateway_role, True,
+                    expected_output_characters=expected_output_characters,
+                    input_tokens=estimated_input_tokens,
+                    bounded_protocol_output=bounded_protocol_output,
+                    scoped_creative_output=scoped_creative_output,
+                )
+                if not prefer_configured_fallback and not primary_only else None
+            )
+            route_output_reserve = max(
+                output_budget or 0,
+                fallback_output_budget or 0,
             )
             if context_packet is not None:
                 context_packet = replace(context_packet, metrics={
                     **context_packet.metrics,
-                    "output_reserve_tokens": output_budget or 0,
+                    "output_reserve_tokens": route_output_reserve,
                 })
-            context_window = self._provider_context_window(
-                gateway_role, prefer_configured_fallback,
+            context_window = (
+                self._route_safe_context_window(
+                    gateway_role,
+                    prefer_configured_fallback=prefer_configured_fallback,
+                    include_configured_fallback=(
+                        route_capacity_guard
+                        and not prefer_configured_fallback
+                        and not primary_only
+                    ),
+                )
+                if route_capacity_guard else
+                self._provider_context_window(
+                    gateway_role, prefer_configured_fallback,
+                )
             )
+
+            async def complete_capacity_split(details: dict) -> StageText:
+                trigger = str(details.get("trigger") or "preflight")
+                self.db.add_run_event(
+                    run_id, "warning", "stage_capacity_split_requested",
+                    (
+                        f"{stage} 供应商报告上下文超限，正在按语义所有权切换分包拓扑"
+                        if trigger == "provider" else
+                        f"{stage} 请求接近上下文安全线，正在按语义所有权切换分包拓扑"
+                    ),
+                    stage=stage, metadata={
+                        "trigger": trigger,
+                        "pressure": details.get("pressure"),
+                        "estimated_input_tokens": details.get(
+                            "estimated_input_tokens"
+                        ),
+                        "authority_input_tokens": details.get(
+                            "authority_input_tokens"
+                        ),
+                        "output_reserve": details.get("output_reserve"),
+                        "context_window": details.get("context_window"),
+                        **({"provider_error": details.get("provider_error")}
+                           if details.get("provider_error") else {}),
+                    },
+                )
+                split_result = capacity_splitter(details)  # type: ignore[misc]
+                if hasattr(split_result, "__await__"):
+                    split_result = await split_result
+                split_text = str(split_result or "")
+                if completion_check is not None and not completion_check(split_text):
+                    raise RuntimeError(
+                        f"{stage} capacity split returned an incomplete artifact"
+                    )
+                self.db.add_run_event(
+                    run_id, "success", "stage_capacity_split_completed",
+                    f"{stage} 已完成语义分包并合并为完整审核回执",
+                    stage=stage, metadata={
+                        "trigger": trigger,
+                        "pressure": details.get("pressure"),
+                        "output_characters": len(split_text),
+                    },
+                )
+                return StageText(split_text, {
+                    "execution_mode": "capacity_split",
+                    "completion_status": "complete",
+                    "pressure": details.get("pressure"),
+                    "trigger": trigger,
+                })
+
             if layered_context and context_window:
                 authority_input_tokens = sum(
                     item["estimated_tokens"]
@@ -11608,15 +17448,27 @@ class WorkflowService:
                 pressure = classify_input_pressure(
                     full_input_tokens=estimated_input_tokens,
                     authority_input_tokens=authority_input_tokens,
-                    output_reserve=output_budget or 0,
+                    output_reserve=route_output_reserve,
                     context_window=context_window,
                 )
                 if pressure in {"compact", "split"}:
-                    raise RuntimeError(
-                        "input context overflow preflight: lossless story authority plus "
-                        f"output reserve requires {estimated_input_tokens + (output_budget or 0)} "
-                        f"tokens for context window {context_window}; topology={pressure}"
+                    capacity_error = ContextCapacityPreflightError(
+                        pressure=pressure,
+                        estimated_input_tokens=estimated_input_tokens,
+                        authority_input_tokens=authority_input_tokens,
+                        output_reserve=route_output_reserve,
+                        context_window=context_window,
                     )
+                    if capacity_splitter is None:
+                        raise capacity_error
+                    return await complete_capacity_split({
+                        "trigger": "preflight",
+                        "pressure": pressure,
+                        "estimated_input_tokens": estimated_input_tokens,
+                        "authority_input_tokens": authority_input_tokens,
+                        "output_reserve": route_output_reserve,
+                        "context_window": context_window,
+                    })
             confirmed_context = self._stage_context_labels(
                 model_constraints, user + style,
             )
@@ -11654,14 +17506,17 @@ class WorkflowService:
                     },
                 )
             fallback_ceiling = self._provider_output_ceiling(gateway_role, True)
-            stage_budget = self._stage_output_budget(stage, output_source_characters)
             effective_ceiling = provider_ceiling or output_budget
-            fallback_effective_ceiling = fallback_ceiling or stage_budget
-            fallback_budget = (
-                min(stage_budget, fallback_effective_ceiling)
-                if stage_budget is not None and fallback_effective_ceiling is not None
-                else stage_budget
-            )
+            fallback_budget = fallback_output_budget
+            if fallback_budget is None:
+                fallback_budget = self._output_budget_for_call(
+                    stage, output_source_characters, gateway_role, True,
+                    expected_output_characters=expected_output_characters,
+                    input_tokens=estimated_input_tokens,
+                    bounded_protocol_output=bounded_protocol_output,
+                    scoped_creative_output=scoped_creative_output,
+                )
+            fallback_effective_ceiling = fallback_ceiling or fallback_budget
             if targeted_retry and output_source_characters is not None:
                 output_budget = patch_output_budget(
                     output_source_characters, effective_ceiling or 1,
@@ -11707,6 +17562,27 @@ class WorkflowService:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
+                if (
+                    route_capacity_guard
+                    and capacity_splitter is not None
+                    and classify_model_failure(exc) == "input_context_overflow"
+                ):
+                    return await complete_capacity_split({
+                        "trigger": "provider",
+                        "pressure": "split",
+                        "estimated_input_tokens": estimated_input_tokens,
+                        "authority_input_tokens": (
+                            sum(
+                                item["estimated_tokens"]
+                                for name, item in context_packet.metrics["layers"].items()
+                                if name != "advisory"
+                            )
+                            if context_packet is not None else estimated_input_tokens
+                        ),
+                        "output_reserve": route_output_reserve,
+                        "context_window": context_window,
+                        "provider_error": str(exc)[:500],
+                    })
                 if not targeted_retry:
                     raise
                 attempt = 2 if isinstance(exc, ModelRoutesExhaustedError) else 1
@@ -11983,7 +17859,8 @@ class WorkflowService:
             atomic_write(run_path / "receipts" / f"{name}.json", json.dumps(receipt, ensure_ascii=False, indent=2))
             stage_completed_message = (
                 "模型已返回，正在校验终审格式"
-                if stage == "final_review" else f"{stage} 执行完成"
+                if stage == "final_review" else
+                f"{stage} 模型已返回，正在进行本阶段校验"
             )
             self.db.add_run_event(
                 run_id, "success", "stage_completed", stage_completed_message, stage=stage,
@@ -12001,6 +17878,19 @@ class WorkflowService:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
         except Exception as exc:
+            if isinstance(exc, ContextCapacityPreflightError):
+                self.db.add_run_event(
+                    run_id, "warning", "stage_capacity_split_required",
+                    f"{stage} 需要按语义所有权拆分后重试，尚未调用模型",
+                    stage=stage, metadata={
+                        "pressure": exc.pressure,
+                        "estimated_input_tokens": exc.estimated_input_tokens,
+                        "authority_input_tokens": exc.authority_input_tokens,
+                        "output_reserve": exc.output_reserve,
+                        "context_window": exc.context_window,
+                    },
+                )
+                raise
             if isinstance(exc, IncompleteModelOutputError):
                 if stage == "review":
                     self.db.add_run_event(
@@ -12225,12 +18115,30 @@ class WorkflowService:
         configure_runtime_environment(self.db.path.parent, self.crewai_data_dir)
         from crewai.flow.flow import Flow, start
 
+        primary_error: BaseException | None = None
+        primary_traceback = None
+
         class RuntimeFlow(Flow):
             @start()
             async def execute(self):
-                return await pipeline()
+                nonlocal primary_error, primary_traceback
+                try:
+                    return await pipeline()
+                except BaseException as exc:
+                    primary_error = exc
+                    primary_traceback = exc.__traceback__
+                    raise
 
-        return await RuntimeFlow().kickoff_async()
+        runtime = RuntimeFlow()
+        try:
+            return await runtime.kickoff_async()
+        except BaseException as wrapper_error:
+            if primary_error is not None and wrapper_error is not primary_error:
+                # CrewAI performs event, trace and memory cleanup after the
+                # pipeline exits. A cleanup failure must not replace the
+                # actionable workflow error that triggered recovery.
+                raise primary_error.with_traceback(primary_traceback) from wrapper_error
+            raise
 
     @staticmethod
     def _json_object(text: str) -> dict:
@@ -12322,6 +18230,8 @@ class WorkflowService:
         gateway_role: str, prefer_configured_fallback: bool,
         *, expected_output_characters: int | None = None,
         input_tokens: int = 0,
+        bounded_protocol_output: bool = False,
+        scoped_creative_output: bool = False,
     ) -> int | None:
         binding = self.db.get_role_binding(gateway_role) or {}
         model_key = (
@@ -12332,6 +18242,20 @@ class WorkflowService:
             expected_output_characters
             if expected_output_characters is not None else source_characters
         )
+        if bounded_protocol_output:
+            return bounded_protocol_output_budget(
+                expected_output_characters=expected,
+                input_tokens=input_tokens,
+                context_window=model.get("context_window"),
+                declared_output_ceiling=model.get("max_output_tokens"),
+            )
+        if scoped_creative_output:
+            return scoped_creative_output_budget(
+                expected_output_characters=expected,
+                input_tokens=input_tokens,
+                context_window=model.get("context_window"),
+                declared_output_ceiling=model.get("max_output_tokens"),
+            )
         return adaptive_output_budget(
             stage,
             expected_output_characters=expected,
@@ -12359,6 +18283,31 @@ class WorkflowService:
         model = self.db.get_model(binding.get(model_key, "")) or {}
         window = model.get("context_window")
         return window if isinstance(window, int) and window > 0 else None
+
+    def _route_safe_context_window(
+        self, gateway_role: str, *, prefer_configured_fallback: bool = False,
+        include_configured_fallback: bool = False,
+    ) -> int:
+        """Return the conservative context capacity for every possible route.
+
+        Missing provider metadata is deliberately treated as 32K.  A normal
+        call that may automatically fall back is planned against the smaller
+        of the primary and configured fallback routes, preventing a large
+        primary prompt from being forwarded unchanged to a smaller backup.
+        """
+        unknown_capacity = 32_768
+        selected = self._provider_context_window(
+            gateway_role, prefer_configured_fallback,
+        ) or unknown_capacity
+        windows = [selected]
+        if include_configured_fallback:
+            binding = self.db.get_role_binding(gateway_role) or {}
+            if binding.get("fallback_provider_id") and binding.get("fallback_model_id"):
+                windows.append(
+                    self._provider_context_window(gateway_role, True)
+                    or unknown_capacity
+                )
+        return min(windows)
 
     @staticmethod
     def _chapter_file(project: Project, text: str, number: int = 1) -> str:

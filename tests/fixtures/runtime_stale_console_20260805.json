@@ -1,0 +1,12 @@
+{
+  "incident_family": "runtime.stale_console_process",
+  "workflow": "launcher",
+  "stage": "startup",
+  "message": "runtime fingerprint mismatch: active console is a stale process for the same data directory",
+  "expected_behavior": {
+    "reuse_old_process": false,
+    "kill_old_process": false,
+    "start_new_port": true,
+    "preserve_active_tasks": true
+  }
+}

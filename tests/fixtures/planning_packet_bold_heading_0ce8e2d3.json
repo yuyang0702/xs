@@ -1,0 +1,14 @@
+{
+  "run_id_prefix": "0ce8e2d3",
+  "stage": "planning",
+  "provider_finish_reason": "end_turn",
+  "transport_complete": true,
+  "terminal_error": "list index out of range",
+  "expected_segment": 5,
+  "packet_heading": "**第 5 段：当众坦白，归属落定**",
+  "owned_event_ids": [
+    "EV-BEAE4985",
+    "EV-1522AB0E"
+  ],
+  "expected_recovery": "Normalize the safe Markdown heading wrapper, preserve both event-owned packet bodies, merge in formal order, and continue complete-segment validation without consuming semantic repair budget."
+}

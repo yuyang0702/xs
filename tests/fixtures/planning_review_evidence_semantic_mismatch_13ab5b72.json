@@ -1,0 +1,11 @@
+{
+  "incident_family": "planning.review_evidence_semantic_mismatch",
+  "workflow": "short-story",
+  "stage": "planning",
+  "message": "规划适配回执没有用当前规划原文中的具体问题句证明负面判断",
+  "event_id": "EV-5306BA80",
+  "current_plan_segment": "### 第 2 段：井边冲突\n\n事件ID：EV-5306BA80\n\n大纲依据：花穗与沈蕙兰因门风发生冲突。\n\n段首承接：花穗已经得到下层仆役信任。\n\n本段事件：沈蕙兰撞见花穗和洗衣婆子嗑瓜子，斥责她败坏门风。花穗当面反问，洗衣婆子们忍笑。沈蕙兰拂袖离开。花穗目送她的背影消失在回廊尽头，不知道那句话被记住了没有。\n\n段末交接：裴砚行开始重新观察花穗。",
+  "selected_current_quote": "不知道那句话被记住了没有",
+  "stale_rejected_quote": "却把花穗那句话记在心里",
+  "stale_reason": "却把花穗那句话记在心里，说明沈蕙兰已经认可花穗。"
+}

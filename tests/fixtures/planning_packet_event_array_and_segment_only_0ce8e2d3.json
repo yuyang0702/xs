@@ -1,0 +1,41 @@
+{
+  "run_id_prefix": "0ce8e2d3",
+  "stage": "planning",
+  "expected_segment": 5,
+  "expected_event_ids": ["EV-BEAE4985"],
+  "current_segment": "### 第 5 段：当众坦白，归属落定\n\n事件ID：EV-BEAE4985\n\n大纲依据：身份危机公开并完成核心坦白。\n\n段首承接：核验人员返回沈府，众人在厅中等待。\n\n本段事件：正式事件保持不变。\n\n段末交接：众人的回应继续推进。",
+  "event_array": [
+    {
+      "id": "EV-BEAE4985",
+      "label": "众人的反应",
+      "segment": 5,
+      "entry_handoff": "上一段已经完成身份坦白，厅中等待最终回应。",
+      "exit_handoff": "众人完成公开回应，匿名信仍保留为下一段悬念。",
+      "obligations_covered": [
+        {"obligation_id": "EV-BEAE4985-B01", "how_covered": "沈老夫人重新评价花穗的担当。"}
+      ],
+      "beats": [
+        {
+          "function": "沈蕙兰先表态",
+          "causal_trigger": "花穗已经当众承认真实身份。",
+          "core_content": "沈蕙兰从门风转而承认花穗的风骨。",
+          "exit_state": "花穗确认这不是敷衍的场面话。"
+        }
+      ]
+    }
+  ],
+  "segment_only_packet": "**SEGMENT-ONLY PLAN**\n\n**段标识**：第5段 EV-BEAE4985 包\n\n**事件ID**：EV-BEAE4985（众人的反应）\n\n**段前接续**：段首承接上一段的叙事出口。\n\n**本包事件（唯一）**：\n本包只覆盖一个正式事件：EV-BEAE4985——众人对坦白作出反应。\n\n**因果位置与叙事功能**：\n该事件兑现公开回应。\n\n**段末交接（仅本包出口，不覆盖下一段）**：\n> 匿名信仍待追查。\n\n**本包内事件功能确认**：\n- 所有节拍均属于当前事件。",
+  "expected_recovery": "Treat the top-level JSON array and explicit SEGMENT-ONLY packet as presentation variants. Preserve exact ordered ownership, remove only adjacent-event ID references from descriptive prose, construct one canonical segment, and run the existing semantic and next-boundary validators.",
+  "invalid_variants": {
+    "reordered_events": [
+      {"id": "EV-1522AB0E", "segment": 5, "entry_handoff": "入口", "exit_handoff": "出口", "summary": "错误事件"}
+    ],
+    "missing_exit": [
+      {"id": "EV-BEAE4985", "segment": 5, "entry_handoff": "入口", "summary": "没有出口"}
+    ],
+    "conflicting_segment": [
+      {"id": "EV-BEAE4985", "segment": 4, "entry_handoff": "入口", "exit_handoff": "出口", "summary": "段号冲突"}
+    ],
+    "multiple_payloads": "[{\"id\":\"EV-BEAE4985\",\"segment\":5,\"entry_handoff\":\"入口\",\"exit_handoff\":\"出口\",\"summary\":\"一\"}]\n[{\"id\":\"EV-BEAE4985\",\"segment\":5,\"entry_handoff\":\"入口\",\"exit_handoff\":\"出口\",\"summary\":\"二\"}]"
+  }
+}

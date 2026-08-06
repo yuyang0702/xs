@@ -4,6 +4,7 @@ from collections.abc import Awaitable, Callable
 
 from novel_flywheel.db import Database
 from novel_flywheel.errors import describe_error
+from novel_flywheel.production_incidents import record_production_failure
 
 
 RunOperation = Callable[[str], Awaitable[object]]
@@ -72,14 +73,21 @@ class RunTaskManager:
         except Exception as exc:
             run = self.db.get_run(run_id) or {}
             is_revision = run.get("workflow") == "short-revision"
+            raw_error = describe_error(exc)
             error = (
                 "定向返修未完成，已保留可恢复进度。"
-                if is_revision else describe_error(exc)
+                if is_revision else raw_error
             )
             self.db.update_run(run_id, "failed", error=error)
-            self.db.add_run_event(
-                run_id, "error",
-                "short_revision_failed" if is_revision else "failed", error,
+            stage = str(run.get("current_stage") or "failed")
+            event_type = "short_revision_failed" if is_revision else "failed"
+            record_production_failure(
+                self.db, run_id,
+                workflow=str(run.get("workflow") or ""),
+                stage=stage,
+                raw_error=raw_error,
+                user_message=error,
+                event_type=event_type,
             )
         else:
             run = self.db.get_run(run_id)

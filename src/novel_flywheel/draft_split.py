@@ -27,6 +27,10 @@ class DraftTaskContract:
     execution_manifest_sha256: str = ""
     beat_ids: tuple[str, ...] = ()
     viewpoint: str = ""
+    narrative_mode: str = ""
+    narrator_character_id: str = ""
+    narrator_name: str = ""
+    self_reference: str = ""
     prohibited_future_beat_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
@@ -66,14 +70,26 @@ def render_draft_task_prompt(authority: str, contract: DraftTaskContract) -> str
         raise ValueError("draft authority contains a stale numeric target")
     payload = json.dumps(asdict(contract), ensure_ascii=False, separators=(",", ":"))
     minimum_han, maximum_han = target_bounds(contract.target_han)
-    return (
+    narrative_rule = ""
+    if contract.narrative_mode.startswith("first_person") and contract.narrator_name:
+        self_reference = contract.self_reference or "我"
+        narrative_rule = (
+            "\n第一人称执行规则："
+            f"叙述者是{contract.narrator_name}（{contract.narrator_character_id}）。"
+            f"{contract.narrator_name}自身必须使用“{self_reference}”叙述或自然省略主语，"
+            f"不得写成“{contract.narrator_name}/她”或“{contract.narrator_name}/他”。"
+            "规划中的第三人称人物名只表示事件权威，不能覆盖本规则。\n"
+        )
+    return "".join((
         "正文子任务执行契约。只执行 CURRENT_TASK_CONTRACT，不得扩大或缩小事件范围。\n"
         f"本次唯一字数目标：约 {contract.target_han} 个正文汉字。\n"
         f"本次允许完整场景范围：{minimum_han}-{maximum_han} 个正文汉字。\n"
-        "不要提问。只返回可发布的小说正文，不要标题、说明、总结或状态清单。\n\n"
+        "不要提问。只返回可发布的小说正文，不要标题、说明、总结或状态清单。",
+        narrative_rule,
+        "\n",
         f"CURRENT_TASK_CONTRACT:\n{payload}\n\n"
-        f"IMMUTABLE_AUTHORITY:\n{authority.strip()}"
-    )
+        f"IMMUTABLE_AUTHORITY:\n{authority.strip()}",
+    ))
 
 
 def exact_event_partition(
