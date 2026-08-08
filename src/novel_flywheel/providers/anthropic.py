@@ -16,6 +16,13 @@ class AnthropicAdapter(HttpProvider):
             payload["system"] = system
         if request.temperature is not None:
             payload["temperature"] = request.temperature
+        if request.response_schema is not None:
+            schema = request.response_schema.get(
+                "schema", request.response_schema,
+            )
+            payload["output_config"] = {
+                "format": {"type": "json_schema", "schema": schema},
+            }
         if request.tools:
             payload["tools"] = [{
                 "name": tool.name, "description": tool.description, "input_schema": tool.input_schema,

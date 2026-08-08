@@ -5,12 +5,32 @@ from novel_flywheel.domain.models import ModelResponse, ToolCall
 from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
 from novel_flywheel.providers.registry import ResolvedModel
 from novel_flywheel.providers.http import ToolCapabilityError
+from novel_flywheel.structured_artifacts import (
+    StructuredArtifactContract,
+    StructuredOutputCapabilityError,
+)
 
 
 class FakeAdapter:
     async def complete(self, request):
         assert request.model == "actual-model"
         return ModelResponse(text="result", input_tokens=10, output_tokens=20, raw_request_id="req-1")
+
+
+class StructuredRecordingAdapter:
+    def __init__(self, *, tool: bool = False):
+        self.requests = []
+        self.tool = tool
+
+    async def complete(self, request):
+        self.requests.append(request)
+        if self.tool:
+            return ModelResponse(tool_calls=[ToolCall(
+                id="artifact",
+                name="planning_packet",
+                arguments={"events": [{"event_id": "EV-BEAE4985"}]},
+            )])
+        return ModelResponse(text='{"events":[{"event_id":"EV-BEAE4985"}]}')
 
 
 def test_routes_exhausted_names_errors_without_provider_detail() -> None:
@@ -176,6 +196,170 @@ async def test_gateway_uses_distinct_primary_and_fallback_output_limits(tmp_path
     assert result.text == "fallback result"
     assert primary.budgets == [6144]
     assert fallback.budgets == [3072]
+
+
+def planning_contract() -> StructuredArtifactContract:
+    return StructuredArtifactContract(
+        name="planning_packet",
+        schema={
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"event_id": {"type": "string"}},
+                        "required": ["event_id"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "required": ["events"],
+            "additionalProperties": False,
+        },
+        runtime_authority={"segment": 5},
+    )
+
+
+@pytest.mark.asyncio
+async def test_gateway_uses_only_explicit_route_structured_capability(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "relay", "gpt-brand", None, None)
+    adapter = StructuredRecordingAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            return ResolvedModel(
+                provider_id, model_id, "gpt-5-through-relay", adapter,
+                {"structured_output": "auto"},
+            )
+
+    with pytest.raises(StructuredOutputCapabilityError):
+        await ModelGateway(db, Registry()).complete_structured(
+            "planning", "rules", "return an artifact", planning_contract(),
+        )
+    assert adapter.requests == []
+
+
+@pytest.mark.asyncio
+async def test_gateway_can_fallback_to_explicit_strict_schema_route(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-relay", "primary-model",
+        "schema-relay", "schema-model",
+    )
+    primary = StructuredRecordingAdapter()
+    fallback = StructuredRecordingAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            if provider_id == "primary-relay":
+                return ResolvedModel(
+                    provider_id, model_id, "claude-through-relay", primary,
+                    {"structured_output": "plain_text"},
+                )
+            return ResolvedModel(
+                provider_id, model_id, "gemini-through-relay", fallback,
+                {"structured_output": "strict_json_schema"},
+            )
+
+    result = await ModelGateway(db, Registry()).complete_structured(
+        "planning", "rules", "return an artifact", planning_contract(),
+    )
+
+    assert primary.requests == []
+    assert fallback.requests[0].response_schema["strict"] is True
+    assert result.receipt["fallback_used"] is True
+    assert result.receipt["structured_output_capability"] == "strict_json_schema"
+
+
+@pytest.mark.asyncio
+async def test_gateway_projects_one_strict_tool_call_to_json_text(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "relay", "tool-model", None, None)
+    adapter = StructuredRecordingAdapter(tool=True)
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            return ResolvedModel(
+                provider_id, model_id, "claude-compatible", adapter,
+                {"structured_output": "strict_tool"},
+            )
+
+    result = await ModelGateway(db, Registry()).complete_structured(
+        "planning", "rules", "return an artifact", planning_contract(),
+    )
+
+    assert adapter.requests[0].required_tool == "planning_packet"
+    assert '"EV-BEAE4985"' in result.text
+    assert result.receipt["execution_mode"] == "strict_tool"
+
+
+@pytest.mark.asyncio
+async def test_structured_protocol_can_continue_to_another_probed_capable_route(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    for provider_id in ("plain-relay", "tool-relay", "schema-relay"):
+        db.save_provider(
+            provider_id=provider_id,
+            name=provider_id,
+            protocol="openai-chat",
+            base_url=f"https://{provider_id}.invalid/v1",
+            auth_type="bearer",
+            timeout_seconds=30,
+            extra_headers={},
+        )
+    db.save_model(
+        model_id="plain-model", provider_id="plain-relay",
+        display_name="plain", model_name="plain",
+        capabilities={"structured_output": "plain_text"},
+    )
+    db.save_model(
+        model_id="broken-tool-model", provider_id="tool-relay",
+        display_name="broken tool", model_name="broken-tool",
+        capabilities={"structured_output": "strict_tool"},
+    )
+    db.save_model(
+        model_id="rescue-schema-model", provider_id="schema-relay",
+        display_name="rescue schema", model_name="rescue-schema",
+        capabilities={"structured_output": "strict_json_schema"},
+    )
+    db.save_role_binding(
+        "planning", "plain-relay", "plain-model",
+        "tool-relay", "broken-tool-model",
+    )
+    broken_tool = StructuredRecordingAdapter(tool=False)
+    rescue_schema = StructuredRecordingAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            model = db.get_model(model_id)
+            assert model is not None
+            adapter = (
+                broken_tool if model_id == "broken-tool-model"
+                else rescue_schema
+            )
+            return ResolvedModel(
+                provider_id, model_id, model["model_name"], adapter,
+                model["capabilities"],
+            )
+
+    result = await ModelGateway(db, Registry()).complete_structured(
+        "planning", "rules", "return an artifact", planning_contract(),
+        allow_capability_roster=True,
+    )
+
+    assert result.receipt["provider_id"] == "schema-relay"
+    assert result.receipt["model_id"] == "rescue-schema-model"
+    assert result.receipt["capability_roster_fallback"] is True
+    assert result.receipt["attempted_route_count"] == 3
+    assert len(broken_tool.requests) == 1
+    assert len(rescue_schema.requests) == 1
 
 
 @pytest.mark.asyncio

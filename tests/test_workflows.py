@@ -3446,6 +3446,260 @@ def test_short_plan_parser_accepts_beam_summary_presentation_variants(
     ) == []
 
 
+def test_short_plan_parser_extracts_embedded_markdown_segment_from_json_wrapper() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    payload = {
+        "segment_id": fixture["expected_segment"],
+        "owned_event_ids": [event_id],
+        "planning_segment": fixture["current_segment"],
+    }
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(payload, ensure_ascii=False),
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        current=fixture["current_segment"],
+        artifact="embedded-markdown-packet",
+    )
+
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_parser_recovers_production_beat_timeline_packet_locally() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_obligation_protocol_recovery_12b59c6e.json").read_text(
+             encoding="utf-8",
+         )
+    )
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        fixture["raw_repair_packet"],
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        current=fixture["current_segment"],
+        artifact="production beat-timeline packet",
+    )
+
+    assert WorkflowService._short_plan_declared_event_ids(block) == fixture[
+        "expected_event_ids"
+    ]
+    assert fixture["required_excerpt"] in block
+    assert "尚未交信" in WorkflowService._short_plan_field(block, "handoff")
+    assert "因果合规自查" not in WorkflowService._short_plan_field(block, "handoff")
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        source=fixture["current_segment"],
+        obligation_checklists=fixture["obligation_checklists"],
+    ) == []
+
+
+def test_short_plan_parser_accepts_continuation_heading_and_sub_event_alias() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    packet = fixture["current_segment"].replace(
+        "### 第 5 段：", "### 第 5 段续：",
+    ).replace("本段事件：", "本段子事件：")
+
+    normalized = WorkflowService._normalize_generated_short_plan_segment(
+        packet,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        current=fixture["current_segment"],
+        artifact="continuation-heading-packet",
+    )
+
+    assert WorkflowService._short_plan_event_ids(normalized) == [event_id]
+    assert WorkflowService._short_plan_packet_contract_issues(
+        normalized,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_merge_keeps_singleton_event_ownership_closed_after_parent_merge() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    first_event = "EV-BEAE4985"
+    second_event = fixture["expected_event_ids"][0]
+    source = WorkflowService._render_short_plan_repair_packet(
+        fixture["current_segment"],
+        segment=5,
+        event_ids=[first_event, second_event],
+        event_body=(
+            f"1. **Event A** ({first_event}): first event remains complete.\n\n"
+            f"2. **Event B** ({second_event}): second event remains complete."
+        ),
+    )
+    packet_without_body_id = WorkflowService._render_short_plan_repair_packet(
+        source,
+        segment=5,
+        event_ids=[first_event],
+        event_body="1. **Event A**: the singleton packet retained its full narrative body.",
+    )
+    packet_with_body_id = WorkflowService._render_short_plan_repair_packet(
+        source,
+        segment=5,
+        event_ids=[second_event],
+        event_body=(
+            f"1. **Event B** ({second_event}): the second packet retained its full body."
+        ),
+    )
+
+    merged = WorkflowService._merge_short_plan_repair_packets(
+        source,
+        segment=5,
+        event_ids=[first_event, second_event],
+        packets=[packet_without_body_id, packet_with_body_id],
+    )
+
+    assert WorkflowService._short_plan_packet_contract_issues(
+        merged,
+        segment=5,
+        event_ids=[first_event, second_event],
+        source=source,
+    ) == []
+
+
+def test_short_plan_merge_ignores_adjacent_event_ids_mentioned_inside_singleton_body() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    first_event = "EV-BEAE4985"
+    second_event = fixture["expected_event_ids"][0]
+    source = WorkflowService._render_short_plan_repair_packet(
+        fixture["current_segment"],
+        segment=5,
+        event_ids=[first_event, second_event],
+        event_body="1. **Event A**: first event remains complete.",
+    )
+    packet = WorkflowService._render_short_plan_repair_packet(
+        source,
+        segment=5,
+        event_ids=[first_event],
+        event_body=(
+            "1. **Event A**: the current event remains complete; "
+            f"the later handoff is recorded under {second_event}."
+        ),
+    )
+
+    assert WorkflowService._short_plan_declared_event_ids(packet) == [first_event]
+    assert WorkflowService._short_plan_event_ids(packet) == [first_event]
+
+
+def test_short_plan_embedded_markdown_rejects_distinct_candidates() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    alternate = fixture["current_segment"] + "\n\nAdditional narrative detail."
+    payload = {
+        "segment_id": fixture["expected_segment"],
+        "owned_event_ids": [event_id],
+        "first": fixture["current_segment"],
+        "second": alternate,
+    }
+
+    with pytest.raises(GeneratedArtifactShapeError) as captured:
+        WorkflowService._normalize_generated_short_plan_segment(
+            json.dumps(payload, ensure_ascii=False),
+            segment=fixture["expected_segment"],
+            event_ids=[event_id],
+            current=fixture["current_segment"],
+            artifact="ambiguous-embedded-markdown",
+        )
+
+    assert any(
+        issue.get("code") == "planning_packet_embedded_markdown_ambiguous"
+        for issue in captured.value.issues
+    )
+
+
+def test_short_plan_embedded_markdown_deduplicates_same_candidate_and_accepts_fence() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    payload = {
+        "segment_id": fixture["expected_segment"],
+        "owned_event_ids": [event_id],
+        "duplicate_a": fixture["current_segment"],
+        "duplicate_b": fixture["current_segment"],
+        "fenced": f"```markdown\n{fixture['current_segment']}\n```",
+    }
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(payload, ensure_ascii=False),
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        current=fixture["current_segment"],
+        artifact="deduplicated-embedded-markdown",
+    )
+
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_embedded_markdown_rejects_malformed_fence() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    payload = {
+        "segment_id": fixture["expected_segment"],
+        "owned_event_ids": [event_id],
+        "malformed": f"```markdown\n{fixture['current_segment']}",
+    }
+
+    with pytest.raises(GeneratedArtifactShapeError):
+        WorkflowService._normalize_generated_short_plan_segment(
+            json.dumps(payload, ensure_ascii=False),
+            segment=fixture["expected_segment"],
+            event_ids=[event_id],
+            current=fixture["current_segment"],
+            artifact="malformed-embedded-markdown",
+        )
+
+
 @pytest.mark.parametrize("mutation", [
     "missing_owned_event", "missing_summary_body", "truncated_json",
     "multiple_payloads",
@@ -3537,6 +3791,490 @@ def test_short_plan_parser_keeps_complete_beam_realization_as_creative_candidate
         source=fixture["current_segment"],
         obligation_checklists=fixture["obligation_checklists"],
     ) == []
+
+
+@pytest.mark.parametrize("variant_index", [0, 1])
+def test_short_plan_parser_recovers_open_world_production_wrappers(
+    variant_index,
+) -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    variant = fixture["production_variants"][variant_index]
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(variant["payload"], ensure_ascii=False),
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        current=fixture["current_segment"],
+        artifact=variant["name"],
+    )
+
+    assert WorkflowService._short_plan_event_ids(block) == fixture[
+        "expected_event_ids"
+    ]
+    assert "沈老夫人" in WorkflowService._short_plan_field(block, "event")
+    assert "匿名信" in WorkflowService._short_plan_field(block, "handoff")
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        source=fixture["current_segment"],
+    ) == []
+
+
+@pytest.mark.parametrize("topology", [
+    "unseen_nested_list",
+    "unseen_event_mapping",
+])
+def test_short_plan_parser_accepts_unseen_container_names(topology) -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    event = {
+        "event_id": event_id,
+        "description": "沈老夫人主动认下花穗，下人主动请命，匿名信保持悬置。",
+        "story_evidence": {
+            "movement": "花穗以自己的名字获得归属。",
+            "continuity": "不提前揭开匿名信来源。",
+            "operation": "救援队执行撤离行动；这是题材叙述，不是机器操作。",
+        },
+    }
+    if topology == "unseen_nested_list":
+        payload = {
+            "segment": 5,
+            "event_ids": [event_id],
+            "orchid_vault": {
+                "entry_handoff": "花穗坦白后等待发落。",
+                "lantern_rows": [event],
+                "exit_handoff": "花穗成为义女，匿名信继续悬置。",
+            },
+        }
+    else:
+        payload = {
+            "segment": 5,
+            "event_ids": [event_id],
+            "glasshouse": [{
+                "entry_handoff": "花穗坦白后等待发落。",
+                "copper_index": {
+                    event_id: {
+                        key: value for key, value in event.items()
+                        if key != "event_id"
+                    },
+                },
+                "exit_handoff": "花穗成为义女，匿名信继续悬置。",
+            }],
+        }
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(payload, ensure_ascii=False),
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        current=fixture["current_segment"],
+        artifact=topology,
+    )
+
+    assert WorkflowService._short_plan_event_ids(block) == [event_id]
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_parser_accepts_structured_entry_and_exit_state_objects() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    payload = [{
+        "id": event_id,
+        "label": "公开归属与承诺",
+        "evidence": (
+            "沈老夫人当众宣布以花穗本名认她为义女，下人们主动请命，"
+            "花穗保留匿名信仍未查清的事实。"
+        ),
+        "plan": {
+            "segment": 5,
+            "entry_state": {
+                "花穗": "已经坦白真实身份，等待沈老夫人发落。",
+                "厅堂": "众人沉默，尚未形成正式归属。",
+            },
+            "exit_state": {
+                "花穗": "以自己的名字成为沈府义女。",
+                "匿名信": "来源仍未查清，留待后续追查。",
+            },
+            "obligation_coverages": [{
+                "obligation_id": f"{event_id}-B01",
+                "plan_detail": (
+                    "沈老夫人主动宣布决定，下人们主动请命，花穗以真名获得归属。"
+                ),
+            }],
+        },
+    }]
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(payload, ensure_ascii=False),
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        current=fixture["current_segment"],
+        artifact="production structured boundary state",
+    )
+
+    assert "已经坦白真实身份" in WorkflowService._short_plan_field(
+        block, "opening",
+    )
+    assert "匿名信" in WorkflowService._short_plan_field(block, "handoff")
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_parser_recovers_runtime_owned_production_packet() -> None:
+    """The latest production shape keeps control identity outside prose."""
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_structured_state_52023150.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    expected = ["EV-BEAE4985", "EV-1522AB0E"]
+    payload = {
+        "segment_number": 5,
+        "segment_label": "当众坦白，归属落定（下）",
+        "packet_event_ids": expected,
+        "entry_boundary": (
+            "花穗已经当众坦白真实身份，厅中众人等待回应与最终裁断。"
+        ),
+        "events": [
+            {
+                "event_id": expected[0],
+                "kind": "planning",
+                "plan": {
+                    "identity": {
+                        "primary": {
+                            "actor": "花穗",
+                            "state": "站得笔直，等待沈蕙兰、沈老夫人与裴砚行回应。",
+                        },
+                        "participants": [{
+                            "name": "裴砚行",
+                            "action": (
+                                "被花穗当众点名后不躲不闪，以往后如何讲规矩作答，"
+                                "给出公开且明确的关系承诺。"
+                            ),
+                        }],
+                    },
+                    "dependencies": {
+                        "causal_chain": [
+                            "沈蕙兰先公开认可花穗的担当。",
+                            "沈老夫人把判断从血脉转向花穗自己挣来的担当。",
+                            "花穗主动追问裴砚行，他用往后二字完成公开回应。",
+                        ],
+                    },
+                    "relationship_delta": {
+                        "裴砚行-花穗": "从共同查案推进为当众给出往后的承诺。",
+                    },
+                },
+            },
+            {
+                "event_id": expected[1],
+                "kind": "planning",
+                "plan": {
+                    "identity": {
+                        "primary": {
+                            "actor": "沈老夫人",
+                            "state": "站起来宣布最终决定，语气不容置疑。",
+                        },
+                        "participants": [{
+                            "name": "花穗",
+                            "action": (
+                                "听见自己以花穗本名成为沈府义女，下人们主动跪地请命，"
+                                "她强忍眼泪并决定留下。"
+                            ),
+                        }],
+                    },
+                    "dependencies": {
+                        "causal_chain": [
+                            "前一事件完成众人的公开回应。",
+                            "沈老夫人宣布花穗以本名成为沈府义女。",
+                            "下人集体请命让归属获得公开的人心基础。",
+                        ],
+                    },
+                    "retained_doubt": "匿名信来源仍未查清，不能提前关闭后续悬念。",
+                },
+            },
+        ],
+        "exit_boundary": (
+            "花穗以本名成为沈府义女，公开关系承诺成立，匿名信仍待追查。"
+        ),
+    }
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(payload, ensure_ascii=False),
+        segment=5,
+        event_ids=expected,
+        current=fixture["current_segment"],
+        artifact="latest production runtime-owned packet",
+    )
+
+    assert WorkflowService._short_plan_declared_event_ids(block) == expected
+    assert "往后" in WorkflowService._short_plan_field(block, "event")
+    assert WorkflowService._short_plan_packet_contract_issues(
+        block,
+        segment=5,
+        event_ids=expected,
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_parser_accepts_segment_plan_heading_with_trailing_identity() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    packet = fixture["current_segment"].replace(
+        "### 第 5 段：当众坦白，归属落定",
+        f"# 段规划：第5段／{event_id}",
+        1,
+    )
+
+    normalized = WorkflowService._normalize_generated_short_plan_segment(
+        packet,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        current=fixture["current_segment"],
+        artifact="production reversed segment heading",
+    )
+
+    assert WorkflowService._short_plan_event_ids(normalized) == [event_id]
+    assert WorkflowService._short_plan_packet_contract_issues(
+        normalized,
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        source=fixture["current_segment"],
+    ) == []
+
+
+def test_short_plan_parser_reads_multi_event_ownership_from_event_titles_only() -> None:
+    first = "EV-15C208EE"
+    second = "EV-126EE846"
+    neighbour = "EV-BEAE4985"
+    source = (
+        "### 第 5 段：公开坦白\n\n"
+        f"事件ID：{first}、{second}\n\n"
+        "大纲依据：身份核验与主动坦白。\n\n"
+        "段首承接：核验人员返回，花穗必须作出选择。\n\n"
+        "本段事件：\n"
+        f"1. **核验结果公布**（{first}）。结果不能证明花穗就是蕙芷。\n\n"
+        f"2. **花穗主动坦白**（{second}）。花穗以自己的意志说出真相。\n\n"
+        "段末交接：花穗等待众人回应。"
+    )
+    packet = (
+        "# 第5段 规划\n\n"
+        "## 段首承接\n核验人员返回，花穗必须作出选择。\n\n"
+        "## 本段事件\n\n"
+        f"### 第一拍：核验结果公布（{first}）\n"
+        "结果不能证明花穗就是蕙芷，厅中等待她自己选择。\n\n"
+        f"### 第二拍：花穗主动坦白（{second}）\n"
+        "花穗主动说出真实身份和最初动机，没有让他人替她作答。\n\n"
+        "## 段末交接\n花穗等待众人回应。\n\n"
+        f"> 下一事件 {neighbour} 将负责众人的公开回应。"
+    )
+
+    normalized = WorkflowService._normalize_generated_short_plan_segment(
+        packet,
+        segment=5,
+        event_ids=[first, second],
+        current=source,
+        artifact="production multi-event title ownership",
+    )
+
+    assert WorkflowService._short_plan_declared_event_ids(normalized) == [
+        first, second,
+    ]
+    assert neighbour not in WorkflowService._short_plan_declared_event_ids(
+        normalized,
+    )
+    assert WorkflowService._short_plan_packet_contract_issues(
+        normalized,
+        segment=5,
+        event_ids=[first, second],
+        source=source,
+    ) == []
+
+
+def test_short_plan_production_packets_normalize_and_merge_losslessly() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_structured_state_52023150.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    normalized_packets: list[str] = []
+    for packet in fixture["packets"][:2]:
+        value = packet.get("text")
+        if value is None:
+            value = json.dumps(packet["payload"], ensure_ascii=False)
+        normalized = WorkflowService._normalize_generated_short_plan_segment(
+            value,
+            segment=fixture["expected_segment"],
+            event_ids=packet["event_ids"],
+            current=fixture["current_segment"],
+            artifact=packet["name"],
+        )
+        assert WorkflowService._short_plan_packet_contract_issues(
+            normalized,
+            segment=fixture["expected_segment"],
+            event_ids=packet["event_ids"],
+            source=fixture["current_segment"],
+        ) == []
+        normalized_packets.append(normalized)
+
+    merged = WorkflowService._merge_short_plan_repair_packets(
+        fixture["current_segment"],
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        packets=normalized_packets,
+    )
+
+    assert WorkflowService._short_plan_declared_event_ids(merged) == fixture[
+        "expected_event_ids"
+    ]
+    assert WorkflowService._short_plan_packet_contract_issues(
+        merged,
+        segment=fixture["expected_segment"],
+        event_ids=fixture["expected_event_ids"],
+        source=fixture["current_segment"],
+    ) == []
+
+    neighbour_packet = fixture["packets"][2]
+    normalized_neighbour = WorkflowService._normalize_generated_short_plan_segment(
+        neighbour_packet["text"],
+        segment=fixture["expected_segment"],
+        event_ids=neighbour_packet["event_ids"],
+        current=fixture["current_segment"],
+        artifact=neighbour_packet["name"],
+    )
+    assert WorkflowService._short_plan_declared_event_ids(
+        normalized_neighbour,
+    ) == neighbour_packet["event_ids"]
+
+
+def test_short_plan_parser_uses_complete_body_from_unseen_wrapper() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    realization = (
+        "沈老夫人先说明花穗护人、查账与坦白都是自己挣来的担当，再当众宣布"
+        "沈府以花穗本名认她为义女。下人们主动请命并称她花姑娘，花穗忍住"
+        "眼泪，也没有忘记匿名信仍待追查。"
+    ) * 6
+    payload = {
+        "segment": 5,
+        "event_ids": [event_id],
+        "future_capsule": {
+            "entry_handoff": "花穗坦白后等待发落。",
+            "payload_rows": [{
+                "event_id": event_id,
+                "event_body": realization,
+            }],
+            "exit_handoff": "花穗成为义女，匿名信继续悬置。",
+        },
+    }
+
+    block = WorkflowService._normalize_generated_short_plan_segment(
+        json.dumps(payload, ensure_ascii=False),
+        segment=fixture["expected_segment"],
+        event_ids=[event_id],
+        current=fixture["current_segment"],
+        artifact="complete unseen wrapper",
+    )
+
+    body = WorkflowService._short_plan_field(block, "event")
+    assert realization in body
+    assert "结构化义务与边界" not in body
+
+
+@pytest.mark.parametrize("mutation", [
+    "duplicate_candidates",
+    "reordered_nested_events",
+    "unknown_machine_control",
+])
+def test_short_plan_parser_rejects_unsafe_open_world_shapes(mutation) -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_id = fixture["expected_event_ids"][0]
+    if mutation == "duplicate_candidates":
+        event_ids = [event_id]
+        payload = {
+            "segment": 5,
+            "event_ids": event_ids,
+            "entry_handoff": "入口",
+            "unknown_rows": [
+                {"event_id": event_id, "summary": "候选一。"},
+                {"event_id": event_id, "summary": "相互冲突的候选二。"},
+            ],
+            "exit_handoff": "出口",
+        }
+    elif mutation == "reordered_nested_events":
+        event_ids = ["EV-1522AB0E", "EV-BEAE4985"]
+        payload = {
+            "segment": 5,
+            "event_ids": event_ids,
+            "entry_handoff": "入口",
+            "unknown_rows": [
+                {"event_id": event_ids[1], "summary": "第二事件。"},
+                {"event_id": event_ids[0], "summary": "第一事件。"},
+            ],
+            "exit_handoff": "出口",
+        }
+    else:
+        event_ids = [event_id]
+        payload = {
+            "segment": 5,
+            "event_ids": event_ids,
+            "entry_handoff": "入口",
+            "unknown_rows": [{
+                "event_id": event_id,
+                "summary": "内容完整但包含未知机器操作。",
+                "mutation": {"replace": "accepted plan"},
+            }],
+            "exit_handoff": "出口",
+        }
+
+    with pytest.raises(GeneratedArtifactShapeError):
+        WorkflowService._normalize_generated_short_plan_segment(
+            json.dumps(payload, ensure_ascii=False),
+            segment=fixture["expected_segment"],
+            event_ids=event_ids,
+            current=fixture["current_segment"],
+            artifact=f"unsafe-open-world-{mutation}",
+        )
 
 
 def test_short_plan_beam_summary_retention_uses_packet_event_granularity() -> None:
@@ -3647,6 +4385,212 @@ def test_short_plan_parser_normalizes_production_markdown_field_variants(
         event_ids=fixture["expected_event_ids"],
         source=fixture["current_segment"],
     ) == []
+
+
+@pytest.mark.parametrize("packet_index", [0, 1])
+def test_short_plan_parser_recovers_unicode_protocol_production_packets(
+    packet_index,
+) -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_unicode_protocol_9fc0898b.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    packet = fixture["packets"][packet_index]
+
+    normalized = WorkflowService._normalize_generated_short_plan_segment(
+        packet["payload"],
+        segment=fixture["expected_segment"],
+        event_ids=packet["event_ids"],
+        current=packet["current_segment"],
+        artifact=packet["name"],
+    )
+
+    assert WorkflowService._short_plan_declared_event_ids(normalized) == packet[
+        "event_ids"
+    ]
+    assert WorkflowService._short_plan_packet_contract_issues(
+        normalized,
+        segment=fixture["expected_segment"],
+        event_ids=packet["event_ids"],
+        source=packet["current_segment"],
+    ) == []
+    assert "EV-1522AB0E" not in WorkflowService._short_plan_declared_event_ids(
+        normalized,
+    )
+
+
+@pytest.mark.parametrize("heading", [
+    "# 第5段计划：任意创作标题",
+    "# SEGMENT\u202f5 PACKET REBUILD — arbitrary suffix",
+    "# 段规划：第5段／provider wrapper",
+    "# Planning Segment 5 · provider wrapper",
+])
+def test_short_plan_root_heading_uses_segment_identity_not_fixed_suffix(
+    heading,
+) -> None:
+    packet = (
+        heading + "\n\n"
+        "事件ID：EV-BEAE4985\n\n"
+        "大纲依据：保持正式事件不变。\n\n"
+        "段首承接：上一事件已经结束。\n\n"
+        "本段事件：花穗主动追问，裴砚行公开回应。\n\n"
+        "段末交接：关系承诺成立。"
+    )
+
+    block = WorkflowService._require_short_plan_segment(
+        packet, 5, artifact="open suffix packet",
+    )
+
+    assert WorkflowService._short_plan_event_ids(block) == ["EV-BEAE4985"]
+
+
+def test_short_plan_nested_self_check_heading_does_not_duplicate_segment() -> None:
+    packet = (
+        "# 第5段计划：当众回应\n\n"
+        "事件ID：EV-BEAE4985\n\n"
+        "大纲依据：保持正式事件不变。\n\n"
+        "段首承接：上一事件已经结束。\n\n"
+        "本段事件：花穗主动追问，裴砚行公开回应。\n\n"
+        "## 第5段自检：只核对视角\n\n"
+        "这里不是第二个正式段。\n\n"
+        "段末交接：关系承诺成立。"
+    )
+
+    headings = [
+        number for _match, number in WorkflowService._short_plan_headings(packet)
+        if number is not None
+    ]
+
+    assert headings == [5]
+
+
+def test_short_plan_root_heading_rejects_multiple_distinct_segment_identities() -> None:
+    packet = (
+        "# 第5段计划并入第6段：冲突包装\n\n"
+        "事件ID：EV-BEAE4985\n\n"
+        "大纲依据：保持正式事件不变。\n\n"
+        "段首承接：上一事件已经结束。\n\n"
+        "本段事件：花穗主动追问，裴砚行公开回应。\n\n"
+        "段末交接：关系承诺成立。"
+    )
+
+    with pytest.raises(GeneratedArtifactShapeError, match="segment identity"):
+        WorkflowService._require_short_plan_segment(
+            packet, 5, artifact="conflicting identity packet",
+        )
+
+
+@pytest.mark.asyncio
+async def test_planning_protocol_rewrap_uses_real_stage_and_recovers_output_limit(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="planning-model", provider_id="provider",
+        display_name="Planning", model_name="planning-model",
+        context_window=32_768, max_output_tokens=8_192,
+    )
+    db.save_role_binding("planning", "provider", "planning-model", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Protocol recovery", mode="short", genre="suspense",
+        premise="A complete plan arrives in an unknown wrapper.", target_words=5000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    event_id = "EV-BEAE4985"
+    current = (
+        "### 第 5 段：公开回应\n\n"
+        f"事件ID：{event_id}\n\n"
+        "大纲依据：花穗主动追问并得到公开回应。\n\n"
+        "段首承接：花穗已经坦白真实身份。\n\n"
+        f"本段事件：1. **公开回应**（{event_id}）："
+        "花穗主动追问，裴砚行当众回应并给出往后承诺。\n\n"
+        "段末交接：关系承诺成立，匿名信仍待追查。"
+    )
+    canonical = current.replace(
+        "花穗主动追问，裴砚行当众回应并给出往后承诺。",
+        "花穗主动追问裴砚行为何沉默；裴砚行没有回避，当众回应并给出往后承诺。",
+    )
+
+    class Gateway:
+        def __init__(self) -> None:
+            self.calls: list[int | None] = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.calls.append(max_output_tokens)
+            assert role == "planning"
+            assert user.startswith("SHORT_PLAN_CANONICAL_REWRAP_V1")
+            assert "CURRENT AUTHORITY (IMMUTABLE)" in user
+            if len(self.calls) == 1:
+                return ModelResult(
+                    "### 第 5 段：公开回应\n\n事件ID：EV-BEAE4985",
+                    {
+                        "finish_reason": "max_tokens",
+                        "model_id": "planning-model",
+                        "model_name": "planning-model",
+                    },
+                )
+            return ModelResult(
+                canonical,
+                {
+                    "finish_reason": "end_turn",
+                    "model_id": "planning-model",
+                    "model_name": "planning-model",
+                },
+            )
+
+    gateway = Gateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id = "planning-protocol-output-limit"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    raw = (
+        "<future-plan-envelope>\n"
+        "<entry>花穗已经坦白真实身份。</entry>\n"
+        f"<event identity=\"{event_id}\">"
+        "花穗主动追问裴砚行为何沉默；裴砚行没有回避，当众回应并给出往后承诺。"
+        "</event>\n"
+        "<exit>关系承诺成立，匿名信仍待追查。</exit>\n"
+        "</future-plan-envelope>"
+    )
+
+    normalized = await service._normalize_generated_short_plan_segment_with_protocol_retry(
+        run_id, run_path, project, "必须保持正式剧情方向。", raw,
+        segment=5,
+        event_ids=[event_id],
+        current=current,
+        artifact="integration protocol packet",
+        suffix="-integration",
+    )
+
+    assert "裴砚行没有回避" in normalized
+    assert len(gateway.calls) == 2
+    assert gateway.calls[1] > gateway.calls[0]
+    assert service._short_plan_packet_contract_issues(
+        normalized,
+        segment=5,
+        event_ids=[event_id],
+        source=current,
+    ) == []
+    events = db.list_run_events(run_id)
+    assert any(item["event_type"] == "output_limit_expanded" for item in events)
+    assert any(
+        item["event_type"] == "planning_packet_protocol_recovered"
+        for item in events
+    )
 
 
 def test_short_plan_markdown_packet_reports_exact_missing_field_feedback() -> None:

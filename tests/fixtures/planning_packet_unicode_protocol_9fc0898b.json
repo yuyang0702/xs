@@ -1,0 +1,22 @@
+{
+  "run_id_prefix": "9fc0898b",
+  "stage": "planning",
+  "incident_family": "parser.generated_artifact_shape",
+  "provider_finish_reason": "end_turn",
+  "transport_complete": true,
+  "expected_segment": 5,
+  "packets": [
+    {
+      "name": "unicode_packet_rebuild_heading",
+      "event_ids": ["EV-BEAE4985"],
+      "current_segment": "### 第 5 段：众人的反应\n\n事件ID：EV-BEAE4985\n\n大纲依据：众人公开认可花穗，花穗主动追问裴砚行并得到公开回应。\n\n段首承接：花穗已经坦白真实身份，厅中众人等待回应。\n\n本段事件：\n1. **众人的反应**（EV-BEAE4985）：沈老夫人与沈蕙兰认可花穗的担当；花穗主动追问裴砚行，他以往后的承诺公开回应。\n\n段末交接：花穗获得公开认可，匿名信仍未查清。",
+      "payload": "# SEGMENT 5 PACKET REBUILD · EV‑BEAE4985（众人反应）\n\n**段首承接（由 PARENT PREVIOUS HANDOFF 签发）**\n花穗已经坦白真实身份，厅中众人等待回应。\n\n---\n## 本段事件：EV‑BEAE4985 众人的反应\n\n### 沈老夫人发言（EV‑BEAE4985‑B01）\n沈老夫人认可花穗护下人、查蛀虫和敢作敢当都是她自己挣来的担当。\n\n### 沈大小姐发言（EV‑BEAE4985‑B02）\n沈蕙兰公开承认花穗有沈家该有的风骨。\n\n### 花穗追问裴砚行（EV‑BEAE4985‑B03）\n花穗主动问裴砚行为什么不说话，裴砚行以往后如何讲规矩作答，形成公开关系承诺。\n\n---\n## 段末交接（核对 PARENT NEXT SEGMENT ENTRY TO PRESERVE）\n花穗获得公开认可，匿名信仍未查清。下一正式事件 EV‑1522AB0E 负责确认义女身份。\n\n## 分段核查（完成视角与知识边界）\n已逐条兑现 EV‑BEAE4985 的职责。"
+    },
+    {
+      "name": "rich_plan_suffix_heading",
+      "event_ids": ["EV-15C208EE", "EV-126EE846"],
+      "current_segment": "### 第 5 段：当众坦白\n\n事件ID：EV-15C208EE、EV-126EE846\n\n大纲依据：核验结果公开后，花穗主动坦白真实身份与初衷。\n\n段首承接：核验人员返回，花穗必须决定是否说出真相。\n\n本段事件：\n1. **核验结果公布**（EV-15C208EE）：结果无法确证花穗就是蕙芷，沈老夫人当众追问。\n\n2. **花穗主动坦白**（EV-126EE846）：花穗亲口承认自己不是蕙芷，交代真实出身和进府初衷。\n\n段末交接：花穗说完真相，厅中等待众人回应。",
+      "payload": "# 第5段计划：当众坦白，归属落定\n\n## 段结构：事件拆分为beat\n\n- Beat 1 (EV-15C208EE)：核验人员回禀无确证，沈老夫人当众追问花穗。\n- Beat 2 (EV-126EE846)：花穗坦白自己不是蕙芷，交代真实出身与初衷。\n- Beat 3（花穗补充行动理由）：她说明查账和帮助下人的动机。\n\n## 段前承接（entry state）\n\n核验人员返回，花穗必须决定是否说出真相。\n\n## 关键约束与核验\n\n- EV-15C208EE-B01 必须保留沈老夫人公开追问。\n- EV-126EE846-B01 必须由花穗主动坦白。\n- 不得提前执行 EV-BEAE4985 与 EV-1522AB0E。\n\n## 叙事推进与因果链（segment cause→effect）\n\n**Beat 1 — 身份危机的公开 (EV-15C208EE)**\n核验人员回禀无法确证，厅中沉默，沈老夫人当众问花穗究竟是不是蕙芷。花穗只能依据自己的感官判断众人的反应。\n\n**Beat 2 — 核心坦白 (EV-126EE846)**\n花穗主动说出自己不是蕙芷，并交代街口长大的真实出身和拿钱进府的最初动机，不让旁人替她回答。\n\n**Beat 3 — 花穗补充行动理由**\n花穗说明自己查账是为了自保，帮助下人是因为她也挨过饿；这只是坦白后的自然延伸，不提前执行后续公开回应。\n\n## 段末交接（exit state，严格匹配 parent handoff）\n\n花穗已经把真相说完，厅中所有人等待沈老夫人的下一句话；匿名信仍未查清。\n\n## 段完成后自检短名单\n\n- EV-15C208EE 与 EV-126EE846 均已完成。\n- 后续 EV-BEAE4985 和 EV-1522AB0E 仍未执行。"
+    }
+  ]
+}

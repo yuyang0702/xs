@@ -1,5 +1,46 @@
 # Novel Flywheel Maintenance
 
+## Route-local structured artifacts and third-party gateways
+
+Structured-output support is configured and probed per provider/model route. Runtime
+never infers JSON Schema, JSON-object, or forced-tool support from names such as
+OpenAI, Gemini, Claude, GPT, or an advertised upstream model. Missing, `auto`, and
+unknown capability values are treated as `plain_text`. The saved values are
+`plain_text`, `json_object`, `strict_json_schema`, and `strict_tool`; strict workflow
+requirements may use only the latter two and may fall back only to another explicitly
+strict saved route.
+
+The provider connection probe uses minimal synthetic payloads and no novel content.
+It first verifies the route, then distinguishes strict schema, forced tool, JSON
+object, and plain text. A 404 or "API does not exist" response is not a model-removal
+verdict: check whether the base URL already owns `/v1`, whether the third-party
+gateway implements Chat Completions, Responses, or Anthropic Messages, whether it
+requires streaming, and whether gateway-specific headers are present. Do not alter
+role bindings or secrets during diagnosis. Persist a capability only after that exact
+route succeeds.
+
+Optional tool calling and strict forced-tool output are different capabilities. A
+thinking route may accept a tool list and voluntarily call one while rejecting a
+named `tool_choice`; record its ordinary tool support, but do not mark it
+`strict_tool`. Strict workflow routing requires one forced, uniquely named tool call,
+so an optional-only primary is skipped before the paid request and an explicitly
+strict fallback is used.
+
+Planning presentation repair now asks the model only for ordered creative event
+narratives. Segment identity, outline basis, packet ownership, opening/closing
+boundaries, hashes, retry budgets, and checkpoint identity remain Runtime-owned.
+Runtime rejects unknown fields, duplicate or reordered event IDs, and incomplete
+narratives, reconstructs the canonical segment from current accepted authority, and
+reruns the unchanged full planning validator before downstream use. Existing
+Markdown and open-wrapper readers remain read-only compatible for old checkpoints.
+
+Operational rollback is non-destructive: change the affected model route's structured
+output setting to `plain_text`. Native schema/tool parameters stop immediately while
+legacy local validation remains active. Probing and capability changes do not rewrite
+StoryState, outlines, formal manuscripts, historical runs, bindings, or stored keys.
+See `docs/superpowers/specs/2026-08-08-route-local-structured-artifact-design.md` for
+the authority boundary and acceptance contract.
+
 ## Market trend snapshots
 
 Market data uses the existing SQLite database as its only authority. The relevant tables are
@@ -176,6 +217,18 @@ and whole-plan validators. A harmless wrapper repair therefore does not bypass
 semantic or story-wide checks, and an ambiguous packet consumes only the
 current smallest-scope protocol retry while the retained best plan remains
 authoritative.
+
+Planning identifiers and headings share one offset-preserving Unicode protocol
+view. One-code-point NFKC width variants, Unicode dash families, Unicode slash
+families, and narrow/non-breaking spaces compare canonically without rewriting
+free prose. Formal IDs such as `EV‑BEAE4985‑B01` bind to the base event
+`EV-BEAE4985`, while removal uses original-source offsets so adjacent narrative
+text is unchanged. Root headings are recognized from segment identity rather
+than a finite suffix list: `第5段计划：...`, `SEGMENT 5 ...`, `Planning Segment
+5 ...`, and reversed labels such as `段规划：第5段/...` are accepted when they
+declare exactly one segment. Nested self-check headings do not create another
+formal segment, and a root heading that claims two segment identities fails
+closed.
 
 Capability probing uses the provider's structured-output request for JSON and requests a specific probe tool for tools. OpenAI Responses forwards that specific tool through its native `tool_choice` shape. Moonshot OpenAI Chat requests disable thinking when structured output or a specific tool is required, matching the provider's compatibility contract and the same requests used by real workflow stages. Providers that reject or ignore forced `tool_choice` are retried once with automatic tool selection, so lack of forced-choice support is not misreported as lack of tool support; unrelated tool errors remain visible.
 
@@ -473,6 +526,14 @@ Short-plan segment headings accept canonical ATX Markdown plus standalone bold, 
 
 A Markdown planning repair packet may render `段首承接`, `本段事件`, or `段末交接` as standalone headings instead of colon fields, and may describe its event list with a noncanonical visible label. Runtime accepts those differences only when the segment number and exact ordered event IDs still match the current repair contract. It deterministically reuses the current formal outline evidence, extracts each heading-owned field only to the next peer-or-higher heading, and projects the packet back into the canonical planning block before semantic validation. Missing, repeated, ambiguous, or reordered authority remains a recoverable packet failure. The resulting field-, ownership-, body-, obligation-, and retention-level failure receipt is included in the next bounded repair attempt; it is not discarded as a generic generation failure, so the model does not blindly repeat the same malformed packet.
 
+Event ownership may be declared by one explicit ownership field or by ordered
+event/beat titles inside the semantic event section. Ownership is inferred from
+stable event identity and structural position, not from one fixed visible label.
+Descriptive mentions in handoffs, diagnostics, self-checks, constraints, or
+later-event notes remain references only. Legitimate story events whose titles
+contain words such as “核验” or “validation” are not discarded as diagnostics;
+only structurally diagnostic prefixes and sections are excluded.
+
 A planning repair packet may also arrive as one JSON object after a normal provider finish. Runtime accepts this only as a presentation variant when the object identifies exactly the expected segment, owns exactly the expected event IDs in formal order without duplicates, gives every owned event a non-empty narrative body, and supplies complete segment entry and exit state. Runtime projects those fields into the canonical planning block using the current formal segment as outline authority, then reruns event-body retention, obligation, adjacent-handoff, and whole-plan validation. Reordered, duplicate, missing, conflicting, multiple-object, or authority-incomplete JSON remains a protocol failure; it is never promoted or treated as creative permission.
 
 Some providers instead return a `beam_plan` map whose event values contain only `resolution`, `causal_plan`, `approach`, or obligation arrays such as `obligations_fulfilled`. Runtime classifies that form as a structured repair summary, not a complete replacement event body. Segment identity and exact ordered ownership must still match. For each event, Runtime projects the exact event-owned body from the retained best planning segment, preserves that complete realization, and appends only the provider's explicit obligation and boundary amendments; packet-level entry and exit handoffs may replace their matching fields. It never fabricates prose or lowers the `event_body_collapsed` retention floor. If the retained source body is missing, duplicated, reordered, or cannot be bound to exactly one event, normalization fails closed with `planning_packet_summary_authority_missing`. A recovered packet must still pass event-body integrity, required-participant obligations, body retention, adjacent handoffs, whole-plan authorization, and the normal monotonic best-candidate gate before causal-chain generation or drafting.
@@ -568,6 +629,8 @@ Recovery prompts are capacity-gated. The complete ledger remains persisted, whil
 Local planning-adaptation review uses the same capacity contract. When the complete segment receipt approaches the safe context range, the common stage preflight invokes an explicit semantic splitter instead of throwing a terminal `topology=split` error or sending the oversized request. The splitter recursively partitions only the segment's ordered formal-event contracts. Each packet receives the exact event-owned plan blocks and parent evidence IDs instead of another copy of the complete segment; its packet hash still binds the immutable full-segment authority, ordered event IDs, dependency IDs, planning hash, and adjacent handoff authority. Packet receipts are merged in original event order and must pass the unchanged full-segment protocol, evidence, ordering, direction, boundary, and semantic checks before whole-plan review can start. Completed packets are stored under `outputs/pap/` and may be reused across compatible failed or cancelled runs only when all bound hashes and ordered IDs match; conflicting checkpoints are discarded.
 
 Complete formal-segment rebuild uses a parallel creative packet topology. If the rebuild request reaches the capacity preflight, Runtime projects only the exact numbered/list event body owned by each contiguous packet, while retaining the packet's formal contracts, completion checklist, relevant stable issue identities, parent handoffs, and the exact preceding accepted sibling projection and hash. It recursively reduces a multi-event packet until every leaf fits; a single formal event remains indivisible and fails closed only if its already-minimal creative packet still cannot fit. Leaf results are stored under `outputs/prp/` with parent authority, ordered event IDs, predecessor hash, and exact output hash, so an interrupted or later compatible task can reuse completed leaves. Runtime then restores the original segment shell, merges event bodies in formal order, preserves the first opening and last handoff, and reruns the unchanged complete-segment validator. The ordinary recovery loop still performs local semantic review, adjacent-boundary validation, and whole-plan review before causal-chain generation. This topology never truncates the outline, contracts, failure ledger, current best plan, or requested creative output; conflicting valid checkpoints are treated as ambiguous and regenerated instead of selecting one silently.
+
+Planning-rebuild JSON uses an open presentation contract rather than a finite wrapper-name schema. Runtime recursively discovers the leaf-most narrative record bound to each exact formal event ID, whether the record appears in a top-level array, an event-ID mapping, nested arrays, block lists, or future provider-selected containers. Container names and nesting never grant ownership. Every declared segment and explicit event-ID sequence must agree with the current packet, and discovered records must match the exact ordered ownership once each. Conflicting identities, duplicate or reordered records, ambiguous entry/exit state, and unknown machine-control fields trigger a canonical protocol retry; Runtime does not choose a convenient candidate or infer an operation from prose. A short structured summary cannot replace accepted event prose: Runtime retains the exact event-owned body and appends only auditable obligation or boundary evidence. A complete narrative body remains eligible as the creative candidate. The normalized packet then crosses the unchanged body-retention, participant-obligation, adjacent-handoff, complete-segment, and whole-plan gates. Completed hash-matched sibling packets remain reusable, so a presentation retry does not regenerate accepted work.
 
 If a single event still exceeds the route safety range, Runtime keeps that event indivisible as narrative ownership but reviews its invariant facets separately: function/agency/causal dependency, entry/exit/knowledge/relationship state, and viewpoint/timeline/promise-ending. Facet receipts bind the same packet authority and are merged only after all ten invariants are covered exactly once. If one facet remains too large, its exact event-owned plan evidence is divided into paragraph-aligned overlapping windows. Every window binds its character range, text SHA-256, evidence IDs, facet authority, and invariant verdicts; coverage must start at character zero, end at the exact event length, and contain no gap. Completed window and facet checkpoints are reusable across tasks, while missing, duplicate, stale, hash-conflicting, or non-covering windows are regenerated. The merged facet, event packet, parent segment, adjacent boundaries, and whole plan are all revalidated. No plan prose, formal contract, failure evidence, story target, or creative scope is mechanically truncated.
 
@@ -709,3 +772,55 @@ The project-materials API and console do not count empty registry scaffolds as u
 ### 正式稿晋升中断恢复
 
 短篇正式稿晋升会在写入正式稿、章节稿和 canon 前保存哈希绑定的恢复载荷。若进程在 StoryState 已提交后中断，而部分正式文件缺失或损坏，下一次任务会从该载荷确定性重建全部晋升文件、重新核对哈希后再完成收尾。只有 StoryState 已超过该日志的目标版本时，旧日志才会标记为 `superseded`；目标版本本身存在文件不一致时不得清理快照或假报成功。旧日志若没有可验证恢复载荷会停止新写作并保留现场，不会把旧快照覆盖到已提交的新 StoryState 上。
+### Capacity packet merge closure and embedded Markdown recovery
+
+Complete formal-segment rebuild normalizes every accepted leaf to an explicit body-level event owner before parent merge. A singleton envelope may already bind its full body to one event, but that envelope-only representation is not sufficient once siblings are combined; the normalization marker preserves all narrative text and makes ownership closed under merge. The merged segment then reruns event-body, obligation, retention, adjacent-handoff, and whole-plan validation.
+
+Planning-rebuild JSON also accepts one complete Markdown segment nested inside an otherwise open provider wrapper. Runtime validates the embedded segment through the same canonical parser, preserves the wrapper's exact ordered ownership, and rejects multiple distinct embedded candidates instead of choosing one by traversal order. This recovery path is presentation normalization only; it never changes formal plot authority or invents narrative facts.
+
+The production incident catalog includes packet-merge closedness as a separate family so a future recurrence is recognized before the generic capacity-split terminal error and carries the concrete leaf-normalization and lossless-merge recovery path.
+
+Planning repair packets also use a representation-neutral boundary adapter. A provider may return a top-level event array, an event-ID mapping, nested event records, or a Markdown block whose title places the segment label before the number (for example `段规划：第5段／EV-...`). Entry and exit state may be a string, list, or structured object; objects are preserved by deterministic Unicode-safe serialization and remain narrative authority. Ownership is derived only from the explicit event-ID field or event-title declarations inside the owned event field. IDs mentioned in prose, handoffs, or a next-segment reference never claim ownership. Multiple identities, duplicate candidates, reordered events, unknown machine-control fields, or incomplete narrative bodies still fail closed and trigger a canonical retry.
+
+When deterministic adapters cannot establish a unique packet after a normal
+provider finish, Runtime keeps the generated content isolated and performs one
+same-segment, same-event-set canonical rewrap. The rewrap receives immutable
+segment identity, ordered ownership, outline basis, entry/exit state, source
+hash, and generated-packet hash. It may repair presentation only; it cannot
+expand the authorized story scope. Output sizing uses the bounded protocol
+budget, still honors provider output-limit expansion, and re-enters the same
+normalizer plus complete packet contract. This rewrap occurs inside the current
+semantic attempt, so it does not spend another targeted-repair or full-segment
+rebuild attempt. If it still has no unambiguous shape, Runtime records
+`planning_packet_protocol_exhausted`, preserves the best planning checkpoint,
+and exits as `parser.generated_artifact_shape` instead of reporting
+`planning.structure_drift`. Conversely, a canonical packet that parses but
+omits participants, collapses event prose, changes ownership, or violates a
+narrative invariant remains a semantic candidate failure and never receives a
+presentation-only retry.
+
+Protocol rejection is tracked separately from route availability. A normal model response that fails packet shape or semantic contract cannot be reported as “repair call unavailable” and cannot consume provider-route failure state. Only current-run credential/binding rejection or transport exhaustion emits `planning_adaptation_unavailable`; historical execution failures remain audit evidence and do not poison a later resume. A repair budget exhaustion instead reports the retained best candidate and the exact remaining packet or semantic issues.
+
+### Event-obligation completion and automatic capability routing
+
+Before a planning repair spends a model call, Runtime compares every missing
+participant against the hash-bound obligation checklist projected from the
+formal outline. If exactly one formal obligation owns the missing participant,
+its source excerpt still matches the recorded SHA-256 value, and the affected
+event has one unambiguous owned body, Runtime appends that exact excerpt inside
+the event. It never paraphrases or invents plot facts. Ambiguous sources,
+foreign event IDs, hash mismatches, or unclear ownership fail closed and keep
+the best checkpoint for the normal event/segment recovery path. The repaired
+candidate must still pass event-body retention, obligation, adjacent-handoff,
+and whole-plan review; unaffected event bodies remain byte-for-byte unchanged.
+
+Candidate generation failures are counted separately from accepted semantic
+repair candidates. A malformed packet, failed canonical rewrap, transport
+interruption, or temporarily unusable structured route therefore cannot spend
+the two semantic repair opportunities. Canonical planning rewrap may continue
+through enabled models whose stored probe result satisfies the required
+structured protocol. Configured primary and fallback routes remain first, and
+unknown or insufficient capability records are never promoted by model-name or
+vendor inference. The console intentionally exposes only the probe action and
+read-only detected result: context window, maximum output Token, and manual
+capability downgrade controls are runtime-owned and are no longer editable.

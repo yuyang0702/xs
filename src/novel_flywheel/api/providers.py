@@ -34,6 +34,18 @@ class ModelCreate(BaseModel):
     display_name: str = Field(min_length=1)
     model_name: str = Field(min_length=1)
     tool_support: Literal["auto", "enabled", "disabled"] = "auto"
+    structured_output: Literal[
+        "plain_text", "json_object", "strict_json_schema", "strict_tool",
+    ] = "plain_text"
+    context_window: int | None = Field(default=None, ge=1024)
+    max_output_tokens: int | None = Field(default=None, ge=64)
+
+
+class ModelCapabilityUpdate(BaseModel):
+    tool_support: Literal["auto", "enabled", "disabled"] = "auto"
+    structured_output: Literal[
+        "plain_text", "json_object", "strict_json_schema", "strict_tool",
+    ] = "plain_text"
 
 
 class ApiKeyUpdate(BaseModel):
@@ -105,13 +117,33 @@ def create_model(provider_id: str, payload: ModelCreate,
     try:
         model_id = registry.add_model(
             provider_id, payload.display_name, payload.model_name,
-            {"tool_support": payload.tool_support},
+            {
+                "tool_support": payload.tool_support,
+                "structured_output": payload.structured_output,
+            },
+            context_window=payload.context_window,
+            max_output_tokens=payload.max_output_tokens,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
     model = registry.db.get_model(model_id)
     assert model is not None
     return model
+
+
+@router.put("/providers/{provider_id}/models/{model_id}/capabilities")
+def update_model_capabilities(
+    provider_id: str,
+    model_id: str,
+    payload: ModelCapabilityUpdate,
+    registry: ProviderRegistry = Depends(get_registry),
+) -> dict:
+    try:
+        return registry.update_model_capabilities(
+            provider_id, model_id, payload.model_dump(),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
 
 
 @router.post("/providers/{provider_id}/models/{model_id}/probe")
@@ -121,7 +153,14 @@ async def probe_model(provider_id: str, model_id: str,
         resolved = registry.resolve(provider_id, model_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
-    return await CapabilityProbe(resolved.adapter).run(resolved.model_name)
+    result = await CapabilityProbe(resolved.adapter).run(resolved.model_name)
+    if result.chat:
+        registry.update_model_capabilities(provider_id, model_id, {
+            "structured_output": result.structured_output_capability,
+            "tool_support": "enabled" if result.tool_calling else "disabled",
+            "capability_probe_status": "succeeded",
+        })
+    return result
 
 
 class RoleBindingUpdate(BaseModel):

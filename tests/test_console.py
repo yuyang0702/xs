@@ -172,6 +172,10 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert 'id="interview-status"' in html
     assert 'id="provider-form-title"' in html
     assert 'id="provider-cancel"' in html
+    assert 'name="tool_support"' not in html
+    assert 'name="structured_output"' not in html
+    assert 'name="context_window"' not in html
+    assert 'name="max_output_tokens"' not in html
     assert 'name="auth_type"' not in html
     assert 'name="timeout_seconds"' not in html
     assert 'name="extra_headers"' not in html
@@ -199,6 +203,16 @@ def test_console_assets_include_narrative_and_issue_ledger_views(tmp_path) -> No
     assert "data-provider-edit" in script
     assert "data-provider-delete" in script
     assert "editingProviderId" in script
+    assert "structured_output_capability" in script
+    assert "result.forced_tool" in script
+    assert "强制工具" in script
+    assert "m.capabilities?.structured_output" in script
+    assert "dataset.capabilityModel" not in script
+    assert "dataset.capabilitySave" not in script
+    assert "保存能力" not in script
+    assert "路由能力已保存" not in script
+    assert "if (!data.context_window) delete data.context_window" not in script
+    assert "if (!data.max_output_tokens) delete data.max_output_tokens" not in script
     assert 'new Set(["planning"])' in script
     assert "需要工具" in script
     assert "不需要工具" in script

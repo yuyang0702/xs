@@ -16,6 +16,8 @@ class OpenAIChatAdapter(HttpProvider):
             payload["max_tokens"] = request.max_output_tokens
         if request.response_schema is not None:
             payload["response_format"] = {"type": "json_schema", "json_schema": request.response_schema}
+        elif request.response_format == "json_object":
+            payload["response_format"] = {"type": "json_object"}
         if request.tools:
             payload["tools"] = [{"type": "function", "function": {
                 "name": tool.name, "description": tool.description, "parameters": tool.input_schema,
@@ -24,7 +26,9 @@ class OpenAIChatAdapter(HttpProvider):
             payload["tool_choice"] = {
                 "type": "function", "function": {"name": request.required_tool},
             }
-        if "api.moonshot.cn" in self.base_url and (request.required_tool or request.response_schema):
+        if "api.moonshot.cn" in self.base_url and (
+            request.required_tool or request.response_schema or request.response_format
+        ):
             payload["thinking"] = {"type": "disabled"}
         payload["stream"] = True
         payload["stream_options"] = {"include_usage": True}

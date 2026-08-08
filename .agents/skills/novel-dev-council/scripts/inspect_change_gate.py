@@ -66,6 +66,13 @@ FORWARD_RISK_DISPOSITIONS = {
     "tested_not_susceptible",
     "not_applicable",
 }
+SCOPE_CLASSIFICATIONS = {"open_world", "closed_world"}
+RESOLUTION_STATUSES = {
+    "contained",
+    "case_fixed",
+    "systemically_resolved",
+    "unresolved",
+}
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
@@ -319,10 +326,89 @@ def _non_empty_strings(payload: dict[str, object], field: str) -> list[str]:
     return normalized
 
 
+def _non_empty_string(payload: dict[str, object], field: str) -> str:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise RuntimeError(f"forward-risk report requires non-empty {field}")
+    return value.strip()
+
+
+def _constraint_traceability(
+    payload: dict[str, object], repository: Path,
+) -> list[dict[str, object]]:
+    values = payload.get("constraint_traceability")
+    if not isinstance(values, list) or not values:
+        raise RuntimeError(
+            "forward-risk report requires non-empty constraint_traceability"
+        )
+    normalized: list[dict[str, object]] = []
+    for index, raw in enumerate(values, 1):
+        if not isinstance(raw, dict):
+            raise RuntimeError(
+                f"constraint_traceability[{index}] must be an object"
+            )
+        requirement = raw.get("requirement")
+        implementation = raw.get("implementation")
+        evidence = raw.get("evidence")
+        if not isinstance(requirement, str) or not requirement.strip():
+            raise RuntimeError(
+                f"constraint_traceability[{index}] requires requirement"
+            )
+        if not isinstance(implementation, str) or not implementation.strip():
+            raise RuntimeError(
+                f"constraint_traceability[{index}] requires implementation"
+            )
+        if not isinstance(evidence, str) or not evidence.strip():
+            raise RuntimeError(
+                f"constraint_traceability[{index}] requires evidence"
+            )
+        test_paths = raw.get("test_paths")
+        if not isinstance(test_paths, list) or not test_paths:
+            raise RuntimeError(
+                f"constraint_traceability[{index}] requires non-empty test_paths"
+            )
+        normalized_paths = [
+            _repository_test_path(
+                repository, value,
+                field=f"constraint_traceability[{index}].test_paths",
+            )
+            for value in test_paths
+        ]
+        normalized.append({
+            "requirement": requirement.strip(),
+            "implementation": implementation.strip(),
+            "test_paths": sorted(set(normalized_paths)),
+            "evidence": evidence.strip(),
+        })
+    return normalized
+
+
 def _load_forward_risk_report(path: Path, repository: Path) -> dict[str, object]:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict) or payload.get("version") != 1:
-        raise RuntimeError("forward-risk report must be a version 1 JSON object")
+    if not isinstance(payload, dict) or payload.get("version") != 2:
+        raise RuntimeError("forward-risk report must be a version 2 JSON object")
+
+    original_requirement = _non_empty_string(payload, "original_requirement")
+    scope_classification = payload.get("scope_classification")
+    if scope_classification not in SCOPE_CLASSIFICATIONS:
+        raise RuntimeError(
+            "forward-risk report scope_classification must be one of "
+            + ", ".join(sorted(SCOPE_CLASSIFICATIONS))
+        )
+    operational_definition = _non_empty_string(payload, "operational_definition")
+    forbidden_narrowing = _non_empty_strings(payload, "forbidden_narrowing")
+    resolution_status = payload.get("resolution_status")
+    if resolution_status not in RESOLUTION_STATUSES:
+        raise RuntimeError(
+            "forward-risk report resolution_status must be one of "
+            + ", ".join(sorted(RESOLUTION_STATUSES))
+        )
+    closed_world_justification = ""
+    if scope_classification == "closed_world":
+        closed_world_justification = _non_empty_string(
+            payload, "closed_world_justification"
+        )
+    traceability = _constraint_traceability(payload, repository)
 
     historical = _non_empty_strings(payload, "historical_incident_families_checked")
     mechanisms = _non_empty_strings(payload, "projected_failure_mechanisms")
@@ -335,6 +421,9 @@ def _load_forward_risk_report(path: Path, repository: Path) -> dict[str, object]
     invalid_variants: list[str] = []
     fault_variants: list[str] = []
     invariant_tests: list[str] = []
+    topology_classes: list[str] = []
+    unseen_variants: list[str] = []
+    unknown_variant_behavior = ""
     not_applicable_evidence = ""
     if model_boundary_changed:
         variants = _non_empty_strings(payload, "model_output_variants_tested")
@@ -343,6 +432,15 @@ def _load_forward_risk_report(path: Path, repository: Path) -> dict[str, object]
         )
         fault_variants = _non_empty_strings(
             payload, "transport_capacity_variants_tested"
+        )
+        topology_classes = _non_empty_strings(
+            payload, "model_output_topology_classes_tested"
+        )
+        unseen_variants = _non_empty_strings(
+            payload, "unseen_valid_variants_tested"
+        )
+        unknown_variant_behavior = _non_empty_string(
+            payload, "unknown_variant_behavior"
         )
         if len(variants) < 6:
             raise RuntimeError(
@@ -357,6 +455,16 @@ def _load_forward_risk_report(path: Path, repository: Path) -> dict[str, object]
             raise RuntimeError(
                 "forward-risk report requires at least two "
                 "transport_capacity_variants_tested"
+            )
+        if len({value.casefold() for value in topology_classes}) < 4:
+            raise RuntimeError(
+                "forward-risk report requires at least four distinct "
+                "model_output_topology_classes_tested"
+            )
+        if len({value.casefold() for value in unseen_variants}) < 2:
+            raise RuntimeError(
+                "forward-risk report requires at least two distinct "
+                "unseen_valid_variants_tested"
             )
         invariant_tests = [
             _repository_test_path(repository, value, field="invariant_test_paths")
@@ -414,13 +522,23 @@ def _load_forward_risk_report(path: Path, repository: Path) -> dict[str, object]
         raise RuntimeError("forward-risk report remaining_risks must be a list of strings")
 
     return {
-        "version": 1,
+        "version": 2,
+        "original_requirement": original_requirement,
+        "scope_classification": scope_classification,
+        "operational_definition": operational_definition,
+        "forbidden_narrowing": forbidden_narrowing,
+        "resolution_status": resolution_status,
+        "closed_world_justification": closed_world_justification,
+        "constraint_traceability": traceability,
         "historical_incident_families_checked": historical,
         "projected_failure_mechanisms": mechanisms,
         "model_output_boundary_changed": model_boundary_changed,
         "model_output_variants_tested": variants,
         "invalid_output_variants_tested": invalid_variants,
         "transport_capacity_variants_tested": fault_variants,
+        "model_output_topology_classes_tested": topology_classes,
+        "unseen_valid_variants_tested": unseen_variants,
+        "unknown_variant_behavior": unknown_variant_behavior,
         "model_output_not_applicable_evidence": not_applicable_evidence,
         "why_previous_tests_missed": why_missed.strip(),
         "sibling_boundaries": normalized_boundaries,
@@ -429,6 +547,23 @@ def _load_forward_risk_report(path: Path, repository: Path) -> dict[str, object]
         "invariant_test_paths": sorted(set(invariant_tests)),
         "remaining_risks": [value.strip() for value in remaining],
     }
+
+
+def _forward_risk_completion_warnings(report: dict[str, object]) -> list[str]:
+    warnings: list[str] = []
+    status = report.get("resolution_status")
+    scope = report.get("scope_classification")
+    if status in {"contained", "unresolved"}:
+        warnings.append(
+            f"Forward-risk report resolution_status={status}; containment or an "
+            "unresolved path cannot satisfy completion."
+        )
+    if scope == "open_world" and status != "systemically_resolved":
+        warnings.append(
+            "Open-world requirements require resolution_status=systemically_resolved; "
+            "a case-only or containment result must not be reported complete."
+        )
+    return warnings
 
 
 def main() -> int:
@@ -517,6 +652,8 @@ def main() -> int:
             "incident projection, model-output variants, production-shaped tests, and "
             "next-authoritative-boundary evidence."
         )
+    if args.strict and forward_risk_report is not None:
+        warnings.extend(_forward_risk_completion_warnings(forward_risk_report))
 
     payload = {
         "ok": not blockers and not (args.strict and warnings),

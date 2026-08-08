@@ -69,7 +69,8 @@ _SEGMENT_LABEL = re.compile(
     rf"(?:(?:写作|规划)?(?:分)?段(?:落)?)\s*(?P<after>{_SEGMENT_NUMBER_TOKEN})|"
     rf"segment\s*(?P<english>\d{{1,2}})|"
     rf"(?:scene|场景)\s*[-_]?\s*(?P<scene>{_SEGMENT_NUMBER_TOKEN})"
-    rf")(?=$|[\s:：·—–\-（(])",
+    # Continuation/rebuild qualifiers are presentation, not new identities.
+    rf")(?:\s*(?:续|修复|重建|恢复))?(?=$|[\s:：·—–\-（(])",
     re.IGNORECASE,
 )
 

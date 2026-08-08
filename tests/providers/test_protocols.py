@@ -56,6 +56,28 @@ async def test_openai_chat_adapter_can_require_a_specific_tool() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_openai_chat_adapter_sends_json_object_only_when_requested() -> None:
+    route = respx.post("https://relay.test/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "id": "req-json-object",
+            "choices": [{
+                "message": {"content": '{"ok":true}'},
+                "finish_reason": "stop",
+            }],
+            "usage": {},
+        }),
+    )
+
+    await OpenAIChatAdapter("https://relay.test/v1", "secret").complete(
+        REQUEST.model_copy(update={"response_format": "json_object"}),
+    )
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["response_format"] == {"type": "json_object"}
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_moonshot_disables_thinking_for_forced_tools() -> None:
     route = respx.post("https://api.moonshot.cn/v1/chat/completions").mock(
         return_value=httpx.Response(200, json={
@@ -146,6 +168,26 @@ async def test_openai_responses_adapter_can_require_a_specific_tool() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_openai_responses_adapter_sends_json_object_format() -> None:
+    route = respx.post("https://relay.test/v1/responses").mock(
+        return_value=httpx.Response(200, json={
+            "id": "resp-json-object",
+            "output_text": '{"ok":true}',
+            "status": "completed",
+            "usage": {},
+        }),
+    )
+
+    await OpenAIResponsesAdapter("https://relay.test/v1", "secret").complete(
+        REQUEST.model_copy(update={"response_format": "json_object"}),
+    )
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["text"] == {"format": {"type": "json_object"}}
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_anthropic_adapter_normalizes_response() -> None:
     route = respx.post("https://relay.test/v1/messages").mock(return_value=httpx.Response(200, json={
         "id": "msg-1", "content": [{"type": "text", "text": "润色稿"}], "stop_reason": "end_turn",
@@ -171,6 +213,41 @@ async def test_anthropic_root_base_url_adds_v1_and_uses_bearer_auth() -> None:
     assert route.calls.last.request.headers["authorization"] == "Bearer secret"
     assert "x-api-key" not in route.calls.last.request.headers
     assert result.text == "ok"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_anthropic_adapter_sends_native_json_schema_when_configured() -> None:
+    route = respx.post("https://relay.test/v1/messages").mock(
+        return_value=httpx.Response(200, json={
+            "id": "msg-schema",
+            "content": [{"type": "text", "text": '{"ok":true}'}],
+            "stop_reason": "end_turn",
+            "usage": {},
+        }),
+    )
+    request = REQUEST.model_copy(update={
+        "response_schema": {
+            "name": "probe",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {"ok": {"type": "boolean"}},
+                "required": ["ok"],
+                "additionalProperties": False,
+            },
+        },
+    })
+
+    await AnthropicAdapter("https://relay.test/v1", "secret").complete(request)
+
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["output_config"] == {
+        "format": {
+            "type": "json_schema",
+            "schema": request.response_schema["schema"],
+        },
+    }
 
 
 @pytest.mark.asyncio

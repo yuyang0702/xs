@@ -1,0 +1,33 @@
+{
+  "run_id_prefix": "12b59c6e",
+  "incident_family": "planning.structure_drift",
+  "root_mechanisms": [
+    "required formal participant omitted from one owned event",
+    "complete narrative returned in an unrecognized markdown topology",
+    "protocol failure consumed a semantic rebuild slot",
+    "whole-segment regeneration drifted into the next formal event"
+  ],
+  "expected_segment": 5,
+  "expected_event_ids": ["EV-BEAE4985", "EV-1522AB0E"],
+  "required_excerpt": "裴砚行在一旁沉默，花穗瞥他一眼：“你怎么不说话？”他答：“我在想，往后怎么跟你讲规矩——反正你也从不听话。”",
+  "current_segment": "### 第 5 段：当众坦白，归属落定\n\n事件ID：EV-BEAE4985、EV-1522AB0E\n\n大纲依据：身份坦白后的公开反应与归属落定。\n\n段首承接：花穗已经坦白自己不是蕙芷，厅中众人等待沈老夫人决定。\n\n本段事件：\n4. **沈蕙兰与沈老夫人的反应**（EV-BEAE4985）。沈蕙兰公开承认花穗的担当，沈老夫人认可她比真小姐更像沈家人。\n\n5. **沈老夫人宣布认义女**（EV-1522AB0E）。沈老夫人宣布花穗从今日起是沈府义女，下人们主动请命并叫她花姑娘。\n\n段末交接：花穗以自己的名字成为沈府义女，匿名信仍未交出，线索保持悬置。",
+  "raw_repair_packet": "## 第 5 段规划·补充节拍\n\n### 段首完整要件\n**承接上文**：上一段末尾，花穗坦白自己不是沈蕙芷。厅中一片死寂，沈老夫人还没有作出决定。\n\n**本段时间线**：紧接公开坦白后的同一次厅堂议事。\n\n**本段事件边界**：只执行 EV-BEAE4985 和 EV-1522AB0E，不碰下一段的交信。\n\n### 因果时间轴与节拍顺序\n\n#### 节拍 1：身份坦白后的大厅\n花穗等着被人轰出去，所有人都在等沈老夫人开口。\n\n#### 节拍 2：沈蕙兰的公开发言（EV-BEAE4985 第一功能）\n沈蕙兰公开承认花穗虽无大家闺秀的仪态，却有大家该有的风骨。\n\n#### 节拍 3：沈老夫人的反应（EV-BEAE4985 第二功能）\n沈老夫人认可花穗护下人、查蛀虫、敢作敢当，比一个真小姐更像沈家人。\n\n#### 节拍 4：花穗寻求裴砚行的回应（EV-BEAE4985 第三功能）\n裴砚行在一旁沉默，花穗瞥他一眼：“你怎么不说话？”他答：“我在想，往后怎么跟你讲规矩——反正你也从不听话。”\n\n#### 节拍 5：沈老夫人宣布认义女（EV-1522AB0E 核心功能）\n沈老夫人宣布花穗从今日起是沈府义女，用她自己的名字，不必再叫蕙芷。\n\n#### 节拍 6：下人的请命与拥护（EV-1522AB0E 次要功能）\n那些被花穗帮过的下人主动跪地请命，叫的是花姑娘。\n\n#### 节拍 7：花穗被留下的那一刻（收束）\n花穗留下来了，但匿名信还在袖中，没有交给裴砚行。\n\n### 段末交接（打开下一段入口）\n花穗以自己的名字成为沈府义女。匿名信来源仍未查清，进入下一段前她尚未交信。\n\n### 因果合规自查\n1. 第一人称视角稳定。\n2. 本段没有执行交信与后续追查。",
+  "obligation_checklists": {
+    "EV-BEAE4985": {
+      "event_id": "EV-BEAE4985",
+      "label": "众人的反应",
+      "required_participants": ["沈老夫人", "沈大小姐", "花穗", "裴砚行"],
+      "identity_stable_participants": ["花穗", "裴砚行"],
+      "obligations": [
+        {
+          "id": "EV-BEAE4985-B03",
+          "kinds": ["action", "reaction", "commitment"],
+          "required_participants": ["花穗", "裴砚行"],
+          "source_excerpt": "裴砚行在一旁沉默，花穗瞥他一眼：“你怎么不说话？”他答：“我在想，往后怎么跟你讲规矩——反正你也从不听话。”",
+          "source_sha256": "d72b719338e7b096628bf55374833cc51ce14169c678d64e4fe3d1e61b644e33"
+        }
+      ]
+    }
+  },
+  "expected_recovery": "Complete the unique hash-bound formal obligation locally or normalize the event-owned markdown packet without a semantic rewrite, preserve EV-1522AB0E and the next-segment boundary, then pass complete planning adaptation review."
+}

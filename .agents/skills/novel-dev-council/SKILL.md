@@ -55,7 +55,16 @@ Before implementation, write a compact contract containing:
 - focused tests, related tests, and full-suite expectations;
 - user decisions still required.
 
+For every material user MUST, also record the original wording, whether its scope is `open_world` or `closed_world`, its operational definition, forbidden narrowing, implementation boundary, invariant test paths, and completion evidence. Treat requests covering all future/similar/common cases, different models/providers/genres, or root-cause resolution as open-world. Never reinterpret them as support for only the observed fixture without explicit user approval.
+
 Do not implement while a material requirement, authority boundary, or destructive target remains ambiguous. Follow `references/decision-contract.md`.
+
+## Prevent sample-specific completion claims
+
+- Promote a repeated incident family or an explicit common/root compatibility request to a mechanism-level change. Do not use an observed key, provider, error string, or payload as the abstraction boundary.
+- Let user-authorized systemic recovery override the preference for a smaller patch. A literal alias branch may supplement a canonical adapter, but it cannot be the whole fix unless a finite closed-world contract is proven.
+- Distinguish `contained`, `case_fixed`, `systemically_resolved`, and `unresolved`. For open-world work, report completion only after unseen structurally different valid variants recover without code changes and cross the next authoritative boundary.
+- If a supposedly resolved incident family receives a new production shape that the implementation cannot recover, downgrade it to unresolved immediately. Do not preserve the prior completion claim merely because rollback worked.
 
 ## Implement with a regression shield
 
@@ -67,7 +76,7 @@ When the user authorized implementation:
 4. Re-run the focused test immediately.
 5. Test the next authoritative boundary, not merely rejection or rollback.
 6. Run related cluster tests, then the complete suite before restart or completion when project policy requires it.
-7. For every L2/L3 source change, build a versioned forward-risk report from the complete production-incident catalog. It must name the historical families checked, project the underlying mechanisms into every structurally similar and later workflow boundary, explain why prior tests missed the production shape, and cite both production-shaped recovery tests and tests that cross the next authoritative boundary. A boundary may be marked not susceptible only with concrete code evidence. When a model-output boundary changes, cite at least six materially different valid realizations, two invalid/incomplete variants, two transport/capacity faults, and invariant-based tests; one canned response or exact-prose golden is insufficient. When no model-output boundary changes, provide concrete not-applicable evidence.
+7. For every L2/L3 source change, build a version 2 forward-risk report from the complete production-incident catalog. It must preserve the original requirement, classify its scope, state forbidden narrowing and resolution status, map every material MUST to implementation/test/evidence, name the historical families checked, project the underlying mechanisms into every structurally similar and later workflow boundary, explain why prior tests missed the production shape, and cite both production-shaped recovery tests and tests that cross the next authoritative boundary. A boundary may be marked not susceptible only with concrete code evidence. When a model-output boundary changes, cite at least six valid realizations spanning four topology classes, two valid unseen container/wrapper arrangements, two invalid/incomplete variants, two transport/capacity faults, unknown-variant behavior, and invariant-based tests; one canned response, one schema family with cosmetic variants, or an exact-prose golden is insufficient. When no model-output boundary changes, provide concrete not-applicable evidence.
 8. Run `scripts/inspect_change_gate.py --baseline <temporary-json> --declared-level <L1|L2|L3> --forward-risk-report <temporary-json> --strict`, using the council's risk classification. The script may raise that level but must not lower it. Declare each valid nonstandard test with a repeated `--related-test <changed-source>=<test-path>` mapping. Resolve or explicitly account for every finding. The strict gate must fail for L2/L3 source changes when the forward-risk report is absent or incomplete.
 9. Inspect the final diff from a clean context. Ask an independent test/review role only when the user explicitly requested **团队评审**.
 10. Reject a candidate change that fixes one target while creating a new hard failure, widening unauthorized scope, or regressing protected behavior.

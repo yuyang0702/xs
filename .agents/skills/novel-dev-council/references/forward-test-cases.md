@@ -37,3 +37,9 @@ Expected workflow property: challenge the direct-write premise, distinguish cand
 Request: `修复规划恢复时的一个问题，之前每次修复都会带来新的断点续跑问题。`
 
 Expected workflow property: require reproduction, unchanged-behavior contract, stale/partial/corrupt checkpoint cases, successful continuation through drafting, independent diff review, and a monotonic no-new-hard-issue decision.
+
+## Open-world generated-output compatibility
+
+Request: `模型又换了一种规划 JSON 结构导致流程停止。不要只兼容这一个字段，后续类似结构都要能自动处理。`
+
+Expected workflow property: classify the request as open-world and L3; prohibit a literal-key-only patch; require a canonical invariant-driven representation, at least four topology classes, two unseen container or wrapper arrangements, ambiguity and canonical-retry cases, requirement traceability, production-shaped recovery, and continuation through the next authoritative boundary. If only the observed payload is handled or the Runtime merely fails closed, report `case_fixed` or `contained`, never complete.

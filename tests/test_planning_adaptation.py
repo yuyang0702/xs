@@ -20,8 +20,13 @@ from novel_flywheel.planning_adaptation import (
     planning_adaptation_receipt_issues,
     planning_event_body_issues,
     planning_event_body_retention_issues,
+    planning_event_id_occurrences,
+    planning_event_ids,
     planning_event_obligation_issues,
+    planning_protocol_comparison_view,
+    repair_planning_event_obligation_coverage,
     repair_planning_event_obligation_ownership,
+    remove_planning_event_ids,
     planning_semantic_evidence_spans,
     planning_adaptation_segment_authority_sha256,
     planning_adaptation_whole_authority_sha256,
@@ -31,6 +36,29 @@ from novel_flywheel.planning_adaptation import (
     planning_repair_patch_authority_sha256,
     normalize_planning_repair_patch,
 )
+
+
+def test_planning_protocol_view_preserves_offsets_and_normalizes_unicode_ids() -> None:
+    source = "前缀 EV‑BEAE4985‑B01／证据 后缀"
+    comparison = planning_protocol_comparison_view(source)
+    occurrences = planning_event_id_occurrences(source, formal_only=True)
+
+    assert len(comparison) == len(source)
+    assert planning_protocol_comparison_view(comparison) == comparison
+    assert comparison == "前缀 EV-BEAE4985-B01/证据 后缀"
+    assert occurrences == [("EV-BEAE4985", 3, 18)]
+    assert planning_protocol_comparison_view(
+        source[occurrences[0][1]:occurrences[0][2]]
+    ) == "EV-BEAE4985-B01"
+
+
+def test_planning_event_id_helpers_remove_only_protocol_identity() -> None:
+    source = "动作（EV‑BEAE4985‑B01）：花穗追问；下一状态仍保留。"
+
+    assert planning_event_ids(source, formal_only=True) == ["EV-BEAE4985"]
+    assert remove_planning_event_ids(
+        source, formal_only=True,
+    ) == "动作（）：花穗追问；下一状态仍保留。"
 
 
 @pytest.mark.parametrize("event_text", [
@@ -192,6 +220,67 @@ def test_planning_event_obligation_repair_merges_unique_continuation_item() -> N
     assert planning_event_obligation_issues(
         repaired, ["EV-BEAE4985", "EV-1522AB0E"], checklist,
     ) == []
+
+
+def test_planning_event_obligation_coverage_repairs_unique_formal_excerpt_only() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_obligation_protocol_recovery_12b59c6e.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    original = fixture["current_segment"]
+    sibling = original.split(
+        "5. **沈老夫人宣布认义女**", 1,
+    )[1]
+
+    repaired, repairs = repair_planning_event_obligation_coverage(
+        original,
+        fixture["expected_event_ids"],
+        fixture["obligation_checklists"],
+    )
+
+    assert repairs == [{
+        "event_id": "EV-BEAE4985",
+        "obligation_ids": ["EV-BEAE4985-B03"],
+        "missing_participants": ["裴砚行"],
+        "repair": "append_unique_formal_obligation_excerpt",
+    }]
+    assert repaired.count(fixture["required_excerpt"]) == 1
+    assert repaired.split("5. **沈老夫人宣布认义女**", 1)[1] == sibling
+    assert planning_event_obligation_issues(
+        repaired,
+        fixture["expected_event_ids"],
+        fixture["obligation_checklists"],
+    ) == []
+
+
+def test_planning_event_obligation_coverage_fails_closed_when_source_is_ambiguous() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_obligation_protocol_recovery_12b59c6e.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    checklist = json.loads(json.dumps(
+        fixture["obligation_checklists"], ensure_ascii=False,
+    ))
+    duplicate = dict(checklist["EV-BEAE4985"]["obligations"][0])
+    duplicate["id"] = "EV-BEAE4985-B04"
+    duplicate["source_excerpt"] = "花穗追问裴砚行，裴砚行给出另一项公开承诺。"
+    duplicate["source_sha256"] = hashlib.sha256(
+        duplicate["source_excerpt"].encode("utf-8"),
+    ).hexdigest()
+    checklist["EV-BEAE4985"]["obligations"].append(duplicate)
+
+    repaired, repairs = repair_planning_event_obligation_coverage(
+        fixture["current_segment"],
+        fixture["expected_event_ids"],
+        checklist,
+    )
+
+    assert repaired == fixture["current_segment"]
+    assert repairs == []
 
 
 def test_semantic_evidence_anchors_keep_the_event_block_but_isolate_the_bad_clause() -> None:

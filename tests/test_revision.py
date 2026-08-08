@@ -16,10 +16,20 @@ from novel_flywheel.revision import (
     normalize_revision_plan,
     normalize_chinese_prose,
     normalize_repair_contract,
+    parse_segment_number,
     repair_mechanical_text,
     remove_consecutive_duplicate_blocks,
     segment_map,
 )
+
+
+@pytest.mark.parametrize("heading", [
+    "第 5 段续：公开表态的后果",
+    "第 5 段修复：公开表态的后果",
+    "Segment 5",
+])
+def test_parse_segment_number_accepts_presentation_qualifiers(heading: str) -> None:
+    assert parse_segment_number(heading, allow_scene=False) == 5
 
 
 def test_mechanical_repairs_leave_ambiguous_quotes_and_report_them() -> None:

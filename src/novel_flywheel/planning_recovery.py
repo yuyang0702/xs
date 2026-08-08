@@ -217,6 +217,7 @@ def new_planning_recovery_state(
         "best_issue_keys": sorted(planning_issue_keys(issues)),
         "best_issues": issues,
         "semantic_attempts": 0,
+        "candidate_generation_attempts": 0,
         "no_progress_rounds": 0,
         "candidates": [],
         "execution_failures": [],
@@ -226,6 +227,7 @@ def new_planning_recovery_state(
 def record_planning_candidate(
     state: dict[str, Any], *, plan: str, issues: list[dict],
     comparison: dict[str, Any], source: str, accepted: bool,
+    counts_as_semantic: bool = True,
 ) -> dict[str, Any]:
     result = json.loads(json.dumps(state, ensure_ascii=False))
     previous = planning_issue_keys(list(state.get("best_issues") or []))
@@ -253,13 +255,17 @@ def record_planning_candidate(
         "accepted": bool(accepted),
         "comparison": comparison,
     })
-    result["semantic_attempts"] = int(result.get("semantic_attempts") or 0) + 1
+    counter = (
+        "semantic_attempts" if counts_as_semantic
+        else "candidate_generation_attempts"
+    )
+    result[counter] = int(result.get(counter) or 0) + 1
     if accepted:
         result["best_plan_sha256"] = _hash(plan)
         result["best_issue_keys"] = sorted(planning_issue_keys(issues))
         result["best_issues"] = issues
         result["no_progress_rounds"] = 0
-    else:
+    elif counts_as_semantic:
         result["no_progress_rounds"] = int(result.get("no_progress_rounds") or 0) + 1
     return result
 

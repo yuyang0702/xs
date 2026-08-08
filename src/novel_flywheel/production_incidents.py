@@ -132,15 +132,18 @@ INCIDENT_DEFINITIONS = (
     IncidentDefinition(
         "parser.generated_artifact_shape",
         "Generated artifact presentation was indexed before safe normalization",
-         "Normalize harmless Markdown or HTML wrappers at the shared parser boundary. Markdown plan fields rendered as peer headings or with noncanonical visible labels may be projected locally only when the segment and exact ordered event ownership remain unchanged; Runtime-owned outline evidence is retained from the current formal plan. A single unambiguous JSON planning object or top-level event array may be converted locally only when its segment identity, exact ordered event ownership, event bodies, and entry/exit state are complete. Explicit SEGMENT-ONLY packets are likewise accepted only when their identity and protocol fields are unambiguous. A beam_plan object that contains only obligations, resolution, or handoff summaries is a structured repair patch rather than replacement prose: bind it to the exact retained event-owned body, preserve that complete body, apply only the explicit obligation and boundary amendments, and rerun body retention, obligation, adjacent-handoff, and whole-plan validation. If the retained body cannot be projected unambiguously, fail the packet contract instead of inventing missing prose. Descriptive event IDs referenced in adjacent-event prose never gain ownership. Every normalized packet must re-enter the existing body, obligation, retention, adjacent-handoff, and whole-plan validators. Validate the expected artifact count before indexing, and carry exact field or contract failures into the next smallest-scope retry from the retained best checkpoint instead of blindly repeating a generic generation failure.",
+         "Normalize harmless Markdown or HTML wrappers at the shared parser boundary. Compare segment identities, labels, and event IDs through one offset-preserving Unicode protocol view that accepts width variants, Unicode dash/slash families, non-breaking spaces, open heading suffixes, and base-event IDs with atomic-beat suffixes without rewriting prose. Markdown plan fields rendered as peer headings or with noncanonical visible labels may be projected locally only when the segment and exact ordered event ownership remain unchanged; Runtime-owned outline evidence is retained from the current formal plan. JSON container names and nesting are an open presentation set: recursively discover leaf-most event records in a top-level event array, an event-ID mapping, or any unambiguous nested container only through exact event identity, validate every declared segment and explicit ordered ownership sequence, and derive entry/exit state without granting wrapper names authority. Reject conflicting identities, duplicate or reordered ownership, ambiguous boundaries, and unknown machine-control fields instead of guessing. A structured summary is bound to the exact retained event-owned body and may add only explicit narrative obligations or boundaries; a complete narrative realization remains a creative candidate. Both routes rerun body retention, obligation, adjacent-handoff, and whole-plan validation. Explicit SEGMENT-ONLY packets remain accepted only when identity and protocol fields are unambiguous. Descriptive references to adjacent event IDs never gain ownership. After deterministic normalization fails on a normal provider result, rewrap only the same segment and ordered event set under immutable outline and entry/exit authority; this protocol retry does not consume another semantic-repair attempt. Carry exact field or contract failures into that bounded same-scope retry. If canonical rewrap still fails, retain the best checkpoint and report planning_packet_protocol_exhausted under parser.generated_artifact_shape rather than planning.structure_drift. Validate the expected artifact count before indexing and reuse completed hash-matched packets instead of blindly repeating a generic generation failure.",
         (
             r"^list index out of range$",
             r"generated (?:planning )?(?:packet|artifact).*missing exactly one recognizable segment heading",
             r"planning repair (?:packet|candidate).*recognizable segment heading",
-             r"planning repair (?:packet|candidate).*JSON packet.*(?:ambiguous|changed|lacks|missing)",
+             r"planning repair (?:packet|candidate).*JSON packet.*(?:ambiguous|changed|lacks|missing|has no|event lacks)",
              r"planning repair (?:packet|candidate).*JSON event array.*(?:ambiguous|changed|lacks|missing|invalid)",
              r"SEGMENT-ONLY.*(?:segment identity|packet fields|event ownership)",
             r"planning_packet_summary_authority_missing",
+            r"planning_packet_unknown_control_field",
+            r"planning_packet_protocol_exhausted",
+            r"planning packet protocol recovery exhausted",
             r"planning repair (?:packet|candidate) failed its complete (?:event|segment) contract",
             r"planning_packet_(?:field_missing|field_ambiguous|event_ownership|segment_shape)",
         ),
@@ -201,6 +204,27 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "planning.review_evidence_binding_invalid",
+        "规划审核回执没有绑定当前规划段原文",
+        "将审核回执视为协议缺陷而不是剧情缺陷；从当前候选的 Runtime 原文重新生成精确证据回执，校验原文哈希、事件归属和证据出现位置，回执通过后才恢复语义修复预算。",
+        (
+            r"evidence[_ ]binding",
+            r"回执.*没有绑定.*当前规划",
+            r"规划适配回执.*准确原文",
+            r"review receipt.*(?:bind|binding).*(?:current|exact).*plan",
+        ),
+    ),
+    IncidentDefinition(
+        "planning.plan_structure_validation_failed",
+        "规划设定或分段结构校验未通过",
+        "保留最后完整规划和有效上游检查点，按正式事件合同只重建受影响完整段；重新核对设定、事件覆盖、顺序、入口出口和整篇因果后，只有通过下一权威边界才允许生成正文。",
+        (
+            r"规划稿未通过设定和分段检查",
+            r"规划稿仍有设定或分段问题",
+            r"planning plan.*(?:structure|segment).*validation.*failed",
+        ),
+    ),
+    IncidentDefinition(
         "planning.event_body_integrity",
         "规划正式事件正文缺失、重复或共享归属未被正确识别",
         "先按统一事件正文边界解析并允许相邻事件 ID 绑定同一段完整执行正文；仍缺失、重复或顺序错误时，只重建受影响的完整规划段，并重新核对事件覆盖、执行者、动作、结果及相邻交接后再进入因果链。",
@@ -210,9 +234,19 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "planning.packet_merge_closedness",
+        "容量分包在单包通过后无法无损合并为可验证的完整规划段",
+        "每个事件分包先归一化为明确的正文级事件归属，再按原始事件顺序无损合并；合并后的完整段重新执行事件正文、义务、保留度、相邻交接与整篇规划检查。若任一分包归属无法确定，保留最佳完整规划并只重试受影响分包，不把合并失败误判为模型正文失败。",
+        (
+            r"planning capacity split returned an incomplete artifact",
+            r"packet merge.*(?:incomplete|closedness|ownership)",
+            r"capacity split.*(?:merge|merged).*(?:incomplete|ownership)",
+        ),
+    ),
+    IncidentDefinition(
         "planning.event_obligation_incomplete",
         "规划正式复合事件只完成了部分参与者、回应或承诺",
-        "从正式大纲逐项投影事件完成清单，在调用语义审核前确定性核对明确命名的必需参与者。缺项时保留最佳完整规划，只重建所属完整正式段；若整段重建接近上下文安全线，则按连续正式事件所有权递归分包，精确投影各自编号或列表正文并绑定前序分包哈希，完成后无损合并。候选补齐动作、回应、结果与承诺后，仍须重新通过本段、相邻边界和整篇审核，其他正式段保持不变。",
+        "从正式大纲逐项投影事件完成清单，在调用语义审核前确定性核对明确命名的必需参与者。若缺项只对应一个哈希绑定、正文逐字匹配且事件归属唯一的正式义务，Runtime 仅把该正式原文追加到所属事件正文；来源不唯一、哈希失配或归属含糊时一律不猜。无法本地补齐时保留最佳完整规划，只重建所属完整正式段；若整段重建接近上下文安全线，则按连续正式事件所有权递归分包，精确投影各自编号或列表正文并绑定前序分包哈希，完成后无损合并。协议或传输失败单独计数，不消耗语义修复次数。候选补齐动作、回应、结果与承诺后，仍须重新通过本段、相邻边界和整篇审核，其他正式段保持不变。",
         (
             r"planning_required_participant_missing",
             r"正式复合事件.*遗漏.*(?:参与者|回应者|承诺方)",

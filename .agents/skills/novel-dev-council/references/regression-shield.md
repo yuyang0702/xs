@@ -88,20 +88,25 @@ For every L2/L3 source change, scan the complete historical incident catalog bef
 
 Project each applicable mechanism across every structurally similar call site and every later workflow boundary: initialization, planning, causal chain, execution manifest, drafting, split/merge, polish, targeted/manual revision, AI issue refresh, final review, and formal promotion. Each boundary must be either fixed and tested, tested not susceptible, or marked not applicable with concrete code evidence.
 
-Record the scan in a version 1 JSON report containing:
+Record the scan in a version 2 JSON report containing:
 
+- `original_requirement`, `scope_classification`, `operational_definition`, and `forbidden_narrowing`;
+- `resolution_status` as `contained`, `case_fixed`, `systemically_resolved`, or `unresolved`; an open-world report cannot pass the completion gate unless it is `systemically_resolved`;
+- `constraint_traceability`, mapping each material requirement to implementation, test paths, and concrete evidence;
 - `historical_incident_families_checked`;
 - `projected_failure_mechanisms`;
 - `why_previous_tests_missed`;
 - `sibling_boundaries` with `boundary`, `disposition`, and concrete `evidence`;
 - `model_output_boundary_changed`;
-- when true, `model_output_variants_tested` with at least six materially different valid realizations, `invalid_output_variants_tested` with at least two malformed or semantically invalid realizations, `transport_capacity_variants_tested` with at least two faults, and `invariant_test_paths` whose assertions do not depend on exact prose;
+- when true, `model_output_variants_tested` with at least six valid realizations, `model_output_topology_classes_tested` with at least four distinct topology classes, `unseen_valid_variants_tested` with at least two container or wrapper arrangements absent from the implementation and production fixtures, `unknown_variant_behavior`, `invalid_output_variants_tested` with at least two malformed or semantically invalid realizations, `transport_capacity_variants_tested` with at least two faults, and `invariant_test_paths` whose assertions do not depend on exact prose;
 - when false, `model_output_not_applicable_evidence` with concrete code evidence;
 - `production_shaped_tests`;
 - `next_authoritative_boundary_tests`;
 - `remaining_risks`.
 
 The strict change gate rejects an L2/L3 source change without this evidence. A green idealized fake-provider test, a single canned model output, a new rejection, a retained checkpoint, or a clean local parser result cannot satisfy the report by itself.
+
+For open-world work, cosmetic variants inside one schema family do not satisfy topology diversity. At least two successful cases must use container names or wrapper arrangements absent from the implementation and all production fixtures. A report that proves only fail-closed behavior is `contained`, not complete.
 
 ## Non-deterministic model output
 

@@ -1,0 +1,49 @@
+{
+  "run_id_prefix": "52023150",
+  "incident_family": "parser.generated_artifact_shape",
+  "expected_segment": 5,
+  "expected_event_ids": ["EV-15C208EE", "EV-126EE846", "EV-BEAE4985"],
+  "current_segment": "### 第 5 段：当众坦白与公开回应\n\n事件ID：EV-15C208EE、EV-126EE846、EV-BEAE4985\n\n大纲依据：核验结果、花穗主动坦白、众人及裴砚行公开回应。\n\n段首承接：核验人员返回，花穗必须决定是否说出真相。\n\n本段事件：\n1. **核验结果公布**（EV-15C208EE）。结果不能证明花穗就是蕙芷。\n\n2. **花穗主动坦白**（EV-126EE846）。花穗以自己的意志说出真实身份和最初动机。\n\n3. **众人公开回应**（EV-BEAE4985）。沈蕙兰与沈老夫人认可花穗的担当，花穗追问裴砚行，他以往后的承诺公开回应。\n\n段末交接：花穗获得公开认可，下一事件将正式确认她以本名留在沈府。",
+  "packets": [
+    {
+      "name": "multi_event_heading_packet",
+      "event_ids": ["EV-15C208EE", "EV-126EE846"],
+      "text": "# 第5段 规划\n\n## 段首承接\n核验人员返回，花穗必须决定是否说出真相。\n\n## 本段事件\n\n### 第一拍：核验结果公布（EV-15C208EE）\n结果不能证明花穗就是蕙芷，厅中等待她自己选择。\n\n### 第二拍：花穗主动坦白（EV-126EE846）\n花穗主动说出真实身份和最初动机，没有让他人替她作答。\n\n## 段末交接\n花穗等待众人回应。"
+    },
+    {
+      "name": "structured_state_event_array",
+      "event_ids": ["EV-BEAE4985"],
+      "payload": [
+        {
+          "id": "EV-BEAE4985",
+          "label": "众人公开回应",
+          "evidence": "沈蕙兰与沈老夫人认可花穗的担当；花穗追问裴砚行，他以往后的承诺公开回应。",
+          "plan": {
+            "segment": 5,
+            "entry_state": {
+              "花穗": "已经坦白真实身份，等待众人回应。",
+              "厅堂": "尚未形成公开认可。"
+            },
+            "exit_state": {
+              "花穗": "获得公开认可。",
+              "裴砚行": "以往后的承诺完成公开回应。",
+              "下一事件": "正式确认花穗以本名留在沈府。"
+            },
+            "obligation_coverages": [
+              {
+                "obligation_id": "EV-BEAE4985-B03",
+                "plan_detail": "花穗主动追问，裴砚行明确回应，两人的关系出口状态成立。"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "reversed_heading_with_neighbour_reference",
+      "event_ids": ["EV-BEAE4985"],
+      "text": "# 段规划：第5段／EV-BEAE4985\n\n## 事件ID\nEV-BEAE4985\n\n## 段首承接\n花穗已经坦白真实身份，等待众人回应。\n\n## 本段事件\n\n### 第一拍：沈蕙兰与沈老夫人表态\n二人公开认可花穗护人、查账和坦白都是自己挣来的担当。\n\n### 第二拍：花穗追问裴砚行\n花穗主动问他为什么不说话，裴砚行以往后如何讲规矩作答，完成公开关系承诺。\n\n## 段末交接\n花穗获得公开认可，等待正式归属决定。\n\n**段末交接至下一段（EV-1522AB0E）**：下一事件负责正式确认义女身份。"
+    }
+  ],
+  "expected_recovery": "Normalize every packet without granting prose references ownership, merge exact ordered ownership, preserve structured boundary state, and pass the complete packet contract before adjacent and whole-plan review."
+}

@@ -24,6 +24,7 @@ class ModelRequest(BaseModel):
     temperature: float | None = None
     max_output_tokens: int | None = None
     response_schema: dict | None = None
+    response_format: str | None = None
     tools: list[ToolDefinition] = Field(default_factory=list)
     required_tool: str | None = None
 

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from novel_flywheel.db import Database
 from novel_flywheel.production_incidents import (
     classify_production_failure,
     production_incident_catalog,
@@ -47,8 +48,20 @@ from novel_flywheel.production_incidents import (
         "parser.generated_artifact_shape",
     ),
     (
+        "planning_packet_protocol_exhausted: planning packet protocol recovery exhausted",
+        "parser.generated_artifact_shape",
+    ),
+    (
         "规划适配回执没有用当前规划原文中的具体问题句证明负面判断",
         "planning.review_evidence_semantic_mismatch",
+    ),
+    (
+        "规划第 2 段分包审核回执无效：evidence_binding，规划适配回执没有绑定当前规划段的准确原文",
+        "planning.review_evidence_binding_invalid",
+    ),
+    (
+        "规划稿未通过设定和分段检查，尚未生成正文",
+        "planning.plan_structure_validation_failed",
     ),
     (
         "input context overflow preflight: lossless story authority plus output reserve requires 31537 tokens for context window 32768; topology=split",
@@ -81,6 +94,10 @@ from novel_flywheel.production_incidents import (
     (
         "planning_required_participant_missing：正式复合事件遗漏参与者、回应者或承诺方",
         "planning.event_obligation_incomplete",
+    ),
+    (
+        "planning capacity split returned an incomplete artifact",
+        "planning.packet_merge_closedness",
     ),
     (
         "event_body_collapsed: planning repair anchor collapsed a complete event",
@@ -257,6 +274,26 @@ def test_generated_event_array_and_segment_only_reuse_shape_incident_family() ->
     assert "top-level event array" in incident["known_resolution"]
 
 
+def test_open_world_planning_wrappers_reuse_shape_incident_family() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_packet_open_world_shapes_28da9961.json").read_text(
+             encoding="utf-8",
+         )
+    )
+
+    for message in fixture["terminal_errors"]:
+        incident = classify_production_failure(
+            message, workflow="short-story", stage=fixture["stage"],
+        )
+        assert incident["incident_family"] == fixture["incident_family"]
+        assert "open presentation set" in incident["known_resolution"]
+        assert "unknown machine-control fields" in incident["known_resolution"]
+
+    assert fixture["provider_finish_reason"] == "end_turn"
+    assert fixture["transport_complete"] is True
+
+
 def test_unknown_incidents_normalize_volatile_ids_without_collapsing_other_causes() -> None:
     first = classify_production_failure(
         "Unexpected verifier 019f9b064a4f7422 failed in segment-4 with 900 characters",
@@ -273,6 +310,31 @@ def test_unknown_incidents_normalize_volatile_ids_without_collapsing_other_cause
 
     assert first["incident_key"] == same["incident_key"]
     assert first["incident_key"] != different["incident_key"]
+
+
+def test_read_time_incident_upgrade_refines_known_legacy_unclassified_family() -> None:
+    legacy = {
+        "message": (
+            "规划第 2 段分包审核回执无效：evidence_binding，"
+            "规划适配回执没有绑定当前规划段的准确原文"
+        ),
+        "workflow": "short-story",
+        "stage": "planning",
+        "current_stage": "planning",
+        "metadata_json": json.dumps({
+            "incident_key": "short-story:planning:unclassified.legacy",
+            "incident_family": "unclassified.legacy",
+            "incident_title": "尚未归类的生产失败",
+        }, ensure_ascii=False),
+    }
+
+    metadata = Database._incident_metadata(legacy)
+
+    assert metadata["incident_family"] == (
+        "planning.review_evidence_binding_invalid"
+    )
+    assert metadata["legacy_incident_family"] == "unclassified.legacy"
+    assert metadata["legacy_incident_key"].endswith("unclassified.legacy")
 
 
 def test_catalog_exposes_every_registered_family_once() -> None:
@@ -343,7 +405,10 @@ def test_real_planning_event_obligation_fixture_has_executable_recovery() -> Non
 
     assert incident["incident_family"] == fixture["incident_family"]
     assert "事件完成清单" in incident["known_resolution"]
+    assert "哈希绑定" in incident["known_resolution"]
+    assert "来源不唯一" in incident["known_resolution"]
     assert "只重建所属完整正式段" in incident["known_resolution"]
+    assert "不消耗语义修复次数" in incident["known_resolution"]
     assert "相邻边界和整篇审核" in incident["known_resolution"]
 
 

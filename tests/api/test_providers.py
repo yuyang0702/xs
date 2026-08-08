@@ -37,6 +37,49 @@ def test_add_model_mapping_to_custom_provider(tmp_path) -> None:
     assert response.status_code == 201
     assert response.json()["model_name"] == "claude-sonnet-5"
     assert response.json()["capabilities"]["tool_support"] == "disabled"
+    assert response.json()["capabilities"]["structured_output"] == "plain_text"
+
+
+def test_model_capabilities_are_route_local_and_updateable(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider, model = add_provider_model(client, "third-party-relay")
+
+    response = client.put(
+        f"/api/providers/{provider['id']}/models/{model['id']}/capabilities",
+        json={
+            "tool_support": "enabled",
+            "structured_output": "strict_tool",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["capabilities"] == {
+        "tool_support": "enabled",
+        "structured_output": "strict_tool",
+    }
+
+
+def test_add_model_records_third_party_capacity_without_brand_inference(tmp_path) -> None:
+    client = make_client(tmp_path)
+    provider = client.post("/api/providers", json={
+        "name": "relay",
+        "protocol": "openai-chat",
+        "base_url": "https://relay.test/v1",
+        "api_key": "secret",
+    }).json()
+
+    response = client.post(f"/api/providers/{provider['id']}/models", json={
+        "display_name": "Gemini through relay",
+        "model_name": "gemini-compatible-name",
+        "structured_output": "json_object",
+        "context_window": 131072,
+        "max_output_tokens": 8192,
+    })
+
+    assert response.status_code == 201
+    assert response.json()["context_window"] == 131072
+    assert response.json()["max_output_tokens"] == 8192
+    assert response.json()["capabilities"]["structured_output"] == "json_object"
 
 
 def test_reject_unsupported_protocol_without_storing_key(tmp_path) -> None:

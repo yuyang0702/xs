@@ -75,12 +75,35 @@ class IgnoredForcedToolProbeAdapter(ProbeAdapter):
         return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
 
 
+class OptionalToolOnlyProbeAdapter(ProbeAdapter):
+    async def complete(self, request):
+        self.calls += 1
+        self.requests.append(request)
+        if self.calls == 1:
+            return ModelResponse(text="ok")
+        if self.calls == 2:
+            return ModelResponse(text='{"ok":true,"unexpected":"schema ignored"}')
+        if request.required_tool:
+            raise ToolCapabilityError(
+                "Thinking mode does not support this tool_choice"
+            )
+        return ModelResponse(
+            tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})],
+        )
+
+
 @pytest.mark.asyncio
 async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
     adapter = ProbeAdapter()
     result = await CapabilityProbe(adapter).run("model")
     assert result.model_dump() == {
-        "chat": True, "structured_output": True, "tool_calling": True, "error": None,
+        "chat": True,
+        "structured_output": True,
+        "tool_calling": True,
+        "forced_tool": True,
+        "structured_output_capability": "strict_json_schema",
+        "json_object": True,
+        "error": None,
     }
     assert adapter.requests[2].required_tool == "probe_tool"
 
@@ -101,6 +124,7 @@ async def test_probe_retries_without_forced_tool_choice_for_thinking_models() ->
     result = await CapabilityProbe(adapter).run("model")
 
     assert result.tool_calling is True
+    assert result.forced_tool is False
     assert adapter.requests[-1].tools
     assert adapter.requests[-1].required_tool is None
 
@@ -112,6 +136,7 @@ async def test_probe_retries_kimi_without_forced_tool_choice() -> None:
     result = await CapabilityProbe(adapter).run("model")
 
     assert result.tool_calling is True
+    assert result.forced_tool is False
     assert adapter.requests[-1].tools
     assert adapter.requests[-1].required_tool is None
 
@@ -123,6 +148,7 @@ async def test_probe_retries_when_provider_rejects_forced_tool_choice() -> None:
     result = await CapabilityProbe(adapter).run("model")
 
     assert result.tool_calling is True
+    assert result.forced_tool is False
     assert adapter.requests[-1].required_tool is None
 
 
@@ -133,7 +159,19 @@ async def test_probe_retries_when_provider_ignores_forced_tool_choice() -> None:
     result = await CapabilityProbe(adapter).run("model")
 
     assert result.tool_calling is True
+    assert result.forced_tool is False
     assert adapter.requests[-1].required_tool is None
+
+
+@pytest.mark.asyncio
+async def test_optional_tool_support_is_not_misclassified_as_strict_tool() -> None:
+    result = await CapabilityProbe(OptionalToolOnlyProbeAdapter()).run("model")
+
+    assert result.chat is True
+    assert result.tool_calling is True
+    assert result.forced_tool is False
+    assert result.structured_output is False
+    assert result.structured_output_capability == "plain_text"
 
 
 @pytest.mark.asyncio

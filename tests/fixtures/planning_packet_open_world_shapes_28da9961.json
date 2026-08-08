@@ -1,0 +1,100 @@
+{
+  "run_id_prefix": "28da9961",
+  "stage": "planning",
+  "incident_family": "parser.generated_artifact_shape",
+  "provider_finish_reason": "end_turn",
+  "transport_complete": true,
+  "terminal_errors": [
+    "planning repair packet JSON packet has no owned events",
+    "planning repair packet JSON packet event lacks identity or narrative body"
+  ],
+  "expected_segment": 5,
+  "expected_event_ids": ["EV-1522AB0E"],
+  "current_segment": "### 第 5 段：当众坦白，归属落定\n\n事件ID：EV-1522AB0E\n\n大纲依据：公开表态的后果与花穗归属落定。\n\n段首承接：花穗已经坦白真实身份，厅中众人等待沈老夫人决定。\n\n本段事件：\n6. **沈老夫人宣布认义女**（EV-1522AB0E）。沈老夫人站了起来，逐项说明花穗护下人、查蛀虫和当众坦白都是她自己挣来的担当，随后宣布沈府以花穗自己的名字认她为义女。那些被花穗帮过的下人主动跪地请命，叫她花姑娘。花穗咬着牙忍住眼泪，同时保留匿名信仍未查清的事实。\n\n段末交接：花穗以自己的名字成为沈府义女，但匿名信仍待追查。",
+  "production_variants": [
+    {
+      "name": "plan_projection_events",
+      "payload": {
+        "segment_id": 5,
+        "packet_event_ids": ["EV-1522AB0E"],
+        "plan_projection": {
+          "segment_label": "第 5 段：当众坦白，归属落定",
+          "event_id": "EV-1522AB0E",
+          "entry_handoff": "上一段已经完成公开坦白，厅中众人等待沈老夫人的决定。",
+          "events": [
+            {
+              "event_id": "EV-1522AB0E",
+              "event_label": "公开表态的后果",
+              "description": "沈老夫人当众宣布认花穗为义女，下人主动请命并改口称花姑娘。",
+              "critical_path": {
+                "event_function": "将公开质疑转为正式归属，不提前解决匿名信。",
+                "primary_actor_agency": {
+                  "沈老夫人": "主动宣布认义女。",
+                  "下人们": "主动站出来请命。"
+                },
+                "exit_state_verified": {
+                  "花穗_status": "以花穗自己的名字成为沈府义女。",
+                  "匿名信": "来源仍未查清。"
+                }
+              },
+              "micro_plan": {
+                "beat_1": {
+                  "what_happens": "沈老夫人起身宣布决定。"
+                },
+                "beat_2": {
+                  "what_happens": "下人们跪地叫花姑娘，花穗忍住眼泪。"
+                }
+              }
+            }
+          ],
+          "exit_handoff": "花穗以真名成为沈府义女，匿名信线索继续交给下一段。"
+        }
+      }
+    },
+    {
+      "name": "plan_blocks",
+      "payload": {
+        "segment_index": 5,
+        "event_ids": ["EV-1522AB0E"],
+        "plan_blocks": [
+          {
+            "block_id": "PLAN-05-EV-1522AB0E-B01",
+            "event_id": "EV-1522AB0E",
+            "obligation_id": "EV-1522AB0E-B01",
+            "source_sha256": "52870f5bcabc9823f3d3259a0ce63852c6208937fcc8001564685e591484ca44",
+            "narrative_summary": "沈老夫人主动宣布认花穗为义女，下人主动请命，花穗以自己的名字获得承认。",
+            "causal_entry": {
+              "immediate_trigger": "花穗已经坦白身份，沈蕙兰也公开认可她的品格。"
+            },
+            "narrative_body": {
+              "primary_action": "沈老夫人以花穗自己的名字宣布认义女。",
+              "action_steps": [
+                {
+                  "step": 1,
+                  "what": "沈老夫人主动起身宣布决定。"
+                },
+                {
+                  "step": 2,
+                  "what": "下人主动跪地请命并称花姑娘。"
+                }
+              ]
+            },
+            "causal_exit": {
+              "new_state": "花穗成为沈府义女，匿名信仍未解决。",
+              "handoff_to_next_segment": "花穗保留匿名信并继续追查。"
+            },
+            "structural_compliance": {
+              "entry_state": "花穗坦白后等待发落。",
+              "exit_state": "花穗以真名获得归属，匿名信保持悬置。"
+            }
+          }
+        ],
+        "segment_boundary_validation": {
+          "entry_match": "入口与上一段一致。",
+          "exit_match": "出口保留匿名信悬念。"
+        }
+      }
+    }
+  ],
+  "expected_recovery": "Discover event records by exact ordered identity across unknown containers, preserve retained authority for structured summaries, reject ambiguous ownership or machine controls, and re-enter the complete packet and downstream planning validators."
+}

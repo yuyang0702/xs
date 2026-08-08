@@ -255,6 +255,83 @@ def planning_adaptation_evidence_candidates(
 _EVENT_ID_RE = re.compile(
     r"(?<![A-Z0-9_-])EV-[A-Z0-9_-]+(?![A-Z0-9_-])", re.IGNORECASE,
 )
+_FORMAL_EVENT_ID_RE = re.compile(
+    r"(?<![A-Z0-9_-])(?P<event_id>EV-[0-9A-F]{8})"
+    r"(?:-[A-Z0-9_-]+)?(?![A-Z0-9_-])",
+    re.IGNORECASE,
+)
+_PROTOCOL_DASHES = frozenset({
+    "\u058a", "\u05be", "\u1400", "\u1806", "\u2010", "\u2011", "\u2012",
+    "\u2013", "\u2014", "\u2015", "\u2e17", "\u2e1a", "\u2e3a", "\u2e3b",
+    "\u2e40", "\u2e5d", "\u301c", "\u3030", "\u30a0", "\ufe31", "\ufe32",
+    "\ufe58", "\ufe63", "\uff0d",
+})
+_PROTOCOL_SLASHES = frozenset({
+    "\u2044", "\u2215", "\u29f8", "\u2cc6", "\u2cc7", "\uff0f",
+})
+
+
+def planning_protocol_comparison_view(value: object) -> str:
+    """Return a length-preserving Unicode comparison view for protocol text.
+
+    Generated identifiers and labels are machine protocol, while surrounding
+    prose remains creative text.  Normalize only one-codepoint presentation
+    variants so every returned offset still indexes the original source.
+    """
+    result: list[str] = []
+    for original in str(value or ""):
+        normalized = unicodedata.normalize("NFKC", original)
+        character = normalized if len(normalized) == 1 else original
+        if character in _PROTOCOL_DASHES:
+            character = "-"
+        elif character in _PROTOCOL_SLASHES:
+            character = "/"
+        result.append(character)
+    return "".join(result)
+
+
+def planning_event_id_occurrences(
+    value: object, *, formal_only: bool = False,
+) -> list[tuple[str, int, int]]:
+    """Return canonical event IDs with offsets into the unmodified source."""
+    comparison = planning_protocol_comparison_view(value)
+    pattern = _FORMAL_EVENT_ID_RE if formal_only else _EVENT_ID_RE
+    occurrences: list[tuple[str, int, int]] = []
+    for match in pattern.finditer(comparison):
+        event_id = (
+            match.group("event_id") if formal_only else match.group(0)
+        ).upper()
+        occurrences.append((event_id, match.start(), match.end()))
+    return occurrences
+
+
+def planning_event_ids(
+    value: object, *, formal_only: bool = False,
+) -> list[str]:
+    """Return stable ordered event identity without presentation duplicates."""
+    return list(dict.fromkeys(
+        event_id
+        for event_id, _start, _end in planning_event_id_occurrences(
+            value, formal_only=formal_only,
+        )
+    ))
+
+
+def remove_planning_event_ids(
+    value: object, *, formal_only: bool = False,
+) -> str:
+    """Remove presentation-variant event IDs without rewriting adjacent prose."""
+    source = str(value or "")
+    occurrences = planning_event_id_occurrences(source, formal_only=formal_only)
+    if not occurrences:
+        return source
+    pieces: list[str] = []
+    cursor = 0
+    for _event_id, start, end in occurrences:
+        pieces.append(source[cursor:start])
+        cursor = end
+    pieces.append(source[cursor:])
+    return "".join(pieces)
 
 _PLAN_FIELD_RE = re.compile(
     r"(?mi)^[ \t]*(?:[-+*][ \t]+)?(?:#{1,6}[ \t]*)?"
@@ -350,14 +427,19 @@ def planning_semantic_evidence_spans(
     event_span = _field_value_span(text, {"本段事件", "segmentevents", "segmentevent"})
     if event_span:
         body_start, body_end = event_span
-        occurrences = list(_EVENT_ID_RE.finditer(text, body_start, body_end))
+        occurrences = [
+            (event_id, body_start + start, body_start + end)
+            for event_id, start, end in planning_event_id_occurrences(
+                text[body_start:body_end],
+            )
+        ]
         for index, occurrence in enumerate(occurrences):
-            line_start = text.rfind("\n", body_start, occurrence.start()) + 1
+            event_id, occurrence_start, _occurrence_end = occurrence
+            line_start = text.rfind("\n", body_start, occurrence_start) + 1
             next_start = (
-                text.rfind("\n", body_start, occurrences[index + 1].start()) + 1
+                text.rfind("\n", body_start, occurrences[index + 1][1]) + 1
                 if index + 1 < len(occurrences) else body_end
             )
-            event_id = occurrence.group(0).upper()
             add(line_start, next_start, "event_block", event_id)
             for sentence_start, sentence_end in _sentence_spans(
                 text, line_start, next_start,
@@ -372,7 +454,7 @@ def planning_semantic_evidence_spans(
 
     for block in re.finditer(r"(?ms)(?:\A|(?<=\n\n))(?P<value>\S.*?)(?=\n\n|\Z)", text):
         start, end = block.span("value")
-        event_ids = [match.group(0).upper() for match in _EVENT_ID_RE.finditer(text, start, end)]
+        event_ids = planning_event_ids(text[start:end])
         add(start, end, "paragraph", event_ids[0] if len(event_ids) == 1 else "")
         for sentence_start, sentence_end in _sentence_spans(text, start, end):
             add(
@@ -410,8 +492,8 @@ def planning_event_body_issues(
         # Their parent segment performs the authoritative body check.
         return []
     body = text[span[0]:span[1]]
-    matches = list(_EVENT_ID_RE.finditer(body))
-    actual = [match.group(0).upper() for match in matches]
+    matches = planning_event_id_occurrences(body)
+    actual = [event_id for event_id, _start, _end in matches]
     issues: list[dict[str, Any]] = []
     for event_id in expected:
         indexes = [index for index, value in enumerate(actual) if value == event_id]
@@ -433,8 +515,8 @@ def planning_event_body_issues(
             })
             continue
         index = indexes[0]
-        start = matches[index].end()
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        start = matches[index][2]
+        end = matches[index + 1][1] if index + 1 < len(matches) else len(body)
         owned = re.sub(r"[\s*_`#（）()\[\]：:，,。.!！?？;；\-]+", "", body[start:end])
         if len(owned) < 8:
             # Adjacent formal events may intentionally share one complete
@@ -448,7 +530,7 @@ def planning_event_body_issues(
                 shared_index = index
                 while shared_index + 1 < len(matches):
                     separator = body[
-                        matches[shared_index].end():matches[shared_index + 1].start()
+                        matches[shared_index][2]:matches[shared_index + 1][1]
                     ]
                     if re.sub(
                         r"[\s*_`#（）()\[\]：:，,。.!！?？;；、\-]+",
@@ -457,9 +539,9 @@ def planning_event_body_issues(
                     ):
                         break
                     shared_index += 1
-                shared_start = matches[shared_index].end()
+                shared_start = matches[shared_index][2]
                 shared_end = (
-                    matches[shared_index + 1].start()
+                    matches[shared_index + 1][1]
                     if shared_index + 1 < len(matches) else len(body)
                 )
                 shared = re.sub(
@@ -506,7 +588,7 @@ def planning_event_obligation_issues(
     if body_span is None:
         return []
     body = text[body_span[0]:body_span[1]]
-    matches = list(_EVENT_ID_RE.finditer(body))
+    matches = planning_event_id_occurrences(body)
     owned_parts: dict[str, list[str]] = {}
     if not matches and len(expected) == 1:
         owned_parts[expected[0]] = [body]
@@ -519,13 +601,12 @@ def planning_event_obligation_issues(
         def indentation(value: str) -> int:
             return len(value.expandtabs(4))
 
-        for match in matches:
-            event_id = match.group(0).upper()
+        for event_id, match_start, _match_end in matches:
             if event_id not in expected:
                 continue
             owner_index = next((
                 index for index in range(len(list_items) - 1, -1, -1)
-                if list_items[index].start() <= match.start()
+                if list_items[index].start() <= match_start
             ), None)
             if owner_index is not None:
                 owner = list_items[owner_index]
@@ -537,8 +618,8 @@ def planning_event_obligation_issues(
                         end = sibling.start()
                         break
             else:
-                start = body.rfind("\n\n", 0, match.start()) + 2
-                paragraph_end = body.find("\n\n", match.end())
+                start = body.rfind("\n\n", 0, match_start) + 2
+                paragraph_end = body.find("\n\n", _match_end)
                 end = paragraph_end if paragraph_end >= 0 else len(body)
             value = body[start:end].strip()
             if value and value not in owned_parts.setdefault(event_id, []):
@@ -624,6 +705,175 @@ def planning_event_obligation_issues(
     return issues
 
 
+def repair_planning_event_obligation_coverage(
+    plan_segment: str,
+    expected_event_ids: list[str] | tuple[str, ...],
+    obligation_checklists: dict[str, dict] | None,
+) -> tuple[str, list[dict[str, Any]]]:
+    """Complete one uniquely owned formal obligation without a model rewrite.
+
+    A confirmed outline can already contain the exact action/reaction text that
+    a generated plan accidentally omitted.  When that source is hash-bound,
+    names every missing participant, and belongs to exactly one formal event,
+    Runtime may append it inside that event's existing list item.  The helper
+    never guesses between multiple obligations, never creates prose from a
+    diagnostic message, and never edits a sibling event or segment boundary.
+    """
+    if not isinstance(obligation_checklists, dict) or not obligation_checklists:
+        return str(plan_segment or ""), []
+    expected = [str(value or "").strip().upper() for value in expected_event_ids]
+    if not expected:
+        return str(plan_segment or ""), []
+    current = str(plan_segment or "")
+    repairs: list[dict[str, Any]] = []
+    initial_body_issues = planning_event_body_issues(current, expected)
+
+    def safe_obligations(issue: dict[str, Any]) -> list[dict[str, Any]]:
+        event_id = str(issue.get("event_id") or "").strip().upper()
+        missing = {
+            str(value or "").strip()
+            for value in issue.get("missing_participants", [])
+            if str(value or "").strip()
+        }
+        if not event_id or not missing:
+            return []
+        candidates: list[dict[str, Any]] = []
+        for raw in issue.get("formal_obligations", []):
+            if not isinstance(raw, dict):
+                continue
+            obligation = dict(raw)
+            excerpt = str(obligation.get("source_excerpt") or "").strip()
+            source_sha256 = str(obligation.get("source_sha256") or "").strip()
+            participants = {
+                str(value or "").strip()
+                for value in obligation.get("required_participants", [])
+                if str(value or "").strip()
+            }
+            normalized_excerpt = unicodedata.normalize("NFKC", excerpt)
+            if (
+                not excerpt
+                or not source_sha256
+                or hashlib.sha256(excerpt.encode("utf-8")).hexdigest()
+                != source_sha256
+                or not participants
+                or not all(name in normalized_excerpt for name in participants)
+                or not participants.intersection(missing)
+            ):
+                continue
+            referenced_ids = set(planning_event_ids(excerpt, formal_only=True))
+            if referenced_ids - {event_id}:
+                continue
+            candidates.append(obligation)
+
+        selected: dict[str, dict[str, Any]] = {}
+        for name in sorted(missing):
+            matches = [
+                item for item in candidates
+                if name in {
+                    str(value or "").strip()
+                    for value in item.get("required_participants", [])
+                }
+            ]
+            if len(matches) != 1:
+                return []
+            identity = str(matches[0].get("id") or "").strip()
+            if not identity:
+                return []
+            selected[identity] = matches[0]
+        return [selected[key] for key in selected]
+
+    def append_to_owned_item(
+        value: str, event_id: str, obligations: list[dict[str, Any]],
+    ) -> str | None:
+        body_span = _field_value_span(
+            value, {"本段事件", "segmentevents", "segmentevent"},
+        )
+        if body_span is None:
+            return None
+        body = value[body_span[0]:body_span[1]]
+        occurrences = [
+            item for item in planning_event_id_occurrences(body, formal_only=True)
+            if item[0] == event_id
+        ]
+        if len(occurrences) != 1:
+            return None
+        _identity, occurrence_start, _occurrence_end = occurrences[0]
+        list_items = list(re.finditer(
+            r"(?m)^(?P<indent>[ \t]*)(?:\d{1,3}\s*[.、)）]|[-+*])[ \t]+",
+            body,
+        ))
+        owner_index = next((
+            index for index in range(len(list_items) - 1, -1, -1)
+            if list_items[index].start() <= occurrence_start
+        ), None)
+        if owner_index is None:
+            return None
+        owner = list_items[owner_index]
+        owner_indent = len(owner.group("indent").expandtabs(4))
+        owner_end = len(body)
+        for sibling in list_items[owner_index + 1:]:
+            if len(sibling.group("indent").expandtabs(4)) <= owner_indent:
+                owner_end = sibling.start()
+                break
+        owned = body[owner.start():owner_end]
+        owned_ids = planning_event_ids(owned, formal_only=True)
+        if owned_ids != [event_id]:
+            return None
+        insertion = "\n".join(
+            " " * (owner_indent + 3)
+            + f"- **正式义务补全（{str(item.get('id') or '').strip()}）**："
+            + str(item.get("source_excerpt") or "").strip()
+            for item in obligations
+        )
+        if not insertion.strip():
+            return None
+        trimmed_end = owner_end
+        while trimmed_end > owner.start() and body[trimmed_end - 1] in " \t\r\n":
+            trimmed_end -= 1
+        repaired_body = (
+            body[:trimmed_end]
+            + "\n"
+            + insertion
+            + body[trimmed_end:]
+        )
+        return value[:body_span[0]] + repaired_body + value[body_span[1]:]
+
+    for issue in planning_event_obligation_issues(
+        current, expected, obligation_checklists,
+    ):
+        event_id = str(issue.get("event_id") or "").strip().upper()
+        obligations = safe_obligations(issue)
+        if not obligations:
+            continue
+        candidate = append_to_owned_item(current, event_id, obligations)
+        if candidate is None:
+            continue
+        if planning_event_body_issues(candidate, expected) != initial_body_issues:
+            continue
+        remaining = [
+            item for item in planning_event_obligation_issues(
+                candidate, expected, obligation_checklists,
+            )
+            if str(item.get("event_id") or "").strip().upper() == event_id
+        ]
+        if remaining:
+            continue
+        current = candidate
+        repairs.append({
+            "event_id": event_id,
+            "obligation_ids": [
+                str(item.get("id") or "").strip() for item in obligations
+            ],
+            "missing_participants": [
+                str(value or "").strip()
+                for value in issue.get("missing_participants", [])
+                if str(value or "").strip()
+            ],
+            "repair": "append_unique_formal_obligation_excerpt",
+        })
+    return current, repairs
+
+
 def repair_planning_event_obligation_ownership(
     plan_segment: str,
     expected_event_ids: list[str] | tuple[str, ...],
@@ -666,11 +916,10 @@ def repair_planning_event_obligation_ownership(
         start = match.start()
         end = item_end(index)
         value = body[start:end].strip()
-        ids = list(dict.fromkeys(
-            found.group(0).upper()
-            for found in _EVENT_ID_RE.finditer(value)
-            if found.group(0).upper() in expected_set
-        ))
+        ids = [
+            event_id for event_id in planning_event_ids(value)
+            if event_id in expected_set
+        ]
         item_values.append((start, end, value, ids))
 
     checklists = {
@@ -779,7 +1028,7 @@ def planning_event_body_retention_issues(
 
     def meaningful(text: str, span: tuple[int, int]) -> str:
         body = text[span[0]:span[1]]
-        body = _EVENT_ID_RE.sub("", body)
+        body = remove_planning_event_ids(body)
         return re.sub(r"[\s*_`#（）()\[\]：:，,。.!！?？;；\-]+", "", body)
 
     source = meaningful(str(source_segment or ""), source_span)
@@ -826,17 +1075,13 @@ def planning_adaptation_event_projection(
         for item in re.split(r"\n[ \t]*\n+", normalized)
         if item.strip()
     ):
-        block_ids = {
-            match.group(0).upper() for match in _EVENT_ID_RE.finditer(block)
-        }
+        block_ids = set(planning_event_ids(block))
         owned = block_ids & requested_set
         if owned:
             selected.append(block)
             covered.update(owned)
 
-    all_segment_ids = {
-        match.group(0).upper() for match in _EVENT_ID_RE.finditer(normalized)
-    }
+    all_segment_ids = set(planning_event_ids(normalized))
     if covered != requested_set:
         if len(requested) == 1 and len(all_segment_ids) <= 1:
             return normalized, candidates
@@ -905,7 +1150,7 @@ def planning_repair_anchor_ids(
     positions = {key: index for index, key in enumerate(requested)}
 
     def semantic_length(value: str) -> int:
-        plain = _EVENT_ID_RE.sub("", str(value or ""))
+        plain = remove_planning_event_ids(value)
         plain = re.sub(
             r"(?mi)^\s*(?:[-+*]\s*)?(?:事件\s*ID|大纲依据|正式大纲依据|"
             r"段首承接|本段事件|段末交接|event\s*ids?|outline\s*basis|"
@@ -948,9 +1193,7 @@ def planning_repair_anchor_ids(
             if quoted_nested:
                 quoted_nested.sort()
                 return quoted_nested[0][2]
-        outer_event_ids = tuple(dict.fromkeys(
-            match.group(0).upper() for match in _EVENT_ID_RE.finditer(outer)
-        ))
+        outer_event_ids = tuple(planning_event_ids(outer))
         if not outer_event_ids:
             return key
         nested: list[tuple[int, int, str]] = []
@@ -960,10 +1203,7 @@ def planning_repair_anchor_ids(
                 continue
             if "###" in candidate:
                 continue
-            candidate_event_ids = tuple(dict.fromkeys(
-                match.group(0).upper()
-                for match in _EVENT_ID_RE.finditer(candidate)
-            ))
+            candidate_event_ids = tuple(planning_event_ids(candidate))
             if candidate_event_ids != outer_event_ids:
                 continue
             if semantic_length(candidate) < 20:

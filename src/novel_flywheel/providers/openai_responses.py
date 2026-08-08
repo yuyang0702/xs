@@ -27,6 +27,8 @@ class OpenAIResponsesAdapter(HttpProvider):
             payload["max_output_tokens"] = request.max_output_tokens
         if request.response_schema is not None:
             payload["text"] = {"format": {"type": "json_schema", **request.response_schema}}
+        elif request.response_format == "json_object":
+            payload["text"] = {"format": {"type": "json_object"}}
         if request.tools:
             payload["tools"] = [{
                 "type": "function", "name": tool.name, "description": tool.description,

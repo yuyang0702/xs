@@ -86,8 +86,12 @@ class ProviderRegistry:
         if api_key and api_key.strip():
             self.secrets.set(provider_id, api_key.strip())
 
-    def add_model(self, provider_id: str, display_name: str, model_name: str,
-                  capabilities: dict | None = None) -> str:
+    def add_model(
+        self, provider_id: str, display_name: str, model_name: str,
+        capabilities: dict | None = None, *,
+        context_window: int | None = None,
+        max_output_tokens: int | None = None,
+    ) -> str:
         if self.db.get_provider(provider_id) is None:
             raise ValueError("provider_not_found")
         if not display_name.strip() or not model_name.strip():
@@ -95,8 +99,30 @@ class ProviderRegistry:
         model_id = str(uuid4())
         self.db.save_model(model_id=model_id, provider_id=provider_id,
                            display_name=display_name.strip(), model_name=model_name.strip(),
+                           context_window=context_window,
+                           max_output_tokens=max_output_tokens,
                            capabilities=capabilities)
         return model_id
+
+    def update_model_capabilities(
+        self, provider_id: str, model_id: str, capabilities: dict,
+    ) -> dict:
+        model = self.db.get_model(model_id)
+        if model is None or model.get("provider_id") != provider_id:
+            raise ValueError("model_not_found")
+        merged = {**(model.get("capabilities") or {}), **capabilities}
+        self.db.save_model(
+            model_id=model_id,
+            provider_id=provider_id,
+            display_name=model["display_name"],
+            model_name=model["model_name"],
+            context_window=model.get("context_window"),
+            max_output_tokens=model.get("max_output_tokens"),
+            capabilities=merged,
+        )
+        updated = self.db.get_model(model_id)
+        assert updated is not None
+        return updated
 
     def resolve(self, provider_id: str, model_id: str) -> ResolvedModel:
         provider = self.db.get_provider(provider_id)

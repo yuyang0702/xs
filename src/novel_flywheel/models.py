@@ -5,11 +5,19 @@ import json
 import time
 
 from novel_flywheel.db import Database
-from novel_flywheel.domain.models import Message, ModelRequest
+from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
 from novel_flywheel.errors import describe_error
 from novel_flywheel.context_policy import normalize_finish_reason
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
+from novel_flywheel.structured_artifacts import (
+    StructuredArtifactContract,
+    StructuredOutputCapability,
+    StructuredOutputCapabilityError,
+    StructuredOutputRequirement,
+    capability_satisfies,
+    configured_structured_output_capability,
+)
 
 
 @dataclass(frozen=True)
@@ -26,6 +34,20 @@ class ModelRoutesExhaustedError(RuntimeError):
         )
         self.primary_error = primary_error
         self.fallback_error = fallback_error
+
+
+class CapabilityRoutesExhaustedError(RuntimeError):
+    """Every route that explicitly advertised the required protocol failed."""
+
+    def __init__(self, route_errors: list[tuple[str, str, Exception]]) -> None:
+        self.route_errors = list(route_errors)
+        summary = "；".join(
+            f"路线 {index} 失败：{describe_error(error)}"
+            for index, (_provider_id, _model_id, error) in enumerate(
+                self.route_errors, 1,
+            )
+        )
+        super().__init__(summary or "没有可用的结构化输出路线")
 
 
 class TransportInterruptedError(RuntimeError):
@@ -46,7 +68,11 @@ class ModelGateway:
 
     async def complete(self, role: str, system: str, user: str,
                        max_output_tokens: int | None = None,
-                       fallback_max_output_tokens: int | None = None) -> ModelResult:
+                       fallback_max_output_tokens: int | None = None,
+                       response_schema: dict | None = None,
+                       structured_requirement: StructuredOutputRequirement = (
+                           StructuredOutputRequirement.PLAIN_TEXT
+                       )) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
@@ -65,6 +91,8 @@ class ModelGateway:
             )
             return await self._complete_resolved(
                 role, system, user, resolved, primary_limit,
+                response_schema=response_schema,
+                structured_requirement=structured_requirement,
             )
         except asyncio.CancelledError:
             raise
@@ -74,6 +102,8 @@ class ModelGateway:
                 try:
                     return await self._complete_resolved(
                         role, system, user, resolved, primary_limit,
+                        response_schema=response_schema,
+                        structured_requirement=structured_requirement,
                     )
                 except asyncio.CancelledError:
                     raise
@@ -94,6 +124,8 @@ class ModelGateway:
             try:
                 result = await self._complete_resolved(
                     role, system, user, fallback, fallback_limit,
+                    response_schema=response_schema,
+                    structured_requirement=structured_requirement,
                 )
             except asyncio.CancelledError:
                 raise
@@ -102,6 +134,176 @@ class ModelGateway:
             return self._mark_fallback(
                 result, binding["primary_provider_id"], binding["primary_model_id"], exc,
             )
+
+    async def complete_structured(
+        self,
+        role: str,
+        system: str,
+        user: str,
+        contract: StructuredArtifactContract,
+        *,
+        max_output_tokens: int | None = None,
+        fallback_max_output_tokens: int | None = None,
+        requirement: StructuredOutputRequirement = StructuredOutputRequirement.STRICT,
+        allow_capability_roster: bool = False,
+    ) -> ModelResult:
+        """Complete one schema-bound task using route-local capabilities.
+
+        No vendor or model-name inference is performed.  A third-party route
+        must explicitly declare a compatible capability before native schema
+        or forced-tool parameters are sent to it.
+        """
+
+        if allow_capability_roster:
+            return await self._complete_structured_from_capability_roster(
+                role,
+                system,
+                user,
+                contract,
+                max_output_tokens=max_output_tokens,
+                fallback_max_output_tokens=fallback_max_output_tokens,
+                requirement=requirement,
+            )
+        return await self.complete(
+            role,
+            system,
+            user,
+            max_output_tokens=max_output_tokens,
+            fallback_max_output_tokens=fallback_max_output_tokens,
+            response_schema=contract.provider_schema(),
+            structured_requirement=requirement,
+        )
+
+    def configured_structured_capabilities(
+        self, role: str, *, include_capability_roster: bool = False,
+    ) -> list[StructuredOutputCapability]:
+        binding = self.db.get_role_binding(role)
+        if binding is None:
+            return []
+        capabilities: list[StructuredOutputCapability] = []
+        for model_id in (
+            binding.get("primary_model_id"), binding.get("fallback_model_id"),
+        ):
+            if not model_id:
+                continue
+            model = self.db.get_model(model_id) or {}
+            capabilities.append(configured_structured_output_capability(
+                model.get("capabilities") or {},
+            ))
+        if include_capability_roster:
+            configured_ids = {
+                str(value) for value in (
+                    binding.get("primary_model_id"),
+                    binding.get("fallback_model_id"),
+                ) if value
+            }
+            for provider in self.db.list_providers():
+                if not provider.get("enabled"):
+                    continue
+                for model in self.db.list_models(provider["id"]):
+                    if str(model.get("id") or "") in configured_ids:
+                        continue
+                    capabilities.append(configured_structured_output_capability(
+                        model.get("capabilities") or {},
+                    ))
+        return capabilities
+
+    def _structured_capability_roster(
+        self, role: str, requirement: StructuredOutputRequirement,
+    ) -> list[tuple[str, str]]:
+        binding = self.db.get_role_binding(role)
+        if binding is None:
+            raise LookupError(f"Model role is not configured: {role}")
+        routes: list[tuple[str, str]] = []
+
+        def add(provider_id: object, model_id: object, *, discovered: bool) -> None:
+            provider_value = str(provider_id or "").strip()
+            model_value = str(model_id or "").strip()
+            route = (provider_value, model_value)
+            if not all(route) or route in routes:
+                return
+            if discovered:
+                model = self.db.get_model(model_value) or {}
+                capability = configured_structured_output_capability(
+                    model.get("capabilities") or {},
+                )
+                if not capability_satisfies(capability, requirement):
+                    return
+            routes.append(route)
+
+        add(
+            binding.get("primary_provider_id"),
+            binding.get("primary_model_id"),
+            discovered=False,
+        )
+        add(
+            binding.get("fallback_provider_id"),
+            binding.get("fallback_model_id"),
+            discovered=False,
+        )
+        for provider in self.db.list_providers():
+            if not provider.get("enabled"):
+                continue
+            for model in self.db.list_models(provider["id"]):
+                add(provider["id"], model.get("id"), discovered=True)
+        return routes
+
+    async def _complete_structured_from_capability_roster(
+        self,
+        role: str,
+        system: str,
+        user: str,
+        contract: StructuredArtifactContract,
+        *,
+        max_output_tokens: int | None,
+        fallback_max_output_tokens: int | None,
+        requirement: StructuredOutputRequirement,
+    ) -> ModelResult:
+        routes = self._structured_capability_roster(role, requirement)
+        errors: list[tuple[str, str, Exception]] = []
+        schema = contract.provider_schema()
+        primary = routes[0] if routes else ("", "")
+        for index, (provider_id, model_id) in enumerate(routes):
+            try:
+                resolved = self.registry.resolve(provider_id, model_id)
+                requested_limit = (
+                    max_output_tokens if index == 0
+                    else fallback_max_output_tokens
+                    if fallback_max_output_tokens is not None
+                    else max_output_tokens
+                )
+                result = await self._complete_resolved(
+                    role,
+                    system,
+                    user,
+                    resolved,
+                    self._route_output_limit(model_id, requested_limit),
+                    response_schema=schema,
+                    structured_requirement=requirement,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                errors.append((provider_id, model_id, exc))
+                continue
+            receipt = {
+                **result.receipt,
+                "capability_roster_fallback": index > 0,
+                "attempted_route_count": index + 1,
+                "attempted_routes": [
+                    {"provider_id": value[0], "model_id": value[1]}
+                    for value in routes[:index + 1]
+                ],
+            }
+            if index > 0:
+                receipt.update({
+                    "fallback_used": True,
+                    "fallback_from_provider_id": primary[0],
+                    "fallback_from_model_id": primary[1],
+                    "primary_error": describe_error(errors[0][2]) if errors else "",
+                })
+            return ModelResult(result.text, receipt)
+        raise CapabilityRoutesExhaustedError(errors)
 
     async def complete_primary(
         self, role: str, system: str, user: str,
@@ -146,13 +348,69 @@ class ModelGateway:
             "transport ended before a terminal response",
         ))
 
-    async def _complete_resolved(self, role, system, user, resolved,
-                                 max_output_tokens) -> ModelResult:
-        response = await resolved.adapter.complete(ModelRequest(
+    async def _complete_resolved(
+        self, role, system, user, resolved, max_output_tokens, *,
+        response_schema: dict | None = None,
+        structured_requirement: StructuredOutputRequirement = (
+            StructuredOutputRequirement.PLAIN_TEXT
+        ),
+    ) -> ModelResult:
+        capability = configured_structured_output_capability(
+            resolved.capabilities,
+        )
+        if not capability_satisfies(capability, structured_requirement):
+            raise StructuredOutputCapabilityError(
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                capability=capability,
+                requirement=structured_requirement,
+            )
+
+        request = ModelRequest(
             model=resolved.model_name,
-            messages=[Message(role="system", content=system), Message(role="user", content=user)],
+            messages=[
+                Message(role="system", content=system),
+                Message(role="user", content=user),
+            ],
             max_output_tokens=max_output_tokens,
-        ))
+        )
+        execution_mode = "plain"
+        if response_schema is not None:
+            if capability == StructuredOutputCapability.STRICT_TOOL:
+                tool_name = str(response_schema.get("name") or "structured_output")
+                request = request.model_copy(update={
+                    "tools": [ToolDefinition(
+                        name=tool_name,
+                        description="Return the complete validated structured artifact.",
+                        input_schema=dict(response_schema.get("schema") or {}),
+                    )],
+                    "required_tool": tool_name,
+                })
+                execution_mode = "strict_tool"
+            elif capability == StructuredOutputCapability.STRICT_JSON_SCHEMA:
+                request = request.model_copy(update={
+                    "response_schema": response_schema,
+                })
+                execution_mode = "strict_json_schema"
+            elif capability == StructuredOutputCapability.JSON_OBJECT:
+                request = request.model_copy(update={
+                    "response_format": "json_object",
+                })
+                execution_mode = "json_object"
+
+        response = await resolved.adapter.complete(request)
+        if capability == StructuredOutputCapability.STRICT_TOOL and response_schema is not None:
+            expected_name = str(response_schema.get("name") or "structured_output")
+            matching = [
+                call for call in response.tool_calls if call.name == expected_name
+            ]
+            if len(matching) != 1 or len(response.tool_calls) != 1:
+                raise RuntimeError(
+                    "strict structured tool route returned no unique artifact"
+                )
+            response = response.model_copy(update={
+                "text": json.dumps(matching[0].arguments, ensure_ascii=False),
+            })
         receipt = {
             "role": role,
             "provider_id": resolved.provider_id,
@@ -169,8 +427,9 @@ class ModelGateway:
                 "transport_complete", True,
             ) is not False,
             "requested_max_output_tokens": max_output_tokens,
-            "route_fingerprint": self._route_fingerprint(resolved, "plain"),
-            "execution_mode": "plain",
+            "route_fingerprint": self._route_fingerprint(resolved, execution_mode),
+            "execution_mode": execution_mode,
+            "structured_output_capability": capability.value,
         }
         self._record_output_observation(receipt, response.text)
         if not receipt["transport_complete"]:

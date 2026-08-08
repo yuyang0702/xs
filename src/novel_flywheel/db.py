@@ -850,6 +850,21 @@ class Database:
                 == "model.context_capacity_indivisible_scope"
             ):
                 return {**metadata, **classified}
+            # Older runs may already carry an opaque ``unclassified.*``
+            # fingerprint.  Reclassify that evidence at read time when the
+            # shared catalog now knows its stable mechanism, retaining the
+            # old identity for audit without rewriting historical rows.
+            if (
+                str(metadata.get("incident_family") or "").startswith("unclassified.")
+                and classified.get("incident_family")
+                and not str(classified["incident_family"]).startswith("unclassified.")
+            ):
+                return {
+                    **metadata,
+                    **classified,
+                    "legacy_incident_key": metadata.get("incident_key"),
+                    "legacy_incident_family": metadata.get("incident_family"),
+                }
             return metadata
         return {**metadata, **classified}
 

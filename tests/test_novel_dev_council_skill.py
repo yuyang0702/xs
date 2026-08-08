@@ -19,6 +19,83 @@ def _load_script(name: str):
     return module
 
 
+def _valid_forward_risk_payload() -> dict:
+    return {
+        "version": 2,
+        "original_requirement": (
+            "All future provider-shaped planning receipts must recover without "
+            "narrowing to the observed payload."
+        ),
+        "scope_classification": "open_world",
+        "operational_definition": (
+            "Normalize structurally equivalent receipts by stable ownership and "
+            "authority invariants, then cross the next workflow boundary."
+        ),
+        "forbidden_narrowing": [
+            "Do not support only the currently observed container key.",
+            "Do not count fail-closed containment as recovery.",
+        ],
+        "resolution_status": "systemically_resolved",
+        "constraint_traceability": [{
+            "requirement": "Recover unseen structurally equivalent model output.",
+            "implementation": "Use an invariant-driven normalization boundary.",
+            "test_paths": ["tests/test_narrative_contract.py"],
+            "evidence": "Metamorphic topology variants cross the next boundary.",
+        }],
+        "historical_incident_families_checked": [
+            "model.context_capacity_preflight"
+        ],
+        "projected_failure_mechanisms": ["input capacity", "partial checkpoint"],
+        "model_output_boundary_changed": True,
+        "model_output_variants_tested": [
+            "top-level event array",
+            "event-id keyed mapping",
+            "nested event array",
+            "block list realization",
+            "unknown alpha container realization",
+            "unknown beta wrapper realization",
+        ],
+        "model_output_topology_classes_tested": [
+            "top_level_array",
+            "event_id_mapping",
+            "nested_event_array",
+            "block_list",
+        ],
+        "unseen_valid_variants_tested": [
+            "generated container alpha absent from source and fixtures",
+            "generated wrapper beta absent from source and fixtures",
+        ],
+        "unknown_variant_behavior": (
+            "Unambiguous invariant-complete payloads normalize locally; ambiguous "
+            "machine control retries the canonical receipt without guessing."
+        ),
+        "invalid_output_variants_tested": [
+            "normal-finish incomplete receipt",
+            "contradictory actor-action binding",
+        ],
+        "transport_capacity_variants_tested": [
+            "unknown provider context overflow",
+            "SSE disconnect after a partial payload",
+        ],
+        "why_previous_tests_missed": (
+            "The old fake provider never reproduced production payload proportions."
+        ),
+        "sibling_boundaries": [{
+            "boundary": "polish semantic review",
+            "disposition": "tested_not_susceptible",
+            "evidence": (
+                "tests/test_context_capacity_incidents.py exercises the guarded route"
+            ),
+        }],
+        "production_shaped_tests": ["tests/test_context_capacity_incidents.py"],
+        "next_authoritative_boundary_tests": [
+            "tests/test_planning_adaptation_workflow.py"
+        ],
+        "invariant_test_paths": ["tests/test_narrative_contract.py"],
+        "remaining_risks": [],
+    }
+
+
 def test_change_gate_parses_nul_porcelain_with_unicode_and_rename() -> None:
     gate = _load_script("inspect_change_gate.py")
     raw = (
@@ -183,44 +260,10 @@ def test_change_gate_declared_level_can_raise_but_not_lower_risk() -> None:
 def test_change_gate_validates_forward_risk_report(tmp_path) -> None:
     gate = _load_script("inspect_change_gate.py")
     report_path = tmp_path / "forward-risk.json"
-    report_path.write_text(json.dumps({
-        "version": 1,
-        "historical_incident_families_checked": ["model.context_capacity_preflight"],
-        "projected_failure_mechanisms": ["input capacity", "partial checkpoint"],
-        "model_output_boundary_changed": True,
-        "model_output_variants_tested": [
-            "dialogue-led valid realization",
-            "action-led valid realization",
-            "verbose wrapped valid realization",
-            "terse valid realization",
-            "pronoun-led valid realization",
-            "multilingual-label valid realization",
-        ],
-        "invalid_output_variants_tested": [
-            "normal-finish incomplete receipt",
-            "contradictory actor-action binding",
-        ],
-        "transport_capacity_variants_tested": [
-            "unknown provider context overflow",
-            "SSE disconnect after a partial payload",
-        ],
-        "why_previous_tests_missed": (
-            "The old fake provider never reproduced production payload proportions."
-        ),
-        "sibling_boundaries": [{
-            "boundary": "polish semantic review",
-            "disposition": "tested_not_susceptible",
-            "evidence": (
-                "tests/test_context_capacity_incidents.py exercises the guarded route"
-            ),
-        }],
-        "production_shaped_tests": ["tests/test_context_capacity_incidents.py"],
-        "next_authoritative_boundary_tests": [
-            "tests/test_planning_adaptation_workflow.py"
-        ],
-        "invariant_test_paths": ["tests/test_narrative_contract.py"],
-        "remaining_risks": [],
-    }, ensure_ascii=False), encoding="utf-8")
+    report_path.write_text(
+        json.dumps(_valid_forward_risk_payload(), ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     report = gate._load_forward_risk_report(report_path, ROOT)
 
@@ -230,16 +273,80 @@ def test_change_gate_validates_forward_risk_report(tmp_path) -> None:
     assert len(report["model_output_variants_tested"]) == 6
     assert len(report["invalid_output_variants_tested"]) == 2
     assert len(report["transport_capacity_variants_tested"]) == 2
+    assert len(report["model_output_topology_classes_tested"]) == 4
+    assert len(report["unseen_valid_variants_tested"]) == 2
+    assert report["scope_classification"] == "open_world"
+    assert report["resolution_status"] == "systemically_resolved"
     assert report["sibling_boundaries"][0]["disposition"] == (
         "tested_not_susceptible"
     )
+
+
+def test_change_gate_rejects_cosmetic_variants_without_topology_diversity(
+    tmp_path,
+) -> None:
+    gate = _load_script("inspect_change_gate.py")
+    payload = _valid_forward_risk_payload()
+    payload["model_output_topology_classes_tested"] = [
+        "same_mapping",
+        "same_mapping",
+        "same_mapping",
+        "same_mapping",
+    ]
+    report_path = tmp_path / "forward-risk.json"
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    try:
+        gate._load_forward_risk_report(report_path, ROOT)
+    except RuntimeError as exc:
+        assert "four distinct" in str(exc)
+    else:
+        raise AssertionError("cosmetic-only topology variants were accepted")
+
+
+def test_change_gate_rejects_missing_unseen_valid_variants(tmp_path) -> None:
+    gate = _load_script("inspect_change_gate.py")
+    payload = _valid_forward_risk_payload()
+    payload["unseen_valid_variants_tested"] = ["only observed fixture"]
+    report_path = tmp_path / "forward-risk.json"
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    try:
+        gate._load_forward_risk_report(report_path, ROOT)
+    except RuntimeError as exc:
+        assert "two distinct unseen_valid_variants_tested" in str(exc)
+    else:
+        raise AssertionError("report without unseen valid variants was accepted")
+
+
+def test_change_gate_open_world_case_fix_cannot_claim_completion() -> None:
+    gate = _load_script("inspect_change_gate.py")
+    payload = _valid_forward_risk_payload()
+    payload["resolution_status"] = "case_fixed"
+
+    warnings = gate._forward_risk_completion_warnings(payload)
+
+    assert any("systemically_resolved" in item for item in warnings)
+    payload["scope_classification"] = "closed_world"
+    assert gate._forward_risk_completion_warnings(payload) == []
 
 
 def test_change_gate_rejects_incomplete_forward_risk_report(tmp_path) -> None:
     gate = _load_script("inspect_change_gate.py")
     report_path = tmp_path / "forward-risk.json"
     report_path.write_text(json.dumps({
-        "version": 1,
+        "version": 2,
+        "original_requirement": "keep the requirement open-world",
+        "scope_classification": "open_world",
+        "operational_definition": "recover equivalent future shapes",
+        "forbidden_narrowing": ["do not bind to one fixture"],
+        "resolution_status": "systemically_resolved",
+        "constraint_traceability": [{
+            "requirement": "recover equivalent shapes",
+            "implementation": "shared normalization boundary",
+            "test_paths": ["tests/test_narrative_contract.py"],
+            "evidence": "invariant-based regression",
+        }],
         "historical_incident_families_checked": [],
     }), encoding="utf-8")
 
@@ -303,3 +410,24 @@ def test_repository_policy_requires_forward_incident_projection_and_variants() -
     assert "Forward incident projection" in shield
     assert "why_previous_tests_missed" in shield
     assert "Non-deterministic model output" in shield
+
+
+def test_repository_policy_forbids_open_world_requirement_narrowing() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    contract = (SKILL / "references" / "decision-contract.md").read_text(
+        encoding="utf-8"
+    )
+    shield = (SKILL / "references" / "regression-shield.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Open-World Requirement Non-Narrowing Gate" in agents
+    assert "MUST NOT silently narrow" in agents
+    assert "four materially different topology classes" in agents
+    assert "systemically_resolved" in agents
+    assert "Prevent sample-specific completion claims" in skill
+    assert "scope is `open_world` or `closed_world`" in skill
+    assert "Forbidden narrowing" in contract
+    assert "version 2 JSON report" in shield
+    assert "unseen_valid_variants_tested" in shield

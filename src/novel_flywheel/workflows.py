@@ -116,8 +116,13 @@ from novel_flywheel.planning_adaptation import (
     planning_adaptation_receipt_issues,
     planning_event_body_issues,
     planning_event_body_retention_issues,
+    planning_event_id_occurrences,
+    planning_event_ids,
     planning_evidence_quote_valid,
+    planning_protocol_comparison_view,
+    repair_planning_event_obligation_coverage,
     repair_planning_event_obligation_ownership,
+    remove_planning_event_ids,
     planning_repair_anchor_ids,
     planning_repair_patch_from_segment,
     planning_repair_patch_authority_sha256,
@@ -227,6 +232,11 @@ from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptC
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
+from novel_flywheel.structured_artifacts import (
+    StructuredArtifactContract,
+    StructuredOutputRequirement,
+    capability_satisfies,
+)
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.tools import StoryToolbox
 
@@ -275,7 +285,7 @@ class ContextCapacityPreflightError(RuntimeError):
 
 
 class PlanningRecoveryUnavailableError(RuntimeError):
-    """A semantic planning defect was found, but its repair route was unavailable."""
+    """A semantic planning defect was found, but no model route was usable."""
 
     def __init__(self, issues: list[dict], execution_failures: list[dict]):
         self.issues = issues
@@ -358,7 +368,7 @@ class WorkflowService:
         "event_id": ("事件ID", "正式事件ID"),
         "outline": ("大纲依据", "正式大纲依据"),
         "opening": ("段首承接", "开场承接"),
-        "event": ("本段事件", "核心事件", "负责事件"),
+        "event": ("本段事件", "本段子事件", "核心事件", "负责事件"),
         "handoff": ("段末交接", "交接状态", "段末状态"),
     }
     INITIAL_POLISH_INPUT_CAP = 120_000
@@ -3913,11 +3923,7 @@ class WorkflowService:
                 else:
                     add("local_required_fields", message)
                 continue
-            event_ids = [
-                item.upper() for item in re.findall(
-                    r"EV-[0-9a-f]{8}", message, flags=re.IGNORECASE,
-                )
-            ]
+            event_ids = planning_event_ids(message, formal_only=True)
             if message.startswith("规划稿使用了不存在的事件 ID"):
                 for event_id in event_ids or [""]:
                     add("local_invalid_event_id", message, event_id=event_id)
@@ -7401,12 +7407,7 @@ class WorkflowService:
         event_lines: list[tuple[int, list[str]]] = []
         offset = 0
         for line in comparison.splitlines(keepends=True):
-            ids = list(dict.fromkeys(
-                match.group(0).upper()
-                for match in re.finditer(
-                    r"EV-[0-9a-f]{8}", line, flags=re.IGNORECASE,
-                )
-            ))
+            ids = planning_event_ids(line, formal_only=True)
             if ids:
                 event_lines.append((offset, ids))
             offset += len(line)
@@ -7470,25 +7471,94 @@ class WorkflowService:
         cls, current: str, *, segment: int, event_ids: list[str],
         packets: list[str],
     ) -> str:
-        packet_ids = [cls._short_plan_event_ids(packet) for packet in packets]
+        expected = [str(value or "").strip().upper() for value in event_ids]
+        # Ownership comes from the packet's explicit declaration, never from
+        # incidental IDs mentioned in its narrative body (for example a
+        # forward reference to the next event).  Falling back to a single
+        # unambiguous ID keeps legacy packets compatible; multiple IDs without
+        # a declaration fail closed instead of guessing ownership.
+        packet_ids = [cls._short_plan_declared_event_ids(packet) for packet in packets]
         flattened = [event_id for values in packet_ids for event_id in values]
-        if flattened != event_ids or len(flattened) != len(set(flattened)):
+        if flattened != expected or len(flattened) != len(set(flattened)):
             raise ValueError(
                 f"规划第 {segment} 段容量分包没有无损覆盖原有正式事件顺序"
             )
-        bodies = [cls._short_plan_field(packet, "event") for packet in packets]
-        if any(not body for body in bodies):
-            raise ValueError(f"规划第 {segment} 段容量分包缺少可合并的事件正文")
+        bodies: list[str] = []
+        for packet, owned_ids in zip(packets, packet_ids):
+            body = cls._canonical_short_plan_packet_event_body(
+                packet, owned_ids, segment=segment,
+            )
+            if not body:
+                raise ValueError(f"规划第 {segment} 段容量分包缺少可合并的事件正文")
+            bodies.append(body)
         opening = cls._short_plan_field(packets[0], "opening")
         handoff = cls._short_plan_field(packets[-1], "handoff")
         return cls._render_short_plan_repair_packet(
             current,
             segment=segment,
-            event_ids=event_ids,
+            event_ids=expected,
             event_body=cls._renumber_short_plan_event_body("\n\n".join(bodies)),
             opening=opening,
             handoff=handoff,
         )
+
+    @classmethod
+    def _canonical_short_plan_packet_event_body(
+        cls, packet: str, event_ids: list[str], *, segment: int,
+    ) -> str:
+        """Make packet ownership explicit before combining independent bodies.
+
+        A singleton packet may omit a repeated event ID because its envelope
+        already binds the complete body to one event. That representation is
+        not closed under parent merge: the multi-event validator needs an
+        in-body owner marker to partition siblings. Add a Runtime-owned marker
+        while preserving all narrative text. Multi-event packets must already
+        be independently partitionable; ambiguous bodies fail closed.
+        """
+        expected = [str(value or "").strip().upper() for value in event_ids]
+        body = cls._short_plan_field(packet, "event").strip()
+        if not body or not expected:
+            return ""
+
+        def clean(value: str) -> str:
+            return remove_planning_event_ids(
+                value, formal_only=True,
+            ).strip()
+
+        if len(expected) == 1:
+            narrative = clean(body)
+            meaningful = re.sub(r"[^0-9A-Za-z\u3400-\u9fff]+", "", narrative)
+            if len(meaningful) < 8:
+                return ""
+            return f"1. **正式事件**（{expected[0]}）：{narrative}"
+
+        body_issues = planning_event_body_issues(packet, expected)
+        if body_issues:
+            raise GeneratedArtifactShapeError(
+                f"planning segment {segment} packet merge has ambiguous event body ownership",
+                issues=body_issues,
+            )
+        parts: list[str] = []
+        for event_id in expected:
+            owned = cls._short_plan_event_owned_body(packet, [event_id]).strip()
+            narrative = clean(owned)
+            meaningful = re.sub(
+                r"[^0-9A-Za-z\u3400-\u9fff]+", "", narrative,
+            )
+            if len(meaningful) < 8:
+                raise GeneratedArtifactShapeError(
+                    f"planning segment {segment} packet merge lost event {event_id} narrative body",
+                    issues=[{
+                        "code": "event_body_missing",
+                        "event_id": event_id,
+                        "segment": segment,
+                        "blocking": True,
+                    }],
+                )
+            parts.append(
+                f"{len(parts) + 1}. **正式事件**（{event_id}）：{narrative}"
+            )
+        return "\n\n".join(parts).strip()
 
     @staticmethod
     def _planning_repair_packet_checkpoint_path(
@@ -7579,6 +7649,304 @@ class WorkflowService:
             },
         )
         return block
+
+    @classmethod
+    def _normalize_runtime_owned_short_plan_payload(
+        cls, value: str, *, segment: int, event_ids: list[str],
+        current: str, artifact: str,
+    ) -> str:
+        """Bind machine control to Runtime and retain only creative payload.
+
+        This is the canonical write path for a protocol retry.  The model may
+        serialize narrative for the exact events it was given, but it cannot
+        choose the segment, ownership, outline basis, or entry/exit boundary.
+        Unknown keys and ambiguous identities fail closed.
+        """
+
+        expected = [str(item or "").strip().upper() for item in event_ids]
+        try:
+            payload = parse_json_object(
+                value, label=f"{artifact} structured payload",
+            )
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} did not return one structured narrative payload",
+            ) from exc
+        if set(payload) != {"events"} or not isinstance(payload["events"], list):
+            raise GeneratedArtifactShapeError(
+                f"{artifact} changed the Runtime-owned structured contract",
+                issues=[{
+                    "code": "planning_packet_unknown_control_field",
+                    "segment": segment,
+                    "event_ids": expected,
+                    "fields": sorted(set(payload) - {"events"}),
+                    "blocking": True,
+                }],
+            )
+        normalized_events: list[tuple[str, str]] = []
+        for item in payload["events"]:
+            if not isinstance(item, dict) or set(item) != {"event_id", "narrative"}:
+                raise GeneratedArtifactShapeError(
+                    f"{artifact} contains a malformed event narrative",
+                )
+            item_ids = planning_event_ids(
+                str(item.get("event_id") or ""), formal_only=True,
+            )
+            event_id = (
+                item_ids[0]
+                if len(item_ids) == 1
+                and planning_protocol_comparison_view(
+                    item.get("event_id") or "",
+                ).strip().upper() == item_ids[0]
+                else ""
+            )
+            narrative = str(item.get("narrative") or "").strip()
+            meaningful = re.sub(
+                r"[^0-9A-Za-z\u3400-\u9fff]+", "", narrative,
+            )
+            if not event_id or len(meaningful) < 12:
+                raise GeneratedArtifactShapeError(
+                    f"{artifact} contains incomplete event narrative",
+                )
+            normalized_events.append((event_id, narrative))
+        received = [item[0] for item in normalized_events]
+        if received != expected or len(received) != len(set(received)):
+            raise GeneratedArtifactShapeError(
+                f"{artifact} changed ordered event ownership "
+                f"(expected={expected}, received={received})",
+            )
+        body = "\n\n".join(
+            f"{index}. **正式事件**（{event_id}）："
+            + remove_planning_event_ids(narrative, formal_only=True).strip()
+            for index, (event_id, narrative) in enumerate(normalized_events, 1)
+        )
+        normalized = cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=expected,
+            event_body=body,
+            opening=cls._short_plan_field(current, "opening"),
+            handoff=cls._short_plan_field(current, "handoff"),
+        )
+        return cls._require_short_plan_segment(
+            normalized, segment, artifact=f"Runtime-bound {artifact}",
+        )
+
+    async def _normalize_generated_short_plan_segment_with_protocol_retry(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        value: str, *, segment: int, event_ids: list[str], current: str,
+        artifact: str, suffix: str,
+    ) -> str:
+        """Normalize one generated segment, retrying only its wire protocol.
+
+        A normally finished model response can contain a complete narrative
+        repair while using a previously unseen Markdown, JSON, XML, or
+        provider wrapper.  That is not evidence that the story repair itself
+        failed.  First apply every deterministic presentation adapter.  Only
+        when those adapters cannot establish one unambiguous segment identity
+        do we ask the same planning route to rewrap the already generated
+        packet.  The formal scope and retained source boundaries stay fixed,
+        and the returned block still re-enters the ordinary packet contract.
+        """
+        expected = [str(value).strip().upper() for value in event_ids]
+        first_error: GeneratedArtifactShapeError | None = None
+        try:
+            return self._normalize_generated_short_plan_segment(
+                value,
+                segment=segment,
+                event_ids=expected,
+                current=current,
+                artifact=artifact,
+            )
+        except GeneratedArtifactShapeError as error:
+            first_error = error
+            first_issues = [
+                dict(item) for item in error.issues
+                if isinstance(item, dict)
+            ]
+        assert first_error is not None
+
+        self.db.add_run_event(
+            run_id, "warning", "planning_packet_protocol_retry",
+            "规划修复内容保持原范围，正在把模型返回重新封装为可校验的标准规划段",
+            stage="planning", metadata={
+                "segment": segment,
+                "event_ids": expected,
+                "artifact": artifact,
+                "parser_error": str(first_error)[:500],
+                "issues": first_issues,
+            },
+        )
+        authority = {
+            "segment": segment,
+            "event_ids": expected,
+            "outline_basis": self._short_plan_field(current, "outline"),
+            "opening": self._short_plan_field(current, "opening"),
+            "handoff": self._short_plan_field(current, "handoff"),
+            "source_sha256": hashlib.sha256(
+                current.encode("utf-8"),
+            ).hexdigest(),
+            "generated_packet_sha256": hashlib.sha256(
+                str(value).encode("utf-8"),
+            ).hexdigest(),
+        }
+        structured_contract = StructuredArtifactContract(
+            name="planning_packet",
+            schema={
+                "type": "object",
+                "properties": {
+                    "events": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "event_id": {"type": "string"},
+                                "narrative": {"type": "string"},
+                            },
+                            "required": ["event_id", "narrative"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["events"],
+                "additionalProperties": False,
+            },
+            runtime_authority=authority,
+        )
+        prompt = (
+            "SHORT_PLAN_CANONICAL_REWRAP_V1\n"
+            "This is a presentation-protocol repair, not a story rewrite. "
+            "Return exactly one JSON object with one field named events. Each "
+            "events item must contain only event_id and narrative. Preserve "
+            "the generated packet's narrative actions, "
+            "reactions, results, dialogue intent, and creative detail. Do not "
+            "invent, delete, summarize, or move story facts. The Runtime-owned "
+            "segment identity, exact ordered event ownership, outline basis, "
+            "entry state, and exit state below may not change and must not be "
+            "returned by the model; Runtime binds them after validation. Descriptive "
+            "references to later events may remain prose but must not become "
+            "owned event IDs. Use ordinary ASCII hyphens inside event IDs. If "
+            "the source packet cannot support complete narrative without "
+            "invention, return an empty narrative; never fabricate authority.\n"
+            f"EXPECTED SEGMENT: {segment}\n"
+            "EXPECTED EVENT IDS:\n"
+            + json.dumps(expected, ensure_ascii=False)
+            + "\n\nCURRENT AUTHORITY (IMMUTABLE):\n"
+            + json.dumps(authority, ensure_ascii=False, indent=2)
+            + "\n\nFIRST PARSER FAILURE (DIAGNOSTIC ONLY):\n"
+            + json.dumps({
+                "message": str(first_error),
+                "issues": first_issues,
+            }, ensure_ascii=False, indent=2)
+            + "\n\nRAW GENERATED PACKET TO REWRAP:\n"
+            + str(value)
+        )
+
+        def normalize_protocol_candidate(candidate: str) -> str:
+            try:
+                return self._normalize_runtime_owned_short_plan_payload(
+                    candidate,
+                    segment=segment,
+                    event_ids=expected,
+                    current=current,
+                    artifact=f"Runtime-owned {artifact}",
+                )
+            except GeneratedArtifactShapeError:
+                return self._normalize_generated_short_plan_segment(
+                    candidate,
+                    segment=segment,
+                    event_ids=expected,
+                    current=current,
+                    artifact=f"legacy canonical {artifact}",
+                )
+
+        def protocol_complete(candidate: str) -> bool:
+            try:
+                normalize_protocol_candidate(candidate)
+            except GeneratedArtifactShapeError:
+                return False
+            return True
+
+        rewrapped = await self._stage(
+            run_id, run_path, project, "planning", constraints, prompt,
+            suffix=f"{suffix}-protocol-rewrap",
+            allow_tools=False,
+            expected_output_characters=max(
+                1200, len(str(value)) + 600,
+            ),
+            completion_check=protocol_complete,
+            compact_input=True,
+            route_capacity_guard=True,
+            story_skeleton_override=self._stage_story_skeleton(
+                project, constraints, run_path,
+                owner_event_ids=expected, index_only=True,
+            ),
+            bounded_protocol_output=True,
+            structured_contract=structured_contract,
+        )
+        try:
+            normalized = normalize_protocol_candidate(rewrapped)
+        except GeneratedArtifactShapeError as retry_error:
+            retry_issues = [
+                dict(item) for item in retry_error.issues
+                if isinstance(item, dict)
+            ]
+            issue = {
+                "code": "planning_packet_protocol_exhausted",
+                "message": (
+                    "planning packet protocol recovery exhausted without one "
+                    "unambiguous canonical segment"
+                ),
+                "segment": segment,
+                "event_ids": expected,
+                "first_error": str(first_error)[:500],
+                "retry_error": str(retry_error)[:500],
+                "blocking": True,
+            }
+            self.db.add_run_event(
+                run_id, "error", "planning_packet_protocol_exhausted",
+                "规划修复内容未被改写，但同范围协议重封装仍无法形成唯一可校验规划段",
+                stage="planning", metadata={
+                    **issue,
+                    "first_issues": first_issues,
+                    "retry_issues": retry_issues,
+                },
+            )
+            raise GeneratedArtifactShapeError(
+                issue["message"], issues=[issue],
+            ) from retry_error
+        # Protocol recovery may reorganize presentation but never receives
+        # authority to alter the retained formal shell.  Rebind every
+        # Runtime-owned field deterministically and carry forward only the
+        # normalized event realization from the provider result.
+        normalized = self._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=expected,
+            event_body=self._short_plan_field(normalized, "event"),
+            opening=self._short_plan_field(current, "opening"),
+            handoff=self._short_plan_field(current, "handoff"),
+        )
+        normalized = self._require_short_plan_segment(
+            normalized, segment, artifact=f"authority-bound {artifact}",
+        )
+        self.db.add_run_event(
+            run_id, "success", "planning_packet_protocol_recovered",
+            "规划修复内容已在原事件范围内完成协议重封装并重新进入完整校验",
+            stage="planning", metadata={
+                "segment": segment,
+                "event_ids": expected,
+                "artifact": artifact,
+                "source_sha256": authority["source_sha256"],
+                "generated_packet_sha256": authority[
+                    "generated_packet_sha256"
+                ],
+                "normalized_sha256": hashlib.sha256(
+                    normalized.encode("utf-8"),
+                ).hexdigest(),
+            },
+        )
+        return normalized
 
     async def _repair_short_plan_adaptation_capacity_split(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
@@ -7817,12 +8185,16 @@ class WorkflowService:
                         "正式事件，完整事件权威已保留"
                     ) from exc
                 raise
-            block = self._normalize_generated_short_plan_segment(
-                repaired,
+            block = await self._normalize_generated_short_plan_segment_with_protocol_retry(
+                run_id, run_path, project, constraints, repaired,
                 segment=segment,
                 event_ids=owned,
                 current=source,
                 artifact="planning repair packet",
+                suffix=(
+                    f"-adaptation-segment-rebuild-{segment:02d}-attempt-{attempt}"
+                    f"-packet-{owned[0]}-{owned[-1]}"
+                ),
             )
             packet_checklists = {
                 event_id: obligation_by_id[event_id]
@@ -8228,12 +8600,17 @@ class WorkflowService:
                         f"规划第 {segment} 段已经具备精确证据锚点，"
                         "不能退回整段改写扩大修改范围"
                     )
-                block = self._normalize_generated_short_plan_segment(
-                    repaired,
+                block = await self._normalize_generated_short_plan_segment_with_protocol_retry(
+                    run_id, run_path, project, constraints, repaired,
                     segment=segment,
                     event_ids=event_ids,
                     current=current,
                     artifact="planning repair candidate",
+                    suffix=(
+                        f"-adaptation-segment-{segment:02d}-attempt-{attempt}"
+                        if mode == "targeted" else
+                        f"-adaptation-segment-rebuild-{segment:02d}-attempt-{attempt}"
+                    ),
                 )
                 contract_issues = self._short_plan_packet_contract_issues(
                     block,
@@ -8284,6 +8661,10 @@ class WorkflowService:
 
         original_plan = plan
         protocol_repairs = 0
+        current_route_failures: list[dict] = []
+        current_protocol_failures: list[dict] = []
+        current_semantic_candidates = 0
+        last_protocol_exception: GeneratedArtifactShapeError | None = None
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
         obligation_checklists = narrative_outline_event_obligations(
             outline_content,
@@ -8291,16 +8672,16 @@ class WorkflowService:
         outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
         context_sha256 = generation_context_sha256 or ""
 
-        def auto_bind_obligation_continuations(
+        def auto_repair_event_obligations(
             candidate: str,
             allowed_segments: set[int] | None = None,
         ) -> tuple[str, list[dict]]:
-            """Merge an unlabelled required response into its formal event.
+            """Apply only deterministic, event-owned obligation repairs.
 
-            This is a deterministic ownership repair, not a plot rewrite.  It
-            handles the common layout where a composite event's final response
-            is rendered as the next numbered item without repeating the event
-            ID.  Ambiguous items remain untouched for model repair.
+            Existing unlabelled continuations may be rebound to their unique
+            owner, and a missing obligation may be appended only from one exact
+            hash-bound formal excerpt. Ambiguous content remains untouched for
+            model repair; sibling events and segment boundaries never change.
             """
             current = candidate
             repairs: list[dict] = []
@@ -8317,10 +8698,16 @@ class WorkflowService:
                 repaired, segment_repairs = repair_planning_event_obligation_ownership(
                     block, event_ids, obligation_checklists,
                 )
-                if repaired == block or not segment_repairs:
+                completed, completion_repairs = (
+                    repair_planning_event_obligation_coverage(
+                        repaired, event_ids, obligation_checklists,
+                    )
+                )
+                segment_repairs = [*segment_repairs, *completion_repairs]
+                if completed == block or not segment_repairs:
                     continue
                 current = self._replace_short_plan_segment(
-                    current, segment_count, segment, repaired,
+                    current, segment_count, segment, completed,
                 )
                 segments = self._short_plan_segments(current, segment_count)
                 repairs.extend({"segment": segment, **item} for item in segment_repairs)
@@ -8458,6 +8845,23 @@ class WorkflowService:
             },
         )
         best_plan = plan
+        best_plan, initial_obligation_repairs = auto_repair_event_obligations(
+            best_plan,
+        )
+        if initial_obligation_repairs:
+            # The old checkpoint is bound to the pre-repair plan. Start a fresh
+            # review ledger; historical run events remain the audit trail.
+            seeded_state = None
+            self.db.add_run_event(
+                run_id, "success", "planning_event_obligation_completed_locally",
+                "已从正式大纲的唯一哈希义务补全缺失回应，并保持其他事件与段落边界不变",
+                stage="planning", metadata={
+                    "repairs": initial_obligation_repairs,
+                    "planning_sha256": hashlib.sha256(
+                        best_plan.encode("utf-8"),
+                    ).hexdigest(),
+                },
+            )
         pending_state = new_planning_recovery_state(
             outline_sha256=outline_sha256,
             generation_context_sha256=context_sha256,
@@ -8474,6 +8878,9 @@ class WorkflowService:
             )
             pending_state["semantic_attempts"] = int(
                 seeded_state.get("semantic_attempts") or 0
+            )
+            pending_state["candidate_generation_attempts"] = int(
+                seeded_state.get("candidate_generation_attempts") or 0
             )
             pending_state["resumed_recovery_sha256"] = hashlib.sha256(
                 json.dumps(
@@ -8503,6 +8910,9 @@ class WorkflowService:
             recovery_state["semantic_attempts"] = int(
                 seeded_state.get("semantic_attempts") or 0
             )
+            recovery_state["candidate_generation_attempts"] = int(
+                seeded_state.get("candidate_generation_attempts") or 0
+            )
             recovery_state["resumed_recovery_sha256"] = (
                 pending_state["resumed_recovery_sha256"]
             )
@@ -8510,6 +8920,10 @@ class WorkflowService:
 
         targeted_attempts: dict[tuple[int, ...], int] = {}
         rebuild_attempts: dict[tuple[int, ...], int] = {}
+        targeted_dispatches: dict[tuple[int, ...], int] = {}
+        rebuild_dispatches: dict[tuple[int, ...], int] = {}
+        targeted_generation_failures: dict[tuple[int, ...], int] = {}
+        rebuild_generation_failures: dict[tuple[int, ...], int] = {}
         while best_issues and not protocol_failure(best_issues):
             scope = recovery_scope(best_plan, best_issues)
             units = recovery_units(best_plan, best_issues)
@@ -8535,10 +8949,12 @@ class WorkflowService:
                 unit for unit in units
                 if unit not in forced_rebuild
                 if targeted_attempts.get(unit, 0) < 2
+                if targeted_generation_failures.get(unit, 0) < 2
             ]
             rebuildable = [
                 unit for unit in units
                 if rebuild_attempts.get(unit, 0) < 2
+                if rebuild_generation_failures.get(unit, 0) < 2
             ]
             if targetable:
                 minimum_attempts = min(
@@ -8550,15 +8966,15 @@ class WorkflowService:
                     if targeted_attempts.get(unit, 0) == minimum_attempts
                 )
                 mode = "targeted"
-                attempt = targeted_attempts.get(target_unit, 0) + 1
-                targeted_attempts[target_unit] = attempt
+                attempt = targeted_dispatches.get(target_unit, 0) + 1
+                targeted_dispatches[target_unit] = attempt
                 event_type = "planning_adaptation_targeted_repair"
                 message = "规划存在结构性偏移，正在只修正受影响的正式段"
             elif rebuildable:
                 target_unit = min(rebuildable)
                 mode = "rebuild"
-                attempt = rebuild_attempts.get(target_unit, 0) + 1
-                rebuild_attempts[target_unit] = attempt
+                attempt = rebuild_dispatches.get(target_unit, 0) + 1
+                rebuild_dispatches[target_unit] = attempt
                 event_type = "planning_adaptation_segment_rebuild"
                 message = "局部修正未继续收敛，正在依据正式事件合同重建受影响的完整段"
             else:
@@ -8594,11 +9010,23 @@ class WorkflowService:
                 ModelRoutesExhaustedError,
                 ValueError,
             ) as exc:
+                generation_failures = (
+                    targeted_generation_failures
+                    if mode == "targeted" else rebuild_generation_failures
+                )
+                generation_failures[target_unit] = (
+                    generation_failures.get(target_unit, 0) + 1
+                )
                 failure_class = classify_model_failure(exc)
                 repair_feedback = [
                     dict(item) for item in getattr(exc, "issues", [])
                     if isinstance(item, dict)
                 ]
+                protocol_exhausted = any(
+                    str(item.get("code") or "")
+                    == "planning_packet_protocol_exhausted"
+                    for item in repair_feedback
+                )
                 comparison = {
                     "improved": False,
                     "previous_issue_keys": sorted(planning_issue_keys(best_issues)),
@@ -8619,34 +9047,54 @@ class WorkflowService:
                     comparison=comparison,
                     source=f"{mode}-{attempt}-segments-{unit_label}",
                     accepted=False,
+                    counts_as_semantic=False,
                 )
-                if (
-                    failure_class != "normal_invalid_output"
-                    or isinstance(exc, GeneratedArtifactShapeError)
-                ):
-                    recovery_state.setdefault("execution_failures", []).append({
+                if protocol_exhausted:
+                    current_protocol_failures.append({
+                        "error": str(exc)[:500],
+                        "mode": mode,
+                        "attempt": attempt,
+                        "candidate_segments": list(target_unit),
+                        "issues": repair_feedback,
+                    })
+                    if isinstance(exc, GeneratedArtifactShapeError):
+                        last_protocol_exception = exc
+                if failure_class != "normal_invalid_output":
+                    failure_record = {
                         "failure_class": failure_class,
                         "error": str(exc)[:500],
                         "attempt": attempt,
                         "mode": mode,
                         "candidate_segment": target_segment,
                         "candidate_segments": list(target_unit),
+                    }
+                    recovery_state.setdefault("execution_failures", []).append({
+                        **failure_record,
                     })
+                    if failure_class in {
+                        "provider_rejection", "transport_interrupted",
+                    }:
+                        current_route_failures.append(failure_record)
                 write_planning_recovery(outputs, recovery_state, best_plan)
                 self.db.add_run_event(
                     run_id, "warning", "planning_candidate_rejected",
-                    "规划修复候选没有完整生成，已保留此前问题更少的最佳规划",
+                    (
+                        "规划修复候选的内容保持隔离，但协议重封装已耗尽；"
+                        "已保留此前问题更少的最佳规划"
+                        if protocol_exhausted else
+                        "规划修复候选没有完整生成，已保留此前问题更少的最佳规划"
+                    ),
                     stage="planning", metadata=comparison,
                 )
                 continue
 
-            candidate, ownership_repairs = auto_bind_obligation_continuations(
+            candidate, ownership_repairs = auto_repair_event_obligations(
                 candidate, set(target_unit),
             )
             if ownership_repairs:
                 self.db.add_run_event(
                     run_id, "info", "planning_event_obligation_auto_repaired",
-                    "已将修复候选中的连续回应并入所属正式事件后再做结构核对",
+                    "已在修复候选中完成确定性的事件义务归属或正式摘录补全，再做结构核对",
                     stage="planning", metadata={"repairs": ownership_repairs},
                 )
             best_segments_before = self._short_plan_segments(
@@ -8702,6 +9150,13 @@ class WorkflowService:
                     await evaluate(candidate, f"{mode}-{attempt}")
                 )
             if protocol_failure(candidate_issues):
+                generation_failures = (
+                    targeted_generation_failures
+                    if mode == "targeted" else rebuild_generation_failures
+                )
+                generation_failures[target_unit] = (
+                    generation_failures.get(target_unit, 0) + 1
+                )
                 comparison = {
                     "improved": False,
                     "previous_issue_keys": sorted(planning_issue_keys(best_issues)),
@@ -8722,7 +9177,15 @@ class WorkflowService:
                     comparison=comparison,
                     source=f"{mode}-{attempt}-segments-{unit_label}",
                     accepted=False,
+                    counts_as_semantic=False,
                 )
+                current_protocol_failures.append({
+                    "error": "planning candidate receipt protocol failed",
+                    "mode": mode,
+                    "attempt": attempt,
+                    "candidate_segments": list(target_unit),
+                    "issues": [dict(item) for item in candidate_issues],
+                })
                 write_planning_recovery(outputs, recovery_state, best_plan)
                 self.db.add_run_event(
                     run_id, "error", "planning_candidate_receipt_failed",
@@ -8733,6 +9196,13 @@ class WorkflowService:
                     },
                 )
                 continue
+            semantic_attempts = (
+                targeted_attempts if mode == "targeted" else rebuild_attempts
+            )
+            semantic_attempts[target_unit] = (
+                semantic_attempts.get(target_unit, 0) + 1
+            )
+            current_semantic_candidates += 1
             comparison = planning_candidate_comparison(
                 best_issues, candidate_issues,
                 changed_segments=set(changed_segments),
@@ -8800,6 +9270,10 @@ class WorkflowService:
                 best_issues = merged_candidate_issues
                 targeted_attempts = {}
                 rebuild_attempts = {}
+                targeted_dispatches = {}
+                rebuild_dispatches = {}
+                targeted_generation_failures = {}
+                rebuild_generation_failures = {}
                 write_planning_recovery(outputs, recovery_state, best_plan)
                 if comparison["newly_discovered_latent_issue_keys"]:
                     self.db.add_run_event(
@@ -8844,6 +9318,9 @@ class WorkflowService:
         recovery_state["best_issue_keys"] = sorted(planning_issue_keys(best_issues))
         write_planning_recovery(outputs, recovery_state, best_plan)
         semantic_repairs = int(recovery_state.get("semantic_attempts") or 0)
+        candidate_generation_attempts = int(
+            recovery_state.get("candidate_generation_attempts") or 0
+        )
         artifact = {
             "version": PLANNING_ADAPTATION_VERSION,
             "status": "failed" if issues else "ready",
@@ -8855,6 +9332,7 @@ class WorkflowService:
             "whole_story_receipt": whole_receipt,
             "protocol_repairs": protocol_repairs,
             "semantic_repairs": semantic_repairs,
+            "candidate_generation_attempts": candidate_generation_attempts,
             "execution_failures": list(
                 recovery_state.get("execution_failures") or []
             ),
@@ -8870,18 +9348,43 @@ class WorkflowService:
                 item for item in (recovery_state.get("execution_failures") or [])
                 if isinstance(item, dict)
             ]
-            if execution_failures:
+            if current_route_failures:
                 self.db.add_run_event(
                     run_id, "error", "planning_adaptation_unavailable",
-                    "规划语义问题尚未解决，修复调用不可用；已保留最佳规划和有效上游进度",
+                    "规划语义问题尚未解决，当前模型路由不可用；已保留最佳规划和有效上游进度",
                     stage="planning", metadata={
                         "issues": issues,
-                        "execution_failures": execution_failures,
+                        "execution_failures": current_route_failures,
+                        "historical_execution_failures": execution_failures,
                         "semantic_repairs": semantic_repairs,
                     },
                 )
                 raise PlanningRecoveryUnavailableError(
-                    issues, execution_failures,
+                    issues, current_route_failures,
+                )
+            if current_protocol_failures and current_semantic_candidates == 0:
+                self.db.add_run_event(
+                    run_id, "error", "planning_adaptation_receipt_failed",
+                    "本轮规划候选均在协议层失败；已保留最佳规划，语义修复预算未被消耗",
+                    stage="planning", metadata={
+                        "issues": issues,
+                        "protocol_failures": current_protocol_failures,
+                        "protocol_repairs": protocol_repairs,
+                        "semantic_repairs": semantic_repairs,
+                        "candidate_generation_attempts": (
+                            candidate_generation_attempts
+                        ),
+                    },
+                )
+                if last_protocol_exception is not None:
+                    raise last_protocol_exception
+                raise GeneratedArtifactShapeError(
+                    "planning packet protocol recovery exhausted",
+                    issues=[{
+                        "code": "planning_packet_protocol_exhausted",
+                        "message": "planning packet protocol recovery exhausted",
+                        "blocking": True,
+                    }],
                 )
             is_protocol = protocol_failure(issues)
             self.db.add_run_event(
@@ -8945,6 +9448,25 @@ class WorkflowService:
         planning recovery loop catch ``ValueError`` and retry only the current
         repair scope from the retained best plan.
         """
+        conflicts = [
+            identities
+            for _match, identities in cls._short_plan_heading_identities(value)
+            if len(identities) > 1
+        ]
+        if conflicts:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} has conflicting segment identity "
+                f"(expected={segment}, declared={conflicts})",
+                issues=[{
+                    "code": "planning_packet_segment_identity",
+                    "message": (
+                        f"{artifact} declares multiple distinct segment identities"
+                    ),
+                    "segment": segment,
+                    "declared_segments": conflicts,
+                    "blocking": True,
+                }],
+            )
         blocks = cls._short_plan_segments_for_range(value, segment, segment)
         if len(blocks) != 1:
             headings = [
@@ -8996,6 +9518,237 @@ class WorkflowService:
             if value:
                 values.append(value)
         return (values[0] if len(values) == 1 else "", len(values))
+
+    @classmethod
+    def _short_plan_field_role(cls, label: str) -> str | None:
+        """Map presentation-open field labels onto closed narrative roles."""
+        normalized = planning_protocol_comparison_view(label).casefold()
+        normalized = re.sub(r"^[#*_`\s]+|[#*_`\s]+$", "", normalized)
+        compact = re.sub(r"[^0-9a-z\u3400-\u9fff]+", "", normalized)
+        aliases = {
+            field: {
+                re.sub(
+                    r"[^0-9a-z\u3400-\u9fff]+", "",
+                    planning_protocol_comparison_view(value).casefold(),
+                )
+                for value in values
+            }
+            for field, values in cls.SHORT_PLAN_FIELD_ALIASES.items()
+        }
+        for field, values in aliases.items():
+            if any(compact.startswith(value) for value in values if value):
+                return field
+        if (
+            ("event" in compact or "事件" in compact)
+            and any(value in compact for value in (
+                "id", "identity", "ownership", "owned", "coverage", "covered",
+                "scope", "所有权", "归属", "覆盖", "负责",
+            ))
+        ):
+            return "event_id"
+        if (
+            ("outline" in compact or "大纲" in compact)
+            and any(value in compact for value in ("basis", "evidence", "依据", "权威"))
+        ):
+            return "outline"
+        if (
+            any(value in compact for value in ("段首", "段前", "入口", "entry", "opening"))
+            and any(value in compact for value in (
+                "承接", "接续", "状态", "要件", "完整", "handoff", "state",
+                "condition", "requirements", "prerequisites", "context",
+            ))
+        ):
+            return "opening"
+        if (
+            any(value in compact for value in ("段末", "出口", "exit", "handoff"))
+            and any(value in compact for value in (
+                "交接", "状态", "下一段", "entry", "state", "preserve",
+            ))
+        ):
+            return "handoff"
+        if any(value in compact for value in (
+            "约束", "核验", "自检", "检查", "禁止", "人物声纹", "设定",
+            "constraint", "validation", "checklist", "selfcheck", "character",
+        )):
+            return None
+        if (
+            any(value in compact for value in (
+                "本段事件", "段内事件", "本包事件", "叙事推进", "剧情推进", "因果链",
+                "segmentevent", "narrativeprogression", "causalchain",
+            ))
+            or (
+                any(value in compact for value in (
+                    "节拍", "beat", "事件序列", "eventsequence",
+                ))
+                and any(value in compact for value in (
+                    "因果", "时间轴", "顺序", "causal", "timeline", "sequence",
+                ))
+            )
+            or (
+                any(value in compact for value in ("段结构", "segmentstructure"))
+                and any(value in compact for value in ("事件", "event", "beat", "节拍"))
+            )
+        ):
+            return "event"
+        return None
+
+    @classmethod
+    def _short_plan_semantic_sections(
+        cls, segment: str, field: str,
+    ) -> list[str]:
+        """Return heading-owned field bodies using role concepts, not wrappers."""
+        comparison = cls._short_plan_comparison_view(segment)
+        hash_headings = list(re.finditer(
+            r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
+            comparison,
+        ))
+        wrapper_patterns = (
+            r"(?m)^[ ]{0,3}(?P<marks>\*\*|__)[ \t]*"
+            r"(?P<title>\S.*?)[ \t]*(?P=marks)[ \t]*$",
+            r"(?im)^[ ]{0,3}<(?P<marks>strong|b)>[ \t]*"
+            r"(?P<title>\S.*?)[ \t]*</(?P=marks)>[ \t]*$",
+        )
+        wrapped = [
+            match
+            for pattern in wrapper_patterns
+            for match in re.finditer(pattern, comparison)
+        ]
+        semantic = []
+        for match in [*hash_headings, *wrapped]:
+            title = match.group("title")
+            role = cls._short_plan_field_role(title)
+            if role != field:
+                continue
+            semantic.append(match)
+        semantic.sort(key=lambda match: match.start())
+        values: list[str] = []
+        for match in semantic:
+            title_start, title_end = match.span("title")
+            source_title = segment[title_start:title_end]
+            colon = re.search(r"[:：]", source_title)
+            inline = source_title[colon.end():].strip() if colon else ""
+            body_start = match.end()
+            if segment[body_start:body_start + 2] == "\r\n":
+                body_start += 2
+            elif body_start < len(segment) and segment[body_start] in "\r\n":
+                body_start += 1
+            body_end = len(segment)
+            if match in hash_headings:
+                level = len(match.group("marks"))
+                for heading in hash_headings:
+                    if heading.start() <= match.start():
+                        continue
+                    if len(heading.group("marks")) <= level:
+                        body_end = heading.start()
+                        break
+            else:
+                later = [
+                    candidate.start() for candidate in [*hash_headings, *wrapped]
+                    if candidate.start() > match.start()
+                ]
+                if later:
+                    body_end = min(later)
+            body = segment[body_start:body_end].strip()
+            value = "\n".join(part for part in (inline, body) if part).strip()
+            if value and value not in values:
+                values.append(value)
+        return values
+
+    @classmethod
+    def _short_plan_structural_event_spans(
+        cls, value: str,
+    ) -> list[tuple[str, int, int]]:
+        """Find event-owned title/list lines while excluding diagnostic prose."""
+        comparison = cls._short_plan_comparison_view(value)
+        matches: list[tuple[str, int, int]] = []
+        line_pattern = re.compile(
+            r"(?im)^[ \t]{0,3}(?:#{1,6}[ \t]+|[-+*][ \t]+|"
+            r"\d{1,3}[.)、）][ \t]+|(?:\*\*|__)[ \t]*)"
+            r"(?P<body>[^\r\n]+)$"
+        )
+        diagnostic_prefixes = (
+            "后续事件", "下一事件", "不得", "禁止", "未执行", "自检", "检查清单",
+            "核验要求", "核验清单", "约束", "later", "nextevent", "mustnot",
+            "forbid", "selfcheck", "checklist", "validationrule",
+        )
+        for match in line_pattern.finditer(comparison):
+            line = match.group("body").casefold()
+            compact = re.sub(r"\s+", "", line)
+            if compact.startswith(diagnostic_prefixes):
+                continue
+            occurrences = planning_event_id_occurrences(
+                comparison[match.start():match.end()], formal_only=True,
+            )
+            event_ids = list(dict.fromkeys(item[0] for item in occurrences))
+            if len(event_ids) != 1:
+                continue
+            matches.append((event_ids[0], match.start(), match.end()))
+        return matches
+
+    @classmethod
+    def _short_plan_structural_event_sequence(cls, value: str) -> list[str]:
+        sequence = [event_id for event_id, _start, _end in (
+            cls._short_plan_structural_event_spans(value)
+        )]
+        collapsed: list[str] = []
+        for event_id in sequence:
+            if not collapsed or collapsed[-1] != event_id:
+                collapsed.append(event_id)
+        return collapsed if len(collapsed) == len(set(collapsed)) else []
+
+    @classmethod
+    def _short_plan_structural_owned_event_ids(cls, segment: str) -> list[str]:
+        sequences = [
+            cls._short_plan_structural_event_sequence(value)
+            for value in cls._short_plan_semantic_sections(segment, "event")
+        ]
+        sequences = [value for value in sequences if value]
+        if not sequences:
+            return []
+        longest = max(sequences, key=len)
+
+        def subsequence(candidate: list[str], authority: list[str]) -> bool:
+            iterator = iter(authority)
+            return all(any(value == item for item in iterator) for value in candidate)
+
+        if any(not subsequence(candidate, longest) for candidate in sequences):
+            return []
+        equally_long = [candidate for candidate in sequences if len(candidate) == len(longest)]
+        return longest if all(candidate == longest for candidate in equally_long) else []
+
+    @classmethod
+    def _short_plan_structural_event_body(
+        cls, value: str, expected: list[str],
+    ) -> str:
+        spans = cls._short_plan_structural_event_spans(value)
+        sequence = cls._short_plan_structural_event_sequence(value)
+        if sequence != expected:
+            if len(expected) == 1 and not spans and value.strip():
+                body = remove_planning_event_ids(value, formal_only=True).strip()
+                return f"1. **正式事件**（{expected[0]}）：{body}"
+            return ""
+        grouped: dict[str, list[str]] = {event_id: [] for event_id in expected}
+        for index, (event_id, start, _line_end) in enumerate(spans):
+            if event_id not in grouped:
+                continue
+            end = spans[index + 1][1] if index + 1 < len(spans) else len(value)
+            piece = remove_planning_event_ids(
+                value[start:end], formal_only=True,
+            )
+            piece = re.sub(
+                r"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|[-+*][ \t]+|"
+                r"\d{1,3}[.)、）][ \t]+|(?:\*\*|__)[ \t]*)",
+                "", piece,
+            ).strip(" \t\r\n*_`：:（）()")
+            if piece:
+                grouped[event_id].append(piece)
+        if any(not grouped[event_id] for event_id in expected):
+            return ""
+        return "\n\n".join(
+            f"{index}. **正式事件**（{event_id}）："
+            + "\n\n".join(grouped[event_id])
+            for index, event_id in enumerate(expected, 1)
+        )
 
     @classmethod
     def _short_plan_variant_label_matches(
@@ -9107,9 +9860,9 @@ class WorkflowService:
         declared_value, declared_count = cls._short_plan_variant_label_value(
             value, cls.SHORT_PLAN_FIELD_ALIASES["event_id"], inline_only=True,
         )
-        declared_ids = [item.upper() for item in re.findall(
-            r"EV-[0-9A-F]{8}", declared_value, flags=re.IGNORECASE,
-        )]
+        declared_ids = planning_event_ids(
+            declared_value, formal_only=True,
+        )
         if declared_count != 1 or declared_ids != expected:
             issue = {
                 "code": "planning_packet_event_ownership",
@@ -9157,14 +9910,9 @@ class WorkflowService:
         # References to adjacent formal events are allowed in packet prose;
         # only the explicit ownership line controls packet identity. Remove
         # those references from the body before adding exactly one owner ID.
-        clean_body = event_body
-        for event_id in set(re.findall(
-            r"EV-[0-9A-F]{8}", clean_body, flags=re.IGNORECASE,
-        )):
-            clean_body = re.sub(
-                rf"{re.escape(event_id)}", "", clean_body,
-                flags=re.IGNORECASE,
-            )
+        clean_body = remove_planning_event_ids(
+            event_body, formal_only=True,
+        )
         clean_body = re.sub(
             r"(?m)^[ \t]{0,3}#{1,6}[ \t]+", "", clean_body,
         ).strip()
@@ -9190,7 +9938,7 @@ class WorkflowService:
     ) -> str:
         """Project harmless Markdown field variants into the canonical block."""
         expected = [str(event_id).strip().upper() for event_id in event_ids]
-        received = cls._short_plan_event_ids(block)
+        received = cls._short_plan_declared_event_ids(block)
         if received != expected or len(received) != len(set(received)):
             issue = {
                 "code": "planning_packet_event_ownership",
@@ -9213,10 +9961,33 @@ class WorkflowService:
 
         heading_counts: dict[str, int] = {}
         for field in ("opening", "event", "handoff"):
+            semantic_values = cls._short_plan_semantic_sections(block, field)
+            if field == "event" and semantic_values:
+                projected = [
+                    cls._short_plan_structural_event_body(value, expected)
+                    for value in semantic_values
+                ]
+                projected = [value for value in projected if value]
+                if projected:
+                    canonical[field] = max(
+                        projected,
+                        key=lambda value: len(re.sub(r"\s+", "", value)),
+                    )
+                    heading_counts[field] = 1
+                    continue
+            if semantic_values:
+                normalized_values = {
+                    re.sub(r"\s+", " ", value).strip(): value
+                    for value in semantic_values
+                }
+                heading_counts[field] = len(normalized_values)
+                if len(normalized_values) == 1:
+                    canonical[field] = next(iter(normalized_values.values()))
+                    continue
             if canonical[field]:
                 continue
             value, count = cls._short_plan_heading_field(block, field)
-            heading_counts[field] = count
+            heading_counts[field] = max(heading_counts.get(field, 0), count)
             canonical[field] = re.sub(
                 r"(?m)^[ \t]{0,3}#{1,6}[ \t]+", "", value,
             ).strip()
@@ -9306,65 +10077,456 @@ class WorkflowService:
         return payload
 
     @staticmethod
-    def _short_plan_json_event_narrative(item: dict) -> str:
-        """Project descriptive event fields into one auditable event body."""
+    def _short_plan_json_key(value: object) -> str:
+        return re.sub(
+            r"[^0-9a-z_]+", "_",
+            unicodedata.normalize("NFKC", str(value or ""))
+            .strip().casefold().replace("-", "_").replace(" ", "_"),
+        ).strip("_")
+
+    @classmethod
+    def _short_plan_json_unknown_control_fields(
+        cls, payload: object,
+    ) -> list[str]:
+        """Return unsafe machine-control fields from an open JSON wrapper.
+
+        Container names are deliberately open. Machine operations are not:
+        this parser may project narrative evidence, but it must never infer a
+        patch, mutation, command, or review decision from an unknown schema.
+        Such packets re-enter the existing canonical-contract retry path.
+        """
+        control_fields = {
+            "command", "commands", "control", "control_action", "mutation",
+            "op", "operation", "operations", "patch", "patch_operation",
+            "patches", "repair_kind", "repair_operation", "review_decision",
+        }
+        control_values = {
+            "accept", "append", "apply", "delete", "discard", "insert",
+            "merge", "move", "preserve", "reject", "remove", "replace",
+            "restore", "retry", "rewrite", "skip", "stop",
+        }
+        found: list[str] = []
+
+        def looks_like_control(value: object) -> bool:
+            if isinstance(value, dict):
+                keys = {
+                    cls._short_plan_json_key(key) for key in value
+                }
+                return bool(keys & control_values) or any(
+                    looks_like_control(child) for child in value.values()
+                    if isinstance(child, (dict, list))
+                )
+            if isinstance(value, list):
+                return any(looks_like_control(child) for child in value)
+            if isinstance(value, str):
+                return cls._short_plan_json_key(value) in control_values
+            return False
+
+        def walk(node: object, path: tuple[str, ...]) -> None:
+            if isinstance(node, dict):
+                for raw_key, child in node.items():
+                    key = cls._short_plan_json_key(raw_key)
+                    child_path = path + (str(raw_key),)
+                    if key in control_fields and looks_like_control(child):
+                        found.append(".".join(child_path))
+                    walk(child, child_path)
+            elif isinstance(node, list):
+                for index, child in enumerate(node):
+                    walk(child, path + (str(index),))
+
+        walk(payload, ())
+        return found
+
+    @classmethod
+    def _short_plan_json_declared_segments(
+        cls, payload: object,
+    ) -> set[int | None]:
+        numeric_fields = {
+            "segment", "segment_id", "segment_index", "segment_number",
+            "segment_order",
+        }
+        label_fields = {
+            "segment_identity", "segment_label", "segment_title",
+        }
+        declared: set[int | None] = set()
+
+        def walk(node: object) -> None:
+            if isinstance(node, dict):
+                for raw_key, child in node.items():
+                    key = cls._short_plan_json_key(raw_key)
+                    if key in numeric_fields | label_fields:
+                        number = parse_segment_number(
+                            str(child), allow_scene=False,
+                        )
+                        if number is None and key in numeric_fields:
+                            try:
+                                number = int(unicodedata.normalize(
+                                    "NFKC", str(child),
+                                ))
+                            except (TypeError, ValueError):
+                                number = None
+                        # A free-form segment label is descriptive metadata.
+                        # It may reinforce a numeric Runtime identity, but an
+                        # unnumbered creative title must not create a blocking
+                        # ``None`` identity. Numeric control fields remain
+                        # closed and therefore retain invalid declarations.
+                        if number is not None or key in numeric_fields:
+                            declared.add(number)
+                    walk(child)
+            elif isinstance(node, list):
+                for child in node:
+                    walk(child)
+
+        walk(payload)
+        return declared
+
+    @classmethod
+    def _short_plan_json_explicit_event_sequences(
+        cls, payload: object,
+    ) -> list[list[str]]:
+        ownership_fields = {"event_ids", "packet_event_ids"}
+        sequences: list[list[str]] = []
+
+        def walk(node: object) -> None:
+            if isinstance(node, dict):
+                for raw_key, child in node.items():
+                    key = cls._short_plan_json_key(raw_key)
+                    if key in ownership_fields:
+                        if isinstance(child, str):
+                            raw_items = planning_event_ids(
+                                child, formal_only=True,
+                            )
+                        elif isinstance(child, list):
+                            raw_items = []
+                            for item in child:
+                                if not isinstance(item, str):
+                                    continue
+                                item_ids = planning_event_ids(
+                                    item, formal_only=True,
+                                )
+                                if len(item_ids) == 1:
+                                    raw_items.extend(item_ids)
+                        else:
+                            raw_items = []
+                        sequences.append(list(raw_items))
+                    walk(child)
+            elif isinstance(node, list):
+                for child in node:
+                    walk(child)
+
+        walk(payload)
+        return sequences
+
+    @classmethod
+    def _short_plan_json_event_narrative(cls, item: dict) -> str:
+        """Project schema-independent descriptive evidence into one body.
+
+        Stable ownership comes from the event ID, not a provider-selected
+        wrapper or field name. Known concise fields are retained first for
+        readability, then nested human-readable evidence is appended without
+        identifiers, hashes, boundary state, or machine-control metadata.
+        """
         pieces: list[str] = []
-        for key in (
-            "narrative_summary", "event_body", "summary", "causal_plan",
-            "resolution", "causal_trigger", "approach",
-        ):
-            value = str(item.get(key) or "").strip()
-            if value:
-                pieces.append(value)
-                break
-        beats = item.get("beats")
-        if isinstance(beats, list):
-            for beat in beats:
-                if not isinstance(beat, dict):
-                    continue
-                for key in (
-                    "function", "causal_trigger", "core_content", "exit_state",
-                    "causal_plan", "resolution", "approach",
-                ):
-                    value = str(beat.get(key) or "").strip()
-                    if value:
-                        pieces.append(value)
-        obligations = (
-            item.get("obligations_covered")
-            or item.get("obligations_delivered")
-            or item.get("obligations_fulfilled")
+        preferred_fields = (
+            "narrative_summary", "event_body", "description", "summary",
+            "causal_plan", "resolution", "causal_trigger", "approach",
         )
-        if isinstance(obligations, list):
-            for obligation in obligations:
-                if not isinstance(obligation, dict):
-                    continue
-                value = str(
-                    obligation.get("how_covered")
-                    or obligation.get("how")
-                    or obligation.get("approach")
-                    or ""
-                ).strip()
-                if value:
+        for key in preferred_fields:
+            value = item.get(key)
+            if isinstance(value, str) and value.strip():
+                pieces.append(value.strip())
+                break
+
+        identity_fields = {
+            "block_id", "event_id", "event_ids", "id", "obligation_id",
+            "obligation_ids", "packet_event_ids", "segment", "segment_id",
+            "segment_identity", "segment_index", "segment_label",
+            "segment_number", "segment_order", "segment_title", "source_sha256",
+        }
+        boundary_fields = {
+            "entry_conditions", "entry_handoff", "entry_state", "exit_conditions",
+            "entry_boundary", "exit_boundary", "exit_handoff", "exit_state",
+            "handoff", "handoff_in",
+            "handoff_out", "handoff_to_next_segment", "opening",
+            "segment_entry_condition", "segment_exit_condition",
+        }
+        descriptor_only_fields = {
+            "event_label", "kind", "kinds", "label", "participants_used",
+            "required_participants", "identity_stable_participants",
+        }
+
+        def collect(node: object, path: tuple[str, ...]) -> None:
+            if isinstance(node, dict):
+                for raw_key, child in node.items():
+                    key = cls._short_plan_json_key(raw_key)
+                    if (
+                        key in identity_fields
+                        or key in boundary_fields
+                        or key.endswith("_sha256")
+                        or key.endswith("_hash")
+                    ):
+                        continue
+                    collect(child, path + (key,))
+            elif isinstance(node, list):
+                for child in node:
+                    collect(child, path)
+            elif isinstance(node, str):
+                value = node.strip()
+                if not value or (path and path[-1] in descriptor_only_fields):
+                    return
+                if (
+                    planning_event_ids(value, formal_only=True)
+                    and planning_protocol_comparison_view(value).strip().upper()
+                    == planning_event_ids(value, formal_only=True)[0]
+                ):
+                    return
+                if re.fullmatch(r"[0-9a-f]{32,64}", value, re.IGNORECASE):
+                    return
+                meaningful = re.sub(r"[^0-9A-Za-z\u3400-\u9fff]+", "", value)
+                if len(meaningful) >= 6:
                     pieces.append(value)
-                for key in ("kinds", "participants_used", "required_participants"):
-                    detail = obligation.get(key)
-                    if isinstance(detail, list) and detail:
-                        pieces.append("、".join(str(item) for item in detail))
-        checks = item.get("adjacent_checks")
-        if isinstance(checks, dict):
-            for key in ("causal_alignment_note", "notes", "handoff_note"):
-                value = str(checks.get(key) or "").strip()
-                if value:
-                    pieces.append(value)
-        narrative = "\n".join(pieces).strip()
-        for event_id in set(re.findall(
-            r"EV-[0-9A-F]{8}", narrative, flags=re.IGNORECASE,
-        )):
-            narrative = re.sub(
-                rf"{re.escape(event_id)}", "", narrative,
-                flags=re.IGNORECASE,
-            )
+
+        collect(item, ())
+        unique: list[str] = []
+        seen: set[str] = set()
+        for piece in pieces:
+            normalized = re.sub(r"\s+", " ", piece).strip()
+            if normalized and normalized not in seen:
+                seen.add(normalized)
+                unique.append(piece.strip())
+        narrative = remove_planning_event_ids(
+            "\n".join(unique).strip(), formal_only=True,
+        )
         return re.sub(r"\n{3,}", "\n\n", narrative).strip()
+
+    @classmethod
+    def _short_plan_json_embedded_markdown_candidate(
+        cls, payload: object, *, segment: int, event_ids: list[str],
+        current: str, artifact: str,
+    ) -> str | None:
+        """Extract one complete Markdown segment nested in an open JSON wrapper.
+
+        Providers sometimes return a protocol envelope whose narrative artifact
+        is stored as a string under an arbitrary container key. The wrapper
+        controls identity, while the embedded Markdown remains subject to the
+        canonical segment parser. Distinct valid candidates are ambiguous and
+        are rejected instead of choosing one by traversal order.
+        """
+        expected = [str(value or "").strip().upper() for value in event_ids]
+        candidates: dict[str, str] = {}
+
+        def unwrap(value: str) -> str:
+            source = str(value or "").lstrip("\ufeff").strip()
+            if source.startswith("<!--") and source.endswith("-->"):
+                source = source[4:-3].strip()
+            lines = source.splitlines()
+            if len(lines) >= 3:
+                opening = lines[0].strip()
+                closing = lines[-1].strip()
+                is_fenced = (
+                    opening.startswith("~~~")
+                    or opening.startswith(chr(96) * 3)
+                ) and (
+                    closing.startswith("~~~")
+                    or closing.startswith(chr(96) * 3)
+                )
+                if is_fenced:
+                    source = "\n".join(lines[1:-1]).strip()
+            return source
+
+        def visit(node: object) -> None:
+            if isinstance(node, str):
+                source = unwrap(node)
+                if len(source) < 80 or not cls._short_plan_headings(source):
+                    return
+                try:
+                    block = cls._require_short_plan_segment(
+                        source, segment, artifact=f"{artifact} embedded Markdown",
+                    )
+                    normalized = cls._generated_short_plan_markdown_projection(
+                        block,
+                        segment=segment,
+                        event_ids=expected,
+                        current=current,
+                        artifact=f"{artifact} embedded Markdown",
+                    )
+                except GeneratedArtifactShapeError:
+                    return
+                if (
+                    cls._short_plan_declared_event_ids(normalized) == expected
+                    and all(
+                        cls._short_plan_field(normalized, field)
+                        for field in cls.SHORT_PLAN_FIELD_ALIASES
+                    )
+                ):
+                    digest = hashlib.sha256(
+                        normalized.encode("utf-8"),
+                    ).hexdigest()
+                    candidates.setdefault(digest, normalized)
+                return
+            if isinstance(node, dict):
+                for child in node.values():
+                    visit(child)
+            elif isinstance(node, list):
+                for child in node:
+                    visit(child)
+
+        visit(payload)
+        if len(candidates) > 1:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet contains multiple distinct embedded Markdown segments",
+                issues=[{
+                    "code": "planning_packet_embedded_markdown_ambiguous",
+                    "segment": segment,
+                    "event_ids": expected,
+                    "candidate_count": len(candidates),
+                    "blocking": True,
+                }],
+            )
+        return next(iter(candidates.values()), None)
+
+    @classmethod
+    def _short_plan_json_event_candidates(
+        cls, payload: object, *, artifact: str,
+    ) -> list[tuple[str, str, str, dict]]:
+        """Discover leaf-most event records by identity, not container name."""
+
+        def exact_event_id(value: object) -> str:
+            candidate = planning_protocol_comparison_view(value).strip().upper()
+            event_ids = planning_event_ids(candidate, formal_only=True)
+            return event_ids[0] if len(event_ids) == 1 and candidate == event_ids[0] else ""
+
+        def visit(
+            node: object, *, inherited_id: str = "",
+        ) -> list[tuple[str, str, str, dict]]:
+            if isinstance(node, list):
+                records: list[tuple[str, str, str, dict]] = []
+                for child in node:
+                    records.extend(visit(child))
+                return records
+            if not isinstance(node, dict):
+                return []
+
+            direct_ids = {
+                exact_event_id(node.get(key))
+                for key in ("event_id", "id") if node.get(key) is not None
+            } - {""}
+            if len(direct_ids) > 1:
+                raise GeneratedArtifactShapeError(
+                    f"{artifact} JSON event object has conflicting identities"
+                )
+            direct_id = next(iter(direct_ids), "")
+            if inherited_id and direct_id and inherited_id != direct_id:
+                raise GeneratedArtifactShapeError(
+                    f"{artifact} JSON event mapping conflicts with its child identity"
+                )
+            owner_id = inherited_id or direct_id
+            descendants: list[tuple[str, str, str, dict]] = []
+            for raw_key, child in node.items():
+                mapped_id = exact_event_id(raw_key)
+                descendants.extend(visit(
+                    child, inherited_id=mapped_id,
+                ))
+
+            narrative = cls._short_plan_json_event_narrative(node)
+            meaningful = re.sub(
+                r"[^0-9A-Za-z\u3400-\u9fff]+", "", narrative,
+            )
+            descendant_ids = {record[0] for record in descendants}
+            if owner_id and len(meaningful) >= 12 and owner_id not in descendant_ids:
+                label = str(
+                    node.get("label") or node.get("event_label") or owner_id
+                ).strip()
+                return [(owner_id, label, narrative, node)] + descendants
+            return descendants
+
+        return visit(payload)
+
+    @classmethod
+    def _short_plan_json_boundary_value(
+        cls, payload: object, event_items: list[dict], *, role: str,
+        artifact: str,
+    ) -> str:
+        if role == "opening":
+            aliases = {
+                "entry_boundary": 0, "entry_handoff": 0, "handoff_in": 0,
+                "segment_entry_condition": 0, "opening": 0,
+                "entry_state": 1, "entry_conditions": 1,
+            }
+            preferred = event_items[:1]
+        else:
+            aliases = {
+                "exit_boundary": 0, "exit_handoff": 0, "handoff_out": 0,
+                "handoff_to_next_segment": 0, "segment_exit_condition": 0,
+                "handoff": 0, "exit_state": 1, "exit_conditions": 1,
+            }
+            preferred = event_items[-1:]
+
+        def boundary_text(value: object) -> str:
+            """Project a complete boundary value without discarding structure.
+
+            Providers legitimately return entry/exit state as a mapping of
+            character, location, knowledge, or promise state.  The state is
+            narrative authority, not a free-form label, so preserve the full
+            value in a deterministic JSON representation.  Scalars other than
+            non-empty strings are not accepted as state evidence.
+            """
+            if isinstance(value, str):
+                return value.strip()
+            if isinstance(value, (dict, list)) and value:
+                return json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+            return ""
+
+        def candidates(node: object) -> list[tuple[int, str]]:
+            found: list[tuple[int, str]] = []
+
+            def walk(current: object) -> None:
+                if isinstance(current, dict):
+                    for raw_key, child in current.items():
+                        key = cls._short_plan_json_key(raw_key)
+                        if key in aliases:
+                            text = boundary_text(child)
+                            if text:
+                                found.append((aliases[key], text))
+                        walk(child)
+                elif isinstance(current, list):
+                    for child in current:
+                        walk(child)
+
+            walk(node)
+            return found
+
+        preferred_found: list[tuple[int, str]] = []
+        for item in preferred:
+            preferred_found.extend(candidates(item))
+        found = preferred_found
+        if not preferred_found or min(
+            rank for rank, _value in preferred_found
+        ) > 0:
+            global_found = candidates(payload)
+            if global_found and (
+                not preferred_found
+                or min(rank for rank, _value in global_found)
+                < min(rank for rank, _value in preferred_found)
+            ):
+                found = global_found
+        if not found:
+            return ""
+        best_rank = min(rank for rank, _value in found)
+        values: list[str] = []
+        for rank, value in found:
+            if rank == best_rank and value not in values:
+                values.append(value)
+        if len(values) != 1:
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet has ambiguous {role} state"
+            )
+        return values[0]
 
     @classmethod
     def _short_plan_beam_summary_event_body(
@@ -9399,11 +10561,7 @@ class WorkflowService:
             }
             raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
 
-        body_ids = [
-            match.group(0).upper() for match in re.finditer(
-                r"EV-[0-9A-F]{8}", source_body, flags=re.IGNORECASE,
-            )
-        ]
+        body_ids = planning_event_ids(source_body, formal_only=True)
         pieces: list[str] = []
         for event_id, _label, narrative in normalized_events:
             if len(expected) == 1 and not body_ids:
@@ -9414,12 +10572,7 @@ class WorkflowService:
                 source_piece = cls._short_plan_event_owned_body(
                     current, [event_id],
                 )
-                owned_ids = [
-                    match.group(0).upper() for match in re.finditer(
-                        r"EV-[0-9A-F]{8}", source_piece,
-                        flags=re.IGNORECASE,
-                    )
-                ]
+                owned_ids = planning_event_ids(source_piece, formal_only=True)
                 if owned_ids != [event_id]:
                     issue = {
                         "code": "planning_packet_summary_authority_missing",
@@ -9491,7 +10644,7 @@ class WorkflowService:
                 str(event_id).strip().upper() for event_id in event_ids
             ]
             if (
-                cls._short_plan_event_ids(canonical_block) == expected
+                cls._short_plan_declared_event_ids(canonical_block) == expected
                 and all(
                     cls._short_plan_field(canonical_block, field)
                     for field in cls.SHORT_PLAN_FIELD_ALIASES
@@ -9548,163 +10701,75 @@ class WorkflowService:
                 except ValueError:
                     raise markdown_error
 
-        is_event_array = isinstance(payload, list)
-        is_beam_summary = False
-        beam_has_complete_narrative = False
-        raw_events = payload if is_event_array else payload.get(
-            "events_owned", payload.get("events")
-        )
-        if isinstance(payload, dict) and (
-            raw_events is None or raw_events == []
+        expected = [str(event_id).strip().upper() for event_id in event_ids]
+        unsafe_controls = cls._short_plan_json_unknown_control_fields(payload)
+        if unsafe_controls:
+            issue = {
+                "code": "planning_packet_unknown_control_field",
+                "message": (
+                    f"{artifact} JSON packet contains unknown machine-control "
+                    f"fields: {unsafe_controls}"
+                ),
+                "segment": segment,
+                "event_ids": expected,
+                "fields": unsafe_controls,
+                "blocking": True,
+            }
+            raise GeneratedArtifactShapeError(issue["message"], issues=[issue])
+
+        declared_numbers = cls._short_plan_json_declared_segments(payload)
+        if isinstance(payload, list) and any(
+            cls._short_plan_json_declared_segments(item) != {segment}
+            for item in payload
         ):
-            beam_plan = payload.get("beam_plan")
-            if isinstance(beam_plan, dict) and beam_plan:
-                is_beam_summary = True
-                projected_events: list[dict] = []
-                for event_id, details in beam_plan.items():
-                    if not isinstance(details, dict):
-                        raise GeneratedArtifactShapeError(
-                            f"{artifact} JSON beam plan contains a non-object event"
-                        )
-                    projected = dict(details)
-                    projected.setdefault("event_id", event_id)
-                    projected.setdefault("label", event_id)
-                    projected_events.append(projected)
-                raw_events = projected_events
-                beam_has_complete_narrative = all(
-                    bool(str(
-                        item.get("event_body")
-                        or item.get("narrative_summary")
-                        or ""
-                    ).strip())
-                    for item in projected_events
-                )
-        if not isinstance(raw_events, list) or not raw_events:
-            raise GeneratedArtifactShapeError(
-                f"{artifact} JSON packet has no owned events"
-            )
-
-        def declared_segment_numbers(item: dict) -> set[int]:
-            label = str(
-                item.get("segment_label")
-                or item.get("segment_title")
-                or ""
-            ).strip()
-            label_number = (
-                parse_segment_number(label, allow_scene=False) if label else None
-            )
-            raw_order = item.get(
-                "segment_order",
-                item.get("segment", item.get("segment_index")),
-            )
-            try:
-                declared_order = (
-                    int(raw_order) if raw_order not in (None, "") else None
-                )
-            except (TypeError, ValueError):
-                declared_order = None
-            return {
-                number for number in (label_number, declared_order)
-                if number is not None
-            }
-
-        if is_event_array:
-            per_event_numbers = [
-                declared_segment_numbers(item) for item in raw_events
-            ]
-            declared_numbers = {
-                number for numbers in per_event_numbers for number in numbers
-            }
-            if any(numbers != {segment} for numbers in per_event_numbers):
-                declared_numbers = {None}
-        else:
-            packet_ids = payload.get("packet_event_ids", payload.get("event_ids"))
-            if packet_ids is not None:
-                if isinstance(packet_ids, str):
-                    packet_ids = re.findall(
-                        r"EV-[0-9A-F]{8}", packet_ids, flags=re.IGNORECASE,
-                    )
-                if not isinstance(packet_ids, list):
-                    packet_ids = []
-                normalized_packet_ids = [
-                    str(item).strip().upper() for item in packet_ids
-                ]
-                expected_packet_ids = [
-                    str(item).strip().upper() for item in event_ids
-                ]
-                if normalized_packet_ids != expected_packet_ids:
-                    raise GeneratedArtifactShapeError(
-                        f"{artifact} JSON packet changed explicit event ownership "
-                        f"(expected={expected_packet_ids}, received={normalized_packet_ids})"
-                    )
-            declared_numbers = declared_segment_numbers(payload)
+            declared_numbers = {None}
         if not declared_numbers or declared_numbers != {segment}:
             raise GeneratedArtifactShapeError(
                 f"{artifact} JSON packet has ambiguous segment identity "
-                f"(expected={segment}, declared={sorted(declared_numbers)})"
+                f"(expected={segment}, declared={sorted(map(str, declared_numbers))})"
             )
-        normalized_events: list[tuple[str, str, str]] = []
-        for item in raw_events:
-            if not isinstance(item, dict):
+
+        for declared_ids in cls._short_plan_json_explicit_event_sequences(payload):
+            if declared_ids != expected:
                 raise GeneratedArtifactShapeError(
-                    f"{artifact} JSON packet contains a non-object event"
+                    f"{artifact} JSON packet changed explicit event ownership "
+                    f"(expected={expected}, received={declared_ids})"
                 )
-            event_id = str(
-                item.get("event_id") or item.get("id") or ""
-            ).strip().upper()
-            label_value = str(item.get("label") or event_id).strip()
-            narrative = cls._short_plan_json_event_narrative(item)
-            if not event_id or not narrative:
-                raise GeneratedArtifactShapeError(
-                    f"{artifact} JSON packet event lacks identity or narrative body"
-                )
-            normalized_events.append((event_id, label_value, narrative))
+
+        event_records = cls._short_plan_json_event_candidates(
+            payload, artifact=artifact,
+        )
+        if not event_records:
+            embedded = cls._short_plan_json_embedded_markdown_candidate(
+                payload,
+                segment=segment,
+                event_ids=expected,
+                current=current,
+                artifact=artifact,
+            )
+            if embedded is not None:
+                return embedded
+            raise GeneratedArtifactShapeError(
+                f"{artifact} JSON packet has no owned events with narrative evidence"
+            )
+        normalized_events = [
+            (event_id, label, narrative)
+            for event_id, label, narrative, _item in event_records
+        ]
         owned = [item[0] for item in normalized_events]
-        expected = [str(event_id).strip().upper() for event_id in event_ids]
         if owned != expected or len(owned) != len(set(owned)):
             raise GeneratedArtifactShapeError(
                 f"{artifact} JSON packet changed ordered event ownership "
                 f"(expected={expected}, received={owned})"
             )
 
-        first_event = raw_events[0]
-        last_event = raw_events[-1]
-        if is_event_array:
-            opening = str(
-                first_event.get("entry_handoff")
-                or first_event.get("segment_entry_condition")
-                or first_event.get("entry_conditions")
-                or first_event.get("entry_state")
-                or ""
-            ).strip()
-            handoff = str(
-                last_event.get("exit_handoff")
-                or last_event.get("segment_exit_condition")
-                or last_event.get("exit_conditions")
-                or last_event.get("exit_state")
-                or ""
-            ).strip()
-        else:
-            opening = str(
-                payload.get("segment_entry_condition")
-                or payload.get("opening")
-                or payload.get("entry_state")
-                or payload.get("entry_handoff")
-                or payload.get("handoff_in")
-                or first_event.get("entry_conditions")
-                or first_event.get("entry_state")
-                or ""
-            ).strip()
-            handoff = str(
-                payload.get("segment_exit_condition")
-                or payload.get("handoff")
-                or payload.get("exit_state")
-                or payload.get("exit_handoff")
-                or payload.get("handoff_out")
-                or last_event.get("exit_conditions")
-                or last_event.get("exit_state")
-                or ""
-            ).strip()
+        event_items = [item for _id, _label, _narrative, item in event_records]
+        opening = cls._short_plan_json_boundary_value(
+            payload, event_items, role="opening", artifact=artifact,
+        )
+        handoff = cls._short_plan_json_boundary_value(
+            payload, event_items, role="handoff", artifact=artifact,
+        )
         if not opening or not handoff:
             raise GeneratedArtifactShapeError(
                 f"{artifact} JSON packet lacks complete entry or exit state"
@@ -9717,37 +10782,28 @@ class WorkflowService:
             )
         )
         event_body = projected_event_body
-        if is_beam_summary and not beam_has_complete_narrative:
-            retention_source = cls._short_plan_retention_source(
-                current, segment=segment, event_ids=expected,
+        retention_source = cls._short_plan_retention_source(
+            current, segment=segment, event_ids=expected,
+        )
+        provisional = cls._render_short_plan_repair_packet(
+            current,
+            segment=segment,
+            event_ids=expected,
+            event_body=projected_event_body,
+            opening=opening,
+            handoff=handoff,
+        )
+        collapsed = any(
+            item.get("code") == "event_body_collapsed"
+            for item in planning_event_body_retention_issues(
+                retention_source, provisional, expected,
             )
+        )
+        if collapsed:
             event_body = cls._short_plan_beam_summary_event_body(
                 retention_source, normalized_events, expected,
                 artifact=artifact,
             )
-        elif is_beam_summary:
-            retention_source = cls._short_plan_retention_source(
-                current, segment=segment, event_ids=expected,
-            )
-            provisional = cls._render_short_plan_repair_packet(
-                current,
-                segment=segment,
-                event_ids=expected,
-                event_body=projected_event_body,
-                opening=opening,
-                handoff=handoff,
-            )
-            collapsed = any(
-                item.get("code") == "event_body_collapsed"
-                for item in planning_event_body_retention_issues(
-                    retention_source, provisional, expected,
-                )
-            )
-            if collapsed:
-                event_body = cls._short_plan_beam_summary_event_body(
-                    retention_source, normalized_events, expected,
-                    artifact=artifact,
-                )
         normalized = cls._render_short_plan_repair_packet(
             current,
             segment=segment,
@@ -9792,7 +10848,7 @@ class WorkflowService:
             })
             return issues
         block = blocks[0]
-        received = cls._short_plan_event_ids(block)
+        received = cls._short_plan_declared_event_ids(block)
         if received != expected or len(received) != len(set(received)):
             add({
                 "code": "planning_packet_event_ownership",
@@ -12435,13 +13491,117 @@ class WorkflowService:
     @classmethod
     def _short_plan_headings(cls, plan: str) -> list[tuple[re.Match, int | None]]:
         comparison = cls._short_plan_comparison_view(plan)
-        headings: list[tuple[re.Match, int | None]] = [
-            (match, parse_segment_number(match.group("title"), allow_scene=False))
-            for match in re.finditer(
-                r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
-                comparison,
-            )
+        identities = cls._short_plan_heading_identities(plan)
+        identity_by_start = {
+            match.start(): numbers for match, numbers in identities
+        }
+        hash_identities = [
+            (match, numbers) for match, numbers in identities
+            if str(match.group("marks")).startswith("#")
         ]
+        hash_matches = list(re.finditer(
+            r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
+            comparison,
+        ))
+        headings: list[tuple[re.Match, int | None]] = []
+        if hash_identities:
+            root_level = min(
+                len(match.group("marks"))
+                for match, _numbers in hash_identities
+            )
+            for match in hash_matches:
+                level = len(match.group("marks"))
+                if level > root_level:
+                    continue
+                numbers = identity_by_start.get(match.start(), [])
+                number = (
+                    numbers[0]
+                    if level == root_level and len(numbers) == 1 else None
+                )
+                headings.append((match, number))
+        else:
+            # Standalone bold/HTML segment headings have no Markdown level.
+            # Keep ATX headings as legacy boundaries so a trailing appendix
+            # cannot leak into the last formal segment.
+            headings.extend((match, None) for match in hash_matches)
+
+        headings.extend(
+            (match, numbers[0] if len(numbers) == 1 else None)
+            for match, numbers in identities
+            if not str(match.group("marks")).startswith("#")
+        )
+        deduplicated = {
+            match.start(): (match, number) for match, number in headings
+        }
+        return sorted(deduplicated.values(), key=lambda item: item[0].start())
+
+    @classmethod
+    def _short_plan_heading_identities(
+        cls, plan: str,
+    ) -> list[tuple[re.Match, list[int]]]:
+        """Return root heading identities while preserving Markdown hierarchy."""
+        comparison = cls._short_plan_comparison_view(plan)
+        token = r"\d{1,2}|十二|十一|十|九|八|七|六|五|四|三|二|两|一"
+        identity = re.compile(
+            rf"(?:"
+            rf"(?:第\s*)?(?:{token})\s*(?:个\s*)?"
+            rf"(?:(?:写作|规划)?(?:分)?段(?:落)?)"
+            rf"|(?:(?:写作|规划)?(?:分)?段(?:落)?)\s*(?:{token})"
+            rf"|(?:planning\s+)?segment\s*[-_]?\s*\d{{1,2}}"
+            rf")",
+            re.IGNORECASE,
+        )
+        reversed_prefix = (
+            r"(?:段规划|规划段|分段规划|写作段规划|"
+            r"plan(?:ning)?\s+segment|segment\s+plan)\s*[:：/]?\s*"
+        )
+
+        def numbers(title: str) -> list[int]:
+            matches = list(identity.finditer(title))
+            if not matches:
+                return []
+            first = matches[0]
+            prefix = re.sub(
+                r"^[*_`\s]+|[*_`\s]+$", "", title[:first.start()],
+            )
+            root = not prefix or bool(re.fullmatch(
+                reversed_prefix,
+                prefix,
+                flags=re.IGNORECASE,
+            ))
+            if not root:
+                return []
+            result: list[int] = []
+            for match in matches:
+                identity_text = match.group(0)
+                number = parse_segment_number(
+                    identity_text, allow_scene=False,
+                )
+                if number is None:
+                    english_identity = re.search(
+                        r"(?i)\bsegment\s*[-_]?\s*(?P<number>\d{1,2})\b",
+                        identity_text,
+                    )
+                    if english_identity:
+                        number = int(english_identity.group("number"))
+                if number is not None and number not in result:
+                    result.append(number)
+            return result
+
+        hash_matches = list(re.finditer(
+            r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
+            comparison,
+        ))
+        hash_values = [
+            (match, numbers(match.group("title"))) for match in hash_matches
+            if numbers(match.group("title"))
+        ]
+        if hash_values:
+            minimum_level = min(len(match.group("marks")) for match, _value in hash_values)
+            return [
+                item for item in hash_values
+                if len(item[0].group("marks")) == minimum_level
+            ]
         wrapped_patterns = (
             r"(?m)^[ ]{0,3}(?P<marks>\*\*|__)[ \t]*"
             r"(?P<title>\S.*?)[ \t]*(?P=marks)"
@@ -12450,22 +13610,21 @@ class WorkflowService:
             r"(?P<title>\S.*?)[ \t]*</(?P=marks)>"
             r"(?P<tail>[ \t]*(?:[:：·•—–-][^\r\n]*)?)[ \t]*$",
         )
+        wrapped_values: list[tuple[re.Match, list[int]]] = []
         for pattern in wrapped_patterns:
             for match in re.finditer(pattern, comparison):
                 title = match.group("title") + str(match.group("tail") or "")
-                number = parse_segment_number(title, allow_scene=False)
-                if number is not None:
-                    headings.append((match, number))
-        return sorted(headings, key=lambda item: item[0].start())
+                values = numbers(title)
+                if values:
+                    wrapped_values.append((match, values))
+        return sorted(wrapped_values, key=lambda item: item[0].start())
 
     @classmethod
     def _short_plan_comparison_view(cls, text: str) -> str:
         """Normalize width for labels and IDs while preserving source offsets."""
-        result = []
-        for character in str(text or ""):
-            normalized = unicodedata.normalize("NFKC", character)
-            result.append(normalized if len(normalized) == 1 else character)
-        return cls._mask_nonsemantic_markdown("".join(result))
+        return cls._mask_nonsemantic_markdown(
+            planning_protocol_comparison_view(text),
+        )
 
     @classmethod
     def _short_plan_field(cls, segment: str, field: str) -> str:
@@ -12621,13 +13780,60 @@ class WorkflowService:
     @classmethod
     def _short_plan_event_ids(cls, segment: str) -> list[str]:
         field = cls._short_plan_field(segment, "event_id")
-        comparison = cls._short_plan_comparison_view(field or segment)
-        return list(dict.fromkeys(
-            value.upper() for value in re.findall(
-                r"EV-[0-9a-f]{8}", comparison,
-                flags=re.IGNORECASE,
+        return planning_event_ids(field or segment, formal_only=True)
+
+    @classmethod
+    def _short_plan_declared_event_ids(cls, segment: str) -> list[str]:
+        """Return only event IDs declared as packet ownership.
+
+        A capacity packet can mention neighbouring event IDs in its prose. The
+        general ``_short_plan_event_ids`` helper intentionally remains broad
+        for legacy parsing and diagnostics, but merge ownership must be closed
+        under composition: body references cannot turn into claimed events.
+        Prefer the explicit event-ID field and accept a fallback only when the
+        entire packet contains one unambiguous ID. Otherwise return an empty
+        declaration so the merge fails closed and requests a canonical retry.
+        """
+        declared = cls._short_plan_field(segment, "event_id")
+        if not declared:
+            heading_value, heading_count = cls._short_plan_heading_field(
+                segment, "event_id",
             )
-        ))
+            if heading_count == 1:
+                declared = heading_value
+        if declared:
+            ids = planning_event_ids(declared, formal_only=True)
+            if ids:
+                return ids
+
+        structural_ids = cls._short_plan_structural_owned_event_ids(segment)
+        if structural_ids:
+            return structural_ids
+
+        # A complete packet may declare ownership on each event title rather
+        # than in one standalone field (for example ``### 第一拍（EV-...）``).
+        # Only heading/list lines inside the owned-event field are eligible;
+        # prose references in handoffs or narrative paragraphs remain
+        # descriptive and cannot claim a neighbouring event.
+        event_body = cls._short_plan_field(segment, "event")
+        if not event_body:
+            event_body, event_heading_count = cls._short_plan_heading_field(
+                segment, "event",
+            )
+            if event_heading_count != 1:
+                event_body = ""
+        if event_body:
+            declared_from_titles: list[str] = []
+            for event_id, _start, _end in cls._short_plan_structural_event_spans(
+                event_body,
+            ):
+                if event_id not in declared_from_titles:
+                    declared_from_titles.append(event_id)
+            if declared_from_titles:
+                return declared_from_titles
+
+        all_ids = cls._short_plan_event_ids(segment)
+        return all_ids if len(all_ids) == 1 else []
 
     @classmethod
     def _draft_segment_findings(
@@ -16881,13 +18087,7 @@ class WorkflowService:
 
     @staticmethod
     def _semantic_owner_event_ids(value: str) -> list[str]:
-        return list(dict.fromkeys(
-            match.group(0).upper()
-            for match in re.finditer(
-                r"(?<![A-Z0-9_-])EV-[A-Z0-9_-]+(?![A-Z0-9_-])",
-                str(value or ""), flags=re.IGNORECASE,
-            )
-        ))
+        return planning_event_ids(value)
 
     @classmethod
     def _project_authority_text(
@@ -17173,7 +18373,8 @@ class WorkflowService:
                      capacity_splitter: Callable[[dict], object] | None = None,
                      story_skeleton_override: str | None = None,
                      bounded_protocol_output: bool = False,
-                     scoped_creative_output: bool = False) -> str:
+                     scoped_creative_output: bool = False,
+                     structured_contract: StructuredArtifactContract | None = None) -> str:
         if bounded_protocol_output and scoped_creative_output:
             raise ValueError(
                 "a model call cannot use protocol and creative output budgets together"
@@ -17525,8 +18726,42 @@ class WorkflowService:
                     output_source_characters, fallback_effective_ceiling or 1,
                 )
             output_limit_expanded_once = False
+            structured_route_available = False
+            if structured_contract is not None and isinstance(
+                self.gateway, ModelGateway,
+            ):
+                structured_route_available = any(
+                    capability_satisfies(
+                        capability, StructuredOutputRequirement.STRICT,
+                    )
+                    for capability in self.gateway.configured_structured_capabilities(
+                        gateway_role, include_capability_roster=True,
+                    )
+                )
+                if not structured_route_available:
+                    self.db.add_run_event(
+                        run_id,
+                        "warning",
+                        "structured_output_plain_fallback",
+                        "当前第三方模型路由未声明严格结构化能力，已使用 Runtime 控制字段的安全文本模式",
+                        stage=stage,
+                        metadata={
+                            "contract": structured_contract.name,
+                            "role": gateway_role,
+                        },
+                    )
             try:
-                if allow_tools and hasattr(self.gateway, "complete_with_tools"):
+                if structured_route_available:
+                    result = await self.gateway.complete_structured(
+                        gateway_role,
+                        system,
+                        user,
+                        structured_contract,
+                        max_output_tokens=output_budget,
+                        fallback_max_output_tokens=fallback_budget,
+                        allow_capability_roster=True,
+                    )
+                elif allow_tools and hasattr(self.gateway, "complete_with_tools"):
                     toolbox = StoryToolbox(project, self.memory)
                     result = await self.gateway.complete_with_tools(
                         gateway_role, system, user, toolbox,
@@ -17767,7 +19002,16 @@ class WorkflowService:
                             or result.receipt.get("fallback_used")
                             or result.receipt.get("configured_fallback_direct")
                         )
-                        if used_fallback and hasattr(
+                        if structured_route_available:
+                            result = await self.gateway.complete_structured(
+                                gateway_role,
+                                system,
+                                user,
+                                structured_contract,
+                                max_output_tokens=retry_budget,
+                                fallback_max_output_tokens=retry_budget,
+                            )
+                        elif used_fallback and hasattr(
                             self.gateway, "complete_configured_fallback"
                         ):
                             result = await self.gateway.complete_configured_fallback(
