@@ -8,3 +8,4 @@ dist/
 build/
 data/
 .worktrees/
+.codex-full-pytest.*
