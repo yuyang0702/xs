@@ -7,6 +7,8 @@ import re
 import unicodedata
 from typing import Any
 
+from novel_flywheel.narrative_ir import StoryClaim
+
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _EVENT_ID = re.compile(r"EV-[0-9A-F]{8}")
@@ -38,6 +40,7 @@ class StateAssertion:
     state: str
     produced_by: tuple[str, ...] = ()
     inherited_from: str = ""
+    claim: StoryClaim | None = None
 
 
 @dataclass(frozen=True)
@@ -145,7 +148,9 @@ def _producer_ids(value: object, field: str) -> tuple[str, ...]:
     return tuple(result)
 
 
-def _state_assertions(value: object, field: str) -> tuple[StateAssertion, ...]:
+def _state_assertions(
+    value: object, field: str, *, version: int = 4,
+) -> tuple[StateAssertion, ...]:
     if not isinstance(value, list) or not value:
         raise ValueError(f"{field} must be a non-empty list")
     assertions = []
@@ -158,6 +163,11 @@ def _state_assertions(value: object, field: str) -> tuple[StateAssertion, ...]:
                 item.get("produced_by"), f"{field}[{index}].produced_by",
             ),
             inherited_from=str(item.get("inherited_from") or "").strip(),
+            claim=(
+                StoryClaim.model_validate(item["claim"])
+                if version >= 5 and isinstance(item.get("claim"), dict)
+                else None
+            ),
         ))
     return tuple(assertions)
 
@@ -166,8 +176,8 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
     if not isinstance(value, dict):
         raise ValueError("execution manifest must be a JSON object")
     version = value.get("version")
-    if version not in {2, 3, 4}:
-        raise ValueError("execution manifest version must be 2, 3 or 4")
+    if version not in {2, 3, 4, 5}:
+        raise ValueError("execution manifest version must be 2, 3, 4 or 5")
     raw_beats = value.get("beats")
     raw_segments = value.get("segments")
     if not isinstance(raw_beats, list) or not raw_beats:
@@ -247,9 +257,11 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
             ),
             entry_state=_state_assertions(
                 item.get("entry_state"), f"segments[{index}].entry_state",
+                version=version,
             ),
             exit_state=_state_assertions(
                 item.get("exit_state"), f"segments[{index}].exit_state",
+                version=version,
             ),
             previous_exit_sha256=_sha256(
                 item.get("previous_exit_sha256"),
@@ -294,11 +306,16 @@ def _state_assertion_payload(assertion: StateAssertion, *, version: int) -> dict
             assertion.produced_by[0] if len(assertion.produced_by) == 1
             else ", ".join(assertion.produced_by)
         )
-    return {
+    payload = {
         "state": assertion.state,
         "produced_by": produced_by,
         "inherited_from": assertion.inherited_from,
     }
+    if version >= 5:
+        payload["claim"] = (
+            assertion.claim.model_dump(mode="json") if assertion.claim else None
+        )
+    return payload
 
 
 def _json_compatible(value: Any) -> Any:
@@ -369,7 +386,7 @@ def bind_previous_exit_hashes(value: dict[str, Any]) -> dict[str, Any]:
             if previous_exit else ""
         )
         previous_exit = _state_assertions(
-            item.get("exit_state"), "segments.exit_state",
+            item.get("exit_state"), "segments.exit_state", version=version,
         )
     result["segments"] = segments
     return result
@@ -1193,7 +1210,7 @@ def merge_execution_manifest_fragments(
 def legacy_execution_index_requires_rebuild(value: object) -> bool:
     return not (
         isinstance(value, dict)
-        and value.get("version") in {3, 4}
+        and value.get("version") in {3, 4, 5}
         and isinstance(value.get("beats"), list)
         and bool(value.get("beats"))
         and isinstance(value.get("segments"), list)

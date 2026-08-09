@@ -11,10 +11,12 @@ dependencies = [
   "keyring>=25,<26",
   "pypdf>=5,<6",
   "crewai>=1.15,<2",
+  "markdown-it-py>=3,<5",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "hypothesis>=6,<7",
   "pytest>=8,<9",
   "pytest-asyncio>=0.25,<1",
   "respx>=0.22,<1",

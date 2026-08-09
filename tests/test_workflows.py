@@ -34,6 +34,7 @@ from novel_flywheel.planning_adaptation import (
 from novel_flywheel.planning_recovery import (
     new_planning_recovery_state,
     planning_candidate_comparison,
+    read_planning_recovery,
     record_planning_candidate,
     write_planning_recovery,
 )
@@ -1585,6 +1586,14 @@ async def test_stage_logs_explicit_model_fallback(tmp_path) -> None:
     assert event["metadata"]["provider_id"] == "backup-provider"
     assert event["metadata"]["model_id"] == "backup-model"
     assert "primary_error" in event["metadata"]
+    with db.connect() as connection:
+        checkpoint = connection.execute(
+            "SELECT status, output_sha256 FROM workflow_node_checkpoints "
+            "WHERE run_id=? AND node_key=?",
+            ("fallback-log", "polish"),
+        ).fetchone()
+    assert checkpoint["status"] == "generated_complete"
+    assert len(checkpoint["output_sha256"]) == 64
 
 
 @pytest.mark.asyncio
@@ -1686,6 +1695,14 @@ async def test_stage_rejects_truncated_output_limited_receipt_without_commit(tmp
     assert not (
         run_path / "outputs" / "review-truncated-at-limit.md"
     ).exists()
+    with db.connect() as connection:
+        checkpoint = connection.execute(
+            "SELECT status, output_sha256 FROM workflow_node_checkpoints "
+            "WHERE run_id=? AND node_key=?",
+            (run_id, "review-truncated-at-limit"),
+        ).fetchone()
+    assert checkpoint["status"] == "failed"
+    assert checkpoint["output_sha256"] == ""
 
 
 def test_interrupted_formal_promotion_rolls_back_when_story_state_not_committed(
@@ -4778,6 +4795,44 @@ def test_short_plan_fields_accept_markdown_and_ignore_appendix_event_ids() -> No
     )
 
 
+def test_production_short_plan_field_tables_cross_the_local_gate() -> None:
+    """Regression for production run 4e79a0f402ad49a486a0122dafe24bc4."""
+    plan = "\n\n".join((
+        "### 第 1 段：假扮千金，熬过审视\n\n"
+        "| 字段 | 内容 |\n|---|---|\n"
+        "| **事件ID** | EV-11111111 |\n"
+        "| **大纲依据** | 开篇钩子、目标驱动、初入沈府 |\n"
+        "| **段首承接** | 无——全篇开端，花穗身无分文。 |\n"
+        "| **本段事件** | 花穗被错认为沈家三小姐，为赏银决定冒充三天；"
+        "入府后遭到审视，又发现接人的银两在她入府前已经支出。 |\n"
+        "| **段末交接** | 花穗决定查清真相，身份核验人员正在路上。 |\n\n"
+        "**场景原子节拍：**\n\n1. 花穗进入沈府并发现异常。" + "甲" * 100,
+        "### 第 2 段：查清真相\n\n"
+        "| 字段 | 内容 |\n|---|---|\n"
+        "| **事件ID** | EV-22222222 |\n"
+        "| **大纲依据** | 主动调查、关系推进、真相揭晓 |\n"
+        "| **段首承接** | 花穗已经决定调查，身份核验仍在进行。 |\n"
+        "| **本段事件** | 花穗借助府中人情网查清账目，并在公开对质中"
+        "揭开幕后安排，保持自己的行动主体性。 |\n"
+        "| **段末交接** | 真相已经公开，人物关系和确认结局保持一致。 |\n\n"
+        "**场景原子节拍：**\n\n1. 花穗完成调查并作出选择。" + "乙" * 100,
+    ))
+
+    segments = WorkflowService._short_plan_segments(plan, 2)
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {}, plan, 2,
+    )
+
+    assert len(segments) == 2
+    assert WorkflowService._short_plan_field(segments[0], "event_id") == (
+        "EV-11111111"
+    )
+    assert "花穗被错认为" in WorkflowService._short_plan_field(
+        segments[0], "event",
+    )
+    assert issues == []
+
+
 def test_short_plan_gate_does_not_promote_nested_section_headings_to_events() -> None:
     outline = (
         "## 第 1 段：开端\n\n"
@@ -5172,6 +5227,178 @@ async def test_local_planning_recovery_resumes_the_lowest_issue_candidate(
     )
     assert [item["accepted"] for item in recovery["candidates"]] == [True, True]
     assert recovery["status"] == "local_ready"
+
+
+@pytest.mark.asyncio
+async def test_table_plan_repairs_event_ownership_per_segment_without_whole_rewrite(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Table ownership recovery", mode="short", genre="suspense",
+        premise="A field-table plan must recover by segment.", target_words=6000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    db.create_run("table-recovery", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "table-recovery"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_ids = ["EV-11111111", "EV-22222222", "EV-33333333"]
+    state = {"outline": {"events": [
+        {"id": event_id, "label": f"正式事件{index}"}
+        for index, event_id in enumerate(event_ids, 1)
+    ]}}
+
+    def table_block(number: int, owned: list[str], fill: str) -> str:
+        return (
+            f"### 第 {number} 段：规划段{number}\n\n"
+            "| 字段 | 内容 |\n|---|---|\n"
+            f"| **事件ID** | {', '.join(owned)} |\n"
+            f"| **大纲依据** | 正式段{number} |\n"
+            f"| **段首承接** | 第{number}段入口状态保持。 |\n"
+            f"| **本段事件** | 第{number}段已有完整创作素材，但缺少逐事件机器绑定。 |\n"
+            f"| **段末交接** | 第{number}段出口状态保持。 |\n\n"
+            f"**场景原子节拍：**\n\n{fill}" + chr(0x4e00 + number) * 120
+        )
+
+    original = "\n\n".join((
+        table_block(1, event_ids[:2], "人物调查并取得线索。"),
+        table_block(2, event_ids[2:], "人物公开真相并作出选择。"),
+    ))
+    prompts: list[str] = []
+
+    async def fake_stage(*args, **kwargs):
+        prompt = args[5]
+        prompts.append(prompt)
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in prompt:
+            return json.dumps({
+                "core_goal": "按已验收规划完成调查并公开真相",
+                "opening": {"pressure": "线索有限", "anomaly": "身份有误"},
+                "cycles": [
+                    {
+                        "obstacle": "调查受阻", "effort": "主角核对线索",
+                        "result": "取得第一项结果", "state_change": "掌握新信息",
+                    },
+                    {
+                        "obstacle": "对手阻挠", "effort": "主角公开证据",
+                        "result": "真相得到确认", "state_change": "关系与目标改变",
+                    },
+                ],
+                "accidents": [], "reversal": {},
+                "ending": "主角完成选择并保留后续行动入口",
+                "question_chain": "线索如何指向真相",
+                "relationship_arc": "合作建立",
+                "covered_event_ids": event_ids,
+            }, ensure_ascii=False)
+        match = re.search(
+            r"EXPECTED EVENT IDS:\n(?P<ids>\[[^\n]+\])", prompt,
+        )
+        assert match is not None
+        owned = json.loads(match.group("ids"))
+        return json.dumps({"events": [
+            {
+                "event_id": event_id,
+                "narrative": (
+                    f"人物主动完成 {event_id} 的行动，遭遇阻力后取得结果，"
+                    "并保持既定入口、出口、视角和人物关系。"
+                ),
+            }
+            for event_id in owned
+        ]}, ensure_ascii=False)
+
+    service._stage = fake_stage
+    recovered = await service._recover_short_plan_local_gate(
+        "table-recovery", run_path, project, "constraints", "brief", state,
+        original, 2, 5000, generation_context_sha256="table-context",
+    )
+
+    recovered_segments = WorkflowService._short_plan_segments(recovered, 2)
+    # Segment 2 owns only one event and already has an independently
+    # executable body, so the ownership validator must leave it byte-identical.
+    assert len(prompts) == 1
+    assert all("SHORT_PLAN_EVENT_REALIZATION_RECOVERY_V3" in item for item in prompts)
+    assert all("LOCAL RECOVERY ATTEMPT" not in item for item in prompts)
+    assert WorkflowService._short_plan_issues(project, state, recovered, 2) == []
+    assert "第1段入口状态保持" in recovered_segments[0]
+    assert "第2段出口状态保持" in recovered_segments[1]
+    assert "EV-11111111" in WorkflowService._short_plan_field(
+        recovered_segments[0], "event",
+    )
+    assert recovered_segments[1] == WorkflowService._short_plan_segments(
+        original, 2,
+    )[1]
+    causal_chain = await service._ensure_short_causal_chain(
+        "table-recovery", run_path, project, "constraints", recovered,
+        state["outline"]["events"], None,
+    )
+    assert causal_chain["covered_event_ids"] == event_ids
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+
+
+@pytest.mark.asyncio
+async def test_event_ownership_exhaustion_preserves_plan_without_whole_rewrite(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Ownership budget", mode="short", genre="mystery",
+        premise="Local recovery must retain the protected plan.", target_words=6000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    run_id = "ownership-budget"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_ids = ["EV-11111111", "EV-22222222", "EV-33333333"]
+    state = {"outline": {"events": [
+        {"id": event_id, "label": event_id} for event_id in event_ids
+    ]}}
+    def table_block(number: int, owned: list[str]) -> str:
+        return (
+            f"### 第 {number} 段：规划段{number}\n\n"
+            "| 字段 | 内容 |\n|---|---|\n"
+            f"| 事件ID | {', '.join(owned)} |\n"
+            f"| 大纲依据 | 正式段{number} |\n"
+            f"| 段首承接 | 第{number}段入口状态保持。 |\n"
+            f"| 本段事件 | 第{number}段已有完整创作素材，但缺少逐事件机器绑定。 |\n"
+            f"| 段末交接 | 第{number}段出口状态保持。 |\n\n"
+            "场景节拍：" + "人物持续行动、遭遇阻力、取得结果并形成下一步。" * 40
+        )
+
+    original = "\n\n".join((
+        table_block(1, event_ids[:2]), table_block(2, event_ids[2:]),
+    ))
+    calls: list[int] = []
+
+    async def fail_segment(*args, **kwargs):
+        calls.append(int(kwargs["attempt"]))
+        raise GeneratedArtifactShapeError("invalid event realization")
+
+    async def forbid_whole_stage(*args, **kwargs):
+        raise AssertionError("whole-plan fallback must not run")
+
+    service._repair_short_plan_local_event_segment = fail_segment
+    service._stage = forbid_whole_stage
+
+    with pytest.raises(GeneratedArtifactShapeError, match="分段恢复尚未收敛"):
+        await service._recover_short_plan_local_gate(
+            run_id, run_path, project, "constraints", "brief", state,
+            original, 2, 5000, generation_context_sha256="ownership-context",
+        )
+
+    assert calls == [1, 2]
+    recovery = read_planning_recovery(run_path / "outputs")
+    assert recovery is not None and recovery[1] == original
+    event = next(
+        item for item in db.list_run_events(run_id)
+        if item["event_type"] == "planning_event_ownership_recovery_exhausted"
+    )
+    assert event["metadata"]["whole_plan_fallback_used"] is False
 
 
 def test_draft_findings_keep_underlength_blocking_without_guessing_unknown_locations() -> None:

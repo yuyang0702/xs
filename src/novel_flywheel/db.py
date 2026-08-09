@@ -385,6 +385,25 @@ CREATE TABLE IF NOT EXISTS model_output_observations(
   transport_complete INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS workflow_node_checkpoints(
+  run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  node_key TEXT NOT NULL,
+  authority_sha256 TEXT NOT NULL,
+  input_sha256 TEXT NOT NULL,
+  output_sha256 TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL,
+  checkpoint_version INTEGER NOT NULL DEFAULT 2,
+  validation_stage TEXT NOT NULL DEFAULT 'transport',
+  attempt INTEGER NOT NULL DEFAULT 1,
+  route_fingerprint TEXT NOT NULL DEFAULT '',
+  next_node TEXT NOT NULL DEFAULT '',
+  payload_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(run_id, node_key, input_sha256)
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_node_checkpoints_resume
+  ON workflow_node_checkpoints(run_id, node_key, authority_sha256, status);
 CREATE INDEX IF NOT EXISTS idx_market_entries_work
   ON market_entries(work_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_market_entries_snapshot
@@ -460,6 +479,33 @@ class Database:
                     connection.execute(
                         f"ALTER TABLE market_works ADD COLUMN {name} {declaration}"
                     )
+            checkpoint_columns = {
+                row["name"] for row in connection.execute(
+                    "PRAGMA table_info(workflow_node_checkpoints)"
+                )
+            }
+            if "checkpoint_version" not in checkpoint_columns:
+                connection.execute(
+                    "ALTER TABLE workflow_node_checkpoints "
+                    "ADD COLUMN checkpoint_version INTEGER NOT NULL DEFAULT 1"
+                )
+            if "validation_stage" not in checkpoint_columns:
+                connection.execute(
+                    "ALTER TABLE workflow_node_checkpoints "
+                    "ADD COLUMN validation_stage TEXT NOT NULL DEFAULT 'transport'"
+                )
+            connection.execute(
+                "UPDATE workflow_node_checkpoints "
+                "SET validation_stage='promoted' "
+                "WHERE checkpoint_version=1 AND status='validated'"
+            )
+            connection.execute(
+                "UPDATE workflow_node_checkpoints SET checkpoint_version=2 "
+                "WHERE checkpoint_version<2"
+            )
+            connection.execute(
+                "UPDATE schema_version SET version=2 WHERE version<2"
+            )
 
     def _backup_before_story_state_upgrade(self) -> None:
         if not self.path.is_file() or self.path.stat().st_size == 0:
@@ -486,6 +532,104 @@ class Database:
         with self.connect() as connection:
             rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
             return {row[0] for row in rows}
+
+    def save_workflow_node_checkpoint(
+        self, *, run_id: str, node_key: str, authority_sha256: str,
+        input_sha256: str, output_sha256: str, status: str,
+        route_fingerprint: str = "", next_node: str = "",
+        validation_stage: str | None = None,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Persist one idempotent node envelope without promoting story data."""
+        from novel_flywheel.workflow_state import (
+            CheckpointEnvelope,
+            checkpoint_stage_rank,
+        )
+
+        with self.connect() as connection:
+            effective_validation_stage = validation_stage or (
+                "promoted" if status == "validated" else "transport"
+            )
+            row = connection.execute(
+                "SELECT * FROM workflow_node_checkpoints "
+                "WHERE run_id=? AND node_key=? AND input_sha256=?",
+                (run_id, node_key, input_sha256),
+            ).fetchone()
+            attempt = int(row["attempt"]) + 1 if row else 1
+            envelope = CheckpointEnvelope.model_validate({
+                "run_id": run_id,
+                "node_key": node_key,
+                "authority_sha256": authority_sha256,
+                "input_sha256": input_sha256,
+                "output_sha256": output_sha256,
+                "status": status,
+                "validation_stage": effective_validation_stage,
+                "attempt": attempt,
+                "route_fingerprint": route_fingerprint,
+                "next_node": next_node,
+                "payload": payload or {},
+            })
+            if row and row["status"] == "validated" and (
+                row["authority_sha256"] != authority_sha256
+                or row["output_sha256"] != output_sha256
+            ):
+                raise ValueError("validated workflow checkpoint conflict")
+            if row and checkpoint_stage_rank(
+                effective_validation_stage,
+            ) < checkpoint_stage_rank(
+                row["validation_stage"],
+            ) and status not in {"failed", "stale"}:
+                raise ValueError("workflow checkpoint validation stage regression")
+            connection.execute(
+                """INSERT INTO workflow_node_checkpoints
+                (run_id, node_key, authority_sha256, input_sha256, output_sha256,
+                 status, checkpoint_version, validation_stage, attempt,
+                 route_fingerprint, next_node, payload_json,
+                 created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                ON CONFLICT(run_id, node_key, input_sha256) DO UPDATE SET
+                authority_sha256=excluded.authority_sha256,
+                output_sha256=excluded.output_sha256,
+                status=excluded.status,
+                checkpoint_version=excluded.checkpoint_version,
+                validation_stage=excluded.validation_stage,
+                attempt=excluded.attempt,
+                route_fingerprint=excluded.route_fingerprint,
+                next_node=excluded.next_node,
+                payload_json=excluded.payload_json,
+                updated_at=datetime('now')""",
+                (
+                    run_id, node_key, authority_sha256, input_sha256,
+                    output_sha256, status, envelope.version,
+                    envelope.validation_stage.value, attempt, route_fingerprint,
+                    next_node, json.dumps(payload or {}, ensure_ascii=False),
+                ),
+            )
+        return envelope.model_dump(mode="json")
+
+    def load_workflow_node_checkpoint(
+        self, *, run_id: str, node_key: str, authority_sha256: str,
+        input_sha256: str, statuses: tuple[str, ...] = ("validated",),
+        min_validation_stage: str = "promoted",
+    ) -> dict[str, Any] | None:
+        placeholders = ",".join("?" for _ in statuses)
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM workflow_node_checkpoints "
+                "WHERE run_id=? AND node_key=? AND authority_sha256=? "
+                "AND input_sha256=? AND status IN (" + placeholders + ")",
+                (run_id, node_key, authority_sha256, input_sha256, *statuses),
+            ).fetchone()
+        if row is None:
+            return None
+        from novel_flywheel.workflow_state import checkpoint_stage_rank
+        if checkpoint_stage_rank(row["validation_stage"]) < checkpoint_stage_rank(
+            min_validation_stage,
+        ):
+            return None
+        result = dict(row)
+        result["payload"] = json.loads(result.pop("payload_json"))
+        return result
 
     def save_provider(
         self,

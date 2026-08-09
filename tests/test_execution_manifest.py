@@ -161,14 +161,44 @@ def test_v2_manifest_hash_omits_v3_optional_fields_for_saved_receipt_compatibili
         ):
                 beat.pop(field)
     for segment in old_payload["segments"]:
-        for assertion in segment["entry_state"] + segment["exit_state"]:
-            producers = assertion["produced_by"]
-            assertion["produced_by"] = producers[0] if producers else ""
+            for assertion in segment["entry_state"] + segment["exit_state"]:
+                producers = assertion["produced_by"]
+                assertion["produced_by"] = producers[0] if producers else ""
+                assertion.pop("claim")
     expected = hashlib.sha256(json.dumps(
         old_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
 
     assert execution_manifest_sha256(manifest) == expected
+
+
+def test_v5_state_assertion_round_trips_a_typed_narrative_claim() -> None:
+    payload = manifest_payload()
+    payload["version"] = 5
+    for segment in payload["segments"]:
+        for assertion in segment["entry_state"] + segment["exit_state"]:
+            produced_by = assertion.get("produced_by")
+            assertion["produced_by"] = [produced_by] if produced_by else []
+    payload["segments"][0]["exit_state"][0]["claim"] = {
+        "claim_id": "identity-revealed",
+        "subject": "花穗",
+        "predicate": "identity.actual",
+        "value": "花穗",
+        "perspective": "public",
+        "status": "known",
+        "transition": "reveal",
+        "authority": "formal",
+        "event_id": "EV-8E4BBA17",
+        "event_order": 2,
+        "evidence": "花穗公开坦白",
+    }
+
+    manifest = parse_execution_manifest(payload)
+    serialized = execution_manifest_payload(manifest)
+
+    claim = manifest.segments[0].exit_state[0].claim
+    assert claim is not None and claim.predicate == "identity.actual"
+    assert serialized["segments"][0]["exit_state"][0]["claim"]["claim_id"] == "identity-revealed"
 
 
 def test_exit_state_cannot_be_produced_by_a_beat_owned_by_the_next_segment() -> None:

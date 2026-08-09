@@ -6,6 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from novel_flywheel.storage import atomic_write
+from novel_flywheel.recovery_engine import (
+    RecoveryCandidate,
+    RecoveryIssue,
+    ValidationStage,
+    compare_recovery_candidates,
+)
 
 
 PLANNING_RECOVERY_VERSION = 1
@@ -87,6 +93,50 @@ def planning_issue_segments(
     return {value for value in affected if value in segment_event_ids}
 
 
+def planning_issue_stage(issue: dict) -> ValidationStage:
+    """Classify planning findings by the ordered validation boundary."""
+    code = str(issue.get("code") or "unknown").strip().lower()
+    if any(value in code for value in ("transport", "connection", "timeout")):
+        return ValidationStage.TRANSPORT
+    if any(value in code for value in (
+        "required_field", "field_missing", "field_ambiguous", "schema",
+        "protocol", "heading_format", "segment_coverage", "causal_chain_marker",
+    )):
+        return ValidationStage.SYNTAX
+    if any(value in code for value in (
+        "event_body", "event_ownership", "ownership", "evidence_binding",
+        "missing_event", "invalid_event_id", "event_order", "coverage_missing",
+    )):
+        return ValidationStage.OWNERSHIP
+    if any(value in code for value in ("adjacent", "handoff", "boundary")):
+        return ValidationStage.ADJACENT_HANDOFF
+    if any(value in code for value in ("whole", "global", "ending")):
+        return ValidationStage.WHOLE_STORY
+    if "quality" in code or "prose" in code:
+        return ValidationStage.QUALITY
+    return ValidationStage.LOCAL_SEMANTICS
+
+
+def _recovery_issues(
+    issues: list[dict], *, allowed_keys: set[str],
+) -> tuple[RecoveryIssue, ...]:
+    results: list[RecoveryIssue] = []
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        segment = _integer(issue.get("segment"))
+        for key in sorted(planning_issue_keys([issue]).intersection(allowed_keys)):
+            results.append(RecoveryIssue(
+                key=key,
+                stage=planning_issue_stage(issue),
+                unit_id=f"segment-{segment:02d}" if segment else "whole",
+                root_key=str(issue.get("root_key") or issue.get("code") or key),
+                blocked_by=tuple(_string_values(issue.get("blocked_by"))),
+                revealed_by=tuple(_string_values(issue.get("revealed_by"))),
+            ))
+    return tuple(results)
+
+
 def planning_candidate_comparison(
     previous_issues: list[dict], candidate_issues: list[dict], *,
     changed_segments: set[int] | list[int] | tuple[int, ...] | None = None,
@@ -128,10 +178,39 @@ def planning_candidate_comparison(
             changed_segments=changed,
             segment_event_ids=segment_event_ids,
         )
-    introduced = sorted(candidate_attributable - previous_attributable)
-    resolved = sorted(previous_attributable - candidate_attributable)
+    decision = compare_recovery_candidates(
+        RecoveryCandidate(
+            frozenset(previous_attributable),
+            issues=_recovery_issues(
+                previous_issues, allowed_keys=previous_attributable,
+            ),
+        ),
+        RecoveryCandidate(
+            frozenset(candidate_attributable),
+            issues=_recovery_issues(
+                candidate_issues, allowed_keys=candidate_attributable,
+            ),
+        ),
+    )
+    scope_expansion_keys: set[str] = set()
+    if changed_segments is not None and segment_event_ids is not None:
+        for issue in candidate_issues:
+            if not isinstance(issue, dict):
+                continue
+            owned = planning_issue_segments([issue], segment_event_ids)
+            keys = planning_issue_keys([issue])
+            if (
+                owned.intersection(changed)
+                and owned.difference(changed)
+                and not keys.issubset(previous)
+            ):
+                scope_expansion_keys.update(keys - previous)
+    introduced = sorted(
+        set(decision.introduced_issue_keys) | scope_expansion_keys
+    )
+    resolved = list(decision.resolved_issue_keys)
     retained = sorted(previous & candidate)
-    improved = bool(resolved) and not introduced
+    improved = decision.accepted and not scope_expansion_keys
     return {
         "improved": improved,
         "previous_issue_keys": sorted(previous),
@@ -145,13 +224,17 @@ def planning_candidate_comparison(
         "newly_discovered_latent_issue_keys": sorted(candidate_latent - previous),
         "observed_new_issue_keys": sorted(candidate - previous),
         "introduced_issue_keys": introduced,
+        "revealed_issue_keys": sorted(
+            set(decision.revealed_issue_keys) - scope_expansion_keys
+        ),
         "resolved_issue_keys": resolved,
         "retained_issue_keys": retained,
         "reason": (
-            "strict_improvement" if improved
-            else "introduced_hard_issue" if introduced
-            else "no_semantic_progress"
+            "introduced_hard_issue" if scope_expansion_keys
+            else decision.reason
         ),
+        "previous_stage": decision.previous_stage,
+        "candidate_stage": decision.candidate_stage,
     }
 
 

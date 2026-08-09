@@ -1,5 +1,47 @@
 # Novel Flywheel Maintenance
 
+## Narrative Reliability Kernel V5 operations
+
+Planning fields now cross one `markdown-it-py` AST compiler before any local
+gate. Tables, peer headings, decorated inline fields, and list cards project to
+the same closed roles; JSON Schema and tool-call event records project to an
+ordered, source-hashed event IR. Wrapper names are descriptive only. Duplicate
+or reordered owners, competing field values, unknown machine-control keys, and
+adjacent-event references never gain authority. Do not add a provider-, label-,
+run-, or error-string branch to make a new packet pass; add an invariant-based
+compiler topology and production-shaped regression instead.
+
+Recovery is ordered by validation stage: transport, syntax, ownership, local
+semantics, adjacent handoff, whole-story integrity, and quality. An earlier
+stage may reveal a later existing defect, but a candidate cannot introduce a
+same/earlier defect or expand a new boundary issue into an unchanged segment.
+Event-body ownership is repaired per complete segment with two bounded attempts.
+The Runtime preserves outline basis, event order, opening, handoff, and all
+unaffected segment bytes. Exhaustion retains the best complete plan and never
+falls back to a whole-plan rewrite for this failure family.
+
+`workflow_node_checkpoints` version 2 stores the highest completed validation
+stage. Migration is additive and idempotent: a version 1 `validated` row becomes
+`promoted`; generated or failed rows remain at transport. Stage regression and
+conflicting promoted output are rejected. A generated model response is still
+not formal authority, and formal manuscripts remain writable only through the
+existing atomic promotion journal.
+
+The model page intentionally has no editable context-window, maximum-output, or
+structured-output downgrade fields. Route capabilities are observed for the
+exact protocol/base URL/auth headers/model fingerprint, expire after seven days,
+and degrade to locally validated safe mode when stale. A third-party 404 means
+the endpoint/protocol path must be checked; it does not prove that the model is
+absent. Re-run the bounded probe after correcting the route, without replacing
+the saved key or binding.
+
+Before a production restart, run the complete offline suite and the L3 change
+gate, then verify SQLite has no `queued`, `running`, or `cancelling` run. Live
+acceptance may use only minimal synthetic prompts and must not include novel
+content or expose credentials. Rollback is non-destructive: keep formal files
+and StoryState, disable the affected route or revert the V5 feature code, and
+resume from the hash-bound best candidate/checkpoint.
+
 ## Route-local structured artifacts and third-party gateways
 
 Structured-output support is configured and probed per provider/model route. Runtime
@@ -779,6 +821,22 @@ Complete formal-segment rebuild normalizes every accepted leaf to an explicit bo
 Planning-rebuild JSON also accepts one complete Markdown segment nested inside an otherwise open provider wrapper. Runtime validates the embedded segment through the same canonical parser, preserves the wrapper's exact ordered ownership, and rejects multiple distinct embedded candidates instead of choosing one by traversal order. This recovery path is presentation normalization only; it never changes formal plot authority or invents narrative facts.
 
 The production incident catalog includes packet-merge closedness as a separate family so a future recurrence is recognized before the generic capacity-split terminal error and carries the concrete leaf-normalization and lossless-merge recovery path.
+
+## Narrative Reliability Kernel V4
+
+Planning transport now parses Markdown through one canonical document boundary backed by `markdown-it-py`. Exact source text remains authority. Numbered items, ordinary paragraphs, nested lists, block quotes, CRLF/LF input, and unknown presentation wrappers all become non-overlapping source-mapped blocks. An unlabelled continuation inherits the preceding explicit event only until a structural heading or the next explicit event. Fenced examples and HTML blocks never gain narrative ownership. Event review, evidence selection, and capacity packets consume this common ownership map instead of independently splitting on blank lines. The production fixture from run `93075987b1374e53bb13d13ecb53bc68` proves that the Pei Yanxing response remains inside `EV-BEAE4985`, does not leak into `EV-1522AB0E`, and crosses both packet and whole-plan review.
+
+StoryState schema 3 adds a versioned `narrative_graph` and `narrative_rule_profile` inside the existing single authority. Claims distinguish world truth, public belief, and each character's perspective; their status is known, false, or unknown and their transition records assertion, reveal, revision, retraction, forgetting, or questioning. Identity, relationship, and promise records are additive and old projects migrate idempotently without rewriting project files. A candidate containing conflicting facts, an unexplained known-to-unknown regression, a changed actual identity, or a missing claim dependency is rejected before StoryState commit. Execution-manifest version 5 can carry the same typed claim on a state assertion while versions 2-4 remain readable and hash-compatible.
+
+Core identity, knowledge, dependency, causality, timeline, viewpoint, promise, and relationship rules cannot be disabled by a genre. Composable packs add support requirements for romance relationship regression, mystery reveals, fantasy power changes, science-fiction capabilities, historical status changes, rebirth foreknowledge, and comedy misunderstandings. A genre rule requires hash-bound dependencies or exact evidence; it never treats a genre label as permission to weaken canon.
+
+`RecoveryController` is the shared policy boundary for transport, credentials, capabilities, context capacity, output truncation, syntax/protocol, ownership/evidence, semantic invariants, quality regression, stale authority, and unknown failures. The ladder always starts at the smallest safe action and ends by restoring the best complete candidate. Candidate comparison requires a strict hard-issue reduction, no new hard issue, byte-stable unowned scopes, and no quality-floor regression. Strict progress refreshes only the still-failing unit's budget. Protocol errors do not spend semantic-repair attempts, and provider failures do not authorize prose mutation.
+
+Every model `_stage` now records a SQLite `workflow_node_checkpoints` envelope containing run/node identity, StoryState-bound authority hash, input/output hashes, attempt, route fingerprint, finish metadata, and status. A model return is recorded only as `generated_complete`; it is not resumable as validated narrative authority. Existing stage validators, candidate promotion, planning/draft checkpoints, and formal-write journals remain the sole promotion path. Failed observations have no output hash, and a conflicting validated envelope is rejected. This table is additive, idempotent, and removed automatically with its run.
+
+Successful model probes are route-local observations with a seven-day expiry. Their fingerprint binds protocol, normalized base URL, authentication mode, non-secret extra headers, and actual model name. Changing a route marks the observation stale; an expired or mismatched observation degrades operational structured output to locally validated `plain_text` and tool support to `auto` until reprobed. Legacy manually stored capability data remains readable, but once a route has an observed probe, the observation owns runtime capability. A 404 is reported as `route_endpoint_not_found` with guidance to check the base URL `/v1` ownership and protocol adapter; it never declares that the model itself does not exist. Credential rejection, rate limiting, timeout, and connection failure have separate diagnostics.
+
+New workflow exceptions carry typed failure code, class, boundary, and unit identity into the incident catalog. Typed identity takes precedence over message regex; regex remains a compatibility adapter for legacy events. This prevents new provider wording or translated error messages from fragmenting known incident families.
 
 Planning repair packets also use a representation-neutral boundary adapter. A provider may return a top-level event array, an event-ID mapping, nested event records, or a Markdown block whose title places the segment label before the number (for example `段规划：第5段／EV-...`). Entry and exit state may be a string, list, or structured object; objects are preserved by deterministic Unicode-safe serialization and remain narrative authority. Ownership is derived only from the explicit event-ID field or event-title declarations inside the owned event field. IDs mentioned in prose, handoffs, or a next-segment reference never claim ownership. Multiple identities, duplicate candidates, reordered events, unknown machine-control fields, or incomplete narrative bodies still fail closed and trigger a canonical retry.
 

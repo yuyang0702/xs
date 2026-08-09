@@ -239,6 +239,14 @@ from novel_flywheel.structured_artifacts import (
 )
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.tools import StoryToolbox
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+from novel_flywheel.narrative_rules import validate_narrative_graph
+from novel_flywheel.planning_compiler import (
+    PLAN_FIELD_ALIASES,
+    compile_planning_event_artifact,
+    extract_planning_field,
+    planning_field_sections,
+)
 
 
 class StageText(str):
@@ -254,6 +262,10 @@ class FinalReviewJSONError(ValueError):
     def __init__(self, message: str, detail: dict | None = None):
         super().__init__(message)
         self.detail = detail or {}
+        self.reliability_failure = ReliabilityFailure(
+            "final_review_json", FailureClass.SYNTAX_PROTOCOL,
+            "final_review", protocol_only=True,
+        )
 
 
 class RevisionPlanError(RuntimeError):
@@ -282,6 +294,10 @@ class ContextCapacityPreflightError(RuntimeError):
         self.authority_input_tokens = authority_input_tokens
         self.output_reserve = output_reserve
         self.context_window = context_window
+        self.reliability_failure = ReliabilityFailure(
+            "input_context_overflow", FailureClass.CONTEXT_CAPACITY,
+            "model_dispatch", unit_id=pressure,
+        )
 
 
 class PlanningRecoveryUnavailableError(RuntimeError):
@@ -298,6 +314,10 @@ class PlanningRecoveryUnavailableError(RuntimeError):
         super().__init__(
             "规划语义问题尚未解决，修复调用不可用；最佳规划和有效上游进度已保留"
             + (f"（{details}）" if details else "")
+        )
+        self.reliability_failure = ReliabilityFailure(
+            "planning_recovery_unavailable", FailureClass.SEMANTIC_INVARIANT,
+            "planning_recovery",
         )
 
 
@@ -320,6 +340,9 @@ class IncompleteModelOutputError(RuntimeError):
         self.stage = stage
         self.partial = partial
         self.receipt = partial.receipt
+        self.reliability_failure = ReliabilityFailure(
+            "output_incomplete", FailureClass.OUTPUT_TRUNCATION, stage,
+        )
 
 
 class GeneratedArtifactShapeError(ValueError):
@@ -330,6 +353,10 @@ class GeneratedArtifactShapeError(ValueError):
         self.issues = [
             dict(item) for item in (issues or []) if isinstance(item, dict)
         ]
+        self.reliability_failure = ReliabilityFailure(
+            "generated_artifact_shape", FailureClass.SYNTAX_PROTOCOL,
+            "generated_artifact", protocol_only=True,
+        )
 
 
 class DraftSemanticValidationError(ValueError):
@@ -344,6 +371,10 @@ class DraftSemanticValidationError(ValueError):
         super().__init__(f"正文语义完整性检查未通过（{task_id}）：{detail}")
         self.task_id = task_id
         self.issues = normalized
+        self.reliability_failure = ReliabilityFailure(
+            "draft_semantic_contract", FailureClass.SEMANTIC_INVARIANT,
+            "draft_validation", unit_id=task_id,
+        )
 
 
 def _draft_narrative_contract_fields(project: Project) -> dict[str, str]:
@@ -364,13 +395,7 @@ _SHORT_REVISION_LOCK = threading.Lock()
 class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
     SHORT_CHECKPOINT_VERSION = 3
-    SHORT_PLAN_FIELD_ALIASES = {
-        "event_id": ("事件ID", "正式事件ID"),
-        "outline": ("大纲依据", "正式大纲依据"),
-        "opening": ("段首承接", "开场承接"),
-        "event": ("本段事件", "本段子事件", "核心事件", "负责事件"),
-        "handoff": ("段末交接", "交接状态", "段末状态"),
-    }
+    SHORT_PLAN_FIELD_ALIASES = PLAN_FIELD_ALIASES
     INITIAL_POLISH_INPUT_CAP = 120_000
     STRUCTURAL_POLISH_INPUT_CAP = 60_000
 
@@ -793,6 +818,7 @@ class WorkflowService:
                     raw_error=describe_error(exc),
                     user_message=str(run.get("error") or exc.message),
                     event_type="short_revision_failed",
+                    failure=getattr(exc, "reliability_failure", None),
                 )
             raise
         except asyncio.CancelledError:
@@ -812,6 +838,7 @@ class WorkflowService:
                     raw_error=describe_error(exc),
                     user_message="返修终审未完成，已保留修改决定，可以稍后重试。",
                     event_type="short_revision_failed",
+                    failure=getattr(exc, "reliability_failure", None),
                 )
             raise
 
@@ -3924,6 +3951,33 @@ class WorkflowService:
                     add("local_required_fields", message)
                 continue
             event_ids = planning_event_ids(message, formal_only=True)
+            if "规划正式事件只在段首清单中出现" in message:
+                segment_match = re.match(r"第\s*(\d+)\s*段", message)
+                segment = int(segment_match.group(1)) if segment_match else 0
+                for event_id in event_ids or [""]:
+                    add(
+                        "event_body_missing", message,
+                        segment=segment, event_id=event_id,
+                    )
+                continue
+            if "规划正式事件在本段事件正文中重复声明" in message:
+                segment_match = re.match(r"第\s*(\d+)\s*段", message)
+                segment = int(segment_match.group(1)) if segment_match else 0
+                for event_id in event_ids or [""]:
+                    add(
+                        "event_body_duplicate", message,
+                        segment=segment, event_id=event_id,
+                    )
+                continue
+            if "规划正式事件正文过短" in message:
+                segment_match = re.match(r"第\s*(\d+)\s*段", message)
+                segment = int(segment_match.group(1)) if segment_match else 0
+                for event_id in event_ids or [""]:
+                    add(
+                        "event_body_collapsed", message,
+                        segment=segment, event_id=event_id,
+                    )
+                continue
             if message.startswith("规划稿使用了不存在的事件 ID"):
                 for event_id in event_ids or [""]:
                     add("local_invalid_event_id", message, event_id=event_id)
@@ -4037,6 +4091,181 @@ class WorkflowService:
             ).hexdigest(),
         }
 
+    async def _repair_short_plan_local_event_segment(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        state: dict, plan: str, segment_count: int, segment: int,
+        issues: list[dict], *, attempt: int,
+    ) -> str:
+        """Repair only event realization ownership for one complete segment."""
+        plan_segments = self._short_plan_segments(plan, segment_count)
+        if not 1 <= segment <= len(plan_segments):
+            raise ValueError(f"规划稿缺少第 {segment} 段，无法修复事件归属")
+        current = plan_segments[segment - 1]
+        event_ids = self._short_plan_event_ids(current)
+        if not event_ids:
+            raise ValueError(f"规划第 {segment} 段没有可验证的正式事件归属")
+        outline_content = str(((state.get("outline") or {}).get("content")) or "")
+        formal_events = (
+            outline_events(outline_content)
+            if outline_content.strip() else
+            list((state.get("outline") or {}).get("events") or [])
+        )
+        contracts = self._planning_adaptation_contracts(state, formal_events)
+        contract_by_id = {
+            str(item.get("id") or "").strip().upper(): item
+            for item in contracts
+        }
+        owned_contracts = [
+            contract_by_id[event_id] for event_id in event_ids
+            if event_id in contract_by_id
+        ]
+        current_issues = [
+            item for item in issues
+            if int(item.get("segment") or 0) == segment
+        ]
+        authority = {
+            "segment": segment,
+            "event_ids": event_ids,
+            "source_sha256": hashlib.sha256(
+                current.encode("utf-8"),
+            ).hexdigest(),
+            "outline_basis": self._short_plan_field(current, "outline"),
+            "opening": self._short_plan_field(current, "opening"),
+            "handoff": self._short_plan_field(current, "handoff"),
+        }
+        structured_contract = StructuredArtifactContract(
+            name="planning_event_realizations",
+            schema={
+                "$schema": "https://json-schema.org/draft/2020-12/schema",
+                "type": "object",
+                "properties": {
+                    "events": {
+                        "type": "array",
+                        "minItems": len(event_ids),
+                        "maxItems": len(event_ids),
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "event_id": {"type": "string"},
+                                "narrative": {"type": "string", "minLength": 12},
+                            },
+                            "required": ["event_id", "narrative"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "required": ["events"],
+                "additionalProperties": False,
+            },
+            runtime_authority=authority,
+        )
+        prompt = (
+            "SHORT_PLAN_EVENT_REALIZATION_RECOVERY_V3\n"
+            "Return exactly one JSON object with only an events array. The Runtime owns "
+            "the segment, event order, outline basis, opening, and handoff; do not return "
+            "or change those controls. Return exactly one item for every EXPECTED EVENT ID "
+            "in the same order. Each narrative must independently state the executable "
+            "actor action, resistance or response, result/state change, and useful scene "
+            "realization. Preserve valid dialogue intent, detail, pacing, and voice from the "
+            "current segment. Do not invent a new plot function, move a later reveal early, "
+            "change agency, chronology, knowledge, relationship state, viewpoint, promise, "
+            "or ending. Multiple tightly coupled events may share one scene, but every item "
+            "must still explain its own contribution. Do not include Markdown fences or "
+            "commentary.\n"
+            f"ATTEMPT: {attempt}\nEXPECTED SEGMENT: {segment}\n"
+            "EXPECTED EVENT IDS:\n"
+            + json.dumps(event_ids, ensure_ascii=False)
+            + "\n\nRUNTIME AUTHORITY (IMMUTABLE):\n"
+            + json.dumps(authority, ensure_ascii=False, indent=2)
+            + "\n\nFORMAL EVENT CONTRACTS:\n"
+            + json.dumps(owned_contracts, ensure_ascii=False, indent=2)
+            + "\n\nCURRENT OWNERSHIP ISSUES:\n"
+            + json.dumps(current_issues, ensure_ascii=False, indent=2)
+            + "\n\nCURRENT COMPLETE SEGMENT (CREATIVE SOURCE):\n"
+            + current
+        )
+
+        def normalized(value: str) -> str:
+            try:
+                artifact_ir = compile_planning_event_artifact(
+                    value, expected_event_ids=event_ids,
+                )
+                event_body = "\n\n".join(
+                    f"{index}. **正式事件**（{item.event_id}）："
+                    + remove_planning_event_ids(
+                        item.narrative, formal_only=True,
+                    ).strip()
+                    for index, item in enumerate(artifact_ir.events, 1)
+                )
+                return self._render_short_plan_repair_packet(
+                    current,
+                    segment=segment,
+                    event_ids=event_ids,
+                    event_body=event_body,
+                    opening=self._short_plan_field(current, "opening"),
+                    handoff=self._short_plan_field(current, "handoff"),
+                )
+            except (TypeError, ValueError):
+                try:
+                    return self._normalize_runtime_owned_short_plan_payload(
+                        value,
+                        segment=segment,
+                        event_ids=event_ids,
+                        current=current,
+                        artifact="local planning event recovery",
+                    )
+                except GeneratedArtifactShapeError:
+                    return self._normalize_generated_short_plan_segment(
+                        value,
+                        segment=segment,
+                        event_ids=event_ids,
+                        current=current,
+                        artifact="local planning event recovery",
+                    )
+
+        def complete(value: str) -> bool:
+            try:
+                block = normalized(value)
+            except GeneratedArtifactShapeError:
+                return False
+            return not planning_event_body_issues(block, event_ids)
+
+        raw = await self._stage(
+            run_id, run_path, project, "planning", constraints, prompt,
+            suffix=f"-local-event-segment-{segment:02d}-attempt-{attempt}",
+            allow_tools=False,
+            expected_output_characters=max(1600, len(current)),
+            completion_check=complete,
+            compact_input=True,
+            route_capacity_guard=True,
+            story_skeleton_override=self._stage_story_skeleton(
+                project, constraints, run_path,
+                owner_event_ids=event_ids, index_only=True,
+            ),
+            bounded_protocol_output=True,
+            structured_contract=structured_contract,
+        )
+        try:
+            block = normalized(raw)
+        except GeneratedArtifactShapeError:
+            block = await self._normalize_generated_short_plan_segment_with_protocol_retry(
+                run_id, run_path, project, constraints, raw,
+                segment=segment,
+                event_ids=event_ids,
+                current=current,
+                artifact="local planning event recovery",
+                suffix=f"-local-event-segment-{segment:02d}-attempt-{attempt}",
+            )
+        remaining = planning_event_body_issues(block, event_ids)
+        if remaining:
+            raise GeneratedArtifactShapeError(
+                f"规划第 {segment} 段事件正文仍不完整",
+                issues=remaining,
+            )
+        return self._replace_short_plan_segment(
+            plan, segment_count, segment, block,
+        )
+
     async def _recover_short_plan_local_gate(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         brief: str, state: dict, plan: str, segment_count: int,
@@ -4087,6 +4316,199 @@ class WorkflowService:
         ))
         recovery_state["local_issue_messages"] = best_issues
         write_planning_recovery(run_path / "outputs", recovery_state, best_plan)
+
+        # Event-realization ownership is a typed, independently promotable
+        # unit. Repair it per complete segment before invoking the legacy
+        # whole-plan compatibility fallback. This keeps already accepted
+        # segments byte-identical and gives every remaining segment its own
+        # bounded recovery budget.
+        for granular_attempt in range(1, 3):
+            issue_records = self._short_plan_local_issue_records(best_issues)
+            ownership_records = [
+                item for item in issue_records
+                if str(item.get("code") or "").startswith("event_body_")
+                and int(item.get("segment") or 0) > 0
+            ]
+            target_segments = sorted({
+                int(item["segment"]) for item in ownership_records
+            })
+            if not target_segments:
+                break
+            round_progress = False
+            self.db.add_run_event(
+                run_id, "warning", "planning_event_ownership_recovery_started",
+                "规划格式已经本地规范化，正在按分段补齐正式事件与可执行正文的绑定",
+                stage="planning", metadata={
+                    "attempt": granular_attempt,
+                    "target_segments": target_segments,
+                    "remaining_event_issues": len(ownership_records),
+                },
+            )
+            for segment in target_segments:
+                current_records = self._short_plan_local_issue_records(best_issues)
+                segment_records = [
+                    item for item in current_records
+                    if int(item.get("segment") or 0) == segment
+                    and str(item.get("code") or "").startswith("event_body_")
+                ]
+                if not segment_records:
+                    continue
+                source_segments = self._short_plan_segments(
+                    best_plan, segment_count,
+                )
+                source_segment_sha256 = hashlib.sha256(
+                    source_segments[segment - 1].encode("utf-8"),
+                ).hexdigest()
+                try:
+                    candidate = await self._repair_short_plan_local_event_segment(
+                        run_id, run_path, project, constraints, state,
+                        best_plan, segment_count, segment, segment_records,
+                        attempt=granular_attempt,
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    recovery_state.setdefault("execution_failures", []).append({
+                        "source": "local-event-segment",
+                        "segment": segment,
+                        "attempt": granular_attempt,
+                        "error_type": type(exc).__name__,
+                        "message": describe_error(exc),
+                    })
+                    write_planning_recovery(
+                        run_path / "outputs", recovery_state, best_plan,
+                    )
+                    self.db.add_run_event(
+                        run_id, "warning", "planning_event_segment_recovery_failed",
+                        f"规划第 {segment} 段事件绑定修复未通过，已保留当前最佳段并继续处理其他分段",
+                        stage="planning", metadata={
+                            "segment": segment,
+                            "attempt": granular_attempt,
+                            "failure_class": type(exc).__name__,
+                        },
+                    )
+                    continue
+                selected, selected_issues, comparison = (
+                    self._select_monotonic_short_plan_candidate(
+                        project, state, best_plan, candidate, segment_count,
+                    )
+                )
+                accepted = selected != best_plan and bool(comparison["improved"])
+                recovery_state = record_planning_candidate(
+                    recovery_state,
+                    plan=selected if accepted else candidate,
+                    issues=self._short_plan_local_issue_records(
+                        selected_issues if accepted else self._short_plan_issues(
+                            project, state, candidate, segment_count,
+                        ),
+                    ),
+                    comparison=comparison,
+                    source=(
+                        f"local-event-segment-{segment:02d}-"
+                        f"attempt-{granular_attempt}"
+                    ),
+                    accepted=accepted,
+                )
+                if not accepted:
+                    write_planning_recovery(
+                        run_path / "outputs", recovery_state, best_plan,
+                    )
+                    continue
+                best_plan = selected
+                best_issues = selected_issues
+                round_progress = True
+                recovery_state["local_issue_messages"] = best_issues
+                selected_segments = self._short_plan_segments(
+                    best_plan, segment_count,
+                )
+                if 1 <= segment <= len(selected_segments):
+                    self.db.save_workflow_node_checkpoint(
+                        run_id=run_id,
+                        node_key=f"planning-segment-{segment:02d}",
+                        authority_sha256=outline_sha256,
+                        input_sha256=source_segment_sha256,
+                        output_sha256=hashlib.sha256(
+                            selected_segments[segment - 1].encode("utf-8"),
+                        ).hexdigest(),
+                        status="generated_complete",
+                        validation_stage="local_semantics",
+                        payload={
+                            "segment": segment,
+                            "event_ids": self._short_plan_event_ids(
+                                selected_segments[segment - 1],
+                            ),
+                            "unchanged_scope": comparison.get(
+                                "preserved_segments", [],
+                            ),
+                        },
+                    )
+                write_planning_recovery(
+                    run_path / "outputs", recovery_state, best_plan,
+                )
+                self.db.add_run_event(
+                    run_id, "success", "planning_event_segment_recovered",
+                    f"规划第 {segment} 段正式事件正文已经补齐并保存，其他分段保持不变",
+                    stage="planning", metadata={
+                        "segment": segment,
+                        "attempt": granular_attempt,
+                        "comparison": comparison,
+                        "remaining_issues": len(best_issues),
+                    },
+                )
+                if not best_issues:
+                    self.db.save_workflow_node_checkpoint(
+                        run_id=run_id,
+                        node_key="planning-local-gate",
+                        authority_sha256=outline_sha256,
+                        input_sha256=(
+                            generation_context_sha256
+                            if re.fullmatch(
+                                r"[0-9a-f]{64}", generation_context_sha256,
+                            )
+                            else hashlib.sha256(
+                                generation_context_sha256.encode("utf-8"),
+                            ).hexdigest()
+                        ),
+                        output_sha256=hashlib.sha256(
+                            best_plan.encode("utf-8"),
+                        ).hexdigest(),
+                        status="generated_complete",
+                        validation_stage="local_semantics",
+                        payload={"segment_count": segment_count},
+                    )
+                    recovery_state["status"] = "local_ready"
+                    write_planning_recovery(
+                        run_path / "outputs", recovery_state, best_plan,
+                    )
+                    return best_plan
+            if not round_progress and granular_attempt >= 2:
+                break
+
+        unresolved_ownership = [
+            item for item in self._short_plan_local_issue_records(best_issues)
+            if str(item.get("code") or "").startswith("event_body_")
+        ]
+        if unresolved_ownership:
+            recovery_state["status"] = "recoverable_event_ownership_failed"
+            recovery_state["local_issue_messages"] = best_issues
+            write_planning_recovery(
+                run_path / "outputs", recovery_state, best_plan,
+            )
+            self.db.add_run_event(
+                run_id, "error", "planning_event_ownership_recovery_exhausted",
+                "受影响分段已分别使用完恢复预算；已保留最佳完整规划，未用整稿重写覆盖有效分段",
+                stage="planning", metadata={
+                    "issues": unresolved_ownership,
+                    "protected_plan_sha256": hashlib.sha256(
+                        best_plan.encode("utf-8"),
+                    ).hexdigest(),
+                    "whole_plan_fallback_used": False,
+                },
+            )
+            raise GeneratedArtifactShapeError(
+                "规划正式事件正文分段恢复尚未收敛，最佳完整规划已保留",
+                issues=unresolved_ownership,
+            )
 
         for attempt in range(1, 3):
             event_type = (
@@ -9254,8 +9676,9 @@ class WorkflowService:
                 },
                 "merged_candidate_issue_keys": sorted(
                     planning_issue_keys(merged_candidate_issues)
-                ),
-            }
+            ),
+        }
+
             accepted = not merged_candidate_issues or bool(comparison["improved"])
             recovery_state = record_planning_candidate(
                 recovery_state, plan=candidate, issues=merged_candidate_issues,
@@ -9480,181 +9903,6 @@ class WorkflowService:
         return blocks[0]
 
     @classmethod
-    def _short_plan_heading_field(
-        cls, segment: str, field: str,
-    ) -> tuple[str, int]:
-        """Read a plan field rendered as a standalone Markdown heading.
-
-        This is presentation normalization only.  A field heading owns text
-        until the next heading of the same or a higher level, so nested event
-        headings remain part of ``本段事件`` while later peer sections do not
-        leak into ``段末交接``.
-        """
-        comparison = cls._short_plan_comparison_view(segment)
-        aliases = [
-            unicodedata.normalize("NFKC", label)
-            for label in cls.SHORT_PLAN_FIELD_ALIASES[field]
-        ]
-        labels = "|".join(re.escape(label) for label in aliases)
-        pattern = re.compile(
-            rf"(?im)^[ \t]{{0,3}}(?P<marks>#{{1,6}})[ \t]+"
-            rf"(?:\*{{1,2}}|_{{1,2}}|`)?[ \t]*(?:{labels})[ \t]*"
-            rf"(?:\*{{1,2}}|_{{1,2}}|`)?[ \t]*(?:[:：][ \t]*)?$"
-        )
-        values: list[str] = []
-        for match in pattern.finditer(comparison):
-            start = match.end()
-            if start < len(segment) and segment[start:start + 2] == "\r\n":
-                start += 2
-            elif start < len(segment) and segment[start] in "\r\n":
-                start += 1
-            level = len(match.group("marks"))
-            boundary = re.search(
-                rf"(?m)^[ \t]{{0,3}}#{{1,{level}}}(?:[ \t]+|$)",
-                comparison[start:],
-            )
-            end = start + boundary.start() if boundary else len(segment)
-            value = segment[start:end].strip()
-            if value:
-                values.append(value)
-        return (values[0] if len(values) == 1 else "", len(values))
-
-    @classmethod
-    def _short_plan_field_role(cls, label: str) -> str | None:
-        """Map presentation-open field labels onto closed narrative roles."""
-        normalized = planning_protocol_comparison_view(label).casefold()
-        normalized = re.sub(r"^[#*_`\s]+|[#*_`\s]+$", "", normalized)
-        compact = re.sub(r"[^0-9a-z\u3400-\u9fff]+", "", normalized)
-        aliases = {
-            field: {
-                re.sub(
-                    r"[^0-9a-z\u3400-\u9fff]+", "",
-                    planning_protocol_comparison_view(value).casefold(),
-                )
-                for value in values
-            }
-            for field, values in cls.SHORT_PLAN_FIELD_ALIASES.items()
-        }
-        for field, values in aliases.items():
-            if any(compact.startswith(value) for value in values if value):
-                return field
-        if (
-            ("event" in compact or "事件" in compact)
-            and any(value in compact for value in (
-                "id", "identity", "ownership", "owned", "coverage", "covered",
-                "scope", "所有权", "归属", "覆盖", "负责",
-            ))
-        ):
-            return "event_id"
-        if (
-            ("outline" in compact or "大纲" in compact)
-            and any(value in compact for value in ("basis", "evidence", "依据", "权威"))
-        ):
-            return "outline"
-        if (
-            any(value in compact for value in ("段首", "段前", "入口", "entry", "opening"))
-            and any(value in compact for value in (
-                "承接", "接续", "状态", "要件", "完整", "handoff", "state",
-                "condition", "requirements", "prerequisites", "context",
-            ))
-        ):
-            return "opening"
-        if (
-            any(value in compact for value in ("段末", "出口", "exit", "handoff"))
-            and any(value in compact for value in (
-                "交接", "状态", "下一段", "entry", "state", "preserve",
-            ))
-        ):
-            return "handoff"
-        if any(value in compact for value in (
-            "约束", "核验", "自检", "检查", "禁止", "人物声纹", "设定",
-            "constraint", "validation", "checklist", "selfcheck", "character",
-        )):
-            return None
-        if (
-            any(value in compact for value in (
-                "本段事件", "段内事件", "本包事件", "叙事推进", "剧情推进", "因果链",
-                "segmentevent", "narrativeprogression", "causalchain",
-            ))
-            or (
-                any(value in compact for value in (
-                    "节拍", "beat", "事件序列", "eventsequence",
-                ))
-                and any(value in compact for value in (
-                    "因果", "时间轴", "顺序", "causal", "timeline", "sequence",
-                ))
-            )
-            or (
-                any(value in compact for value in ("段结构", "segmentstructure"))
-                and any(value in compact for value in ("事件", "event", "beat", "节拍"))
-            )
-        ):
-            return "event"
-        return None
-
-    @classmethod
-    def _short_plan_semantic_sections(
-        cls, segment: str, field: str,
-    ) -> list[str]:
-        """Return heading-owned field bodies using role concepts, not wrappers."""
-        comparison = cls._short_plan_comparison_view(segment)
-        hash_headings = list(re.finditer(
-            r"(?m)^[ ]{0,3}(?P<marks>#{1,6})[ \t]*(?P<title>\S.*)$",
-            comparison,
-        ))
-        wrapper_patterns = (
-            r"(?m)^[ ]{0,3}(?P<marks>\*\*|__)[ \t]*"
-            r"(?P<title>\S.*?)[ \t]*(?P=marks)[ \t]*$",
-            r"(?im)^[ ]{0,3}<(?P<marks>strong|b)>[ \t]*"
-            r"(?P<title>\S.*?)[ \t]*</(?P=marks)>[ \t]*$",
-        )
-        wrapped = [
-            match
-            for pattern in wrapper_patterns
-            for match in re.finditer(pattern, comparison)
-        ]
-        semantic = []
-        for match in [*hash_headings, *wrapped]:
-            title = match.group("title")
-            role = cls._short_plan_field_role(title)
-            if role != field:
-                continue
-            semantic.append(match)
-        semantic.sort(key=lambda match: match.start())
-        values: list[str] = []
-        for match in semantic:
-            title_start, title_end = match.span("title")
-            source_title = segment[title_start:title_end]
-            colon = re.search(r"[:：]", source_title)
-            inline = source_title[colon.end():].strip() if colon else ""
-            body_start = match.end()
-            if segment[body_start:body_start + 2] == "\r\n":
-                body_start += 2
-            elif body_start < len(segment) and segment[body_start] in "\r\n":
-                body_start += 1
-            body_end = len(segment)
-            if match in hash_headings:
-                level = len(match.group("marks"))
-                for heading in hash_headings:
-                    if heading.start() <= match.start():
-                        continue
-                    if len(heading.group("marks")) <= level:
-                        body_end = heading.start()
-                        break
-            else:
-                later = [
-                    candidate.start() for candidate in [*hash_headings, *wrapped]
-                    if candidate.start() > match.start()
-                ]
-                if later:
-                    body_end = min(later)
-            body = segment[body_start:body_end].strip()
-            value = "\n".join(part for part in (inline, body) if part).strip()
-            if value and value not in values:
-                values.append(value)
-        return values
-
-    @classmethod
     def _short_plan_structural_event_spans(
         cls, value: str,
     ) -> list[tuple[str, int, int]]:
@@ -9700,7 +9948,7 @@ class WorkflowService:
     def _short_plan_structural_owned_event_ids(cls, segment: str) -> list[str]:
         sequences = [
             cls._short_plan_structural_event_sequence(value)
-            for value in cls._short_plan_semantic_sections(segment, "event")
+            for value in planning_field_sections(segment, "event")
         ]
         sequences = [value for value in sequences if value]
         if not sequences:
@@ -9961,7 +10209,7 @@ class WorkflowService:
 
         heading_counts: dict[str, int] = {}
         for field in ("opening", "event", "handoff"):
-            semantic_values = cls._short_plan_semantic_sections(block, field)
+            semantic_values = list(planning_field_sections(block, field))
             if field == "event" and semantic_values:
                 projected = [
                     cls._short_plan_structural_event_body(value, expected)
@@ -9986,11 +10234,7 @@ class WorkflowService:
                     continue
             if canonical[field]:
                 continue
-            value, count = cls._short_plan_heading_field(block, field)
-            heading_counts[field] = max(heading_counts.get(field, 0), count)
-            canonical[field] = re.sub(
-                r"(?m)^[ \t]{0,3}#{1,6}[ \t]+", "", value,
-            ).strip()
+            heading_counts[field] = len(planning_field_sections(block, field))
 
         # Event IDs and outline evidence are Runtime-owned authority.  A
         # generated packet may vary their presentation or omit the redundant
@@ -13628,30 +13872,7 @@ class WorkflowService:
 
     @classmethod
     def _short_plan_field(cls, segment: str, field: str) -> str:
-        aliases = cls.SHORT_PLAN_FIELD_ALIASES[field]
-
-        def flexible(label: str) -> str:
-            return r"[ \t]*".join(re.escape(character) for character in label)
-
-        labels = "|".join(flexible(label) for label in aliases)
-        all_labels = "|".join(
-            flexible(label)
-            for values in cls.SHORT_PLAN_FIELD_ALIASES.values()
-            for label in values
-        )
-        wrapper = r"(?:\*{1,2}|_{1,2}|`)?"
-        prefix = rf"^[ \t]*(?:[-+*][ \t]+)?(?:#{{1,6}}[ \t]*)?{wrapper}[ \t]*"
-        suffix = rf"[ \t]*{wrapper}[ \t]*[：:][ \t]*{wrapper}[ \t]*"
-        comparison = cls._short_plan_comparison_view(segment)
-        match = re.search(
-            rf"(?ims){prefix}(?:{labels}){suffix}(?P<value>.*?)"
-            rf"(?={prefix}(?:{all_labels}){suffix}|^[ \t]*#{{1,6}}(?:[ \t]+|$)|\Z)",
-            comparison,
-        )
-        if not match:
-            return ""
-        start, end = match.span("value")
-        return segment[start:end].strip()
+        return extract_planning_field(segment, field)
 
     @classmethod
     def _short_plan_issues(cls, project: Project, state: dict, plan: str,
@@ -13795,12 +14016,6 @@ class WorkflowService:
         declaration so the merge fails closed and requests a canonical retry.
         """
         declared = cls._short_plan_field(segment, "event_id")
-        if not declared:
-            heading_value, heading_count = cls._short_plan_heading_field(
-                segment, "event_id",
-            )
-            if heading_count == 1:
-                declared = heading_value
         if declared:
             ids = planning_event_ids(declared, formal_only=True)
             if ids:
@@ -13816,12 +14031,6 @@ class WorkflowService:
         # prose references in handoffs or narrative paragraphs remain
         # descriptive and cannot claim a neighbouring event.
         event_body = cls._short_plan_field(segment, "event")
-        if not event_body:
-            event_body, event_heading_count = cls._short_plan_heading_field(
-                segment, "event",
-            )
-            if event_heading_count != 1:
-                event_body = ""
         if event_body:
             declared_from_titles: list[str] = []
             for event_id, _start, _end in cls._short_plan_structural_event_spans(
@@ -18358,6 +18567,15 @@ class WorkflowService:
             stage="quality", metadata=metadata,
         )
 
+    @staticmethod
+    def _completion_check_safe(
+        check: Callable[[str], bool], value: str,
+    ) -> bool:
+        try:
+            return bool(check(value))
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return False
+
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "",
                      model_role: str | None = None, allow_tools: bool = True,
@@ -18375,6 +18593,19 @@ class WorkflowService:
                      bounded_protocol_output: bool = False,
                      scoped_creative_output: bool = False,
                      structured_contract: StructuredArtifactContract | None = None) -> str:
+        node_key = f"{stage}{suffix}"
+        current_state = self.story_states.get(project.id)
+        node_authority_sha256 = hashlib.sha256(json.dumps({
+            "project_id": project.id,
+            "story_state_revision": current_state.revision if current_state else 0,
+            "stage": stage,
+            "model_role": model_role or stage,
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+            "utf-8",
+        )).hexdigest()
+        node_input_sha256 = hashlib.sha256(
+            (constraints + "\n\0" + user).encode("utf-8"),
+        ).hexdigest()
         if bounded_protocol_output and scoped_creative_output:
             raise ValueError(
                 "a model call cannot use protocol and creative output budgets together"
@@ -18467,6 +18698,17 @@ class WorkflowService:
             context_packet = None
             if layered_context:
                 story_state = self.story_states.ensure(project.id, project.path).data
+                narrative_findings = validate_narrative_graph(
+                    story_state.get("narrative_graph"),
+                    genres=(story_state.get("narrative_rule_profile") or {}).get(
+                        "genres", [],
+                    ),
+                )
+                if any(item.severity == "hard" for item in narrative_findings):
+                    raise ValueError(
+                        "StoryState narrative graph contains unresolved hard findings: "
+                        + ", ".join(item.code for item in narrative_findings)
+                    )
                 narrative_contract = ensure_narrative_contract(project)
                 if (
                     narrative_contract.status != "ready"
@@ -18485,6 +18727,8 @@ class WorkflowService:
                     "must_avoid": project.metadata.get("must_avoid"),
                     "confirmed_ending": story_state.get("ending"),
                     "knowledge_boundaries": story_state.get("character_states"),
+                    "narrative_fact_graph": story_state.get("narrative_graph"),
+                    "narrative_rule_profile": story_state.get("narrative_rule_profile"),
                     "formal_plot_unchanged": "不得改写已经确认的正式大纲和因果结局。",
                     "whole_story_logic": (
                         "任何拆分、重试、润色、审核和返修都不得破坏整篇因果、人物状态、"
@@ -19101,6 +19345,27 @@ class WorkflowService:
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
             atomic_write(run_path / "receipts" / f"{name}.json", json.dumps(receipt, ensure_ascii=False, indent=2))
+            self.db.save_workflow_node_checkpoint(
+                run_id=run_id,
+                node_key=node_key,
+                authority_sha256=node_authority_sha256,
+                input_sha256=node_input_sha256,
+                output_sha256=hashlib.sha256(result.text.encode("utf-8")).hexdigest(),
+                status="generated_complete",
+                validation_stage=(
+                    "syntax"
+                    if completion_check is not None
+                    and self._completion_check_safe(completion_check, result.text)
+                    else "transport"
+                ),
+                route_fingerprint=str(result.receipt.get("route_fingerprint") or ""),
+                payload={
+                    "provider_id": result.receipt.get("provider_id"),
+                    "model_id": result.receipt.get("model_id"),
+                    "execution_mode": result.receipt.get("execution_mode"),
+                    "finish_reason": result.receipt.get("finish_reason"),
+                },
+            )
             stage_completed_message = (
                 "模型已返回，正在校验终审格式"
                 if stage == "final_review" else
@@ -19122,6 +19387,20 @@ class WorkflowService:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
             raise
         except Exception as exc:
+            try:
+                self.db.save_workflow_node_checkpoint(
+                    run_id=run_id,
+                    node_key=node_key,
+                    authority_sha256=node_authority_sha256,
+                    input_sha256=node_input_sha256,
+                    output_sha256="",
+                    status="failed",
+                    payload={"error_type": type(exc).__name__},
+                )
+            except Exception:
+                # Checkpoint observability must never mask the actual workflow
+                # failure or alter the existing recovery path.
+                pass
             if isinstance(exc, ContextCapacityPreflightError):
                 self.db.add_run_event(
                     run_id, "warning", "stage_capacity_split_required",

@@ -9,16 +9,44 @@ from pathlib import Path
 from typing import Any
 
 from novel_flywheel.db import Database
+from novel_flywheel.narrative_ir import migrate_narrative_graph
+from novel_flywheel.narrative_rules import validate_narrative_graph
 
 
-STORY_STATE_SCHEMA = 2
+STORY_STATE_SCHEMA = 3
 AUTHORITATIVE_FACT_FIELDS = (
     "locked_facts",
     "confirmed_facts",
     "world_rules",
     "character_states",
     "timeline_events",
+    "narrative_graph",
+    "narrative_rule_profile",
 )
+
+
+def migrate_story_state_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Return the additive, idempotent schema-v3 StoryState representation."""
+    migrated = copy.deepcopy(data)
+    migrated["story_state_schema"] = STORY_STATE_SCHEMA
+    migrated["narrative_graph"] = migrate_narrative_graph(
+        migrated.get("narrative_graph"),
+    )
+    profile = migrated.get("narrative_rule_profile")
+    if not isinstance(profile, dict):
+        profile = {}
+    migrated["narrative_rule_profile"] = {
+        "version": 1,
+        "genres": list(dict.fromkeys(
+            str(item or "").strip() for item in profile.get("genres", [])
+            if str(item or "").strip()
+        )),
+        "project_rules": list(dict.fromkeys(
+            str(item or "").strip() for item in profile.get("project_rules", [])
+            if str(item or "").strip()
+        )),
+    }
+    return migrated
 
 
 def authoritative_fact_snapshot(state: dict[str, Any]) -> dict[str, Any]:
@@ -85,11 +113,11 @@ class StoryStateStore:
                 key: imported[key]
                 for key in (
                     "locked_facts", "confirmed_facts", "world_rules",
-                    "character_states", "timeline_events",
+                    "character_states", "timeline_events", "narrative_rule_profile",
                 )
                 if not current.data.get(key) and imported.get(key)
             }
-            data = {**current.data, **missing, "story_state_schema": STORY_STATE_SCHEMA}
+            data = migrate_story_state_data({**current.data, **missing})
             if data != current.data:
                 serialized = json.dumps(data, ensure_ascii=False)
                 with self.db.connect() as connection:
@@ -105,7 +133,7 @@ class StoryStateStore:
                     )
                 return self.get(project_id) or current
             return current
-        data = self._import(project_path)
+        data = migrate_story_state_data(self._import(project_path))
         with self.db.connect() as connection:
             connection.execute(
                 "INSERT OR IGNORE INTO story_states VALUES (?, 1, ?, datetime('now'), datetime('now'))",
@@ -205,6 +233,17 @@ class StoryStateStore:
             raise StaleStoryState(
                 f"Expected StoryState revision {expected_revision}, found {current.revision}"
             )
+        graph = migrate_narrative_graph(data.get("narrative_graph"))
+        profile = data.get("narrative_rule_profile")
+        genres = profile.get("genres", []) if isinstance(profile, dict) else []
+        graph_findings = validate_narrative_graph(graph, genres=genres)
+        hard_findings = [item for item in graph_findings if item.severity == "hard"]
+        if hard_findings:
+            self.reject(candidate_id, "narrative fact graph validation failed")
+            raise ValueError(
+                "narrative fact graph validation failed: "
+                + "; ".join(item.code for item in hard_findings)
+            )
         next_revision = expected_revision + 1
         serialized = json.dumps(data, ensure_ascii=False)
         with self.db.connect() as connection:
@@ -297,6 +336,13 @@ class StoryStateStore:
             "world_rules": world_rules,
             "character_states": character_states,
             "timeline_events": timeline,
+            "narrative_graph": migrate_narrative_graph(None),
+            "narrative_rule_profile": {
+                "version": 1,
+                "genres": [str(metadata.get("genre") or "").strip()]
+                if str(metadata.get("genre") or "").strip() else [],
+                "project_rules": [],
+            },
             "issue_ledger": [],
             "manuscript_revision": 1 if manuscript.is_file() and manuscript.stat().st_size else 0,
         }

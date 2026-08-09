@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -155,10 +156,16 @@ async def probe_model(provider_id: str, model_id: str,
         raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
     result = await CapabilityProbe(resolved.adapter).run(resolved.model_name)
     if result.chat:
+        probed_at = datetime.now(timezone.utc)
         registry.update_model_capabilities(provider_id, model_id, {
             "structured_output": result.structured_output_capability,
             "tool_support": "enabled" if result.tool_calling else "disabled",
             "capability_probe_status": "succeeded",
+            "capability_probe_route_fingerprint": resolved.route_fingerprint,
+            "capability_probe_at": probed_at.isoformat().replace("+00:00", "Z"),
+            "capability_probe_expires_at": (
+                probed_at + timedelta(days=7)
+            ).isoformat().replace("+00:00", "Z"),
         })
     return result
 

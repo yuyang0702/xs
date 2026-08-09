@@ -104,6 +104,7 @@ async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
         "structured_output_capability": "strict_json_schema",
         "json_object": True,
         "error": None,
+        "diagnostic_code": None,
     }
     assert adapter.requests[2].required_tool == "probe_tool"
 
@@ -179,6 +180,19 @@ async def test_probe_includes_actionable_error_message() -> None:
     result = await CapabilityProbe(FailingProbeAdapter()).run("model")
 
     assert result.error == "RuntimeError: endpoint returned text/html"
+    assert result.diagnostic_code == "connection_failed"
+
+
+@pytest.mark.parametrize(("message", "code"), [
+    ("404 Not Found", "route_endpoint_not_found"),
+    ("401 Unauthorized", "credentials_rejected"),
+    ("429 rate limit", "rate_limited"),
+    ("request timed out", "timeout"),
+])
+def test_probe_classifies_route_diagnostics_without_declaring_model_absent(
+    message: str, code: str,
+) -> None:
+    assert CapabilityProbe._diagnostic_code(RuntimeError(message)) == code
 
 
 @pytest.mark.asyncio

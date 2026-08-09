@@ -2932,6 +2932,16 @@ function resetProviderForm() {
   $("#provider-submit").textContent = "保存供应商";
   $("#provider-cancel").hidden = true;
 }
+function structuredCapabilityLabel(value) {
+  return ({plain_text:"本地校验",json_object:"JSON 对象",strict_json_schema:"严格 Schema",strict_tool:"强制工具协议"})[value]||"本地校验";
+}
+function modelProbeSummary(model,hasKey) {
+  if(!hasKey)return "请先更新密钥";
+  const status=model.capabilities?.capability_probe_status;
+  if(status==="succeeded")return `已按实际接口探测 · ${structuredCapabilityLabel(model.capabilities?.structured_output)}`;
+  if(status==="stale")return "探测结果已过期，将按安全模式运行；可重新检测";
+  return "尚未探测，将按安全模式运行";
+}
 $("#provider-cancel").addEventListener("click", resetProviderForm);
 $("#provider-form").addEventListener("submit", async event => {
   event.preventDefault();
@@ -2949,7 +2959,7 @@ $("#provider-form").addEventListener("submit", async event => {
 $("#model-form").addEventListener("submit", async event => { event.preventDefault(); const data = Object.fromEntries(new FormData(event.target)); const provider = data.provider_id; delete data.provider_id; try { await api(`/api/providers/${provider}/models`, {method:"POST", body:JSON.stringify(data)}); event.target.reset(); await loadAll(); toast("模型映射已保存"); } catch(error) { toast(error.message); } });
 function renderProviders() {
   $("#model-provider").innerHTML = state.providers.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
-  $("#provider-list").innerHTML = state.providers.length ? state.providers.map(p => `<div class="data-row"><div><strong>${escapeHtml(p.name)}</strong><div class="skill-meta">${escapeHtml(p.protocol)} · ${escapeHtml(p.base_url)}</div><div class="key-update"><input type="password" autocomplete="new-password" placeholder="${p.has_api_key ? "更新接口密钥" : "接口密钥缺失，请重新输入"}" data-key-input="${p.id}"><button class="secondary" data-key-save="${p.id}">保存密钥</button></div>${p.models.map(m => `<div class="model-row"><strong>${escapeHtml(m.display_name)}</strong><span class="skill-meta">结构化：${escapeHtml(m.capabilities?.structured_output || "plain_text")}</span><div class="model-actions"><button class="secondary" data-probe-provider="${p.id}" data-probe-model="${m.id}" ${p.has_api_key ? "" : "disabled"}>检测模型</button><span id="probe-${m.id}" class="probe-result">${p.has_api_key ? "尚未检测" : "请先更新密钥"}</span></div></div>`).join("")}</div><div class="provider-actions"><span class="badge ${p.has_api_key ? "" : "missing"}">${p.has_api_key ? `${p.models.length} 个模型` : "密钥缺失"}</span><button class="secondary" data-provider-edit="${p.id}">编辑</button><button class="danger-button" data-provider-delete="${p.id}">删除</button></div></div>`).join("") : '<p class="skill-meta">尚未配置供应商</p>';
+  $("#provider-list").innerHTML = state.providers.length ? state.providers.map(p => `<div class="data-row"><div><strong>${escapeHtml(p.name)}</strong><div class="skill-meta">${escapeHtml(p.protocol)} · ${escapeHtml(p.base_url)}</div><div class="key-update"><input type="password" autocomplete="new-password" placeholder="${p.has_api_key ? "更新接口密钥" : "接口密钥缺失，请重新输入"}" data-key-input="${p.id}"><button class="secondary" data-key-save="${p.id}">保存密钥</button></div>${p.models.map(m => `<div class="model-row"><strong>${escapeHtml(m.display_name)}</strong><span class="skill-meta">结构化：${escapeHtml(structuredCapabilityLabel(m.capabilities?.structured_output))}（自动）</span><div class="model-actions"><button class="secondary" data-probe-provider="${p.id}" data-probe-model="${m.id}" ${p.has_api_key ? "" : "disabled"}>重新检测</button><span id="probe-${m.id}" class="probe-result">${escapeHtml(modelProbeSummary(m,p.has_api_key))}</span></div></div>`).join("")}</div><div class="provider-actions"><span class="badge ${p.has_api_key ? "" : "missing"}">${p.has_api_key ? `${p.models.length} 个模型` : "密钥缺失"}</span><button class="secondary" data-provider-edit="${p.id}">编辑</button><button class="danger-button" data-provider-delete="${p.id}">删除</button></div></div>`).join("") : '<p class="skill-meta">尚未配置供应商</p>';
   document.querySelectorAll("[data-provider-edit]").forEach(button => button.addEventListener("click", () => {
     const provider=state.providers.find(item => item.id === button.dataset.providerEdit); if (!provider) return;
     const form=$("#provider-form"); state.editingProviderId=provider.id;
@@ -2972,7 +2982,7 @@ function renderProviders() {
   }));
   document.querySelectorAll("[data-probe-model]").forEach(button => button.addEventListener("click", async () => {
     const resultBox=$(`#probe-${button.dataset.probeModel}`); resultBox.className="probe-result"; resultBox.textContent="检测中..."; button.disabled=true;
-    try { const result=await api(`/api/providers/${button.dataset.probeProvider}/models/${button.dataset.probeModel}/probe`,{method:"POST"}); const all=result.chat&&result.structured_output&&result.forced_tool; const partial=result.chat&&!all; resultBox.className=`probe-result ${all ? "success" : partial ? "partial" : "error"}`; resultBox.textContent=`连接 ${result.chat ? "✓" : "×"} · 结构化 ${escapeHtml(result.structured_output_capability || "plain_text")} · 工具 ${result.tool_calling ? "✓" : "×"} · 强制工具 ${result.forced_tool ? "✓" : "×"}${result.error ? ` · ${result.error}` : ""}`; }
+    try { const result=await api(`/api/providers/${button.dataset.probeProvider}/models/${button.dataset.probeModel}/probe`,{method:"POST"}); const strict=result.chat&&["strict_json_schema","strict_tool"].includes(result.structured_output_capability); const partial=result.chat&&!strict; resultBox.className=`probe-result ${strict ? "success" : partial ? "partial" : "error"}`; const diagnostic={route_endpoint_not_found:"端点路径不匹配，请核对 base URL 与协议；不能据此认定模型不存在",credentials_rejected:"密钥被当前端点拒绝",rate_limited:"平台限流，请稍后自动重试",timeout:"连接超时",connection_failed:"连接失败"}[result.diagnostic_code]||""; resultBox.textContent=`连接 ${result.chat ? "✓" : "×"} · 结构化 ${structuredCapabilityLabel(result.structured_output_capability)} · 工具 ${result.tool_calling ? "✓" : "×"} · 强制工具 ${result.forced_tool ? "✓" : "×"}${diagnostic ? ` · ${diagnostic}` : ""}${result.error ? ` · ${result.error}` : ""}`; }
     catch(error) { resultBox.className="probe-result error"; resultBox.textContent=error.message; } finally { button.disabled=false; }
   }));
 }

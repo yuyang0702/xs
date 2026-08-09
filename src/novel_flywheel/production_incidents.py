@@ -6,6 +6,8 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+
 
 @dataclass(frozen=True)
 class IncidentDefinition:
@@ -234,6 +236,15 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "planning.presentation_normalized_ownership_revealed",
+        "规划展示格式已归一化并显露更晚阶段的事件归属问题",
+        "把表格、标题、列表或卡片视为展示层，经统一 AST 编译为闭合规划字段；格式阶段通过后，将新显露的事件正文归属记为更晚验证阶段，而不是回滚格式修复。只补齐受影响完整分段的逐事件可执行正文，保持其他分段、入口、出口、正式大纲和既有创作素材不变，再依次复核相邻交接、整篇逻辑和质量。",
+        (
+            r"规划(?:表格|展示|格式).*(?:本地|已经|已)(?:归一化|规范化).*(?:显露|发现).*(?:事件正文|事件归属)",
+            r"planning presentation.*normaliz.*(?:reveal|discover).*(?:event ownership|event body)",
+        ),
+    ),
+    IncidentDefinition(
         "planning.packet_merge_closedness",
         "容量分包在单包通过后无法无损合并为可验证的完整规划段",
         "每个事件分包先归一化为明确的正文级事件归属，再按原始事件顺序无损合并；合并后的完整段重新执行事件正文、义务、保留度、相邻交接与整篇规划检查。若任一分包归属无法确定，保留最佳完整规划并只重试受影响分包，不把合并失败误判为模型正文失败。",
@@ -368,17 +379,37 @@ def normalize_failure_text(message: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
+_TYPED_INCIDENT_FAMILIES = {
+    FailureClass.TRANSPORT: "provider.connection_failed",
+    FailureClass.CREDENTIAL: "provider.credentials_unavailable",
+    FailureClass.CAPABILITY: "provider.capability_mismatch",
+    FailureClass.CONTEXT_CAPACITY: "model.context_capacity_preflight",
+    FailureClass.OUTPUT_TRUNCATION: "model.output_truncated",
+    FailureClass.SYNTAX_PROTOCOL: "parser.generated_artifact_shape",
+    FailureClass.OWNERSHIP_EVIDENCE: "planning.review_evidence_binding_invalid",
+    FailureClass.SEMANTIC_INVARIANT: "planning.structure_drift",
+    FailureClass.QUALITY_REGRESSION: "polish.local_validation_failed",
+    FailureClass.STALE_AUTHORITY: "runtime.stale_authority",
+}
+
+
 def classify_production_failure(
     message: str, *, workflow: str | None, stage: str | None,
+    failure: ReliabilityFailure | None = None,
 ) -> dict[str, str]:
     normalized = normalize_failure_text(message)
+    typed_family = _TYPED_INCIDENT_FAMILIES.get(
+        failure.failure_class,
+    ) if failure is not None else None
     definition = next((
+        item for item in INCIDENT_DEFINITIONS if item.family == typed_family
+    ), None) if typed_family else next((
         item for item in INCIDENT_DEFINITIONS
         if any(re.search(pattern, normalized, flags=re.IGNORECASE) for pattern in item.patterns)
     ), None)
     if definition is None:
         digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
-        family = f"unclassified.{digest}"
+        family = typed_family or f"unclassified.{digest}"
         title = "尚未归类的生产失败"
         resolution = "保留当前有效检查点和完整错误证据；完成根因分析后登记稳定问题家族、恢复路径与回归用例。"
     else:
@@ -387,13 +418,21 @@ def classify_production_failure(
         resolution = definition.known_resolution
     workflow_key = _normalize_component(workflow, "unknown-workflow")
     stage_key = _normalize_component(stage, "unknown-stage")
-    return {
+    result = {
         "incident_key": f"{workflow_key}:{stage_key}:{family}",
         "incident_family": family,
         "incident_title": title,
         "known_resolution": resolution,
         "normalized_failure": normalized,
     }
+    if failure is not None:
+        result.update({
+            "failure_code": failure.code,
+            "failure_class": failure.failure_class.value,
+            "failure_boundary": failure.boundary,
+            "failure_unit_id": failure.unit_id,
+        })
+    return result
 
 
 def production_incident_catalog() -> list[dict[str, str]]:
@@ -410,10 +449,11 @@ def production_incident_catalog() -> list[dict[str, str]]:
 def record_production_failure(
     db: Any, run_id: str, *, workflow: str | None, stage: str | None,
     raw_error: str, user_message: str, event_type: str,
+    failure: ReliabilityFailure | None = None,
 ) -> dict[str, Any]:
     """Record a terminal incident without letting aggregation hide the failure."""
     incident = classify_production_failure(
-        raw_error, workflow=workflow, stage=stage,
+        raw_error, workflow=workflow, stage=stage, failure=failure,
     )
     try:
         return db.record_run_failure(

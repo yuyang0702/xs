@@ -3585,6 +3585,96 @@ async def test_capacity_split_reviews_event_owned_packets_and_merges_full_covera
 
 
 @pytest.mark.asyncio
+async def test_production_continuation_crosses_packet_and_whole_plan_review(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_event_projection_continuation_93075987.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    event_contracts = [
+        {"id": "EV-BEAE4985", "evidence": "花穗追问裴砚行并得到回应"},
+        {"id": "EV-1522AB0E", "evidence": "沈老夫人宣布认义女"},
+    ]
+    reviewed_packets: dict[str, str] = {}
+
+    async def fake_stage(*args, **kwargs):
+        prompt = args[5]
+        if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in prompt:
+            return whole_adaptation_receipt(prompt)
+        event_ids = json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                "\n\nALLOWED DEPENDENCY EVENT IDS", 1,
+            )[0]
+        )
+        if kwargs.get("capacity_splitter") is not None:
+            return await kwargs["capacity_splitter"]({
+                "pressure": "split", "estimated_input_tokens": 31_000,
+                "authority_input_tokens": 24_000, "output_reserve": 8_000,
+                "context_window": 32_768,
+            })
+        if len(event_ids) > 1:
+            raise ContextCapacityPreflightError(
+                pressure="split", estimated_input_tokens=31_000,
+                authority_input_tokens=24_000, output_reserve=8_000,
+                context_window=32_768,
+            )
+        projected = prompt.split(
+            "CURRENT ACCEPTED PLAN SEGMENT:\n", 1,
+        )[1].split("\n\nPREVIOUS ACCEPTED HANDOFF:", 1)[0]
+        assert len(event_ids) == 1
+        reviewed_packets[event_ids[0]] = projected
+        authority = prompt.split("EXPECTED AUTHORITY SHA256: ", 1)[1].splitlines()[0]
+        planning = prompt.split("EXPECTED PLANNING SHA256: ", 1)[1].splitlines()[0]
+        segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        candidates = json.loads(prompt.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1])
+        evidence_id = next(iter(candidates))
+        return json.dumps({
+            "authority_sha256": authority,
+            "planning_sha256": planning,
+            "segment": segment,
+            "event_reviews": [{
+                "event_id": event_ids[0], "classification": "unchanged",
+                "changed_dimensions": [],
+                "invariants": {field: True for field in INVARIANT_FIELDS},
+                "plan_evidence_ids": [evidence_id],
+                "reason": "事件职责、回应和状态均完整。",
+            }],
+            "segment_order_preserved": True,
+            "formal_direction_preserved": True,
+            "summary": "事件包审核通过。",
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    segment_receipt, issues, _retries = await service._review_short_plan_adaptation_segment(
+        "adaptation-run", run_path, project, "constraints",
+        outline_sha256="a" * 64, planning_sha256="b" * 64,
+        segment=fixture["segment"], event_contracts=event_contracts,
+        plan_segment=fixture["plan_segment"], suffix="production-continuation",
+        previous_handoff="公开坦白", next_entry="继续追信",
+        generation_context_sha256="context",
+        authority_version=PLANNING_ADAPTATION_VERSION,
+        authority_event_ids=[item["id"] for item in event_contracts],
+    )
+
+    assert issues == []
+    assert fixture["required_excerpt"] in reviewed_packets["EV-BEAE4985"]
+    assert fixture["required_excerpt"] not in reviewed_packets["EV-1522AB0E"]
+    whole, whole_issues, _retries = await service._review_short_plan_adaptation_whole(
+        "adaptation-run", run_path, project, "constraints",
+        outline_sha256="a" * 64, planning_sha256="b" * 64,
+        formal_contracts=event_contracts, plan=fixture["plan_segment"],
+        segment_receipts=[segment_receipt], segment_count=1,
+        suffix="production-continuation",
+    )
+    assert whole_issues == []
+    assert whole["event_ids"] == ["EV-BEAE4985", "EV-1522AB0E"]
+
+
+@pytest.mark.asyncio
 async def test_capacity_split_projects_singleton_and_recovers_by_invariant_facets(
     tmp_path,
 ) -> None:

@@ -20,6 +20,10 @@ class ProbeResult(BaseModel):
     ] = "plain_text"
     json_object: bool = False
     error: str | None = None
+    diagnostic_code: Literal[
+        "route_endpoint_not_found", "credentials_rejected", "rate_limited",
+        "timeout", "connection_failed",
+    ] | None = None
 
 
 class CapabilityProbe:
@@ -30,6 +34,19 @@ class CapabilityProbe:
     def _error(exc: Exception) -> str:
         detail = str(exc).strip()
         return f"{type(exc).__name__}: {detail[:240]}" if detail else type(exc).__name__
+
+    @staticmethod
+    def _diagnostic_code(exc: Exception) -> str:
+        detail = str(exc).casefold()
+        if "404" in detail or "not found" in detail:
+            return "route_endpoint_not_found"
+        if "401" in detail or "403" in detail or "unauthorized" in detail:
+            return "credentials_rejected"
+        if "429" in detail or "rate limit" in detail:
+            return "rate_limited"
+        if "timeout" in detail or "timed out" in detail:
+            return "timeout"
+        return "connection_failed"
 
     @staticmethod
     def _parse_json(text: str) -> dict:
@@ -46,6 +63,7 @@ class CapabilityProbe:
                 structured_output=False,
                 tool_calling=False,
                 error=self._error(exc),
+                diagnostic_code=self._diagnostic_code(exc),
             )
         errors = []
         try:
@@ -150,4 +168,5 @@ class CapabilityProbe:
             structured_output_capability=capability,
             json_object=json_object_ok or structured_ok,
             error="; ".join(errors) or None,
+            diagnostic_code=None,
         )

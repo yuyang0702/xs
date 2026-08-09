@@ -4,9 +4,11 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.story_state import (
+    STORY_STATE_SCHEMA,
     StaleStoryState,
     StoryStateStore,
     authoritative_fact_snapshot,
+    migrate_story_state_data,
     validate_locked_facts,
 )
 
@@ -43,6 +45,8 @@ def test_authoritative_fact_snapshot_is_deep_and_excludes_runtime_fields() -> No
         "world_rules",
         "character_states",
         "timeline_events",
+        "narrative_graph",
+        "narrative_rule_profile",
     ]
     assert state["locked_facts"][0]["value"]["place"] == "station"
 
@@ -223,4 +227,68 @@ def test_existing_story_state_backfills_visible_project_material_once(tmp_path) 
     assert state.data["character_states"]["Lin"]["location"] == "station"
     assert state.data["character_states"]["Mei"]["state"] == "waiting at home"
     assert state.data["timeline_events"] == [{"When": "Dawn", "Event": "Lin leaves"}]
-    assert state.data["story_state_schema"] == 2
+    assert state.data["story_state_schema"] == STORY_STATE_SCHEMA
+    assert state.data["narrative_graph"]["version"] == 1
+
+
+def test_story_state_v3_migration_is_idempotent_and_preserves_legacy_authority() -> None:
+    legacy = {
+        "story_state_schema": 2,
+        "locked_facts": [{"key": "ending", "value": "归隐"}],
+        "confirmed_facts": [{"key": "identity", "value": "花穗"}],
+        "world_rules": ["身份不能凭空改变"],
+        "character_states": {"花穗": {"location": "沈府"}},
+        "timeline_events": [{"when": "午后", "event": "公开坦白"}],
+    }
+
+    migrated = migrate_story_state_data(legacy)
+    again = migrate_story_state_data(migrated)
+
+    assert migrated == again
+    assert migrated["story_state_schema"] == STORY_STATE_SCHEMA
+    assert migrated["locked_facts"] == legacy["locked_facts"]
+    assert migrated["character_states"] == legacy["character_states"]
+    assert migrated["narrative_graph"] == {
+        "version": 1, "claims": [], "identities": [],
+        "relationships": [], "promises": [],
+    }
+
+
+def test_story_state_commit_rejects_identity_knowledge_regression(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    project = tmp_path / "book"
+    make_project(db, project)
+    store = StoryStateStore(db)
+    state = store.ensure("book", project)
+    candidate = store.create_candidate(
+        "book", "run", state.revision, "planning", "candidate-hash",
+    )
+    graph = {
+        "version": 1,
+        "claims": [
+            {
+                "claim_id": "confession", "subject": "花穗",
+                "predicate": "identity.actual", "value": "花穗",
+                "perspective": "public", "status": "known",
+                "transition": "reveal", "authority": "formal",
+                "event_order": 4, "evidence": "公开坦白",
+            },
+            {
+                "claim_id": "later-question", "subject": "花穗",
+                "predicate": "identity.actual", "value": None,
+                "perspective": "public", "status": "unknown",
+                "transition": "question", "authority": "candidate",
+                "event_order": 6, "evidence": "身份已经问不出来",
+            },
+        ],
+        "identities": [], "relationships": [], "promises": [],
+    }
+
+    with pytest.raises(ValueError, match="knowledge_regression"):
+        store.commit(candidate.id, state.revision, {
+            **state.data, "narrative_graph": graph,
+        })
+
+    assert store.get("book") == state
+    assert store.get_candidate(candidate.id).status == "rejected"

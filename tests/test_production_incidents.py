@@ -8,6 +8,7 @@ from novel_flywheel.production_incidents import (
     classify_production_failure,
     production_incident_catalog,
 )
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
 @pytest.mark.parametrize(("message", "family"), (
@@ -142,6 +143,23 @@ def test_historical_production_failures_have_stable_families(message, family) ->
     )
 
     assert incident["incident_family"] == family
+
+
+def test_typed_failure_classification_precedes_message_regex() -> None:
+    failure = ReliabilityFailure(
+        "receipt_schema", FailureClass.SYNTAX_PROTOCOL,
+        "planning-review", unit_id="segment-5", protocol_only=True,
+    )
+
+    result = classify_production_failure(
+        "completely novel wording without a known regex",
+        workflow="short-story", stage="planning", failure=failure,
+    )
+
+    assert result["incident_family"] == "parser.generated_artifact_shape"
+    assert result["failure_code"] == "receipt_schema"
+    assert result["failure_class"] == "syntax_protocol"
+    assert result["failure_unit_id"] == "segment-5"
 
 
 @pytest.mark.parametrize("message", [
@@ -345,12 +363,33 @@ def test_catalog_exposes_every_registered_family_once() -> None:
     assert "planning.structure_drift" in families
     assert "planning.recovery_latent_issue_misattributed" in families
     assert "planning.event_body_integrity" in families
+    assert "planning.presentation_normalized_ownership_revealed" in families
     assert "planning.event_obligation_incomplete" in families
     assert "polish.local_validation_failed" in families
     assert "planning.repair_anchor_collapse" in families
     assert "narrative.first_person_contract_missing" in families
     assert "runtime.stale_console_process" in families
     assert "parser.generated_artifact_shape" in families
+
+
+def test_recorded_field_table_incident_is_stage_progress_not_parser_regression() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" / "planning_field_table_4e79a0f4.json")
+        .read_text(encoding="utf-8")
+    )
+
+    incident = classify_production_failure(
+        "规划表格已经本地规范化，并发现 29 个正式事件正文归属问题",
+        workflow="short-story",
+        stage="planning",
+    )
+
+    assert fixture["source_artifact_sha256"]
+    assert incident["incident_family"] == (
+        "planning.presentation_normalized_ownership_revealed"
+    )
+    assert "更晚验证阶段" in incident["known_resolution"]
+    assert "其他分段" in incident["known_resolution"]
 
 
 def test_planning_structure_incident_resolution_forbids_cross_segment_rollback() -> None:

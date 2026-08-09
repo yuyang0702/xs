@@ -88,6 +88,7 @@ class RunTaskManager:
                 raw_error=raw_error,
                 user_message=error,
                 event_type=event_type,
+                failure=getattr(exc, "reliability_failure", None),
             )
         else:
             run = self.db.get_run(run_id)

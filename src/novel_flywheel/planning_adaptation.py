@@ -6,6 +6,9 @@ import re
 import unicodedata
 from typing import Any
 
+from novel_flywheel.narrative_document import parse_narrative_document
+from novel_flywheel.planning_compiler import compile_planning_segment
+
 
 PLANNING_ADAPTATION_VERSION = 3
 LEGACY_PLANNING_ADAPTATION_VERSION = 1
@@ -473,25 +476,14 @@ def planning_event_body_issues(
     """Verify that every claimed formal event still owns an independent body."""
     expected = [str(value or "").strip().upper() for value in expected_event_ids]
     text = str(plan_segment or "")
-    body_labels = {"本段事件", "segmentevents", "segmentevent"}
-    body_field_count = sum(
-        1 for match in _PLAN_FIELD_RE.finditer(text)
-        if unicodedata.normalize("NFKC", match.group("label"))
-        .lower().replace(" ", "") in body_labels
-    )
-    if body_field_count != 1:
+    body_values = compile_planning_segment(text).values("event")
+    if len(body_values) != 1:
         # A complete formal segment has one event-body field. Zero means this
         # is an event-owned transport excerpt; more than one means a synthetic
         # packet containing several already separated formal blocks. Their
         # individual parent segments own the authoritative validation.
         return []
-    span = _field_value_span(text, body_labels)
-    if span is None:
-        # Capacity projections and legacy packet fixtures may contain only an
-        # event-owned excerpt rather than a complete formal planning block.
-        # Their parent segment performs the authoritative body check.
-        return []
-    body = text[span[0]:span[1]]
+    body = body_values[0].value
     matches = planning_event_id_occurrences(body)
     actual = [event_id for event_id, _start, _end in matches]
     issues: list[dict[str, Any]] = []
@@ -1068,18 +1060,16 @@ def planning_adaptation_event_projection(
         return normalized, candidates
 
     requested_set = set(requested)
-    selected: list[str] = []
-    covered: set[str] = set()
-    for block in (
-        item.strip()
-        for item in re.split(r"\n[ \t]*\n+", normalized)
-        if item.strip()
-    ):
-        block_ids = set(planning_event_ids(block))
-        owned = block_ids & requested_set
-        if owned:
-            selected.append(block)
-            covered.update(owned)
+    document = parse_narrative_document(
+        normalized, event_id_extractor=planning_event_ids,
+    )
+    selected_blocks = document.event_blocks(requested)
+    covered = {
+        event_id
+        for block in selected_blocks
+        for event_id in block.owner_event_ids
+        if event_id in requested_set
+    }
 
     all_segment_ids = set(planning_event_ids(normalized))
     if covered != requested_set:
@@ -1089,7 +1079,7 @@ def planning_adaptation_event_projection(
         # segment. Keep all exact authority instead of guessing boundaries.
         return normalized, candidates
 
-    projected = "\n\n".join(selected).strip()
+    projected = document.project_events(requested)
     projected_candidates = {
         evidence_id: value
         for evidence_id, value in candidates.items()

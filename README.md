@@ -123,6 +123,10 @@ Ordinary prose polish uses bounded chunks and merges tiny trailing chunks when t
 
 Only locally accepted candidates create checkpoints; rejected candidates remain retryable on resume.
 
+The reliability kernel uses one source-mapped Markdown document boundary for event ownership, including unnumbered continuation paragraphs and nested list content. StoryState schema 3 stores typed narrative claims for actual identity, public or character knowledge, relationships, promises, and genre rule profiles without creating a second canon store. Every mutation must strictly reduce hard issues while preserving unrelated bytes and prose-quality floors. Model-stage observations are hash-bound in SQLite but remain non-authoritative until the existing validators and candidate promotion accept them.
+
+Third-party model capabilities are treated as expiring route-local observations. Changing protocol, base URL, headers, or model name invalidates the old result; Runtime safely falls back to local validation until a fresh probe succeeds. A 404 is diagnosed as an endpoint/protocol mismatch rather than proof that the configured model is absent. The UI keeps capacity and fallback decisions automatic and shows only detected capability diagnostics.
+
 For structural correction only, candidates in the 50%-60% compression gray zone may continue to final review when locked facts and local checks still pass. Runtime also re-aligns forbidden-text repair tasks to the scene that actually contains the exact text.
 
 Operational details, log meanings, recovery behavior, and documentation requirements are in [`docs/maintenance.md`](docs/maintenance.md).

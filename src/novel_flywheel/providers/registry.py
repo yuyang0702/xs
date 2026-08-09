@@ -1,4 +1,7 @@
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+import hashlib
+import json
 from typing import Callable
 from uuid import uuid4
 
@@ -24,6 +27,7 @@ class ResolvedModel:
     model_name: str
     adapter: ProviderAdapter
     capabilities: dict = field(default_factory=dict)
+    route_fingerprint: str = ""
 
 
 class ProviderRegistry:
@@ -73,6 +77,7 @@ class ProviderRegistry:
             raise ValueError("unsupported_protocol")
         if not name.strip() or not base_url.startswith(("http://", "https://")):
             raise ValueError("invalid_provider")
+        old_route_identity = self._provider_route_identity(current)
         self.db.save_provider(
             provider_id=provider_id,
             name=name.strip(),
@@ -85,6 +90,9 @@ class ProviderRegistry:
         )
         if api_key and api_key.strip():
             self.secrets.set(provider_id, api_key.strip())
+        updated = self.db.get_provider(provider_id)
+        if updated and self._provider_route_identity(updated) != old_route_identity:
+            self._invalidate_provider_probes(provider_id)
 
     def add_model(
         self, provider_id: str, display_name: str, model_name: str,
@@ -137,7 +145,80 @@ class ProviderRegistry:
         adapter = ADAPTERS[provider["protocol"]](provider["base_url"], secret,
                                                   provider["extra_headers"], provider["timeout_seconds"],
                                                   auth_type=provider["auth_type"])
-        return ResolvedModel(provider_id, model_id, model["model_name"], adapter, model["capabilities"])
+        fingerprint = self.route_fingerprint(provider, model)
+        capabilities = self._effective_capabilities(
+            model.get("capabilities") or {}, fingerprint,
+        )
+        return ResolvedModel(
+            provider_id, model_id, model["model_name"], adapter,
+            capabilities, fingerprint,
+        )
+
+    @staticmethod
+    def _provider_route_identity(provider: dict) -> str:
+        payload = {
+            "protocol": provider.get("protocol"),
+            "base_url": str(provider.get("base_url") or "").rstrip("/"),
+            "auth_type": provider.get("auth_type"),
+            "extra_headers": provider.get("extra_headers") or {},
+        }
+        return hashlib.sha256(json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+
+    @classmethod
+    def route_fingerprint(cls, provider: dict, model: dict) -> str:
+        payload = {
+            "provider_route": cls._provider_route_identity(provider),
+            "model_name": model.get("model_name"),
+        }
+        return hashlib.sha256(json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _effective_capabilities(capabilities: dict, fingerprint: str) -> dict:
+        result = dict(capabilities)
+        probed_route = str(result.get("capability_probe_route_fingerprint") or "")
+        if not probed_route:
+            # Legacy/manual capabilities remain compatible until an observed
+            # route-local probe takes authority for this model.
+            return result
+        expires_at = str(result.get("capability_probe_expires_at") or "")
+        expired = False
+        if expires_at:
+            try:
+                expires = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+                expired = expires <= datetime.now(timezone.utc)
+            except ValueError:
+                expired = True
+        if probed_route != fingerprint or expired:
+            result.update({
+                "structured_output": "plain_text",
+                "tool_support": "auto",
+                "capability_probe_status": "stale",
+                "capability_probe_stale_reason": (
+                    "route_changed" if probed_route != fingerprint else "expired"
+                ),
+            })
+        return result
+
+    def _invalidate_provider_probes(self, provider_id: str) -> None:
+        for model in self.db.list_models(provider_id):
+            capabilities = dict(model.get("capabilities") or {})
+            if not capabilities.get("capability_probe_route_fingerprint"):
+                continue
+            capabilities.update({
+                "capability_probe_status": "stale",
+                "capability_probe_stale_reason": "route_changed",
+            })
+            self.db.save_model(
+                model_id=model["id"], provider_id=provider_id,
+                display_name=model["display_name"], model_name=model["model_name"],
+                context_window=model.get("context_window"),
+                max_output_tokens=model.get("max_output_tokens"),
+                capabilities=capabilities,
+            )
 
     def delete_provider(self, provider_id: str) -> None:
         self.db.delete_provider(provider_id)

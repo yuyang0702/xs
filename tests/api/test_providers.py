@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from novel_flywheel.app import create_app
@@ -8,6 +10,19 @@ from novel_flywheel.secrets import MemorySecretStore
 def make_client(tmp_path) -> TestClient:
     db = Database(tmp_path / "app.db")
     return TestClient(create_app(db, MemorySecretStore()))
+
+
+def test_provider_ui_exposes_observed_diagnostics_not_manual_capacity_controls() -> None:
+    static = Path(__file__).parents[2] / "src" / "novel_flywheel" / "static"
+    html = (static / "index.html").read_text(encoding="utf-8")
+    script = (static / "app.js").read_text(encoding="utf-8")
+
+    assert 'name="context_window"' not in html
+    assert 'name="max_output_tokens"' not in html
+    assert 'name="structured_output"' not in html
+    assert "由实际接口探测及运行观测自动管理" in html
+    assert "严格 Schema" in script
+    assert "探测结果已过期，将按安全模式运行" in script
 
 
 def test_provider_response_never_returns_api_key(tmp_path) -> None:

@@ -431,3 +431,16 @@ def test_repository_policy_forbids_open_world_requirement_narrowing() -> None:
     assert "Forbidden narrowing" in contract
     assert "version 2 JSON report" in shield
     assert "unseen_valid_variants_tested" in shield
+
+
+def test_repository_policy_requires_root_cause_architecture_convergence() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+    assert "## Root-Cause Architecture Convergence Gate" in agents
+    assert "mechanism-level root-cause analysis" in agents
+    assert "mature standards, maintained libraries" in agents
+    assert "Patch accumulation is prohibited" in agents
+    assert "convergence budget" in agents
+    assert "deprecation, or deletion plan" in agents
+    assert "MUST NOT be reported as root resolution" in agents
+    assert "never `systemically_resolved`" in agents
