@@ -6,12 +6,17 @@ from pathlib import Path
 
 import pytest
 
+from novel_flywheel.narrative_contract import (
+    NarrativeContract,
+    narrative_participant_realizations,
+)
 from novel_flywheel.planning_adaptation import (
     INVARIANT_FIELDS,
     LEGACY_PLANNING_ADAPTATION_VERSION,
     PLANNING_ADAPTATION_VERSION,
     PREVIOUS_PLANNING_ADAPTATION_VERSION,
     apply_planning_repair_patch,
+    bind_planning_participant_realizations,
     effective_event_contracts,
     normalize_planning_adaptation_receipt,
     normalize_planning_adaptation_whole_receipt,
@@ -150,6 +155,241 @@ def test_planning_event_obligation_issues_allow_complete_multi_participant_event
     assert planning_event_obligation_issues(
         segment, ["EV-BEAE4985"], checklist,
     ) == []
+
+
+def test_production_first_person_narrator_realization_is_not_missing() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_first_person_participant_identity_5bb4b703.json")
+        .read_text(encoding="utf-8")
+    )
+    checklist = json.loads(json.dumps(
+        fixture["obligation_checklists"], ensure_ascii=False,
+    ))
+    checklist["EV-BEAE4985"]["participant_realizations"] = {
+        "花穗": {
+            "version": 1,
+            "kind": "first_person_narrator",
+            "canonical_name": "花穗",
+            "narrative_references": ["我"],
+        },
+    }
+
+    assert planning_event_obligation_issues(
+        fixture["plan_segment"],
+        fixture["expected_event_ids"],
+        checklist,
+    ) == []
+
+
+def test_quoted_first_person_token_does_not_claim_narrator_identity() -> None:
+    segment = (
+        "### 第 1 段：旁观承诺\n\n"
+        "事件ID：EV-VOICE001\n\n"
+        "本段事件：1. **承诺**（EV-VOICE001）：裴砚行说："
+        "“我会承担后果。”沈老夫人随后点头。\n"
+    )
+    checklist = {
+        "EV-VOICE001": {
+            "required_participants": ["花穗", "裴砚行"],
+            "identity_stable_participants": ["花穗", "裴砚行"],
+            "obligations": [{
+                "id": "EV-VOICE001-B01",
+                "kinds": ["action", "commitment"],
+                "required_participants": ["花穗", "裴砚行"],
+            }],
+            "participant_realizations": {
+                "花穗": {
+                    "version": 1,
+                    "kind": "first_person_narrator",
+                    "canonical_name": "花穗",
+                    "narrative_references": ["我"],
+                },
+            },
+        },
+    }
+
+    issues = planning_event_obligation_issues(
+        segment, ["EV-VOICE001"], checklist,
+    )
+
+    assert len(issues) == 1
+    assert issues[0]["missing_participants"] == ["花穗"]
+
+
+def _participant_identity_checklist(
+    canonical_name: str, self_reference: str,
+) -> dict[str, dict]:
+    contract = NarrativeContract(
+        status="ready",
+        mode="first_person_limited",
+        narrator_character_id="narrator",
+        narrator_name=canonical_name,
+        self_reference=self_reference,
+    )
+    return bind_planning_participant_realizations({
+        "EV-VOICE001": {
+            "required_participants": [canonical_name, "Witness"],
+            "identity_stable_participants": [canonical_name, "Witness"],
+            "obligations": [{
+                "id": "EV-VOICE001-B01",
+                "kinds": ["action", "reaction"],
+                "required_participants": [canonical_name, "Witness"],
+            }],
+        },
+    }, narrative_participant_realizations(contract))
+
+
+@pytest.mark.parametrize(("canonical_name", "self_reference", "segment"), [
+    (
+        "林雨", "我",
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：我提交证据，Witness 当场确认。",
+    ),
+    (
+        "Mara", "I",
+        "### Segment 1\nEvent ID: EV-VOICE001\n"
+        "### 本段事件\nI submit the record; Witness confirms it.",
+    ),
+    (
+        "Aiko", "私",
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "- **本段事件**：私は証拠を出し、Witness が確認する。",
+    ),
+    (
+        "Sol", "yo",
+        "### Segmento 1\n事件ID：EV-VOICE001\n"
+        "| 字段 | 内容 |\n|---|---|\n"
+        "| 本段事件 | yo entrego la prueba y Witness la confirma. |",
+    ),
+    (
+        "阿岚", "俺",
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "`本段事件`：俺交出证据，Witness 随后确认。",
+    ),
+    (
+        "Nia", "I",
+        "### Segment 1\nEvent ID: EV-VOICE001\n"
+        "本段事件：1. **Decision**（EV-VOICE001）："
+        "Nia submits the record; Witness confirms it.",
+    ),
+])
+def test_participant_identity_realization_supports_cross_novel_surface_forms(
+    canonical_name: str, self_reference: str, segment: str,
+) -> None:
+    assert planning_event_obligation_issues(
+        segment, ["EV-VOICE001"],
+        _participant_identity_checklist(canonical_name, self_reference),
+    ) == []
+
+
+def test_participant_realization_binding_is_idempotent_and_drops_stale_aliases() -> None:
+    source = {
+        "EV-VOICE001": {
+            "required_participants": ["Mara", "Witness"],
+            "participant_realizations": {
+                "Stale Narrator": {"kind": "first_person_narrator"},
+            },
+        },
+    }
+    authority = narrative_participant_realizations(NarrativeContract(
+        status="ready", mode="first_person_limited",
+        narrator_character_id="mara", narrator_name="Mara", self_reference="I",
+    ))
+
+    once = bind_planning_participant_realizations(source, authority)
+    twice = bind_planning_participant_realizations(once, authority)
+
+    assert once == twice
+    assert set(once["EV-VOICE001"]["participant_realizations"]) == {"Mara"}
+
+
+@pytest.mark.parametrize(("segment", "mapping", "missing"), [
+    (
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：我提交证据，Witness 确认。",
+        {},
+        ["花穗"],
+    ),
+    (
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：‘我会确认。’Witness 说完离开。",
+        {"花穗": {
+            "kind": "first_person_narrator", "canonical_name": "花穗",
+            "narrative_references": ["我"],
+        }},
+        ["花穗"],
+    ),
+    (
+        "### Segment 1\nEvent ID: EV-VOICE001\n"
+        '本段事件：Witness says "I confirm the record."',
+        {"Mara": {
+            "kind": "first_person_narrator", "canonical_name": "Mara",
+            "narrative_references": ["I"],
+        }},
+        ["Mara"],
+    ),
+    (
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：我提交证据，Witness 确认。",
+        {"花穗": {
+            "kind": "first_person_narrator", "canonical_name": "林雨",
+            "narrative_references": ["我"],
+        }},
+        ["花穗"],
+    ),
+    (
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：小花提交证据，Witness 确认。",
+        {"花穗": {
+            "kind": "first_person_narrator", "canonical_name": "花穗",
+            "narrative_references": ["我"],
+        }},
+        ["花穗"],
+    ),
+    (
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：我提交证据。",
+        {"花穗": {
+            "kind": "first_person_narrator", "canonical_name": "花穗",
+            "narrative_references": ["我"],
+        }},
+        ["Witness"],
+    ),
+])
+def test_participant_identity_realization_fails_closed_for_unsafe_equivalence(
+    segment: str, mapping: dict, missing: list[str],
+) -> None:
+    checklist = {
+        "EV-VOICE001": {
+            "required_participants": [next(iter(mapping), "花穗"), "Witness"],
+            "identity_stable_participants": [next(iter(mapping), "花穗"), "Witness"],
+            "obligations": [{
+                "id": "EV-VOICE001-B01",
+                "kinds": ["action", "reaction"],
+                "required_participants": [next(iter(mapping), "花穗"), "Witness"],
+            }],
+            "participant_realizations": mapping,
+        },
+    }
+
+    issues = planning_event_obligation_issues(
+        segment, ["EV-VOICE001"], checklist,
+    )
+
+    assert issues[0]["missing_participants"] == missing
+
+
+def test_unclosed_quote_cannot_leak_first_person_identity_into_narrative_voice() -> None:
+    segment = (
+        "### 第 1 段\n事件ID：EV-VOICE001\n"
+        "本段事件：Witness 说：“这句话没有闭合，我随后提交证据。"
+    )
+    issues = planning_event_obligation_issues(
+        segment, ["EV-VOICE001"], _participant_identity_checklist("林雨", "我"),
+    )
+
+    assert issues[0]["missing_participants"] == ["林雨"]
 
 
 def test_planning_event_obligation_does_not_borrow_an_unowned_numbered_item() -> None:

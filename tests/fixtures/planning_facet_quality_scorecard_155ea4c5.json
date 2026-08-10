@@ -1,0 +1,24 @@
+{
+  "run_id_prefix": "155ea4c5",
+  "failure_family": "planning.invariant_truth_set_shape",
+  "boundary": "planning_adaptation_facet",
+  "invariant_fields": [
+    "event_function",
+    "primary_actor_agency",
+    "causal_dependencies"
+  ],
+  "generated": {
+    "decision": "pass",
+    "dimensions": {
+      "commercial": 80,
+      "story": 80,
+      "prose": 80
+    },
+    "hard_fail": false,
+    "issues": []
+  },
+  "evidence_candidates": {
+    "E-1": "Known Runtime evidence phrase used only by this regression fixture."
+  },
+  "expected_behavior": "reject_without_adapter_audit"
+}

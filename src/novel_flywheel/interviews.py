@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 
 
 class InterviewSuggestion(BaseModel):
@@ -131,7 +131,9 @@ class WizardInterviewService:
     @staticmethod
     def _parse_output(text: str) -> InterviewModelOutput:
         try:
-            value = parse_json_object(text, label="Planning model output")
+            value = GeneratedArtifactGateway().convert_object(
+                text, contract_name="interview_planning",
+            ).payload
             return InterviewModelOutput.model_validate(value)
         except (json.JSONDecodeError, ValueError, ValidationError) as exc:
             raise ValueError("Planning model did not return one valid JSON object") from exc

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 from novel_flywheel.storage import atomic_write
 
 
@@ -166,7 +166,9 @@ class MaterialImpactService:
     @staticmethod
     def _json_object(text: str) -> dict[str, Any]:
         try:
-            return parse_json_object(text, label="material impact")
+            return GeneratedArtifactGateway().convert_object(
+                text, contract_name="material_audit",
+            ).payload
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("material_impact_invalid_json") from exc
 

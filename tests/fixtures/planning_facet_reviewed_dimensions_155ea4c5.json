@@ -1,0 +1,47 @@
+{
+  "run_id_prefix": "155ea4c5",
+  "failure_family": "planning_adaptation_reviewed_dimensions_echo",
+  "facet": "state",
+  "invariant_fields": [
+    "entry_state",
+    "exit_state",
+    "knowledge_state",
+    "relationship_state"
+  ],
+  "generated": {
+    "invariants": {
+      "entry_state": true,
+      "exit_state": true,
+      "knowledge_state": true,
+      "relationship_state": true
+    },
+    "changed_dimensions": [
+      "entry_state",
+      "exit_state",
+      "knowledge_state",
+      "relationship_state"
+    ],
+    "plan_evidence_ids": ["CURRENT-WINDOW-EVIDENCE-1"],
+    "plan_evidence_quote": "",
+    "reason": "All requested state invariants are preserved in the current evidence."
+  },
+  "mixed_parent_reported_dimensions": [
+    "viewpoint_presentation",
+    "causal_consequence",
+    "relationship_state",
+    "knowledge-state",
+    "causal_progression"
+  ],
+  "expected_effective_dimensions": [
+    "viewpoint_presentation",
+    "causal_consequence",
+    "causal_progression"
+  ],
+  "expected_reviewed_dimensions": [
+    "relationship_state",
+    "knowledge-state"
+  ],
+  "evidence_candidates": {
+    "CURRENT-WINDOW-EVIDENCE-1": "Current immutable evidence phrase used only by this regression fixture."
+  }
+}

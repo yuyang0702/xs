@@ -22,6 +22,15 @@ PROTAGONIST_ROLES = {
     "protagonist", "main", "lead", "hero", "heroine", "主角", "女主", "男主",
 }
 
+_NARRATIVE_QUOTE_PAIRS = {
+    "“": "”",
+    "‘": "’",
+    "「": "」",
+    "『": "』",
+    '"': '"',
+    "＂": "＂",
+}
+
 
 @dataclass(frozen=True)
 class NarrativeContract:
@@ -183,6 +192,68 @@ def narrative_contract_sha256(contract: NarrativeContract) -> str:
     ).encode("utf-8")).hexdigest()
 
 
+def narrative_voice_projection(value: object) -> str:
+    """Return text owned by the narrative voice, excluding quoted speakers.
+
+    Participant identity may not be inferred from an unowned line of dialogue:
+    another character saying "I" is not evidence that the first-person narrator
+    acts in the event.  A small deterministic scanner handles nested Chinese,
+    Japanese, and straight double quotes and fails closed on an unclosed quote.
+    The projection preserves length so diagnostic offsets can remain stable.
+    """
+    source = str(value or "")
+    result: list[str] = []
+    stack: list[str] = []
+    for character in source:
+        if stack:
+            if character == stack[-1]:
+                stack.pop()
+            elif character in _NARRATIVE_QUOTE_PAIRS:
+                stack.append(_NARRATIVE_QUOTE_PAIRS[character])
+            result.append(" ")
+            continue
+        if character in _NARRATIVE_QUOTE_PAIRS:
+            stack.append(_NARRATIVE_QUOTE_PAIRS[character])
+            result.append(" ")
+        else:
+            result.append(character)
+    return "".join(result)
+
+
+def narrative_participant_realizations(
+    contract: NarrativeContract,
+) -> dict[str, dict[str, object]]:
+    """Project a ready narrator contract into canonical identity realizations.
+
+    The canonical character remains the authority.  This projection only says
+    how that same identity may be written in narrative voice; it never invents
+    aliases from prose and remains empty for third-person or ambiguous projects.
+    """
+    if (
+        contract.status != "ready"
+        or not contract.mode.startswith("first_person")
+        or not contract.narrator_name.strip()
+        or not contract.self_reference.strip()
+    ):
+        return {}
+    canonical_name = unicodedata.normalize(
+        "NFKC", contract.narrator_name,
+    ).strip()
+    self_reference = unicodedata.normalize(
+        "NFKC", contract.self_reference,
+    ).strip()
+    return {
+        canonical_name: {
+            "version": 1,
+            "kind": "first_person_narrator",
+            "canonical_name": canonical_name,
+            "narrative_references": [self_reference],
+            "allow_subject_ellipsis": bool(contract.allow_subject_ellipsis),
+            "narrative_contract_sha256": narrative_contract_sha256(contract),
+        },
+    }
+
+
 def ensure_narrative_contract(project: Project) -> NarrativeContract:
     """Resolve and expose the current contract without making it a second canon."""
     contract = resolve_narrative_contract(project)
@@ -275,10 +346,7 @@ def first_person_prose_issues(
         return []
     issues: list[dict[str, str]] = []
     self_reference = str(getattr(contract, "self_reference", "") or "我")
-    narrative_only = re.sub(
-        r"“.*?”|‘.*?’|「.*?」|『.*?』|\".*?\"", "", visible,
-        flags=re.DOTALL,
-    )
+    narrative_only = narrative_voice_projection(visible)
     self_count = narrative_only.count(self_reference)
     narrator_name = str(getattr(contract, "narrator_name", "") or "")
     narrator_count = narrative_only.count(narrator_name) if narrator_name else 0

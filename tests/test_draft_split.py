@@ -5,6 +5,8 @@ import pytest
 
 from novel_flywheel.draft_split import (
     DraftTaskContract,
+    align_semantic_receipt_evidence,
+    align_whole_draft_receipt_evidence,
     exact_event_partition,
     render_draft_task_prompt,
     residual_target,
@@ -227,6 +229,116 @@ def test_semantic_receipt_reports_all_independent_contract_failures() -> None:
         "beat_coverage", "entry_state", "exit_state", "outside_beat",
         "future_beat", "viewpoint", "causal_order", "missing_summary",
     } <= codes
+
+
+def test_semantic_receipt_aligns_unique_extracts_without_changing_verdicts() -> None:
+    prose = (
+        "我在前厅接过沈老夫人递来的旧账本，逐页核对朱砂印。"
+        "确认印章与支出记录一致后，我当面请管事说明银两去向。"
+    )
+    contract = _contract(
+        event_ids=("EV-00000001",), beat_ids=("EV-00000001/01",),
+        execution_manifest_sha256="b" * 64, viewpoint="first-person",
+    )
+    joined = "我在前厅接过沈老夫人递来的旧账本……逐页核对朱砂印"
+    receipt = {
+        "authority_sha256": contract.authority_sha256,
+        "execution_manifest_sha256": contract.execution_manifest_sha256,
+        "task_id": contract.task_id,
+        "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+        "beat_receipts": [{
+            "beat_id": "EV-00000001/01", "evidence": joined,
+            "actor_action_valid": True, "actor_action_evidence": joined,
+            "state_valid": True, "state_evidence": "逐页核对朱砂印",
+            "scene_order_valid": True, "scene_order_evidence": joined,
+        }],
+        "entry": {"satisfied": True, "evidence": joined},
+        "exit": {
+            "satisfied": True,
+            "evidence": "确认印章与支出记录一致后……请管事说明银两去向",
+        },
+        "outside_beat_ids": [], "future_beat_ids": [],
+        "viewpoint_valid": True, "viewpoint_evidence": joined,
+        "causal_order_valid": True,
+        "causal_order_evidence": (
+            "逐页核对朱砂印……确认印章与支出记录一致后，我当面请管事说明银两去向"
+        ),
+        "summary": "",
+    }
+
+    aligned, repaired_paths = align_semantic_receipt_evidence(
+        contract, prose, receipt,
+    )
+
+    assert receipt["summary"] == ""
+    assert "summary" in repaired_paths
+    assert repaired_paths
+    assert validate_semantic_receipt(contract, prose, aligned)["beat_receipts"]
+
+
+def test_semantic_receipt_does_not_align_ambiguous_or_weak_extracts() -> None:
+    repeated = "这是一段会重复出现的关键证据"
+    prose = f"{repeated}。中间发生别的事情。{repeated}。"
+    contract = _contract(event_ids=("EV-00000001",))
+    receipt = {
+        "authority_sha256": contract.authority_sha256,
+        "task_id": contract.task_id,
+        "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+        "event_receipts": [{
+            "event_id": "EV-00000001",
+            "evidence": repeated + "……审核补充说明",
+        }],
+        "entry": {"satisfied": True, "evidence": repeated},
+        "exit": {"satisfied": True, "evidence": repeated},
+        "outside_event_ids": [], "causal_order_valid": True,
+        "causal_order_evidence": repeated, "summary": "不能猜测绑定位置。",
+    }
+
+    aligned, repaired_paths = align_semantic_receipt_evidence(
+        contract, prose, receipt,
+    )
+
+    assert repaired_paths == []
+    assert any(
+        item["code"] == "event_evidence"
+        for item in semantic_receipt_issues(contract, prose, aligned)
+    )
+
+
+def test_whole_receipt_uses_the_same_unique_extract_alignment() -> None:
+    segments = [
+        "我在前厅接过沈老夫人递来的旧账本。",
+        "确认印章与支出记录一致后，我请管事说明银两去向。",
+    ]
+    draft = "\n\n".join(segments)
+    authority = "b" * 64
+    event_ids = ["EV-00000001", "EV-00000002"]
+    receipt = {
+        "authority_sha256": authority,
+        "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+        "segment_sha256": [
+            hashlib.sha256(item.encode("utf-8")).hexdigest() for item in segments
+        ],
+        "event_ids": event_ids,
+        "missing_event_ids": [], "duplicate_event_ids": [],
+        "out_of_order_event_ids": [], "causal_order_valid": True,
+        "continuity_valid": True, "ending_valid": True,
+        "commitments_valid": True,
+        "evidence": [{
+            "kind": "causal",
+            "excerpt": "接过沈老夫人递来的旧账本……确认印章与支出记录一致后",
+        }],
+        "summary": "",
+    }
+
+    aligned, repaired_paths = align_whole_draft_receipt_evidence(
+        authority, draft, segments, event_ids, receipt,
+    )
+
+    assert "summary" in repaired_paths
+    assert validate_whole_draft_receipt(
+        authority, draft, segments, event_ids, aligned,
+    )["evidence"]
 
 
 def test_whole_draft_receipt_requires_exact_segment_and_event_manifests() -> None:

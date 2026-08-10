@@ -1,0 +1,28 @@
+{
+  "run_id": "155ea4c5db31421587505dd4a00b6819",
+  "workflow": "short-story",
+  "stage": "review",
+  "incident_family": "model.context_capacity_preflight",
+  "message": "input context overflow preflight: lossless story authority plus output reserve requires 24679 tokens for context window 32768; topology=compact",
+  "estimated_input_tokens": 20583,
+  "authority_input_tokens": 16929,
+  "output_reserve_tokens": 4096,
+  "context_window": 32768,
+  "trigger_event": "semantic_receipt_protocol_retry",
+  "issue_codes": [
+    "beat_evidence",
+    "scene_order_evidence",
+    "actor_action_evidence",
+    "entry_evidence",
+    "exit_evidence",
+    "viewpoint_evidence",
+    "causal_order_evidence",
+    "missing_summary"
+  ],
+  "required_recovery": [
+    "unique_extract_alignment",
+    "advisory_context_shed",
+    "bounded_protocol_retry",
+    "whole_draft_downstream_scan"
+  ]
+}

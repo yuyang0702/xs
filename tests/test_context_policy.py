@@ -127,6 +127,19 @@ def test_nested_fatal_route_failure_wins_over_transient_route() -> None:
     assert context_policy.classify_model_failure(RoutesFailed()) == "provider_rejection"
 
 
+def test_explicitly_suppressed_exception_context_does_not_poison_classification() -> None:
+    try:
+        raise RuntimeError("maximum context length exceeded")
+    except RuntimeError:
+        try:
+            raise ValueError("invariant_shape") from None
+        except ValueError as failure:
+            assert failure.__suppress_context__ is True
+            assert context_policy.classify_model_failure(
+                failure,
+            ) == "normal_invalid_output"
+
+
 def test_input_token_estimator_is_conservative_for_chinese_and_ascii() -> None:
     estimated = estimate_input_tokens("中" * 100 + "a" * 400)
 

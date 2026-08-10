@@ -14,6 +14,7 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.context_policy import (
     build_polish_authority_packet,
+    classify_model_failure,
     classify_input_pressure,
 )
 from novel_flywheel.execution_manifest import (
@@ -22,7 +23,11 @@ from novel_flywheel.execution_manifest import (
     parse_execution_manifest,
 )
 from novel_flywheel.learning import LearningSystem
-from novel_flywheel.models import ModelResult, ModelRoutesExhaustedError
+from novel_flywheel.models import (
+    ModelResult,
+    ModelRoutesExhaustedError,
+    TransportInterruptedError,
+)
 from novel_flywheel.narrative_ledger import build_narrative_ledger
 from novel_flywheel.outlines import narrative_outline_event_contracts, outline_events
 from novel_flywheel.planning_adaptation import (
@@ -38,12 +43,14 @@ from novel_flywheel.planning_recovery import (
     record_planning_candidate,
     write_planning_recovery,
 )
+from novel_flywheel.prompts import IMMUTABLE_RECEIPT_SYSTEM
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.quality import issue_ledger, review_windows
 from novel_flywheel.quality_profiles import score_review
 from novel_flywheel.quality_records import load_quality_checkpoint, write_quality_checkpoint
 from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
+from novel_flywheel.recovery_engine import protocol_receipt_attempts
 from novel_flywheel.revision import segment_map
 from novel_flywheel.revision_operations import RevisionOperationError
 from novel_flywheel.scene_continuity import LocationRef
@@ -972,6 +979,248 @@ def make_polish_recovery_service(tmp_path, gateway, run_id="polish-recovery"):
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
     return db, project, service, run_path
+
+
+@pytest.mark.asyncio
+async def test_primary_only_review_retry_never_uses_hidden_fallback(tmp_path) -> None:
+    class RouteIsolatedGateway:
+        def __init__(self) -> None:
+            self.primary_calls = 0
+            self.complete_calls = 0
+            self.fallback_calls = 0
+
+        async def complete(self, *_args, **_kwargs):
+            self.complete_calls += 1
+            raise AssertionError("generic completion must not own a route-isolated retry")
+
+        async def complete_primary(self, *_args, **kwargs):
+            self.primary_calls += 1
+            if self.primary_calls == 1:
+                return ModelResult("", {
+                    "finish_reason": "max_tokens",
+                    "provider_id": "primary",
+                    "model_id": "primary-model",
+                    "model_name": "primary-model",
+                    "input_tokens": 100,
+                    "output_tokens": kwargs.get("max_output_tokens") or 1,
+                })
+            return ModelResult('{"ok":true}', {
+                "finish_reason": "stop",
+                "provider_id": "primary",
+                "model_id": "primary-model",
+                "model_name": "primary-model",
+                "input_tokens": 100,
+                "output_tokens": 8,
+            })
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            self.fallback_calls += 1
+            raise AssertionError("fallback must be selected only by the outer schedule")
+
+    gateway = RouteIsolatedGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="route-isolated-review",
+    )
+    db.save_role_binding(
+        "review", "primary", "primary-model", "backup", "backup-model",
+    )
+
+    result = await service._stage(
+        "route-isolated-review", run_path, project,
+        "review", "constraints", "Return one bounded receipt.",
+        suffix="-primary-route",
+        allow_tools=False,
+        primary_only=True,
+        expected_output_characters=200,
+        bounded_protocol_output=True,
+        completion_check=lambda value: bool(value.strip()),
+    )
+
+    assert json.loads(result) == {"ok": True}
+    assert gateway.primary_calls == 2
+    assert gateway.complete_calls == 0
+    assert gateway.fallback_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_bounded_receipt_system_contract_replaces_quality_scorecard(
+    tmp_path,
+) -> None:
+    class ContractCapturingGateway:
+        def __init__(self) -> None:
+            self.system = ""
+
+        async def complete_configured_fallback(
+            self, _role, system, _user, **_kwargs,
+        ):
+            self.system = system
+            return ModelResult(json.dumps({
+                "invariants": {
+                    "event_function": True,
+                    "primary_actor_agency": True,
+                    "causal_dependencies": True,
+                },
+                "changed_dimensions": [],
+                "plan_evidence_ids": ["E-1"],
+                "reason": "The selected Runtime evidence preserves every invariant.",
+            }), {
+                "finish_reason": "stop",
+                "input_tokens": 10,
+                "output_tokens": 5,
+            })
+
+        async def complete_primary(self, *_args, **_kwargs):
+            raise AssertionError("the configured fallback route owns this attempt")
+
+        async def complete(self, *_args, **_kwargs):
+            raise AssertionError("generic completion must not own this route")
+
+    gateway = ContractCapturingGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="receipt-system-contract",
+    )
+    db.save_role_binding(
+        "review", "primary", "review-model", "backup", "backup-review-model",
+    )
+    invariant_fields = (
+        "event_function", "primary_actor_agency", "causal_dependencies",
+    )
+    evidence_candidates = {"E-1": "Known Runtime evidence phrase."}
+
+    result = await service._stage(
+        "receipt-system-contract", run_path, project,
+        "review", "constraints", "Return the requested invariant receipt.",
+        allow_tools=False,
+        prefer_configured_fallback=True,
+        defer_route_failure_audit=True,
+        bounded_protocol_output=True,
+        protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+        completion_check=lambda value: not (
+            service._converted_planning_adaptation_facet_semantic_issues(
+                value, run_path,
+                invariant_fields=invariant_fields,
+                evidence_candidates=evidence_candidates,
+            )
+        ),
+    )
+
+    assert service._converted_planning_adaptation_facet_semantic_issues(
+        result, run_path,
+        invariant_fields=invariant_fields,
+        evidence_candidates=evidence_candidates,
+    ) == []
+    assert gateway.system.startswith(IMMUTABLE_RECEIPT_SYSTEM)
+    assert "dimensions commercial/story/prose" not in gateway.system
+
+
+@pytest.mark.asyncio
+async def test_route_failure_passthrough_persists_only_typed_hash_audit(tmp_path) -> None:
+    class RejectedGateway:
+        async def complete_primary(self, *_args, **_kwargs):
+            raise RuntimeError(
+                "HTTP 403 Forbidden from secret-provider.example before terminal response"
+            )
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            raise AssertionError("the outer schedule has not selected fallback yet")
+
+        async def complete(self, *_args, **_kwargs):
+            raise AssertionError("generic completion must not own this route")
+
+    gateway = RejectedGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="route-failure-audit",
+    )
+    db.save_role_binding(
+        "review", "primary", "primary-model", "backup", "backup-model",
+    )
+    attempt = protocol_receipt_attempts(
+        same_route_attempts=1, configured_fallback_available=True,
+    )[0]
+
+    result, failure = await service._execute_protocol_receipt_attempt(
+        "route-failure-audit",
+        stage="review",
+        boundary="test_protocol_boundary",
+        attempt=attempt,
+        unit_metadata={"authority_sha256": "a" * 64, "event_count": 1},
+        operation=lambda: service._stage(
+            "route-failure-audit", run_path, project,
+            "review", "constraints", "Return one bounded receipt.",
+            suffix="-rejected-primary",
+            allow_tools=False,
+            primary_only=True,
+            defer_route_failure_audit=True,
+            expected_output_characters=200,
+            bounded_protocol_output=True,
+        ),
+    )
+
+    assert result is None
+    assert failure is not None
+    assert failure.code == "protocol_route_provider_rejection"
+    events = db.list_run_events("route-failure-audit")
+    route_event = next(
+        event for event in events
+        if event["event_type"] == "protocol_receipt_route_failed"
+    )
+    assert len(route_event["metadata"]["error_sha256"]) == 64
+    assert not any(event["event_type"] == "stage_failed" for event in events)
+    persisted = json.dumps(events, ensure_ascii=False)
+    assert "403" not in persisted
+    assert "secret-provider" not in persisted
+
+
+@pytest.mark.asyncio
+async def test_explicit_transport_type_outranks_stale_capacity_context(tmp_path) -> None:
+    class InterruptedGateway:
+        async def complete_primary(self, *_args, **_kwargs):
+            try:
+                raise RuntimeError("HTTP 413 context_length_exceeded")
+            except RuntimeError:
+                raise TransportInterruptedError({
+                    "finish_reason": "network_error",
+                    "transport_complete": False,
+                })
+
+        async def complete(self, *_args, **_kwargs):
+            raise AssertionError("generic completion must not own this route")
+
+    gateway = InterruptedGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="typed-transport-audit",
+    )
+    db.save_role_binding("review", "primary", "review-model", None, None)
+    attempt = protocol_receipt_attempts(
+        same_route_attempts=2, configured_fallback_available=False,
+    )[0]
+
+    result, failure = await service._execute_protocol_receipt_attempt(
+        "typed-transport-audit",
+        stage="review",
+        boundary="test_protocol_boundary",
+        attempt=attempt,
+        unit_metadata={"authority_sha256": "a" * 64},
+        operation=lambda: service._stage(
+            "typed-transport-audit", run_path, project,
+            "review", "constraints", "Return one bounded receipt.",
+            allow_tools=False,
+            primary_only=True,
+            defer_route_failure_audit=True,
+            expected_output_characters=200,
+            bounded_protocol_output=True,
+        ),
+    )
+
+    assert result is None
+    assert failure is not None
+    assert failure.code == "protocol_route_transport_interrupted"
+    route_event = next(
+        event for event in db.list_run_events("typed-transport-audit")
+        if event["event_type"] == "protocol_receipt_route_failed"
+    )
+    assert route_event["metadata"]["failure_class"] == "transport"
+    assert route_event["metadata"]["failure_kind"] == "transport_interrupted"
 
 
 @pytest.mark.asyncio
@@ -2954,7 +3203,7 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     async def fake_stage(*args, **kwargs):
         nonlocal root_calls
         prompt = args[5]
-        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V1" not in prompt:
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET" not in prompt:
             root_calls += 1
             assert kwargs.get("route_capacity_guard") is True
             return await kwargs["capacity_splitter"]({
@@ -2997,7 +3246,8 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     assert chain["covered_event_ids"] == event_ids
     assert len(chain["cycles"]) == 2
     assert packet_calls == [event_ids[:2], event_ids[2:]]
-    assert len(list((run_path / "outputs" / "causal-chain-packets").glob("*.json"))) == 2
+    # Two validated leaves plus one validated deterministic reduction checkpoint.
+    assert len(list((run_path / "outputs" / "causal-chain-packets").glob("*.json"))) == 3
 
     packet_calls.clear()
     second = await service._ensure_short_causal_chain(
@@ -3007,6 +3257,761 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     assert second == chain
     assert root_calls == 2
     assert packet_calls == []
+
+
+@pytest.mark.asyncio
+async def test_causal_chain_output_limit_recursively_splits_production_shaped_event_groups(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Recursive causal packets", mode="short", genre="family intrigue",
+        premise="A six-segment plan must survive repeated provider output limits.",
+        target_words=15000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    db.create_run("causal-recursive", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "causal-recursive"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+
+    segment_sizes = [7, 4, 7, 3, 4, 4]
+    event_ids = [f"EV-{index:08X}" for index in range(1, sum(segment_sizes) + 1)]
+    formal_events = [{
+        "id": event_id,
+        "label": f"Formal event {index}",
+        "evidence": f"The accepted outline assigns event {index} to this causal step.",
+    } for index, event_id in enumerate(event_ids, 1)]
+    segments: list[str] = []
+    offset = 0
+    for segment, size in enumerate(segment_sizes, 1):
+        owned = event_ids[offset:offset + size]
+        offset += size
+        segments.append(
+            f"### 第{segment}段：Segment {segment}\n"
+            f"事件ID：{'、'.join(owned)}\n"
+            "段首承接：Continue the accepted prior state.\n"
+            "本段事件：\n"
+            + "\n".join(
+                f"{number}. ({event_id}) realize the accepted event without changing ownership."
+                for number, event_id in enumerate(owned, 1)
+            )
+            + "\n段末交接：Pass the resulting state to the next segment."
+        )
+    plan = "\n\n".join(segments)
+    packet_calls: list[list[str]] = []
+    completed_packets: list[list[str]] = []
+
+    async def fake_stage(*args, **kwargs):
+        prompt = args[5]
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET" not in prompt:
+            return await kwargs["capacity_splitter"]({
+                "trigger": "preflight",
+                "pressure": "split",
+                "estimated_input_tokens": 31_993,
+                "authority_input_tokens": 31_512,
+                "output_reserve": 4_667,
+                "context_window": 32_768,
+            })
+        expected = json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                "\n\nFORMAL EVENTS:", 1,
+            )[0]
+        )
+        packet_calls.append(expected)
+        if len(expected) > 4:
+            splitter = kwargs.get("capacity_splitter")
+            if splitter is not None:
+                return await splitter({
+                    "trigger": "output_limit",
+                    "pressure": "split",
+                    "estimated_input_tokens": 8_000,
+                    "authority_input_tokens": 7_000,
+                    "output_reserve": 4_782,
+                    "context_window": 32_768,
+                })
+            raise IncompleteModelOutputError(
+                "planning",
+                StageText("{\"cycles\":[", {
+                    "finish_reason": "max_tokens",
+                    "completion_status": "recoverable_partial",
+                }),
+            )
+        completed_packets.append(expected)
+        return json.dumps({
+            "core_goal": "Resolve the accepted central conflict" if event_ids[0] in expected else "",
+            "opening": {"pressure": "The false identity is exposed"}
+            if event_ids[0] in expected else {},
+            "cycles": [{
+                "obstacle": f"Pressure around {expected[0]}",
+                "effort": f"The owner acts through {expected[-1]}",
+                "result": f"The state advances through {expected[-1]}",
+                "state_change": f"Events {expected[0]} to {expected[-1]} are resolved",
+            }],
+            "accidents": [],
+            "reversal": {},
+            "ending": "The confirmed ending is reached" if event_ids[-1] in expected else "",
+            "question_chain": [],
+            "relationship_arc": [],
+            "covered_event_ids": expected,
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    chain = await service._ensure_short_causal_chain(
+        "causal-recursive", run_path, project, "constraints", plan,
+        formal_events, None,
+    )
+
+    assert chain["covered_event_ids"] == event_ids
+    assert packet_calls
+    assert [event_id for packet in completed_packets for event_id in packet] == event_ids
+    assert max(len(packet) for packet in completed_packets) <= 4
+    assert len(list(
+        (run_path / "outputs" / "causal-chain-packets").glob("*.json")
+    )) >= 8
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+
+
+@pytest.mark.asyncio
+async def test_causal_chain_normal_finish_invalid_output_converges_to_semantic_packets(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Normal invalid causal output", mode="short", genre="mystery",
+        premise="A normal provider finish can still be structurally incomplete.",
+        target_words=3000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    run_id = "causal-normal-invalid"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_ids = [f"EV-{index:08X}" for index in range(1, 5)]
+    events = [{
+        "id": event_id, "label": f"Event {index}",
+        "evidence": f"Accepted event {index}.",
+    } for index, event_id in enumerate(event_ids, 1)]
+    plan = "\n\n".join(
+        f"### 第{index}段：Segment {index}\n事件ID：{event_id}\n"
+        f"段首承接：Entry.\n本段事件：Event {index}.\n段末交接：Exit."
+        for index, event_id in enumerate(event_ids, 1)
+    )
+    root_calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal root_calls
+        prompt = args[5]
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET" not in prompt:
+            root_calls += 1
+            return json.dumps({
+                "core_goal": "Goal", "cycles": [],
+                "covered_event_ids": event_ids[:-1],
+            })
+        expected = json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                "\n\nFORMAL EVENTS:", 1,
+            )[0]
+        )
+        return json.dumps({
+            "core_goal": "Goal" if event_ids[0] in expected else "",
+            "opening": {"pressure": "Opening"} if event_ids[0] in expected else {},
+            "cycles": [{
+                "obstacle": "Obstacle", "effort": "Effort",
+                "result": "Result", "state_change": "Changed",
+            }],
+            "accidents": [], "reversal": {},
+            "ending": "Ending" if event_ids[-1] in expected else "",
+            "question_chain": [], "relationship_arc": [],
+            "covered_event_ids": expected,
+        })
+
+    service._stage = fake_stage
+    chain = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints", plan, events, None,
+    )
+
+    assert root_calls == 2
+    assert chain["covered_event_ids"] == event_ids
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+
+
+@pytest.mark.asyncio
+async def test_causal_chain_real_stage_recovers_repeated_output_limits_and_crosses_authority_boundary(
+    tmp_path,
+) -> None:
+    segment_sizes = [7, 4, 7, 3, 4, 4]
+    event_ids = [f"EV-{index:08X}" for index in range(1, sum(segment_sizes) + 1)]
+
+    class OutputLimitedGateway:
+        def __init__(self) -> None:
+            self.primary_calls: list[list[str]] = []
+            self.fallback_calls: list[list[str]] = []
+
+        @staticmethod
+        def response(expected: list[str], *, route: str) -> ModelResult:
+            return ModelResult(json.dumps({
+                "core_goal": "Resolve the accepted conflict" if event_ids[0] in expected else "",
+                "opening": {"pressure": "The identity conflict surfaces"}
+                if event_ids[0] in expected else {},
+                "cycles": [{
+                    "obstacle": f"Obstacle at {expected[0]}",
+                    "effort": f"Action through {expected[-1]}",
+                    "result": f"Result through {expected[-1]}",
+                    "state_change": f"State changes through {expected[-1]}",
+                }],
+                "accidents": [], "reversal": {},
+                "ending": "The confirmed ending holds" if event_ids[-1] in expected else "",
+                "question_chain": [], "relationship_arc": [],
+                "covered_event_ids": expected,
+            }, ensure_ascii=False), {
+                "finish_reason": "stop", "provider_id": route,
+                "model_id": f"{route}-model", "model_name": f"{route}-model",
+                "input_tokens": 1200, "output_tokens": 300,
+            })
+
+        @staticmethod
+        def expected(user: str) -> list[str]:
+            return json.loads(
+                user.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                    "\n\nFORMAL EVENTS:", 1,
+                )[0]
+            )
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+                raise RuntimeError("maximum context length exceeded at provider")
+            return await self.complete_primary(
+                role, system, user, max_output_tokens=max_output_tokens,
+            )
+
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
+            expected = self.expected(user)
+            self.primary_calls.append(expected)
+            if len(expected) > 4:
+                return ModelResult('{"cycles":[', {
+                    "finish_reason": "max_tokens", "provider_id": "primary",
+                    "model_id": "primary-model", "model_name": "primary-model",
+                    "input_tokens": 8000, "output_tokens": max_output_tokens or 1,
+                })
+            return self.response(expected, route="primary")
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            expected = self.expected(user)
+            self.fallback_calls.append(expected)
+            return self.response(expected, route="fallback")
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    for provider_id in ("primary", "fallback"):
+        db.save_provider(
+            provider_id=provider_id, name=provider_id.title(),
+            protocol="openai", base_url=f"https://{provider_id}.invalid/v1",
+            auth_type="bearer", timeout_seconds=30, extra_headers={},
+        )
+    db.save_model(
+        model_id="primary-model", provider_id="primary",
+        display_name="Primary", model_name="primary-model",
+        context_window=32768, max_output_tokens=8192,
+    )
+    db.save_model(
+        model_id="fallback-model", provider_id="fallback",
+        display_name="Fallback", model_name="fallback-model",
+        context_window=65536, max_output_tokens=16384,
+    )
+    db.save_role_binding(
+        "planning", "primary", "primary-model", "fallback", "fallback-model",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Real stage causal recovery", mode="short", genre="family intrigue",
+        premise="The real stage assembly must recover a production-shaped limit.",
+        target_words=15000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = OutputLimitedGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("causal-real-stage", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "causal-real-stage"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    formal_events = [{
+        "id": event_id,
+        "label": f"Formal event {index}",
+        "evidence": f"Accepted authority for event {index}.",
+    } for index, event_id in enumerate(event_ids, 1)]
+    offset = 0
+    plan_segments: list[str] = []
+    for segment, size in enumerate(segment_sizes, 1):
+        owned = event_ids[offset:offset + size]
+        offset += size
+        plan_segments.append(
+            f"### 第{segment}段：Segment {segment}\n"
+            f"事件ID：{'、'.join(owned)}\n"
+            "段首承接：Preserve the prior accepted state.\n"
+            "本段事件：\n"
+            + "\n".join(
+                f"{number}. ({event_id}) realize the accepted event."
+                for number, event_id in enumerate(owned, 1)
+            )
+            + "\n段末交接：Pass the exact resulting state forward."
+        )
+
+    chain = await service._ensure_short_causal_chain(
+        "causal-real-stage", run_path, project, "constraints",
+        "\n\n".join(plan_segments), formal_events, None,
+    )
+
+    assert chain["covered_event_ids"] == event_ids
+    assert any(len(call) > 4 for call in gateway.primary_calls)
+    successful_ranges = [call for call in gateway.primary_calls if len(call) <= 4]
+    assert [event_id for call in successful_ranges for event_id in call] == event_ids
+    assert gateway.fallback_calls == []
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+    index = json.loads(
+        (run_path / "outputs" / "short-execution-index.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert index["status"] == "causal_pending"
+    state = StoryStateStore(db).ensure(project.id, project.path)
+    service.gateway = FakeGateway()
+    manifest = await service._ensure_short_execution_manifest(
+        "causal-real-stage", run_path, project, "constraints",
+        state.revision, state.data, "\n\n".join(plan_segments), chain,
+        formal_events, len(segment_sizes),
+    )
+    assert manifest.status == "ready"
+    assert manifest.causal_chain_sha256 == hashlib.sha256(
+        json.dumps(
+            chain, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    events = db.list_run_events("causal-real-stage")
+    assert any(item["event_type"] == "stage_capacity_split_requested" for item in events)
+    assert any(item["event_type"] == "causal_chain_packet_reduced" for item in events)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure_mode", ["output_limit", "disconnect"])
+async def test_indivisible_causal_packet_uses_configured_fallback_without_losing_authority(
+    tmp_path, failure_mode,
+) -> None:
+    event_id = "EV-00000001"
+
+    class LeafFallbackGateway:
+        def __init__(self) -> None:
+            self.primary_calls = 0
+            self.fallback_calls = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            raise RuntimeError("maximum context length exceeded at provider")
+
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
+            self.primary_calls += 1
+            if failure_mode == "disconnect":
+                raise RuntimeError("server disconnected before terminal response")
+            return ModelResult('{"cycles":[', {
+                "finish_reason": "max_tokens", "provider_id": "primary",
+                "model_id": "primary-model", "model_name": "primary-model",
+                "input_tokens": 2000, "output_tokens": max_output_tokens or 1,
+            })
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            self.fallback_calls += 1
+            expected = json.loads(
+                user.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                    "\n\nFORMAL EVENTS:", 1,
+                )[0]
+            )
+            return ModelResult(json.dumps({
+                "core_goal": "Preserve the only formal goal",
+                "opening": {"pressure": "The event starts"},
+                "cycles": [{
+                    "obstacle": "Obstacle", "effort": "Effort",
+                    "result": "Result", "state_change": "Changed",
+                }],
+                "accidents": [], "reversal": {}, "ending": "Ending",
+                "question_chain": [], "relationship_arc": [],
+                "covered_event_ids": expected,
+            }), {
+                "finish_reason": "stop", "provider_id": "fallback",
+                "model_id": "fallback-model", "model_name": "fallback-model",
+                "input_tokens": 1200, "output_tokens": 200,
+            })
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    for provider_id in ("primary", "fallback"):
+        db.save_provider(
+            provider_id=provider_id, name=provider_id.title(),
+            protocol="openai", base_url=f"https://{provider_id}.invalid/v1",
+            auth_type="bearer", timeout_seconds=30, extra_headers={},
+        )
+        db.save_model(
+            model_id=f"{provider_id}-model", provider_id=provider_id,
+            display_name=provider_id.title(), model_name=f"{provider_id}-model",
+            context_window=32768, max_output_tokens=8192,
+        )
+    db.save_role_binding(
+        "planning", "primary", "primary-model", "fallback", "fallback-model",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title=f"Leaf fallback {failure_mode}", mode="short", genre="suspense",
+        premise="An indivisible event must survive route failure.", target_words=2000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = LeafFallbackGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id = f"causal-leaf-{failure_mode}"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    plan = (
+        "### 第1段：Only segment\n事件ID：EV-00000001\n"
+        "段首承接：Opening.\n本段事件：The only event happens.\n段末交接：Ending."
+    )
+
+    chain = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints", plan,
+        [{"id": event_id, "label": "Only event", "evidence": "Accepted event."}],
+        None,
+    )
+
+    assert chain["covered_event_ids"] == [event_id]
+    assert gateway.primary_calls >= 1
+    assert gateway.fallback_calls == 1
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+    assert any(
+        item["event_type"] == "causal_chain_packet_model_fallback"
+        for item in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_production_shaped_causal_container_drift_is_converted_and_reduced(
+    tmp_path,
+) -> None:
+    """Regression for steps/causal_cycles plus non-owned global leakage."""
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Container drift recovery", mode="short", genre="historical fantasy",
+        premise="Two formal events must cross the planning boundary.",
+        target_words=3000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    run_id = "causal-container-drift"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_ids = ["EV-00000001", "EV-00000002"]
+    formal_events = [
+        {"id": event_id, "label": f"Event {index}", "evidence": "Accepted."}
+        for index, event_id in enumerate(event_ids, 1)
+    ]
+    plan = "\n\n".join(
+        f"### Segment {index}\nEvent ID: {event_id}\n"
+        f"Entry: state {index}.\nEvent: action {index}.\nExit: changed {index}."
+        for index, event_id in enumerate(event_ids, 1)
+    )
+
+    async def fake_stage(*args, **kwargs):
+        prompt = args[5]
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET" not in prompt:
+            return await kwargs["capacity_splitter"]({
+                "trigger": "production_protocol_drift", "pressure": "split",
+            })
+        expected = json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                "\n\nFORMAL EVENTS:", 1,
+            )[0]
+        )
+        first = event_ids[0] in expected
+        return json.dumps({
+            "steps" if first else "causal_cycles": [{
+                "obstacle": f"Obstacle {expected[0]}",
+                "effort": "A genre-appropriate action",
+                "result": "A causally linked result",
+                "state_change": "The accepted state advances",
+            }],
+            "covered_event_ids": expected,
+            "core_goal": "Goal" if first else "leaked non-owner goal",
+            "opening": {"pressure": "Opening"} if first else {"leak": True},
+            "ending": "leaked early ending" if first else "Accepted ending",
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    chain = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints", plan, formal_events, None,
+    )
+
+    assert chain["covered_event_ids"] == event_ids
+    assert len(chain["cycles"]) == 2
+    assert chain["core_goal"] == "Goal"
+    assert chain["ending"] == "Accepted ending"
+    audits = [json.loads(path.read_text(encoding="utf-8")) for path in (
+        run_path / "receipts" / "artifact-conversions"
+    ).glob("*.json")]
+    assert sum(item["method"] == "baml_sap" for item in audits) >= 2
+    assert any("$.ending" in item["quarantined_paths"] for item in audits)
+    assert any("$.core_goal" in item["quarantined_paths"] for item in audits)
+
+
+@pytest.mark.asyncio
+async def test_unknown_causal_vocabulary_minimally_regenerates_only_its_receipt(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Minimal protocol regeneration", mode="short", genre="mystery",
+        premise="One event must survive an unseen provider vocabulary.",
+        target_words=2000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    run_id = "causal-unseen-vocabulary"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_id = "EV-00000001"
+    packet_calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal packet_calls
+        prompt = args[5]
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET" not in prompt:
+            return await kwargs["capacity_splitter"]({
+                "trigger": "protocol", "pressure": "minimal",
+            })
+        packet_calls += 1
+        if packet_calls == 1:
+            return json.dumps({
+                "unseen_motion": [{
+                    "barrier": "Locked", "attempt": "Search",
+                    "outcome": "Found", "world_delta": "Changed",
+                }],
+                "authority_echo": [event_id],
+            })
+        return json.dumps({
+            "cycles": [{
+                "obstacle": "Locked", "effort": "Search",
+                "result": "Found", "state_change": "Changed",
+            }],
+            "covered_event_ids": [event_id],
+            "core_goal": "Resolve it", "opening": {"pressure": "Locked"},
+            "ending": "Resolved",
+        })
+
+    service._stage = fake_stage
+    chain = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints",
+        "### Segment 1\nEvent ID: EV-00000001\nEntry: locked.\nEvent: search.\nExit: found.",
+        [{"id": event_id, "label": "Search", "evidence": "Accepted."}],
+        None,
+    )
+
+    assert chain["covered_event_ids"] == [event_id]
+    assert packet_calls == 2
+    assert any(
+        item["event_type"] == "causal_chain_packet_protocol_retry"
+        for item in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_indivisible_causal_packet_preserves_both_credential_failures(
+    tmp_path,
+) -> None:
+    event_id = "EV-00000001"
+
+    class MissingCredentialGateway:
+        async def complete(self, role, system, user, max_output_tokens=None):
+            raise RuntimeError("maximum context length exceeded at provider")
+
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
+            raise ValueError("missing_api_key: planning-primary")
+
+        async def complete_configured_fallback(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            raise ValueError("missing_api_key: planning-fallback")
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    for provider_id in ("primary", "fallback"):
+        db.save_provider(
+            provider_id=provider_id, name=provider_id.title(),
+            protocol="openai", base_url=f"https://{provider_id}.invalid/v1",
+            auth_type="bearer", timeout_seconds=30, extra_headers={},
+        )
+        db.save_model(
+            model_id=f"{provider_id}-model", provider_id=provider_id,
+            display_name=provider_id.title(), model_name=f"{provider_id}-model",
+            context_window=32768, max_output_tokens=8192,
+        )
+    db.save_role_binding(
+        "planning", "primary", "primary-model", "fallback", "fallback-model",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Causal credential provenance", mode="short", genre="suspense",
+        premise="An indivisible event must retain its route failures.",
+        target_words=2000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, MissingCredentialGateway(),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id = "causal-leaf-missing-credentials"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    plan = (
+        "### 第1段：Only segment\n事件ID：EV-00000001\n"
+        "段首承接：Opening.\n本段事件：The only event happens.\n段末交接：Ending."
+    )
+
+    with pytest.raises(ModelRoutesExhaustedError) as caught:
+        await service._ensure_short_causal_chain(
+            run_id, run_path, project, "constraints", plan,
+            [{"id": event_id, "label": "Only event", "evidence": "Accepted event."}],
+            None,
+        )
+
+    assert str(caught.value.primary_error) == "missing_api_key: planning-primary"
+    assert str(caught.value.fallback_error) == "missing_api_key: planning-fallback"
+    assert "missing_api_key: planning-primary" in str(caught.value)
+    assert "missing_api_key: planning-fallback" in str(caught.value)
+
+
+@pytest.mark.asyncio
+async def test_causal_packet_resume_keeps_valid_prefix_and_restores_corrupt_suffix_from_database(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Causal packet resume", mode="short", genre="suspense",
+        premise="Accepted causal work survives interruption and corruption.",
+        target_words=3000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    run_id = "causal-packet-resume"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_ids = [f"EV-{index:08X}" for index in range(1, 5)]
+    formal_events = [{
+        "id": event_id, "label": f"Event {index}",
+        "evidence": f"Accepted event {index}.",
+    } for index, event_id in enumerate(event_ids, 1)]
+    plan = "\n\n".join(
+        f"### 第{index}段：Segment {index}\n事件ID：{event_id}\n"
+        f"段首承接：Entry {index}.\n本段事件：Event {index}.\n段末交接：Exit {index}."
+        for index, event_id in enumerate(event_ids, 1)
+    )
+    packet_calls: list[tuple[str, ...]] = []
+    interrupt_suffix = True
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal interrupt_suffix
+        prompt = args[5]
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET" not in prompt:
+            return await kwargs["capacity_splitter"]({
+                "trigger": "preflight", "pressure": "split",
+            })
+        expected = tuple(json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                "\n\nFORMAL EVENTS:", 1,
+            )[0]
+        ))
+        packet_calls.append(expected)
+        if interrupt_suffix and expected == tuple(event_ids[2:]):
+            interrupt_suffix = False
+            raise asyncio.CancelledError()
+        return json.dumps({
+            "core_goal": "Goal" if event_ids[0] in expected else "",
+            "opening": {"pressure": "Opening"} if event_ids[0] in expected else {},
+            "cycles": [{
+                "obstacle": f"Obstacle {expected[0]}",
+                "effort": f"Effort {expected[-1]}",
+                "result": f"Result {expected[-1]}",
+                "state_change": f"Change {expected[-1]}",
+            }],
+            "accidents": [], "reversal": {},
+            "ending": "Ending" if event_ids[-1] in expected else "",
+            "question_chain": [], "relationship_arc": [],
+            "covered_event_ids": list(expected),
+        })
+
+    service._stage = fake_stage
+    with pytest.raises(asyncio.CancelledError):
+        await service._ensure_short_causal_chain(
+            run_id, run_path, project, "constraints", plan, formal_events, None,
+        )
+    assert packet_calls.count(tuple(event_ids[:2])) == 1
+    assert not (run_path / "outputs" / "short-causal-chain.json").exists()
+
+    chain = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints", plan, formal_events, None,
+    )
+    assert chain["covered_event_ids"] == event_ids
+    assert packet_calls.count(tuple(event_ids[:2])) == 1
+    assert packet_calls.count(tuple(event_ids[2:])) == 2
+
+    suffix_checkpoint = next(
+        path for path in (
+            run_path / "outputs" / "causal-chain-packets"
+        ).glob("*.json")
+        if json.loads(path.read_text(encoding="utf-8"))["contract"][
+            "owned_event_ids"
+        ] == event_ids[2:]
+    )
+    corrupted = json.loads(suffix_checkpoint.read_text(encoding="utf-8"))
+    corrupted["payload"]["covered_event_ids"] = ["EV-CORRUPT"]
+    suffix_checkpoint.write_text(json.dumps(corrupted), encoding="utf-8")
+
+    third = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints", plan, formal_events, None,
+    )
+    assert third["covered_event_ids"] == event_ids
+    assert packet_calls.count(tuple(event_ids[:2])) == 1
+    assert packet_calls.count(tuple(event_ids[2:])) == 2
+    restored = json.loads(suffix_checkpoint.read_text(encoding="utf-8"))
+    assert restored["payload"]["covered_event_ids"] == event_ids[2:]
+    assert any(
+        item["event_type"] == "causal_chain_packet_reused"
+        and item["metadata"].get("source") == "database_mirror"
+        for item in db.list_run_events(run_id)
+    )
 
 
 @pytest.mark.asyncio
@@ -4831,6 +5836,66 @@ def test_production_short_plan_field_tables_cross_the_local_gate() -> None:
         segments[0], "event",
     )
     assert issues == []
+
+
+@pytest.mark.parametrize(("event_label", "causal_label"), (
+    ("本段事件", "本段因果链"),
+    ("Narrative progression", "Causal chain"),
+))
+def test_short_plan_event_role_ignores_separate_causal_companion(
+    event_label: str, causal_label: str,
+) -> None:
+    block = (
+        "### 第 1 段：测试\n\n"
+        "| 字段 | 内容 |\n|---|---|\n"
+        "| 事件ID | EV-11111111 |\n"
+        "| 大纲依据 | 已确认事件 |\n"
+        "| 段首承接 | 主角尚未行动。 |\n"
+        f"| {event_label} | EV-11111111 主角采取行动并取得明确结果。 |\n"
+        "| 段末交接 | 主角已取得结果。 |\n\n"
+        f"**{causal_label}**：前因触发行动，行动产生结果。"
+    )
+
+    event = WorkflowService._short_plan_field(block, "event")
+
+    assert "EV-11111111 主角采取行动并取得明确结果" in event
+    assert "前因触发行动" not in event
+
+
+def test_short_plan_event_role_keeps_two_realizations_ambiguous() -> None:
+    block = (
+        "**本段事件**：EV-11111111 主角采取第一种行动。\n\n"
+        "**剧情推进**：EV-11111111 主角采取互相冲突的第二种行动。"
+    )
+
+    assert WorkflowService._short_plan_field(block, "event") == ""
+
+
+def test_causal_companion_plan_crosses_complete_local_gate_unchanged() -> None:
+    def block(segment: int, event_id: str, fill: str) -> str:
+        return (
+            f"### 第 {segment} 段：测试\n\n"
+            "| 字段 | 内容 |\n|---|---|\n"
+            f"| 事件ID | {event_id} |\n"
+            "| 大纲依据 | 已确认事件 |\n"
+            "| 段首承接 | 主角保持上一段已确认状态。 |\n"
+            f"| 本段事件 | {event_id} 主角采取行动并取得明确结果。{fill} |\n"
+            "| 段末交接 | 主角已取得结果并进入下一状态。 |\n\n"
+            "**本段因果链**：前因触发行动，行动产生结果。"
+        )
+
+    plan = "\n\n".join((
+        block(1, "EV-11111111", "甲" * 90),
+        block(2, "EV-22222222", "乙" * 90),
+    ))
+    state = {"outline": {"events": [
+        {"id": "EV-11111111"}, {"id": "EV-22222222"},
+    ]}}
+
+    assert WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), state, plan, 2,
+    ) == []
+    assert plan.count("**本段因果链**") == 2
 
 
 def test_short_plan_gate_does_not_promote_nested_section_headings_to_events() -> None:
@@ -7018,6 +8083,66 @@ async def test_stage_context_pressure_invokes_semantic_splitter_before_provider(
     assert not any(item["event_type"] == "stage_failed" for item in events)
 
 
+@pytest.mark.asyncio
+async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="review-model", provider_id="provider", display_name="Review",
+        model_name="review-model", context_window=32_768,
+    )
+    db.save_role_binding("review", "provider", "review-model", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Advisory shed", mode="short", genre="suspense",
+        premise="A protocol retry sits just above the safe context line.",
+        target_words=5000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway(["{\"status\":\"complete\"}"])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("advisory-shed", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "advisory-shed"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    pressures = iter(["compact", "full"])
+
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.classify_input_pressure",
+        lambda **_kwargs: next(pressures),
+    )
+
+    result = await service._stage(
+        "advisory-shed", run_path, project, "review",
+        "MUST preserve every confirmed story invariant.",
+        "Return one bounded protocol object.", allow_tools=False,
+        route_capacity_guard=True, bounded_protocol_output=True,
+        expected_output_characters=800,
+    )
+
+    assert result == '{"status":"complete"}'
+    assert len(gateway.calls) == 1
+    assert "[advisory]" not in gateway.calls[0]["system"]
+    event = next(
+        item for item in db.list_run_events("advisory-shed")
+        if item["event_type"] == "stage_advisory_context_shed"
+    )
+    assert event["metadata"]["remaining_pressure"] == "full"
+    assert event["metadata"]["after_required_tokens"] <= (
+        event["metadata"]["before_required_tokens"]
+    )
+
+
 @pytest.mark.parametrize("provider_error", [
     RuntimeError("HTTP 413 context_length_exceeded: prompt is too long"),
     ModelRoutesExhaustedError(
@@ -7099,6 +8224,37 @@ async def test_stage_provider_context_overflow_invokes_same_semantic_splitter(
         item["event_type"] == "stage_capacity_split_completed"
         for item in events
     )
+
+
+@pytest.mark.asyncio
+async def test_capacity_split_failure_does_not_inherit_stale_provider_context(
+    tmp_path,
+) -> None:
+    class OverflowGateway:
+        async def complete(self, *_args, **_kwargs):
+            raise RuntimeError("HTTP 413 context_length_exceeded")
+
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, OverflowGateway(), run_id="detached-capacity-error",
+    )
+    db.save_role_binding("review", "primary", "review-model", None, None)
+
+    async def splitter(_details):
+        raise ValueError("evidence_quote_unbound")
+
+    with pytest.raises(ValueError) as captured:
+        await service._stage(
+            "detached-capacity-error", run_path, project, "review",
+            "MUST preserve the confirmed plot direction.",
+            "A compact review request that fits declared metadata.",
+            allow_tools=False,
+            route_capacity_guard=True,
+            capacity_splitter=splitter,
+        )
+
+    assert str(captured.value) == "evidence_quote_unbound"
+    assert captured.value.__context__ is None
+    assert classify_model_failure(captured.value) == "normal_invalid_output"
 
 
 def test_ordinary_stage_budgets_use_defaults_capped_by_selected_route_ceiling(tmp_path) -> None:
@@ -10069,6 +11225,13 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                     "state": {"花穗": {"location": "沈府", "status": "义女"}},
                 }, ensure_ascii=False))
             raise AssertionError(f"unexpected offline model call: {role}: {user[:120]}")
+
+        async def complete_primary(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            return await self.complete(
+                role, system, user, max_output_tokens=max_output_tokens,
+            )
 
     gateway = RecoveryGateway()
     service = WorkflowService(

@@ -1,0 +1,14 @@
+{
+  "run_id_sha256": "8caf62dd6cb431ff7b43ba5dd66374684f26bbce613300648fee6523bd06613e",
+  "boundary": "planning_adaptation_segment",
+  "failure_class": "syntax_protocol",
+  "primary_attempts": 3,
+  "primary_route_result": "protocol_invalid",
+  "issue_codes": [
+    "adaptation_order_uncertain"
+  ],
+  "configured_fallback_available": true,
+  "retained_authority": "best_complete_planning_candidate",
+  "smallest_recovery_scope": "immutable_segment_receipt",
+  "next_authoritative_boundary": "whole_plan_adaptation_review"
+}

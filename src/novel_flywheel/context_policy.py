@@ -179,10 +179,14 @@ def classify_model_failure(value: object) -> ModelFailureKind:
                 pending.append(receipt)
             text = str(current).lower()
             if isinstance(current, BaseException):
+                visible_context = (
+                    None
+                    if current.__suppress_context__ else current.__context__
+                )
                 for nested in (
                     getattr(current, "primary_error", None),
                     getattr(current, "fallback_error", None),
-                    current.__cause__, current.__context__,
+                    current.__cause__, visible_context,
                 ):
                     if nested is not None:
                         pending.append(nested)

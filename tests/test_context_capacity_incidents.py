@@ -72,6 +72,23 @@ def test_targeted_repair_production_fixture_fits_after_scope_aware_reserve() -> 
     ) == "full"
 
 
+def test_semantic_receipt_production_fixture_uses_shared_capacity_recovery() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures"
+         / "semantic_receipt_context_capacity_24679.json")
+        .read_text(encoding="utf-8")
+    )
+
+    incident = classify_production_failure(
+        fixture["message"], workflow=fixture["workflow"], stage=fixture["stage"],
+    )
+
+    assert incident["incident_family"] == fixture["incident_family"]
+    assert fixture["trigger_event"] == "semantic_receipt_protocol_retry"
+    assert "unique_extract_alignment" in fixture["required_recovery"]
+    assert "whole_draft_downstream_scan" in fixture["required_recovery"]
+
+
 def test_every_guarded_stage_declares_a_capacity_execution_contract() -> None:
     source_path = Path(__file__).parents[1] / "src" / "novel_flywheel" / "workflows.py"
     tree = ast.parse(source_path.read_text(encoding="utf-8"))

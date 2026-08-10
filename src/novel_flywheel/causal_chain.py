@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 
 
 START = "SHORT_CAUSAL_CHAIN_JSON_START"
@@ -123,7 +123,9 @@ def extract_short_causal_chain(text: str) -> tuple[str, dict[str, Any] | None]:
     )
     if not match:
         return text, None
-    chain = parse_json_object(match.group("body"), label="Short causal chain")
+    chain = GeneratedArtifactGateway().convert_object(
+        match.group("body"), contract_name="embedded_causal_chain",
+    ).payload
     outline = (text[:match.start()] + text[match.end():]).strip()
     return outline, chain
 

@@ -6,6 +6,7 @@ import re
 import unicodedata
 from typing import Any
 
+from novel_flywheel.narrative_contract import narrative_voice_projection
 from novel_flywheel.narrative_document import parse_narrative_document
 from novel_flywheel.planning_compiler import compile_planning_segment
 
@@ -559,6 +560,96 @@ def planning_event_body_issues(
     return issues
 
 
+def bind_planning_participant_realizations(
+    obligation_checklists: dict[str, dict] | None,
+    participant_realizations: dict[str, dict[str, object]] | None,
+) -> dict[str, dict]:
+    """Bind project-owned identity realizations to every relevant checklist.
+
+    Outline extraction owns canonical participant names.  The narrative
+    contract owns alternate textual realizations of the same identity.  This
+    adapter keeps those authorities separate and discards stale or unrelated
+    realization entries instead of accumulating aliases across projects.
+    """
+    if not isinstance(obligation_checklists, dict):
+        return {}
+    authoritative = (
+        participant_realizations
+        if isinstance(participant_realizations, dict) else {}
+    )
+    result: dict[str, dict] = {}
+    for event_id, raw_checklist in obligation_checklists.items():
+        if not isinstance(raw_checklist, dict):
+            continue
+        checklist = dict(raw_checklist)
+        required = {
+            unicodedata.normalize("NFKC", str(value or "")).strip()
+            for value in (
+                checklist.get("identity_stable_participants")
+                or checklist.get("required_participants")
+                or []
+            )
+            if str(value or "").strip()
+        }
+        bound = {
+            name: dict(authoritative[name])
+            for name in sorted(required)
+            if name in authoritative
+            and isinstance(authoritative[name], dict)
+        }
+        if bound:
+            checklist["participant_realizations"] = bound
+        else:
+            checklist.pop("participant_realizations", None)
+        result[str(event_id)] = checklist
+    return result
+
+
+def _identity_reference_present(text: str, reference: object) -> bool:
+    normalized_text = unicodedata.normalize("NFKC", str(text or ""))
+    normalized_reference = unicodedata.normalize(
+        "NFKC", str(reference or ""),
+    ).strip()
+    if not normalized_reference:
+        return False
+    if all(ord(character) < 128 for character in normalized_reference) \
+            and any(character.isalnum() for character in normalized_reference):
+        return re.search(
+            rf"(?<!\w){re.escape(normalized_reference)}(?!\w)",
+            normalized_text,
+            flags=re.IGNORECASE,
+        ) is not None
+    return normalized_reference in normalized_text
+
+
+def _participant_identity_realized(
+    canonical_name: str, event_text: str, checklist: dict[str, Any],
+) -> bool:
+    normalized_name = unicodedata.normalize("NFKC", canonical_name).strip()
+    normalized_event = unicodedata.normalize("NFKC", event_text)
+    if normalized_name and normalized_name in normalized_event:
+        return True
+    mappings = checklist.get("participant_realizations")
+    if not isinstance(mappings, dict):
+        return False
+    realization = mappings.get(normalized_name)
+    if not isinstance(realization, dict):
+        return False
+    if realization.get("kind") != "first_person_narrator":
+        return False
+    mapped_name = unicodedata.normalize(
+        "NFKC", str(realization.get("canonical_name") or ""),
+    ).strip()
+    references = realization.get("narrative_references")
+    if mapped_name != normalized_name or not isinstance(references, list):
+        return False
+    narrative_voice = narrative_voice_projection(normalized_event)
+    return any(
+        _identity_reference_present(narrative_voice, reference)
+        for reference in references
+    )
+
+
 def planning_event_obligation_issues(
     plan_segment: str, expected_event_ids: list[str] | tuple[str, ...],
     obligation_checklists: dict[str, dict] | None,
@@ -648,7 +739,10 @@ def planning_event_obligation_issues(
         if len(required_for_check) < 2:
             continue
         event_text = unicodedata.normalize("NFKC", owned.get(event_id, ""))
-        missing = [name for name in required_for_check if name not in event_text]
+        missing = [
+            name for name in required_for_check
+            if not _participant_identity_realized(name, event_text, checklist)
+        ]
         if not missing:
             continue
         affected_obligations = [

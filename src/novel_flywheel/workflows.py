@@ -8,7 +8,7 @@ import threading
 import unicodedata
 import uuid
 from contextlib import contextmanager, nullcontext
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
 from difflib import SequenceMatcher
@@ -19,6 +19,9 @@ from typing import Iterator
 from novel_flywheel.db import Database
 from novel_flywheel.draft_split import (
     DraftTaskContract,
+    align_unique_evidence_span,
+    align_semantic_receipt_evidence,
+    align_whole_draft_receipt_evidence,
     exact_event_partition,
     render_draft_task_prompt,
     residual_target,
@@ -80,12 +83,33 @@ from novel_flywheel.context_packet import (
 )
 from novel_flywheel.config import configure_runtime_environment
 from novel_flywheel.errors import describe_error
-from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
+from novel_flywheel.models import (
+    ModelGateway,
+    ModelRoutesExhaustedError,
+    TransportInterruptedError,
+)
 from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.generated_artifacts import (
+    ArtifactConversionError,
+    GeneratedArtifactGateway,
+    adapt_registered_contract,
+    write_conversion_audit,
+)
+from novel_flywheel.semantic_packets import (
+    SemanticPacketContract,
+    canonical_sha256,
+    exact_ordered_partition,
+    load_validated_packet,
+    normalize_causal_packet_payload,
+    semantic_bisect,
+    write_validated_packet,
+)
 from novel_flywheel.narrative_contract import (
     ensure_narrative_contract,
     first_person_prose_issues,
+    narrative_participant_realizations,
     render_narrative_contract,
+    resolve_narrative_contract,
 )
 from novel_flywheel.production_incidents import record_production_failure
 from novel_flywheel.outlines import (
@@ -104,6 +128,7 @@ from novel_flywheel.planning_adaptation import (
     PLANNING_ADAPTATION_EVENT_FACETS,
     SUPPORTED_PLANNING_ADAPTATION_VERSIONS,
     WHOLE_STORY_FIELDS,
+    bind_planning_participant_realizations,
     apply_planning_repair_patch,
     effective_event_contracts,
     normalize_planning_adaptation_receipt,
@@ -157,6 +182,7 @@ from novel_flywheel.incremental_review import (
 from novel_flywheel.projects import Project, ProjectStore
 from novel_flywheel.prompts import (
     EXPANSION_CONTRACT,
+    IMMUTABLE_RECEIPT_SYSTEM,
     OPTIONAL_PROMPT_SKILLS,
     REQUIRED_SKILLS,
     STAGE_SYSTEM,
@@ -239,11 +265,18 @@ from novel_flywheel.structured_artifacts import (
 )
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.tools import StoryToolbox
-from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+from novel_flywheel.recovery_engine import (
+    FailureClass,
+    ProtocolRouteCircuitBreaker,
+    ReliabilityFailure,
+    ProtocolReceiptAttempt,
+    protocol_receipt_attempts,
+)
 from novel_flywheel.narrative_rules import validate_narrative_graph
 from novel_flywheel.planning_compiler import (
     PLAN_FIELD_ALIASES,
     compile_planning_event_artifact,
+    compile_planning_segment,
     extract_planning_field,
     planning_field_sections,
 )
@@ -274,6 +307,17 @@ class RevisionPlanError(RuntimeError):
 
 class TargetedGroupError(RuntimeError):
     pass
+
+
+class ProtocolReceiptRouteExhaustedError(RuntimeError):
+    """All explicit routes failed before a receipt reached validation."""
+
+    def __init__(self, failure: ReliabilityFailure):
+        terminal = replace(failure, retryable=False)
+        super().__init__(
+            f"{terminal.boundary} route schedule exhausted: {terminal.code}"
+        )
+        self.reliability_failure = terminal
 
 
 class ContextCapacityPreflightError(RuntimeError):
@@ -415,6 +459,32 @@ class WorkflowService:
         self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
         self.local_nlp = local_nlp
         self.references = references
+        self.generated_artifacts = GeneratedArtifactGateway()
+        self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
+
+    def _convert_generated_object(
+        self, raw: str, run_path: Path, *, contract_name: str,
+        semantic_normalizer: Callable[[object], dict | None] | None = None,
+        expected_event_ids: Sequence[str] = (),
+        owns_opening: bool = True, owns_ending: bool = True,
+    ) -> dict:
+        """Convert and audit one model artifact before domain code consumes it."""
+
+        audit_root = run_path / "receipts" / "artifact-conversions"
+        try:
+            result = self.generated_artifacts.convert_object(
+                raw,
+                contract_name=contract_name,
+                semantic_normalizer=semantic_normalizer,
+                expected_event_ids=expected_event_ids,
+                owns_opening=owns_opening,
+                owns_ending=owns_ending,
+            )
+        except ArtifactConversionError as exc:
+            write_conversion_audit(audit_root, exc.audit)
+            raise
+        write_conversion_audit(audit_root, result.audit)
+        return result.payload
 
     def _short_revision_lock(self, run_id: str) -> threading.Lock:
         return _SHORT_REVISION_LOCK
@@ -1705,7 +1775,10 @@ class WorkflowService:
                             )
                             try:
                                 value = normalize_repair_contract(
-                                    self._json_object(raw), candidate, {group_id},
+                                    self._convert_generated_object(
+                                        raw, run_path,
+                                        contract_name="revision_plan",
+                                    ), candidate, {group_id},
                                 )
                                 if len(value["groups"]) != 1:
                                     raise ValueError("模型必须一次只返回一个修改组")
@@ -2421,7 +2494,10 @@ class WorkflowService:
                 )
                 try:
                     scenes = self._normalize_expansion_plan(
-                        self._json_object(raw_plan), candidate,
+                        self._convert_generated_object(
+                            raw_plan, run_path,
+                            contract_name="generated_narrative_artifact",
+                        ), candidate,
                         budget["deficit_han"], allowed_anchors,
                     )
                 except ValueError as exc:
@@ -2511,7 +2587,10 @@ class WorkflowService:
                     targeted_retry=True,
                 )
                 try:
-                    draft = self._json_object(raw_scene)
+                    draft = self._convert_generated_object(
+                        raw_scene, run_path,
+                        contract_name="generated_narrative_artifact",
+                    )
                     self._validate_expansion_draft(draft, scene)
                 except ValueError:
                     raise ExpansionRejectedError(
@@ -3044,7 +3123,9 @@ class WorkflowService:
                         "材料审核首选模型已回退成功，后续窗口直接使用配置备用模型",
                         stage="final_review", metadata={"window": window["index"]},
                     )
-                value = self._json_object(result)
+                value = self._convert_generated_object(
+                    result, run_path, contract_name="material_audit",
+                )
                 window_issues = [item for item in value.get("issues", []) if isinstance(item, dict)]
                 issues.extend(window_issues)
                 atomic_write(checkpoint_path, json.dumps({
@@ -3142,9 +3223,12 @@ class WorkflowService:
             ))
             if review["score"] < 80 or review["hard_fail"]:
                 raise RuntimeError("Book setup review did not pass")
-            canon = self._json_object(await self._stage(
-                run_id, run_path, project, "maintenance", constraints, outline,
-            ))
+            canon = self._convert_generated_object(
+                await self._stage(
+                    run_id, run_path, project, "maintenance", constraints, outline,
+                ),
+                run_path, contract_name="maintenance_facts",
+            )
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
             atomic_write(outline_path, outline)
@@ -3208,9 +3292,12 @@ class WorkflowService:
                 chapter_goal=chapter_goal,
                 volume_end=self._is_volume_end(project, chapter_number),
             )
-            canon = self._json_object(await self._stage(
-                run_id, run_path, project, "maintenance", constraints, polished,
-            ))
+            canon = self._convert_generated_object(
+                await self._stage(
+                    run_id, run_path, project, "maintenance", constraints, polished,
+                ),
+                run_path, contract_name="maintenance_facts",
+            )
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
             atomic_write(chapter_path, self._chapter_file(project, polished, chapter_number))
@@ -3611,7 +3698,9 @@ class WorkflowService:
                 run_id, run_path, project, "maintenance", constraints, polished,
                 fallback_role="planning", allow_tools=False,
             )
-            canon = self._json_object(canon_text)
+            canon = self._convert_generated_object(
+                canon_text, run_path, contract_name="maintenance_facts",
+            )
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
             polished = "\n\n".join(self._split_segments(polished))
@@ -4947,7 +5036,21 @@ class WorkflowService:
             return receipt, issues, 0
         last_issues: list[dict] = []
         protocol_retries = 0
-        for attempt in range(3):
+        attempt_plan = self._protocol_receipt_attempt_plan(
+            "review", same_route_attempts=3,
+        )
+        for attempt in attempt_plan:
+            if attempt.use_configured_fallback:
+                self._record_protocol_receipt_fallback(
+                    run_id, stage="review",
+                    boundary="planning_adaptation_segment",
+                    unit_metadata={
+                        "segment": segment,
+                        "event_count": len(event_ids),
+                        "authority_sha256": authority_sha256,
+                    },
+                    issues=last_issues,
+                )
             prompt = (
                 "SHORT_PLAN_ADAPTATION_REVIEW_V2\n"
                 "只审核当前正式写作段，判断规划对正式大纲的实现是否属于允许的等价展开。"
@@ -5006,10 +5109,27 @@ class WorkflowService:
                     + json.dumps(last_issues, ensure_ascii=False, indent=2)
                     + "\n规划内容保持不变，只重新返回完整、准确绑定的审核回执。"
                 )
-            raw = await self._stage(
+            raw, route_failure = await self._execute_protocol_receipt_attempt(
+                run_id, stage="review",
+                boundary="planning_adaptation_segment",
+                attempt=attempt,
+                unit_metadata={
+                    "segment": segment,
+                    "event_count": len(event_ids),
+                    "authority_sha256": authority_sha256,
+                },
+                operation=lambda: self._stage(
                 run_id, run_path, project, "review", constraints, prompt,
-                suffix=f"-plan-adaptation-segment-{segment:02d}-{suffix}-{attempt + 1}",
+                suffix=(
+                    f"-plan-adaptation-segment-{segment:02d}-{suffix}-"
+                    f"{attempt.attempt_index}"
+                    + ("-fallback" if attempt.use_configured_fallback else "")
+                ),
                 allow_tools=False,
+                prefer_configured_fallback=attempt.use_configured_fallback,
+                primary_only=not attempt.use_configured_fallback,
+                defer_route_failure_audit=True,
+                protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
                 expected_output_characters=max(1200, 520 * len(event_contracts)),
                 completion_check=lambda value: (
                     self._planning_adaptation_segment_receipt_complete(
@@ -5048,10 +5168,21 @@ class WorkflowService:
                     ))
                     if _capacity_split else None
                 ),
+                ),
             )
+            if route_failure is not None:
+                last_issues = [{
+                    "code": route_failure.code,
+                    "failure_class": route_failure.failure_class.value,
+                }]
+                if not attempt.is_last:
+                    protocol_retries += 1
+                    continue
+                raise ProtocolReceiptRouteExhaustedError(route_failure)
             try:
-                payload = parse_json_object(
-                    raw, label=f"Planning adaptation receipt segment {segment}",
+                payload = self._convert_generated_object(
+                    raw, run_path,
+                    contract_name="planning_adaptation_segment",
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt: object = {}
@@ -5106,13 +5237,18 @@ class WorkflowService:
                         protocol_retries += packet_retry_count
                     return dict(receipt), last_issues, protocol_retries
                 last_issues = protocol_issues
-            if attempt < 2:
+            if not attempt.is_last:
                 protocol_retries += 1
                 self.db.add_run_event(
                     run_id, "info", "planning_adaptation_receipt_retry",
                     "规划内容保持不变，正在重新获取等价展开审核回执",
                     stage="review", metadata={
-                        "segment": segment, "attempt": attempt + 1,
+                        "segment": segment,
+                        "attempt": attempt.attempt_index,
+                        "route": attempt.route,
+                        "next_route": attempt_plan[
+                            attempt.attempt_index
+                        ].route,
                         "issues": last_issues,
                     },
                 )
@@ -5292,8 +5428,157 @@ class WorkflowService:
         )
 
     @staticmethod
+    def _planning_adaptation_facet_semantic_issues(
+        value: object, *, invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> list[str]:
+        """Validate only model-owned facet verdict fields.
+
+        Request identity is owned by Runtime and is bound separately.  Keeping
+        that envelope out of semantic validation prevents a model typo in a
+        digest or range from being mistaken for narrative drift, while exact
+        evidence IDs and negative quotes still bind the verdict to the current
+        immutable plan scope.
+        """
+        if not isinstance(value, dict):
+            return ["receipt_schema"]
+        issues: list[str] = []
+        invariants = value.get("invariants")
+        if not isinstance(invariants, dict) or set(invariants) != set(
+            invariant_fields,
+        ) or any(
+            not isinstance(invariants.get(field), bool)
+            for field in invariant_fields
+        ):
+            issues.append("invariant_shape")
+        evidence_ids = value.get("plan_evidence_ids")
+        if not isinstance(evidence_ids, list) or not evidence_ids:
+            issues.append("evidence_ids_missing")
+        elif any(str(item) not in evidence_candidates for item in evidence_ids):
+            issues.append("evidence_ids_out_of_scope")
+        reason = value.get("reason")
+        if not isinstance(reason, str) or not reason.strip():
+            issues.append("reason_missing")
+        if not issues and not planning_evidence_quote_valid(
+            value, evidence_candidates,
+        ):
+            issues.append("evidence_quote_unbound")
+        return issues
+
+    def _converted_planning_adaptation_facet_semantic_issues(
+        self, value: str, run_path: Path, *,
+        invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> list[str]:
+        """Run transport conversion and registered adapters before preflight."""
+
+        converted = self._convert_generated_object(
+            value, run_path,
+            contract_name="planning_adaptation_facet",
+        )
+        adaptation = adapt_registered_contract(
+            converted,
+            contract_name="planning_adaptation_facet",
+            context={
+                "invariant_fields": tuple(invariant_fields),
+                "evidence_candidates": evidence_candidates,
+            },
+        )
+        return self._planning_adaptation_facet_semantic_issues(
+            adaptation.payload,
+            invariant_fields=invariant_fields,
+            evidence_candidates=evidence_candidates,
+        )
+
+    @staticmethod
+    def _reconcile_planning_adaptation_dimension_roles(
+        dimensions: Sequence[object], *, invariants: dict[str, bool],
+    ) -> tuple[list[str], list[str]]:
+        """Separate narrative dimensions from authority deviations.
+
+        Facet providers use ``changed_dimensions`` both for dimensions that
+        progress inside the story and for differences from formal authority.
+        Only the complete invariant map can distinguish those roles.  A known
+        protected dimension whose invariant is true is therefore retained as
+        reviewed-scope audit rather than a deviation.  Free-form dimensions
+        and dimensions with a false invariant remain effective changes.
+        """
+
+        def protocol_key(value: object) -> str:
+            normalized = unicodedata.normalize(
+                "NFKC", str(value or ""),
+            ).strip().casefold()
+            return re.sub(r"[\s\-—_/\\:：]+", "_", normalized).strip("_")
+
+        effective: list[str] = []
+        reviewed: list[str] = []
+        invariant_keys = {protocol_key(field): field for field in invariants}
+        for value in dimensions:
+            text = unicodedata.normalize("NFKC", str(value or "")).strip()
+            if not text:
+                continue
+            field = invariant_keys.get(protocol_key(text))
+            target = (
+                reviewed
+                if field is not None and invariants.get(field) is True
+                else effective
+            )
+            if text not in target:
+                target.append(text)
+        return effective, reviewed
+
+    @classmethod
+    def _bind_current_planning_adaptation_facet_receipt(
+        cls, value: object, *, expected_identity: dict[str, object],
+        invariant_fields: Sequence[str],
+        evidence_candidates: dict[str, str],
+    ) -> tuple[dict | None, list[str], list[str], list[str], list[dict]]:
+        """Wrap a fresh model verdict in a Runtime-owned identity envelope.
+
+        This function is intentionally for the direct response to the current
+        call.  Persisted checkpoints never pass through it and must continue to
+        match every stored digest and range byte-for-byte.
+        """
+        if isinstance(value, dict):
+            adaptation = adapt_registered_contract(
+                value,
+                contract_name="planning_adaptation_facet",
+                context={
+                    "invariant_fields": tuple(invariant_fields),
+                    "evidence_candidates": evidence_candidates,
+                },
+            )
+            normalized: object = adaptation.payload
+            adapter_audits = [
+                audit.model_dump(mode="json") for audit in adaptation.audits
+            ]
+            semantic_repairs = [
+                transformation
+                for audit in adaptation.audits
+                for transformation in audit.transformations
+            ]
+        else:
+            normalized = value
+            adapter_audits = []
+            semantic_repairs = []
+        issues = cls._planning_adaptation_facet_semantic_issues(
+            normalized,
+            invariant_fields=invariant_fields,
+            evidence_candidates=evidence_candidates,
+        )
+        if issues or not isinstance(normalized, dict):
+            return None, issues, [], semantic_repairs, adapter_audits
+        bound = dict(normalized)
+        rebound_fields = [
+            field for field, expected in expected_identity.items()
+            if bound.get(field) != expected
+        ]
+        bound.update(expected_identity)
+        return bound, [], rebound_fields, semantic_repairs, adapter_audits
+
+    @classmethod
     def _planning_adaptation_facet_receipt_valid(
-        value: object, *, facet_authority_sha256: str,
+        cls, value: object, *, facet_authority_sha256: str,
         planning_sha256: str, authority_version: int, segment: int,
         event_id: str, facet: str, invariant_fields: Sequence[str],
         evidence_candidates: dict[str, str],
@@ -5314,21 +5599,10 @@ class WorkflowService:
             or str(value.get("facet") or "").strip() != facet
         ):
             return False
-        invariants = value.get("invariants")
-        if not isinstance(invariants, dict) or set(invariants) != set(invariant_fields):
-            return False
-        if any(not isinstance(invariants[field], bool) for field in invariant_fields):
-            return False
-        evidence_ids = value.get("plan_evidence_ids")
-        if (
-            not isinstance(evidence_ids, list) or not evidence_ids
-            or any(str(item) not in evidence_candidates for item in evidence_ids)
-        ):
-            return False
-        return (
-            isinstance(value.get("reason"), str)
-            and bool(value["reason"].strip())
-            and planning_evidence_quote_valid(value, evidence_candidates)
+        return not cls._planning_adaptation_facet_semantic_issues(
+            value,
+            invariant_fields=invariant_fields,
+            evidence_candidates=evidence_candidates,
         )
 
     def _load_planning_adaptation_facet_checkpoint(
@@ -5338,13 +5612,39 @@ class WorkflowService:
         event_id: str, facet: str, invariant_fields: Sequence[str],
         evidence_candidates: dict[str, str],
     ) -> dict | None:
-        candidates: dict[str, tuple[dict, Path]] = {}
+        candidates: dict[str, tuple[dict, Path, list[str], str]] = {}
         for path in project.path.glob("runs/*/outputs/pap/facet-*.json"):
             try:
                 envelope = json.loads(path.read_text(encoding="utf-8"))
-                receipt = envelope.get("receipt") if isinstance(envelope, dict) else None
+                raw_receipt = (
+                    envelope.get("receipt") if isinstance(envelope, dict) else None
+                )
+                raw_canonical = json.dumps(
+                    raw_receipt, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                )
+                adaptation = adapt_registered_contract(
+                    raw_receipt,
+                    contract_name="planning_adaptation_facet",
+                    context={
+                        "invariant_fields": tuple(invariant_fields),
+                        "evidence_candidates": evidence_candidates,
+                    },
+                ) if isinstance(raw_receipt, dict) else None
+                receipt = (
+                    adaptation.payload if adaptation is not None else raw_receipt
+                )
+                semantic_repairs = (
+                    [
+                        transformation
+                        for audit in adaptation.audits
+                        for transformation in audit.transformations
+                    ]
+                    if adaptation is not None else []
+                )
                 canonical = json.dumps(
-                    receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+                    receipt, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
                 )
                 if (
                     not isinstance(envelope, dict)
@@ -5356,7 +5656,7 @@ class WorkflowService:
                     or envelope.get("facet") != facet
                     or envelope.get("invariant_fields") != list(invariant_fields)
                     or envelope.get("receipt_sha256") != hashlib.sha256(
-                        canonical.encode("utf-8"),
+                        raw_canonical.encode("utf-8"),
                     ).hexdigest()
                     or not self._planning_adaptation_facet_receipt_valid(
                         receipt,
@@ -5374,7 +5674,10 @@ class WorkflowService:
             except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
                 continue
             digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-            candidates.setdefault(digest, (dict(receipt), path))
+            candidates.setdefault(digest, (
+                dict(receipt), path, semantic_repairs,
+                hashlib.sha256(raw_canonical.encode("utf-8")).hexdigest(),
+            ))
         if len(candidates) != 1:
             if len(candidates) > 1:
                 self.db.add_run_event(
@@ -5386,7 +5689,9 @@ class WorkflowService:
                     },
                 )
             return None
-        receipt, source_path = next(iter(candidates.values()))
+        receipt, source_path, semantic_repairs, source_receipt_sha256 = next(
+            iter(candidates.values())
+        )
         self._save_planning_adaptation_facet_checkpoint(
             run_path,
             packet_authority_sha256=packet_authority_sha256,
@@ -5397,6 +5702,21 @@ class WorkflowService:
             invariant_fields=invariant_fields,
             receipt=receipt,
         )
+        if semantic_repairs:
+            self.db.add_run_event(
+                run_id, "info",
+                "planning_adaptation_checkpoint_protocol_normalized",
+                "哈希完整的单事件审核检查点已完成确定性协议归一化",
+                stage="review", metadata={
+                    "segment": segment, "event_id": event_id, "facet": facet,
+                    "semantic_repairs": semantic_repairs,
+                    "source_receipt_sha256": source_receipt_sha256,
+                    "receipt_sha256": hashlib.sha256(json.dumps(
+                        receipt, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")).hexdigest(),
+                },
+            )
         self.db.add_run_event(
             run_id, "info", "planning_adaptation_facet_checkpoint_reused",
             "已复用哈希匹配的单事件审核维度，只继续未完成维度",
@@ -5473,9 +5793,9 @@ class WorkflowService:
             }, ensure_ascii=False, indent=2),
         )
 
-    @staticmethod
+    @classmethod
     def _planning_adaptation_facet_window_receipt_valid(
-        value: object, *, window_authority_sha256: str,
+        cls, value: object, *, window_authority_sha256: str,
         planning_sha256: str, authority_version: int, segment: int,
         event_id: str, facet: str, window_index: int, start: int, end: int,
         text_sha256: str, invariant_fields: Sequence[str],
@@ -5504,20 +5824,10 @@ class WorkflowService:
             or value.get("text_sha256") != text_sha256
         ):
             return False
-        invariants = value.get("invariants")
-        if not isinstance(invariants, dict) or set(invariants) != set(invariant_fields):
-            return False
-        if any(not isinstance(invariants[field], bool) for field in invariant_fields):
-            return False
-        evidence_ids = value.get("plan_evidence_ids")
-        if not isinstance(evidence_ids, list) or any(
-            str(item) not in evidence_candidates for item in evidence_ids
-        ):
-            return False
-        return (
-            isinstance(value.get("reason"), str)
-            and bool(value["reason"].strip())
-            and planning_evidence_quote_valid(value, evidence_candidates)
+        return not cls._planning_adaptation_facet_semantic_issues(
+            value,
+            invariant_fields=invariant_fields,
+            evidence_candidates=evidence_candidates,
         )
 
     def _load_planning_adaptation_facet_window_checkpoint(
@@ -5528,11 +5838,36 @@ class WorkflowService:
         text_sha256: str, invariant_fields: Sequence[str],
         evidence_candidates: dict[str, str],
     ) -> dict | None:
-        candidates: dict[str, tuple[dict, Path]] = {}
+        candidates: dict[str, tuple[dict, Path, list[str], str]] = {}
         for path in project.path.glob("runs/*/outputs/pap/facet-window-*.json"):
             try:
                 envelope = json.loads(path.read_text(encoding="utf-8"))
-                receipt = envelope.get("receipt") if isinstance(envelope, dict) else None
+                raw_receipt = (
+                    envelope.get("receipt") if isinstance(envelope, dict) else None
+                )
+                raw_canonical = json.dumps(
+                    raw_receipt, ensure_ascii=False, sort_keys=True,
+                    separators=(",", ":"),
+                )
+                adaptation = adapt_registered_contract(
+                    raw_receipt,
+                    contract_name="planning_adaptation_facet",
+                    context={
+                        "invariant_fields": tuple(invariant_fields),
+                        "evidence_candidates": evidence_candidates,
+                    },
+                ) if isinstance(raw_receipt, dict) else None
+                receipt = (
+                    adaptation.payload if adaptation is not None else raw_receipt
+                )
+                semantic_repairs = (
+                    [
+                        transformation
+                        for audit in adaptation.audits
+                        for transformation in audit.transformations
+                    ]
+                    if adaptation is not None else []
+                )
                 canonical = json.dumps(
                     receipt, ensure_ascii=False, sort_keys=True,
                     separators=(",", ":"),
@@ -5553,7 +5888,7 @@ class WorkflowService:
                     or envelope.get("text_sha256") != text_sha256
                     or envelope.get("invariant_fields") != list(invariant_fields)
                     or envelope.get("receipt_sha256") != hashlib.sha256(
-                        canonical.encode("utf-8"),
+                        raw_canonical.encode("utf-8"),
                     ).hexdigest()
                     or not self._planning_adaptation_facet_window_receipt_valid(
                         receipt,
@@ -5575,7 +5910,10 @@ class WorkflowService:
             except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
                 continue
             digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-            candidates.setdefault(digest, (dict(receipt), path))
+            candidates.setdefault(digest, (
+                dict(receipt), path, semantic_repairs,
+                hashlib.sha256(raw_canonical.encode("utf-8")).hexdigest(),
+            ))
         if len(candidates) != 1:
             if len(candidates) > 1:
                 self.db.add_run_event(
@@ -5589,7 +5927,9 @@ class WorkflowService:
                     },
                 )
             return None
-        receipt, source_path = next(iter(candidates.values()))
+        receipt, source_path, semantic_repairs, source_receipt_sha256 = next(
+            iter(candidates.values())
+        )
         self._save_planning_adaptation_facet_window_checkpoint(
             run_path,
             facet_authority_sha256=facet_authority_sha256,
@@ -5604,6 +5944,22 @@ class WorkflowService:
             invariant_fields=invariant_fields,
             receipt=receipt,
         )
+        if semantic_repairs:
+            self.db.add_run_event(
+                run_id, "info",
+                "planning_adaptation_checkpoint_protocol_normalized",
+                "哈希完整的单事件审核窗口检查点已完成确定性协议归一化",
+                stage="review", metadata={
+                    "segment": segment, "event_id": event_id, "facet": facet,
+                    "window_index": window_index,
+                    "semantic_repairs": semantic_repairs,
+                    "source_receipt_sha256": source_receipt_sha256,
+                    "receipt_sha256": hashlib.sha256(json.dumps(
+                        receipt, ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")).hexdigest(),
+                },
+            )
         self.db.add_run_event(
             run_id, "info", "planning_adaptation_facet_window_checkpoint_reused",
             "已复用哈希匹配的单事件审核窗口，只继续未完成窗口",
@@ -5683,7 +6039,19 @@ class WorkflowService:
             if stored is not None:
                 receipts.append(stored)
                 continue
-            prompt = (
+            expected_identity: dict[str, object] = {
+                "authority_sha256": window_authority,
+                "planning_sha256": planning_sha256,
+                "authority_version": authority_version,
+                "segment": segment,
+                "event_id": event_id,
+                "facet": facet,
+                "window_index": window_index,
+                "start": start,
+                "end": end,
+                "text_sha256": text_sha256,
+            }
+            base_prompt = (
                 "SHORT_PLAN_ADAPTATION_EVENT_FACET_WINDOW_REVIEW_V1\n"
                 "Review this complete overlapping evidence window for one indivisible event. "
                 "Do not rewrite. For each requested invariant return false if this window contains "
@@ -5707,46 +6075,155 @@ class WorkflowService:
                 + "\n\nWINDOW EVIDENCE CANDIDATES:\n"
                 + json.dumps(window_candidates, ensure_ascii=False, indent=2)
                 + "\n\nEXACT PLAN WINDOW:\n" + text
-                + "\n\nRequired fields: authority_sha256, planning_sha256, authority_version, "
-                "segment, event_id, facet, window_index, start, end, text_sha256, "
-                "invariants, changed_dimensions, plan_evidence_ids, plan_evidence_quote, "
-                "reason. If any invariant is false, quote one exact current-window problem "
+                + "\n\nRequired fields: invariants, changed_dimensions, plan_evidence_ids, "
+                "plan_evidence_quote, reason. Runtime owns and injects authority, planning "
+                "hash, version, segment, event, facet, window range, and text hash. "
+                "If any invariant is false, quote one exact current-window problem "
                 "phrase of at least six semantic characters and include it verbatim in reason."
             )
-            raw = await self._stage(
-                run_id, run_path, project, "review", constraints, prompt,
-                suffix=(
-                    f"-plan-adaptation-facet-window-{segment:02d}-{event_id}-"
-                    f"{facet}-{window_index:03d}"
-                ),
-                allow_tools=False,
-                expected_output_characters=700,
-                completion_check=lambda value, expected=window_authority, current=window_index, current_start=start, current_end=end, current_text_sha=text_sha256: (
-                    self._planning_adaptation_facet_window_receipt_valid(
-                        parse_json_object(
-                            value, label="Planning adaptation facet window receipt",
-                        ),
-                        window_authority_sha256=expected,
-                        planning_sha256=planning_sha256,
-                        authority_version=authority_version,
-                        segment=segment,
-                        event_id=event_id,
-                        facet=facet,
-                        window_index=current,
-                        start=current_start,
-                        end=current_end,
-                        text_sha256=current_text_sha,
-                        invariant_fields=invariant_fields,
-                        evidence_candidates=window_candidates,
+            last_issues: list[str] = []
+            receipt: dict | None = None
+            attempt_plan = self._protocol_receipt_attempt_plan(
+                "review", same_route_attempts=2,
+            )
+            for attempt in attempt_plan:
+                if attempt.use_configured_fallback:
+                    self._record_protocol_receipt_fallback(
+                        run_id, stage="review",
+                        boundary="planning_adaptation_facet_window",
+                        unit_metadata={
+                            "segment": segment,
+                            "event_id": event_id,
+                            "facet": facet,
+                            "window_index": window_index,
+                            "authority_sha256": window_authority,
+                        },
+                        issues=last_issues,
                     )
-                ),
-                route_capacity_guard=True,
-                story_skeleton_override=index_skeleton,
-                bounded_protocol_output=True,
-            )
-            receipt = parse_json_object(
-                raw, label="Planning adaptation facet window receipt",
-            )
+                prompt = base_prompt
+                if last_issues:
+                    prompt += (
+                        "\n\nSEMANTIC RECEIPT ISSUES TO CORRECT:\n"
+                        + json.dumps(last_issues, ensure_ascii=False)
+                        + "\nThe exact plan window is immutable. Return only a corrected verdict payload."
+                    )
+                raw, route_failure = await self._execute_protocol_receipt_attempt(
+                    run_id, stage="review",
+                    boundary="planning_adaptation_facet_window",
+                    attempt=attempt,
+                    unit_metadata={
+                        "segment": segment,
+                        "event_id": event_id,
+                        "facet": facet,
+                        "window_index": window_index,
+                        "authority_sha256": window_authority,
+                    },
+                    operation=lambda: self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=(
+                        f"-plan-adaptation-facet-window-{segment:02d}-{event_id}-"
+                        f"{facet}-{window_index:03d}"
+                        + (
+                            "-fallback" if attempt.use_configured_fallback
+                            else "" if attempt.route_attempt == 1
+                            else "-protocol-retry"
+                        )
+                    ),
+                    allow_tools=False,
+                    prefer_configured_fallback=attempt.use_configured_fallback,
+                    primary_only=not attempt.use_configured_fallback,
+                    defer_route_failure_audit=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    expected_output_characters=700,
+                    completion_check=lambda value: not (
+                        self._converted_planning_adaptation_facet_semantic_issues(
+                            value, run_path,
+                            invariant_fields=invariant_fields,
+                            evidence_candidates=window_candidates,
+                        )
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=index_skeleton,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    ),
+                )
+                if route_failure is not None:
+                    last_issues = [route_failure.code]
+                    receipt = None
+                    if not attempt.is_last:
+                        continue
+                    raise ProtocolReceiptRouteExhaustedError(route_failure)
+                try:
+                    generated = self._convert_generated_object(
+                        raw, run_path,
+                        contract_name="planning_adaptation_facet",
+                    )
+                except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                    last_issues = ["receipt_schema:" + str(exc)[:300]]
+                    rebound_fields: list[str] = []
+                else:
+                    (
+                        receipt, last_issues, rebound_fields,
+                        semantic_repairs, adapter_audits,
+                    ) = (
+                        self._bind_current_planning_adaptation_facet_receipt(
+                            generated,
+                            expected_identity=expected_identity,
+                            invariant_fields=invariant_fields,
+                            evidence_candidates=window_candidates,
+                        )
+                    )
+                if receipt is not None:
+                    if rebound_fields or semantic_repairs:
+                        canonical = json.dumps(
+                            receipt, ensure_ascii=False, sort_keys=True,
+                            separators=(",", ":"),
+                        )
+                        self.db.add_run_event(
+                            run_id, "info",
+                            "planning_adaptation_runtime_identity_bound",
+                            "单事件审核语义载荷已由运行时绑定到当前不可变窗口",
+                            stage="review", metadata={
+                                "segment": segment,
+                                "event_id": event_id,
+                                "facet": facet,
+                                "window_index": window_index,
+                                "rebound_fields": rebound_fields,
+                                "semantic_repairs": semantic_repairs,
+                                "contract_adapter_audits": adapter_audits,
+                                "raw_sha256": hashlib.sha256(
+                                    str(raw).encode("utf-8", errors="replace"),
+                                ).hexdigest(),
+                                "receipt_sha256": hashlib.sha256(
+                                    canonical.encode("utf-8"),
+                                ).hexdigest(),
+                            },
+                        )
+                    break
+                if not attempt.is_last:
+                    self.db.add_run_event(
+                        run_id, "info",
+                        "planning_adaptation_facet_window_receipt_retry",
+                        "规划原文保持不变，正在重取当前审核窗口的语义回执",
+                        stage="review", metadata={
+                            "segment": segment,
+                            "event_id": event_id,
+                            "facet": facet,
+                            "window_index": window_index,
+                            "attempt": attempt.attempt_index,
+                            "route": attempt.route,
+                            "next_route": attempt_plan[
+                                attempt.attempt_index
+                            ].route,
+                            "issues": last_issues,
+                        },
+                    )
+            if receipt is None:
+                raise ValueError(
+                    "单事件审核窗口语义回执无效："
+                    + ",".join(last_issues or ["unknown_protocol_error"])
+                )
             if not self._planning_adaptation_facet_window_receipt_valid(
                 receipt,
                 window_authority_sha256=window_authority,
@@ -5878,6 +6355,14 @@ class WorkflowService:
                 invariant_fields=invariant_fields,
                 version=authority_version,
             )
+            expected_identity: dict[str, object] = {
+                "authority_sha256": facet_authority,
+                "planning_sha256": planning_sha256,
+                "authority_version": authority_version,
+                "segment": segment,
+                "event_id": event_id,
+                "facet": facet,
+            }
             stored = self._load_planning_adaptation_facet_checkpoint(
                 run_id, run_path, project,
                 packet_authority_sha256=packet_authority_sha256,
@@ -5894,7 +6379,22 @@ class WorkflowService:
                 facet_receipts.append(stored)
                 continue
             last_error = ""
-            for attempt in range(2):
+            attempt_plan = self._protocol_receipt_attempt_plan(
+                "review", same_route_attempts=2,
+            )
+            for attempt in attempt_plan:
+                if attempt.use_configured_fallback:
+                    self._record_protocol_receipt_fallback(
+                        run_id, stage="review",
+                        boundary="planning_adaptation_event_facet",
+                        unit_metadata={
+                            "segment": segment,
+                            "event_id": event_id,
+                            "facet": facet,
+                            "authority_sha256": facet_authority,
+                        },
+                        issues=[last_error] if last_error else [],
+                    )
                 prompt = (
                     "SHORT_PLAN_ADAPTATION_EVENT_FACET_REVIEW_V1\n"
                     "Review one indivisible formal event without changing its narrative ownership. "
@@ -5917,61 +6417,120 @@ class WorkflowService:
                     + "\n\nCURRENT ACCEPTED EVENT PLAN EVIDENCE:\n" + plan_segment
                     + "\n\nPLAN EVIDENCE CANDIDATES:\n"
                     + json.dumps(evidence_candidates, ensure_ascii=False, indent=2)
-                    + "\n\nRequired fields: authority_sha256, planning_sha256, authority_version, "
-                    "segment, event_id, facet, invariants, changed_dimensions, "
-                    "plan_evidence_ids, plan_evidence_quote, reason. invariants must contain "
+                    + "\n\nRequired fields: invariants, changed_dimensions, plan_evidence_ids, "
+                    "plan_evidence_quote, reason. Runtime owns and injects authority, planning "
+                    "hash, version, segment, event, and facet. invariants must contain "
                     "exactly the requested names. If any invariant is false, quote one exact "
                     "current-plan problem phrase of at least six semantic characters and include "
                     "it verbatim in reason."
                 )
                 if last_error:
                     prompt += "\n\nPROTOCOL ERROR TO CORRECT:\n" + last_error[:800]
-                raw = await self._stage(
-                    run_id, run_path, project, "review", constraints, prompt,
-                    suffix=(
-                        f"-plan-adaptation-facet-{segment:02d}-{event_id}-{facet}-{attempt + 1}"
-                    ),
-                    allow_tools=False,
-                    expected_output_characters=900,
-                    completion_check=lambda value, expected=facet_authority, fields=invariant_fields, name=facet: (
-                        self._planning_adaptation_facet_receipt_valid(
-                            parse_json_object(value, label="Planning adaptation facet receipt"),
-                            facet_authority_sha256=expected,
-                            planning_sha256=planning_sha256,
-                            authority_version=authority_version,
-                            segment=segment,
-                            event_id=event_id,
-                            facet=name,
-                            invariant_fields=fields,
-                            evidence_candidates=evidence_candidates,
-                        )
-                    ),
-                    route_capacity_guard=True,
-                    story_skeleton_override=story_skeleton_override,
-                    bounded_protocol_output=True,
-                    capacity_splitter=lambda _details: (
-                        self._review_short_plan_adaptation_facet_windows(
-                            run_id, run_path, project, constraints,
-                            planning_sha256=planning_sha256,
-                            segment=segment,
-                            event_contract=event_contract,
-                            plan_segment=plan_segment,
-                            evidence_candidates=evidence_candidates,
-                            facet_authority_sha256=facet_authority,
-                            event_id=event_id,
-                            facet=facet,
-                            invariant_fields=invariant_fields,
-                            authority_version=authority_version,
-                        )
+                raw, route_failure = await self._execute_protocol_receipt_attempt(
+                    run_id, stage="review",
+                    boundary="planning_adaptation_event_facet",
+                    attempt=attempt,
+                    unit_metadata={
+                        "segment": segment,
+                        "event_id": event_id,
+                        "facet": facet,
+                        "authority_sha256": facet_authority,
+                    },
+                    operation=lambda: self._stage(
+                        run_id, run_path, project, "review", constraints, prompt,
+                        suffix=(
+                            f"-plan-adaptation-facet-{segment:02d}-{event_id}-{facet}-"
+                            f"{attempt.attempt_index}"
+                            + ("-fallback" if attempt.use_configured_fallback else "")
+                        ),
+                        allow_tools=False,
+                        prefer_configured_fallback=attempt.use_configured_fallback,
+                        primary_only=not attempt.use_configured_fallback,
+                        defer_route_failure_audit=True,
+                        protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                        expected_output_characters=900,
+                        completion_check=lambda value, fields=invariant_fields: not (
+                            self._converted_planning_adaptation_facet_semantic_issues(
+                                value, run_path,
+                                invariant_fields=fields,
+                                evidence_candidates=evidence_candidates,
+                            )
+                        ),
+                        route_capacity_guard=True,
+                        story_skeleton_override=story_skeleton_override,
+                        bounded_protocol_output=True,
+                        capacity_splitter=lambda _details: (
+                            self._review_short_plan_adaptation_facet_windows(
+                                run_id, run_path, project, constraints,
+                                planning_sha256=planning_sha256,
+                                segment=segment,
+                                event_contract=event_contract,
+                                plan_segment=plan_segment,
+                                evidence_candidates=evidence_candidates,
+                                facet_authority_sha256=facet_authority,
+                                event_id=event_id,
+                                facet=facet,
+                                invariant_fields=invariant_fields,
+                                authority_version=authority_version,
+                            )
+                        ),
                     ),
                 )
+                if route_failure is not None:
+                    last_error = route_failure.code
+                    retries += 1
+                    if attempt.is_last:
+                        raise ProtocolReceiptRouteExhaustedError(route_failure)
+                    continue
                 try:
-                    receipt = parse_json_object(
-                        raw, label="Planning adaptation facet receipt",
+                    generated = self._convert_generated_object(
+                        raw, run_path,
+                        contract_name="planning_adaptation_facet",
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
                     last_error = str(exc)
                 else:
+                    (
+                        receipt, semantic_issues, rebound_fields,
+                        semantic_repairs, adapter_audits,
+                    ) = (
+                        self._bind_current_planning_adaptation_facet_receipt(
+                            generated,
+                            expected_identity=expected_identity,
+                            invariant_fields=invariant_fields,
+                            evidence_candidates=evidence_candidates,
+                        )
+                    )
+                    if receipt is None:
+                        last_error = json.dumps(
+                            semantic_issues, ensure_ascii=False,
+                        )
+                        retries += 1
+                        continue
+                    if rebound_fields or semantic_repairs:
+                        canonical = json.dumps(
+                            receipt, ensure_ascii=False, sort_keys=True,
+                            separators=(",", ":"),
+                        )
+                        self.db.add_run_event(
+                            run_id, "info",
+                            "planning_adaptation_runtime_identity_bound",
+                            "单事件审核语义载荷已由运行时绑定到当前不可变事件范围",
+                            stage="review", metadata={
+                                "segment": segment,
+                                "event_id": event_id,
+                                "facet": facet,
+                                "rebound_fields": rebound_fields,
+                                "semantic_repairs": semantic_repairs,
+                                "contract_adapter_audits": adapter_audits,
+                                "raw_sha256": hashlib.sha256(
+                                    str(raw).encode("utf-8", errors="replace"),
+                                ).hexdigest(),
+                                "receipt_sha256": hashlib.sha256(
+                                    canonical.encode("utf-8"),
+                                ).hexdigest(),
+                            },
+                        )
                     if self._planning_adaptation_facet_receipt_valid(
                         receipt,
                         facet_authority_sha256=facet_authority,
@@ -6031,6 +6590,31 @@ class WorkflowService:
             reason = str(receipt.get("reason") or "").strip()
             if reason:
                 reasons.append(reason)
+        reported_dimensions = list(changed_dimensions)
+        changed_dimensions, reviewed_dimensions = (
+            self._reconcile_planning_adaptation_dimension_roles(
+                reported_dimensions, invariants=invariants,
+            )
+        )
+        if reviewed_dimensions:
+            self.db.add_run_event(
+                run_id, "info",
+                "planning_adaptation_dimension_roles_reconciled",
+                "单事件分面已按完整不变量图分离叙事进展维度与正式权威偏离",
+                stage="review", metadata={
+                    "segment": segment,
+                    "event_id": event_id,
+                    "reviewed_dimensions": reviewed_dimensions,
+                    "reported_dimensions_sha256": hashlib.sha256(json.dumps(
+                        reported_dimensions, ensure_ascii=False,
+                        separators=(",", ":"),
+                    ).encode("utf-8")).hexdigest(),
+                    "effective_dimensions_sha256": hashlib.sha256(json.dumps(
+                        changed_dimensions, ensure_ascii=False,
+                        separators=(",", ":"),
+                    ).encode("utf-8")).hexdigest(),
+                },
+            )
         event_review = {
             "event_id": event_id,
             "classification": "equivalent" if changed_dimensions else "unchanged",
@@ -6935,7 +7519,22 @@ class WorkflowService:
                 regional.append(stored_receipt)
                 continue
             last_error = ""
-            for attempt in range(2):
+            attempt_plan = self._protocol_receipt_attempt_plan(
+                "review", same_route_attempts=2,
+            )
+            for attempt in attempt_plan:
+                if attempt.use_configured_fallback:
+                    self._record_protocol_receipt_fallback(
+                        run_id, stage="review",
+                        boundary="planning_adaptation_regional_receipt",
+                        unit_metadata={
+                            "batch_number": batch_number,
+                            "segment_count": len(expected_segments),
+                            "event_count": len(expected_event_ids),
+                            "source_sha256": source_sha256,
+                        },
+                        issues=[last_error] if last_error else [],
+                    )
                 prompt = (
                     "SHORT_PLAN_ADAPTATION_REGIONAL_REVIEW_V3\n"
                     "审核一个完整、连续且与相邻包重叠的规划范围。不得改写。输入包保留了"
@@ -6959,31 +7558,54 @@ class WorkflowService:
                         "\n\n上一份回执仅存在协议错误，输入规划保持不变："
                         + last_error[:600]
                     )
-                raw = await self._stage(
-                    run_id, run_path, project, "review", constraints, prompt,
-                    suffix=(
-                        f"-plan-adaptation-hierarchy-{suffix}-regional-"
-                        f"{batch_number:02d}-{attempt + 1}"
+                raw, route_failure = await self._execute_protocol_receipt_attempt(
+                    run_id, stage="review",
+                    boundary="planning_adaptation_regional_receipt",
+                    attempt=attempt,
+                    unit_metadata={
+                        "batch_number": batch_number,
+                        "segment_count": len(expected_segments),
+                        "event_count": len(expected_event_ids),
+                        "source_sha256": source_sha256,
+                    },
+                    operation=lambda: self._stage(
+                        run_id, run_path, project, "review", constraints, prompt,
+                        suffix=(
+                            f"-plan-adaptation-hierarchy-{suffix}-regional-"
+                            f"{batch_number:02d}-{attempt.attempt_index}"
+                            + ("-fallback" if attempt.use_configured_fallback else "")
+                        ),
+                        allow_tools=False,
+                        prefer_configured_fallback=attempt.use_configured_fallback,
+                        primary_only=not attempt.use_configured_fallback,
+                        defer_route_failure_audit=True,
+                        protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                        expected_output_characters=max(
+                            1400, 180 * len(expected_event_ids),
+                        ),
+                        completion_check=lambda value: (
+                            self._planning_hierarchy_receipt_complete(
+                                value,
+                                source_sha256=source_sha256,
+                                expected_segments=expected_segments,
+                                expected_event_ids=expected_event_ids,
+                            )
+                        ),
+                        route_capacity_guard=True,
+                        story_skeleton_override=index_skeleton,
+                        bounded_protocol_output=True,
                     ),
-                    allow_tools=False,
-                    expected_output_characters=max(
-                        1400, 180 * len(expected_event_ids),
-                    ),
-                    completion_check=lambda value: (
-                        self._planning_hierarchy_receipt_complete(
-                            value,
-                            source_sha256=source_sha256,
-                            expected_segments=expected_segments,
-                            expected_event_ids=expected_event_ids,
-                        )
-                    ),
-                    route_capacity_guard=True,
-                    story_skeleton_override=index_skeleton,
-                    bounded_protocol_output=True,
                 )
+                if route_failure is not None:
+                    last_error = route_failure.code
+                    if not attempt.is_last:
+                        protocol_retries += 1
+                        continue
+                    raise ProtocolReceiptRouteExhaustedError(route_failure)
                 try:
-                    payload = parse_json_object(
-                        raw, label="Planning adaptation regional receipt",
+                    payload = self._convert_generated_object(
+                        raw, run_path,
+                        contract_name="planning_adaptation_hierarchy",
                     )
                     receipt = self._normalize_planning_hierarchy_receipt(
                         payload,
@@ -6993,7 +7615,7 @@ class WorkflowService:
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
                     last_error = str(exc)
-                    if attempt == 0:
+                    if not attempt.is_last:
                         protocol_retries += 1
                         continue
                     raise ValueError(
@@ -7098,59 +7720,121 @@ class WorkflowService:
                 if stored_receipt is not None:
                     reduced.append(stored_receipt)
                     continue
-                prompt = (
-                    "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3\n"
-                    "合并相邻且有重叠的规划审核回执，不得改写规划、不得消除下层已确认的"
-                    "结构问题。返回与区域审核相同字段的一个 JSON 对象，并准确回显"
-                    "source_sha256、segment_numbers 和 event_ids。状态摘要必须覆盖整个输入包；"
-                    "下层任一不变量为 false 时对应字段必须保持 false。\n"
-                    f"SOURCE SHA256: {source_sha256}\n"
-                    f"EXPECTED SEGMENTS: {json.dumps(expected_segments)}\n"
-                    f"EXPECTED EVENT IDS: {json.dumps(expected_event_ids)}\n\n"
-                    f"ORDERED HASH-BOUND RECEIPTS:\n{source}"
+                last_error = ""
+                attempt_plan = self._protocol_receipt_attempt_plan(
+                    "review", same_route_attempts=2,
                 )
-                raw = await self._stage(
-                    run_id, run_path, project, "review", constraints, prompt,
-                    suffix=(
-                        f"-plan-adaptation-hierarchy-{suffix}-level-{level}-"
-                        f"{batch_number:02d}"
-                    ),
-                    allow_tools=False,
-                    expected_output_characters=max(
-                        1400, 160 * len(expected_event_ids),
-                    ),
-                    completion_check=lambda value: (
-                        self._planning_hierarchy_receipt_complete(
-                            value,
+                for attempt in attempt_plan:
+                    if attempt.use_configured_fallback:
+                        self._record_protocol_receipt_fallback(
+                            run_id, stage="review",
+                            boundary="planning_adaptation_hierarchy_reduction",
+                            unit_metadata={
+                                "level": level,
+                                "batch_number": batch_number,
+                                "segment_count": len(expected_segments),
+                                "event_count": len(expected_event_ids),
+                                "source_sha256": source_sha256,
+                            },
+                            issues=[last_error] if last_error else [],
+                        )
+                    prompt = (
+                        "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3\n"
+                        "合并相邻且有重叠的规划审核回执，不得改写规划、不得消除下层已确认的"
+                        "结构问题。返回与区域审核相同字段的一个 JSON 对象，并准确回显"
+                        "source_sha256、segment_numbers 和 event_ids。状态摘要必须覆盖整个输入包；"
+                        "下层任一不变量为 false 时对应字段必须保持 false。\n"
+                        f"SOURCE SHA256: {source_sha256}\n"
+                        f"EXPECTED SEGMENTS: {json.dumps(expected_segments)}\n"
+                        f"EXPECTED EVENT IDS: {json.dumps(expected_event_ids)}\n\n"
+                        f"ORDERED HASH-BOUND RECEIPTS:\n{source}"
+                    )
+                    if last_error:
+                        prompt += (
+                            "\n\n上一份输出只有回执协议缺陷；保持不可变证据，"
+                            "只返回完整修正后的回执：\n" + last_error[:600]
+                        )
+                    raw, route_failure = await self._execute_protocol_receipt_attempt(
+                        run_id, stage="review",
+                        boundary="planning_adaptation_hierarchy_reduction",
+                        attempt=attempt,
+                        unit_metadata={
+                            "level": level,
+                            "batch_number": batch_number,
+                            "segment_count": len(expected_segments),
+                            "event_count": len(expected_event_ids),
+                            "source_sha256": source_sha256,
+                        },
+                        operation=lambda: self._stage(
+                            run_id, run_path, project, "review", constraints, prompt,
+                            suffix=(
+                                f"-plan-adaptation-hierarchy-{suffix}-level-{level}-"
+                                f"{batch_number:02d}-{attempt.attempt_index}"
+                                + (
+                                    "-fallback"
+                                    if attempt.use_configured_fallback else ""
+                                )
+                            ),
+                            allow_tools=False,
+                            prefer_configured_fallback=(
+                                attempt.use_configured_fallback
+                            ),
+                            primary_only=not attempt.use_configured_fallback,
+                            defer_route_failure_audit=True,
+                            protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                            expected_output_characters=max(
+                                1400, 160 * len(expected_event_ids),
+                            ),
+                            completion_check=lambda value: (
+                                self._planning_hierarchy_receipt_complete(
+                                    value,
+                                    source_sha256=source_sha256,
+                                    expected_segments=expected_segments,
+                                    expected_event_ids=expected_event_ids,
+                                    inherited=batch,
+                                )
+                            ),
+                            route_capacity_guard=True,
+                            story_skeleton_override=index_skeleton,
+                            bounded_protocol_output=True,
+                        ),
+                    )
+                    if route_failure is not None:
+                        last_error = route_failure.code
+                        if not attempt.is_last:
+                            protocol_retries += 1
+                            continue
+                        raise ProtocolReceiptRouteExhaustedError(route_failure)
+                    try:
+                        payload = self._convert_generated_object(
+                            raw, run_path,
+                            contract_name="planning_adaptation_hierarchy",
+                        )
+                        receipt = self._normalize_planning_hierarchy_receipt(
+                            payload,
                             source_sha256=source_sha256,
                             expected_segments=expected_segments,
                             expected_event_ids=expected_event_ids,
                             inherited=batch,
                         )
-                    ),
-                    route_capacity_guard=True,
-                    story_skeleton_override=index_skeleton,
-                    bounded_protocol_output=True,
-                )
-                payload = parse_json_object(
-                    raw, label="Planning adaptation hierarchy receipt",
-                )
-                receipt = self._normalize_planning_hierarchy_receipt(
-                    payload,
-                    source_sha256=source_sha256,
-                    expected_segments=expected_segments,
-                    expected_event_ids=expected_event_ids,
-                    inherited=batch,
-                )
-                self._save_planning_hierarchy_checkpoint(
-                    run_path,
-                    kind=checkpoint_kind,
-                    source_sha256=source_sha256,
-                    expected_segments=expected_segments,
-                    expected_event_ids=expected_event_ids,
-                    receipt=receipt,
-                )
-                reduced.append(receipt)
+                    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+                        last_error = str(exc)
+                        if not attempt.is_last:
+                            protocol_retries += 1
+                            continue
+                        raise ValueError(
+                            "规划分层归并回执在同路重试和备用模型后仍不完整"
+                        ) from exc
+                    self._save_planning_hierarchy_checkpoint(
+                        run_path,
+                        kind=checkpoint_kind,
+                        source_sha256=source_sha256,
+                        expected_segments=expected_segments,
+                        expected_event_ids=expected_event_ids,
+                        receipt=receipt,
+                    )
+                    reduced.append(receipt)
+                    break
             levels.append({
                 "level": level,
                 "input_receipts": len(current),
@@ -7242,7 +7926,21 @@ class WorkflowService:
         index_skeleton = self._stage_story_skeleton(
             project, constraints, run_path, index_only=True,
         )
-        for attempt in range(3):
+        attempt_plan = self._protocol_receipt_attempt_plan(
+            "review", same_route_attempts=3,
+        )
+        for attempt in attempt_plan:
+            if attempt.use_configured_fallback:
+                self._record_protocol_receipt_fallback(
+                    run_id, stage="review",
+                    boundary="planning_adaptation_whole_receipt",
+                    unit_metadata={
+                        "segment_count": segment_count,
+                        "event_count": len(expected_event_ids),
+                        "authority_sha256": authority_sha256,
+                    },
+                    issues=last_issues,
+                )
             prompt = (
                 "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2\n"
                 "各正式段已经分别通过等价展开核对。现在只审核它们合并后的整篇关系，"
@@ -7274,27 +7972,56 @@ class WorkflowService:
                     + json.dumps(last_issues, ensure_ascii=False, indent=2)
                     + "\n规划与分段回执保持不变，只重新返回完整整篇审核回执。"
                 )
-            raw = await self._stage(
-                run_id, run_path, project, "review", constraints, prompt,
-                suffix=f"-plan-adaptation-whole-{suffix}-{attempt + 1}",
-                allow_tools=False,
-                expected_output_characters=max(1200, 110 * len(expected_event_ids)),
-                completion_check=lambda value: (
-                    self._planning_adaptation_whole_receipt_complete(
-                        value,
-                        authority_sha256=authority_sha256,
-                        planning_sha256=planning_sha256,
-                        authority_version=authority_version,
-                        segment_count=segment_count,
-                        expected_event_ids=expected_event_ids,
-                    )
+            raw, route_failure = await self._execute_protocol_receipt_attempt(
+                run_id, stage="review",
+                boundary="planning_adaptation_whole_receipt",
+                attempt=attempt,
+                unit_metadata={
+                    "segment_count": segment_count,
+                    "event_count": len(expected_event_ids),
+                    "authority_sha256": authority_sha256,
+                },
+                operation=lambda: self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=(
+                        f"-plan-adaptation-whole-{suffix}-{attempt.attempt_index}"
+                        + ("-fallback" if attempt.use_configured_fallback else "")
+                    ),
+                    allow_tools=False,
+                    prefer_configured_fallback=attempt.use_configured_fallback,
+                    primary_only=not attempt.use_configured_fallback,
+                    defer_route_failure_audit=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    expected_output_characters=max(1200, 110 * len(expected_event_ids)),
+                    completion_check=lambda value: (
+                        self._planning_adaptation_whole_receipt_complete(
+                            value,
+                            authority_sha256=authority_sha256,
+                            planning_sha256=planning_sha256,
+                            authority_version=authority_version,
+                            segment_count=segment_count,
+                            expected_event_ids=expected_event_ids,
+                        )
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=index_skeleton,
+                    bounded_protocol_output=True,
                 ),
-                route_capacity_guard=True,
-                story_skeleton_override=index_skeleton,
-                bounded_protocol_output=True,
             )
+            if route_failure is not None:
+                last_issues = [{
+                    "code": route_failure.code,
+                    "failure_class": route_failure.failure_class.value,
+                }]
+                if not attempt.is_last:
+                    protocol_retries += 1
+                    continue
+                raise ProtocolReceiptRouteExhaustedError(route_failure)
             try:
-                payload = parse_json_object(raw, label="Whole planning adaptation receipt")
+                payload = self._convert_generated_object(
+                    raw, run_path,
+                    contract_name="planning_adaptation_whole",
+                )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt: object = {}
                 last_issues = [{
@@ -7350,13 +8077,18 @@ class WorkflowService:
                 if not protocol_issues:
                     return dict(receipt), last_issues, protocol_retries
                 last_issues = protocol_issues
-            if attempt < 2:
+            if not attempt.is_last:
                 protocol_retries += 1
                 self.db.add_run_event(
                     run_id, "info", "planning_adaptation_whole_receipt_retry",
                     "整篇规划保持不变，正在重新获取跨段因果与结局审核回执",
                     stage="review", metadata={
-                        "attempt": attempt + 1, "issues": last_issues,
+                        "attempt": attempt.attempt_index,
+                        "route": attempt.route,
+                        "next_route": attempt_plan[
+                            attempt.attempt_index
+                        ].route,
+                        "issues": last_issues,
                     },
                 )
                 continue
@@ -8087,9 +8819,9 @@ class WorkflowService:
 
         expected = [str(item or "").strip().upper() for item in event_ids]
         try:
-            payload = parse_json_object(
-                value, label=f"{artifact} structured payload",
-            )
+            payload = GeneratedArtifactGateway().convert_object(
+                value, contract_name="short_plan_packet",
+            ).payload
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             raise GeneratedArtifactShapeError(
                 f"{artifact} did not return one structured narrative payload",
@@ -8661,9 +9393,9 @@ class WorkflowService:
         ) -> str:
             if len(owned) <= 1:
                 return await repair_group(owned, predecessor)
-            midpoint = max(1, len(owned) // 2)
-            left_ids = owned[:midpoint]
-            right_ids = owned[midpoint:]
+            left_owned, right_owned = semantic_bisect(owned)
+            left_ids = list(left_owned)
+            right_ids = list(right_owned)
             left = await repair_group(left_ids, predecessor)
             right = await repair_group(right_ids, left)
             return self._merge_short_plan_repair_packets(
@@ -8704,8 +9436,11 @@ class WorkflowService:
             state, formal_outline_events,
         )
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
-        obligation_checklists = narrative_outline_event_obligations(
-            outline_content,
+        obligation_checklists = bind_planning_participant_realizations(
+            narrative_outline_event_obligations(outline_content),
+            narrative_participant_realizations(
+                resolve_narrative_contract(project),
+            ),
         )
         contract_by_id = {
             str(item.get("id") or "").strip().upper(): item
@@ -8934,8 +9669,9 @@ class WorkflowService:
                 if not patch_authority:
                     return None
                 try:
-                    payload = parse_json_object(
-                        value, label=f"Planning repair patch segment {segment}",
+                    payload = self._convert_generated_object(
+                        value, run_path,
+                        contract_name="planning_repair_patch",
                     )
                     return normalize_planning_repair_patch(
                         payload,
@@ -9088,8 +9824,11 @@ class WorkflowService:
         current_semantic_candidates = 0
         last_protocol_exception: GeneratedArtifactShapeError | None = None
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
-        obligation_checklists = narrative_outline_event_obligations(
-            outline_content,
+        obligation_checklists = bind_planning_participant_realizations(
+            narrative_outline_event_obligations(outline_content),
+            narrative_participant_realizations(
+                resolve_narrative_contract(project),
+            ),
         )
         outline_sha256 = hashlib.sha256(outline_content.encode("utf-8")).hexdigest()
         context_sha256 = generation_context_sha256 or ""
@@ -10934,9 +11673,9 @@ class WorkflowService:
                     artifact=artifact,
                 )
             try:
-                payload = parse_json_object(
-                    value, label=f"{artifact} JSON packet",
-                )
+                payload = GeneratedArtifactGateway().convert_object(
+                    value, contract_name="short_plan_packet",
+                ).payload
             except (TypeError, ValueError, json.JSONDecodeError):
                 try:
                     payload = cls._parse_short_plan_event_array(
@@ -11140,6 +11879,526 @@ class WorkflowService:
             stage="planning", metadata={"cycles": len(chain.get("cycles") or [])},
         )
 
+    async def _split_short_causal_chain_packets(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        plan: str, required_events: list[dict], target_words: int, details: dict,
+    ) -> str:
+        """Execute a hash-bound, recursively divisible causal Map/Reduce tree."""
+        if not required_events:
+            raise ValueError("causal chain has no formal events to split")
+        required_ids = [
+            str(item.get("id") or "").strip().upper()
+            for item in required_events
+        ]
+        if any(not event_id for event_id in required_ids):
+            raise ValueError("causal chain formal events require stable IDs")
+        if len(required_ids) != len(set(required_ids)):
+            raise ValueError("causal chain formal event IDs must be unique")
+
+        event_by_id = dict(zip(required_ids, required_events))
+        event_position = {
+            event_id: index for index, event_id in enumerate(required_ids)
+        }
+        plan_sha256 = hashlib.sha256(plan.encode("utf-8")).hexdigest()
+        authority_sha256 = canonical_sha256({
+            "version": 1,
+            "task_kind": "short_causal_chain",
+            "plan_sha256": plan_sha256,
+            "formal_events": required_events,
+            "target_words": target_words,
+        })
+        detected_segments = [
+            number for _heading, number in self._short_plan_headings(plan)
+            if number is not None
+        ]
+        segment_count = max(
+            self._short_segment_count(target_words),
+            max(detected_segments, default=0),
+        )
+        plan_segments = self._short_plan_segments(plan, segment_count)
+        plan_by_segment = {
+            number: block for number, block in enumerate(plan_segments, 1)
+        }
+        segment_by_event: dict[str, int] = {}
+        for number, block in plan_by_segment.items():
+            for event_id in self._short_plan_event_ids(block):
+                previous = segment_by_event.get(event_id)
+                if previous is not None and previous != number:
+                    raise ValueError(
+                        f"causal chain event {event_id} belongs to multiple plan segments"
+                    )
+                segment_by_event[event_id] = number
+        packet_dir = run_path / "outputs" / "causal-chain-packets"
+        packet_dir.mkdir(parents=True, exist_ok=True)
+
+        def has_value(value: object) -> bool:
+            if value is None:
+                return False
+            if isinstance(value, str):
+                return bool(value.strip())
+            if isinstance(value, (list, dict, tuple, set)):
+                return bool(value)
+            return True
+
+        def contract_for(
+            owned_ids: Sequence[str], *, parent_packet_id: str,
+            depth: int, predecessor_sha256: str,
+        ) -> SemanticPacketContract:
+            normalized = tuple(
+                str(event_id or "").strip().upper() for event_id in owned_ids
+            )
+            start = event_position.get(normalized[0], -1)
+            end = event_position.get(normalized[-1], -1)
+            if (
+                start < 0 or end < start
+                or tuple(required_ids[start:end + 1]) != normalized
+            ):
+                raise ValueError(
+                    "causal packet ownership must be one contiguous event range"
+                )
+            context_ids = tuple(
+                event_id for event_id in (
+                    required_ids[start - 1] if start else "",
+                    required_ids[end + 1] if end + 1 < len(required_ids) else "",
+                ) if event_id
+            )
+            segment_numbers = tuple(dict.fromkeys(
+                segment_by_event[event_id]
+                for event_id in normalized if event_id in segment_by_event
+            ))
+            return SemanticPacketContract(
+                task_kind="short_causal_chain",
+                authority_sha256=authority_sha256,
+                parent_packet_id=parent_packet_id,
+                depth=depth,
+                owned_event_ids=normalized,
+                context_event_ids=context_ids,
+                segment_numbers=segment_numbers,
+                predecessor_sha256=predecessor_sha256,
+            )
+
+        def normalize_packet(
+            value: object, contract: SemanticPacketContract,
+        ) -> dict | None:
+            return normalize_causal_packet_payload(
+                value,
+                expected_event_ids=contract.owned_event_ids,
+                owns_opening=required_ids[0] in contract.owned_event_ids,
+                owns_ending=required_ids[-1] in contract.owned_event_ids,
+            )
+
+        def parse_packet(
+            text: str, contract: SemanticPacketContract,
+        ) -> dict | None:
+            try:
+                return self._convert_generated_object(
+                    text, run_path, contract_name="short_causal_chain",
+                    semantic_normalizer=lambda value: normalize_packet(
+                        value, contract,
+                    ),
+                    expected_event_ids=contract.owned_event_ids,
+                    owns_opening=required_ids[0] in contract.owned_event_ids,
+                    owns_ending=required_ids[-1] in contract.owned_event_ids,
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return None
+
+        def plan_projection(contract: SemanticPacketContract) -> str:
+            projections: list[str] = []
+            for number in contract.segment_numbers:
+                block = plan_by_segment.get(number, "")
+                owned = [
+                    event_id for event_id in contract.owned_event_ids
+                    if segment_by_event.get(event_id) == number
+                ]
+                if block and owned:
+                    projections.append(
+                        self._short_plan_repair_event_projection(
+                            block, segment=number, event_ids=owned,
+                        )
+                    )
+            return "\n\n".join(projections) or json.dumps(
+                [event_by_id[event_id] for event_id in contract.owned_event_ids],
+                ensure_ascii=False, indent=2,
+            )
+
+        def context_projection(contract: SemanticPacketContract) -> str:
+            return json.dumps(
+                [event_by_id[event_id] for event_id in contract.context_event_ids],
+                ensure_ascii=False, indent=2,
+            )
+
+        def merge_packets(
+            contract: SemanticPacketContract, packets: Sequence[dict],
+        ) -> dict:
+            children = [
+                tuple(str(value).upper() for value in packet.get(
+                    "covered_event_ids", []
+                ))
+                for packet in packets
+            ]
+            if not exact_ordered_partition(contract.owned_event_ids, children):
+                raise ValueError(
+                    "causal packet reduction has duplicate, missing, or reordered ownership"
+                )
+            merged: dict[str, object] = {
+                "core_goal": "",
+                "opening": {},
+                "cycles": [],
+                "accidents": [],
+                "reversal": {},
+                "ending": "",
+                "question_chain": [],
+                "relationship_arc": [],
+                "covered_event_ids": [],
+            }
+            for packet in packets:
+                covered = packet.get("covered_event_ids") or []
+                if required_ids[0] in covered:
+                    merged["core_goal"] = packet.get("core_goal") or ""
+                    merged["opening"] = packet.get("opening") or {}
+                if isinstance(packet.get("cycles"), list):
+                    merged["cycles"].extend(packet["cycles"])
+                if isinstance(packet.get("accidents"), list):
+                    merged["accidents"].extend(packet["accidents"])
+                if has_value(packet.get("reversal")):
+                    merged["reversal"] = packet.get("reversal")
+                if required_ids[-1] in covered:
+                    merged["ending"] = packet.get("ending") or ""
+                for field in ("question_chain", "relationship_arc"):
+                    value = packet.get(field)
+                    values = value if isinstance(value, list) else (
+                        [value] if has_value(value) else []
+                    )
+                    known = {
+                        canonical_sha256(item) for item in merged[field]
+                    }
+                    for item in values:
+                        digest = canonical_sha256(item)
+                        if digest not in known:
+                            merged[field].append(item)
+                            known.add(digest)
+                merged["covered_event_ids"].extend(covered)
+            normalized = normalize_packet(merged, contract)
+            if normalized is None:
+                raise ValueError(
+                    "causal packet reduction failed its owned-range contract"
+                )
+            return normalized
+
+        def save_packet(
+            contract: SemanticPacketContract, packet: dict,
+        ) -> None:
+            path = write_validated_packet(packet_dir, contract, packet)
+            self.db.save_workflow_node_checkpoint(
+                run_id=run_id,
+                node_key=f"causal-packet-authority-{contract.packet_id[:24]}",
+                authority_sha256=authority_sha256,
+                input_sha256=contract.packet_id,
+                output_sha256=canonical_sha256(packet),
+                status="validated",
+                validation_stage="local_semantics",
+                payload={
+                    "packet_id": contract.packet_id,
+                    "event_ids": list(contract.owned_event_ids),
+                    "depth": contract.depth,
+                    "checkpoint": path.name,
+                    "packet": packet,
+                },
+            )
+
+        async def execute_group(contract: SemanticPacketContract) -> dict:
+            checkpoint_source = "artifact"
+            stored = load_validated_packet(
+                packet_dir, contract,
+                payload_validator=lambda value: normalize_packet(
+                    value, contract,
+                ) is not None,
+            )
+            if stored is None:
+                database_checkpoint = self.db.load_workflow_node_checkpoint(
+                    run_id=run_id,
+                    node_key=f"causal-packet-authority-{contract.packet_id[:24]}",
+                    authority_sha256=authority_sha256,
+                    input_sha256=contract.packet_id,
+                    statuses=("validated",),
+                    min_validation_stage="local_semantics",
+                )
+                database_packet = (
+                    (database_checkpoint.get("payload") or {}).get("packet")
+                    if isinstance(database_checkpoint, dict) else None
+                )
+                normalized_database_packet = normalize_packet(
+                    database_packet, contract,
+                )
+                if (
+                    normalized_database_packet is not None
+                    and database_checkpoint.get("output_sha256")
+                    == canonical_sha256(normalized_database_packet)
+                ):
+                    write_validated_packet(
+                        packet_dir, contract, normalized_database_packet,
+                    )
+                    stored = normalized_database_packet
+                    checkpoint_source = "database_mirror"
+            if stored is not None:
+                self.db.add_run_event(
+                    run_id, "success", "causal_chain_packet_reused",
+                    "已复用通过校验的因果链语义分包",
+                    stage="planning", metadata={
+                        "packet_id": contract.packet_id,
+                        "depth": contract.depth,
+                        "event_ids": list(contract.owned_event_ids),
+                        "source": checkpoint_source,
+                    },
+                )
+                return stored
+
+            async def split_again(split_details: dict) -> str:
+                return json.dumps(
+                    await split_group(contract, split_details),
+                    ensure_ascii=False,
+                )
+
+            owned_events = [
+                event_by_id[event_id] for event_id in contract.owned_event_ids
+            ]
+            owned_plan = plan_projection(contract)
+
+            def render_prompt(protocol_error: str = "") -> str:
+                prompt_value = (
+                    "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V2\n"
+                    "Generate one causal-chain packet for exactly the owned contiguous formal "
+                    "events. Return one JSON object only. Context events are read-only and MUST "
+                    "NOT appear in covered_event_ids. Preserve formal agency, dependencies, entry "
+                    "and exit state, knowledge, relationships, timeline, promises, and ending.\n"
+                    "Every cycle requires obstacle, effort, result, and state_change. Only the "
+                    "packet owning the first formal event may fill core_goal/opening; only the "
+                    "packet owning the last formal event may fill ending. Other global fields "
+                    "must use their empty JSON form.\n"
+                    f"PACKET CONTRACT:\n{contract.model_dump_json()}\n"
+                    f"PLAN SHA256: {plan_sha256}\n"
+                    "EXPECTED EVENT IDS:\n"
+                    + json.dumps(list(contract.owned_event_ids), ensure_ascii=False)
+                    + "\n\nFORMAL EVENTS:\n"
+                    + json.dumps(owned_events, ensure_ascii=False, indent=2)
+                    + "\n\nOWNED PLAN PROJECTION:\n" + owned_plan
+                    + "\n\nREAD-ONLY NEIGHBOR CONTEXT:\n"
+                    + context_projection(contract)
+                )
+                if protocol_error:
+                    prompt_value += (
+                        "\n\nPROTOCOL ERROR TO CORRECT WITHOUT CHANGING OWNERSHIP:\n"
+                        + protocol_error[:800]
+                    )
+                return prompt_value
+
+            async def call_route(
+                *, fallback: bool, protocol_error: str = "",
+            ) -> dict | None:
+                raw_packet = await self._stage(
+                    run_id, run_path, project, "planning", constraints,
+                    render_prompt(protocol_error),
+                    suffix=(
+                        f"-causal-chain-packet-{contract.packet_id[:16]}"
+                        + ("-fallback" if fallback else "")
+                        + ("-protocol-retry" if protocol_error else "")
+                    ),
+                    allow_tools=False,
+                    prefer_configured_fallback=fallback,
+                    primary_only=not fallback,
+                    expected_output_characters=max(
+                        1200, 650 * len(contract.owned_event_ids),
+                    ),
+                    completion_check=lambda value: parse_packet(
+                        value, contract,
+                    ) is not None,
+                    route_capacity_guard=True,
+                    capacity_splitter=(
+                        split_again if len(contract.owned_event_ids) > 1 else None
+                    ),
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    story_skeleton_override=self._stage_story_skeleton(
+                        project, constraints, run_path,
+                        owner_event_ids=list(contract.owned_event_ids),
+                        index_only=True,
+                    ),
+                )
+                return parse_packet(raw_packet, contract)
+
+            primary_error: Exception | None = None
+            try:
+                packet = await call_route(fallback=False)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                primary_error = exc
+                packet = None
+            if packet is not None:
+                save_packet(contract, packet)
+                return packet
+
+            if primary_error is None:
+                self.db.add_run_event(
+                    run_id, "warning", "causal_chain_packet_protocol_retry",
+                    "因果链分包返回完整但未通过所有权或结构校验，正在仅重试该协议包",
+                    stage="planning", metadata={
+                        "packet_id": contract.packet_id,
+                        "event_ids": list(contract.owned_event_ids),
+                    },
+                )
+                try:
+                    packet = await call_route(
+                        fallback=False,
+                        protocol_error=(
+                            "Return exactly the expected ordered covered_event_ids, at least one "
+                            "closed causal cycle, and no first/last global field outside this "
+                            "packet's ownership."
+                        ),
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    primary_error = exc
+                    packet = None
+                if packet is not None:
+                    save_packet(contract, packet)
+                    return packet
+
+            if len(contract.owned_event_ids) > 1 and (
+                primary_error is None
+                or isinstance(primary_error, IncompleteModelOutputError)
+                or classify_model_failure(primary_error) == "input_context_overflow"
+            ):
+                packet = await split_group(contract, {
+                    "trigger": "output_or_protocol",
+                    "pressure": "split",
+                    "provider_error": (
+                        str(primary_error)[:500] if primary_error else "protocol_invalid"
+                    ),
+                })
+                save_packet(contract, packet)
+                return packet
+
+            self.db.add_run_event(
+                run_id, "warning", "causal_chain_packet_model_fallback",
+                "因果链失败分包正在切换到 planning 角色的已配置备用模型",
+                stage="planning", metadata={
+                    "packet_id": contract.packet_id,
+                    "event_ids": list(contract.owned_event_ids),
+                    "error_type": (
+                        type(primary_error).__name__
+                        if primary_error else "protocol_invalid"
+                    ),
+                },
+            )
+            try:
+                packet = await call_route(
+                    fallback=True,
+                    protocol_error=(
+                        "The primary route did not produce a complete valid packet."
+                    ),
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as fallback_error:
+                if len(contract.owned_event_ids) > 1:
+                    packet = await split_group(contract, {
+                        "trigger": "fallback_failure",
+                        "pressure": "split",
+                        "provider_error": str(fallback_error)[:500],
+                    })
+                else:
+                    primary_route_error = primary_error or GeneratedArtifactShapeError(
+                        "indivisible causal packet remained invalid on the primary route"
+                    )
+                    raise ModelRoutesExhaustedError(
+                        primary_route_error, fallback_error,
+                    ) from fallback_error
+            if packet is None:
+                if len(contract.owned_event_ids) > 1:
+                    packet = await split_group(contract, {
+                        "trigger": "fallback_protocol",
+                        "pressure": "split",
+                    })
+                else:
+                    fallback_protocol_error = GeneratedArtifactShapeError(
+                        "indivisible causal packet remained invalid after fallback"
+                    )
+                    if primary_error is not None:
+                        raise ModelRoutesExhaustedError(
+                            primary_error, fallback_protocol_error,
+                        )
+                    raise fallback_protocol_error
+            save_packet(contract, packet)
+            return packet
+
+        async def split_group(
+            contract: SemanticPacketContract, split_details: dict,
+        ) -> dict:
+            if len(contract.owned_event_ids) <= 1:
+                return await execute_group(contract)
+            boundary_keys = [
+                segment_by_event.get(event_id, f"event:{event_id}")
+                for event_id in contract.owned_event_ids
+            ]
+            left_ids, right_ids = semantic_bisect(
+                contract.owned_event_ids, boundary_keys=boundary_keys,
+            )
+            if not exact_ordered_partition(
+                contract.owned_event_ids, (left_ids, right_ids),
+            ):
+                raise ValueError("causal semantic split changed event ownership")
+            left_contract = contract_for(
+                left_ids,
+                parent_packet_id=contract.packet_id,
+                depth=contract.depth + 1,
+                predecessor_sha256=contract.predecessor_sha256,
+            )
+            left = await execute_group(left_contract)
+            right_contract = contract_for(
+                right_ids,
+                parent_packet_id=contract.packet_id,
+                depth=contract.depth + 1,
+                predecessor_sha256=canonical_sha256(left),
+            )
+            right = await execute_group(right_contract)
+            merged = merge_packets(contract, (left, right))
+            self.db.add_run_event(
+                run_id, "success", "causal_chain_packet_reduced",
+                "因果链子包已按正式事件顺序完成确定性合并",
+                stage="planning", metadata={
+                    "packet_id": contract.packet_id,
+                    "left_packet_id": left_contract.packet_id,
+                    "right_packet_id": right_contract.packet_id,
+                    "event_ids": list(contract.owned_event_ids),
+                    "trigger": split_details.get("trigger"),
+                },
+            )
+            return merged
+
+        root_contract = contract_for(
+            required_ids,
+            parent_packet_id="root-causal-chain",
+            depth=0,
+            predecessor_sha256="",
+        )
+        merged = await split_group(root_contract, details)
+        required_coverage = [
+            str(item).upper() for item in merged.get("covered_event_ids", [])
+            if str(item).strip()
+        ]
+        if (
+            analyze_short_causal_chain(merged, target_words)["status"] == "invalid"
+            or required_coverage != required_ids
+        ):
+            raise ValueError(
+                "causal-chain semantic packets merged but failed whole-chain validation"
+            )
+        save_packet(root_contract, merged)
+        return json.dumps(merged, ensure_ascii=False)
+
     async def _ensure_short_causal_chain(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         plan: str, formal_outline_events: list[dict], candidate: dict | None,
@@ -11172,6 +12431,24 @@ class WorkflowService:
             return candidate
 
         required_events = narrative_outline_events(formal_outline_events)
+        required_ids = [
+            str(item.get("id") or "").strip().upper()
+            for item in required_events if str(item.get("id") or "").strip()
+        ]
+
+        def parse_chain(text: str) -> dict | None:
+            try:
+                return self._convert_generated_object(
+                    text, run_path, contract_name="short_causal_chain",
+                    semantic_normalizer=lambda value: (
+                        value if isinstance(value, dict)
+                        and valid(value, require_coverage=True) else None
+                    ),
+                    expected_event_ids=required_ids,
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return None
+
         atomic_write(
             run_path / "outputs" / "short-execution-index.json",
             json.dumps({
@@ -11197,175 +12474,13 @@ class WorkflowService:
         )
 
         def complete(text: str) -> bool:
-            try:
-                return valid(parse_json_object(text, label="Short causal chain"), require_coverage=True)
-            except (TypeError, ValueError, json.JSONDecodeError):
-                return False
+            return parse_chain(text) is not None
 
-        async def split_causal_chain(_details: dict) -> str:
-            """Generate contiguous event-owned causal packets and merge losslessly."""
-            event_groups: list[list[dict]] = []
-            chunk_size = max(1, (len(required_events) + 1) // 2)
-            for start in range(0, len(required_events), chunk_size):
-                event_groups.append(required_events[start:start + chunk_size])
-            if not event_groups:
-                raise ValueError("causal chain has no formal events to split")
-
-            packet_dir = run_path / "outputs" / "causal-chain-packets"
-            packet_dir.mkdir(parents=True, exist_ok=True)
-            plan_sha256 = hashlib.sha256(plan.encode("utf-8")).hexdigest()
-            plan_segments = self._short_plan_segments(
-                plan, self._short_segment_count(target_words),
+        async def split_causal_chain(details: dict) -> str:
+            return await self._split_short_causal_chain_packets(
+                run_id, run_path, project, constraints, plan,
+                required_events, target_words, details,
             )
-            packets: list[dict] = []
-
-            def packet_valid(value: dict, expected_ids: list[str]) -> bool:
-                if not isinstance(value, dict):
-                    return False
-                covered = [
-                    str(item).upper() for item in value.get("covered_event_ids", [])
-                    if str(item).strip()
-                ]
-                cycles = value.get("cycles")
-                if covered != expected_ids or not isinstance(cycles, list) or not cycles:
-                    return False
-                return all(
-                    isinstance(item, dict)
-                    and all(str(item.get(key) or "").strip()
-                            for key in ("obstacle", "effort", "result"))
-                    for item in cycles
-                )
-
-            for packet_index, group in enumerate(event_groups, 1):
-                expected_ids = [
-                    str(item.get("id") or "").strip().upper() for item in group
-                ]
-                checkpoint_path = packet_dir / f"packet-{packet_index:02d}.json"
-                if checkpoint_path.is_file():
-                    try:
-                        checkpoint = json.loads(
-                            checkpoint_path.read_text(encoding="utf-8")
-                        )
-                    except (OSError, TypeError, ValueError, json.JSONDecodeError):
-                        checkpoint = None
-                    if (
-                        isinstance(checkpoint, dict)
-                        and checkpoint.get("plan_sha256") == plan_sha256
-                        and checkpoint.get("event_ids") == expected_ids
-                        and packet_valid(checkpoint.get("packet"), expected_ids)
-                    ):
-                        packets.append(dict(checkpoint["packet"]))
-                        self.db.add_run_event(
-                            run_id, "success", "causal_chain_packet_reused",
-                            f"已复用因果链第 {packet_index} 个事件分包",
-                            stage="planning", metadata={
-                                "packet": packet_index, "event_ids": expected_ids,
-                            },
-                        )
-                        continue
-
-                relevant_plan = [
-                    segment for segment in plan_segments
-                    if any(
-                        event_id in self._short_plan_event_ids(segment)
-                        for event_id in expected_ids
-                    )
-                ]
-                packet_prompt = (
-                    "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V1\n"
-                    "只为当前连续正式事件生成因果链分包。只返回一个 JSON 对象。"
-                    "不得生成当前事件范围之外的事件、事实或结局；必须覆盖当前事件 ID，"
-                    "并为每轮填写 obstacle、effort、result、state_change。"
-                    "只有第一个分包填写 opening/core_goal，只有最后一个分包填写 ending；"
-                    "其他全局字段可为空数组或空字符串，Runtime 会按正式事件顺序合并。\n"
-                    f"PLAN SHA256: {plan_sha256}\n"
-                    f"PACKET INDEX: {packet_index}\n"
-                    "EXPECTED EVENT IDS:\n"
-                    + json.dumps(expected_ids, ensure_ascii=False)
-                    + "\n\nFORMAL EVENTS:\n"
-                    + json.dumps(group, ensure_ascii=False, indent=2)
-                    + "\n\nACCEPTED PLAN PROJECTION:\n"
-                    + ("\n\n".join(relevant_plan) or json.dumps(group, ensure_ascii=False))
-                )
-
-                def packet_complete(text: str) -> bool:
-                    try:
-                        return packet_valid(
-                            parse_json_object(text, label="Causal chain event packet"),
-                            expected_ids,
-                        )
-                    except (TypeError, ValueError, json.JSONDecodeError):
-                        return False
-
-                packet_raw = await self._stage(
-                    run_id, run_path, project, "planning", constraints,
-                    packet_prompt,
-                    suffix=f"-causal-chain-packet-{packet_index:02d}",
-                    allow_tools=False,
-                    expected_output_characters=max(1200, len(relevant_plan) * 900),
-                    completion_check=packet_complete,
-                    route_capacity_guard=True,
-                    bounded_protocol_output=True,
-                    compact_input=True,
-                    story_skeleton_override=self._stage_story_skeleton(
-                        project, constraints, run_path,
-                        owner_event_ids=expected_ids, index_only=True,
-                    ),
-                )
-                packet = parse_json_object(
-                    packet_raw, label="Causal chain event packet",
-                )
-                if not packet_valid(packet, expected_ids):
-                    raise ValueError(
-                        f"因果链第 {packet_index} 个分包未覆盖准确事件范围"
-                    )
-                atomic_write(
-                    checkpoint_path,
-                    json.dumps({
-                        "version": 1,
-                        "plan_sha256": plan_sha256,
-                        "event_ids": expected_ids,
-                        "packet": packet,
-                    }, ensure_ascii=False, indent=2),
-                )
-                packets.append(packet)
-
-            merged: dict[str, object] = {
-                "core_goal": "",
-                "opening": {},
-                "cycles": [],
-                "accidents": [],
-                "reversal": {},
-                "ending": "",
-                "question_chain": [],
-                "relationship_arc": [],
-                "covered_event_ids": [],
-            }
-            for index, packet in enumerate(packets):
-                if not merged["core_goal"] and packet.get("core_goal"):
-                    merged["core_goal"] = packet.get("core_goal")
-                if index == 0 and packet.get("opening"):
-                    merged["opening"] = packet.get("opening")
-                if isinstance(packet.get("cycles"), list):
-                    merged["cycles"].extend(packet["cycles"])
-                if isinstance(packet.get("accidents"), list):
-                    merged["accidents"].extend(packet["accidents"])
-                if packet.get("reversal"):
-                    merged["reversal"] = packet.get("reversal")
-                if index == len(packets) - 1 and packet.get("ending"):
-                    merged["ending"] = packet.get("ending")
-                for field in ("question_chain", "relationship_arc"):
-                    value = packet.get(field)
-                    if isinstance(value, list):
-                        merged[field].extend(value)
-                    elif value and not merged[field]:
-                        merged[field] = value
-                merged["covered_event_ids"].extend(
-                    packet.get("covered_event_ids") or []
-                )
-            if not valid(merged, require_coverage=True):
-                raise ValueError("因果链事件分包无损合并后未通过整链校验")
-            return json.dumps(merged, ensure_ascii=False)
 
         raw = await self._stage(
             run_id, run_path, project, "planning", constraints, prompt,
@@ -11378,12 +12493,15 @@ class WorkflowService:
             compact_input=True,
         )
         try:
-            chain = parse_json_object(raw, label="Short causal chain")
+            chain = parse_chain(raw)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             chain = None
             last_error = str(exc)
         else:
-            last_error = "semantic causal-chain validation failed"
+            last_error = (
+                "" if chain is not None
+                else "semantic causal-chain validation failed"
+            )
         for repair_attempt in range(1, 3):
             if valid(chain, require_coverage=True):
                 break
@@ -11394,28 +12512,38 @@ class WorkflowService:
                     "attempt": repair_attempt, "error": last_error[:300],
                 },
             )
-            repaired = await self._stage(
-                run_id, run_path, project, "planning", constraints,
-                prompt + (
-                    f"\n\n第 {repair_attempt} 次输出没有通过完整性检查："
-                    f"{last_error[:500]}\n重新返回完整 JSON，尤其确保"
-                    "covered_event_ids 与正式大纲事件 ID 完全同序、无缺失。"
-                ),
-                suffix=f"-causal-chain-repair-{repair_attempt}", allow_tools=False,
-                expected_output_characters=max(2500, len(plan) // 2),
-                completion_check=complete,
-                route_capacity_guard=True,
-                capacity_splitter=split_causal_chain,
-                bounded_protocol_output=True,
-                compact_input=True,
-            )
+            if repair_attempt == 2 and required_events:
+                repaired = await split_causal_chain({
+                    "trigger": "protocol_invalid",
+                    "pressure": "split",
+                    "provider_error": last_error[:500],
+                })
+            else:
+                repaired = await self._stage(
+                    run_id, run_path, project, "planning", constraints,
+                    prompt + (
+                        f"\n\n第 {repair_attempt} 次输出没有通过完整性检查："
+                        f"{last_error[:500]}\n重新返回完整 JSON，尤其确保"
+                        "covered_event_ids 与正式大纲事件 ID 完全同序、无缺失。"
+                    ),
+                    suffix=f"-causal-chain-repair-{repair_attempt}", allow_tools=False,
+                    expected_output_characters=max(2500, len(plan) // 2),
+                    completion_check=complete,
+                    route_capacity_guard=True,
+                    capacity_splitter=split_causal_chain,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                )
             try:
-                chain = parse_json_object(repaired, label="Short causal chain")
+                chain = parse_chain(repaired)
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 chain = None
                 last_error = str(exc)
             else:
-                last_error = "semantic causal-chain validation failed"
+                last_error = (
+                    "" if chain is not None
+                    else "semantic causal-chain validation failed"
+                )
         if not valid(chain, require_coverage=True):
             self.db.add_run_event(
                 run_id, "error", "causal_chain_not_ready",
@@ -11613,6 +12741,51 @@ class WorkflowService:
             }],
         }
 
+    @staticmethod
+    def _bind_short_execution_fragment_handoff(
+        body: dict, *, previous_exit: tuple[StateAssertion, ...],
+    ) -> tuple[dict, int]:
+        """Bind accepted adjacent state without asking a model to echo authority."""
+        raw_segments = body.get("segments")
+        if (
+            not isinstance(raw_segments, list)
+            or len(raw_segments) != 1
+            or not isinstance(raw_segments[0], dict)
+        ):
+            return body, 0
+
+        segment_body = dict(raw_segments[0])
+        segment_body["previous_exit_sha256"] = (
+            state_assertions_sha256(previous_exit, version=4)
+            if previous_exit else ""
+        )
+        entry_state = segment_body.get("entry_state")
+        added = 0
+        if isinstance(entry_state, list) and all(
+            isinstance(item, dict) for item in entry_state
+        ):
+            bound_entry_state = [dict(item) for item in entry_state]
+            present_states = {
+                str(item.get("state") or "").strip()
+                for item in bound_entry_state
+                if str(item.get("state") or "").strip()
+            }
+            inherited = []
+            for assertion in previous_exit:
+                if assertion.state in present_states:
+                    continue
+                inherited.append({
+                    "state": assertion.state,
+                    "produced_by": [],
+                    "inherited_from": "previous-segment-exit",
+                })
+                present_states.add(assertion.state)
+                added += 1
+            if inherited:
+                segment_body["entry_state"] = inherited + bound_entry_state
+
+        return {**body, "segments": [segment_body]}, added
+
     async def _generate_short_execution_fragment(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         hashes: dict[str, str], segment: int, event_contracts: list[dict],
@@ -11695,8 +12868,8 @@ class WorkflowService:
                 expected_output_characters=max(1800, 850 * len(event_contracts)),
             )
             try:
-                body = parse_json_object(
-                    raw, label=f"Execution manifest segment {segment}",
+                body = self._convert_generated_object(
+                    raw, run_path, contract_name="execution_manifest",
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 last_issues = [{
@@ -11706,17 +12879,26 @@ class WorkflowService:
                     break
                 schema_repairs += 1
             else:
+                source_body_sha256 = canonical_sha256(body)
+                body, handoff_count = self._bind_short_execution_fragment_handoff(
+                    body, previous_exit=previous_exit,
+                )
                 last_body = body
-                raw_segments = body.get("segments")
-                if isinstance(raw_segments, list) and len(raw_segments) == 1 \
-                        and isinstance(raw_segments[0], dict):
-                    segment_body = dict(raw_segments[0])
-                    segment_body["previous_exit_sha256"] = (
-                        state_assertions_sha256(previous_exit, version=4)
-                        if previous_exit else ""
+                if handoff_count:
+                    self.db.add_run_event(
+                        run_id, "info",
+                        "planning_manifest_runtime_handoff_bound",
+                        "Runtime 已绑定上一正式段的验收出口，模型当前段内容保持不变",
+                        stage="planning", metadata={
+                            "segment": segment,
+                            "added_state_count": handoff_count,
+                            "previous_exit_sha256": state_assertions_sha256(
+                                previous_exit, version=4,
+                            ),
+                            "source_body_sha256": source_body_sha256,
+                            "bound_body_sha256": canonical_sha256(body),
+                        },
                     )
-                    body = {**body, "segments": [segment_body]}
-                    last_body = body
                 payload = {
                     **body, "version": 4, "status": "fragment_ready", **hashes,
                     "semantic_receipt": {},
@@ -11837,8 +13019,9 @@ class WorkflowService:
                 expected_output_characters=max(1000, 260 * len(fragment.beats)),
             )
             try:
-                receipt_payload = parse_json_object(
-                    raw, label=f"Execution manifest receipt segment {segment}",
+                receipt_payload = self._convert_generated_object(
+                    raw, run_path,
+                    contract_name="execution_manifest_receipt",
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt_payload = {}
@@ -12241,10 +13424,21 @@ class WorkflowService:
                     "issues": failure_issues, "repair_budgets": repair_totals,
                 },
             )
-            raise ValueError(
+            issue_codes = sorted({
+                str(item.get("code") or "").strip()
+                for item in failure_issues
+                if isinstance(item, dict) and str(item.get("code") or "").strip()
+            })
+            issue_suffix = (
+                f"（issue_codes={','.join(issue_codes)}）" if issue_codes else ""
+            )
+            failure_message = (
                 "规划执行索引审核回执未通过，内容已保留且尚未生成正文"
                 if protocol_failure else
                 "规划执行索引未通过分段与整篇语义检查，尚未生成正文"
+            )
+            raise ValueError(
+                failure_message + issue_suffix
             ) from exc
 
         self.db.add_run_event(
@@ -12862,7 +14056,9 @@ class WorkflowService:
         try:
             if stage_error is not None:
                 raise stage_error
-            return raw, self._json_object(raw)
+            return raw, self._convert_generated_object(
+                raw, run_path, contract_name="final_review",
+            )
         except (json.JSONDecodeError, ValueError, RuntimeError) as primary_error:
             binding = self.db.get_role_binding("final_review") or {}
             configured_fallback = bool(
@@ -12887,7 +14083,9 @@ class WorkflowService:
                         story_skeleton_override=index_skeleton,
                         bounded_protocol_output=True,
                     )
-                    return fallback_raw, self._json_object(fallback_raw)
+                    return fallback_raw, self._convert_generated_object(
+                        fallback_raw, run_path, contract_name="final_review",
+                    )
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
                     fallback_error = exc
 
@@ -12909,7 +14107,9 @@ class WorkflowService:
                     story_skeleton_override=index_skeleton,
                     bounded_protocol_output=True,
                 )
-                compact_payload = self._json_object(compact_raw)
+                compact_payload = self._convert_generated_object(
+                    compact_raw, run_path, contract_name="final_review",
+                )
             except (json.JSONDecodeError, ValueError, RuntimeError) as compact_error:
                 detail = self._final_review_error_detail(
                     primary_error, fallback_error, compact_error, suffix, recovery_kind,
@@ -13501,8 +14701,11 @@ class WorkflowService:
             suffix=f"-reader{suffix}", model_role=model_role or "review", allow_tools=False,
         )
         try:
-            return self._review(output)
-        except json.JSONDecodeError:
+            payload = self._convert_generated_object(
+                output, run_path, contract_name="final_review",
+            )
+            return normalize_review(payload)
+        except (json.JSONDecodeError, ArtifactConversionError):
             repaired = normalize_review(self._reader_json_object(output))
             self.db.add_run_event(
                 run_id, "warning", "reader_review_repaired",
@@ -13872,7 +15075,30 @@ class WorkflowService:
 
     @classmethod
     def _short_plan_field(cls, segment: str, field: str) -> str:
-        return extract_planning_field(segment, field)
+        value = extract_planning_field(segment, field)
+        if value or field != "event":
+            return value
+
+        # Providers may place an explicit event realization beside a separate
+        # causal-chain explanation. Both are useful narrative material, but
+        # only the former owns the closed ``event`` role. Resolve that semantic
+        # precedence here without copying, deleting, or relabeling source text.
+        candidates = []
+        for item in compile_planning_segment(segment).values("event"):
+            label = unicodedata.normalize("NFKC", item.label).casefold()
+            compact = re.sub(r"[^0-9a-z\u3400-\u9fff]+", "", label)
+            causal_companion = any(
+                marker in compact for marker in ("因果链", "causalchain")
+            ) and not any(marker in compact for marker in (
+                "事件", "event", "节拍", "beat", "叙事推进", "剧情推进",
+            ))
+            if not causal_companion:
+                candidates.append(item.value.strip())
+        distinct = {
+            re.sub(r"\s+", " ", candidate).strip(): candidate
+            for candidate in candidates if candidate
+        }
+        return next(iter(distinct.values())) if len(distinct) == 1 else ""
 
     @classmethod
     def _short_plan_issues(cls, project: Project, state: dict, plan: str,
@@ -15634,7 +16860,9 @@ class WorkflowService:
                     targeted_retry=True,
                 )
                 value = normalize_repair_contract(
-                    self._json_object(raw), candidate_before, {group_id},
+                    self._convert_generated_object(
+                        raw, run_path, contract_name="revision_plan",
+                    ), candidate_before, {group_id},
                 )
                 if len(value["groups"]) != 1:
                     raise ValueError("语义返修必须一次只返回一个修改组")
@@ -15959,14 +17187,31 @@ class WorkflowService:
                     owner_event_ids=list(contract.event_ids), index_only=True,
                 ),
                 bounded_protocol_output=True,
+                compact_input=True,
             )
             try:
-                raw_receipt = self._json_object(raw)
+                raw_receipt = self._convert_generated_object(
+                    raw, run_path, contract_name="draft_semantic_receipt",
+                )
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "invalid_receipt", "message": str(exc),
                 }]
             else:
+                raw_receipt, evidence_repairs = align_semantic_receipt_evidence(
+                    contract, prose, raw_receipt,
+                )
+                if evidence_repairs:
+                    self.db.add_run_event(
+                        run_id, "success", "semantic_receipt_evidence_aligned",
+                        "语义审核中的非连续引文已安全对齐到唯一原文片段",
+                        stage=failure_stage, metadata={
+                            "task_id": contract.task_id,
+                            "prose_sha256": prose_sha256,
+                            "repair_count": len(evidence_repairs),
+                            "repaired_paths": evidence_repairs,
+                        },
+                    )
                 receipt_issues = semantic_receipt_issues(
                     contract, prose, raw_receipt,
                 )
@@ -16031,18 +17276,45 @@ class WorkflowService:
         segment_sha256 = [
             hashlib.sha256(segment.encode("utf-8")).hexdigest() for segment in segments
         ]
-        evidence_packet = [
-            {
+        evidence_packet = []
+        receipt_sha256: list[str] = []
+        for index, receipt in enumerate(segment_receipts, 1):
+            receipt_sha256.append(canonical_sha256(receipt))
+            compact_beats = [
+                {
+                    "beat_id": item.get("beat_id"),
+                    "evidence": item.get("evidence"),
+                }
+                for item in receipt.get("beat_receipts", [])
+                if isinstance(item, dict)
+            ]
+            compact_events = [
+                {
+                    "event_id": item.get("event_id"),
+                    "evidence": item.get("evidence"),
+                }
+                for item in receipt.get("event_receipts", [])
+                if isinstance(item, dict)
+            ]
+            evidence_packet.append({
                 "segment": index,
                 "prose_sha256": receipt.get("prose_sha256"),
-                "beat_receipts": receipt.get("beat_receipts", []),
-                "event_receipts": receipt.get("event_receipts", []),
+                "semantic_receipt_sha256": receipt_sha256[-1],
+                "beat_receipts": compact_beats,
+                "event_receipts": compact_events,
                 "entry": receipt.get("entry"),
                 "exit": receipt.get("exit"),
+                "causal_order_evidence": receipt.get("causal_order_evidence"),
                 "summary": receipt.get("summary"),
-            }
-            for index, receipt in enumerate(segment_receipts, 1)
-        ]
+            })
+        whole_authority_index = json.dumps({
+            "schema": "whole-semantic-authority-index-v1",
+            "authority_sha256": authority_sha256,
+            "draft_sha256": draft_sha256,
+            "segment_sha256": segment_sha256,
+            "semantic_receipt_sha256": receipt_sha256,
+            "event_ids": expected_event_ids,
+        }, ensure_ascii=False, separators=(",", ":"))
         prompt = (
             "DRAFT_WHOLE_SEMANTIC_VALIDATION. Independently adjudicate the ordered, hash-bound "
             "segment evidence as one complete story. Do not rewrite or score. Return one JSON object "
@@ -16080,20 +17352,49 @@ class WorkflowService:
                 suffix="-draft-whole-semantic"
                 + ("-receipt-retry" if receipt_attempt else ""),
                 allow_tools=False,
-                expected_output_characters=max(1200, len(expected_event_ids) * 160),
-                route_capacity_guard=True,
-                story_skeleton_override=self._stage_story_skeleton(
-                    project, constraints, run_path, index_only=True,
+                expected_output_characters=max(
+                    1200, 900 + len(expected_event_ids) * 48,
                 ),
+                route_capacity_guard=True,
+                capacity_splitter=lambda details: (
+                    self._verify_whole_draft_semantics_capacity_split(
+                        run_id, run_path, project, constraints,
+                        authority_sha256, draft, segments,
+                        expected_event_ids, evidence_packet,
+                        whole_authority_index, details=details,
+                        failure_stage=failure_stage,
+                    )
+                ),
+                story_skeleton_override=whole_authority_index,
                 bounded_protocol_output=True,
+                compact_input=True,
             )
             try:
-                raw_receipt = self._json_object(raw)
+                raw_receipt = self._convert_generated_object(
+                    raw, run_path, contract_name="draft_semantic_receipt",
+                )
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "receipt_schema", "message": str(exc),
                 }]
             else:
+                raw_receipt, evidence_repairs = (
+                    align_whole_draft_receipt_evidence(
+                        authority_sha256, draft, segments,
+                        expected_event_ids, raw_receipt,
+                    )
+                )
+                if evidence_repairs:
+                    self.db.add_run_event(
+                        run_id, "success",
+                        "whole_semantic_receipt_evidence_aligned",
+                        "整篇审核中的非连续引文已安全对齐到唯一正文片段",
+                        stage=failure_stage, metadata={
+                            "draft_sha256": draft_sha256,
+                            "repair_count": len(evidence_repairs),
+                            "repaired_paths": evidence_repairs,
+                        },
+                    )
                 receipt_issues = whole_draft_receipt_issues(
                     authority_sha256, draft, segments, expected_event_ids,
                     raw_receipt,
@@ -16142,6 +17443,269 @@ class WorkflowService:
             )
             raise ValueError(f"整篇语义完整性检查未通过：{last_error}")
         raise ValueError("整篇语义完整性检查未通过：审核回执为空")
+
+    async def _verify_whole_draft_semantics_capacity_split(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        authority_sha256: str,
+        draft: str,
+        segments: list[str],
+        expected_event_ids: list[str],
+        evidence_packet: list[dict],
+        whole_authority_index: str,
+        *,
+        details: dict,
+        failure_stage: str,
+    ) -> str:
+        """Map adjacent semantic boundaries, then reduce one global verdict."""
+
+        draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+        segment_sha256 = [
+            hashlib.sha256(segment.encode("utf-8")).hexdigest()
+            for segment in segments
+        ]
+
+        def packet_event_ids(packet: dict) -> list[str]:
+            return [
+                str(item.get("beat_id") or item.get("event_id") or "")
+                for field in ("beat_receipts", "event_receipts")
+                for item in packet.get(field, [])
+                if isinstance(item, dict)
+                and str(item.get("beat_id") or item.get("event_id") or "")
+            ]
+
+        windows = (
+            [(0, 0)] if len(evidence_packet) == 1 else
+            [(index, index + 1) for index in range(len(evidence_packet) - 1)]
+        )
+        window_receipts: list[dict] = []
+        protocol_codes = {
+            "receipt_schema", "authority_hash", "draft_hash",
+            "segment_manifest", "event_manifest", "evidence_schema",
+            "evidence_unbound", "missing_summary",
+        }
+        for start, end in windows:
+            packets = evidence_packet[start:end + 1]
+            window_event_ids = [
+                event_id for packet in packets
+                for event_id in packet_event_ids(packet)
+            ]
+            expected_segments = list(range(start + 1, end + 2))
+            expected_hashes = segment_sha256[start:end + 1]
+            owns_ending = end == len(evidence_packet) - 1
+            prompt = (
+                "DRAFT_WHOLE_SEMANTIC_WINDOW_V1. Review only this ordered adjacent "
+                "evidence window. Do not rewrite or score. Return one JSON object with "
+                "authority_sha256, draft_sha256, segment_numbers, segment_sha256, "
+                "event_ids, missing_event_ids, duplicate_event_ids, "
+                "out_of_order_event_ids, causal_order_valid, continuity_valid, "
+                "commitment_flow_valid, ending_valid, evidence (exact excerpts already "
+                "present in the immutable draft), and summary. ending_valid means the "
+                "window does not falsely close the story; when owns_ending is true it "
+                "must also prove the confirmed ending.\n\n"
+                f"AUTHORITY SHA256: {authority_sha256}\n"
+                f"DRAFT SHA256: {draft_sha256}\n"
+                f"SEGMENT NUMBERS: {json.dumps(expected_segments)}\n"
+                f"SEGMENT SHA256: {json.dumps(expected_hashes)}\n"
+                f"EVENT IDS: {json.dumps(window_event_ids)}\n"
+                f"OWNS ENDING: {json.dumps(owns_ending)}\n"
+                "ORDERED WINDOW EVIDENCE: "
+                + json.dumps(packets, ensure_ascii=False)
+            )
+            issues: list[dict] = []
+            window_receipt: dict = {}
+            for attempt in range(2):
+                attempt_prompt = prompt
+                if issues:
+                    attempt_prompt += (
+                        "\n\nWINDOW RECEIPT PROTOCOL ISSUES. Keep the immutable "
+                        "evidence unchanged and correct only the receipt:\n"
+                        + json.dumps(issues, ensure_ascii=False)
+                    )
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints,
+                    attempt_prompt,
+                    suffix=(
+                        f"-draft-whole-window-{start + 1:02d}-{end + 1:02d}"
+                        + ("-receipt-retry" if attempt else "")
+                    ),
+                    allow_tools=False,
+                    expected_output_characters=max(
+                        900, 700 + len(window_event_ids) * 40,
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=json.dumps({
+                        "schema": "whole-semantic-window-authority-v1",
+                        "authority_sha256": authority_sha256,
+                        "draft_sha256": draft_sha256,
+                        "segment_numbers": expected_segments,
+                        "segment_sha256": expected_hashes,
+                        "event_ids": window_event_ids,
+                    }, separators=(",", ":")),
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                )
+                try:
+                    window_receipt = self._convert_generated_object(
+                        raw, run_path, contract_name="draft_semantic_receipt",
+                    )
+                except (json.JSONDecodeError, ValueError) as exc:
+                    issues = [{"code": "receipt_schema", "message": str(exc)}]
+                else:
+                    evidence = window_receipt.get("evidence")
+                    if isinstance(evidence, list):
+                        for item in evidence:
+                            if not isinstance(item, dict):
+                                continue
+                            excerpt = str(item.get("excerpt") or "").strip()
+                            if excerpt and excerpt not in draft:
+                                rebound = align_unique_evidence_span(draft, excerpt)
+                                if rebound:
+                                    item["excerpt"] = rebound
+                    issues = []
+
+                    def issue(code: str, message: str) -> None:
+                        issues.append({"code": code, "message": message})
+
+                    if window_receipt.get("authority_sha256") != authority_sha256:
+                        issue("authority_hash", "window authority hash is stale")
+                    if window_receipt.get("draft_sha256") != draft_sha256:
+                        issue("draft_hash", "window draft hash is stale")
+                    if window_receipt.get("segment_numbers") != expected_segments:
+                        issue("segment_manifest", "window segment order is incomplete")
+                    if window_receipt.get("segment_sha256") != expected_hashes:
+                        issue("segment_manifest", "window segment hashes are incomplete")
+                    if window_receipt.get("event_ids") != window_event_ids:
+                        issue("event_manifest", "window event order is incomplete")
+                    for field in (
+                        "missing_event_ids", "duplicate_event_ids",
+                        "out_of_order_event_ids",
+                    ):
+                        if window_receipt.get(field) != []:
+                            issue(field, f"window {field} is not empty")
+                    for field in (
+                        "causal_order_valid", "continuity_valid",
+                        "commitment_flow_valid", "ending_valid",
+                    ):
+                        if window_receipt.get(field) is not True:
+                            issue(field, f"window {field} is not satisfied")
+                    evidence = window_receipt.get("evidence")
+                    if not isinstance(evidence, list) or not evidence:
+                        issue("evidence_schema", "window evidence is missing")
+                    else:
+                        for item in evidence:
+                            excerpt = (
+                                str(item.get("excerpt") or "").strip()
+                                if isinstance(item, dict) else ""
+                            )
+                            if not excerpt or excerpt not in draft:
+                                issue(
+                                    "evidence_unbound",
+                                    "window evidence is not bound to draft",
+                                )
+                    if not str(window_receipt.get("summary") or "").strip():
+                        issue("missing_summary", "window summary is missing")
+                    if not issues:
+                        break
+                if attempt == 0 and all(
+                    item.get("code") in protocol_codes for item in issues
+                ):
+                    continue
+                break
+            if issues:
+                raise DraftSemanticValidationError(
+                    f"whole-window-{start + 1}-{end + 1}", issues,
+                )
+            window_receipts.append(window_receipt)
+            self.db.add_run_event(
+                run_id, "success", "whole_semantic_window_ready",
+                "整篇语义分包窗口已通过相邻因果与状态核对",
+                stage=failure_stage, metadata={
+                    "segment_numbers": expected_segments,
+                    "event_count": len(window_event_ids),
+                    "receipt_sha256": canonical_sha256(window_receipt),
+                },
+            )
+
+        reducer_prompt = (
+            "DRAFT_WHOLE_SEMANTIC_REDUCE_V1. Reduce the ordered, independently "
+            "validated adjacent-window receipts into one whole-story verdict. Do not "
+            "rewrite or score. Return one JSON object with authority_sha256, "
+            "draft_sha256, segment_sha256, event_ids, missing_event_ids, "
+            "duplicate_event_ids, out_of_order_event_ids, causal_order_valid, "
+            "continuity_valid, ending_valid, commitments_valid, evidence (exact "
+            "excerpts already present in the immutable draft), and summary. Never "
+            "turn a negative window verdict into success.\n\n"
+            f"WHOLE AUTHORITY INDEX: {whole_authority_index}\n"
+            "ORDERED WINDOW RECEIPTS: "
+            + json.dumps(window_receipts, ensure_ascii=False)
+            + f"\nOPENING EXCERPT: {draft[:1200]}"
+            + f"\nENDING EXCERPT: {draft[-1600:]}"
+        )
+        reducer_issues: list[dict] = []
+        for attempt in range(2):
+            attempt_prompt = reducer_prompt
+            if reducer_issues:
+                attempt_prompt += (
+                    "\n\nREDUCER RECEIPT PROTOCOL ISSUES. Correct only the receipt:\n"
+                    + json.dumps(reducer_issues, ensure_ascii=False)
+                )
+            raw = await self._stage(
+                run_id, run_path, project, "review", constraints,
+                attempt_prompt,
+                suffix="-draft-whole-semantic-reducer"
+                + ("-receipt-retry" if attempt else ""),
+                allow_tools=False,
+                expected_output_characters=max(
+                    1200, 900 + len(expected_event_ids) * 48,
+                ),
+                route_capacity_guard=True,
+                story_skeleton_override=whole_authority_index,
+                bounded_protocol_output=True,
+                compact_input=True,
+            )
+            try:
+                receipt = self._convert_generated_object(
+                    raw, run_path, contract_name="draft_semantic_receipt",
+                )
+            except (json.JSONDecodeError, ValueError) as exc:
+                reducer_issues = [{
+                    "code": "receipt_schema", "message": str(exc),
+                }]
+            else:
+                receipt, _repairs = align_whole_draft_receipt_evidence(
+                    authority_sha256, draft, segments,
+                    expected_event_ids, receipt,
+                )
+                reducer_issues = whole_draft_receipt_issues(
+                    authority_sha256, draft, segments,
+                    expected_event_ids, receipt,
+                )
+                if not reducer_issues:
+                    validated = validate_whole_draft_receipt(
+                        authority_sha256, draft, segments,
+                        expected_event_ids, receipt,
+                    )
+                    self.db.add_run_event(
+                        run_id, "success", "whole_semantic_capacity_reduced",
+                        "整篇语义窗口已归并为完整、哈希绑定的全局回执",
+                        stage=failure_stage, metadata={
+                            "trigger": details.get("trigger"),
+                            "window_count": len(window_receipts),
+                            "draft_sha256": draft_sha256,
+                        },
+                    )
+                    return json.dumps(validated, ensure_ascii=False)
+            if attempt == 0 and all(
+                item.get("code") in protocol_codes
+                for item in reducer_issues
+            ):
+                continue
+            break
+        raise DraftSemanticValidationError("whole-reducer", reducer_issues)
 
     async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
                                         constraints: str, plan: str) -> str:
@@ -18166,7 +19730,13 @@ class WorkflowService:
                     targeted_retry=True,
                 )
                 try:
-                    payload = self._json_object(output)
+                    payload = self._convert_generated_object(
+                        output, run_path, contract_name="revision_plan",
+                    )
+                    plan = self._normalized_revision_plan(
+                        payload, len(story_map), max_target_ratio=0.4,
+                        require_checks=require_checks, defer_excess_targets=True,
+                    )
                 except (json.JSONDecodeError, ValueError):
                     repair = schema_repair_prompt(output, "repair_revision_plan_v1")
                     output = await self._stage(
@@ -18174,11 +19744,13 @@ class WorkflowService:
                         suffix=f"{suffix}-revision-plan-repair", model_role="planning",
                         allow_tools=False, targeted_retry=True,
                     )
-                    payload = self._json_object(output)
-                plan = self._normalized_revision_plan(
-                    payload, len(story_map), max_target_ratio=0.4,
-                    require_checks=require_checks, defer_excess_targets=True,
-                )
+                    payload = self._convert_generated_object(
+                        output, run_path, contract_name="revision_plan",
+                    )
+                    plan = self._normalized_revision_plan(
+                        payload, len(story_map), max_target_ratio=0.4,
+                        require_checks=require_checks, defer_excess_targets=True,
+                    )
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -18195,7 +19767,9 @@ class WorkflowService:
                     allow_tools=False, targeted_retry=True,
                 )
                 plan = self._normalized_revision_plan(
-                    self._json_object(output), len(story_map),
+                    self._convert_generated_object(
+                        output, run_path, contract_name="revision_plan",
+                    ), len(story_map),
                     max_target_ratio=0.4, require_checks=require_checks,
                     defer_excess_targets=True,
                 )
@@ -18592,8 +20166,11 @@ class WorkflowService:
                      story_skeleton_override: str | None = None,
                      bounded_protocol_output: bool = False,
                      scoped_creative_output: bool = False,
-                     structured_contract: StructuredArtifactContract | None = None) -> str:
+                     structured_contract: StructuredArtifactContract | None = None,
+                     defer_route_failure_audit: bool = False,
+                     protocol_system_contract: str | None = None) -> str:
         node_key = f"{stage}{suffix}"
+        stage_system = protocol_system_contract or STAGE_SYSTEM[stage]
         current_state = self.story_states.get(project.id)
         node_authority_sha256 = hashlib.sha256(json.dumps({
             "project_id": project.id,
@@ -18604,11 +20181,25 @@ class WorkflowService:
             "utf-8",
         )).hexdigest()
         node_input_sha256 = hashlib.sha256(
-            (constraints + "\n\0" + user).encode("utf-8"),
+            (stage_system + "\n\0" + constraints + "\n\0" + user).encode("utf-8"),
         ).hexdigest()
+        if protocol_system_contract is not None and not bounded_protocol_output:
+            raise ValueError(
+                "protocol_system_contract requires bounded_protocol_output"
+            )
         if bounded_protocol_output and scoped_creative_output:
             raise ValueError(
                 "a model call cannot use protocol and creative output budgets together"
+            )
+        if primary_only and prefer_configured_fallback:
+            raise ValueError(
+                "a route-isolated model call cannot select primary and fallback together"
+            )
+        if structured_contract is not None and (
+            primary_only or prefer_configured_fallback
+        ):
+            raise ValueError(
+                "structured route selection must be owned by its contract executor"
             )
         if (
             route_capacity_guard
@@ -18768,13 +20359,13 @@ class WorkflowService:
                         + json.dumps(coverage_issues, ensure_ascii=False)
                     )
                 system = (
-                    f"{STAGE_SYSTEM[stage]}\n\n"
+                    f"{stage_system}\n\n"
                     "Skill instructions and story authority are supplied in the layered context.\n\n"
                     + render_stage_system_context(context_packet)
                 )
             else:
                 system = (
-                    f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}"
+                    f"{stage_system}\n\nHARD CONSTRAINTS:\n{model_constraints}"
                     f"\n\n{model_skill_prompt}{style}"
                 )
             estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
@@ -18786,7 +20377,7 @@ class WorkflowService:
                     skill_run.prompt, skill_run.receipts,
                 )
                 system = (
-                    f"{STAGE_SYSTEM[stage]}\n\nHARD CONSTRAINTS:\n{model_constraints}"
+                    f"{stage_system}\n\nHARD CONSTRAINTS:\n{model_constraints}"
                     f"\n\n{model_skill_prompt}{style}"
                 )
                 estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
@@ -18841,6 +20432,8 @@ class WorkflowService:
                 self.db.add_run_event(
                     run_id, "warning", "stage_capacity_split_requested",
                     (
+                        f"{stage} 输出连续触达路由上限，正在缩小语义所有权而不是重复同一请求"
+                        if trigger == "output_limit" else
                         f"{stage} 供应商报告上下文超限，正在按语义所有权切换分包拓扑"
                         if trigger == "provider" else
                         f"{stage} 请求接近上下文安全线，正在按语义所有权切换分包拓扑"
@@ -18856,13 +20449,26 @@ class WorkflowService:
                         ),
                         "output_reserve": details.get("output_reserve"),
                         "context_window": details.get("context_window"),
-                        **({"provider_error": details.get("provider_error")}
-                           if details.get("provider_error") else {}),
+                        **({
+                            "provider_error_sha256": hashlib.sha256(
+                                str(details.get("provider_error")).encode(
+                                    "utf-8", errors="replace",
+                                ),
+                            ).hexdigest(),
+                        } if details.get("provider_error") else {}),
                     },
                 )
-                split_result = capacity_splitter(details)  # type: ignore[misc]
-                if hasattr(split_result, "__await__"):
-                    split_result = await split_result
+                try:
+                    split_result = capacity_splitter(details)  # type: ignore[misc]
+                    if hasattr(split_result, "__await__"):
+                        split_result = await split_result
+                except asyncio.CancelledError:
+                    raise
+                except Exception as split_exc:
+                    # The semantic splitter is a new recovery boundary.  Its
+                    # failure must not inherit the provider-capacity exception
+                    # that selected this topology.
+                    raise split_exc from None
                 split_text = str(split_result or "")
                 if completion_check is not None and not completion_check(split_text):
                     raise RuntimeError(
@@ -18896,6 +20502,99 @@ class WorkflowService:
                     output_reserve=route_output_reserve,
                     context_window=context_window,
                 )
+                if (
+                    pressure == "compact"
+                    and context_packet is not None
+                    and context_packet.metrics["layers"]["advisory"][
+                        "estimated_tokens"
+                    ] > 0
+                ):
+                    before_input_tokens = estimated_input_tokens
+                    before_output_reserve = route_output_reserve
+                    context_packet = build_stage_context_packet(
+                        stage=stage,
+                        current_contract=self._stage_contract_envelope(stage, user),
+                        constraints=source_constraints,
+                        skill_prompt=skill_run.prompt,
+                        explicit_invariants=explicit_invariants,
+                        relevant_context=user,
+                        global_skeleton=(
+                            story_skeleton_override
+                            if story_skeleton_override is not None
+                            else self._stage_story_skeleton(
+                                project, source_constraints, run_path,
+                                relevant_context=user,
+                            )
+                        ),
+                        advisory="",
+                        output_reserve=preliminary_route_reserve,
+                        advisory_max_chars=0,
+                    )
+                    coverage_issues = validate_rule_coverage(context_packet)
+                    if coverage_issues:
+                        raise ValueError(
+                            "模型上下文缺少强制叙事规则："
+                            + json.dumps(coverage_issues, ensure_ascii=False)
+                        )
+                    system = (
+                        f"{stage_system}\n\n"
+                        "Skill instructions and story authority are supplied in the layered context.\n\n"
+                        + render_stage_system_context(context_packet)
+                    )
+                    estimated_input_tokens = estimate_input_tokens(
+                        system + "\n" + user,
+                    )
+                    output_budget = self._output_budget_for_call(
+                        stage, output_source_characters, gateway_role,
+                        prefer_configured_fallback,
+                        expected_output_characters=expected_output_characters,
+                        input_tokens=estimated_input_tokens,
+                        bounded_protocol_output=bounded_protocol_output,
+                        scoped_creative_output=scoped_creative_output,
+                    )
+                    fallback_output_budget = (
+                        self._output_budget_for_call(
+                            stage, output_source_characters, gateway_role, True,
+                            expected_output_characters=expected_output_characters,
+                            input_tokens=estimated_input_tokens,
+                            bounded_protocol_output=bounded_protocol_output,
+                            scoped_creative_output=scoped_creative_output,
+                        )
+                        if not prefer_configured_fallback and not primary_only
+                        else None
+                    )
+                    route_output_reserve = max(
+                        output_budget or 0, fallback_output_budget or 0,
+                    )
+                    context_packet = replace(context_packet, metrics={
+                        **context_packet.metrics,
+                        "output_reserve_tokens": route_output_reserve,
+                    })
+                    authority_input_tokens = sum(
+                        item["estimated_tokens"]
+                        for name, item in context_packet.metrics["layers"].items()
+                        if name != "advisory"
+                    )
+                    pressure = classify_input_pressure(
+                        full_input_tokens=estimated_input_tokens,
+                        authority_input_tokens=authority_input_tokens,
+                        output_reserve=route_output_reserve,
+                        context_window=context_window,
+                    )
+                    self.db.add_run_event(
+                        run_id, "info", "stage_advisory_context_shed",
+                        f"{stage} 接近上下文安全线，已移除非权威建议层并保留全部强制故事权威",
+                        stage=stage, metadata={
+                            "before_required_tokens": (
+                                before_input_tokens + before_output_reserve
+                            ),
+                            "after_required_tokens": (
+                                estimated_input_tokens + route_output_reserve
+                            ),
+                            "context_window": context_window,
+                            "remaining_pressure": pressure,
+                        },
+                    )
                 if pressure in {"compact", "split"}:
                     capacity_error = ContextCapacityPreflightError(
                         pressure=pressure,
@@ -18994,6 +20693,7 @@ class WorkflowService:
                             "role": gateway_role,
                         },
                     )
+            provider_capacity_split: dict | None = None
             try:
                 if structured_route_available:
                     result = await self.gateway.complete_structured(
@@ -19015,18 +20715,39 @@ class WorkflowService:
                         run_id=run_id,
                         max_output_tokens=output_budget,
                     )
-                elif prefer_configured_fallback and hasattr(
-                    self.gateway, "complete_configured_fallback"
-                ):
-                    result = await self.gateway.complete_configured_fallback(
-                        gateway_role, system, user,
-                        max_output_tokens=output_budget,
-                    )
-                elif primary_only and hasattr(self.gateway, "complete_primary"):
-                    result = await self.gateway.complete_primary(
-                        gateway_role, system, user,
-                        max_output_tokens=output_budget,
-                    )
+                elif prefer_configured_fallback:
+                    if (
+                        defer_route_failure_audit
+                        and not hasattr(self.gateway, "complete_configured_fallback")
+                    ):
+                        raise RuntimeError(
+                            "configured fallback route interface unavailable"
+                        )
+                    if hasattr(self.gateway, "complete_configured_fallback"):
+                        result = await self.gateway.complete_configured_fallback(
+                            gateway_role, system, user,
+                            max_output_tokens=output_budget,
+                        )
+                    else:
+                        result = await self.gateway.complete(
+                            gateway_role, system, user,
+                            max_output_tokens=output_budget,
+                        )
+                elif primary_only:
+                    if defer_route_failure_audit and not hasattr(
+                        self.gateway, "complete_primary"
+                    ):
+                        raise RuntimeError("primary route interface unavailable")
+                    if hasattr(self.gateway, "complete_primary"):
+                        result = await self.gateway.complete_primary(
+                            gateway_role, system, user,
+                            max_output_tokens=output_budget,
+                        )
+                    else:
+                        result = await self.gateway.complete(
+                            gateway_role, system, user,
+                            max_output_tokens=output_budget,
+                        )
                 elif isinstance(self.gateway, ModelGateway):
                     result = await self.gateway.complete(
                         gateway_role, system, user,
@@ -19046,7 +20767,7 @@ class WorkflowService:
                     and capacity_splitter is not None
                     and classify_model_failure(exc) == "input_context_overflow"
                 ):
-                    return await complete_capacity_split({
+                    provider_capacity_split = {
                         "trigger": "provider",
                         "pressure": "split",
                         "estimated_input_tokens": estimated_input_tokens,
@@ -19061,35 +20782,44 @@ class WorkflowService:
                         "output_reserve": route_output_reserve,
                         "context_window": context_window,
                         "provider_error": str(exc)[:500],
-                    })
-                if not targeted_retry:
+                    }
+                elif not targeted_retry:
                     raise
-                attempt = 2 if isinstance(exc, ModelRoutesExhaustedError) else 1
-                decision = next_retry_action(
-                    failure_kind="execution", attempt=attempt,
-                    current_limit=output_budget or 1,
-                    provider_limit=effective_ceiling or output_budget or 1,
-                )
-                if (decision["action"] == "fallback"
-                        and not prefer_configured_fallback
-                        and hasattr(self.gateway, "complete_configured_fallback")):
-                    try:
-                        result = await self.gateway.complete_configured_fallback(
-                            gateway_role, system, user,
-                            max_output_tokens=fallback_budget,
-                        )
-                    except asyncio.CancelledError:
-                        raise
-                    except Exception as fallback_exc:
-                        stop = next_retry_action(
-                            failure_kind="execution", attempt=2,
-                            current_limit=fallback_budget or 1,
-                            provider_limit=fallback_effective_ceiling or fallback_budget or 1,
-                        )
-                        assert stop["action"] == "stop"
-                        raise TargetedGroupError(str(fallback_exc)) from fallback_exc
                 else:
-                    raise TargetedGroupError(str(exc)) from exc
+                    execution_attempt = (
+                        2 if isinstance(exc, ModelRoutesExhaustedError) else 1
+                    )
+                    decision = next_retry_action(
+                        failure_kind="execution", attempt=execution_attempt,
+                        current_limit=output_budget or 1,
+                        provider_limit=effective_ceiling or output_budget or 1,
+                    )
+                    if (decision["action"] == "fallback"
+                            and not prefer_configured_fallback
+                            and hasattr(self.gateway, "complete_configured_fallback")):
+                        try:
+                            result = await self.gateway.complete_configured_fallback(
+                                gateway_role, system, user,
+                                max_output_tokens=fallback_budget,
+                            )
+                        except asyncio.CancelledError:
+                            raise
+                        except Exception as fallback_exc:
+                            stop = next_retry_action(
+                                failure_kind="execution", attempt=2,
+                                current_limit=fallback_budget or 1,
+                                provider_limit=(
+                                    fallback_effective_ceiling or fallback_budget or 1
+                                ),
+                            )
+                            assert stop["action"] == "stop"
+                            raise TargetedGroupError(
+                                str(fallback_exc)
+                            ) from fallback_exc
+                    else:
+                        raise TargetedGroupError(str(exc)) from exc
+            if provider_capacity_split is not None:
+                return await complete_capacity_split(provider_capacity_split)
             result.receipt.setdefault("requested_max_output_tokens", output_budget)
             if (stage == "review" and gateway_role == "review" and not allow_tools
                     and not result.text.strip()
@@ -19121,6 +20851,21 @@ class WorkflowService:
                         gateway_role, retry_system, user,
                         max_output_tokens=review_retry_budget,
                     )
+                elif primary_only:
+                    if defer_route_failure_audit and not hasattr(
+                        self.gateway, "complete_primary"
+                    ):
+                        raise RuntimeError("primary route interface unavailable")
+                    if hasattr(self.gateway, "complete_primary"):
+                        result = await self.gateway.complete_primary(
+                            gateway_role, retry_system, user,
+                            max_output_tokens=review_retry_budget,
+                        )
+                    else:
+                        result = await self.gateway.complete(
+                            gateway_role, retry_system, user,
+                            max_output_tokens=review_retry_budget,
+                        )
                 else:
                     result = await self.gateway.complete(
                         gateway_role, retry_system, user,
@@ -19135,7 +20880,7 @@ class WorkflowService:
                     or result.receipt.get("fallback_used")
                     or result.receipt.get("configured_fallback_direct")
                 )
-                if (not result.text.strip() and not used_fallback
+                if (not result.text.strip() and not used_fallback and not primary_only
                         and hasattr(self.gateway, "complete_configured_fallback")):
                     self.db.add_run_event(
                         run_id, "warning", "review_configured_fallback",
@@ -19293,6 +21038,29 @@ class WorkflowService:
                         except (TypeError, ValueError, json.JSONDecodeError):
                             retry_complete = False
                     if not retry_complete:
+                        if capacity_splitter is not None:
+                            return await complete_capacity_split({
+                                "trigger": "output_limit",
+                                "pressure": "split",
+                                "estimated_input_tokens": estimated_input_tokens,
+                                "authority_input_tokens": (
+                                    sum(
+                                        item["estimated_tokens"]
+                                        for name, item in context_packet.metrics[
+                                            "layers"
+                                        ].items()
+                                        if name != "advisory"
+                                    )
+                                    if context_packet is not None
+                                    else estimated_input_tokens
+                                ),
+                                "output_reserve": route_output_reserve,
+                                "context_window": context_window,
+                                "provider_error": (
+                                    "model output remained incomplete after one "
+                                    "verified-headroom retry"
+                                ),
+                            })
                         partial = StageText(result.text, {
                             **result.receipt, "completion_status": "recoverable_partial",
                         })
@@ -19432,6 +21200,8 @@ class WorkflowService:
                     },
                 )
                 raise
+            if defer_route_failure_audit:
+                raise
             short_revision = (self.db.get_run(run_id) or {}).get(
                 "workflow"
             ) == "short-revision"
@@ -19485,6 +21255,197 @@ class WorkflowService:
                 suffix=f"{suffix}-fallback", model_role=fallback_role,
                 allow_tools=allow_tools,
             )
+
+    def _protocol_receipt_attempt_plan(
+        self, role: str, *, same_route_attempts: int,
+    ) -> tuple[ProtocolReceiptAttempt, ...]:
+        """Resolve one bounded route schedule for any immutable receipt."""
+
+        binding = self.db.get_role_binding(role) or {}
+        configured_fallback_available = bool(
+            binding.get("fallback_provider_id")
+            and binding.get("fallback_model_id")
+            and hasattr(self.gateway, "complete_configured_fallback")
+        )
+        return protocol_receipt_attempts(
+            same_route_attempts=same_route_attempts,
+            configured_fallback_available=configured_fallback_available,
+            fallback_attempts=2,
+        )
+
+    async def _execute_protocol_receipt_attempt(
+        self, run_id: str, *, stage: str, boundary: str,
+        attempt: ProtocolReceiptAttempt,
+        unit_metadata: Mapping[str, object],
+        operation: Callable[[], Awaitable[StageText]],
+    ) -> tuple[StageText | None, ReliabilityFailure | None]:
+        """Execute one explicit route and return a typed, hash-only failure."""
+
+        unit_sha256 = hashlib.sha256(json.dumps(
+            dict(unit_metadata), ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), default=str,
+        ).encode("utf-8")).hexdigest()
+        circuit_state = self.protocol_route_circuit.acquire(
+            run_id, stage, attempt.route,
+        )
+        if circuit_state == "open":
+            prior_code, prior_class = self.protocol_route_circuit.last_failure(
+                run_id, stage, attempt.route,
+            )
+            failure = ReliabilityFailure(
+                code=prior_code,
+                failure_class=prior_class,
+                boundary=boundary,
+                unit_id=f"{boundary}:{unit_sha256[:16]}",
+                protocol_only=True,
+                retryable=not attempt.is_last,
+            )
+            self.db.add_run_event(
+                run_id, "warning", "protocol_receipt_route_circuit_bypassed",
+                "The selected immutable-receipt route is temporarily open; "
+                "the bounded schedule will continue without another doomed call.",
+                stage=stage, metadata={
+                    "boundary": boundary,
+                    "route": attempt.route,
+                    "route_attempt": attempt.route_attempt,
+                    "attempt_index": attempt.attempt_index,
+                    "failure_class": failure.failure_class.value,
+                    "failure_code": failure.code,
+                    "circuit_code": "protocol_route_circuit_open",
+                    "retryable": failure.retryable,
+                    **dict(unit_metadata),
+                },
+            )
+            return None, failure
+        if circuit_state == "half_open":
+            self.db.add_run_event(
+                run_id, "info", "protocol_receipt_route_circuit_half_open",
+                "The route cooldown elapsed; one bounded recovery probe is allowed.",
+                stage=stage, metadata={
+                    "boundary": boundary,
+                    "route": attempt.route,
+                    "attempt_index": attempt.attempt_index,
+                    **dict(unit_metadata),
+                },
+            )
+        try:
+            result = await operation()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            failure_kind = (
+                "transport_interrupted"
+                if isinstance(
+                    exc, (ConnectionError, TimeoutError, TransportInterruptedError),
+                )
+                else classify_model_failure(exc)
+            )
+            failure_class = {
+                "provider_rejection": FailureClass.CREDENTIAL,
+                "input_context_overflow": FailureClass.CONTEXT_CAPACITY,
+                "transport_interrupted": FailureClass.TRANSPORT,
+                "output_limit": FailureClass.OUTPUT_TRUNCATION,
+                "normal_invalid_output": FailureClass.UNKNOWN,
+            }[failure_kind]
+            route_execution_failure = failure_kind in {
+                "provider_rejection", "transport_interrupted",
+            }
+            if route_execution_failure:
+                circuit_opened = self.protocol_route_circuit.record_execution_failure(
+                    run_id, stage, attempt.route,
+                    failure_code=f"protocol_route_{failure_kind}",
+                    failure_class=failure_class,
+                )
+            else:
+                circuit_opened = False
+                self.protocol_route_circuit.record_route_response(
+                    run_id, stage, attempt.route,
+                )
+            code = f"protocol_route_{failure_kind}"
+            error_sha256 = hashlib.sha256(
+                describe_error(exc).encode("utf-8", errors="replace"),
+            ).hexdigest()
+            failure = ReliabilityFailure(
+                code=code,
+                failure_class=failure_class,
+                boundary=boundary,
+                unit_id=f"{boundary}:{unit_sha256[:16]}",
+                protocol_only=True,
+                retryable=not attempt.is_last,
+            )
+            self.db.add_run_event(
+                run_id, "warning", "protocol_receipt_route_failed",
+                "鏈€灏忓洖鎵х殑褰撳墠璺敱鎵ц澶辫触锛屽凡淇濈暀涓嶅彲鍙樻潈濞佸苟鎸夌被鍨嬪寲璺敱璁″垝缁х画",
+                stage=stage, metadata={
+                    "boundary": boundary,
+                    "route": attempt.route,
+                    "route_attempt": attempt.route_attempt,
+                    "attempt_index": attempt.attempt_index,
+                    "failure_class": failure_class.value,
+                    "failure_kind": failure_kind,
+                    "failure_code": code,
+                    "error_sha256": error_sha256,
+                    "exception_type": type(exc).__name__,
+                    "retryable": failure.retryable,
+                    **dict(unit_metadata),
+                },
+            )
+            if circuit_opened:
+                self.db.add_run_event(
+                    run_id, "warning", "protocol_receipt_route_circuit_opened",
+                    "Repeated route-execution failures opened the run-scoped "
+                    "immutable-receipt circuit.",
+                    stage=stage, metadata={
+                        "boundary": boundary,
+                        "route": attempt.route,
+                        "failure_class": failure_class.value,
+                        "failure_code": code,
+                        **dict(unit_metadata),
+                    },
+                )
+            if failure_class == FailureClass.CONTEXT_CAPACITY:
+                raise
+            return None, failure
+        circuit_closed = self.protocol_route_circuit.record_route_response(
+            run_id, stage, attempt.route,
+        )
+        if circuit_closed:
+            self.db.add_run_event(
+                run_id, "success", "protocol_receipt_route_circuit_closed",
+                "The half-open route produced a response and rejoined the schedule.",
+                stage=stage, metadata={
+                    "boundary": boundary,
+                    "route": attempt.route,
+                    **dict(unit_metadata),
+                },
+            )
+        return result, None
+
+    def _record_protocol_receipt_fallback(
+        self, run_id: str, *, stage: str, boundary: str,
+        unit_metadata: Mapping[str, object], issues: Sequence[object],
+    ) -> None:
+        """Audit route escalation without persisting model or story text."""
+
+        issue_codes: list[str] = []
+        for issue in issues:
+            if isinstance(issue, dict):
+                code = str(issue.get("code") or issue.get("key") or "").strip()
+            else:
+                code = str(issue).split(":", 1)[0].strip()
+            if code and code not in issue_codes:
+                issue_codes.append(code)
+        self.db.add_run_event(
+            run_id, "warning", "protocol_receipt_model_fallback",
+            "同一路由未形成可验证回执，正在保持原权威并切换配置的备用模型重审回执",
+            stage=stage, metadata={
+                "boundary": boundary,
+                "failure_class": FailureClass.SYNTAX_PROTOCOL.value,
+                "recovery_action": "fallback_capable_route",
+                "issue_codes": issue_codes,
+                **dict(unit_metadata),
+            },
+        )
 
     def _begin_run(self, project: Project, workflow: str,
                    run_id: str | None) -> tuple[str, Path]:
@@ -19665,7 +21626,9 @@ class WorkflowService:
 
     @staticmethod
     def _json_object(text: str) -> dict:
-        return parse_json_object(text)
+        return GeneratedArtifactGateway().convert_object(
+            text, contract_name="generated_narrative_artifact",
+        ).payload
 
     @staticmethod
     def _normalized_revision_plan(value: dict, segment_count: int, **kwargs) -> dict:
@@ -19723,7 +21686,10 @@ class WorkflowService:
 
     @classmethod
     def _review(cls, text: str) -> dict:
-        return normalize_review(cls._json_object(text))
+        payload = GeneratedArtifactGateway().convert_object(
+            text, contract_name="final_review",
+        ).payload
+        return normalize_review(payload)
 
     @classmethod
     def _review_for_project(

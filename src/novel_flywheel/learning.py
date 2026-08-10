@@ -10,7 +10,8 @@ from typing import Any
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
-from novel_flywheel.model_output import canonical_model_label, parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
+from novel_flywheel.model_output import canonical_model_label
 from novel_flywheel.narrative_attraction import (
     compact_attraction_guidance,
     local_attraction_candidates,
@@ -1857,7 +1858,9 @@ class LearningSystem:
         if not cleaned:
             raise ValueError("模型返回了空内容")
         try:
-            return parse_json_object(cleaned, label="模型返回内容")
+            return GeneratedArtifactGateway().convert_object(
+                cleaned, contract_name="learning_artifact",
+            ).payload
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError(f"模型返回的内容不是唯一可识别的 JSON 对象：{exc}") from exc
 

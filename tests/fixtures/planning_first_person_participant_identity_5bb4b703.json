@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "source_run_id": "5bb4b703f6ff471694a32fd886c3a041",
+  "incident_family": "planning.participant_identity_realization_mismatch",
+  "message": "participant_identity_realization_mismatch: first-person narrator participant identity was reported missing although the bound narrative voice used its self-reference",
+  "narrative_contract": {
+    "status": "ready",
+    "mode": "first_person_limited",
+    "narrator_character_id": "hua-sui",
+    "narrator_name": "花穗",
+    "self_reference": "我",
+    "allow_subject_ellipsis": true,
+    "other_minds": "observable_or_attributed_only",
+    "source": "outline_named_viewpoint"
+  },
+  "expected_event_ids": ["EV-BEAE4985"],
+  "obligation_checklists": {
+    "EV-BEAE4985": {
+      "event_id": "EV-BEAE4985",
+      "label": "众人的反应",
+      "required_participants": ["沈老夫人", "沈大小姐", "花穗", "裴砚行"],
+      "identity_stable_participants": ["沈老夫人", "沈大小姐", "花穗", "裴砚行"],
+      "obligations": [
+        {
+          "id": "EV-BEAE4985-B03",
+          "kinds": ["action", "reaction", "commitment"],
+          "required_participants": ["裴砚行", "花穗"],
+          "source_excerpt": "裴砚行在一旁沉默，花穗瞥他一眼：你怎么不说话？他给出往后承诺。"
+        }
+      ]
+    }
+  },
+  "plan_segment": "### 第 5 段：选择与承认\n\n事件ID：EV-BEAE4985\n\n大纲依据：众人重新判断我的归属。\n\n段首承接：我的身份已经公开。\n\n本段事件：\n\n3. **正式事件**（EV-BEAE4985）：我的坦白令堂上一时无人接话。沈老夫人根据我护下人、查蛀虫、敢认冒名之过的作为认可我；沈大小姐也承认我有沈家人的风骨。裴砚行始终沉默，我忍不住瞥他问：“你怎么不说话？”他答：“我在想，往后怎么跟你讲规矩——反正你也从不听话。”\n\n段末交接：众人承认我的选择，关系进入新的状态。"
+}

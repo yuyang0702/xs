@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.style_context import ensure_style_profile
 
@@ -89,7 +89,9 @@ class StyleSampleService:
     @staticmethod
     def _parse_profile(raw: str) -> dict:
         try:
-            value = parse_json_object(raw, label="笔感分析")
+            value = GeneratedArtifactGateway().convert_object(
+                raw, contract_name="style_analysis",
+            ).payload
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("笔感分析模型没有返回有效 JSON") from exc
         if not isinstance(value, dict) or not isinstance(value.get("summary"), str):

@@ -1,0 +1,40 @@
+{
+  "run_id_prefix": "155ea4c5",
+  "failure_family": "planning_adaptation_runtime_identity_echo",
+  "expected_identity": {
+    "authority_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "planning_sha256": "a646e28128454f7843003775c60dc0dae9a54a6e3e2b168ec7e0eb39825d1eaa",
+    "authority_version": 3,
+    "segment": 1,
+    "event_id": "EV-5BDFC942",
+    "facet": "function",
+    "window_index": 1,
+    "start": 0,
+    "end": 356,
+    "text_sha256": "0f8d55495c52fda12d7ab3789ba1dbc2ca22f60dcae8e5bf333ac712d0b51786"
+  },
+  "generated": {
+    "authority_sha256": "7a19b51fa22364b9a116bb5023fea6ca7782b04fa16ca02f87997fa0cb0d90b7",
+    "planning_sha256": "a646e28128454f7843003775c60dc0dae9a54a6e3e2b168ec7e0eb39825d1eaa",
+    "authority_version": 3,
+    "segment": 1,
+    "event_id": "EV-5BDFC942",
+    "facet": "function",
+    "window_index": 1,
+    "start": 0,
+    "end": 356,
+    "text_sha256": "0f8d55495c52fda12d7ab3789ba1dbc2ca22f60dcae8e5bf333ac712d0b51786",
+    "invariants": {
+      "event_function": true,
+      "primary_actor_agency": true,
+      "causal_dependencies": true
+    },
+    "changed_dimensions": [],
+    "plan_evidence_ids": ["CURRENT-WINDOW-EVIDENCE-1"],
+    "plan_evidence_quote": "",
+    "reason": "The current immutable window preserves the requested invariants."
+  },
+  "evidence_candidates": {
+    "CURRENT-WINDOW-EVIDENCE-1": "Current immutable evidence phrase used only by this regression fixture."
+  }
+}

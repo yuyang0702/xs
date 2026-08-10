@@ -40,6 +40,16 @@ STAGE_SYSTEM = {
     "maintenance": "Extract durable canonical facts from the final text. Return strict JSON with a facts array.",
 }
 
+
+IMMUTABLE_RECEIPT_SYSTEM = (
+    "Act as a deterministic validator for one immutable authority-bound receipt. "
+    "The user message defines the exact JSON fields, ownership scope, evidence "
+    "rules, and invariant names for this call. Return only that one JSON object "
+    "with every required field; do not substitute a quality scorecard, editorial "
+    "review schema, prose rewrite, explanation, or markdown wrapper. Never invent "
+    "missing authority or copy fields from a different review contract."
+)
+
 EXPANSION_CONTRACT = (
     "只返回严格 JSON。为每个新增场景提供 purpose、正整数 target_han、entry_state、"
     "exit_state、在当前候选稿中唯一出现的 anchor、insert_before 或 insert_after operation，"

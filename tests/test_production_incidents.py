@@ -13,6 +13,10 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 @pytest.mark.parametrize(("message", "family"), (
     (
+        "planning event facet receipt invalid: evidence_quote_unbound",
+        "planning.review_evidence_binding_invalid",
+    ),
+    (
         "characters\\hua-sui.md missing location backlink to shen-fu-zhang-fang",
         "initialization.location_backlink_missing",
     ),
@@ -27,6 +31,14 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
     (
         "ConnectError (provider returned no error detail); All connection attempts failed",
         "provider.connection_failed",
+    ),
+    (
+        "protocol_route_provider_rejection",
+        "provider.route_rejected",
+    ),
+    (
+        "HTTP 403 Forbidden from a configured route before terminal response",
+        "provider.route_rejected",
     ),
     (
         "Controlled runtime ended without required tool output",
@@ -61,6 +73,10 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
         "planning.review_evidence_binding_invalid",
     ),
     (
+        '规划第 6 段分包审核回执无效：[{"code":"adaptation_order_uncertain"}]',
+        "planning.review_protocol_route_exhausted",
+    ),
+    (
         "规划稿未通过设定和分段检查，尚未生成正文",
         "planning.plan_structure_validation_failed",
     ),
@@ -71,6 +87,27 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
     (
         "input context overflow preflight: lossless story authority plus output reserve requires 27242 tokens for context window 32768; topology=compact；规划第 1 段单个事件不可再拆分，已保留完整事件权威",
         "model.context_capacity_indivisible_scope",
+    ),
+    (
+        "单事件审核窗口回执未绑定完整范围或原文哈希",
+        "planning.runtime_identity_echo_mismatch",
+    ),
+    (
+        'planning receipt invalid: [{"code":"adaptation_receipt_conflict",'
+        '"model_classification":"equivalent",'
+        '"described_structural_dimensions":["entry_state","exit_state"],'
+        '"raw_changed_dimensions":["entry_state","exit_state"]}]',
+        "planning.reviewed_dimensions_echo_conflict",
+    ),
+    (
+        "规划第 6 段事件 EV-A42514C2 的 function 分层审核回执无效："
+        '["invariant_shape"]',
+        "planning.invariant_truth_set_shape",
+    ),
+    (
+        "规划执行索引未通过分段与整篇语义检查，尚未生成正文"
+        "（issue_codes=adjacent_boundary_mismatch）",
+        "planning.execution_manifest_handoff_echo_mismatch",
     ),
     (
         "finish_reason=max_tokens，模型输出字段截断",
@@ -162,6 +199,74 @@ def test_typed_failure_classification_precedes_message_regex() -> None:
     assert result["failure_unit_id"] == "segment-5"
 
 
+def test_reviewed_dimensions_echo_incident_has_bounded_recovery_contract() -> None:
+    incident = classify_production_failure(
+        "planning_adaptation_reviewed_dimensions_echo",
+        workflow="short-story", stage="planning",
+    )
+
+    assert incident["incident_family"] == (
+        "planning.reviewed_dimensions_echo_conflict"
+    )
+    assert "derive structural deviations only from explicit false invariants" in (
+        incident["known_resolution"]
+    )
+    assert "free-form dimensions" in incident["known_resolution"]
+    assert "never rewrites planning or prose" in incident["known_resolution"]
+
+
+def test_manifest_handoff_incident_has_runtime_authority_contract() -> None:
+    incident = classify_production_failure(
+        "adjacent_boundary_mismatch",
+        workflow="short-story", stage="planning",
+    )
+
+    assert incident["incident_family"] == (
+        "planning.execution_manifest_handoff_echo_mismatch"
+    )
+    assert "Runtime-owned authority" in incident["known_resolution"]
+    assert "retaining the model's additional entry assertions" in (
+        incident["known_resolution"]
+    )
+    assert "unchanged fragment, adjacent-boundary, and whole-manifest" in (
+        incident["known_resolution"]
+    )
+    assert "Do not normalize malformed entry-state containers" in (
+        incident["known_resolution"]
+    )
+
+
+def test_invariant_truth_set_incident_has_closed_conversion_contract() -> None:
+    incident = classify_production_failure(
+        "facet invariant_shape",
+        workflow="short-story", stage="review",
+    )
+
+    assert incident["incident_family"] == "planning.invariant_truth_set_shape"
+    assert "every requested invariant name exactly once" in (
+        incident["known_resolution"]
+    )
+    assert "partial, duplicate, unknown" in incident["known_resolution"]
+    assert "dedicated immutable-receipt system contract" in (
+        incident["known_resolution"]
+    )
+    assert "must not be adapted" in incident["known_resolution"]
+    assert "Historical checkpoints remain strict" in incident["known_resolution"]
+    assert "unchanged whole-plan validator" in incident["known_resolution"]
+
+
+def test_plan_structure_incident_separates_event_from_causal_companion() -> None:
+    incident = classify_production_failure(
+        "规划稿未通过设定和分段检查，尚未生成正文",
+        workflow="short-story", stage="planning",
+    )
+
+    assert incident["incident_family"] == "planning.plan_structure_validation_failed"
+    assert "事件实现与独立的因果关系说明" in incident["known_resolution"]
+    assert "保留全部源文本" in incident["known_resolution"]
+    assert "身份歧义或正文不完整" in incident["known_resolution"]
+
+
 @pytest.mark.parametrize("message", [
     "HTTP 413 context_length_exceeded: prompt is too long",
     "maximum context length exceeded",
@@ -216,6 +321,27 @@ def test_provider_credentials_production_fixture_preserves_recovery_contract() -
 
     assert incident["incident_family"] == fixture["incident_family"]
     assert fixture["expected_behavior"]["retain_best_plan"] is True
+    assert fixture["expected_behavior"]["do_not_classify_as"] != incident[
+        "incident_family"
+    ]
+
+
+def test_causal_packet_credentials_fixture_preserves_route_root_cause() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "causal_packet_credentials_unavailable_20260809.json").read_text(
+             encoding="utf-8",
+         )
+    )
+    incident = classify_production_failure(
+        fixture["raw_error"],
+        workflow=fixture["workflow"],
+        stage=fixture["stage"],
+    )
+
+    assert incident["incident_family"] == fixture["incident_family"]
+    assert fixture["expected_behavior"]["preserve_primary_error"] is True
+    assert fixture["expected_behavior"]["preserve_fallback_error"] is True
     assert fixture["expected_behavior"]["do_not_classify_as"] != incident[
         "incident_family"
     ]
@@ -365,6 +491,7 @@ def test_catalog_exposes_every_registered_family_once() -> None:
     assert "planning.event_body_integrity" in families
     assert "planning.presentation_normalized_ownership_revealed" in families
     assert "planning.event_obligation_incomplete" in families
+    assert "planning.participant_identity_realization_mismatch" in families
     assert "polish.local_validation_failed" in families
     assert "planning.repair_anchor_collapse" in families
     assert "narrative.first_person_contract_missing" in families
@@ -449,6 +576,24 @@ def test_real_planning_event_obligation_fixture_has_executable_recovery() -> Non
     assert "只重建所属完整正式段" in incident["known_resolution"]
     assert "不消耗语义修复次数" in incident["known_resolution"]
     assert "相邻边界和整篇审核" in incident["known_resolution"]
+
+
+def test_first_person_participant_identity_fixture_has_contract_driven_recovery() -> None:
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_first_person_participant_identity_5bb4b703.json")
+        .read_text(encoding="utf-8")
+    )
+
+    incident = classify_production_failure(
+        fixture["message"], workflow="short-story", stage="planning",
+    )
+
+    assert incident["incident_family"] == fixture["incident_family"]
+    assert "项目叙事契约" in incident["known_resolution"]
+    assert "非对白叙事声部" in incident["known_resolution"]
+    assert "未知别名" in incident["known_resolution"]
+    assert "整篇因果链" in incident["known_resolution"]
 
 
 def test_context_capacity_production_fixture_is_classified_and_recoverable() -> None:

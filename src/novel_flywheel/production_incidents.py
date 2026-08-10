@@ -22,6 +22,16 @@ class IncidentDefinition:
 # not one novel's names, file paths, segment numbers, or provider wording.
 INCIDENT_DEFINITIONS = (
     IncidentDefinition(
+        "provider.route_rejected",
+        "A configured model route was rejected before producing a terminal receipt",
+        "Preserve the best authority-bound checkpoint, retry the same explicit route only within the bounded protocol budget, then select the configured independent fallback through the outer recovery schedule. Probe route capability without story data when diagnosis is needed. Treat authentication, route policy, and model availability as transport reliability—not story drift—and resume only the smallest blocked receipt.",
+        (
+            r"protocol_route_provider_rejection",
+            r"(?:http|status code)\s*(?:401|403)",
+            r"(?:unauthorized|forbidden).*(?:provider|route|terminal response)",
+        ),
+    ),
+    IncidentDefinition(
         "provider.credentials_unavailable",
         "Provider credentials are unavailable to the active runtime",
         "Verify the active console data directory, Windows credential service, provider IDs, and primary/fallback bindings; preserve the best narrative checkpoint and resume only the blocked repair after credentials are visible to the same runtime.",
@@ -96,9 +106,49 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "planning.runtime_identity_echo_mismatch",
+        "模型回执重复生成了错误的运行时身份字段",
+        "把 authority、规划哈希、范围、窗口索引和原文哈希作为 Runtime 所有的请求信封；新鲜调用只提交不变量、当前证据 ID、连续负面引文和理由。语义载荷通过当前不可变证据校验后由 Runtime 封装并记录无正文哈希审计；历史检查点仍要求完整身份逐字段匹配。语义证据无效时只重试当前最小回执，不重写规划或正文。",
+        (
+            r"单事件审核窗口回执未绑定完整范围或原文哈希",
+            r"facet window receipt.*(?:authority|identity|hash|range).*(?:mismatch|unbound|invalid)",
+            r"planning_adaptation_runtime_identity_echo",
+        ),
+    ),
+    IncidentDefinition(
+        "planning.reviewed_dimensions_echo_conflict",
+        "Planning facet dimension roles conflict with the invariant verdict",
+        "Treat facet changed_dimensions as descriptive model output, not structural authority. Preserve hash-verified leaf checkpoints, merge the complete invariant map, derive structural deviations only from explicit false invariants, and reclassify known dimensions whose invariants are true as reviewed narrative scope. Keep free-form dimensions as equivalent presentation metadata. Any false invariant remains a blocking structural deviation with exact evidence and retries or repairs only its smallest authority-bound unit; this reconciliation never rewrites planning or prose and the unchanged parent validator must still pass.",
+        (
+            r"adaptation_receipt_conflict.*described_structural_dimensions.*raw_changed_dimensions",
+            r"adaptation_receipt_conflict.*model_classification.*equivalent.*raw_changed_dimensions",
+            r"planning_adaptation_reviewed_dimensions_echo",
+        ),
+    ),
+    IncidentDefinition(
+        "planning.invariant_truth_set_shape",
+        "Planning facet returned an invariant truth set instead of a boolean map",
+        "At the fresh facet conversion boundary, accept a list only when it contains every requested invariant name exactly once, contains no unknown value, and has no partial protected-dimension conflict; expand that closed truth set into an all-true boolean map and retain hash-only audit. A partial, duplicate, unknown, or structurally conflicting set remains invariant_shape and retries only the same authority-bound facet. Every planning receipt route uses the dedicated immutable-receipt system contract instead of the generic editorial scorecard contract; an unrelated quality scorecard must not be adapted into facet semantics. Historical checkpoints remain strict, and the resulting receipt must still pass evidence binding, parent invariant merge, dimension-role reconciliation, and the unchanged whole-plan validator.",
+        (
+            r"invariant_shape",
+            r"planning_adaptation_facet.*closed truth set",
+            r"facet.*invariant truth set",
+        ),
+    ),
+    IncidentDefinition(
+        "planning.execution_manifest_handoff_echo_mismatch",
+        "Execution manifest paraphrased an accepted adjacent handoff",
+        "Treat the previous accepted segment exit and its SHA-256 as Runtime-owned authority. On fresh model output, inject every exact accepted exit assertion into the next segment entry while retaining the model's additional entry assertions, record only counts and hashes, and rerun the unchanged fragment, adjacent-boundary, and whole-manifest validators. Do not normalize malformed entry-state containers or rewrite narrative content; those failures keep their normal schema-repair path. Historical checkpoints remain strict and any unrelated ownership, ordering, producer, or semantic issue still blocks the smallest affected fragment.",
+        (
+            r"adjacent_boundary_mismatch",
+            r"planning_manifest_runtime_handoff_bound",
+            r"execution manifest.*(?:paraphras|echo).*(?:adjacent|handoff|entry state)",
+        ),
+    ),
+    IncidentDefinition(
         "model.context_capacity_preflight",
         "模型上下文容量检查触发但未完成语义分包",
-        "保留完整规划、最佳候选和问题账本；无论本地预检还是供应商实际返回 context_length_exceeded/HTTP 413，都进入同一语义所有权 splitter。审核按事件所有权递归分包，定向 JSON 补丁使用协议型输出预算，完整段重建使用当前段作用域预算，主备路由遵守同一容量合同。失败候选只消耗当前恢复尝试，随后重跑局部、相邻边界和整篇审核，通过后才继续因果链与正文。",
+        "保留完整规划、最佳候选和问题账本；先将模型选中的非连续引文安全对齐到唯一、足够长的原文片段，再移除可再生的非权威建议层，强制故事权威不得删减。无论本地预检还是供应商实际返回 context_length_exceeded/HTTP 413，剩余压力都进入同一语义所有权 splitter。审核按事件所有权递归分包，定向 JSON 补丁使用协议型输出预算，完整段重建使用当前段作用域预算，主备路由遵守同一容量合同。失败候选只消耗当前恢复尝试，随后重跑局部、相邻边界和整篇审核，通过后才继续因果链与正文。",
         (
             r"input context overflow preflight",
             r"context window.*topology=(?:compact|split)",
@@ -153,7 +203,7 @@ INCIDENT_DEFINITIONS = (
     IncidentDefinition(
         "model.output_truncated",
         "模型输出达到上限或疑似截断",
-        "先验证输出闭合性；不完整时增加可验证余量，仍有风险则按语义所有权拆分，禁止机械截断正式资料或正文。",
+        "先验证输出闭合性；不完整时只增加一次可验证余量。再次触顶后进入统一语义分包协议：优先沿完整故事段边界递归拆分，再缩小到连续事件；每包绑定权威哈希、唯一有序所有权、只读邻接上下文和前序结果哈希，已验证叶子立即原子检查点。不可再拆的事件切换到已配置备用模型；仍失败则保留所有合格上游和叶子，禁止机械截断或把部分结果晋升为正式资料。所有叶子经确定性无重无漏合并和整链校验后，才允许进入下一道执行清单边界。",
         (
             r"max[_ -]?tokens",
             r"finish[_ -]?reason.*(?:length|output_limit)",
@@ -165,7 +215,7 @@ INCIDENT_DEFINITIONS = (
     IncidentDefinition(
         "planning.causal_chain_invalid",
         "因果链解析或正式事件覆盖不完整",
-        "保留正式大纲与最佳规划，只重建缺失的因果断言；覆盖、顺序、入口出口状态全部通过后才生成执行清单和正文。",
+        "保留正式大纲与最佳规划；完整响应先进行一次同范围协议重试，仍不合格则进入内容寻址的语义分包任务树，只重建失败的连续事件范围并复用已验证分包。覆盖、顺序、唯一所有权、邻接状态和整链因果全部通过后才生成执行清单和正文。",
         (
             r"因果链解析失败",
             r"因果链未覆盖全部正式事件",
@@ -211,15 +261,26 @@ INCIDENT_DEFINITIONS = (
         "将审核回执视为协议缺陷而不是剧情缺陷；从当前候选的 Runtime 原文重新生成精确证据回执，校验原文哈希、事件归属和证据出现位置，回执通过后才恢复语义修复预算。",
         (
             r"evidence[_ ]binding",
+            r"evidence_quote_unbound",
             r"回执.*没有绑定.*当前规划",
             r"规划适配回执.*准确原文",
             r"review receipt.*(?:bind|binding).*(?:current|exact).*plan",
         ),
     ),
     IncidentDefinition(
+        "planning.review_protocol_route_exhausted",
+        "规划回执在同一审查路由上重复出现协议不确定",
+        "保留当前最佳完整规划和不可变审核权威；协议缺陷使用独立于语义修复的预算，先重试同一最小回执，耗尽后切换 review 角色配置的备用模型并重新通过同一合同、证据、局部、相邻和整篇门禁。备用路由仍不合格时才恢复最佳候选并保留可续跑检查点，不得把回执缺陷转成规划或正文重写。",
+        (
+            r"规划第\s*\d+\s*段分包审核回执无效.*adaptation_[a-z0-9_]+",
+            r"planning adaptation.*receipt.*protocol.*(?:exhausted|uncertain)",
+            r"adaptation_order_uncertain",
+        ),
+    ),
+    IncidentDefinition(
         "planning.plan_structure_validation_failed",
         "规划设定或分段结构校验未通过",
-        "保留最后完整规划和有效上游检查点，按正式事件合同只重建受影响完整段；重新核对设定、事件覆盖、顺序、入口出口和整篇因果后，只有通过下一权威边界才允许生成正文。",
+        "先由统一规划编译边界把开放展示标签映射到封闭语义角色，并区分事件实现与独立的因果关系说明；如果身份绑定且完整的事件正文已经存在，保留全部源文本，只让事件实现承担必需字段角色，不因伴随的因果说明制造第二份互斥正文。真正的字段缺失、身份歧义或正文不完整仍保留最后完整规划和有效上游检查点，按正式事件合同只重建受影响完整段；重新核对设定、事件覆盖、顺序、入口出口和整篇因果后，只有通过下一权威边界才允许生成正文。",
         (
             r"规划稿未通过设定和分段检查",
             r"规划稿仍有设定或分段问题",
@@ -252,6 +313,16 @@ INCIDENT_DEFINITIONS = (
             r"planning capacity split returned an incomplete artifact",
             r"packet merge.*(?:incomplete|closedness|ownership)",
             r"capacity split.*(?:merge|merged).*(?:incomplete|ownership)",
+        ),
+    ),
+    IncidentDefinition(
+        "planning.participant_identity_realization_mismatch",
+        "规划参与者的规范身份与叙事文本实现不一致",
+        "保留正式大纲中的规范人物身份，由项目叙事契约提供第一人称叙述者的文本实现；只在非对白叙事声部中接受经过契约绑定的自称，不根据单篇小说的人名、昵称或模型猜测扩展别名。第三人称仍按规范姓名核对，对白中的自称、未知别名和身份不一致一律失败关闭。修复后重新验证所属完整规划段和下一道整篇因果链边界，不为通过检查而把第一人称改写成第三人称姓名。",
+        (
+            r"participant_identity_realization_mismatch",
+            r"first[-_ ]person.*participant.*(?:identity|realization).*(?:mismatch|missing)",
+            r"第一人称.*(?:参与者|叙述者).*(?:身份|指代).*(?:误判|不一致|缺失)",
         ),
     ),
     IncidentDefinition(

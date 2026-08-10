@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 from pathlib import Path
@@ -8,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from novel_flywheel.db import Database
+from novel_flywheel.generated_artifacts import adapt_registered_contract
 from novel_flywheel.outlines import narrative_outline_event_contracts
 from novel_flywheel.planning_adaptation import (
     INVARIANT_FIELDS,
@@ -15,6 +17,8 @@ from novel_flywheel.planning_adaptation import (
     PLANNING_ADAPTATION_VERSION,
     PREVIOUS_PLANNING_ADAPTATION_VERSION,
     planning_adaptation_evidence_candidates,
+    normalize_planning_adaptation_receipt,
+    planning_adaptation_receipt_issues,
     planning_adaptation_segment_authority_sha256,
     planning_adaptation_segment_packet_authority_sha256,
     planning_adaptation_whole_authority_sha256,
@@ -31,9 +35,26 @@ from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
     GeneratedArtifactShapeError,
     PlanningRecoveryUnavailableError,
+    ProtocolReceiptRouteExhaustedError,
     StageText,
     WorkflowService,
 )
+
+
+def _adapt_facet_semantics(
+    value: dict, *, invariant_fields: tuple[str, ...] | list[str],
+) -> tuple[dict, list[str]]:
+    result = adapt_registered_contract(
+        value,
+        contract_name="planning_adaptation_facet",
+        context={"invariant_fields": tuple(invariant_fields)},
+    )
+    repairs = [
+        transformation
+        for audit in result.audits
+        for transformation in audit.transformations
+    ]
+    return result.payload, repairs
 
 
 def make_service(tmp_path: Path) -> tuple[WorkflowService, object, Path, dict, list[dict]]:
@@ -984,6 +1005,93 @@ async def test_unique_formal_obligation_is_completed_locally_before_model_rebuil
         event["event_type"] == "planning_event_obligation_completed_locally"
         for event in service.db.list_run_events("adaptation-run")
     )
+
+
+@pytest.mark.asyncio
+async def test_first_person_identity_contract_passes_planning_and_causal_boundaries(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    fixture = json.loads(
+        (Path(__file__).parent / "fixtures" /
+         "planning_first_person_participant_identity_5bb4b703.json")
+        .read_text(encoding="utf-8")
+    )
+    (project.path / "characters").mkdir(exist_ok=True)
+    (project.path / "characters" / "hua-sui.md").write_text(
+        '---\nname: "花穗"\nrole: protagonist\n---\n\n# 花穗\n',
+        encoding="utf-8",
+    )
+    project.metadata.update({
+        "pov": "first_person_limited",
+        "narrative_contract": fixture["narrative_contract"],
+    })
+    state = {"outline": {"content": "production-shaped outline authority"}}
+    formal_events = [{
+        "id": fixture["expected_event_ids"][0],
+        "label": "众人的反应",
+        "evidence": "众人回应花穗的选择，裴砚行作出关系承诺。",
+    }]
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.narrative_outline_event_obligations",
+        lambda _content: fixture["obligation_checklists"],
+    )
+    review_calls = 0
+
+    async def fake_review(*_args, **_kwargs):
+        nonlocal review_calls
+        review_calls += 1
+        return [{"event_reviews": []}], {}, [], 0
+
+    async def forbidden_stage(*_args, **_kwargs):
+        raise AssertionError("valid first-person identity must not trigger model rebuild")
+
+    service._review_short_plan_adaptations = fake_review
+    service._stage = forbidden_stage
+    plan = fixture["plan_segment"].replace("### 第 5 段", "### 第 1 段", 1)
+
+    accepted, artifact, changed = await service._ensure_short_plan_adaptations(
+        "adaptation-run", run_path, project, "constraints", state,
+        plan, formal_events, 1,
+    )
+
+    assert accepted == plan
+    assert changed is False
+    assert artifact is not None and artifact["status"] == "ready"
+    assert review_calls == 1
+    event_types = {
+        item["event_type"] for item in service.db.list_run_events("adaptation-run")
+    }
+    assert "planning_event_obligation_precheck_failed" not in event_types
+    assert "planning_adaptation_segment_rebuild" not in event_types
+
+    candidate_chain = {
+        "core_goal": "完成身份确认并保住选择权",
+        "opening": {"pressure": "身份公开"},
+        "cycles": [
+            {
+                "obstacle": "众人质疑",
+                "effort": "我陈述证据",
+                "result": "长辈认可",
+                "state_change": "身份获得承认",
+            },
+            {
+                "obstacle": "关系尚未确认",
+                "effort": "我追问裴砚行",
+                "result": "裴砚行公开承诺",
+                "state_change": "关系进入新状态",
+            },
+        ],
+        "ending": "我的选择与关系承诺同时落定",
+        "covered_event_ids": fixture["expected_event_ids"],
+    }
+    causal_chain = await service._ensure_short_causal_chain(
+        "adaptation-run", run_path, project, "constraints",
+        accepted, formal_events, candidate_chain,
+    )
+
+    assert causal_chain == candidate_chain
+    assert (run_path / "outputs" / "short-causal-chain.json").is_file()
 
 
 @pytest.mark.asyncio
@@ -2969,7 +3077,7 @@ async def test_hierarchical_review_resumes_completed_packets_across_runs(
         return hierarchy_adaptation_receipt(prompt)
 
     service._stage = interrupted_stage
-    with pytest.raises(ConnectionError, match="regional packet interrupted"):
+    first_context, first_metadata, first_retries = (
         await service._planning_adaptation_hierarchical_context(
             "adaptation-run", first_run_path, project, "constraints",
             plan=plan,
@@ -2979,7 +3087,12 @@ async def test_hierarchical_review_resumes_completed_packets_across_runs(
             token_limit=2_000,
             suffix="interrupted",
         )
-    assert len(first_regional_sources) == 2
+    )
+    assert len(first_regional_sources) >= 3
+    assert first_regional_sources[1] == first_regional_sources[2]
+    assert first_retries >= 1
+    assert first_metadata["covered_segments"] == [1, 2, 3, 4, 5, 6]
+    assert "HASH-BOUND HIERARCHICAL WHOLE-PLAN EVIDENCE" in first_context
     completed_source = first_regional_sources[0]
     assert list((first_run_path / "outputs" / "pah").glob("r-*.json"))
 
@@ -3217,7 +3330,10 @@ async def test_initial_review_connection_failure_preserves_plan_for_next_task(
         raise ConnectionError("temporary review connection failure")
 
     service._stage = fake_stage
-    with pytest.raises(ConnectionError, match="temporary review"):
+    with pytest.raises(
+        ProtocolReceiptRouteExhaustedError,
+        match="protocol_route_transport_interrupted",
+    ):
         await service._ensure_short_plan_adaptations(
             "adaptation-run", run_path, project, "constraints", state,
             original, [], 1, generation_context_sha256="context-v2",
@@ -3263,7 +3379,10 @@ async def test_candidate_review_failure_never_promotes_unreviewed_plan(
         raise ConnectionError("candidate review interrupted")
 
     service._stage = fake_stage
-    with pytest.raises(ConnectionError, match="candidate review"):
+    with pytest.raises(
+        ProtocolReceiptRouteExhaustedError,
+        match="protocol_route_transport_interrupted",
+    ):
         await service._ensure_short_plan_adaptations(
             "adaptation-run", run_path, project, "constraints", state,
             original, [], 1,
@@ -3630,7 +3749,9 @@ async def test_production_continuation_crosses_packet_and_whole_plan_review(
         authority = prompt.split("EXPECTED AUTHORITY SHA256: ", 1)[1].splitlines()[0]
         planning = prompt.split("EXPECTED PLANNING SHA256: ", 1)[1].splitlines()[0]
         segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
-        candidates = json.loads(prompt.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1])
+        candidates, _ = json.JSONDecoder().raw_decode(
+            prompt.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1]
+        )
         evidence_id = next(iter(candidates))
         return json.dumps({
             "authority_sha256": authority,
@@ -3672,6 +3793,258 @@ async def test_production_continuation_crosses_packet_and_whole_plan_review(
     )
     assert whole_issues == []
     assert whole["event_ids"] == ["EV-BEAE4985", "EV-1522AB0E"]
+
+
+@pytest.mark.asyncio
+async def test_protocol_exhaustion_uses_configured_fallback_and_crosses_whole_gate(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    fixture = json.loads((
+        Path(__file__).parent / "fixtures"
+        / "planning_protocol_route_exhaustion_155ea4c5.json"
+    ).read_text(encoding="utf-8"))
+    service.db.save_role_binding(
+        "review", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    service.gateway.complete_configured_fallback = lambda *_args, **_kwargs: None
+    event_id = "EV-6C28AF48"
+    event_contracts = [{"id": event_id, "evidence": "formal event contract"}]
+    plan_segment = plan_for(event_id, "主角核验完整线索后继续追查。")
+    route_calls: list[bool] = []
+
+    async def protocol_stage(*args, **kwargs):
+        prompt = args[5]
+        fallback = bool(kwargs.get("prefer_configured_fallback"))
+        route_calls.append(fallback)
+        accepted = fallback and route_calls.count(True) == 2
+        authority = prompt.split(
+            "EXPECTED AUTHORITY SHA256: ", 1,
+        )[1].splitlines()[0]
+        planning = prompt.split(
+            "EXPECTED PLANNING SHA256: ", 1,
+        )[1].splitlines()[0]
+        segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        event_ids = json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].split(
+                "\n\nALLOWED DEPENDENCY EVENT IDS", 1,
+            )[0]
+        )
+        candidates, _ = json.JSONDecoder().raw_decode(
+            prompt.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1]
+        )
+        evidence_id, evidence = next(iter(candidates.items()))
+        invariants = {field: True for field in INVARIANT_FIELDS}
+        if not accepted:
+            invariants["timeline_order"] = False
+        review = {
+            "event_id": event_ids[0],
+            "classification": "unchanged" if accepted else "structural",
+            "changed_dimensions": [] if accepted else ["timeline_order"],
+            "invariants": invariants,
+            "plan_evidence_ids": [evidence_id],
+            "plan_evidence_quote": "" if accepted else evidence,
+            "reason": (
+                "All immutable event invariants remain preserved."
+                if accepted else evidence + "；顺序依赖尚不能由本回执确定。"
+            ),
+        }
+        if not accepted:
+            review["order_dependency"] = "unknown"
+            review["dependency_event_ids"] = []
+        return json.dumps({
+            "authority_sha256": authority,
+            "planning_sha256": planning,
+            "segment": segment,
+            "event_reviews": [review],
+            "segment_order_preserved": accepted,
+            "formal_direction_preserved": accepted,
+            "summary": "Immutable receipt review completed.",
+        }, ensure_ascii=False)
+
+    service._stage = protocol_stage
+    segment_receipt, issues, retries = (
+        await service._review_short_plan_adaptation_segment(
+            "adaptation-run", run_path, project, "constraints",
+            outline_sha256="a" * 64,
+            planning_sha256="b" * 64,
+            segment=1,
+            event_contracts=event_contracts,
+            plan_segment=plan_segment,
+            suffix="protocol-route-production",
+            generation_context_sha256="context",
+            authority_event_ids=[event_id],
+        )
+    )
+
+    assert fixture["primary_attempts"] == 3
+    assert route_calls == [False, False, False, True, True]
+    assert retries == 4
+    assert issues == []
+    assert any(
+        item["event_type"] == "protocol_receipt_model_fallback"
+        for item in service.db.list_run_events("adaptation-run")
+    )
+
+    async def whole_stage(*args, **_kwargs):
+        return whole_adaptation_receipt(args[5])
+
+    service._stage = whole_stage
+    whole, whole_issues, _ = await service._review_short_plan_adaptation_whole(
+        "adaptation-run", run_path, project, "constraints",
+        outline_sha256="a" * 64,
+        planning_sha256="b" * 64,
+        formal_contracts=event_contracts,
+        plan=plan_segment,
+        segment_receipts=[segment_receipt],
+        segment_count=1,
+        suffix="protocol-route-production",
+    )
+    assert whole_issues == []
+    assert whole["event_ids"] == [event_id]
+
+
+@pytest.mark.asyncio
+async def test_protocol_route_exception_is_hash_audited_and_fallback_crosses_whole_gate(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    service.db.save_role_binding(
+        "review", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    service.gateway.complete_configured_fallback = lambda *_args, **_kwargs: None
+    event_id = "EV-ROUTE001"
+    event_contracts = [{"id": event_id, "evidence": "formal event contract"}]
+    plan_segment = plan_for(
+        event_id, "The investigator verifies the accepted evidence before proceeding.",
+    )
+    route_calls: list[tuple[bool, bool]] = []
+
+    async def protocol_stage(*args, **kwargs):
+        prompt = args[5]
+        fallback = bool(kwargs.get("prefer_configured_fallback"))
+        primary_only = bool(kwargs.get("primary_only"))
+        route_calls.append((fallback, primary_only))
+        assert primary_only is not fallback
+        if not fallback:
+            raise RuntimeError(
+                "HTTP 403 Forbidden from secret-provider.example before terminal response"
+            )
+        authority = prompt.split(
+            "EXPECTED AUTHORITY SHA256: ", 1,
+        )[1].splitlines()[0]
+        planning = prompt.split(
+            "EXPECTED PLANNING SHA256: ", 1,
+        )[1].splitlines()[0]
+        segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        candidates, _ = json.JSONDecoder().raw_decode(
+            prompt.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1]
+        )
+        return json.dumps({
+            "authority_sha256": authority,
+            "planning_sha256": planning,
+            "segment": segment,
+            "event_reviews": [{
+                "event_id": event_id,
+                "classification": "unchanged",
+                "changed_dimensions": [],
+                "invariants": {field: True for field in INVARIANT_FIELDS},
+                "plan_evidence_ids": [next(iter(candidates))],
+                "plan_evidence_quote": "",
+                "reason": "All immutable event invariants remain preserved.",
+            }],
+            "segment_order_preserved": True,
+            "formal_direction_preserved": True,
+            "summary": "Immutable receipt review completed.",
+        })
+
+    service._stage = protocol_stage
+    segment_receipt, issues, retries = (
+        await service._review_short_plan_adaptation_segment(
+            "adaptation-run", run_path, project, "constraints",
+            outline_sha256="a" * 64,
+            planning_sha256="b" * 64,
+            segment=1,
+            event_contracts=event_contracts,
+            plan_segment=plan_segment,
+            suffix="route-exception-production",
+            generation_context_sha256="context",
+            authority_event_ids=[event_id],
+        )
+    )
+
+    assert route_calls == [(False, True), (False, True), (True, False)]
+    assert retries == 3
+    assert issues == []
+    failures = [
+        event for event in service.db.list_run_events("adaptation-run")
+        if event["event_type"] == "protocol_receipt_route_failed"
+    ]
+    assert len(failures) == 2
+    for event in failures:
+        metadata = event["metadata"]
+        assert metadata["failure_kind"] == "provider_rejection"
+        assert metadata["failure_code"] == "protocol_route_provider_rejection"
+        assert len(metadata["error_sha256"]) == 64
+        persisted = json.dumps(metadata, ensure_ascii=False)
+        assert "403" not in persisted
+        assert "secret-provider" not in persisted
+    assert any(
+        event["event_type"] == "protocol_receipt_route_circuit_opened"
+        for event in service.db.list_run_events("adaptation-run")
+    )
+    assert any(
+        event["event_type"] == "protocol_receipt_route_circuit_bypassed"
+        for event in service.db.list_run_events("adaptation-run")
+    )
+
+    async def whole_stage(*args, **kwargs):
+        assert kwargs["primary_only"] is False
+        assert kwargs["prefer_configured_fallback"] is True
+        return whole_adaptation_receipt(args[5])
+
+    service._stage = whole_stage
+    whole, whole_issues, _ = await service._review_short_plan_adaptation_whole(
+        "adaptation-run", run_path, project, "constraints",
+        outline_sha256="a" * 64,
+        planning_sha256="b" * 64,
+        formal_contracts=event_contracts,
+        plan=plan_segment,
+        segment_receipts=[segment_receipt],
+        segment_count=1,
+        suffix="route-exception-production",
+    )
+    assert whole_issues == []
+    assert whole["event_ids"] == [event_id]
+
+
+def test_every_planning_protocol_schedule_owns_explicit_route_selection() -> None:
+    source = Path(WorkflowService.__module__.replace(".", "/") + ".py")
+    if not source.is_file():
+        source = Path(__file__).parents[1] / "src" / "novel_flywheel" / "workflows.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    executions = [
+        node.value for node in ast.walk(tree)
+        if isinstance(node, ast.Await)
+        and isinstance(node.value, ast.Call)
+        and isinstance(node.value.func, ast.Attribute)
+        and node.value.func.attr == "_execute_protocol_receipt_attempt"
+    ]
+    assert len(executions) == 6
+    for execution in executions:
+        keywords = {item.arg: item.value for item in execution.keywords}
+        operation = keywords["operation"]
+        assert isinstance(operation, ast.Lambda)
+        assert isinstance(operation.body, ast.Call)
+        assert isinstance(operation.body.func, ast.Attribute)
+        assert operation.body.func.attr == "_stage"
+        route_keywords = {item.arg for item in operation.body.keywords}
+        assert {
+            "primary_only", "prefer_configured_fallback",
+            "defer_route_failure_audit", "protocol_system_contract",
+        } <= route_keywords
 
 
 @pytest.mark.asyncio
@@ -3952,7 +4325,10 @@ async def test_singleton_facet_windows_resume_after_transport_interruption(
         return window_receipt(prompt)
 
     service._stage = interrupted_stage
-    with pytest.raises(ConnectionError, match="facet window transport interrupted"):
+    with pytest.raises(
+        ProtocolReceiptRouteExhaustedError,
+        match="protocol_route_transport_interrupted",
+    ):
         await service._review_short_plan_adaptation_facet_windows(
             "adaptation-run", first_run_path, project, "constraints",
             planning_sha256="b" * 64,
@@ -4009,6 +4385,641 @@ async def test_singleton_facet_windows_resume_after_transport_interruption(
         item["event_type"]
         == "planning_adaptation_facet_window_checkpoint_reused"
         for item in service.db.list_run_events(second_run_id)
+    )
+
+
+def test_current_facet_window_payload_uses_runtime_owned_identity_envelope() -> None:
+    fixture_path = (
+        Path(__file__).parent / "fixtures"
+        / "planning_facet_window_runtime_identity_155ea4c5.json"
+    )
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+
+    generated = fixture["generated"]
+    expected = fixture["expected_identity"]
+    candidates = fixture["evidence_candidates"]
+    fields = tuple(generated["invariants"])
+    assert not WorkflowService._planning_adaptation_facet_window_receipt_valid(
+        generated,
+        window_authority_sha256=expected["authority_sha256"],
+        planning_sha256=expected["planning_sha256"],
+        authority_version=expected["authority_version"],
+        segment=expected["segment"],
+        event_id=expected["event_id"],
+        facet=expected["facet"],
+        window_index=expected["window_index"],
+        start=expected["start"],
+        end=expected["end"],
+        text_sha256=expected["text_sha256"],
+        invariant_fields=fields,
+        evidence_candidates=candidates,
+    )
+
+    bound, issues, rebound_fields, semantic_repairs, adapter_audits = (
+        WorkflowService._bind_current_planning_adaptation_facet_receipt(
+            generated,
+            expected_identity=expected,
+            invariant_fields=fields,
+            evidence_candidates=candidates,
+        )
+    )
+
+    assert issues == []
+    assert semantic_repairs == []
+    assert adapter_audits == []
+    assert rebound_fields == ["authority_sha256"]
+    assert bound is not None
+    assert bound["authority_sha256"] == expected["authority_sha256"]
+    assert WorkflowService._planning_adaptation_facet_window_receipt_valid(
+        bound,
+        window_authority_sha256=expected["authority_sha256"],
+        planning_sha256=expected["planning_sha256"],
+        authority_version=expected["authority_version"],
+        segment=expected["segment"],
+        event_id=expected["event_id"],
+        facet=expected["facet"],
+        window_index=expected["window_index"],
+        start=expected["start"],
+        end=expected["end"],
+        text_sha256=expected["text_sha256"],
+        invariant_fields=fields,
+        evidence_candidates=candidates,
+    )
+
+
+@pytest.mark.asyncio
+async def test_facet_window_runtime_binding_avoids_model_retry(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    plan_segment = plan_for("EV-1", "The clerk verifies the current ledger entry.")
+    candidates = planning_adaptation_evidence_candidates(plan_segment, 1)
+    calls = 0
+
+    async def fake_stage(*args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        prompt = args[5]
+        fields = json.loads(
+            prompt.split("EXPECTED INVARIANTS:\n", 1)[1].split("\n\n", 1)[0]
+        )
+        return json.dumps({
+            "authority_sha256": "0" * 64,
+            "planning_sha256": "1" * 64,
+            "authority_version": 999,
+            "segment": 999,
+            "event_id": "EV-STALE",
+            "facet": "stale",
+            "window_index": 999,
+            "start": 999,
+            "end": 999,
+            "text_sha256": "2" * 64,
+            "invariants": {field: True for field in fields},
+            "changed_dimensions": [],
+            "plan_evidence_ids": [next(iter(candidates))],
+            "plan_evidence_quote": "",
+            "reason": "The current event evidence preserves this facet.",
+        })
+
+    service._stage = fake_stage
+    result = json.loads(await service._review_short_plan_adaptation_facet_windows(
+        "adaptation-run", run_path, project, "constraints",
+        planning_sha256="b" * 64,
+        segment=1,
+        event_contract={"id": "EV-1", "evidence": "formal event"},
+        plan_segment=plan_segment,
+        evidence_candidates=candidates,
+        facet_authority_sha256="f" * 64,
+        event_id="EV-1",
+        facet="function",
+        invariant_fields=(
+            "event_function", "primary_actor_agency", "causal_dependencies",
+        ),
+        authority_version=PLANNING_ADAPTATION_VERSION,
+    ))
+
+    assert calls == 1
+    assert result["authority_sha256"] == "f" * 64
+    assert all(result["invariants"].values())
+    events = service.db.list_run_events("adaptation-run")
+    bound_event = next(
+        item for item in events
+        if item["event_type"] == "planning_adaptation_runtime_identity_bound"
+    )
+    assert set(bound_event["metadata"]["rebound_fields"]) == {
+        "authority_sha256", "planning_sha256", "authority_version", "segment",
+        "event_id", "facet", "window_index", "start", "end", "text_sha256",
+    }
+
+
+@pytest.mark.asyncio
+async def test_facet_window_retries_only_invalid_semantic_payload(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    plan_segment = plan_for("EV-1", "The clerk verifies the current ledger entry.")
+    candidates = planning_adaptation_evidence_candidates(plan_segment, 1)
+    calls = 0
+
+    async def fake_stage(*args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        prompt = args[5]
+        fields = json.loads(
+            prompt.split("EXPECTED INVARIANTS:\n", 1)[1].split("\n\n", 1)[0]
+        )
+        return json.dumps({
+            "invariants": {field: True for field in fields},
+            "changed_dimensions": [],
+            "plan_evidence_ids": (
+                ["FOREIGN-EVIDENCE"] if calls == 1 else [next(iter(candidates))]
+            ),
+            "plan_evidence_quote": "",
+            "reason": "The current event evidence preserves this facet.",
+        })
+
+    service._stage = fake_stage
+    result = json.loads(await service._review_short_plan_adaptation_facet_windows(
+        "adaptation-run", run_path, project, "constraints",
+        planning_sha256="b" * 64,
+        segment=1,
+        event_contract={"id": "EV-1", "evidence": "formal event"},
+        plan_segment=plan_segment,
+        evidence_candidates=candidates,
+        facet_authority_sha256="f" * 64,
+        event_id="EV-1",
+        facet="function",
+        invariant_fields=(
+            "event_function", "primary_actor_agency", "causal_dependencies",
+        ),
+        authority_version=PLANNING_ADAPTATION_VERSION,
+    ))
+
+    assert calls == 2
+    assert all(result["invariants"].values())
+    assert any(
+        item["event_type"]
+        == "planning_adaptation_facet_window_receipt_retry"
+        for item in service.db.list_run_events("adaptation-run")
+    )
+
+
+def test_complete_requested_dimension_echo_is_not_promoted_as_change() -> None:
+    fixture = json.loads((
+        Path(__file__).parent / "fixtures"
+        / "planning_facet_reviewed_dimensions_155ea4c5.json"
+    ).read_text(encoding="utf-8"))
+
+    normalized, repairs = (
+        _adapt_facet_semantics(
+            fixture["generated"],
+            invariant_fields=fixture["invariant_fields"],
+        )
+    )
+
+    assert repairs == ["reviewed_dimensions_reclassified"]
+    assert normalized["changed_dimensions"] == []
+    assert normalized["invariants"] == fixture["generated"]["invariants"]
+
+    ambiguous = dict(fixture["generated"])
+    ambiguous["changed_dimensions"] = ["entry_state"]
+    unchanged, repairs = (
+        _adapt_facet_semantics(
+            ambiguous,
+            invariant_fields=fixture["invariant_fields"],
+        )
+    )
+    assert repairs == []
+    assert unchanged["changed_dimensions"] == ["entry_state"]
+
+    unknown = dict(fixture["generated"])
+    unknown["changed_dimensions"] = [
+        *fixture["invariant_fields"], "provider_review_scope",
+    ]
+    unchanged, repairs = (
+        _adapt_facet_semantics(
+            unknown,
+            invariant_fields=fixture["invariant_fields"],
+        )
+    )
+    assert repairs == []
+    assert unchanged["changed_dimensions"][-1] == "provider_review_scope"
+
+    negative = {
+        **fixture["generated"],
+        "invariants": {
+            **fixture["generated"]["invariants"], "entry_state": False,
+        },
+    }
+    unchanged, repairs = (
+        _adapt_facet_semantics(
+            negative,
+            invariant_fields=fixture["invariant_fields"],
+        )
+    )
+    assert repairs == []
+    assert unchanged["changed_dimensions"] == fixture["invariant_fields"]
+
+
+def test_complete_invariant_truth_set_expands_to_boolean_map() -> None:
+    invariant_fields = (
+        "event_function", "primary_actor_agency", "causal_dependencies",
+    )
+    generated = {
+        "invariants": list(invariant_fields),
+        "changed_dimensions": ["presentation_emphasis"],
+        "plan_evidence_ids": ["E-1"],
+        "plan_evidence_quote": "",
+        "reason": "All requested invariants remain preserved.",
+    }
+
+    normalized, repairs = (
+        _adapt_facet_semantics(
+            generated, invariant_fields=invariant_fields,
+        )
+    )
+
+    assert repairs == ["invariant_truth_set_expanded"]
+    assert normalized["invariants"] == {
+        field: True for field in invariant_fields
+    }
+    assert normalized["changed_dimensions"] == ["presentation_emphasis"]
+    assert generated["invariants"] == list(invariant_fields)
+
+
+@pytest.mark.parametrize("invariants", (
+    ["event_function", "primary_actor_agency"],
+    ["event_function", "primary_actor_agency", "primary_actor_agency"],
+    ["event_function", "primary_actor_agency", "provider_unknown"],
+))
+def test_incomplete_or_ambiguous_invariant_sets_remain_invalid(
+    invariants: list[str],
+) -> None:
+    invariant_fields = (
+        "event_function", "primary_actor_agency", "causal_dependencies",
+    )
+    generated = {
+        "invariants": invariants,
+        "changed_dimensions": [],
+        "plan_evidence_ids": ["E-1"],
+        "reason": "A verdict was attempted.",
+    }
+
+    normalized, repairs = (
+        _adapt_facet_semantics(
+            generated, invariant_fields=invariant_fields,
+        )
+    )
+
+    assert repairs == []
+    assert normalized == generated
+
+
+def test_invariant_truth_set_with_partial_protected_change_remains_invalid() -> None:
+    invariant_fields = (
+        "event_function", "primary_actor_agency", "causal_dependencies",
+    )
+    generated = {
+        "invariants": list(invariant_fields),
+        "changed_dimensions": ["event_function"],
+        "plan_evidence_ids": ["E-1"],
+        "reason": "The representation conflicts with its protected changes.",
+    }
+
+    normalized, repairs = (
+        _adapt_facet_semantics(
+            generated, invariant_fields=invariant_fields,
+        )
+    )
+
+    assert repairs == []
+    assert normalized == generated
+
+
+def test_invariant_truth_set_crosses_fresh_facet_binding_boundary() -> None:
+    invariant_fields = (
+        "event_function", "primary_actor_agency", "causal_dependencies",
+    )
+    generated = {
+        "invariants": list(invariant_fields),
+        "changed_dimensions": ["presentation_emphasis"],
+        "plan_evidence_ids": ["E-1"],
+        "plan_evidence_quote": "",
+        "reason": "All requested invariants remain preserved.",
+    }
+    identity = {
+        "authority_sha256": "a" * 64,
+        "planning_sha256": "b" * 64,
+        "authority_version": PLANNING_ADAPTATION_VERSION,
+        "segment": 1,
+        "event_id": "EV-1",
+        "facet": "function",
+    }
+
+    receipt, issues, rebound, repairs, adapter_audits = (
+        WorkflowService._bind_current_planning_adaptation_facet_receipt(
+            generated,
+            expected_identity=identity,
+            invariant_fields=invariant_fields,
+            evidence_candidates={"E-1": "synthetic exact planning evidence"},
+        )
+    )
+
+    assert issues == []
+    assert rebound == list(identity)
+    assert repairs == ["invariant_truth_set_expanded"]
+    assert len(adapter_audits) == 1
+    assert adapter_audits[0]["adapter_name"] == "planning_facet_closed_truth"
+    assert adapter_audits[0]["adapter_version"] == 1
+    assert receipt is not None
+    assert receipt["invariants"] == {
+        field: True for field in invariant_fields
+    }
+
+
+def test_unique_fuzzy_quote_crosses_fresh_facet_binding_boundary() -> None:
+    invariant_fields = ("state_continuity", "knowledge_progression")
+    source = (
+        "The watch captain verifies the sealed gate ledger before dawn and "
+        "records the missing handoff time."
+    )
+    fuzzy_quote = (
+        "The watch captain verifies the sealed gate ledger ... "
+        "records the missing handoff time."
+    )
+    generated = {
+        "invariants": {
+            "state_continuity": False,
+            "knowledge_progression": True,
+        },
+        "changed_dimensions": ["state_continuity"],
+        "plan_evidence_ids": ["E-1"],
+        "plan_evidence_quote": fuzzy_quote,
+        "reason": "The selected transition conflicts with state continuity.",
+    }
+    identity = {
+        "authority_sha256": "a" * 64,
+        "planning_sha256": "b" * 64,
+        "authority_version": PLANNING_ADAPTATION_VERSION,
+        "segment": 1,
+        "event_id": "EV-1",
+        "facet": "state",
+    }
+
+    receipt, issues, rebound, repairs, adapter_audits = (
+        WorkflowService._bind_current_planning_adaptation_facet_receipt(
+            generated,
+            expected_identity=identity,
+            invariant_fields=invariant_fields,
+            evidence_candidates={"E-1": source},
+        )
+    )
+
+    assert issues == []
+    assert rebound == list(identity)
+    assert repairs == [
+        "unique_evidence_quote_aligned",
+        "runtime_evidence_binding_attached",
+    ]
+    assert adapter_audits[0]["adapter_name"] == (
+        "planning_facet_unique_evidence_quote"
+    )
+    assert receipt is not None
+    assert receipt["plan_evidence_quote"] in source
+    assert receipt["reason"].startswith(generated["reason"])
+    assert receipt["plan_evidence_quote"] in receipt["reason"]
+    assert WorkflowService._planning_adaptation_facet_semantic_issues(
+        receipt,
+        invariant_fields=invariant_fields,
+        evidence_candidates={"E-1": source},
+    ) == []
+
+
+def test_facet_completion_preflight_uses_the_registered_adapter(tmp_path) -> None:
+    service, _project, run_path, _state, _contracts = make_service(tmp_path)
+    source = (
+        "The watch captain verifies the sealed gate ledger before dawn and "
+        "records the missing handoff time."
+    )
+    payload = {
+        "invariants": {"state_continuity": False},
+        "changed_dimensions": ["state_continuity"],
+        "plan_evidence_ids": ["E-1"],
+        "plan_evidence_quote": (
+            "The watch captain verifies the sealed gate ledger ... "
+            "records the missing handoff time."
+        ),
+        "reason": "The selected transition conflicts with state continuity.",
+    }
+
+    assert service._converted_planning_adaptation_facet_semantic_issues(
+        json.dumps(payload), run_path,
+        invariant_fields=("state_continuity",),
+        evidence_candidates={"E-1": source},
+    ) == []
+
+    ambiguous = dict(payload)
+    ambiguous["plan_evidence_ids"] = ["E-1", "E-2"]
+    assert service._converted_planning_adaptation_facet_semantic_issues(
+        json.dumps(ambiguous), run_path,
+        invariant_fields=("state_continuity",),
+        evidence_candidates={"E-1": source, "E-2": source},
+    ) == ["evidence_quote_unbound"]
+
+
+def test_parent_invariant_map_separates_story_progress_from_authority_drift() -> None:
+    fixture = json.loads((
+        Path(__file__).parent / "fixtures"
+        / "planning_facet_reviewed_dimensions_155ea4c5.json"
+    ).read_text(encoding="utf-8"))
+    invariants = {field: True for field in INVARIANT_FIELDS}
+    reported = fixture["mixed_parent_reported_dimensions"]
+
+    effective, reviewed = (
+        WorkflowService._reconcile_planning_adaptation_dimension_roles(
+            reported, invariants=invariants,
+        )
+    )
+
+    assert effective == fixture["expected_effective_dimensions"]
+    assert reviewed == fixture["expected_reviewed_dimensions"]
+
+    plan_segment = plan_for(
+        "EV-1", "The clerk verifies the ledger and preserves every handoff.",
+    )
+    candidates = planning_adaptation_evidence_candidates(plan_segment, 1)
+    evidence_id, evidence_quote = next(iter(candidates.items()))
+    normalized = normalize_planning_adaptation_receipt({
+        "authority_sha256": "p" * 64,
+        "planning_sha256": "b" * 64,
+        "authority_version": PLANNING_ADAPTATION_VERSION,
+        "segment": 1,
+        "event_reviews": [{
+            "event_id": "EV-1",
+            "classification": "equivalent",
+            "changed_dimensions": effective,
+            "invariants": invariants,
+            "plan_evidence_ids": [evidence_id],
+            "plan_evidence_quote": "",
+            "reason": "Narrative presentation changed without authority drift.",
+        }],
+        "segment_order_preserved": True,
+        "formal_direction_preserved": True,
+        "summary": "Parent invariant reconciliation completed.",
+    }, evidence_candidates=candidates)
+    assert planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256="p" * 64,
+        planning_sha256="b" * 64,
+        segment=1,
+        expected_event_ids=["EV-1"],
+        evidence_candidates=candidates,
+        authority_version=PLANNING_ADAPTATION_VERSION,
+        plan_segment=plan_segment,
+    ) == []
+
+    negative = dict(invariants)
+    negative["relationship_state"] = False
+    effective, reviewed = (
+        WorkflowService._reconcile_planning_adaptation_dimension_roles(
+            reported, invariants=negative,
+        )
+    )
+    assert "relationship_state" in effective
+    assert "relationship_state" not in reviewed
+    assert "knowledge-state" in reviewed
+    negative_receipt = normalize_planning_adaptation_receipt({
+        "authority_sha256": "p" * 64,
+        "planning_sha256": "b" * 64,
+        "authority_version": PLANNING_ADAPTATION_VERSION,
+        "segment": 1,
+        "event_reviews": [{
+            "event_id": "EV-1",
+            "classification": "structural",
+            "changed_dimensions": effective,
+            "invariants": negative,
+            "plan_evidence_ids": [evidence_id],
+            "plan_evidence_quote": evidence_quote,
+            "reason": f"The relationship invariant fails at: {evidence_quote}",
+        }],
+        "segment_order_preserved": True,
+        "formal_direction_preserved": True,
+        "summary": "Negative invariant remains blocking.",
+    }, evidence_candidates=candidates)
+    assert "planning_structural_drift" in {
+        item["code"] for item in planning_adaptation_receipt_issues(
+            negative_receipt,
+            authority_sha256="p" * 64,
+            planning_sha256="b" * 64,
+            segment=1,
+            expected_event_ids=["EV-1"],
+            evidence_candidates=candidates,
+            authority_version=PLANNING_ADAPTATION_VERSION,
+            plan_segment=plan_segment,
+        )
+    }
+
+
+def test_hash_valid_facet_window_checkpoint_normalizes_review_scope_echo(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state, _contracts = make_service(tmp_path)
+    fixture = json.loads((
+        Path(__file__).parent / "fixtures"
+        / "planning_facet_reviewed_dimensions_155ea4c5.json"
+    ).read_text(encoding="utf-8"))
+    plan_segment = plan_for("EV-1", "The clerk verifies the current ledger entry.")
+    candidates = planning_adaptation_evidence_candidates(plan_segment, 1)
+    fields = tuple(fixture["invariant_fields"])
+    text_sha256 = hashlib.sha256(plan_segment.encode("utf-8")).hexdigest()
+    facet_authority = "f" * 64
+    window_authority = (
+        service._planning_adaptation_facet_window_authority_sha256(
+            facet_authority_sha256=facet_authority,
+            window_index=1,
+            start=0,
+            end=len(plan_segment),
+            text_sha256=text_sha256,
+        )
+    )
+    receipt = {
+        **fixture["generated"],
+        "authority_sha256": window_authority,
+        "planning_sha256": "b" * 64,
+        "authority_version": PLANNING_ADAPTATION_VERSION,
+        "segment": 1,
+        "event_id": "EV-1",
+        "facet": "state",
+        "window_index": 1,
+        "start": 0,
+        "end": len(plan_segment),
+        "text_sha256": text_sha256,
+        "plan_evidence_ids": [next(iter(candidates))],
+    }
+    service._save_planning_adaptation_facet_window_checkpoint(
+        run_path,
+        facet_authority_sha256=facet_authority,
+        window_authority_sha256=window_authority,
+        segment=1,
+        event_id="EV-1",
+        facet="state",
+        window_index=1,
+        start=0,
+        end=len(plan_segment),
+        text_sha256=text_sha256,
+        invariant_fields=fields,
+        receipt=receipt,
+    )
+
+    loaded = service._load_planning_adaptation_facet_window_checkpoint(
+        "adaptation-run", run_path, project,
+        facet_authority_sha256=facet_authority,
+        window_authority_sha256=window_authority,
+        planning_sha256="b" * 64,
+        authority_version=PLANNING_ADAPTATION_VERSION,
+        segment=1,
+        event_id="EV-1",
+        facet="state",
+        window_index=1,
+        start=0,
+        end=len(plan_segment),
+        text_sha256=text_sha256,
+        invariant_fields=fields,
+        evidence_candidates=candidates,
+    )
+
+    assert loaded is not None
+    assert loaded["changed_dimensions"] == []
+    normalized = normalize_planning_adaptation_receipt({
+        "authority_sha256": "p" * 64,
+        "planning_sha256": "b" * 64,
+        "authority_version": PLANNING_ADAPTATION_VERSION,
+        "segment": 1,
+        "event_reviews": [{
+            "event_id": "EV-1",
+            "classification": "unchanged",
+            "changed_dimensions": loaded["changed_dimensions"],
+            "invariants": {field: True for field in INVARIANT_FIELDS},
+            "plan_evidence_ids": [next(iter(candidates))],
+            "reason": loaded["reason"],
+        }],
+        "segment_order_preserved": True,
+        "formal_direction_preserved": True,
+        "summary": "Checkpoint protocol normalization completed.",
+    }, evidence_candidates=candidates)
+    assert planning_adaptation_receipt_issues(
+        normalized,
+        authority_sha256="p" * 64,
+        planning_sha256="b" * 64,
+        segment=1,
+        expected_event_ids=["EV-1"],
+        evidence_candidates=candidates,
+        authority_version=PLANNING_ADAPTATION_VERSION,
+    ) == []
+    assert any(
+        item["event_type"]
+        == "planning_adaptation_checkpoint_protocol_normalized"
+        for item in service.db.list_run_events("adaptation-run")
     )
 
 
@@ -4079,12 +5090,15 @@ async def test_capacity_split_reuses_completed_packets_after_interruption(
                 context_window=32_768,
             )
         first_singles.append(event_ids[0])
-        if len(first_singles) == 2:
+        if event_ids[0] == "EV-2":
             raise ConnectionError("packet transport interrupted")
         return receipt_for(prompt)
 
     service._stage = interrupted_stage
-    with pytest.raises(ConnectionError, match="packet transport interrupted"):
+    with pytest.raises(
+        ProtocolReceiptRouteExhaustedError,
+        match="protocol_route_transport_interrupted",
+    ):
         await service._review_short_plan_adaptation_capacity_split(
             "adaptation-run", first_run_path, project, "constraints",
             outline_sha256="a" * 64,

@@ -1,0 +1,273 @@
+{
+  "version": 2,
+  "original_requirement": "Implement P0-P6 completely: converge every structured model-output parser, add mature tolerant conversion with audit, migrate planning through final review, unify bounded recovery, prove cross-genre and unknown-shape behavior, and run a controlled real third-party API canary without rewriting formal prose or exposing credentials.",
+  "scope_classification": "open_world",
+  "operational_definition": "A provider may repeat an old malformed, aliased, wrapped, truncated, or interrupted response, but the runtime must normalize it locally or regenerate only the smallest complete authority-bound unit and cross the next domain boundary. Accurate rejection alone is not recovery. Ordered ownership, narrative state, causality, viewpoint, timeline, relationships, promises, ending, and formal manuscripts must remain unchanged unless an independently validated authorized creative unit changes.",
+  "forbidden_narrowing": [
+    "Do not fix only steps or causal_cycles with literal provider aliases.",
+    "Do not count fail-closed interception or best-candidate retention as successful recovery.",
+    "Do not add provider-, model-, genre-, project-, prose-, or incident-literal branches outside a versioned contract adapter or typed recovery policy.",
+    "Do not treat BAML, JSON Repair, or provider strict mode as narrative authority.",
+    "Do not repair unclosed transport-truncated JSON into an apparently complete artifact.",
+    "Do not rewrite an existing formal manuscript during canary or recovery."
+  ],
+  "resolution_status": "systemically_resolved",
+  "constraint_traceability": [
+    {
+      "requirement": "P0 single versioned contract registry and complete old-parser inventory",
+      "implementation": "src/novel_flywheel/generated_artifacts.py owns both the artifact contract registry and the versioned contract-adapter registry, with source-scan enforcement tests; only the gateway fast path, strict truncation checks, and trusted checkpoint readers retain direct strict parsing. Workflows may invoke adapters but may not define representation-specific acceptance branches.",
+      "test_paths": ["tests/test_generated_artifacts.py"],
+      "evidence": "Source-scan tests fix the exact allowed strict-reader set, the declared adapter ownership budget, and the absence of the retired inline planning normalizer; they fail on a new parallel parser or a duplicate conversion authority."
+    },
+    {
+      "requirement": "P1 mature tolerant conversion with BAML SAP, Pydantic/domain validation, and secret-free audit",
+      "implementation": "baml_src/artifact_parser.baml and GeneratedArtifactGateway perform topology-first selection, parser-only BAML alignment, conservative JSON syntax repair, domain normalization, ownership comparison, quarantine, and hash-only audit. Proven alternate representations use a versioned adapter descriptor declaring source shape, canonical shape, proof obligation, and provider/narrative independence; the transformed value must then pass Pydantic and the unchanged domain validator. Planning facets have two declared adapters: closed truth-set canonicalization and version-2 unique extractive evidence binding across only the model-selected Runtime evidence IDs. The latter accepts either a uniquely aligned fuzzy quote or a uniquely occurring exact quote with an independently non-empty detached reason, attaches only the proved Runtime span, and rejects repetition or cross-source ambiguity.",
+      "test_paths": ["tests/test_generated_artifacts.py", "tests/test_generated_artifact_resilience.py"],
+      "evidence": "Tests prove steps/causal_cycles and unseen containers convert, an exact complete planning truth set canonicalizes idempotently across order and Unicode variants, and fuzzy or exact-detached negative evidence converts only when one informative exact location is provable across selected Runtime evidence. Repeated exact or fuzzy spans, multi-candidate, weak, unknown-ID, and empty-reason shapes do not convert; adaptation is idempotent, ambiguity and machine control remain closed, truncation stays typed, and audit records contain hashes rather than prose."
+    },
+    {
+      "requirement": "P2-P3 migrate planning, causal, manifest, draft receipts, polish/revision, and final review",
+      "implementation": "WorkflowService routes planning adaptation, causal packets, execution manifests and receipts, draft/whole semantic receipts, revision plans, material audits, maintenance facts, and final-review JSON through _convert_generated_object while existing domain validators remain authoritative. Fresh planning facet verdicts separate model-owned semantics from a Runtime-owned request identity envelope; historical checkpoints remain strictly hash-bound. All six planning receipt schedules replace the generic editorial review system prompt with one dedicated immutable-receipt system contract while retaining layered Skill and story authority context; the selected system contract participates in the node input hash and is restricted to bounded protocol output. Draft and whole receipts additionally use conservative unique-span extractive alignment; whole receipts use a hash-bound compact evidence projection and adjacent-window Map/Reduce when capacity requires it.",
+      "test_paths": ["tests/test_planning_adaptation_workflow.py", "tests/test_execution_manifest_workflow.py", "tests/test_workflows.py"],
+      "evidence": "Related suites cover protocol-only receipt retry, unique-span alignment without prose mutation, ambiguous-span rejection, execution-manifest continuation, adjacent-window whole-story reduction, structural revision retry, terminal-review fallback, and formal promotion gates. An AST architecture test fixes all six planning schedules to the shared system contract, and a local integration test retains real stage assembly, configured-fallback selection, layered context, gateway dispatch, adapter/domain validation, and successful bounded-receipt completion."
+    },
+    {
+      "requirement": "P4 unified typed recovery with fallback, minimal regeneration, split, and checkpoint resume",
+      "implementation": "recovery_engine.py separates transport, truncation, syntax/protocol, ownership, semantics, quality, and stale authority and exposes minimal_regenerate and resume_checkpoint actions. A provider-agnostic ProtocolReceiptAttempt schedule gives protocol recovery its own bounded budget: route-isolated primary receipt attempts, then up to two receipt-only attempts on the configured independent fallback, with every output re-entering the same adapter, Pydantic, ownership, local, adjacent, and whole validators. Route execution exceptions cross one shared typed boundary; persistence contains only failure class, stable code, exception type, scope identifiers, and hashes. ConnectionError, TimeoutError, and Runtime's typed TransportInterruptedError own transport classification before nested provider wording, preventing an inherited capacity exception from reclassifying a non-terminal response. A run-, role-, and route-scoped circuit opens after two execution failures, bypasses only the failing explicit route, retains the underlying failure classification, and admits one half-open recovery probe after cooldown. The inner stage defers raw route-failure audit and cannot hide a fallback from the owning schedule. Provider capacity creates a split request inside the model-call handler but executes the semantic splitter only after leaving that exception context, so a later ownership or evidence error cannot inherit stale capacity provenance. The splitter re-raises a new failure with suppressed context, and failure classification honors Python's __suppress_context__ contract instead of traversing hidden stale exceptions. Context-capacity event persistence hashes rather than stores the provider error. The shared stage boundary sheds only reproducible advisory material at compact pressure, then invokes the declared semantic splitter; causal packets and whole-draft receipts execute local conversion, bounded retry, fallback/split, hash-bound reduction, and checkpoint continuation.",
+      "test_paths": ["tests/test_recovery_engine.py", "tests/test_context_policy.py", "tests/test_workflows.py", "tests/test_semantic_packets.py"],
+      "evidence": "Tests prove the typed action order, bounded primary-to-configured-fallback receipt schedule, a first invalid fallback receipt followed by one valid smallest-receipt retry, provider rejection and connection exceptions before a terminal receipt, explicit TransportInterruptedError priority over stale nested capacity context, prevention of hidden gateway fallback during primary-only retries, hash-only route and capacity audit, run isolation, circuit open/bypass, cooldown half-open recovery, preservation of the original terminal failure class, stale capacity-context isolation, transient recovery followed by valid fallback and whole-plan continuation, typed all-route exhaustion with resumable checkpoint state, smallest receipt regeneration for unknown vocabulary, exact ordered split/reduction, advisory-only context shedding, semantic-receipt capacity reduction, and corrupt-suffix restoration from a database checkpoint."
+    },
+    {
+      "requirement": "P5 cross-genre, unknown, ambiguous, truncation, and network tests",
+      "implementation": "Open-world table and metamorphic tests cover six genres plus order, Unicode normalization, idempotence, root, renamed, nested, double-nested, fenced, malformed-complete, ambiguous, partial, duplicate, foreign ownership, unknown control, truncation, disconnect, output-limit, and protocol-route-exhaustion behaviors.",
+      "test_paths": ["tests/test_generated_artifact_resilience.py", "tests/test_workflows.py", "tests/test_semantic_packets.py"],
+      "evidence": "Assertions bind ordered event IDs, complete cycles, Runtime-owned global fields, checkpoint hashes, and downstream manifest hashes rather than exact creative wording."
+    },
+    {
+      "requirement": "P6 controlled real third-party canary and removal gate",
+      "implementation": "The design contract requires local/full/strict gates before Windows-user service launch; runtime fingerprinting prevents stale-code reuse and only a non-formal failed-run resume may be used for the canary. Duplicate business parser authority is already removed while strict transport/checkpoint readers remain intentionally retained.",
+      "test_paths": ["tests/test_launcher.py", "tests/test_workflows.py", "tests/providers/test_probe.py"],
+      "evidence": "Launcher identity tests, capability probe tests, and causal-to-manifest continuation tests establish the offline gate; live canary evidence is recorded separately after the gate."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "provider.route_rejected",
+    "provider.credentials_unavailable",
+    "runtime.stale_console_process",
+    "initialization.location_backlink_missing",
+    "initialization.location_reference_missing",
+    "initialization.relationship_inverse_mismatch",
+    "provider.connection_failed",
+    "model.context_capacity_indivisible_scope",
+    "planning.runtime_identity_echo_mismatch",
+    "planning.reviewed_dimensions_echo_conflict",
+    "planning.invariant_truth_set_shape",
+    "planning.review_protocol_route_exhausted",
+    "planning.execution_manifest_handoff_echo_mismatch",
+    "model.context_capacity_preflight",
+    "runtime.required_tool_output_missing",
+    "runtime.primary_error_masked",
+    "parser.generated_artifact_shape",
+    "model.output_truncated",
+    "planning.causal_chain_invalid",
+    "planning.recovery_latent_issue_misattributed",
+    "planning.structure_drift",
+    "planning.review_evidence_semantic_mismatch",
+    "planning.review_evidence_binding_invalid",
+    "planning.plan_structure_validation_failed",
+    "planning.event_body_integrity",
+    "planning.presentation_normalized_ownership_revealed",
+    "planning.packet_merge_closedness",
+    "planning.participant_identity_realization_mismatch",
+    "planning.event_obligation_incomplete",
+    "planning.atomic_beat_scope_mismatch",
+    "planning.repair_anchor_collapse",
+    "narrative.first_person_contract_missing",
+    "draft.segment_integrity_failed",
+    "draft.split_merge_length_mismatch",
+    "draft.semantic_receipt_unsatisfied",
+    "polish.local_validation_failed",
+    "review.issue_ledger_not_refreshed",
+    "review.final_review_unavailable"
+  ],
+  "projected_failure_mechanisms": [
+    "provider credential lookup and route identity",
+    "transport interruption and retry provenance",
+    "declared versus observed context and output capacity",
+    "output truncation versus balanced syntax damage",
+    "parser ambiguity and open container topology",
+    "ordered event and atomic-beat ownership",
+    "planning evidence and participant identity binding",
+    "runtime-owned receipt identity versus model-owned semantic payload",
+    "generic stage system contract versus immutable receipt contract",
+    "reviewed facet scope versus model-asserted changed dimensions",
+    "facet invariant boolean-map versus complete truth-set encoding",
+    "planning event-realization role versus independent causal-companion role",
+    "accepted execution-manifest handoff authority versus model paraphrase",
+    "semantic packet split, reduction, and closedness",
+    "stale, partial, corrupt, and conflicting checkpoints",
+    "draft split/merge and semantic receipt integrity",
+    "polish and targeted-revision narrative regression",
+    "issue-ledger refresh and final-review recovery",
+    "formal promotion authority and immutable manuscript preservation"
+  ],
+  "why_previous_tests_missed": "Earlier tests exercised the strict JSON parser and individual semantic validators separately, used canonical cycle container names, and often stopped at rejection or checkpoint retention. They did not replay the real singleton shapes (steps and causal_cycles with leaked non-owned globals), did not require successful conversion followed by causal reduction and execution-manifest continuation, and did not distinguish a balanced syntax defect from an unclosed transport-truncated object. Semantic-receipt tests used short canonical exact quotes, so they never combined fifteen beats, non-contiguous reviewer-selected excerpts, a missing summary, the real 32K route reserve, and continuation into whole-draft review. Planning facet tests also always made fake providers echo every digest exactly, represented invariants only as boolean maps, used exact negative quotes duplicated inside reason, and used semantically coherent empty changed_dimensions whenever all invariants were true. They therefore could not expose a valid current-window verdict rejected by a mistyped Runtime digest, a complete invariant-name truth set rejected as invariant_shape, a uniquely alignable selected-evidence quote rejected only because reason did not duplicate it, an exact uniquely selected quote whose independent reason omitted the quote, the complete reviewed-field set copied into changed_dimensions, or the broader provider behavior of mixing story-internal progress dimensions with formal-authority deviation dimensions while still returning an all-true invariant map. Local planning tests supplied an event realization without a separate causal-chain companion, so they did not expose two valid semantic roles being collapsed into one ambiguous required field and then degraded by unnecessary model repair. Execution-manifest fakes copied every previous exit state verbatim, so they never exercised a valid current fragment whose entry described the same transition in provider-authored wording but omitted one exact Runtime-accepted predecessor assertion. Protocol tests treated repeated invalid receipts as returned values and stopped at selected-model exhaustion; they neither threw after semantic progress nor proved that the outer schedule, rather than an inner gateway, owned primary/fallback provenance. They therefore missed provider rejection before a terminal response, duplicate raw-error persistence, hidden fallback during a primary-only output-limit retry, repeated doomed primary calls across sibling receipts, the need for a second bounded fallback receipt, and the need to distinguish route exhaustion from context-capacity splitting. Capacity tests made the splitter succeed; they never raised a new evidence error while the provider-capacity exception was still active, so stale Python exception context poisoned the outer classifier only in production. Transport tests used built-in ConnectionError or message-only failures, not Runtime's typed non-terminal TransportInterruptedError created while an upstream capacity exception remained in context, so type ownership versus nested-marker priority was untested.",
+  "latest_production_shape_gap": "Planning schedule tests replaced _stage with ideal receipt functions, so they preserved neither the real system-message assembly nor the configured-fallback provider's prompt priority. They could not reveal that the generic review system contract required a quality scorecard which conflicted with the more specific immutable facet receipt in the user message. The new regression retains the actual stage and fallback boundary, asserts the dedicated system contract, validates a canonical receipt, and separately proves that the production-shaped quality scorecard cannot enter the facet adapter.",
+  "l3_split_review": "The shared receipt-system and recovery slice passed strict L3 against the original task baseline. Python suppressed-exception provenance is a second authority-critical slice with its own external baseline, direct classifier regression, prior full-suite evidence for the identical final logic, and a separate strict L3 gate.",
+  "sibling_boundaries": [
+    {
+      "boundary": "initialization and project material creation",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Initialization uses typed proposal/domain validators and snapshot rollback; the full historical initialization suites remain in the full gate, and no new open model JSON parser authority remains outside the gateway."
+    },
+    {
+      "boundary": "planning adaptation and planning repair",
+      "disposition": "fixed_and_tested",
+      "evidence": "Planning segment, facet, hierarchy, whole receipt, repair patch, and short-plan packet paths use the registry gateway followed by their existing hash, evidence, ownership, body, obligation, and handoff validators. Alternate facet representations are owned by one versioned, Pydantic-checked, hash-audited adapter rather than workflow branches. The local plan gate semantically arbitrates an explicit event realization against an independent causal-chain companion without changing either source span; two conflicting event realizations remain ambiguous. Direct facet and facet-window calls bind fresh semantic payloads to Runtime-owned identities, expand only an exact complete invariant-name truth set into an all-true map, normalize the exact full reviewed-field echo, and bind a fuzzy or exact-detached negative quote only when it has one informative location across selected Runtime evidence. Partial, duplicate, unknown, repeated-evidence, and protected-dimension-conflicting shapes stay invalid. Protocol-invalid or route-interrupted segment, event-facet, facet-window, regional, hierarchy-reduction, and whole-plan receipts share one bounded explicitly selected primary-to-configured-fallback schedule, use the same dedicated immutable-receipt system contract instead of the generic editorial scorecard, and always re-enter unchanged validators. A production-shaped quality scorecard remains invalid rather than being guessed into facet semantics. One execution wrapper owns typed hash-only route failure audit, run-scoped circuit state, and the bounded second fallback receipt; capacity splitting executes outside the caught provider exception so later semantic errors retain their own class. At the parent reducer, raw dimension reports remain auditable, the complete invariant map exclusively determines structural deviations, true protected dimensions become reviewed narrative scope, and free-form dimensions remain equivalent presentation metadata. False invariants and invalid evidence stay blocking at the smallest authority-bound receipt. Historical checkpoint bytes and hashes are verified before deterministic normalization, and the unchanged parent validator remains mandatory."
+    },
+    {
+      "boundary": "causal chain generation and semantic reduction",
+      "disposition": "fixed_and_tested",
+      "evidence": "Production-shaped steps/causal_cycles packets convert through topology-first BAML alignment, non-owned globals are quarantined, exact partitions reduce, and hash-bound leaf/root checkpoints are written."
+    },
+    {
+      "boundary": "execution manifest",
+      "disposition": "fixed_and_tested",
+      "evidence": "Manifest bodies and receipts use the gateway then parse_execution_manifest, fragment ownership, state assertion, boundary evidence, and whole-manifest validators. Fresh fragments no longer ask the provider to reproduce accepted adjacent state authority: Runtime binds the exact previous exit assertions and their versioned hash, retains additional model entry assertions, records hash-only audit metadata, and reruns the unchanged fragment, adjacent-boundary, and whole-manifest validators. Malformed entry containers and all unrelated semantic defects remain blocking."
+    },
+    {
+      "boundary": "drafting and semantic receipts",
+      "disposition": "fixed_and_tested",
+      "evidence": "Draft prose remains text-only. Segment receipts bind authority, prose hashes, beats/events, entry/exit, viewpoint, state, order, and causality; non-contiguous quotes may align only to one unique informative exact span. Whole receipts use hash-bound compact projections and adjacent-window Map/Reduce under capacity, then re-enter the unchanged whole-draft validator."
+    },
+    {
+      "boundary": "split and merge",
+      "disposition": "fixed_and_tested",
+      "evidence": "Semantic packet and draft tests prove contiguous exact ownership, predecessor hashes, parent-atomic merge, and no acceptance of a failed child or invalid merged parent."
+    },
+    {
+      "boundary": "polish",
+      "disposition": "fixed_and_tested",
+      "evidence": "Polish output stays prose; changed segments re-enter the same extractive receipt boundary and direct-or-Map/Reduce whole-story validator, while transport, capacity, and output-limit recovery remain typed."
+    },
+    {
+      "boundary": "targeted and manual revision",
+      "disposition": "fixed_and_tested",
+      "evidence": "Revision plans use the gateway, semantic repair groups retain issue and scope authority, and rejected combinations restore only the conflicting complete unit."
+    },
+    {
+      "boundary": "AI issue refresh",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Issue refresh consumes normalized review ledgers and stable issue IDs; review JSON enters through final-review conversion and existing ledger reconciliation tests prevent omission from meaning resolution."
+    },
+    {
+      "boundary": "final review",
+      "disposition": "fixed_and_tested",
+      "evidence": "Window, hierarchy, adjudication, configured fallback, compact recovery, and semantic whole-story reduction all parse through the gateway; unclosed outputs are typed truncation and never locally completed."
+    },
+    {
+      "boundary": "formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The gateway never writes formal prose; promotion still requires terminal review, semantic integrity, source hashes, candidate hashes, and atomic publication commit."
+    }
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "canonical root cycles for mystery",
+    "renamed root container for romance",
+    "unseen nested container for xianxia",
+    "double-nested provider response for science fiction",
+    "Markdown-fenced unseen wrapper for historical fiction",
+    "balanced trailing-comma object for slice of life",
+    "production steps singleton with non-owned ending",
+    "production causal_cycles singleton with non-owned opening",
+    "verbose open descriptive metadata",
+    "multilingual descriptive values"
+    ,"valid facet semantic payload with a mistyped model-echoed authority digest"
+    ,"all-true facet payload with the exact complete reviewed-field set echoed as changed_dimensions"
+    ,"all-true facet set mixing story-progress structural names and free-form presentation dimensions"
+    ,"complete invariant-name truth set with current in-scope evidence"
+    ,"permuted and NFKC-equivalent complete truth sets canonicalized to one idempotent payload"
+    ,"negative planning facet with a unique informative extractive span in selected Runtime evidence and an independently worded non-empty reason"
+    ,"negative planning facet with one exact uniquely selected Runtime evidence quote and an independently worded detached reason"
+    ,"three protocol-invalid primary review receipts followed by one valid configured-fallback receipt"
+    ,"planning event realization table accompanied by an independent causal-chain explanation"
+    ,"valid execution fragment with a paraphrased entry state plus Runtime-bound exact previous exit"
+  ],
+  "model_output_topology_classes_tested": [
+    "canonical root object",
+    "renamed root array",
+    "single nested wrapper",
+    "double nested provider envelope",
+    "fenced object wrapper",
+    "balanced malformed JSON syntax"
+  ],
+  "unseen_valid_variants_tested": [
+    "provider.response.motion_bundle_omega with authority_echo.ordered_ids",
+    "delivery.tribulation_motion with ownership",
+    "root ordinary_turns balanced syntax variant"
+  ],
+  "unknown_variant_behavior": "A unique topology with known semantic cycle fields is aligned and revalidated. Unknown semantic vocabulary that BAML cannot align does not get guessed by key order; it becomes a typed protocol failure and regenerates only the current receipt. Multiple candidates, foreign/reordered/duplicate ownership, and machine-control fields never cross the authority boundary.",
+  "invalid_output_variants_tested": [
+    "two mutually exclusive cycle arrays",
+    "unclosed truncated cycle object",
+    "reordered and duplicate event ownership",
+    "unknown nested override_validation control",
+    "incomplete cycle missing required state change"
+    ,"facet semantic payload with out-of-scope evidence despite repairable identity fields"
+    ,"facet payload with a false relationship invariant and a matching structural changed dimension"
+    ,"partial, duplicate, unknown, or protected-dimension-conflicting invariant truth set"
+    ,"all selected-route planning receipts invalid while a configured review fallback exists"
+    ,"fuzzy planning evidence with repeated, multiple strong candidates, weak overlap, unknown evidence ID, or empty reason"
+    ,"exact planning evidence repeated within one selected Runtime source"
+    ,"planning block with two conflicting event realizations that remains ambiguous"
+    ,"execution fragment with a malformed non-list entry-state container"
+    ,"production planning-facet fallback returned an unrelated quality scorecard"
+  ],
+  "transport_capacity_variants_tested": [
+    "provider max_tokens output limit with recursive semantic split",
+    "server disconnect with same-route retry and configured fallback",
+    "semantic progress followed by bounded immutable-receipt protocol exhaustion and configured fallback",
+    "input context overflow preflight before provider call",
+    "indivisible packet credential failure preserving both route errors",
+    "24,679-token semantic-receipt retry at the 32K compact-pressure boundary",
+    "whole-draft semantic input reduced through adjacent hash-bound windows"
+    ,"provider rejection before terminal response with hash-only audit and configured fallback"
+    ,"primary-only output-limit retry without hidden gateway fallback"
+    ,"typed all-route transport exhaustion preserving resumable review state"
+    ,"two consecutive route rejections opening a run-scoped circuit followed by primary bypass and configured fallback"
+    ,"provider capacity split whose downstream evidence error remains normal invalid output rather than inheriting stale capacity context"
+    ,"typed non-terminal transport interruption carrying stale nested capacity context but remaining transport-owned"
+    ,"normal invalid splitter failure with explicitly suppressed stale capacity context"
+  ],
+  "invariant_test_paths": [
+    "tests/test_generated_artifact_resilience.py",
+    "tests/test_generated_artifacts.py",
+    "tests/test_context_policy.py",
+    "tests/test_semantic_packets.py",
+    "tests/test_execution_manifest_workflow.py",
+    "tests/test_planning_adaptation_workflow.py",
+    "tests/test_workflows.py"
+  ],
+  "production_shaped_tests": [
+    "tests/test_workflows.py",
+    "tests/test_generated_artifacts.py",
+    "tests/test_production_incidents.py",
+    "tests/test_context_capacity_incidents.py",
+    "tests/test_planning_adaptation_workflow.py",
+    "tests/test_execution_manifest_workflow.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_workflows.py",
+    "tests/test_execution_manifest_workflow.py",
+    "tests/test_planning_adaptation_workflow.py"
+  ],
+  "remaining_risks": [
+    "No finite parser can infer genuinely novel semantic field meaning safely; the bounded protocol retry intentionally delegates that smallest receipt back to a configured model route.",
+    "A deployment with no genuinely independent configured fallback can only retry the selected route and restore its best validated checkpoint; capability probing and route configuration remain operational prerequisites.",
+    "Unique-span alignment is deliberately conservative: repeated, cross-source, short, or weak evidence remains unresolved and consumes a bounded receipt repair instead of being guessed.",
+    "The route circuit is process-local and run-scoped; a service restart intentionally clears operational health state, after which the bounded threshold is re-established without changing checkpoints or narrative authority.",
+    "Third-party gateways may change undocumented transport behavior; observed route capability, typed transport fallback, semantic Map/Reduce, and the real canary are the ongoing controls."
+    ,"A third-party model may still ignore the dedicated receipt system contract; that output remains isolated and enters the bounded same-receipt retry and configured-fallback ladder rather than being converted without proof."
+  ]
+}

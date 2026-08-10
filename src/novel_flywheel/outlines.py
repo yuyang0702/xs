@@ -10,7 +10,8 @@ import unicodedata
 from pathlib import Path
 
 from novel_flywheel.db import Database
-from novel_flywheel.model_output import canonical_model_label, parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
+from novel_flywheel.model_output import canonical_model_label
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
@@ -382,7 +383,9 @@ def _merge_manifests(*manifests: dict) -> dict[str, list[dict[str, str]]]:
 
 def _json_object(text: str) -> dict:
     try:
-        return parse_json_object(text, label="资料清单")
+        return GeneratedArtifactGateway().convert_object(
+            text, contract_name="outline_analysis",
+        ).payload
     except (json.JSONDecodeError, ValueError) as exc:
         raise ValueError(f"资料清单没有返回唯一有效 JSON：{exc}") from exc
 
@@ -1533,7 +1536,9 @@ class OutlineService:
     @staticmethod
     def _semantic_decisions(text: str, allowed_ids: set[str]) -> list[dict]:
         try:
-            payload = parse_json_object(text, label="大纲变化判断")
+            payload = GeneratedArtifactGateway().convert_object(
+                text, contract_name="outline_analysis",
+            ).payload
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("模型没有返回可读取的判断结果，请重新尝试") from exc
         decisions = payload.get("decisions") if isinstance(payload, dict) else None

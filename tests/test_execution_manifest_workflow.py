@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import re
 from types import SimpleNamespace
 
 import pytest
@@ -10,8 +11,10 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.draft_split import DraftTaskContract
 from novel_flywheel.execution_manifest import (
+    StateAssertion,
     execution_manifest_sha256,
     parse_execution_manifest,
+    state_assertions_sha256,
 )
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.workflows import WorkflowService
@@ -500,6 +503,96 @@ async def test_semantic_repair_reentering_schema_failure_recovers_before_ready(
 
 
 @pytest.mark.asyncio
+async def test_runtime_binds_exact_previous_exit_when_model_paraphrases_handoff(
+    tmp_path,
+) -> None:
+    service, project, run_path, state = make_service(tmp_path)
+    calls = {"planning": 0, "review": 0}
+
+    async def fake_stage(*args, **kwargs):
+        stage = args[3]
+        prompt = args[5]
+        calls[stage] += 1
+        if stage == "review":
+            return receipt_for_prompt(prompt)
+        segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        body = manifest_body(segment)
+        if segment == 2:
+            body["segments"][0]["entry_state"] = [{
+                "state": "调查人员已经动身去核对相关情况",
+                "inherited_from": "segment-01",
+            }]
+        return json.dumps(body, ensure_ascii=False)
+
+    service._stage = fake_stage
+    manifest = await service._ensure_short_execution_manifest(
+        "manifest-run", run_path, project, "constraints", 7, state,
+        (
+            "### 第 1 段：核实\n段末交接：核实身份的人已经出发\n\n"
+            "### 第 2 段：账房\n段末交接：花穗确认误认是人为安排"
+        ),
+        {"core_goal": "查清误认", "ending": "花穗确认误认是人为安排"},
+        [{
+            "id": EVENT_ID, "order": 1, "label": "误认身份被核实",
+            "section": "第一章", "kind": "narrative",
+        }],
+        2,
+    )
+
+    first, second = manifest.segments
+    assert {item.state for item in first.exit_state} <= {
+        item.state for item in second.entry_state
+    }
+    assert second.previous_exit_sha256 == state_assertions_sha256(
+        first.exit_state, version=4,
+    )
+    assert calls == {"planning": 2, "review": 2}
+    events = service.db.list_run_events("manifest-run")
+    handoff_events = [
+        item for item in events
+        if item["event_type"] == "planning_manifest_runtime_handoff_bound"
+    ]
+    assert len(handoff_events) == 1
+    assert handoff_events[0]["metadata"]["added_state_count"] == 1
+    assert "source_body_sha256" in handoff_events[0]["metadata"]
+    assert "bound_body_sha256" in handoff_events[0]["metadata"]
+    assert not any(
+        item["event_type"] == "planning_manifest_fragment_repair"
+        for item in events
+    )
+
+
+def test_runtime_handoff_binding_does_not_normalize_malformed_entry_state() -> None:
+    previous_exit = (StateAssertion(
+        state="上一段已经验收的出口状态",
+        produced_by=(f"{EVENT_ID}/01",),
+    ),)
+    body = manifest_body(2)
+    body["segments"][0]["entry_state"] = "not-a-list"
+
+    bound, added = WorkflowService._bind_short_execution_fragment_handoff(
+        body, previous_exit=previous_exit,
+    )
+
+    assert added == 0
+    assert bound["segments"][0]["entry_state"] == "not-a-list"
+    assert bound["segments"][0]["previous_exit_sha256"] == (
+        state_assertions_sha256(previous_exit, version=4)
+    )
+    with pytest.raises(ValueError, match="entry_state must be a non-empty list"):
+        parse_execution_manifest({
+            **bound,
+            "version": 4,
+            "status": "fragment_ready",
+            "authority_sha256": "a" * 64,
+            "outline_sha256": "b" * 64,
+            "planning_sha256": "c" * 64,
+            "causal_chain_sha256": "d" * 64,
+            "semantic_receipt": {},
+        })
+
+
+@pytest.mark.asyncio
 async def test_draft_semantic_evidence_retry_keeps_prose_immutable(tmp_path) -> None:
     service, project, run_path, _state = make_service(tmp_path)
     prose = "沈老夫人派人外出核实花穗身份，核实身份的人已经出发。"
@@ -570,6 +663,73 @@ async def test_draft_semantic_evidence_retry_keeps_prose_immutable(tmp_path) -> 
 
 
 @pytest.mark.asyncio
+async def test_draft_semantic_unique_extract_alignment_avoids_model_retry(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    prose = (
+        "沈老夫人派人外出核实花穗身份，核实身份的人已经出发。"
+        "花穗留在前厅等待回报，没有提前追查后续账目。"
+    )
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-01",
+        parent_task_id="manifest-run",
+        depth=0,
+        target_han=60,
+        event_ids=(EVENT_ID,),
+        scope="核实身份",
+        entry_state="沈老夫人决定核实身份",
+        exit_requirement="核实身份的人已经出发",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=(f"{EVENT_ID}/01",),
+        viewpoint="",
+        prohibited_future_beat_ids=(),
+    )
+    calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        joined = "沈老夫人派人外出核实花穗身份……核实身份的人已经出发"
+        return json.dumps({
+            "authority_sha256": contract.authority_sha256,
+            "execution_manifest_sha256": contract.execution_manifest_sha256,
+            "task_id": contract.task_id,
+            "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+            "beat_receipts": [{
+                "beat_id": f"{EVENT_ID}/01", "evidence": joined,
+                "actor_action_valid": True, "actor_action_evidence": joined,
+                "state_valid": True, "state_evidence": "核实身份的人已经出发",
+                "scene_order_valid": True, "scene_order_evidence": joined,
+            }],
+            "outside_beat_ids": [], "future_beat_ids": [],
+            "entry": {"satisfied": True, "evidence": joined},
+            "exit": {"satisfied": True, "evidence": joined},
+            "causal_order_valid": True, "causal_order_evidence": joined,
+            "summary": "",
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    receipt = await service._verify_draft_semantic_node(
+        "manifest-run", run_path, project, "constraints", contract, prose, [],
+        suffix="-local-alignment", failure_stage="draft",
+    )
+
+    assert calls == 1
+    assert receipt["summary"]
+    events = service.db.list_run_events("manifest-run")
+    assert any(
+        item["event_type"] == "semantic_receipt_evidence_aligned"
+        for item in events
+    )
+    assert not any(
+        item["event_type"] == "semantic_receipt_protocol_retry"
+        for item in events
+    )
+
+
+@pytest.mark.asyncio
 async def test_whole_draft_semantic_protocol_retry_keeps_draft_immutable(
     tmp_path,
 ) -> None:
@@ -634,6 +794,105 @@ async def test_whole_draft_semantic_protocol_retry_keeps_draft_immutable(
         if item["event_type"] == "whole_semantic_receipt_protocol_retry"
     )
     assert retry["metadata"]["draft_sha256"] == draft_sha256
+
+
+@pytest.mark.asyncio
+async def test_whole_semantic_capacity_uses_adjacent_windows_and_reducer(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    segments = [
+        "花穗在前厅接过旧账本并核对第一枚印章。",
+        "她沿着支出记录找到管事并确认银两已经支出。",
+        "管事交出凭据，花穗据此确认误认是人为安排。",
+    ]
+    draft = "\n\n".join(segments)
+    authority = "a" * 64
+    event_ids = ["EV-00000001", "EV-00000002", "EV-00000003"]
+    segment_receipts = []
+    for index, (segment, event_id) in enumerate(zip(segments, event_ids), 1):
+        segment_receipts.append({
+            "prose_sha256": hashlib.sha256(segment.encode("utf-8")).hexdigest(),
+            "event_receipts": [{"event_id": event_id, "evidence": segment}],
+            "entry": {"satisfied": True, "evidence": segment},
+            "exit": {"satisfied": True, "evidence": segment},
+            "causal_order_evidence": segment,
+            "summary": f"segment {index} passed",
+        })
+    direct_calls = 0
+    window_calls = 0
+    reducer_calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal direct_calls, window_calls, reducer_calls
+        prompt = args[5]
+        if prompt.startswith("DRAFT_WHOLE_SEMANTIC_VALIDATION"):
+            direct_calls += 1
+            return await kwargs["capacity_splitter"]({
+                "trigger": "preflight", "pressure": "split",
+            })
+        if prompt.startswith("DRAFT_WHOLE_SEMANTIC_WINDOW_V1"):
+            window_calls += 1
+            numbers = json.loads(re.search(
+                r"SEGMENT NUMBERS: (\[[^\n]+\])", prompt,
+            ).group(1))
+            hashes = json.loads(re.search(
+                r"SEGMENT SHA256: (\[[^\n]+\])", prompt,
+            ).group(1))
+            owned = json.loads(re.search(
+                r"EVENT IDS: (\[[^\n]+\])", prompt,
+            ).group(1))
+            excerpt = segments[numbers[0] - 1]
+            return json.dumps({
+                "authority_sha256": authority,
+                "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+                "segment_numbers": numbers, "segment_sha256": hashes,
+                "event_ids": owned, "missing_event_ids": [],
+                "duplicate_event_ids": [], "out_of_order_event_ids": [],
+                "causal_order_valid": True, "continuity_valid": True,
+                "commitment_flow_valid": True, "ending_valid": True,
+                "evidence": [{"kind": "window", "excerpt": excerpt}],
+                "summary": "Adjacent window passed.",
+            }, ensure_ascii=False)
+        assert prompt.startswith("DRAFT_WHOLE_SEMANTIC_REDUCE_V1")
+        reducer_calls += 1
+        return json.dumps({
+            "authority_sha256": authority,
+            "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+            "segment_sha256": [
+                hashlib.sha256(item.encode("utf-8")).hexdigest()
+                for item in segments
+            ],
+            "event_ids": event_ids, "missing_event_ids": [],
+            "duplicate_event_ids": [], "out_of_order_event_ids": [],
+            "causal_order_valid": True, "continuity_valid": True,
+            "ending_valid": True, "commitments_valid": True,
+            "evidence": [
+                {"kind": "opening", "excerpt": segments[0]},
+                {"kind": "ending", "excerpt": segments[-1]},
+            ],
+            "summary": "All windows reduce to one valid story.",
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    receipt = await service._verify_whole_draft_semantics(
+        "manifest-run", run_path, project, "constraints", authority,
+        draft, segments, event_ids, segment_receipts,
+    )
+
+    assert receipt["event_ids"] == event_ids
+    assert direct_calls == 1
+    assert window_calls == 2
+    assert reducer_calls == 1
+    events = service.db.list_run_events("manifest-run")
+    assert sum(
+        item["event_type"] == "whole_semantic_window_ready"
+        for item in events
+    ) == 2
+    assert any(
+        item["event_type"] == "whole_semantic_capacity_reduced"
+        for item in events
+    )
 
 
 @pytest.mark.asyncio

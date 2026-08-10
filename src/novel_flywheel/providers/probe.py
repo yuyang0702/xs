@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 from novel_flywheel.providers.base import ProviderAdapter
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
@@ -50,7 +50,9 @@ class CapabilityProbe:
 
     @staticmethod
     def _parse_json(text: str) -> dict:
-        return parse_json_object(text, label="Capability probe output")
+        return GeneratedArtifactGateway().convert_object(
+            text, contract_name="capability_probe",
+        ).payload
 
     async def run(self, model: str) -> ProbeResult:
         try:

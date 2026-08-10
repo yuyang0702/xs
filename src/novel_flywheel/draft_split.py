@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import copy
 from dataclasses import asdict, dataclass
 import hashlib
 import json
 import re
+
+from novel_flywheel.evidence_alignment import align_unique_evidence_span
 
 
 STALE_TARGET = re.compile(
@@ -233,6 +236,70 @@ def semantic_receipt_issues(
     return issues
 
 
+def align_semantic_receipt_evidence(
+    contract: DraftTaskContract, prose: str, receipt: object,
+) -> tuple[object, list[str]]:
+    """Locally align extractive receipt evidence without changing verdicts."""
+
+    if not isinstance(receipt, dict):
+        return receipt, []
+    aligned = copy.deepcopy(receipt)
+    repairs: list[str] = []
+    atomic = bool(contract.beat_ids)
+    receipt_field = "beat_receipts" if atomic else "event_receipts"
+    evidence_receipts = aligned.get(receipt_field)
+    if atomic and evidence_receipts is None:
+        receipt_field = "event_receipts"
+        evidence_receipts = aligned.get(receipt_field)
+    if isinstance(evidence_receipts, list):
+        fields = (
+            "evidence", "actor_action_evidence", "state_evidence",
+            "scene_order_evidence",
+        ) if atomic else ("evidence",)
+        for index, item in enumerate(evidence_receipts):
+            if not isinstance(item, dict):
+                continue
+            for field in fields:
+                value = str(item.get(field) or "").strip()
+                if value and value in prose:
+                    continue
+                rebound = align_unique_evidence_span(prose, value)
+                if rebound:
+                    item[field] = rebound
+                    repairs.append(f"{receipt_field}[{index}].{field}")
+    for field in ("entry", "exit"):
+        state = aligned.get(field)
+        if not isinstance(state, dict):
+            continue
+        value = str(state.get("evidence") or "").strip()
+        if value and value in prose:
+            continue
+        rebound = align_unique_evidence_span(prose, value)
+        if rebound:
+            state["evidence"] = rebound
+            repairs.append(f"{field}.evidence")
+    for field in ("viewpoint_evidence", "causal_order_evidence"):
+        if field == "viewpoint_evidence" and not contract.viewpoint:
+            continue
+        value = str(aligned.get(field) or "").strip()
+        if value and value in prose:
+            continue
+        rebound = align_unique_evidence_span(prose, value)
+        if rebound:
+            aligned[field] = rebound
+            repairs.append(field)
+
+    if not str(aligned.get("summary") or "").strip():
+        provisional = {**aligned, "summary": "extractive evidence alignment passed"}
+        if not semantic_receipt_issues(contract, prose, provisional):
+            aligned["summary"] = (
+                "Runtime aligned the reviewer's unique extractive evidence "
+                "to the immutable prose."
+            )
+            repairs.append("summary")
+    return aligned, repairs
+
+
 def validate_semantic_receipt(
     contract: DraftTaskContract,
     prose: str,
@@ -408,6 +475,44 @@ def whole_draft_receipt_issues(
     if not summary:
         add("missing_summary", "whole draft summary is missing")
     return issues
+
+
+def align_whole_draft_receipt_evidence(
+    authority_sha256: str,
+    draft: str,
+    segments: list[str],
+    event_ids: list[str],
+    receipt: object,
+) -> tuple[object, list[str]]:
+    """Apply the extractive alignment boundary to whole-draft evidence."""
+
+    if not isinstance(receipt, dict):
+        return receipt, []
+    aligned = copy.deepcopy(receipt)
+    repairs: list[str] = []
+    evidence = aligned.get("evidence")
+    if isinstance(evidence, list):
+        for index, item in enumerate(evidence):
+            if not isinstance(item, dict):
+                continue
+            value = str(item.get("excerpt") or "").strip()
+            if value and value in draft:
+                continue
+            rebound = align_unique_evidence_span(draft, value)
+            if rebound:
+                item["excerpt"] = rebound
+                repairs.append(f"evidence[{index}].excerpt")
+    if not str(aligned.get("summary") or "").strip():
+        provisional = {**aligned, "summary": "extractive evidence alignment passed"}
+        if not whole_draft_receipt_issues(
+            authority_sha256, draft, segments, event_ids, provisional,
+        ):
+            aligned["summary"] = (
+                "Runtime aligned the reviewer's unique extractive evidence "
+                "to the immutable draft."
+            )
+            repairs.append("summary")
+    return aligned, repairs
 
 
 def validate_whole_draft_receipt(

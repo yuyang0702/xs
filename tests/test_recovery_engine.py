@@ -1,5 +1,6 @@
 from novel_flywheel.recovery_engine import (
     FailureClass,
+    ProtocolRouteCircuitBreaker,
     RecoveryAction,
     RecoveryCandidate,
     RecoveryController,
@@ -7,6 +8,7 @@ from novel_flywheel.recovery_engine import (
     ReliabilityFailure,
     ValidationStage,
     compare_recovery_candidates,
+    protocol_receipt_attempts,
 )
 
 
@@ -28,6 +30,61 @@ def test_candidate_requires_issue_reduction_without_quality_or_scope_regression(
 
     assert decision.accepted is True
     assert decision.resolved_issue_keys == ("identity",)
+
+
+def test_protocol_receipt_schedule_escalates_to_independent_configured_route() -> None:
+    attempts = protocol_receipt_attempts(
+        same_route_attempts=3,
+        configured_fallback_available=True,
+    )
+
+    assert [attempt.route for attempt in attempts] == [
+        "primary", "primary", "primary", "configured_fallback",
+    ]
+    assert [attempt.action for attempt in attempts] == [
+        None,
+        RecoveryAction.RECEIPT_ONLY_RETRY,
+        RecoveryAction.RECEIPT_ONLY_RETRY,
+        RecoveryAction.FALLBACK_CAPABLE_ROUTE,
+    ]
+    assert attempts[-1].is_last is True
+
+
+def test_protocol_receipt_schedule_stays_bounded_without_fallback() -> None:
+    attempts = protocol_receipt_attempts(
+        same_route_attempts=2,
+        configured_fallback_available=False,
+    )
+
+    assert len(attempts) == 2
+    assert all(not attempt.use_configured_fallback for attempt in attempts)
+    assert attempts[-1].is_last is True
+
+
+def test_protocol_route_circuit_is_run_scoped_and_recovers_half_open() -> None:
+    now = [100.0]
+    circuit = ProtocolRouteCircuitBreaker(
+        failure_threshold=2, cooldown_seconds=30,
+        clock=lambda: now[0],
+    )
+
+    assert circuit.acquire("run-a", "review", "primary") == "closed"
+    assert circuit.record_execution_failure(
+        "run-a", "review", "primary",
+    ) is False
+    assert circuit.record_execution_failure(
+        "run-a", "review", "primary",
+    ) is True
+    assert circuit.acquire("run-a", "review", "primary") == "open"
+    assert circuit.acquire("run-b", "review", "primary") == "closed"
+
+    now[0] += 31
+    assert circuit.acquire("run-a", "review", "primary") == "half_open"
+    assert circuit.acquire("run-a", "review", "primary") == "open"
+    assert circuit.record_route_response(
+        "run-a", "review", "primary",
+    ) is True
+    assert circuit.acquire("run-a", "review", "primary") == "closed"
 
 
 def test_candidate_cannot_delete_prose_quality_to_pass_semantics() -> None:
@@ -117,6 +174,23 @@ def test_later_schema_regression_reenters_the_unified_recovery_loop() -> None:
     assert controller.next_action(schema) == RecoveryAction.RECEIPT_ONLY_RETRY
     controller.record_progress("segment-3")
     assert controller.next_action(semantic) == RecoveryAction.PATCH_SMALLEST_UNIT
+
+
+def test_p4_ladders_reach_minimal_regeneration_and_checkpoint_resume() -> None:
+    controller = RecoveryController()
+    protocol = ReliabilityFailure(
+        "shape", FailureClass.SYNTAX_PROTOCOL, "artifact", unit_id="packet-1",
+    )
+
+    actions = [controller.next_action(protocol) for _ in range(5)]
+
+    assert actions == [
+        RecoveryAction.LOCAL_NORMALIZE,
+        RecoveryAction.RECEIPT_ONLY_RETRY,
+        RecoveryAction.FALLBACK_CAPABLE_ROUTE,
+        RecoveryAction.MINIMAL_REGENERATE,
+        RecoveryAction.RESUME_CHECKPOINT,
+    ]
 
 
 def test_earlier_stage_progress_may_reveal_later_existing_issues() -> None:

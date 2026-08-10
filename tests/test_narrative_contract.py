@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from novel_flywheel.narrative_contract import (
+    NarrativeContract,
     confirm_narrative_contract,
     ensure_narrative_contract,
     first_person_prose_issues,
+    narrative_contract_sha256,
+    narrative_participant_realizations,
+    narrative_voice_projection,
     render_narrative_contract,
     resolve_narrative_contract,
 )
@@ -132,3 +138,57 @@ def test_high_confidence_third_person_drift_is_detected_without_banning_other_wo
         "门外风急，灯影晃了两下。"
     )
     assert first_person_prose_issues(contract, dialogue_only_name) == []
+
+
+@pytest.mark.parametrize(("text", "outside_reference"), [
+    ('我记录：“他说「我会去」。”然后我签字。', "我"),
+    ("私は記録した。『彼は「私が行く」と言った。』その後、私が署名した。", "私"),
+    ('I noted, "she said \'I will go.\'" Then I signed.', "I"),
+    ("我记录：＂我会去。＂然后我签字。", "我"),
+])
+def test_narrative_voice_projection_excludes_quoted_speakers_and_preserves_offsets(
+    text: str, outside_reference: str,
+) -> None:
+    projected = narrative_voice_projection(text)
+
+    assert len(projected) == len(text)
+    assert projected.count(outside_reference) == 2
+    assert "will go" not in projected
+
+
+@pytest.mark.parametrize(("name", "self_reference"), [
+    ("林雨", "我"),
+    ("Mara", "I"),
+    ("Aiko", "私"),
+    ("Sol", "yo"),
+    ("阿岚", "俺"),
+])
+def test_first_person_realization_contract_is_language_and_novel_agnostic(
+    name: str, self_reference: str,
+) -> None:
+    contract = NarrativeContract(
+        status="ready",
+        mode="first_person_limited",
+        narrator_character_id="narrator",
+        narrator_name=name,
+        self_reference=self_reference,
+        source="project_binding",
+    )
+
+    realizations = narrative_participant_realizations(contract)
+
+    assert realizations[name]["canonical_name"] == name
+    assert realizations[name]["narrative_references"] == [self_reference]
+    assert realizations[name]["narrative_contract_sha256"] == (
+        narrative_contract_sha256(contract)
+    )
+
+
+@pytest.mark.parametrize("contract", [
+    NarrativeContract(status="ready", mode="third_person_limited"),
+    NarrativeContract(status="needs_confirmation", mode="first_person_limited"),
+])
+def test_non_authoritative_narrator_contract_never_invents_realizations(
+    contract: NarrativeContract,
+) -> None:
+    assert narrative_participant_realizations(contract) == {}
