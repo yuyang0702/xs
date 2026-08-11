@@ -19,9 +19,11 @@ from novel_flywheel.context_policy import (
 )
 from novel_flywheel.execution_manifest import (
     bind_previous_exit_hashes,
+    execution_manifest_payload,
     execution_manifest_sha256,
     parse_execution_manifest,
 )
+from novel_flywheel.execution_authority import canonical_sha256
 from novel_flywheel.learning import LearningSystem
 from novel_flywheel.models import (
     ModelResult,
@@ -35,6 +37,14 @@ from novel_flywheel.planning_adaptation import (
     planning_adaptation_evidence_candidates,
     planning_adaptation_segment_authority_sha256,
     planning_adaptation_whole_authority_sha256,
+    planning_event_body_issues,
+)
+from novel_flywheel.planning_compiler import (
+    PLAN_FIELD_ALIASES,
+    PlanningDocumentIR,
+    PlanningSegmentIR,
+    compile_planning_segment,
+    render_planning_segment_ir,
 )
 from novel_flywheel.planning_recovery import (
     new_planning_recovery_state,
@@ -59,6 +69,7 @@ from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
+    DraftReceiptProtocolError,
     DraftSemanticValidationError,
     GeneratedArtifactShapeError,
     IncompleteModelOutputError,
@@ -557,7 +568,14 @@ class FakeGateway:
         self.roles = []
         self.systems = []
         self.responses = iter([
-            "# Story Plan\nA complete causal plan.",
+            (
+                "### 第 1 段：完成正式事件\n"
+                "事件ID：EV-00000001\n"
+                "大纲依据：主角完成当前正式目标并承担结果。\n"
+                "段首承接：主角位于事件起点，当前关系与已知信息保持不变。\n"
+                "本段事件：主角主动调查阻碍，作出选择并完成正式目标。\n"
+                "段末交接：目标已经完成，代价与后续状态均已明确。"
+            ),
             "# Draft\nRough story.",
             json.dumps({"score": 86, "hard_fail": False, "issues": ["tighten prose"]}),
             json.dumps({"score": 84, "hard_fail": False, "issues": ["strengthen paid hook"]}),
@@ -624,15 +642,21 @@ class FakeGateway:
                 "summary": "全文节拍顺序、连续性和结局均已核对。",
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            covered_event_ids = list(dict.fromkeys(
+                re.findall(r"EV-[0-9A-F]{8}", user.upper())
+            ))
             return ModelResult(json.dumps({
                 "core_goal": "完成正式规划中的目标",
                 "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
-                "ending": "完成正式结局", "covered_event_ids": [],
+                "ending": "完成正式结局",
+                "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         text = next(self.responses)
-        if role == "final_review" and "INITIAL ISSUE LEDGER:" in user:
+        if role == "final_review" and "AUTHORITATIVE REVIEW ISSUE LEDGER:" in user:
             payload = json.loads(text)
-            ledger_text = user.split("INITIAL ISSUE LEDGER:\n", 1)[1].split("\n\n", 1)[0]
+            ledger_text = user.split(
+                "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
+            )[1].split("\n\n", 1)[0]
             ledger = json.loads(ledger_text)
             payload["reconciliations"] = [{
                 "issue_id": item["issue_id"], "status": "resolved",
@@ -641,6 +665,21 @@ class FakeGateway:
             } for item in ledger]
             text = json.dumps(payload, ensure_ascii=False)
         return ModelResult(text, {"role": role, "model_name": f"fake-{role}"})
+
+    async def complete_primary(
+        self, role, system, user, max_output_tokens=None,
+    ):
+        return await self.complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+
+def expose_test_primary_route(gateway):
+    """Make a test double explicitly own the primary route it is exercising."""
+
+    if not hasattr(gateway, "complete_primary"):
+        gateway.complete_primary = gateway.complete
+    return gateway
 
 
 def execution_manifest_body_from_prompt(user: str) -> dict:
@@ -753,6 +792,11 @@ def execution_manifest_body_from_prompt(user: str) -> dict:
 
 
 def execution_manifest_receipt_from_prompt(user: str) -> str:
+    boundary_candidates = json.loads(
+        user.split("BOUNDARY EVIDENCE CANDIDATES:\n", 1)[1].split(
+            "\n\nEXECUTION MANIFEST:\n", 1,
+        )[0]
+    )
     raw = user.split("EXECUTION MANIFEST:\n", 1)[1].split(
         "\n\nAUTHORITY TEXT:\n", 1,
     )[0]
@@ -766,10 +810,7 @@ def execution_manifest_receipt_from_prompt(user: str) -> str:
         } for beat in manifest.beats],
         "segment_receipts": [{
             "segment": segment.segment, "boundary_valid": True,
-            "evidence": next(
-                beat.source_evidence for beat in reversed(manifest.beats)
-                if beat.owner_segment == segment.segment
-            ),
+            "evidence_id": next(reversed(boundary_candidates)),
         } for segment in manifest.segments],
         "formal_plot_unchanged": True,
         "summary": "执行索引与正式资料一致。",
@@ -826,16 +867,19 @@ def write_test_execution_manifest(
 ):
     state = service.story_states.ensure(project.id, project.path)
     authority_state = state_override if state_override is not None else state.data
-    chain = chain or {
-        "core_goal": "完成测试规划",
-        "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
-        "ending": "完成测试结局",
-    }
     plan_event_ids = list(dict.fromkeys(
         event_id
         for block in service._short_plan_segments(plan, segment_count)
         for event_id in service._short_plan_event_ids(block)
     ))
+    chain = {
+        **(chain or {
+            "core_goal": "完成测试规划",
+            "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
+            "ending": "完成测试结局",
+        }),
+        "covered_event_ids": plan_event_ids,
+    }
     formal_events = [{
         "id": event_id, "order": index,
         "label": f"测试正式事件 {event_id}",
@@ -855,6 +899,12 @@ def write_test_execution_manifest(
         "version": 3, "status": "ready", **hashes,
         "semantic_receipt": {}, "repair_attempts": 0,
     }
+    evidence_by_event = {
+        str(item["id"]): str(item.get("evidence") or item["id"])
+        for item in events
+    }
+    for beat in payload["beats"]:
+        beat["source_evidence"] = evidence_by_event[beat["source_event_id"]]
     manifest = parse_execution_manifest(payload)
     receipt = {
         "authority_sha256": manifest.authority_sha256,
@@ -876,9 +926,97 @@ def write_test_execution_manifest(
     ).atomic_write
     atomic(
         run_path / "outputs" / "short-execution-index.json",
-        json.dumps(asdict(manifest), ensure_ascii=False, indent=2),
+        json.dumps(
+            execution_manifest_payload(manifest), ensure_ascii=False, indent=2,
+        ),
+    )
+    atomic(
+        run_path / "outputs" / "short-causal-chain.json",
+        json.dumps(chain, ensure_ascii=False, indent=2),
     )
     return manifest
+
+
+def complete_checkpoint_plan(count: int = 4) -> str:
+    """Build a real typed planning fixture; checkpoint tests must not mint IR."""
+
+    return "\n\n".join(
+        f"### 第 {number} 段：检查点事件 {number}\n"
+        f"事件ID：EV-{number:08X}\n"
+        f"大纲依据：检查点事件 {number} 的正式推进。\n"
+        f"段首承接：承接第 {number} 段的既定入口状态。\n"
+        f"本段事件：主角执行第 {number} 段行动，遇到阻碍并形成状态变化。\n"
+        f"段末交接：第 {number} 段结果成立并交给下一段。"
+        for number in range(1, count + 1)
+    )
+
+
+def complete_plan_for_event_groups(event_groups: Sequence[Sequence[str]]) -> str:
+    """Build a typed planning fixture with explicit ownership and boundaries."""
+
+    return "\n\n".join(
+        (
+            f"### 第 {segment} 段：验收事件组 {segment}\n"
+            f"事件ID：{'、'.join(event_ids)}\n"
+            f"大纲依据：第 {segment} 组正式事件按既定顺序推进。\n"
+            + (
+                "段首承接：故事入口状态已经建立。\n"
+                if segment == 1 else
+                f"段首承接：第 {segment - 1} 组结果已经成立。\n"
+            )
+            + "本段事件：\n"
+            + "\n".join(
+                f"{index}. {event_id} 的执行者完成受阻行动并形成可验证结果。"
+                for index, event_id in enumerate(event_ids, 1)
+            )
+            + "\n"
+            + (
+                "段末交接：正式结局状态已经成立。"
+                if segment == len(event_groups) else
+                f"段末交接：第 {segment} 组结果成立并交给下一组。"
+            )
+        )
+        for segment, raw_event_ids in enumerate(event_groups, 1)
+        for event_ids in (list(raw_event_ids),)
+    )
+
+
+def test_execution_authority_multi_event_evidence_scales_linearly(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Linear authority", mode="short", genre="mystery",
+        premise="Every accepted event retains one bounded realization.",
+        target_words=10_000,
+    ))
+    service = WorkflowService(db, store, SimpleNamespace(), SimpleNamespace())
+    sizes = []
+    evidence_sizes = []
+    for count in (8, 16, 32):
+        event_ids = [f"EV-{index:08X}" for index in range(1, count + 1)]
+        plan = complete_plan_for_event_groups([event_ids])
+        formal_events = [{
+            "id": event_id, "order": index,
+            "label": f"Formal event label {index}",
+        } for index, event_id in enumerate(event_ids, 1)]
+        chain = {
+            "core_goal": "Preserve the accepted event order.",
+            "ending": "The final accepted state is established.",
+            "covered_event_ids": event_ids,
+        }
+
+        _hashes, authority, events = service._short_execution_authority(
+            project, 1, {"outline": {"content": "Formal outline authority."}},
+            "constraints", plan, chain, formal_events, 1,
+        )
+        sizes.append(len(authority))
+        evidence_sizes.append(sum(len(item["evidence"]) for item in events))
+
+    assert sizes[1] < sizes[0] * 2.5
+    assert sizes[2] < sizes[1] * 2.5
+    assert evidence_sizes[1] < evidence_sizes[0] * 2.5
+    assert evidence_sizes[2] < evidence_sizes[1] * 2.5
 
 
 def save_test_complete_short_checkpoint(
@@ -892,10 +1030,17 @@ def save_test_complete_short_checkpoint(
         "core_goal": "完成测试规划",
         "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
         "ending": "完成测试结局",
+        "covered_event_ids": list(dict.fromkeys(
+            event_id
+            for block in service._short_plan_segments(
+                plan, int(context["segment_count"]),
+            )
+            for event_id in service._short_plan_event_ids(block)
+        )),
     }
     manifest = write_test_execution_manifest(
         service, project, outputs.parent, constraints, plan,
-        int(context["segment_count"]), chain=chain, use_plan_event_ids=False,
+        int(context["segment_count"]), chain=chain, use_plan_event_ids=True,
         state_override=state_override,
         planning_adaptation=planning_adaptation,
     )
@@ -957,6 +1102,17 @@ def make_prompt_skills(root) -> None:
         folder.mkdir(parents=True)
         (folder / "SKILL.md").write_text(
             f"---\nname: {name}\n---\n\nSkill instructions for {name}.", encoding="utf-8",
+        )
+
+
+class ExplicitPrimaryGateway:
+    """Test gateway whose generic method is explicitly the primary route."""
+
+    async def complete_primary(
+        self, role, system, user, max_output_tokens=None,
+    ):
+        return await self.complete(
+            role, system, user, max_output_tokens=max_output_tokens,
         )
 
 
@@ -1040,6 +1196,101 @@ async def test_primary_only_review_retry_never_uses_hidden_fallback(tmp_path) ->
     assert gateway.primary_calls == 2
     assert gateway.complete_calls == 0
     assert gateway.fallback_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_primary_only_fails_closed_without_primary_route_interface(tmp_path) -> None:
+    class LegacyGenericGateway:
+        def __init__(self) -> None:
+            self.complete_calls = 0
+
+        async def complete(self, *_args, **_kwargs):
+            self.complete_calls += 1
+            raise AssertionError("generic completion must never impersonate primary")
+
+    gateway = LegacyGenericGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="missing-primary-interface",
+    )
+    db.save_role_binding(
+        "review", "primary", "primary-model", "backup", "backup-model",
+    )
+
+    with pytest.raises(RuntimeError, match="primary route interface unavailable"):
+        await service._stage(
+            "missing-primary-interface", run_path, project,
+            "review", "constraints", "Return one bounded receipt.",
+            allow_tools=False,
+            primary_only=True,
+            bounded_protocol_output=True,
+        )
+
+    assert gateway.complete_calls == 0
+
+
+@pytest.mark.asyncio
+async def test_primary_only_owns_tools_targeted_retry_and_polish_tool_retry(
+    tmp_path,
+) -> None:
+    class RouteMatrixGateway:
+        def __init__(self) -> None:
+            self.primary_calls = 0
+            self.generic_calls = 0
+            self.tool_calls = 0
+            self.fallback_calls = 0
+            self.mode = "success"
+
+        async def complete(self, *_args, **_kwargs):
+            self.generic_calls += 1
+            raise AssertionError("generic route escaped primary-only isolation")
+
+        async def complete_with_tools(self, *_args, **_kwargs):
+            self.tool_calls += 1
+            raise AssertionError("tool route escaped primary-only isolation")
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            self.fallback_calls += 1
+            raise AssertionError("fallback escaped primary-only isolation")
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.primary_calls += 1
+            if self.mode == "fail":
+                raise RuntimeError("primary transport interrupted")
+            if self.mode == "tool-retry" and self.primary_calls == 3:
+                return ModelResult("", {"finish_reason": "tool_use"})
+            return ModelResult("polished prose", {"finish_reason": "stop"})
+
+    gateway = RouteMatrixGateway()
+    _db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="primary-route-matrix",
+    )
+    result = await service._stage(
+        "primary-route-matrix", run_path, project,
+        "review", "constraints", "bounded receipt", allow_tools=True,
+        primary_only=True, bounded_protocol_output=True,
+    )
+    assert str(result) == "polished prose"
+
+    gateway.mode = "fail"
+    with pytest.raises(TargetedGroupError):
+        await service._stage(
+            "primary-route-matrix", run_path, project,
+            "review", "constraints", "targeted receipt", allow_tools=False,
+            primary_only=True, targeted_retry=True,
+            bounded_protocol_output=True,
+        )
+
+    gateway.mode = "tool-retry"
+    result = await service._stage(
+        "primary-route-matrix", run_path, project,
+        "polish", "constraints", "polish prose", allow_tools=False,
+        primary_only=True, retry_polish_output_limit=True,
+    )
+    assert str(result) == "polished prose"
+    assert gateway.generic_calls == 0
+    assert gateway.tool_calls == 0
+    assert gateway.fallback_calls == 0
+    assert gateway.primary_calls == 4
 
 
 @pytest.mark.asyncio
@@ -1482,8 +1733,13 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
             self.systems = []
             self.users = []
             self.responses = iter([
-                "# Story Plan\n主角调查死亡现场。\n\nSHORT_CAUSAL_CHAIN_JSON_START\n"
-                '{"core_goal":{"content":"复活死去的朋友"},"cycles":[{"obstacle":"缺少灵魂媒介","effort":"调查死亡现场","result":"找到残缺记忆","state_change":"确认灵魂仍在"},{"obstacle":"仪式需要交换生命","effort":"寻找规则漏洞","result":"朋友暂时复活","state_change":"目标表面达成"}],"reversal":{"content":"朋友主动死亡是为了封印","prior_evidence":["死亡记录被销毁"]},"ending":{"surface_goal":"无法永久复活","inner_goal":"主角放下愧疚"}}'
+                "### 第 1 段：调查死亡现场\n"
+                "事件ID：EV-00000001\n大纲依据：主角调查朋友死亡现场。\n"
+                "段首承接：朋友已经死亡，主角仍在现场寻找复活线索。\n"
+                "本段事件：主角调查死亡现场，找到残缺记忆并发现仪式代价。\n"
+                "段末交接：主角放下愧疚，确认无法永久复活朋友。\n\n"
+                "SHORT_CAUSAL_CHAIN_JSON_START\n"
+                '{"core_goal":{"content":"复活死去的朋友"},"cycles":[{"obstacle":"缺少灵魂媒介","effort":"调查死亡现场","result":"找到残缺记忆","state_change":"确认灵魂仍在"},{"obstacle":"仪式需要交换生命","effort":"寻找规则漏洞","result":"朋友暂时复活","state_change":"目标表面达成"}],"reversal":{"content":"朋友主动死亡是为了封印","prior_evidence":["死亡记录被销毁"]},"ending":{"surface_goal":"无法永久复活","inner_goal":"主角放下愧疚"},"covered_event_ids":["EV-00000001"]}'
                 "\nSHORT_CAUSAL_CHAIN_JSON_END",
                 "正文草稿" * 1500,
                 json.dumps({"score": 86, "hard_fail": False, "issues": []}),
@@ -1557,6 +1813,9 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
                     "summary": "全文节拍顺序和结局均已核对。",
                 }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
             return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
+
+        async def complete_primary(self, role, system, user, **kwargs):
+            return await self.complete(role, system, user, **kwargs)
 
     gateway = CausalGateway()
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
@@ -1782,12 +2041,35 @@ class RecordingGateway:
                 "summary": "全文节拍顺序、连续性和结局均已核对。",
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            covered_event_ids = list(dict.fromkeys(
+                re.findall(r"EV-[0-9A-F]{8}", user.upper())
+            ))
             return ModelResult(json.dumps({
                 "core_goal": "完成正式规划中的目标",
                 "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
-                "ending": "完成正式结局", "covered_event_ids": [],
+                "ending": "完成正式结局",
+                "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
-        return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
+        text = next(self.responses)
+        if role == "planning" and text.strip() == "# Plan" and '"segment_count"' in user:
+            count_match = re.search(r'"segment_count"\s*:\s*(\d+)', user)
+            count = int(count_match.group(1)) if count_match else 1
+            event_ids = list(dict.fromkeys(
+                re.findall(r"EV-[0-9A-F]{8}", user.upper())
+            )) or [f"EV-{index:08X}" for index in range(1, count + 1)]
+            groups = [
+                [event_ids[min(index, len(event_ids) - 1)]]
+                for index in range(count)
+            ]
+            text = complete_plan_for_event_groups(groups)
+        return ModelResult(text, {"role": role, "model_name": f"fake-{role}"})
+
+    async def complete_primary(
+        self, role, system, user, max_output_tokens=None,
+    ):
+        return await self.complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
 
 
 class ExplicitFallbackGateway:
@@ -2272,6 +2554,13 @@ class SegmentGateway:
             "role": role, "model_name": f"fake-{role}", "finish_reason": "stop",
         })
 
+    async def complete_primary(
+        self, role, system, user, max_output_tokens=None,
+    ):
+        return await self.complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
 
 def quality_review(commercial=85, story=85, prose=85, *, hard_fail=False,
                    decision="pass", issues=None) -> str:
@@ -2423,6 +2712,70 @@ async def test_short_story_repairs_reader_review_with_single_quoted_field_bounda
     assert repaired["metadata"]["strategy"] == "conservative_json_repair"
 
 
+def test_whole_story_obligation_catalog_binds_beats_and_planning_events(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Catalog", mode="short", genre="science-fiction",
+        premise="A reactor deadline exposes a lie.", target_words=10000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    db.create_run("catalog", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "catalog"
+    (run_path / "outputs").mkdir(parents=True)
+    plan = complete_plan_for_event_groups([
+        ["EV-00000001"], ["EV-00000002"],
+        ["EV-00000003"], ["EV-00000004"],
+    ])
+    service._persist_short_planning_ir(run_path, plan, 4)
+    manifest = write_test_execution_manifest(
+        service, project, run_path, "constraints", plan, 4,
+    )
+    beat_ids = [beat.beat_id for beat in manifest.beats]
+
+    catalog = service._whole_story_obligation_catalog(run_path, beat_ids)
+
+    assert catalog["version"] == "whole-story-obligation-catalog-v2"
+    assert catalog["beat_ids"] == beat_ids
+    assert catalog["source_event_ids"] == [
+        "EV-00000001", "EV-00000002", "EV-00000003", "EV-00000004",
+    ]
+    first_beat = catalog["beat_obligations"][0]
+    assert first_beat["beat_id"] == manifest.beats[0].beat_id
+    assert first_beat["source_event_id"] == manifest.beats[0].source_event_id
+    assert first_beat["action"] == manifest.beats[0].action
+    assert first_beat["postconditions"] == list(manifest.beats[0].postconditions)
+    first_event = catalog["event_obligations"][0]
+    assert first_event["beat_ids"] == [manifest.beats[0].beat_id]
+    assert first_event["planning_bindings"][0]["segment"] == 1
+    assert first_event["planning_bindings"][0]["handoff"]
+    assert catalog["catalog_sha256"] == canonical_sha256({
+        key: value for key, value in catalog.items() if key != "catalog_sha256"
+    })
+
+    with pytest.raises(DraftReceiptProtocolError):
+        service._whole_story_obligation_catalog(run_path, beat_ids[:-1])
+
+    planning_path = run_path / "outputs" / "planning-ir.json"
+    envelope = json.loads(planning_path.read_text(encoding="utf-8"))
+    extra = dict(envelope["document"]["segments"][-1])
+    extra.update({
+        "segment": 5,
+        "heading": "unexpected planning authority",
+        "event_ids": ["EV-FFFFFFFF"],
+        "source_sha256": "f" * 64,
+    })
+    envelope["document"]["segments"].append(extra)
+    tampered_document = PlanningDocumentIR.model_validate(envelope["document"])
+    envelope["authority_sha256"] = tampered_document.authority_sha256
+    planning_path.write_text(
+        json.dumps(envelope, ensure_ascii=False), encoding="utf-8",
+    )
+    with pytest.raises(DraftReceiptProtocolError):
+        service._whole_story_obligation_catalog(run_path, beat_ids)
+
+
 @pytest.mark.asyncio
 async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -2441,11 +2794,9 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
 
-    plan = "\n\n".join(
-        f"### 段 {index}：事件{index}\n事件ID：EV-{index:08x}\n大纲依据：事件{index}\n"
-        f"本段只负责事件{index}，完成结果{index}并留下下一段问题。" + "细节" * 40
-        for index in range(1, 9)
-    )
+    plan = complete_plan_for_event_groups([
+        [f"EV-{index:08X}"] for index in range(1, 9)
+    ])
     manifest = write_test_execution_manifest(
         service, project, run_path, "constraints", plan, 8,
     )
@@ -2507,7 +2858,7 @@ async def test_draft_semantic_gate_rejects_a_clean_segment_that_omits_its_event(
             result = await super().complete(role, system, user, max_output_tokens)
             if "DRAFT_SEMANTIC_VALIDATION" in user:
                 payload = json.loads(result.text)
-                payload["beat_receipts"] = []
+                payload["beat_receipts"][0]["actor_action_valid"] = False
                 return ModelResult(json.dumps(payload, ensure_ascii=False), result.receipt)
             return result
 
@@ -2574,7 +2925,7 @@ async def test_draft_semantic_failure_rewrites_same_scope_and_accepts_second_ver
                 {"model_name": "review", "finish_reason": "stop"},
             )
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     )
@@ -2647,18 +2998,35 @@ async def test_second_split_child_never_starts_before_first_child_semantic_accep
             evidence = prose[:12]
             return ModelResult(json.dumps({
                 "authority_sha256": contract["authority_sha256"],
+                "execution_manifest_sha256": contract[
+                    "execution_manifest_sha256"
+                ],
                 "task_id": contract["task_id"],
                 "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
-                "event_receipts": [],
+                "beat_receipts": [{
+                    "beat_id": beat_id,
+                    "evidence": evidence,
+                    "actor_action_valid": False,
+                    "actor_action_evidence": evidence,
+                    "state_valid": True,
+                    "state_evidence": evidence,
+                    "scene_order_valid": True,
+                    "scene_order_evidence": evidence,
+                } for beat_id in contract["beat_ids"]],
                 "entry": {"satisfied": True, "evidence": evidence},
                 "exit": {"satisfied": True, "evidence": prose[-12:]},
-                "outside_event_ids": [], "causal_order_valid": True,
+                "outside_beat_ids": [],
+                "future_beat_ids": [],
+                "viewpoint_valid": True,
+                "viewpoint_evidence": evidence,
+                "causal_order_valid": True,
+                "causal_order_evidence": evidence,
                 "summary": "第一子任务没有证明正式事件。",
             }, ensure_ascii=False), {
                 "role": role, "model_name": "review", "finish_reason": "stop",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     )
@@ -2684,6 +3052,16 @@ async def test_second_split_child_never_starts_before_first_child_semantic_accep
     draft_prompts = [call["user"] for call in gateway.calls if call["role"] == "draft"]
     assert any("内部子任务 1/2" in prompt for prompt in draft_prompts)
     assert not any("内部子任务 2/2" in prompt for prompt in draft_prompts)
+
+
+def test_single_segment_plan_cannot_bypass_the_typed_planning_contract() -> None:
+    issues = WorkflowService._short_plan_issues(
+        SimpleNamespace(path=Path("."), metadata={}), {},
+        "# Accepted plan\nA complete-looking but untyped prose plan." + "x" * 120,
+        1,
+    )
+
+    assert any("ID" in issue and "handoff" not in issue.lower() for issue in issues)
 
 
 def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() -> None:
@@ -3157,10 +3535,11 @@ async def test_invalid_causal_chain_keeps_execution_index_pending(tmp_path) -> N
         return json.dumps({"core_goal": "目标"}, ensure_ascii=False)
 
     service._stage = invalid_chain
+    plan = complete_plan_for_event_groups([["EV-00000001"]])
     with pytest.raises(ValueError, match="因果链未通过"):
         await service._ensure_short_causal_chain(
             "causal-pending", run_path, project, "constraints",
-            "# 已验收规划", [], None,
+            plan, [], None,
         )
 
     index = json.loads(
@@ -3194,7 +3573,10 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     } for index, event_id in enumerate(event_ids, 1)]
     plan = "\n\n".join(
         f"### 第 {index} 段：事件{index}\n事件ID：{event_id}\n"
-        f"本段事件：花穗推进{index}。"
+        f"大纲依据：花穗完成正式事件 {index} 并产生下一步状态。\n"
+        f"段首承接：花穗承接事件 {index} 的入口状态。\n"
+        f"本段事件：花穗推进事件 {index}，遇到阻碍并形成结果。\n"
+        f"段末交接：事件 {index} 的结果交给下一段。"
         for index, event_id in enumerate(event_ids, 1)
     )
     packet_calls: list[list[str]] = []
@@ -3240,7 +3622,7 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     service._stage = fake_stage
     chain = await service._ensure_short_causal_chain(
         "causal-split", run_path, project, "constraints", plan,
-        formal_events, None,
+        [], None,
     )
 
     assert chain["covered_event_ids"] == event_ids
@@ -3252,7 +3634,7 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     packet_calls.clear()
     second = await service._ensure_short_causal_chain(
         "causal-split", run_path, project, "constraints", plan,
-        formal_events, None,
+        [], None,
     )
     assert second == chain
     assert root_calls == 2
@@ -3284,23 +3666,13 @@ async def test_causal_chain_output_limit_recursively_splits_production_shaped_ev
         "label": f"Formal event {index}",
         "evidence": f"The accepted outline assigns event {index} to this causal step.",
     } for index, event_id in enumerate(event_ids, 1)]
-    segments: list[str] = []
+    event_groups: list[list[str]] = []
     offset = 0
-    for segment, size in enumerate(segment_sizes, 1):
+    for size in segment_sizes:
         owned = event_ids[offset:offset + size]
         offset += size
-        segments.append(
-            f"### 第{segment}段：Segment {segment}\n"
-            f"事件ID：{'、'.join(owned)}\n"
-            "段首承接：Continue the accepted prior state.\n"
-            "本段事件：\n"
-            + "\n".join(
-                f"{number}. ({event_id}) realize the accepted event without changing ownership."
-                for number, event_id in enumerate(owned, 1)
-            )
-            + "\n段末交接：Pass the resulting state to the next segment."
-        )
-    plan = "\n\n".join(segments)
+        event_groups.append(owned)
+    plan = complete_plan_for_event_groups(event_groups)
     packet_calls: list[list[str]] = []
     completed_packets: list[list[str]] = []
 
@@ -3397,11 +3769,7 @@ async def test_causal_chain_normal_finish_invalid_output_converges_to_semantic_p
         "id": event_id, "label": f"Event {index}",
         "evidence": f"Accepted event {index}.",
     } for index, event_id in enumerate(event_ids, 1)]
-    plan = "\n\n".join(
-        f"### 第{index}段：Segment {index}\n事件ID：{event_id}\n"
-        f"段首承接：Entry.\n本段事件：Event {index}.\n段末交接：Exit."
-        for index, event_id in enumerate(event_ids, 1)
-    )
+    plan = complete_plan_for_event_groups([[event_id] for event_id in event_ids])
     root_calls = 0
 
     async def fake_stage(*args, **kwargs):
@@ -3551,25 +3919,16 @@ async def test_causal_chain_real_stage_recovers_repeated_output_limits_and_cross
         "evidence": f"Accepted authority for event {index}.",
     } for index, event_id in enumerate(event_ids, 1)]
     offset = 0
-    plan_segments: list[str] = []
-    for segment, size in enumerate(segment_sizes, 1):
+    event_groups: list[list[str]] = []
+    for size in segment_sizes:
         owned = event_ids[offset:offset + size]
         offset += size
-        plan_segments.append(
-            f"### 第{segment}段：Segment {segment}\n"
-            f"事件ID：{'、'.join(owned)}\n"
-            "段首承接：Preserve the prior accepted state.\n"
-            "本段事件：\n"
-            + "\n".join(
-                f"{number}. ({event_id}) realize the accepted event."
-                for number, event_id in enumerate(owned, 1)
-            )
-            + "\n段末交接：Pass the exact resulting state forward."
-        )
+        event_groups.append(owned)
+    plan = complete_plan_for_event_groups(event_groups)
 
     chain = await service._ensure_short_causal_chain(
         "causal-real-stage", run_path, project, "constraints",
-        "\n\n".join(plan_segments), formal_events, None,
+        plan, formal_events, None,
     )
 
     assert chain["covered_event_ids"] == event_ids
@@ -3588,7 +3947,7 @@ async def test_causal_chain_real_stage_recovers_repeated_output_limits_and_cross
     service.gateway = FakeGateway()
     manifest = await service._ensure_short_execution_manifest(
         "causal-real-stage", run_path, project, "constraints",
-        state.revision, state.data, "\n\n".join(plan_segments), chain,
+        state.revision, state.data, plan, chain,
         formal_events, len(segment_sizes),
     )
     assert manifest.status == "ready"
@@ -3686,6 +4045,7 @@ async def test_indivisible_causal_packet_uses_configured_fallback_without_losing
     (run_path / "receipts").mkdir()
     plan = (
         "### 第1段：Only segment\n事件ID：EV-00000001\n"
+        "大纲依据：Accepted event.\n"
         "段首承接：Opening.\n本段事件：The only event happens.\n段末交接：Ending."
     )
 
@@ -3730,11 +4090,7 @@ async def test_production_shaped_causal_container_drift_is_converted_and_reduced
         {"id": event_id, "label": f"Event {index}", "evidence": "Accepted."}
         for index, event_id in enumerate(event_ids, 1)
     ]
-    plan = "\n\n".join(
-        f"### Segment {index}\nEvent ID: {event_id}\n"
-        f"Entry: state {index}.\nEvent: action {index}.\nExit: changed {index}."
-        for index, event_id in enumerate(event_ids, 1)
-    )
+    plan = complete_plan_for_event_groups([[event_id] for event_id in event_ids])
 
     async def fake_stage(*args, **kwargs):
         prompt = args[5]
@@ -3828,7 +4184,8 @@ async def test_unknown_causal_vocabulary_minimally_regenerates_only_its_receipt(
     service._stage = fake_stage
     chain = await service._ensure_short_causal_chain(
         run_id, run_path, project, "constraints",
-        "### Segment 1\nEvent ID: EV-00000001\nEntry: locked.\nEvent: search.\nExit: found.",
+        "### Segment 1\n事件ID：EV-00000001\n大纲依据：Accepted event.\n"
+        "段首承接：locked.\n本段事件：search.\n段末交接：found.",
         [{"id": event_id, "label": "Search", "evidence": "Accepted."}],
         None,
     )
@@ -3894,6 +4251,7 @@ async def test_indivisible_causal_packet_preserves_both_credential_failures(
     (run_path / "receipts").mkdir()
     plan = (
         "### 第1段：Only segment\n事件ID：EV-00000001\n"
+        "大纲依据：Accepted event.\n"
         "段首承接：Opening.\n本段事件：The only event happens.\n段末交接：Ending."
     )
 
@@ -3933,11 +4291,7 @@ async def test_causal_packet_resume_keeps_valid_prefix_and_restores_corrupt_suff
         "id": event_id, "label": f"Event {index}",
         "evidence": f"Accepted event {index}.",
     } for index, event_id in enumerate(event_ids, 1)]
-    plan = "\n\n".join(
-        f"### 第{index}段：Segment {index}\n事件ID：{event_id}\n"
-        f"段首承接：Entry {index}.\n本段事件：Event {index}.\n段末交接：Exit {index}."
-        for index, event_id in enumerate(event_ids, 1)
-    )
+    plan = complete_plan_for_event_groups([[event_id] for event_id in event_ids])
     packet_calls: list[tuple[str, ...]] = []
     interrupt_suffix = True
 
@@ -4049,6 +4403,12 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
         json.dumps(chain, ensure_ascii=False, indent=2),
     )
     service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    service._persist_short_planning_ir(
+        project.path / "runs" / "failed-prefix", plan, 4,
+    )
+    planning_ir = service._require_short_planning_ir(
+        project.path / "runs" / "failed-prefix", plan, 4,
+    )
     manifest = write_test_execution_manifest(
         service, project, project.path / "runs" / "failed-prefix",
         constraints, plan, 4, chain=chain, use_plan_event_ids=False,
@@ -4060,7 +4420,8 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
         .compact_causal_chain(chain)
     )
     authority_hash = hashlib.sha256(json.dumps({
-        "plan": plan, "constraints": augmented_constraints,
+        "planning_ir_sha256": planning_ir.authority_sha256,
+        "constraints": augmented_constraints,
         "target_words": 10000, "segment_count": 4,
         "story_state_sha256": hashlib.sha256(json.dumps(
             state.data, ensure_ascii=False, sort_keys=True, default=str,
@@ -4071,7 +4432,7 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
     previous = ""
     for number, character in ((1, "甲"), (2, "乙")):
         text = character * 2500
-        block = WorkflowService._short_plan_segments(plan, 4)[number - 1]
+        block = render_planning_segment_ir(planning_ir.segments[number - 1])
         beat_ids = list(manifest.segments[number - 1].beat_ids)
         saved_receipt = draft_semantic_receipt({
             "authority_sha256": authority_hash,
@@ -4112,6 +4473,19 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
         previous = text
     db.update_run("failed-prefix", "failed", error="provider interrupted segment 3")
 
+    planning_ir_path = source_outputs / "planning-ir.json"
+    planning_ir_text = planning_ir_path.read_text(encoding="utf-8")
+    tampered_ir = json.loads(planning_ir_text)
+    tampered_ir["document"]["segments"][0]["handoff"] = "tampered handoff"
+    atomic(
+        planning_ir_path,
+        json.dumps(tampered_ir, ensure_ascii=False, indent=2),
+    )
+    assert service._find_short_partial_checkpoint(
+        project, "resume-prefix", state.revision, state.data, constraints, 4,
+    ) is None
+    atomic(planning_ir_path, planning_ir_text)
+
     first_checkpoint_path = source_outputs / "draft-checkpoints" / "segment-01.json"
     first_checkpoint_text = first_checkpoint_path.read_text(encoding="utf-8")
     tampered = json.loads(first_checkpoint_text)
@@ -4125,6 +4499,63 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
     assert service._find_short_partial_checkpoint(
         project, "resume-prefix", state.revision, state.data, constraints, 4,
     ) == source_outputs
+
+    causal_path = source_outputs / "short-causal-chain.json"
+    causal_text = causal_path.read_text(encoding="utf-8")
+    tampered_causal = json.loads(causal_text)
+    tampered_causal["covered_event_ids"] = tampered_causal[
+        "covered_event_ids"
+    ][:-1]
+    atomic(
+        causal_path,
+        json.dumps(tampered_causal, ensure_ascii=False, indent=2),
+    )
+    rejected_partial_restore = (
+        project.path / "runs" / "tampered-prefix-restore" / "outputs"
+    )
+    with pytest.raises(ValueError):
+        service._restore_short_partial_checkpoint(
+            source_outputs, rejected_partial_restore, project,
+            state.revision, state.data, constraints, 4,
+        )
+    assert (
+        not rejected_partial_restore.exists()
+        or not any(rejected_partial_restore.rglob("*"))
+    )
+    atomic(causal_path, causal_text)
+
+    residual_partial = project.path / "runs" / "residual-prefix" / "outputs"
+    residual_partial.mkdir(parents=True)
+    for filename in (
+        "planning-adaptations.json", "best-candidate.md",
+        "quality-checkpoint.json", "draft.md", "draft-integrity.json",
+        "short-checkpoint.json",
+    ):
+        (residual_partial / filename).write_text("stale", encoding="utf-8")
+    (residual_partial / "draft-checkpoints").mkdir()
+    (residual_partial / "draft-checkpoints" / "segment-99.json").write_text(
+        "stale", encoding="utf-8",
+    )
+    service._restore_short_partial_checkpoint(
+        source_outputs, residual_partial, project,
+        state.revision, state.data, constraints, 4,
+    )
+    for filename in (
+        "planning-adaptations.json", "best-candidate.md",
+        "quality-checkpoint.json", "draft.md", "draft-integrity.json",
+        "short-checkpoint.json",
+    ):
+        assert not (residual_partial / filename).exists()
+    assert not (
+        residual_partial / "draft-checkpoints" / "segment-99.json"
+    ).exists()
+    assert (
+        residual_partial / "draft-checkpoints" / "segment-01.json"
+    ).is_file()
+    assert (
+        residual_partial / "draft-checkpoints" / "segment-02.json"
+    ).is_file()
+
     second_checkpoint_path = source_outputs / "draft-checkpoints" / "segment-02.json"
     second_checkpoint_text = second_checkpoint_path.read_text(encoding="utf-8")
     invalid_second = json.loads(second_checkpoint_text)
@@ -5409,6 +5840,63 @@ def test_short_plan_parser_normalizes_production_markdown_field_variants(
     ) == []
 
 
+def test_runtime_owned_event_ir_keeps_nested_narrative_headings_out_of_plan_control() -> None:
+    """Replay the 9677db production topology through the Runtime write path."""
+
+    event_ids = ["EV-11111111", "EV-22222222", "EV-33333333"]
+    current = (
+        "### 第 5 段：既有最佳规划\n\n"
+        f"事件ID：{'、'.join(event_ids)}\n\n"
+        "大纲依据：正式大纲中的三个连续事件。\n\n"
+        "段首承接：主角带着上一段取得的证据进入当前场景。\n\n"
+        "本段事件：\n"
+        "1. **正式事件**（EV-11111111）：旧事件正文。\n\n"
+        "2. **正式事件**（EV-22222222）：旧事件正文。\n\n"
+        "3. **正式事件**（EV-33333333）：旧事件正文。\n\n"
+        "段末交接：三项行动完成，证据和人物状态交给下一段。"
+    )
+    payload = json.dumps({"events": [
+        {
+            "event_id": event_ids[0],
+            "narrative": (
+                "**触发与承接**\n主角核对入口状态后采取行动。\n\n"
+                "**出口状态**\n第一项行动完成，人物认知发生可验证变化。"
+            ),
+        },
+        {
+            "event_id": event_ids[1],
+            "narrative": (
+                "**人物反应**\n同伴根据新证据作出回应。\n\n"
+                "**出口状态**\n第二项行动完成，关系状态自然推进。"
+            ),
+        },
+        {
+            "event_id": event_ids[2],
+            "narrative": (
+                "**事件主干**\n威胁升级，主角保存证据并调整策略。\n\n"
+                "**出口状态与段末交接**\n这里只是事件自由正文的小标题。\n\n"
+                "**段末交接（写死）**\n这仍属于第三个事件的创作正文，不是机器控制字段。"
+            ),
+        },
+    ]}, ensure_ascii=False)
+
+    normalized = WorkflowService._normalize_runtime_owned_short_plan_payload(
+        payload,
+        segment=5,
+        event_ids=event_ids,
+        current=current,
+        artifact="production-shaped nested narrative headings",
+    )
+
+    body = WorkflowService._short_plan_field(normalized, "event")
+    assert all(event_id in body for event_id in event_ids)
+    assert "段末交接（写死）" in body
+    assert WorkflowService._short_plan_field(normalized, "handoff") == (
+        "三项行动完成，证据和人物状态交给下一段。"
+    )
+    assert planning_event_body_issues(normalized, event_ids) == []
+
+
 @pytest.mark.parametrize("packet_index", [0, 1])
 def test_short_plan_parser_recovers_unicode_protocol_production_packets(
     packet_index,
@@ -5538,10 +6026,13 @@ async def test_planning_protocol_rewrap_uses_real_stage_and_recovers_output_limi
         "花穗主动追问，裴砚行当众回应并给出往后承诺。\n\n"
         "段末交接：关系承诺成立，匿名信仍待追查。"
     )
-    canonical = current.replace(
-        "花穗主动追问，裴砚行当众回应并给出往后承诺。",
-        "花穗主动追问裴砚行为何沉默；裴砚行没有回避，当众回应并给出往后承诺。",
-    )
+    canonical = json.dumps({"events": [{
+        "event_id": event_id,
+        "narrative": (
+            "花穗主动追问裴砚行为何沉默；裴砚行没有回避，"
+            "当众回应并给出往后承诺。"
+        ),
+    }]}, ensure_ascii=False)
 
     class Gateway:
         def __init__(self) -> None:
@@ -5554,7 +6045,7 @@ async def test_planning_protocol_rewrap_uses_real_stage_and_recovers_output_limi
             assert "CURRENT AUTHORITY (IMMUTABLE)" in user
             if len(self.calls) == 1:
                 return ModelResult(
-                    "### 第 5 段：公开回应\n\n事件ID：EV-BEAE4985",
+                    '{"events":[{"event_id":"EV-BEAE4985",',
                     {
                         "finish_reason": "max_tokens",
                         "model_id": "planning-model",
@@ -5570,7 +6061,7 @@ async def test_planning_protocol_rewrap_uses_real_stage_and_recovers_output_limi
                 },
             )
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     )
@@ -6217,6 +6708,95 @@ def test_local_planning_recovery_merges_only_the_segment_needed_for_improvement(
     assert selected_segments[3] == original_segments[3]
 
 
+def test_local_planning_recovery_accepts_scoped_ownership_progress_with_unmodified_control_issue(
+    tmp_path,
+) -> None:
+    """A later-stage local repair must not be blocked by another segment's syntax issue."""
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Mixed-stage local plan", mode="short", genre="suspense",
+        premise="One event repair must survive an unrelated missing handoff.",
+        target_words=15000,
+    ))
+    event_ids = [
+        "EV-10000001", "EV-10000002", "EV-20000001",
+        "EV-30000001", "EV-40000001", "EV-50000001",
+        "EV-60000001",
+    ]
+
+    def segment_ir(
+        number: int, owned: tuple[str, ...], *, repaired: bool = True,
+    ) -> str:
+        body = (
+            "\n\n".join(
+                f"{event_id}: the actor meets resistance, acts, and leaves a verifiable result."
+                for event_id in owned
+            )
+            if repaired else
+            "The segment contains useful creative material but no event-owned realization."
+        )
+        return render_planning_segment_ir(PlanningSegmentIR(
+            segment=number,
+            heading=f"### Segment {number}: production-shaped planning unit",
+            event_ids=owned,
+            outline=f"Confirmed outline basis for segment {number}.",
+            opening=f"Entry state for segment {number} remains unchanged.",
+            event_body=body,
+            handoff=f"Exit state for segment {number} remains unchanged.",
+            source_sha256=f"{number:064x}",
+        ))
+
+    best_segments = [
+        segment_ir(1, tuple(event_ids[:2]), repaired=False),
+        *(
+            segment_ir(number, (event_ids[number],))
+            for number in range(2, 6)
+        ),
+        segment_ir(6, (event_ids[6],)),
+    ]
+    terminal = compile_planning_segment(best_segments[5]).values("handoff")[0]
+    best_segments[5] = (
+        best_segments[5][:terminal.span.start]
+        + best_segments[5][terminal.span.end:]
+    )
+    best = "\n\n".join(best_segments)
+    candidate_segments = list(best_segments)
+    candidate_segments[0] = segment_ir(1, tuple(event_ids[:2]))
+    candidate = "\n\n".join(candidate_segments)
+    state = {"outline": {"events": [
+        {"id": event_id, "label": event_id, "kind": "narrative"}
+        for event_id in event_ids
+    ]}}
+
+    selected, issues, comparison = (
+        WorkflowService._select_monotonic_short_plan_candidate(
+            project, state, best, candidate, 6,
+        )
+    )
+
+    selected_segments = WorkflowService._short_plan_segments(selected, 6)
+    assert comparison["improved"] is True
+    assert comparison["selected_segments"] == [1]
+    assert comparison["previous_stage"] == "ownership"
+    assert comparison["latent_baseline_issue_keys"] == [
+        "planning:segment-06:local_required_fields",
+    ]
+    assert not any(
+        key.startswith("planning:segment-01:")
+        for key in comparison["candidate_issue_keys"]
+    )
+    assert any("planning:segment-06:local_required_fields" == key
+               for key in comparison["candidate_issue_keys"])
+    assert selected_segments[0] == candidate_segments[0]
+    assert selected_segments[1:] == WorkflowService._short_plan_segments(
+        best, 6,
+    )[1:]
+    assert issues
+
+
 @pytest.mark.asyncio
 async def test_local_planning_recovery_resumes_the_lowest_issue_candidate(
     tmp_path,
@@ -6400,6 +6980,86 @@ async def test_table_plan_repairs_event_ownership_per_segment_without_whole_rewr
     )
     assert causal_chain["covered_event_ids"] == event_ids
     assert (run_path / "outputs" / "short-causal-chain.json").is_file()
+
+
+def test_real_terminal_events_only_shape_binds_typed_closure_without_retry() -> None:
+    outline = (
+        "# Outline\n\n## Opening beat\nThe lead receives a sealed letter.\n\n"
+        "## Ending beat\nThe lead answers the letter, accepts the cost, and keeps one clue open.\n"
+    )
+    formal_events = narrative_outline_event_contracts(outline)
+    assert len(formal_events) == 2
+    opening_2 = "The final segment starts with the letter opened and the cost visible."
+
+    def segment_ir(number: int, event: dict, *, opening: str, handoff: str) -> str:
+        event_id = str(event["id"]).upper()
+        return render_planning_segment_ir(PlanningSegmentIR(
+            segment=number,
+            heading=f"### Segment {number}: Beat",
+            event_ids=(event_id,),
+            outline=str(event["label"]),
+            opening=opening,
+            event_body=(
+                f"1. Formal event ({event_id}): The protagonist acts against "
+                "resistance, obtains a concrete result, and changes the story state."
+            ),
+            handoff=handoff,
+            source_sha256="0" * 64,
+        ))
+
+    first = segment_ir(
+        1, formal_events[0], opening="The opening pressure begins.",
+        handoff=opening_2,
+    )
+    final_with_legacy_handoff = segment_ir(
+        2, formal_events[1], opening=opening_2,
+        handoff="legacy placeholder that the provider omitted",
+    )
+    marker = "\n\n" + PLAN_FIELD_ALIASES["handoff"][0]
+    assert marker in final_with_legacy_handoff
+    final_without_next_handoff = final_with_legacy_handoff.split(marker, 1)[0]
+    source_plan = first + "\n\n" + final_without_next_handoff
+    state = {"outline": {"content": outline, "events": formal_events}}
+
+    normalized_plan, audit = WorkflowService._normalize_short_plan_terminal_boundary(
+        source_plan, state=state, segment_count=2,
+    )
+
+    assert audit is not None and audit["converted"] is True
+    normalized_segments = WorkflowService._short_plan_segments(normalized_plan, 2)
+    terminal_handoff = WorkflowService._short_plan_field(
+        normalized_segments[-1], "handoff",
+    )
+    assert terminal_handoff == formal_events[-1]["evidence"]
+    assert audit["terminal_event_ids"] == [str(formal_events[-1]["id"]).upper()]
+
+    terminal_event_id = str(formal_events[-1]["id"]).upper()
+    events_only = json.dumps({"events": [{
+        "event_id": terminal_event_id,
+        "narrative": (
+            "The protagonist answers the letter under pressure, accepts the exact cost, "
+            "and deliberately retains the authorized open clue for later consequences."
+        ),
+    }]})
+    repaired = WorkflowService._normalize_runtime_owned_short_plan_payload(
+        events_only,
+        segment=2,
+        event_ids=[terminal_event_id],
+        current=normalized_segments[-1],
+        artifact="real terminal events-only replay",
+    )
+    assert planning_event_body_issues(repaired, [terminal_event_id]) == []
+    assert WorkflowService._short_plan_field(repaired, "handoff") == terminal_handoff
+
+    nonterminal_without_handoff = first.split(marker, 1)[0]
+    unprovable_plan = nonterminal_without_handoff + "\n\n" + final_with_legacy_handoff
+    unchanged, unprovable_audit = (
+        WorkflowService._normalize_short_plan_terminal_boundary(
+            unprovable_plan, state=state, segment_count=2,
+        )
+    )
+    assert unchanged == unprovable_plan
+    assert unprovable_audit is None
 
 
 @pytest.mark.asyncio
@@ -6879,7 +7539,12 @@ async def test_short_story_stops_on_safe_conditional_pass(tmp_path) -> None:
     make_prompt_skills(skill_root)
     conditional = quality_review(
         commercial=75, story=75, prose=75, decision="revise",
-        issues=[{"severity": "medium", "action": "Tighten one paragraph."}],
+        issues=[{
+            "category": "prose",
+            "severity": "medium",
+            "evidence": "One paragraph is less concise than the surrounding prose.",
+            "action": "Tighten one paragraph.",
+        }],
     )
     gateway = RecordingGateway([
         "# Plan", "# Draft", quality_review(), quality_review(),
@@ -7853,7 +8518,7 @@ async def test_ordinary_polish_receives_window_findings_and_actual_handoff(tmp_p
             self.calls += 1
             return {"available": False, "backend": "test", "backend_version": "test-v1"}
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     local_nlp = LocalNlp()
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
@@ -7931,7 +8596,7 @@ async def test_transport_failure_retries_without_splitting_or_draft_fallback(tmp
                 "model_name": "claude-sonnet-5", "input_tokens": 2000,
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("split-retry", project.id, "short-story", status="running")
     run_path = project.path / "runs" / "split-retry"
@@ -7970,7 +8635,7 @@ async def test_nonrecoverable_polish_failure_does_not_call_draft(tmp_path) -> No
             self.roles.append(role)
             raise RuntimeError("401 invalid api key")
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("no-fallback", project.id, "short-story", status="running")
     run_path = project.path / "runs" / "no-fallback"
@@ -8475,7 +9140,7 @@ async def test_polish_output_limit_expands_same_prompt_then_splits(tmp_path) -> 
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     result = await service._polish_short_segments(
@@ -8548,7 +9213,7 @@ async def test_known_context_window_preflights_full_input_before_provider_call(t
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
     db.save_provider(
         provider_id="primary", name="Primary", protocol="openai",
@@ -8649,7 +9314,7 @@ async def test_one_failed_split_child_preserves_entire_parent(tmp_path) -> None:
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     result = await service._polish_short_segments(
@@ -8689,7 +9354,7 @@ async def test_split_children_must_pass_merged_parent_validation(tmp_path) -> No
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     result = await service._polish_short_segments(
@@ -8707,7 +9372,7 @@ async def test_split_children_must_pass_merged_parent_validation(tmp_path) -> No
 async def test_polish_output_limit_retries_primary_with_larger_budget(tmp_path) -> None:
     source = "A continuous scene with fixed events and natural sentence rhythm. " * 20
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.calls = []
 
@@ -8812,7 +9477,7 @@ async def test_polish_empty_tool_use_output_retries_without_compacting_input(tmp
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     result = await service._polish_short_segments(
@@ -8832,7 +9497,7 @@ async def test_polish_empty_tool_use_output_retries_without_compacting_input(tmp
 async def test_polish_output_limit_without_safe_split_preserves_parent(tmp_path) -> None:
     source = "A witness revisits the scene and verifies every fixed event carefully. " * 18
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
 
@@ -8873,7 +9538,7 @@ async def test_polish_validation_fallback_max_tokens_expands_then_preserves_sour
 ) -> None:
     source = "A locally valid source segment keeps every established event in natural prose. " * 16
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
 
@@ -8914,7 +9579,7 @@ async def test_polish_validation_fallback_max_tokens_expands_then_preserves_sour
 async def test_polish_validation_fallback_fatal_error_stops_immediately(tmp_path) -> None:
     source = "A source segment keeps every established event in naturally paced prose. " * 16
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
 
@@ -8947,7 +9612,7 @@ async def test_polish_validation_fallback_transport_error_preserves_without_spli
     paragraphs = [(str(index) + "A" * 399) for index in range(4)]
     source = "\n\n".join(paragraphs)
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
             self.primary_calls = 0
@@ -8986,7 +9651,7 @@ async def test_polish_recovery_counts_all_returned_receipt_input_tokens(tmp_path
     first = "A complete source segment preserves a stable event in natural prose. " * 16
     second = "A second source segment preserves another stable event in natural prose. " * 16
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
             self.primary_calls = 0
@@ -9051,7 +9716,7 @@ async def test_polish_compact_recovery_cancellation_propagates_without_preservin
                 })
             raise asyncio.CancelledError
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     with pytest.raises(asyncio.CancelledError):
@@ -9092,7 +9757,7 @@ async def test_polish_full_success_resets_consecutive_output_error_count(tmp_pat
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     await service._polish_short_segments(
@@ -9112,7 +9777,7 @@ async def test_polish_full_success_resets_consecutive_output_error_count(tmp_pat
 async def test_polish_obviously_long_output_uses_same_prompt_fallback(tmp_path) -> None:
     source = "A measured scene preserves every established fact without repetition. " * 18
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
 
@@ -9145,7 +9810,7 @@ async def test_polish_unsplittable_output_limit_preserves_source_and_continues(t
     second = "The second segment continues independently with another established event. " * 16
     improved_second = second.replace("continues", "moves forward")
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
 
@@ -9205,7 +9870,7 @@ async def test_polish_fatal_configuration_error_stops_immediately(tmp_path, mess
             self.calls += 1
             raise RuntimeError(message)
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     with pytest.raises(RuntimeError, match=message):
@@ -9235,7 +9900,7 @@ async def test_polish_wrapped_fatal_configuration_error_stops_immediately(tmp_pa
             self.calls += 1
             raise wrapped
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
 
     with pytest.raises(ModelRoutesExhaustedError):
@@ -9311,7 +9976,7 @@ async def test_polish_two_consecutive_output_errors_keep_full_prompt_for_later_s
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     db, project, service, run_path = make_polish_recovery_service(tmp_path, gateway)
     manuscript = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(parts)
 
@@ -9344,7 +10009,7 @@ async def test_polish_resume_reuses_accepted_segments_and_retries_preserved_segm
     first = "The accepted segment contains a stable event in natural prose. " * 16
     second = "The preserved segment contains another stable event in natural prose. " * 16
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
             self.resume = False
@@ -9604,7 +10269,7 @@ async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(t
             text = source if self.calls == 1 else "她听清了：侯府三小姐林知晚，那些词忽然都有了陌生的分量。"
             return ModelResult(text, {"model_name": "claude", "finish_reason": "end_turn"})
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("retry-rhythm", project.id, "short-story", status="running")
     run_path = project.path / "runs" / "retry-rhythm"
@@ -9646,7 +10311,9 @@ async def test_project_style_allowance_records_exact_rule_source_and_metrics(tmp
                 "model_name": "primary", "finish_reason": "end_turn",
             })
 
-    db, project, service, run_path = make_polish_recovery_service(tmp_path, Gateway())
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, expose_test_primary_route(Gateway()),
+    )
     (project.path / "style-profile.md").write_text(
         "# 文风\n\n- 信息揭示时允许短句形成局部落点。\n",
         encoding="utf-8",
@@ -9695,7 +10362,7 @@ async def test_rejected_rhythm_retry_is_retried_until_accepted(tmp_path) -> None
             self.calls += 1
             return ModelResult(source, {"model_name": "claude", "finish_reason": "end_turn"})
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     db.create_run("bounded-rhythm", project.id, "short-story", status="running")
     run_path = project.path / "runs" / "bounded-rhythm"
@@ -9734,7 +10401,7 @@ async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_an
         def manuscript(user):
             return user.split("MANUSCRIPT SEGMENT:\n", 1)[1]
 
-        async def complete(self, role, system, user, max_output_tokens=None):
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
             self.routes.append("primary")
             return ModelResult(self.manuscript(user), {"model_name": "claude"})
 
@@ -9780,7 +10447,7 @@ async def test_ordinary_polish_does_not_reuse_gateway_fallback_circuit(tmp_path)
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
 
-    class Gateway:
+    class Gateway(ExplicitPrimaryGateway):
         def __init__(self):
             self.routes = []
 
@@ -9932,7 +10599,8 @@ def test_resume_prefers_complete_outputs_from_same_run(tmp_path) -> None:
     db.create_run(run_id, project.id, "short-story", status="failed")
     outputs = project.path / "runs" / run_id / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    plan = complete_checkpoint_plan()
+    (outputs / "planning.md").write_text(plan, encoding="utf-8")
     draft = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["part one", "part two", "part three", "part four"])
     (outputs / "draft.md").write_text(draft, encoding="utf-8")
     (outputs / "review.md").write_text(quality_review(), encoding="utf-8")
@@ -9944,26 +10612,101 @@ def test_resume_prefers_complete_outputs_from_same_run(tmp_path) -> None:
     save_test_complete_short_checkpoint(
         service, project, outputs, context, store.load_constraints(project.id),
     )
+    stale_best = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
+        ["stale best one", "stale best two", "stale best three", "stale best four"]
+    )
+    base_integrity = json.loads(
+        (outputs / "draft-integrity.json").read_text(encoding="utf-8")
+    )
+    stale_best_integrity = {
+        **base_integrity,
+        "draft_sha256": hashlib.sha256(stale_best.encode("utf-8")).hexdigest(),
+        "execution_manifest_sha256": "f" * 64,
+    }
+    (outputs / "polish-integrity.json").write_text(
+        json.dumps(stale_best_integrity, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    WorkflowService._save_quality_checkpoint(
+        outputs.parent, stale_best, {"score": 90, "issues": []}, 1, "passed",
+    )
 
     checkpoint = service._find_short_checkpoint(project, run_id, 4, context)
     review = service._find_short_stage_output(project, run_id, "review.md")
 
     assert checkpoint == outputs
     assert review == outputs / "review.md"
+    planning_ir_text = (outputs / "planning-ir.json").read_text(
+        encoding="utf-8",
+    )
+    checkpoint_manifest = json.loads(
+        (outputs / "short-checkpoint.json").read_text(encoding="utf-8"),
+    )
+    assert checkpoint_manifest["planning_ir_schema"] == "planning-document-ir-v1"
+    assert checkpoint_manifest["execution_authority_mode"] == "planning-ir-v1"
+    assert checkpoint_manifest["planning_ir_artifact_sha256"] == hashlib.sha256(
+        planning_ir_text.encode("utf-8"),
+    ).hexdigest()
 
     restored = project.path / "runs" / "new-run" / "outputs"
+    restored.mkdir(parents=True)
+    for filename in (
+        "planning-adaptations.json", "best-candidate.md",
+        "quality-checkpoint.json",
+    ):
+        (restored / filename).write_text("stale", encoding="utf-8")
+    (restored / "draft-checkpoints").mkdir()
+    (restored / "draft-checkpoints" / "segment-99.json").write_text(
+        "stale", encoding="utf-8",
+    )
     plan, restored_draft, source, causal_chain = service._restore_short_checkpoint(
         outputs, restored, context,
     )
     assert (plan, restored_draft, source) == (
-        "complete plan", draft, "draft.md",
+        complete_checkpoint_plan(), draft, "draft.md",
     )
     assert causal_chain["core_goal"] == "完成测试规划"
     for filename in (
-        "short-causal-chain.json", "short-execution-index.json",
+        "planning-ir.json", "short-causal-chain.json", "short-execution-index.json",
         "draft-integrity.json", "short-checkpoint.json",
     ):
         assert (restored / filename).is_file()
+    assert (restored / "planning-ir.json").read_text(
+        encoding="utf-8",
+    ) == planning_ir_text
+    for filename in (
+        "planning-adaptations.json", "best-candidate.md",
+        "quality-checkpoint.json",
+    ):
+        assert not (restored / filename).exists()
+    assert not (restored / "draft-checkpoints" / "segment-99.json").exists()
+
+    original_draft = (outputs / "draft.md").read_text(encoding="utf-8")
+    (outputs / "draft.md").write_text(
+        WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
+            ["tampered one", "part two", "part three", "part four"]
+        ),
+        encoding="utf-8",
+    )
+    rejected_restore = project.path / "runs" / "tampered-restore" / "outputs"
+    with pytest.raises(ValueError):
+        service._restore_short_checkpoint(outputs, rejected_restore, context)
+    assert not rejected_restore.exists() or not any(rejected_restore.rglob("*"))
+    (outputs / "draft.md").write_text(original_draft, encoding="utf-8")
+
+    extra_adaptation = outputs / "planning-adaptations.json"
+    extra_adaptation.write_text(
+        json.dumps({"status": "ready"}, ensure_ascii=False), encoding="utf-8",
+    )
+    assert service._find_short_checkpoint(project, run_id, 4, context) is None
+    extra_adaptation.unlink()
+
+    planning_ir = json.loads(planning_ir_text)
+    planning_ir["document"]["segments"][0]["handoff"] = "tampered handoff"
+    (outputs / "planning-ir.json").write_text(
+        json.dumps(planning_ir, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+    assert service._find_short_checkpoint(project, run_id, 4, context) is None
 
 
 def test_short_checkpoint_binds_and_restores_planning_adaptation(tmp_path) -> None:
@@ -10124,7 +10867,9 @@ def test_short_checkpoint_rejects_tampered_manifest_receipt(tmp_path) -> None:
     db.create_run("source-run", project.id, "short-story", status="failed")
     outputs = project.path / "runs" / "source-run" / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "planning.md").write_text(
+        complete_checkpoint_plan(), encoding="utf-8",
+    )
     (outputs / "draft.md").write_text(
         WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
         encoding="utf-8",
@@ -10164,7 +10909,9 @@ def test_cross_run_short_checkpoint_requires_resumable_terminal_status(
     db.create_run("source-run", project.id, "short-story", status=status)
     outputs = project.path / "runs" / "source-run" / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "planning.md").write_text(
+        complete_checkpoint_plan(), encoding="utf-8",
+    )
     (outputs / "draft.md").write_text(
         WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
         encoding="utf-8",
@@ -10196,7 +10943,9 @@ def test_short_checkpoint_without_context_fingerprint_is_rejected(tmp_path) -> N
     db.create_run("legacy-run", project.id, "short-story", status="failed")
     outputs = project.path / "runs" / "legacy-run" / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "planning.md").write_text(
+        complete_checkpoint_plan(), encoding="utf-8",
+    )
     (outputs / "draft.md").write_text(
         WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
         encoding="utf-8",
@@ -10221,7 +10970,9 @@ def test_short_checkpoint_rejects_changed_outline_with_same_event_ids(tmp_path) 
     db.create_run("old-outline", project.id, "short-story", status="failed")
     outputs = project.path / "runs" / "old-outline" / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "planning.md").write_text(
+        complete_checkpoint_plan(), encoding="utf-8",
+    )
     draft = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
         ["one", "two", "three", "four"]
     )
@@ -10271,7 +11022,9 @@ def test_short_checkpoint_rejects_changed_generation_authority(tmp_path, change)
     db.create_run("old-context", project.id, "short-story", status="failed")
     outputs = project.path / "runs" / "old-context" / "outputs"
     outputs.mkdir(parents=True)
-    (outputs / "planning.md").write_text("complete plan", encoding="utf-8")
+    (outputs / "planning.md").write_text(
+        complete_checkpoint_plan(), encoding="utf-8",
+    )
     (outputs / "draft.md").write_text(
         WorkflowService.SHORT_SEGMENT_SEPARATOR.join(["one", "two", "three", "four"]),
         encoding="utf-8",
@@ -10355,10 +11108,13 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
         ):
             return execution_manifest_receipt_from_prompt(user)
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            covered_event_ids = list(dict.fromkeys(
+                re.findall(r"EV-[0-9A-F]{8}", user.upper())
+            ))
             return json.dumps({
                 "core_goal": "完成目标",
                 "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
-                "ending": "完成结局", "covered_event_ids": [],
+                "ending": "完成结局", "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False)
         if stage == "planning":
             return plan
@@ -10458,13 +11214,17 @@ async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_ch
         ):
             return execution_manifest_receipt_from_prompt(user)
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            causal_events = json.loads(
+                user.split("正式大纲事件：\n", 1)[1].split("\n\n", 1)[0]
+            )
             return json.dumps({
                 "core_goal": "按修正后的规划重建因果链",
                 "cycles": [{
                     "obstacle": "阻碍", "effort": "行动", "result": "推进",
                     "state_change": "修正后的规划状态成立",
                 }],
-                "ending": "完成结局", "covered_event_ids": [],
+                "ending": "完成结局",
+                "covered_event_ids": [item["id"] for item in causal_events],
             }, ensure_ascii=False)
         prompts.append(user)
         return "没有分段标题的初稿" if len(prompts) == 1 else repaired
@@ -10512,7 +11272,7 @@ async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_ch
             "state_change": "修正后的规划状态成立",
         }],
         "ending": "完成结局",
-        "covered_event_ids": [],
+        "covered_event_ids": [f"EV-{index:08X}" for index in range(1, 5)],
     }]
     assert "segment_heading_format" in prompts[0]
     assert "### 第 1 段" in prompts[1]
@@ -10590,13 +11350,16 @@ async def test_planning_second_monotonic_repair_recovers_after_no_progress_candi
         if "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4" in prompt:
             return execution_manifest_receipt_from_prompt(prompt)
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in prompt:
+            covered_event_ids = list(dict.fromkeys(
+                re.findall(r"EV-[0-9A-F]{8}", prompt.upper())
+            ))
             return json.dumps({
                 "core_goal": "完成核对",
                 "cycles": [{
                     "obstacle": "记录不全", "effort": "核对身份",
                     "result": "找到记录",
                 }],
-                "ending": "确认记录", "covered_event_ids": [],
+                "ending": "确认记录", "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False)
         planning_calls += 1
         return (
@@ -10864,6 +11627,19 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 "user": user,
                 "max_output_tokens": max_output_tokens,
             })
+            if "SHORT_PLAN_CANONICAL_REWRAP_V1" in user:
+                expected = json.loads(
+                    user.split("EXPECTED EVENT IDS:\n", 1)[1].split("\n\n", 1)[0]
+                )
+                raw_packet = user.split(
+                    "RAW GENERATED PACKET TO REWRAP:\n", 1,
+                )[1]
+                return self.result(role, json.dumps({"events": [{
+                    "event_id": event_id,
+                    "narrative": WorkflowService._short_plan_event_owned_body(
+                        raw_packet, [event_id],
+                    ),
+                } for event_id in expected]}, ensure_ascii=False))
             if role == "revision_plan" and user.lstrip().startswith("{"):
                 request = json.loads(user)
                 if request.get("schema") == "targeted-repair-group-v1":
@@ -11194,15 +11970,14 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 return self.result(role, json.dumps({
                     "summary": "相邻窗口的事件、知情状态、关系与结局承诺连续。",
                     "issues": [],
-                    "covered_windows": covered,
-                    "source_sha256": source_sha256,
-                    "source_issue_ids": source_issue_ids,
                 }, ensure_ascii=False))
             if role == "final_review" and "FULL MANUSCRIPT FINAL ADJUDICATION" in user:
                 if not self.revision_started:
                     assert formal.read_text(encoding="utf-8") == "正式旧稿不得在终审前覆盖。"
                 ledger = json.loads(
-                    user.split("INITIAL ISSUE LEDGER:\n", 1)[1].split("\n\n", 1)[0]
+                    user.split(
+                        "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
+                    )[1].split("\n\n", 1)[0]
                 )
                 payload = json.loads(quality_review(
                     97 if self.revision_started else 93,
@@ -11399,6 +12174,18 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
     ) == "full" for call in patch_calls)
     run_path = project.path / "runs" / result["id"]
     repaired_plan = (run_path / "outputs" / "planning.md").read_text(encoding="utf-8")
+    planning_ir = json.loads(
+        (run_path / "outputs" / "planning-ir.json").read_text(encoding="utf-8")
+    )
+    assert planning_ir["schema"] == "planning-document-ir-v1"
+    assert planning_ir["document"]["plan_sha256"] == hashlib.sha256(
+        repaired_plan.encode("utf-8"),
+    ).hexdigest()
+    assert [
+        event_id
+        for segment in planning_ir["document"]["segments"]
+        for event_id in segment["event_ids"]
+    ] == [item.upper() for item in event_ids]
     before_segments = service._short_plan_segments(original_plan, 6)
     after_segments = service._short_plan_segments(repaired_plan, 6)
     assert [after_segments[index] == before_segments[index] for index in range(6)] == [
@@ -11616,9 +12403,6 @@ async def test_final_review_reduces_all_evidence_hierarchically_before_global_ad
                 ).group(1))
                 return ModelResult(json.dumps({
                     "summary": "区域证据已完整归并", "issues": [],
-                    "covered_windows": covered,
-                    "source_sha256": source_sha256,
-                    "source_issue_ids": source_issue_ids,
                 }, ensure_ascii=False), {
                     "role": role, "model_name": "reviewer", "finish_reason": "stop",
                 })
@@ -11629,7 +12413,7 @@ async def test_final_review_reduces_all_evidence_hierarchically_before_global_ad
                 "role": role, "model_name": "reviewer", "finish_reason": "stop",
             })
 
-    gateway = Gateway()
+    gateway = expose_test_primary_route(Gateway())
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     )
@@ -11653,11 +12437,24 @@ async def test_final_review_reduces_all_evidence_hierarchically_before_global_ad
         call for call in gateway.calls if "REGIONAL EVIDENCE REDUCTION" in call["user"]
     ]
     assert len(regional_calls) >= 2
+    regional_call_count = len(regional_calls)
     final_call = next(
         call for call in reversed(gateway.calls)
         if "FULL MANUSCRIPT FINAL ADJUDICATION" in call["user"]
     )
     assert "区域证据已完整归并" in final_call["user"]
+
+    await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", manuscript, {"issues": []},
+    )
+    assert sum(
+        "REGIONAL EVIDENCE REDUCTION" in call["user"]
+        for call in gateway.calls
+    ) == regional_call_count
+    assert any(
+        event["event_type"] == "final_review_hierarchy_batch_reused"
+        for event in db.list_run_events(run_id)
+    )
 
 
 @pytest.mark.asyncio
@@ -11687,15 +12484,13 @@ async def test_hierarchical_review_carries_source_issues_even_when_reducer_drops
             ).group(1))
             return ModelResult(json.dumps({
                 "summary": "归并器没有复述问题正文。", "issues": [],
-                "covered_windows": covered,
-                "source_sha256": source_sha256,
-                "source_issue_ids": source_issue_ids,
             }, ensure_ascii=False), {
                 "role": role, "model_name": "reviewer", "finish_reason": "stop",
             })
 
     service = WorkflowService(
-        db, store, Gateway(), SkillGate(db, SkillScanner([skill_root])),
+        db, store, expose_test_primary_route(Gateway()),
+        SkillGate(db, SkillScanner([skill_root])),
     )
     monkeypatch.setattr(
         service, "_final_review_adjudication_token_limit", lambda *_: 700,
@@ -11795,15 +12590,13 @@ async def test_final_review_recovers_issue_reconciliation_from_matching_issue_id
     from novel_flywheel.quality import issue_ledger
     stable_issue_id = issue_ledger([prior_issue])[0]["issue_id"]
     reconciled_issue = {
-        **prior_issue, "issue_id": stable_issue_id, "status": "unresolved",
+        "issue_id": stable_issue_id, "status": "unresolved",
+        "severity": "medium", "evidence": "The sentence still repeats.",
     }
     final = json.dumps({
         "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "revise", "issues": [reconciled_issue],
-        "reconciliations": {
-            "cross_window_timeline": "The timeline is coherent.",
-            "issue_status": "The listed prose issue remains unresolved.",
-        },
+        "decision": "revise", "issues": [],
+        "reconciliations": [reconciled_issue],
     })
     gateway = RecordingGateway([evidence, final])
     service = WorkflowService(
@@ -11818,13 +12611,9 @@ async def test_final_review_recovers_issue_reconciliation_from_matching_issue_id
 
     assert review["score"] == 86.5
     assert audit["reconciliations"] == [reconciled_issue]
-    assert audit["reconciliation_summary"] == {
-        "cross_window_timeline": "The timeline is coherent.",
-        "issue_status": "The listed prose issue remains unresolved.",
-    }
     assert "missing_issue_reconciliation" not in audit["gate_reasons"]
     assert gateway.roles == ["final_review", "final_review"]
-    assert any(
+    assert not any(
         event["event_type"] == "final_review_reconciliation_recovered"
         for event in db.list_run_events(run_id)
     )
@@ -11857,7 +12646,7 @@ async def test_final_review_retries_malformed_window_with_configured_fallback(tm
             self.routes = []
             self.primary_responses = iter(['{"summary":"truncated', final])
 
-        async def complete(self, role, system, user, max_output_tokens=None):
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
             self.routes.append("primary")
             return ModelResult(next(self.primary_responses), {"model_name": "reviewer"})
 
@@ -11882,6 +12671,141 @@ async def test_final_review_retries_malformed_window_with_configured_fallback(tm
     assert gateway.routes == ["primary", "configured_fallback", "primary"]
     assert any(
         event["event_type"] == "final_review_json_fallback"
+        for event in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+async def test_final_review_context_capacity_uses_configured_fallback(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "final_review", "primary", "reviewer", "backup", "reviewer-2",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Review capacity fallback", mode="short", genre="suspense",
+        premise="A complete window exceeds only the primary route.", target_words=1000,
+    ))
+    service = WorkflowService(
+        db, store,
+        SimpleNamespace(complete_configured_fallback=lambda *_args, **_kwargs: None),
+        SimpleNamespace(),
+    )
+    run_id = "final-capacity"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    calls = []
+
+    async def fake_stage(*args, **kwargs):
+        calls.append("fallback" if kwargs.get("prefer_configured_fallback") else "primary")
+        if not kwargs.get("prefer_configured_fallback"):
+            raise ContextCapacityPreflightError(
+                pressure="split", estimated_input_tokens=40_000,
+                authority_input_tokens=36_000, output_reserve=2_000,
+                context_window=32_768,
+            )
+        return json.dumps({"summary": "备用路由完成窗口核对。", "issues": []}, ensure_ascii=False)
+
+    service._stage = fake_stage
+    _raw, payload = await service._final_review_json(
+        run_id, run_path, project, "constraints", "window prompt",
+        suffix="-capacity", recovery_kind="window",
+    )
+
+    assert payload["summary"] == "备用路由完成窗口核对。"
+    assert calls == ["primary", "fallback"]
+
+
+@pytest.mark.asyncio
+async def test_final_review_transport_interruption_uses_configured_fallback(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "final_review", "primary", "reviewer", "backup", "reviewer-2",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Review transport fallback", mode="short", genre="suspense",
+        premise="A route disconnects during a receipt.", target_words=1000,
+    ))
+    service = WorkflowService(
+        db, store,
+        SimpleNamespace(complete_configured_fallback=lambda *_args, **_kwargs: None),
+        SimpleNamespace(),
+    )
+    run_id = "final-transport"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    calls = []
+
+    async def fake_stage(*args, **kwargs):
+        fallback = kwargs.get("prefer_configured_fallback") is True
+        calls.append("fallback" if fallback else "primary")
+        if not fallback:
+            raise TransportInterruptedError({
+                "provider_id": "primary", "model_id": "reviewer",
+                "error_type": "disconnect",
+            })
+        return json.dumps({
+            "summary": "The fallback completed the immutable window review.",
+            "issues": [],
+        })
+
+    service._stage = fake_stage
+    _raw, payload = await service._final_review_json(
+        run_id, run_path, project, "constraints", "window prompt",
+        suffix="-transport", recovery_kind="window",
+    )
+
+    assert payload["summary"].startswith("The fallback")
+    assert calls == ["primary", "fallback"]
+
+
+@pytest.mark.asyncio
+async def test_full_review_reuses_validated_windows_after_interruption(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Review window resume", mode="short", genre="suspense",
+        premise="Validated windows survive a later interruption.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    window = json.dumps({"summary": "窗口已完成。", "issues": []}, ensure_ascii=False)
+    final = json.dumps({
+        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
+        "decision": "pass", "issues": [], "reconciliations": [],
+    })
+    gateway = RecordingGateway([window, final, final])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+
+    first, _audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+    )
+    second, second_audit = await service._full_manuscript_review(
+        run_id, run_path, project, "constraints", "short manuscript", {"issues": []},
+    )
+
+    assert first["score"] == second["score"]
+    assert len(gateway.calls) == 3
+    assert second_audit["reviewed_windows"] == 1
+    assert any(
+        event["event_type"] == "final_review_window_reused"
         for event in db.list_run_events(run_id)
     )
 
@@ -11913,7 +12837,7 @@ async def test_final_review_retries_empty_adjudication_with_configured_fallback(
             self.routes = []
             self.primary_responses = iter([evidence, ""])
 
-        async def complete(self, role, system, user, max_output_tokens=None):
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
             self.routes.append("primary")
             text = next(self.primary_responses)
             return ModelResult(text, {
@@ -11975,7 +12899,7 @@ async def test_final_review_recovers_compact_window_after_primary_and_fallback_t
             self.primary_responses = iter(['{"summary":"truncated', compact, final])
             self.fallback_responses = iter(['{"summary":"also truncated'])
 
-        async def complete(self, role, system, user, max_output_tokens=None):
+        async def complete_primary(self, role, system, user, max_output_tokens=None):
             self.routes.append("primary")
             self.calls.append(user)
             return ModelResult(next(self.primary_responses), {"model_name": "reviewer"})
@@ -12560,6 +13484,10 @@ def _attach_short_revision_semantic_authority(
     manifest = write_test_execution_manifest(
         service, project, quality_path, "constraints", plan, 1,
     )
+    service._persist_short_planning_ir(quality_path, plan, 1)
+    obligation_catalog = service._whole_story_obligation_catalog(
+        quality_path, list(manifest.segments[0].beat_ids),
+    )
     integrity = {
         "version": 4,
         "status": "passed",
@@ -12579,6 +13507,7 @@ def _attach_short_revision_semantic_authority(
             "text_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
         }],
         "semantic_segment_receipts": [],
+        "whole_story_obligation_catalog": obligation_catalog,
         "issues": [],
     }
     contract = service._manifest_segment_contract(
@@ -12628,7 +13557,7 @@ def _attach_multi_segment_polish_semantic_authority(
     plan = "\n\n".join(
         (
             f"### 第 {index} 段：测试段 {index}\n"
-            f"事件ID：EV-POLISH-{index:02d}\n"
+            f"事件ID：EV-{index:08X}\n"
             f"大纲依据：完成第 {index} 项测试事件。\n"
             + (
                 "段首承接：故事入口状态已经明确。\n"
@@ -12648,6 +13577,13 @@ def _attach_multi_segment_polish_semantic_authority(
     manifest = write_test_execution_manifest(
         service, project, quality_path, "constraints", plan, len(source_parts),
     )
+    service._persist_short_planning_ir(
+        quality_path, plan, len(source_parts),
+    )
+    obligation_catalog = service._whole_story_obligation_catalog(
+        quality_path,
+        [beat_id for segment in manifest.segments for beat_id in segment.beat_ids],
+    )
     source = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(source_parts)
     integrity = {
         "version": 4,
@@ -12661,6 +13597,7 @@ def _attach_multi_segment_polish_semantic_authority(
         "publication_segment_lengths": [len(part) for part in source_parts],
         "segments": [],
         "semantic_segment_receipts": [],
+        "whole_story_obligation_catalog": obligation_catalog,
         "issues": [],
     }
     previous_hash = ""

@@ -69,7 +69,7 @@ def test_contract_adapters_are_versioned_provider_and_narrative_agnostic() -> No
     ))
 
 
-def test_contract_adapter_architecture_budget_has_one_declared_authority() -> None:
+def test_contract_adapter_architecture_budget_has_declared_single_owners() -> None:
     assert {
         contract: tuple(item.name for item in registrations)
         for contract, registrations in CONTRACT_ADAPTER_REGISTRY.items()
@@ -77,6 +77,9 @@ def test_contract_adapter_architecture_budget_has_one_declared_authority() -> No
         "planning_adaptation_facet": (
             "planning_facet_closed_truth",
             "planning_facet_unique_evidence_quote",
+        ),
+        "planning_event_realizations": (
+            "planning_event_topology",
         ),
     }
     source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
@@ -95,6 +98,17 @@ def test_contract_adapter_architecture_budget_has_one_declared_authority() -> No
         if "unique_evidence_quote_aligned" in path.read_text(encoding="utf-8")
     ]
     assert quote_owners == ["generated_artifacts.py"]
+
+    topology_owners = [
+        path.name for path in source_root.glob("*.py")
+        if "planning_event_topology_aligned" in path.read_text(encoding="utf-8")
+    ]
+    assert topology_owners == ["generated_artifacts.py"]
+    assert workflow_source.count(
+        "_normalize_generated_short_plan_segment("
+    ) == 1  # historical parser definition only; no live model-output caller
+    assert "allow_legacy_missing" not in workflow_source
+    assert "legacy-planning-display" not in workflow_source
 
 
 @pytest.mark.parametrize("ordered_fields", (

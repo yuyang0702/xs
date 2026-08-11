@@ -60,6 +60,27 @@ def issue_is_resolved(issue: dict) -> bool:
     return str(issue.get("status") or "unresolved").lower() in {"resolved", "closed"}
 
 
+def unresolved_major_issue_ids(review: dict) -> set[str]:
+    """Return Runtime-stable identities for every unresolved hard-severity issue."""
+
+    result: set[str] = set()
+    for index, issue in enumerate(review.get("issues", [])):
+        if not isinstance(issue, dict):
+            continue
+        severity_class = str(issue.get("severity_class") or "").lower()
+        severity = (
+            severity_class
+            if severity_class in {"major", "high", "critical", "blocking"}
+            else str(issue.get("severity") or "").lower()
+        )
+        status = _canonical_issue_status(issue.get("status"))
+        if severity in {"major", "high", "critical", "blocking"} and status not in {
+            "resolved", "preserved",
+        }:
+            result.add(str(issue.get("issue_id") or f"issue-{index}"))
+    return result
+
+
 def _canonical_issue_status(value: Any) -> str:
     status = str(value or "").strip().lower()
     if status in ALLOWED_ISSUE_STATUSES:
@@ -138,6 +159,56 @@ def issue_ledger(issues: list[dict], source: str = "final_review") -> list[dict]
             "source": issue.get("source") or source,
         })
     return normalized
+
+
+def runtime_issue_ledger(
+    issues: list[dict], source: str,
+) -> list[dict]:
+    """Assign identity and lifecycle fields to untrusted model findings.
+
+    Model receipts may describe a problem, but cannot choose its stable ID,
+    mark it resolved, or claim a trusted source.  Those fields belong to the
+    Runtime authority boundary.
+    """
+
+    descriptive_fields = (
+        "category", "severity", "evidence", "location", "action",
+    )
+    descriptions = [{
+        key: str(issue.get(key) or "").strip()
+        for key in descriptive_fields
+        if str(issue.get(key) or "").strip()
+    } for issue in issues if isinstance(issue, dict)]
+    return [{
+        **issue,
+        "issue_id": "issue-" + hashlib.sha256(json.dumps(
+            {
+                key: str(issue.get(key, "")).strip()
+                for key in ("category", "severity", "evidence", "action")
+            },
+            ensure_ascii=False, sort_keys=True,
+        ).encode("utf-8")).hexdigest()[:12],
+        "status": "unresolved",
+        "repair_goal": issue.get("action", ""),
+        "source": source,
+    } for issue in descriptions]
+
+
+def merge_authoritative_issue_ledgers(
+    *ledgers: list[dict],
+) -> list[dict]:
+    """Merge Runtime-owned ledgers without allowing later omission."""
+
+    merged: list[dict] = []
+    seen: set[str] = set()
+    for ledger in ledgers:
+        for issue in ledger:
+            issue_id = str(issue.get("issue_id") or "")
+            if not issue_id or issue_id in seen:
+                continue
+            seen.add(issue_id)
+            merged.append(dict(issue))
+    return merged
 
 
 def reconcile_review_issues(
@@ -422,6 +493,8 @@ def quality_outcome(review: dict) -> tuple[str, list[str]]:
         for issue in review["issues"]
     ):
         reasons.append("critical")
+    if unresolved_major_issue_ids(review):
+        reasons.append("unresolved_major_issue")
     if reasons:
         return "failed", reasons
     return ("passed" if review["score"] >= 80 else "conditional_pass"), []

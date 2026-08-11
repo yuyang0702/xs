@@ -530,6 +530,17 @@ def test_planning_structure_incident_resolution_forbids_cross_segment_rollback()
     assert "某段失败不得撤销其他已通过段" in incident["known_resolution"]
 
 
+def test_nested_creative_heading_is_classified_as_typed_ir_scope_collision() -> None:
+    incident = classify_production_failure(
+        "Nested narrative heading was mistaken for a Runtime handoff control field",
+        workflow="short-story", stage="planning",
+    )
+
+    assert incident["incident_family"] == "planning.typed_ir_scope_collision"
+    assert "content-addressed planning IR" in incident["known_resolution"]
+    assert "complete-draft" in incident["known_resolution"]
+
+
 def test_planning_repair_anchor_production_fixture_is_classified_and_recoverable() -> None:
     fixture = json.loads(
         (Path(__file__).parent / "fixtures" / "planning_repair_anchor_collapse_de3131b3.json")

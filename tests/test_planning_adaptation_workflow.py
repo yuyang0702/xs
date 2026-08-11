@@ -92,6 +92,40 @@ def plan_for(event_id: str, event: str) -> str:
     )
 
 
+def event_realizations(narratives: dict[str, str]) -> str:
+    """Return the only live planning-repair wire contract."""
+
+    return json.dumps({
+        "events": [
+            {"event_id": event_id, "narrative": narrative}
+            for event_id, narrative in narratives.items()
+        ],
+    }, ensure_ascii=False)
+
+
+def planning_patch_from_prompt(prompt: str, replacement: str) -> str:
+    authority = prompt.split(
+        "EXPECTED PATCH AUTHORITY SHA256: ", 1,
+    )[1].splitlines()[0]
+    segment = int(prompt.split("EXPECTED SEGMENT: ", 1)[1].splitlines()[0])
+    anchors = json.loads(
+        prompt.split("AUTHORIZED ORIGINAL ANCHORS:\n", 1)[1].split(
+            "\n\nFORMAL EVENT CONTRACTS:", 1,
+        )[0]
+    )
+    assert len(anchors) == 1
+    return json.dumps({
+        "authority_sha256": authority,
+        "segment": segment,
+        "replacements": [{
+            "evidence_id": anchors[0]["evidence_id"],
+            "source_sha256": anchors[0]["source_sha256"],
+            "replacement": replacement,
+        }],
+        "summary": "只修正相邻分段入口状态。",
+    }, ensure_ascii=False)
+
+
 def two_segment_plan(first_id: str, second_id: str, *, repaired: bool) -> str:
     second_entry = (
         "花穗已经取得可靠证据，准备与裴砚行核对账册。"
@@ -463,12 +497,22 @@ def adaptation_receipt_with_invalid_invariants(
     review["changed_dimensions"] = sorted(invalid) or ["trigger_method"]
     review["classification"] = "structural" if invalid else "equivalent"
     if invalid:
-        evidence_id = review["plan_evidence_ids"][0]
         candidates = json.loads(
             prompt.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1].split(
                 "\n\nRECEIPT PROTOCOL ISSUES:", 1,
             )[0]
         )
+        marker_candidates = [
+            (len(value), key)
+            for key, value in candidates.items()
+            if "REBUILD-RETRY" in value
+            and "NOVEL_FLYWHEEL_PLANNING_FIELD" not in value
+        ]
+        evidence_id = (
+            min(marker_candidates)[1]
+            if marker_candidates else review["plan_evidence_ids"][0]
+        )
+        review["plan_evidence_ids"] = [evidence_id]
         review["plan_evidence_quote"] = candidates[evidence_id]
     review["reason"] = (
         review["plan_evidence_quote"] + "；候选仍改变了这些正式不变量："
@@ -811,11 +855,7 @@ async def test_segment_rebuild_protocol_rewrap_stays_inside_same_semantic_attemp
                     "\n\nCURRENT AUTHORITY", 1,
                 )[0]
             ) == [event_id.upper()]
-            return plan_for(event_id, repaired_event).replace(
-                "花穗正在调查账目缺口。", "错误入口状态。",
-            ).replace(
-                "花穗取得可以继续查账的可靠证据。", "错误出口状态。",
-            )
+            return event_realizations({event_id: repaired_event})
         return (
             "<future-provider-envelope>\n"
             "<entry>花穗正在调查账目缺口。</entry>\n"
@@ -830,7 +870,7 @@ async def test_segment_rebuild_protocol_rewrap_stays_inside_same_semantic_attemp
         contracts, 1, issues, mode="rebuild", attempt=1,
     )
 
-    assert repaired_event in candidate
+    assert "亲自核实账目、箱号和库房记录" in candidate
     assert "错误入口状态" not in candidate
     assert "错误出口状态" not in candidate
     assert len(calls) == 2
@@ -949,6 +989,88 @@ async def test_protocol_exhaustion_does_not_consume_later_semantic_repair_budget
     ]
     assert len(rejected) == 1
     assert rejected[0]["metadata"]["failure_class"] == "normal_invalid_output"
+
+
+@pytest.mark.asyncio
+async def test_candidate_receipt_failure_checkpoints_and_resumes_without_regeneration(
+    tmp_path,
+) -> None:
+    service, project, run_path, state, contracts = make_service(tmp_path)
+    event_id = contracts[0]["id"]
+    original = plan_for(
+        event_id,
+        f"1. **发现异常**（{event_id}）：小厮代替花穗判断库房账目异常。",
+    )
+    candidate = plan_for(
+        event_id,
+        f"1. **发现异常**（{event_id}）：花穗亲自核验账册、箱号和经手记录后确认异常。",
+    )
+    semantic_issues = [{
+        "code": "planning_structural_drift",
+        "segment": 1,
+        "event_id": event_id,
+        "invalid_invariants": ["primary_actor_agency"],
+        "message": "正式行动者被替换。",
+    }]
+    protocol_issues = [{
+        "code": "receipt_schema",
+        "segment": 1,
+        "event_id": event_id,
+        "message": "审核回执缺少必需字段。",
+    }]
+    review_calls = 0
+    repair_calls = 0
+
+    async def fake_review(*_args, **_kwargs):
+        nonlocal review_calls
+        review_calls += 1
+        if review_calls == 1:
+            return [], {}, semantic_issues, 0
+        if review_calls == 2:
+            return [], {}, protocol_issues, 0
+        return [{"event_reviews": []}], {}, [], 0
+
+    async def fake_repair(*_args, **_kwargs):
+        nonlocal repair_calls
+        repair_calls += 1
+        return candidate
+
+    service._review_short_plan_adaptations = fake_review
+    service._repair_short_plan_adaptation_segments = fake_repair
+
+    with pytest.raises(
+        GeneratedArtifactShapeError,
+        match="planning packet protocol recovery exhausted",
+    ):
+        await service._ensure_short_plan_adaptations(
+            "adaptation-run", run_path, project, "constraints", state,
+            original, [], 1,
+        )
+
+    assert repair_calls == 1
+    assert (run_path / "outputs" / "planning-awaiting-receipt.md").read_text(
+        encoding="utf-8",
+    ) == candidate
+    recovery = json.loads(
+        (run_path / "outputs" / "planning-recovery-state.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert recovery["status"] == "awaiting_receipt"
+
+    resumed, artifact, changed = await service._ensure_short_plan_adaptations(
+        "adaptation-run", run_path, project, "constraints", state,
+        original, [], 1,
+    )
+
+    assert changed is True
+    assert resumed == candidate
+    assert artifact["status"] == "ready"
+    assert repair_calls == 1
+    assert any(
+        item["event_type"] == "planning_candidate_receipt_resumed"
+        for item in service.db.list_run_events("adaptation-run")
+    )
 
 
 @pytest.mark.asyncio
@@ -1105,6 +1227,7 @@ async def test_semantic_body_collapse_does_not_trigger_protocol_rewrap(
         (
             f"1. **发现异常**（{event_id}）：花穗亲眼看见刘管事搬箱，"
             "随后亲自核实账目、箱号、库房记录和经手人证词，"
+            "她逐项比对出入时间、封条痕迹和搬运路线，排除误报后"
             "最终取得可以继续追查的可靠证据。"
         ),
     )
@@ -1119,7 +1242,9 @@ async def test_semantic_body_collapse_does_not_trigger_protocol_rewrap(
     async def fake_stage(*_args, **_kwargs):
         nonlocal calls
         calls += 1
-        return plan_for(event_id, f"1. **发现异常**（{event_id}）：花穗核实。")
+        return event_realizations({
+            event_id: "花穗查看账本却没有结果线索",
+        })
 
     service._stage = fake_stage
     with pytest.raises(GeneratedArtifactShapeError) as caught:
@@ -1236,15 +1361,13 @@ async def test_segment_rebuild_capacity_split_repairs_event_owned_packets_and_me
                     "\n\nCURRENT AUTHORITY", 1,
                 )[0]
             )
-            return (
-                "### 第 1 段：公开承认\n\n"
-                f"事件ID：{owned[0]}\n\n"
-                "大纲依据：身份公开与关系承诺。\n\n"
-                "段首承接：核验人员进入正厅。\n\n"
-                f"本段事件：1. **修复事件**（{owned[0]}）："
-                "花穗完成正式动作，相关人物作出回应并形成可核对结果。\n\n"
-                "段末交接：当前事件完成并交给下一事件。"
-            )
+            return event_realizations({
+                event_id: (
+                    obligation_variant
+                    if event_id == event_ids[2] else
+                    "花穗完成正式动作，相关人物作出回应并形成可核对结果。"
+                ) for event_id in owned
+            })
         if "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_PACKET_V1" not in prompt:
             splitter = kwargs.get("capacity_splitter")
             assert splitter is not None
@@ -1382,12 +1505,15 @@ async def test_segment_rebuild_capacity_split_repairs_event_owned_packets_and_me
         event_ids
     )
     assert packet_calls == [[event_id] for event_id in event_ids]
-    assert all("修复事件" in repaired for _event_id in event_ids)
+    assert all(event_id in repaired for event_id in event_ids)
+    assert obligation_variant in repaired
     assert all(name in repaired for name in fixture["observed_missing"])
     assert planning_event_obligation_issues(
         repaired, event_ids, obligation_checklists,
     ) == []
-    assert "段末交接：众人完成公开承认并进入新的关系状态。" in repaired
+    assert service._short_plan_field(repaired, "handoff") == (
+        "众人完成公开承认并进入新的关系状态。"
+    )
 
     first_packet_calls = list(packet_calls)
     repaired_again = await service._repair_short_plan_adaptation_segments(
@@ -2004,13 +2130,10 @@ async def test_whole_story_handoff_failure_repairs_only_affected_segment(
             return adaptation_receipt(prompt, structural=False)
         planning_calls += 1
         assert "EXPECTED SEGMENT: 2" in prompt
-        return (
-            "### 第 2 段：对质\n\n"
-            f"事件ID：{second_id}\n\n"
-            "大纲依据：形成证据链\n\n"
-            "段首承接：花穗已经取得可靠证据，准备与裴砚行核对账册。\n\n"
-            "本段事件：裴砚行核对账册后，二人提交证据并推动公开对质。\n\n"
-            "段末交接：账目问题被确认，后续追查转向幕后经手人。"
+        assert "SHORT_PLAN_EVIDENCE_PATCH_V3" in prompt
+        return planning_patch_from_prompt(
+            prompt,
+            "段首承接：花穗已经取得可靠证据，准备与裴砚行核对账册。",
         )
 
     service._stage = fake_stage
@@ -2101,22 +2224,11 @@ async def test_whole_story_multiple_affected_segments_receive_the_full_issue(
         planning_prompts.append(prompt)
         segment = int(prompt.split("EXPECTED SEGMENT: ", 1)[1].splitlines()[0])
         assert "第一段出口与第二段入口共同冲突，需要成对修正。" in prompt
-        if segment == 1:
-            return (
-                "### 第 1 段：发现\n\n"
-                f"事件ID：{first_id}\n\n"
-                "大纲依据：发现异常\n\n"
-                "段首承接：花穗正在调查账目缺口。\n\n"
-                "本段事件：花穗亲自核验库房异常并取得可靠证据。\n\n"
-                "段末交接：花穗已取得证据，准备与裴砚行核对账册。"
-            )
-        return (
-            "### 第 2 段：核账\n\n"
-            f"事件ID：{second_id}\n\n"
-            "大纲依据：核对账册\n\n"
-            "段首承接：花穗已取得证据，准备与裴砚行核对账册。\n\n"
-            "本段事件：裴砚行与花穗核对账册并锁定经手人。\n\n"
-            "段末交接：账目问题被确认，追查转向幕后经手人。"
+        assert segment == 2
+        assert "SHORT_PLAN_EVIDENCE_PATCH_V3" in prompt
+        return planning_patch_from_prompt(
+            prompt,
+            "段首承接：花穗已取得证据，准备与裴砚行核对账册。",
         )
 
     service._stage = fake_stage
@@ -2130,7 +2242,7 @@ async def test_whole_story_multiple_affected_segments_receive_the_full_issue(
     assert [
         int(prompt.split("EXPECTED SEGMENT: ", 1)[1].splitlines()[0])
         for prompt in planning_prompts
-    ] == [1, 2]
+    ] == [2]
     assert "准备与裴砚行核对账册" in service._short_plan_segments(plan, 2)[0]
     assert "准备与裴砚行核对账册" in service._short_plan_segments(plan, 2)[1]
 
@@ -2240,12 +2352,13 @@ async def test_incomplete_targeted_repair_falls_back_to_complete_segment_rebuild
             )
         planning_calls += 1
         if "SHORT_PLAN_EQUIVALENCE_TARGETED_REPAIR_V2" in prompt:
-            return "只返回了一句不完整修正"
+            return event_realizations({
+                event_id: "花穗询问小厮后查看库房，但没有完成完整核验。",
+            })
         assert "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_V2" in prompt
-        return plan_for(
-            event_id,
-            "小厮报信后，花穗追问细节并亲自核验库房异常，再决定继续查账。",
-        )
+        return event_realizations({
+            event_id: "小厮报信后，花穗追问细节并亲自核验库房异常，再决定继续查账。",
+        })
 
     service._stage = fake_stage
     plan, artifact, changed = await service._ensure_short_plan_adaptations(
@@ -2290,17 +2403,19 @@ async def test_rejected_rebuild_gets_one_bounded_retry_from_latest_best_segment(
             )
         planning_calls += 1
         if "SHORT_PLAN_EQUIVALENCE_TARGETED_REPAIR_V2" in prompt:
-            return "只返回不完整的定向修正"
+            return event_realizations({
+                event_id: "候选仍把执行者写错，而且没有完成因果状态变化。",
+            })
         assert "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_V2" in prompt
         if planning_calls == 3:
-            return plan_for(
-                event_id, "第一轮重建修掉旧问题但留下新的结局问题。"
-            ) + "\n\nREBUILD-RETRY-BAD"
+            return event_realizations({
+                event_id: "第一轮重建修掉旧问题但留下新的结局问题。REBUILD-RETRY-BAD",
+            })
         assert planning_calls == 4
         assert "REJECTED CANDIDATE NO-REGRESSION FEEDBACK" in prompt
-        return plan_for(
-            event_id, "第二轮重建保留正式执行者、因果和结局边界。"
-        ) + "\n\nREBUILD-RETRY-GOOD"
+        return event_realizations({
+            event_id: "第二轮重建保留正式执行者、因果和结局边界。REBUILD-RETRY-GOOD",
+        })
 
     service._stage = fake_stage
     accepted, artifact, changed = await service._ensure_short_plan_adaptations(
@@ -4032,7 +4147,9 @@ def test_every_planning_protocol_schedule_owns_explicit_route_selection() -> Non
         and isinstance(node.value.func, ast.Attribute)
         and node.value.func.attr == "_execute_protocol_receipt_attempt"
     ]
-    assert len(executions) == 6
+    # The tenth schedule is the hash-bound global obligation reducer. Local
+    # adjacent windows cannot prove remote setup/payoff or ending obligations.
+    assert len(executions) == 10
     for execution in executions:
         keywords = {item.arg: item.value for item in execution.keywords}
         operation = keywords["operation"]

@@ -1,6 +1,9 @@
 import hashlib
 
-from novel_flywheel.narrative_ledger import build_narrative_ledger
+from novel_flywheel.narrative_ledger import (
+    build_narrative_ledger,
+    build_semantic_boundary_ledger,
+)
 
 
 def test_ledger_links_explicit_question_to_later_answer() -> None:
@@ -72,3 +75,52 @@ def test_ledger_evidence_records_source_confidence_and_unit_id() -> None:
     assert ledger["relations"]
     assert all(relation["from_unit_id"] for relation in ledger["relations"])
     assert all(relation["to_unit_id"] for relation in ledger["relations"])
+
+
+def test_semantic_boundary_ledger_blocks_unresolved_high_impact_promise() -> None:
+    segments = [
+        "我一定会让死去的朋友回来。仪式已经开始。",
+        "风停在空屋门前，故事到这里结束。",
+    ]
+
+    ledger = build_semantic_boundary_ledger("\n\n".join(segments), segments)
+
+    assert ledger["commitments_closed"] is False
+    assert ledger["important_unresolved_promise_ids"]
+    assert len(ledger["boundaries"]) == 1
+    assert ledger["segment_sha256"][0] == hashlib.sha256(
+        segments[0].encode("utf-8"),
+    ).hexdigest()
+
+
+def test_semantic_boundary_ledger_is_content_addressed_and_closes_payoff() -> None:
+    segments = [
+        "我答应一定会把银锁交还给林晚。",
+        "银锁的真相终于揭晓，我把银锁交还给林晚。",
+    ]
+
+    first = build_semantic_boundary_ledger("\n\n".join(segments), segments)
+    second = build_semantic_boundary_ledger("\n\n".join(segments), segments)
+
+    assert first == second
+    assert first["commitments_closed"] is True
+    assert first["important_unresolved_promise_ids"] == []
+
+
+def test_semantic_boundary_ledger_does_not_treat_no_rule_match_as_closure() -> None:
+    segments = [
+        "黎明前反应堆将熔毁，控制室已经拉响警报。",
+        "故事在正午结束，却没有说明反应堆的结局。",
+    ]
+
+    ledger = build_semantic_boundary_ledger(
+        "\n\n".join(segments), segments,
+        authoritative_obligations=[{
+            "obligation_id": "ending-reactor",
+            "kind": "ending",
+            "source_sha256": "a" * 64,
+        }],
+    )
+
+    assert ledger["commitments_closed"] is None
+    assert ledger["authoritative_obligation_count"] == 1

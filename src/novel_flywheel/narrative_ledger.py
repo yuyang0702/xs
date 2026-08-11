@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from typing import Any
 
 
 LEDGER_VERSION = "narrative-ledger-v2"
+SEMANTIC_BOUNDARY_LEDGER_VERSION = "semantic-boundary-ledger-v1"
 _SENTENCE = re.compile(r"[^。！？!?\n]+[。！？!?]?")
 _QUESTION = re.compile(r"[^。！？!?\n]{0,80}(?:为什么|怎么会|究竟|是否|能不能|[？?])[^。！？!?\n]*[。！？!?]?")
 _PROMISE = re.compile(r"[^。！？!?\n]{0,80}(?:一定|必须|发誓|答应|承诺|会让|要让|决定)[^。！？!?\n]*[。！？!?]?")
@@ -69,6 +71,78 @@ def build_narrative_ledger(text: str, nlp: dict | None = None) -> dict[str, Any]
         "important_uncertainties": important,
         "nlp_source": (nlp or {}).get("backend", "rules"),
     }
+
+
+def build_semantic_boundary_ledger(
+    text: str, segments: list[str], nlp: dict | None = None,
+    authoritative_obligations: list[dict] | None = None,
+) -> dict[str, Any]:
+    """Build the Runtime-owned proof used to compose semantic windows.
+
+    Model window verdicts prove local order and continuity.  This ledger owns
+    the global, content-addressed facts that cannot be safely inferred by
+    conjunctively folding booleans: exact segment boundaries and unresolved
+    high-impact promises.  It never turns a model rejection into acceptance.
+    """
+
+    narrative = build_narrative_ledger(text, nlp)
+    segment_sha256 = [
+        hashlib.sha256(segment.encode("utf-8")).hexdigest()
+        for segment in segments
+    ]
+    boundaries = [{
+        "left_segment": index,
+        "right_segment": index + 1,
+        "left_sha256": segment_sha256[index - 1],
+        "right_sha256": segment_sha256[index],
+        "boundary_sha256": hashlib.sha256(json.dumps({
+            "left": segment_sha256[index - 1],
+            "right": segment_sha256[index],
+        }, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+    } for index in range(1, len(segments))]
+    important_ids = [
+        str(item.get("id") or "")
+        for item in narrative.get("important_uncertainties", [])
+        if str(item.get("id") or "")
+    ]
+    promises = [{
+        "promise_id": str(item.get("id") or ""),
+        "status": str(item.get("status") or "unresolved"),
+        "linked_to": str(item.get("linked_to") or ""),
+        "unit_id": str(item.get("unit_id") or ""),
+        "evidence_sha256": hashlib.sha256(
+            str(item.get("text") or "").encode("utf-8"),
+        ).hexdigest(),
+    } for item in narrative.get("promises", []) if isinstance(item, dict)]
+    obligations = [
+        dict(item) for item in (authoritative_obligations or [])
+        if isinstance(item, dict)
+    ]
+    obligations_sha256 = hashlib.sha256(json.dumps(
+        obligations, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    rule_commitments_closed: bool | None = (
+        False if important_ids
+        else True if promises and all(item["status"] == "linked" for item in promises)
+        else None
+    )
+    payload = {
+        "version": SEMANTIC_BOUNDARY_LEDGER_VERSION,
+        "text_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "segment_sha256": segment_sha256,
+        "boundaries": boundaries,
+        "promises": promises,
+        "authoritative_obligation_sha256": obligations_sha256,
+        "authoritative_obligation_count": len(obligations),
+        "important_unresolved_promise_ids": important_ids,
+        # Absence of a rule match is unknown, never proof of closure.  The
+        # hash-bound global reducer owns the final verdict when this is None.
+        "commitments_closed": rule_commitments_closed,
+    }
+    payload["ledger_sha256"] = hashlib.sha256(json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    return payload
 
 
 def _items(

@@ -1103,22 +1103,17 @@ def planning_event_body_retention_issues(
     expected_event_ids: list[str] | tuple[str, ...],
 ) -> list[dict[str, Any]]:
     """Reject a repair that technically keeps fields but collapses their story work."""
-    source_span = _field_value_span(
-        str(source_segment or ""), {"本段事件", "segmentevents", "segmentevent"},
-    )
-    candidate_span = _field_value_span(
-        str(candidate_segment or ""), {"本段事件", "segmentevents", "segmentevent"},
-    )
-    if source_span is None or candidate_span is None:
+    source_body = compile_planning_segment(source_segment).field("event")
+    candidate_body = compile_planning_segment(candidate_segment).field("event")
+    if not source_body or not candidate_body:
         return []
 
-    def meaningful(text: str, span: tuple[int, int]) -> str:
-        body = text[span[0]:span[1]]
+    def meaningful(body: str) -> str:
         body = remove_planning_event_ids(body)
         return re.sub(r"[\s*_`#（）()\[\]：:，,。.!！?？;；\-]+", "", body)
 
-    source = meaningful(str(source_segment or ""), source_span)
-    candidate = meaningful(str(candidate_segment or ""), candidate_span)
+    source = meaningful(source_body)
+    candidate = meaningful(candidate_body)
     minimum = max(12, int(len(source) * 0.35))
     if len(source) >= 20 and len(candidate) < minimum:
         return [{

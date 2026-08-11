@@ -84,6 +84,11 @@ _REGISTRATIONS = (
         legacy_labels=("structured payload", "JSON packet"),
     ),
     ArtifactContractRegistration(
+        name="planning_event_realizations", phase="planning",
+        semantic_authority="ordered Runtime-owned planning event realization IR",
+        legacy_labels=("planning event realization array",),
+    ),
+    ArtifactContractRegistration(
         name="short_causal_chain", phase="planning", parser_strategy="baml_sap",
         semantic_authority="normalize_causal_packet_payload",
         legacy_labels=("Short causal chain", "Causal chain event packet"),
@@ -249,6 +254,19 @@ class _PlanningFacetCanonicalShape(BaseModel):
     changed_dimensions: list[str]
 
 
+class _PlanningEventCanonicalItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    event_id: str = Field(min_length=1)
+    narrative: str = Field(min_length=1)
+
+
+class _PlanningEventCanonicalShape(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    events: list[_PlanningEventCanonicalItem]
+
+
 PLANNING_FACET_CLOSED_TRUTH_ADAPTER = ContractAdapterRegistration(
     name="planning_facet_closed_truth",
     version=1,
@@ -284,10 +302,32 @@ PLANNING_FACET_UNIQUE_EVIDENCE_ADAPTER = ContractAdapterRegistration(
 )
 
 
+PLANNING_EVENT_TOPOLOGY_ADAPTER = ContractAdapterRegistration(
+    name="planning_event_topology",
+    version=1,
+    contract_name="planning_event_realizations",
+    source_shapes=(
+        "canonical ordered event array",
+        "nested ordered event record array",
+        "event identity keyed mapping",
+        "tool arguments or unseen nested envelope",
+    ),
+    canonical_shape="ordered events array with event_id and opaque narrative",
+    proof_obligation=(
+        "Exactly one narrative is bound to every expected Runtime event ID in "
+        "the same order; no duplicate identity, conflicting candidate, partial "
+        "coverage, or machine-control field exists. Narrative bytes remain opaque."
+    ),
+)
+
+
 CONTRACT_ADAPTER_REGISTRY: Mapping[str, tuple[ContractAdapterRegistration, ...]] = {
     "planning_adaptation_facet": (
         PLANNING_FACET_CLOSED_TRUTH_ADAPTER,
         PLANNING_FACET_UNIQUE_EVIDENCE_ADAPTER,
+    ),
+    "planning_event_realizations": (
+        PLANNING_EVENT_TOPOLOGY_ADAPTER,
     ),
 }
 
@@ -490,6 +530,169 @@ def _adapt_planning_facet_unique_evidence(
     )
 
 
+def _planning_event_id(value: object) -> str:
+    normalized = unicodedata.normalize("NFKC", str(value or ""))
+    normalized = normalized.strip().replace("－", "-").upper()
+    match = re.fullmatch(r"(EV-[0-9A-F]{8})(?:-[A-Z0-9_-]+)?", normalized)
+    return match.group(1) if match else ""
+
+
+def _planning_event_key(value: object) -> str:
+    return re.sub(
+        r"[^0-9a-z_]+", "_",
+        unicodedata.normalize("NFKC", str(value or ""))
+        .strip().casefold().replace("-", "_").replace(" ", "_"),
+    ).strip("_")
+
+
+def _adapt_planning_event_topology(
+    payload: dict[str, Any], *, expected_event_ids: Sequence[str],
+) -> tuple[dict[str, Any], ContractAdapterAudit] | None:
+    """Align provider-independent container topology to the event IR."""
+
+    expected = [_planning_event_id(value) for value in expected_event_ids]
+    if not expected or any(not value for value in expected):
+        raise ValueError("planning event adapter received invalid expected ownership")
+    narrative_fields = (
+        "narrative", "narrative_summary", "event_body", "description",
+        "summary", "causal_plan", "resolution", "realization",
+    )
+    identity_fields = frozenset({"event_id", "id"})
+    control_fields = frozenset({
+        "command", "commands", "control", "control_action", "mutation", "op",
+        "operation", "operations", "patch", "patches", "repair_operation",
+        "review_decision",
+    })
+    wrapper_scalar_fields = frozenset({"name", "type", "role", "status"})
+    records: list[dict[str, str]] = []
+    paths: list[tuple[str, ...]] = []
+    unsafe: list[str] = []
+
+    def visit(node: object, path: tuple[str, ...], inherited_id: str = "") -> None:
+        if isinstance(node, list):
+            for index, child in enumerate(node):
+                visit(child, path + (str(index),))
+            return
+        if not isinstance(node, dict):
+            return
+        normalized: dict[str, tuple[str, object]] = {}
+        for raw_key, child in node.items():
+            key = _planning_event_key(raw_key)
+            if not key:
+                raise ValueError("planning event adapter found an empty field name")
+            if key in normalized:
+                raise ValueError(
+                    "planning event adapter found a Unicode-normalized key collision"
+                )
+            normalized[key] = (str(raw_key), child)
+        for key in normalized:
+            if key in control_fields:
+                unsafe.append(".".join(path + (normalized[key][0],)))
+        direct_ids = {
+            _planning_event_id(normalized[key][1])
+            for key in identity_fields if key in normalized
+        } - {""}
+        if len(direct_ids) > 1:
+            raise ValueError("planning event adapter found conflicting identities")
+        direct_id = next(iter(direct_ids), "")
+        if inherited_id and direct_id and inherited_id != direct_id:
+            raise ValueError("planning event mapping conflicts with child identity")
+        owner = inherited_id or direct_id
+        narrative_values = [
+            str(normalized[field][1]).strip()
+            for field in narrative_fields
+            if field in normalized
+            and isinstance(normalized[field][1], str)
+            and str(normalized[field][1]).strip()
+        ]
+        if len(set(narrative_values)) > 1:
+            raise ValueError(
+                "planning event adapter found conflicting narrative aliases"
+            )
+        narrative = narrative_values[0] if narrative_values else ""
+        if owner and narrative:
+            unknown = set(normalized) - identity_fields - set(narrative_fields)
+            if unknown:
+                raise ValueError(
+                    "planning event adapter found unknown event-record fields: "
+                    + ", ".join(sorted(unknown))
+                )
+            records.append({"event_id": owner, "narrative": narrative})
+            paths.append(path)
+            return
+        for raw_key, child in node.items():
+            mapped_id = _planning_event_id(raw_key)
+            if (
+                mapped_id
+                and isinstance(child, str)
+                and child.strip()
+            ):
+                records.append({
+                    "event_id": mapped_id,
+                    "narrative": child.strip(),
+                })
+                paths.append(path + (str(raw_key),))
+                continue
+            normalized_key = _planning_event_key(raw_key)
+            if not isinstance(child, (dict, list)) and child is not None:
+                if normalized_key not in wrapper_scalar_fields:
+                    raise ValueError(
+                        "planning event adapter found an unknown wrapper scalar: "
+                        + str(raw_key)
+                    )
+                if (
+                    normalized_key == "name"
+                    and str(child).strip()
+                    and _planning_event_key(child) != "planning_event_realizations"
+                ):
+                    raise ValueError(
+                        "planning event adapter found a conflicting tool name"
+                    )
+            visit(child, path + (str(raw_key),), inherited_id=mapped_id)
+
+    visit(payload, ())
+    if unsafe:
+        raise ValueError(
+            "planning event adapter found unknown machine controls: "
+            + ", ".join(sorted(set(unsafe)))
+        )
+    actual = [item["event_id"] for item in records]
+    if actual != expected or len(actual) != len(set(actual)):
+        return None
+    canonical = _PlanningEventCanonicalShape.model_validate({
+        "events": records,
+    }).model_dump(mode="python")
+    if payload == canonical:
+        return None
+    path_text = [".".join(path) for path in paths]
+    if any(_planning_event_key(part) in {"tool_call", "arguments"} for path in paths for part in path):
+        source_shape = "tool arguments or unseen nested envelope"
+    elif any(path and _planning_event_id(path[-1]) for path in paths):
+        source_shape = "event identity keyed mapping"
+    elif all(len(path) <= 2 for path in paths):
+        source_shape = "nested ordered event record array"
+    else:
+        source_shape = "tool arguments or unseen nested envelope"
+    descriptor = PLANNING_EVENT_TOPOLOGY_ADAPTER
+    proof = {
+        "expected_event_ids_sha256": canonical_sha256(expected),
+        "actual_event_ids_sha256": canonical_sha256(actual),
+        "source_paths_sha256": canonical_sha256(path_text),
+        "event_count": len(actual),
+    }
+    return canonical, ContractAdapterAudit(
+        adapter_name=descriptor.name,
+        adapter_version=descriptor.version,
+        contract_name=descriptor.contract_name,
+        source_shape=source_shape,
+        canonical_shape=descriptor.canonical_shape,
+        transformations=("planning_event_topology_aligned",),
+        input_sha256=canonical_sha256(payload),
+        output_sha256=canonical_sha256(canonical),
+        proof_sha256=canonical_sha256(proof),
+    )
+
+
 def adapt_registered_contract(
     payload: Mapping[str, Any], *, contract_name: str,
     context: Mapping[str, Any] | None = None,
@@ -515,6 +718,13 @@ def adapt_registered_contract(
                 current,
                 invariant_fields=invariant_fields,
                 evidence_candidates=evidence_candidates,
+            )
+        elif descriptor.name == PLANNING_EVENT_TOPOLOGY_ADAPTER.name:
+            expected_event_ids = tuple(
+                (context or {}).get("expected_event_ids") or ()
+            )
+            adapted = _adapt_planning_event_topology(
+                current, expected_event_ids=expected_event_ids,
             )
         else:  # pragma: no cover - registry construction rejects unowned adapters
             raise RuntimeError(f"contract adapter has no implementation: {descriptor.name}")

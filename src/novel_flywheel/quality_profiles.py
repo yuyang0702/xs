@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from novel_flywheel.quality import issue_is_mandatory, issue_is_resolved, quality_outcome
+from novel_flywheel.quality import (
+    issue_is_mandatory,
+    issue_is_resolved,
+    quality_outcome,
+    unresolved_major_issue_ids,
+)
 
 
 @dataclass(frozen=True)
@@ -241,22 +246,7 @@ def _blocker_reasons(review: dict) -> list[str]:
 
 
 def _unresolved_major_ids(review: dict) -> set[str]:
-    result = set()
-    for index, issue in enumerate(review.get("issues", [])):
-        if not isinstance(issue, dict):
-            continue
-        severity_class = str(issue.get("severity_class") or "").lower()
-        severity = (
-            severity_class
-            if severity_class in {"major", "high", "critical", "blocking"}
-            else str(issue.get("severity") or "").lower()
-        )
-        status = str(issue.get("status") or "unresolved").lower()
-        if severity in {"major", "high", "critical", "blocking"} and status not in {
-            "resolved", "closed", "preserved",
-        }:
-            result.add(str(issue.get("issue_id") or f"issue-{index}"))
-    return result
+    return unresolved_major_issue_ids(review)
 
 
 def _unresolved_mandatory_ids(review: dict) -> set[str]:

@@ -49,3 +49,42 @@ Every generated mutation follows `transport -> syntax -> ownership -> local sema
 - Protection evidence: no existing formal manuscript or project narrative file was rewritten, no active task was interrupted, and no Git commit or push was performed.
 - Review note: the strict change gate reported no blocker and one procedural L3 split-review warning because P0-P6 necessarily changes more than two authority-critical modules. No multi-agent review was authorized, so the required single-agent clean-room review was performed from the original requirement, task baseline, complete diff/stat, production fixtures, forward-risk report, and test/live evidence. The warning remains recorded rather than being bypassed.
 - Remaining external risk: a third-party platform can still rate-limit, time out, change a compatibility endpoint, or become unavailable. Route fingerprints, TTL expiry, typed diagnostics, bounded retry/fallback, semantic splitting, best-candidate preservation, and resumable checkpoints contain those failures; they cannot make an external platform permanently available.
+
+## Terminal-boundary production closure — 2026-08-11
+
+The controlled production run exposed two later defects after the original V5
+closure. First, local event repairs were compared against the earliest defect in
+the whole plan, so a syntax defect in an unchanged terminal segment suppressed
+valid ownership progress in earlier changed segments. Candidate comparison now
+receives an immutable changed-segment scope and source event ownership; defects
+outside that scope remain latent while any new local, adjacent, or whole-plan
+defect inside the mutation scope still blocks promotion.
+
+Second, the V1 segment schema represented every exit as a non-empty successor
+handoff. A final segment with complete ordered event realizations and a formally
+confirmed ending therefore could never satisfy the same shape. The compiler now
+has a versioned discriminated exit topology: intermediate segments use
+`AdjacentHandoffIR`, while exactly the last segment uses `TerminalClosureIR`
+bound to the formal ending hash, exact terminal event ownership, terminal event
+evidence hash, and explicitly retained open-obligation IDs. This is a topology
+rule for one, two, or N segments, not a genre, project, provider, or fixed-index
+exception. Legacy display Markdown receives the exact formal terminal evidence
+only as a deterministic compatibility projection; missing intermediate
+handoffs, missing ending authority, incorrect terminal ownership, multiple
+terminal exits, and ambiguous migration remain closed.
+
+Runtime-owned field envelopes are extracted atomically before any Markdown
+heading scan. Their bodies may contain arbitrary headings and multiline ending
+evidence without becoming segment boundaries; the compiler independently checks
+role, token, and SHA-256 before the value becomes authority. Events-only repair
+continues to own only the event body, and packet merge reattaches the immutable
+parent boundary after leaf merge rather than accepting a child-authored exit.
+
+Regression evidence includes 1/2/5/N exit topologies, intermediate and terminal
+misuse, exact final-event ownership, retained open obligations, CRLF/LF owned
+heading bodies, the real events-only terminal response shape, mixed-stage
+six-segment monotonic promotion with unchanged latent defects, causal-chain
+continuation, and the complete workflow/full-repository suites. Rollback remains
+the prior complete plan and its hash-bound recovery state; no formal manuscript,
+StoryState, credential, provider binding, or Git history is changed by this
+migration.

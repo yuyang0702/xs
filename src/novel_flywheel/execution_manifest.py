@@ -44,13 +44,47 @@ class StateAssertion:
 
 
 @dataclass(frozen=True)
+class FutureBeatGuard:
+    """Compact proof of the beats that are outside one segment's scope.
+
+    The guard deliberately contains no beat-ID collection.  Its digest binds
+    the segment number, the canonical global beat sequence, and the derived
+    floor/count, so downstream contracts can retain the prohibition without
+    expanding every future beat for every segment.
+    """
+
+    order_floor: int
+    count: int
+    scope_sha256: str
+
+    def __post_init__(self) -> None:
+        if self.order_floor < 0 or self.count < 0:
+            raise ValueError("future beat guard values must not be negative")
+        if (self.order_floor == 0) != (self.count == 0):
+            raise ValueError(
+                "future beat guard floor and count must be empty together"
+            )
+        if not _SHA256.fullmatch(self.scope_sha256):
+            raise ValueError(
+                "future beat guard scope_sha256 must be a lowercase SHA-256 digest"
+            )
+
+
+EMPTY_FUTURE_BEAT_GUARD = FutureBeatGuard(
+    order_floor=0,
+    count=0,
+    scope_sha256=hashlib.sha256(b"future-beat-scope:none").hexdigest(),
+)
+
+
+@dataclass(frozen=True)
 class SegmentBeatContract:
     segment: int
     beat_ids: tuple[str, ...]
     entry_state: tuple[StateAssertion, ...]
     exit_state: tuple[StateAssertion, ...]
     previous_exit_sha256: str
-    prohibited_future_beat_ids: tuple[str, ...]
+    future_beat_guard: FutureBeatGuard = EMPTY_FUTURE_BEAT_GUARD
 
 
 @dataclass(frozen=True)
@@ -172,6 +206,130 @@ def _state_assertions(
     return tuple(assertions)
 
 
+def _future_beat_sequence_sha256(beats: tuple[AtomicBeat, ...]) -> str:
+    """Hash the ordered ownership index once for all compact guards."""
+
+    return hashlib.sha256(json.dumps(
+        [
+            {
+                "beat_id": beat.beat_id,
+                "order": beat.order,
+                "owner_segment": beat.owner_segment,
+            }
+            for beat in sorted(beats, key=lambda item: item.order)
+        ],
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+
+
+def future_beat_guards(
+    beats: tuple[AtomicBeat, ...], segment_numbers: tuple[int, ...],
+) -> dict[int, FutureBeatGuard]:
+    """Derive every segment guard in one reverse ownership pass."""
+
+    if len(segment_numbers) != len(set(segment_numbers)):
+        raise ValueError("future beat guards require unique segment numbers")
+    counts_by_owner: dict[int, int] = {}
+    floor_by_owner: dict[int, int] = {}
+    for beat in beats:
+        counts_by_owner[beat.owner_segment] = (
+            counts_by_owner.get(beat.owner_segment, 0) + 1
+        )
+        floor_by_owner[beat.owner_segment] = min(
+            floor_by_owner.get(beat.owner_segment, beat.order), beat.order,
+        )
+
+    sequence_sha256 = _future_beat_sequence_sha256(beats)
+    owners = sorted(counts_by_owner, reverse=True)
+    owner_index = 0
+    future_count = 0
+    future_floor = 0
+    result: dict[int, FutureBeatGuard] = {}
+    for segment in sorted(segment_numbers, reverse=True):
+        while owner_index < len(owners) and owners[owner_index] > segment:
+            owner = owners[owner_index]
+            future_count += counts_by_owner[owner]
+            owner_floor = floor_by_owner[owner]
+            future_floor = (
+                min(future_floor, owner_floor) if future_floor else owner_floor
+            )
+            owner_index += 1
+        scope_sha256 = hashlib.sha256(json.dumps(
+            {
+                "beat_sequence_sha256": sequence_sha256,
+                "segment": segment,
+                "order_floor": future_floor,
+                "count": future_count,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        result[segment] = FutureBeatGuard(
+            order_floor=future_floor,
+            count=future_count,
+            scope_sha256=scope_sha256,
+        )
+    return result
+
+
+def extend_future_beat_guard(
+    parent: FutureBeatGuard, deferred_beats: tuple[AtomicBeat, ...],
+) -> FutureBeatGuard:
+    """Add a child's deferred owned suffix without retaining its beat IDs.
+
+    A split task's first child must prohibit both the parent's future scope and
+    the beats delegated to its second child.  The ordered deferred beats are
+    hashed once at the split boundary; only the resulting compact guard crosses
+    into the draft contract.
+    """
+
+    if not isinstance(parent, FutureBeatGuard):
+        raise ValueError("parent must be a compact FutureBeatGuard")
+    if not deferred_beats:
+        return parent
+    if len({beat.beat_id for beat in deferred_beats}) != len(deferred_beats):
+        raise ValueError("deferred beats must not contain duplicate beat IDs")
+    if len({beat.order for beat in deferred_beats}) != len(deferred_beats):
+        raise ValueError("deferred beats must not contain duplicate orders")
+    deferred_floor = min(beat.order for beat in deferred_beats)
+    order_floor = (
+        min(parent.order_floor, deferred_floor)
+        if parent.count else deferred_floor
+    )
+    count = parent.count + len(deferred_beats)
+    scope_sha256 = hashlib.sha256(json.dumps(
+        {
+            "parent_scope_sha256": parent.scope_sha256,
+            "deferred_sequence_sha256": _future_beat_sequence_sha256(
+                deferred_beats,
+            ),
+            "order_floor": order_floor,
+            "count": count,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    return FutureBeatGuard(
+        order_floor=order_floor,
+        count=count,
+        scope_sha256=scope_sha256,
+    )
+
+
+def _legacy_future_beat_ids(
+    beats: tuple[AtomicBeat, ...], segment: int,
+) -> tuple[str, ...]:
+    """Materialize only at a legacy v2-v4 serialization/migration boundary."""
+
+    return tuple(
+        beat.beat_id
+        for beat in sorted(beats, key=lambda item: item.order)
+        if beat.owner_segment > segment
+    )
+
+
 def parse_execution_manifest(value: object) -> ShortExecutionManifest:
     if not isinstance(value, dict):
         raise ValueError("execution manifest must be a JSON object")
@@ -237,6 +395,18 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
             ),
         ))
 
+    beats_tuple = tuple(beats)
+    raw_segment_numbers: list[int] = []
+    for index, item in enumerate(raw_segments):
+        if not isinstance(item, dict):
+            raise ValueError(f"segments[{index}] must be an object")
+        raw_segment_numbers.append(_positive_int(
+            item.get("segment"), f"segments[{index}].segment",
+        ))
+    expected_guards = future_beat_guards(
+        beats_tuple, tuple(raw_segment_numbers),
+    )
+
     segments = []
     seen_segments: set[int] = set()
     for index, item in enumerate(raw_segments):
@@ -246,6 +416,44 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
         if segment in seen_segments:
             raise ValueError(f"duplicate segment: {segment}")
         seen_segments.add(segment)
+        expected_guard = expected_guards[segment]
+        if version >= 5:
+            floor = _positive_int(
+                item.get("future_beat_order_floor"),
+                f"segments[{index}].future_beat_order_floor",
+                allow_zero=True,
+            )
+            if floor != expected_guard.order_floor:
+                raise ValueError(
+                    f"segments[{index}].future_beat_order_floor is stale"
+                )
+            if _positive_int(
+                item.get("future_beat_count"),
+                f"segments[{index}].future_beat_count",
+                allow_zero=True,
+            ) != expected_guard.count:
+                raise ValueError(
+                    f"segments[{index}].future_beat_count is stale"
+                )
+            if _sha256(
+                item.get("future_beat_scope_sha256"),
+                f"segments[{index}].future_beat_scope_sha256",
+            ) != expected_guard.scope_sha256:
+                raise ValueError(
+                    f"segments[{index}].future_beat_scope_sha256 is stale"
+                )
+        else:
+            legacy_future_ids = tuple(
+                _beat_id(beat_id, f"segments[{index}].prohibited_future_beat_ids")
+                for beat_id in _string_tuple(
+                    item.get("prohibited_future_beat_ids"),
+                    f"segments[{index}].prohibited_future_beat_ids",
+                )
+            )
+            if legacy_future_ids != _legacy_future_beat_ids(beats_tuple, segment):
+                raise ValueError(
+                    f"segments[{index}].prohibited_future_beat_ids is stale"
+                )
         segments.append(SegmentBeatContract(
             segment=segment,
             beat_ids=tuple(
@@ -267,13 +475,7 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
                 item.get("previous_exit_sha256"),
                 f"segments[{index}].previous_exit_sha256", allow_empty=True,
             ),
-            prohibited_future_beat_ids=tuple(
-                _beat_id(beat_id, f"segments[{index}].prohibited_future_beat_ids")
-                for beat_id in _string_tuple(
-                    item.get("prohibited_future_beat_ids"),
-                    f"segments[{index}].prohibited_future_beat_ids",
-                )
-            ),
+            future_beat_guard=expected_guard,
         ))
 
     semantic_receipt = value.get("semantic_receipt")
@@ -288,7 +490,7 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
         causal_chain_sha256=_sha256(
             value.get("causal_chain_sha256"), "causal_chain_sha256",
         ),
-        beats=tuple(beats),
+        beats=beats_tuple,
         segments=tuple(segments),
         semantic_receipt=dict(semantic_receipt),
         repair_attempts=_positive_int(
@@ -330,6 +532,7 @@ def execution_manifest_payload(manifest: ShortExecutionManifest) -> dict[str, An
     """Serialize manifests in their version-specific canonical representation."""
     payload = asdict(manifest)
     for raw_segment, segment in zip(payload.get("segments", []), manifest.segments):
+        raw_segment.pop("future_beat_guard", None)
         raw_segment["entry_state"] = [
             _state_assertion_payload(item, version=manifest.version)
             for item in segment.entry_state
@@ -338,6 +541,18 @@ def execution_manifest_payload(manifest: ShortExecutionManifest) -> dict[str, An
             _state_assertion_payload(item, version=manifest.version)
             for item in segment.exit_state
         ]
+        if manifest.version >= 5:
+            raw_segment.update({
+                "future_beat_order_floor": segment.future_beat_guard.order_floor,
+                "future_beat_count": segment.future_beat_guard.count,
+                "future_beat_scope_sha256": (
+                    segment.future_beat_guard.scope_sha256
+                ),
+            })
+        else:
+            raw_segment["prohibited_future_beat_ids"] = list(
+                _legacy_future_beat_ids(manifest.beats, segment.segment)
+            )
     if manifest.version == 2:
         for beat in payload.get("beats", []):
             for field in (
@@ -434,6 +649,9 @@ def _evidence_match_key(value: object) -> str:
         line = re.sub(r"^(?:#{1,6}\s+|>\s*)", "", line)
         line = re.sub(r"^(?:[-+]\s+|\d+[.)、]\s*)", "", line)
         line = line.replace("**", "").replace("__", "").replace("`", "")
+        line = re.sub(
+            r"^(?:段首承接|段末交接|入口|出口)\s*[:：]\s*", "", line,
+        )
         line = re.sub(r"\s+", "", line)
         if line:
             lines.append(line)
@@ -451,9 +669,9 @@ def bind_execution_manifest_receipt_evidence(
 
     Beat evidence is never model-authored: the Runtime copies the exact source
     evidence already validated on the manifest. Segment evidence may select a
-    Runtime-provided candidate by ID. For backward compatibility, a formatted
-    model excerpt can be mapped to one exact candidate when the normalized text
-    contains that candidate without changing narrative content.
+    Runtime-provided candidate by ID. A legacy formatted excerpt is adapted
+    only when its normalized value equals exactly one candidate; ambiguous,
+    partial, or unrelated authority text never becomes boundary evidence.
     """
     if not isinstance(receipt, dict):
         return receipt
@@ -493,21 +711,22 @@ def bind_execution_manifest_receipt_evidence(
             evidence_id = str(item.get("evidence_id") or "").strip()
             selected = candidates.get(evidence_id, "")
             evidence = str(item.get("evidence") or "").strip()
-            if not selected and evidence and evidence in authority_text:
-                selected = evidence
-            if not selected and evidence and candidates:
+            selected_id = evidence_id if selected else ""
+            if not selected and not evidence_id and evidence and candidates:
                 evidence_key = _evidence_match_key(evidence)
                 matches = [
-                    candidate for candidate in candidates.values()
-                    if (
-                        (candidate_key := _evidence_match_key(candidate))
-                        and candidate_key in evidence_key
-                    )
+                    (candidate_id, candidate)
+                    for candidate_id, candidate in candidates.items()
+                    if evidence_key
+                    and _evidence_match_key(candidate) == evidence_key
                 ]
-                if matches:
-                    selected = max(matches, key=lambda item: len(_evidence_match_key(item)))
+                if len(matches) == 1:
+                    selected_id, selected = matches[0]
             if selected:
+                item["evidence_id"] = selected_id
                 item["evidence"] = selected
+            elif candidates:
+                item["evidence"] = ""
             bound_segments.append(item)
         result["segment_receipts"] = bound_segments
     return result
@@ -630,18 +849,11 @@ def execution_manifest_receipt_issues(
                 f"execution manifest beat actor/action is invalid: {beat.beat_id}",
                 **metadata,
             ))
-        if beat.source_evidence not in authority_text:
-            issues.append(_issue(
-                "beat_source_evidence_unbound",
-                "execution manifest beat source evidence is not bound to authority: "
-                + beat.beat_id,
-                beat_id=beat.beat_id,
-            ))
         evidence = str(item.get("evidence") or "").strip()
-        if not evidence or evidence not in authority_text:
+        if not evidence:
             issues.append(_issue(
                 "receipt_beat_evidence_unbound",
-                "execution manifest beat evidence is not bound to authority: "
+                "execution manifest beat evidence is missing: "
                 + beat.beat_id,
                 beat_id=beat.beat_id,
             ))
@@ -872,6 +1084,9 @@ def execution_manifest_issues(
         ))
 
     beat_by_id = {beat.beat_id: beat for beat in manifest.beats}
+    expected_future_guards = future_beat_guards(
+        manifest.beats, tuple(segment.segment for segment in segments),
+    )
     claimed_by: dict[str, list[int]] = {}
     flattened_orders: list[int] = []
     for segment in segments:
@@ -922,24 +1137,14 @@ def execution_manifest_issues(
                         f"第 {segment.segment} 段出口状态由其他段负责的节拍产生",
                         segment=segment.segment, beat_id=producer,
                     ))
-        prohibited = set(segment.prohibited_future_beat_ids)
-        expected_future = tuple(
-            beat.beat_id
-            for beat in sorted(manifest.beats, key=lambda item: item.order)
-            if beat.owner_segment > segment.segment
-        )
-        if segment.prohibited_future_beat_ids != expected_future:
+        expected_guard = expected_future_guards[segment.segment]
+        if segment.future_beat_guard != expected_guard:
             issues.append(_issue(
                 "future_beat_prohibition_mismatch",
                 "当前段必须精确禁止所有后续写作段拥有的原子节拍",
                 segment=segment.segment,
-                expected_beat_ids=list(expected_future),
-                actual_beat_ids=list(segment.prohibited_future_beat_ids),
-            ))
-        for beat_id in sorted(owned & prohibited):
-            issues.append(_issue(
-                "owned_beat_is_prohibited", "当前段同时拥有并禁止同一原子节拍",
-                segment=segment.segment, beat_id=beat_id,
+                expected_guard=asdict(expected_guard),
+                actual_guard=asdict(segment.future_beat_guard),
             ))
 
     for beat in manifest.beats:
@@ -1178,6 +1383,10 @@ def merge_execution_manifest_fragments(
         previous_id_map = id_map
     segments: list[SegmentBeatContract] = []
     previous_exit: tuple[StateAssertion, ...] = ()
+    merged_beats = tuple(beats)
+    merged_future_guards = future_beat_guards(
+        merged_beats, tuple(row[0] for row in segment_rows),
+    )
     for number, entry_state, exit_state, beat_ids in segment_rows:
         segments.append(SegmentBeatContract(
             segment=number,
@@ -1185,22 +1394,20 @@ def merge_execution_manifest_fragments(
             entry_state=entry_state,
             exit_state=exit_state,
             previous_exit_sha256=(
-                state_assertions_sha256(previous_exit, version=4)
+                state_assertions_sha256(previous_exit, version=5)
                 if previous_exit else ""
             ),
-            prohibited_future_beat_ids=tuple(
-                beat.beat_id for beat in beats if beat.owner_segment > number
-            ),
+            future_beat_guard=merged_future_guards[number],
         ))
         previous_exit = exit_state
     return ShortExecutionManifest(
-        version=4,
+        version=5,
         status="ready",
         authority_sha256=authority_hashes["authority_sha256"],
         outline_sha256=authority_hashes["outline_sha256"],
         planning_sha256=authority_hashes["planning_sha256"],
         causal_chain_sha256=authority_hashes["causal_chain_sha256"],
-        beats=tuple(beats),
+        beats=merged_beats,
         segments=tuple(segments),
         semantic_receipt={},
         repair_attempts=repair_attempts,

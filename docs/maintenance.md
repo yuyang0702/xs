@@ -718,7 +718,7 @@ Draft semantic receipts now require exact prose-bound evidence for actor/action 
 
 `revision-integrity.json` records the segment receipts and whole-story verdict for a promoted user-selected repair. Its quality checkpoint retains the hash-bound narrative-integrity reference, and the promoted run copies the ready execution manifest so a later repair or polish round can reproduce the same atomic authority instead of silently dropping back to legacy checks.
 
-Full short-story checkpoints are version 3. They bind the original generation context, plan, causal artifact, ready execution manifest plus receipt digest, segment assignments, StoryState hash, narrative-integrity artifact, and selected manuscript bytes. Cross-run recovery copies or reconstructs all of these artifacts before downstream work. A corrupt later segment checkpoint preserves the longest valid prefix and restarts at the first invalid segment instead of discarding earlier accepted prose. The run log displays every structured issue, automatic repair attempt, context-layer size, preserved-prefix count, and restart segment rather than collapsing diagnostics to the top-level message.
+Full short-story checkpoints are version 4. They bind the original generation context, the validated Planning IR authority and artifact hashes, plan, causal artifact, ready execution manifest plus receipt digest, segment assignments, StoryState hash, narrative-integrity artifact, and selected manuscript bytes. Cross-run recovery validates and copies the same Planning IR before saving or rebuilding downstream artifacts; deleting or editing the IR cannot silently fall back to an older Markdown interpretation. A corrupt later segment checkpoint preserves the longest valid prefix and restarts at the first invalid segment instead of discarding earlier accepted prose. The run log displays every structured issue, automatic repair attempt, context-layer size, preserved-prefix count, and restart segment rather than collapsing diagnostics to the top-level message.
 
 Short-draft calls now use an immutable `DraftTaskContract`. It binds the full authority hash, parent and child identity, recursion depth, one current Han-character target, exact ordered event IDs, entry state, required exit state, and the preceding accepted sibling hash. The provider prompt is rebuilt from the immutable authority for every root, child, and same-scope retry; it never appends child instructions to a rendered prompt that still carries the parent target. A single formal event is retried in place instead of being split into invented halves. With two or more ordered events, child one receives the first contiguous event range and child two receives the remainder. Child two's target is `max(400, parent target - accepted child-one Han characters)`, so accepted prose is never mechanically cut to restore a fixed 50/50 allocation.
 
@@ -758,6 +758,14 @@ Run events added or tightened by this flow:
 - Short causal-chain recovery reparses and revalidates each regeneration attempt independently. Two bounded repair calls are available after the initial response; malformed or incomplete attempts are not saved, while a later valid chain continues into execution-manifest generation without changing the accepted plan.
 - `draft_integrity_failed`: the assembled draft did not pass and downstream generation stopped;
 - `final_review_reconciliation_recovered`: a readable legacy reconciliation shape was recovered, but any missing or invalid ID still blocks promotion.
+
+### Durable systemic completion and forward acceptance
+
+For an open-world or systemic change to planning, recovery, structured model output, split/resume, or narrative authority, the operational completion boundary is no longer “the current error disappeared” or “the next stage started.” The production workflow must produce at least a complete draft candidate and then validate lossless split/merge ownership, segment-level and whole-draft semantic receipts, complete-draft integrity, whole-story logic and continuity, polish, and the quality gates that precede final review. Offline deterministic gateways may supply provider-shaped responses for this proof; maintenance tests never call paid APIs. A real-provider canary is an additional, separately authorized validation, not a replacement for deterministic coverage.
+
+An independent forward-looking gate projects the changed mechanism through the causal chain, execution manifest, drafting, split/merge, polish, targeted and manual revision, final review, and formal promotion. Every reachable boundary must have test evidence or a concrete code-level exemption. Acceptance is monotonic: protocol/schema correctness cannot justify lower prose quality, weaker causality, lost character or knowledge state, timeline/viewpoint drift, pacing damage, missed setup/payoff, an altered ending, or expansion beyond user-selected revision scope. On regression, Runtime retains the last accepted complete candidate.
+
+This is persisted repository policy and cannot be bypassed by opening a new task, window, process, or by compacting conversational context. Localized closed-world maintenance remains risk-proportionate and does not automatically require a full paid-provider run; the complete-draft requirement applies to user-authorized systemic workflow repairs.
 
 ## Historical incident business acceptance
 
@@ -812,6 +820,8 @@ The seventh controlled resume crossed the previously blocked state facet and the
 The current catalog covers the production failures already observed in initialization location references and backlinks, inverse character relationships, provider connection loss, missing controlled tool output, output-limit truncation, causal-chain parsing and coverage, planning structural drift, atomic-beat ownership, draft segment integrity, split/merge length mismatch, prose-bound semantic receipts, polish validation, stale AI issue-ledger evidence, and unavailable semantic/final review. `GET /api/projects/{project_id}/production-incidents` returns both the project's aggregated occurrences and the complete known-family catalog. Legacy terminal failure events without incident metadata are classified when read. Older failed runs that predate the unified terminal event are also represented from their stored run error plus latest error-stage event, without rewriting either row. A recurrence emits `production_incident_recognized` with **已识别为历史同类问题** and the registered recovery path before the ordinary terminal failure event.
 
 Repository development now has a mandatory forward-incident projection gate. Every L2/L3 source change must scan the complete production-incident catalog by root-cause mechanism rather than matching only the current message, project each applicable mechanism into structurally similar call sites and later workflow stages, explain why previous offline tests missed the production shape, and cite production-shaped recovery plus next-authoritative-boundary tests. The versioned report classifies every sibling boundary as fixed and tested, tested not susceptible, or not applicable with concrete evidence. A changed model-output boundary must cite at least six materially different valid realizations, two invalid or incomplete outputs, two capacity or transport faults, and invariant-based tests; a non-model change must cite concrete exemption evidence. Strict change inspection fails when this report is absent or incomplete; containment, checkpoint retention, idealized fake-provider success, a single canned article, and a new fail-closed error do not satisfy the gate.
+
+An L3 change spanning more than two authority-critical modules also requires a versioned split-review report bound to the SHA-256 snapshot of the final core files. Each distinct reviewer may cover no more than two core modules and must cite concrete test evidence; the report must cover every changed core path exactly once. Missing, duplicated, stale, failed, or self-inconsistent slices keep strict inspection closed. This turns the former advisory “split review required” warning into a satisfiable but non-bypassable repository gate.
 
 Generated prose tests therefore separate deterministic authority from open creative expression. They assert event ownership, actor-action-result binding, causality, viewpoint, timeline and knowledge state, handoffs, evidence hashes, issue identity, atomic promotion, and next-boundary continuation while allowing wording, dialogue, description, rhythm, and non-dependent micro-order to vary. Deterministic parameterized, metamorphic, mutation, property-based, and pairwise cases are preferred; recorded seeds and minimized failure fixtures keep exploration reproducible. For an affected model route, at least one local integration case retains the real `_stage` prompt assembly, capacity policy, role binding, primary/fallback selection, checkpoint handling, and validators, replacing only the paid network call with a deterministic fake gateway.
 
@@ -1003,3 +1013,21 @@ planning role's configured fallback route. Partial text is never mechanically
 truncated or promoted. Deterministic reduction must prove exact ordered coverage,
 then whole-chain validation must pass before the execution manifest can become
 `ready` or drafting can begin.
+
+### Typed terminal planning boundary and owned Markdown envelopes
+
+Planning now distinguishes an adjacent handoff from the final segment's
+terminal closure. Intermediate segments must bind their exit state to the next
+segment's opening; the last segment instead binds the formally confirmed ending,
+the exact final event ownership, and any intentionally retained open
+obligations. A missing next-segment handoff on the terminal segment can therefore
+be migrated deterministically when that ending authority is complete, while an
+empty intermediate handoff or an unprovable ending still fails closed.
+
+Runtime-owned planning fields are content-addressed envelopes. Markdown
+presentation scans mask each complete envelope as one atomic region before
+looking for segment headings, so an authenticated outline, event body, or ending
+that contains its own Markdown headings cannot split the plan or truncate the
+field. The compiler still verifies the envelope role, token, and SHA-256 before
+the value becomes planning authority; masking presentation does not make an
+invalid envelope acceptable.

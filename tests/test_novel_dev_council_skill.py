@@ -209,6 +209,93 @@ def test_change_gate_validates_related_test_mapping_paths() -> None:
             raise AssertionError(f"invalid mapping accepted: {invalid}")
 
 
+def test_change_gate_accepts_current_hash_bound_split_review(tmp_path) -> None:
+    gate = _load_script("inspect_change_gate.py")
+    core_paths = [
+        "src/novel_flywheel/workflows.py",
+        "src/novel_flywheel/planning_compiler.py",
+        "src/novel_flywheel/quality.py",
+    ]
+    payload = {
+        "version": 1,
+        "core_tree_sha256": gate._core_review_sha256(ROOT, core_paths),
+        "reviews": [
+            {
+                "review_id": "planning-authority",
+                "reviewer": "reviewer-a",
+                "status": "passed",
+                "core_paths": core_paths[:2],
+                "test_paths": ["tests/test_workflows.py"],
+                "evidence": "Exact authority ownership and next-boundary tests passed.",
+            },
+            {
+                "review_id": "quality-authority",
+                "reviewer": "reviewer-b",
+                "status": "passed",
+                "core_paths": core_paths[2:],
+                "test_paths": ["tests/test_quality.py"],
+                "evidence": "Runtime issue ownership and terminal reconciliation passed.",
+            },
+        ],
+    }
+    report_path = tmp_path / "split-review.json"
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = gate._load_split_review_report(report_path, ROOT, core_paths)
+
+    assert report["core_tree_sha256"] == payload["core_tree_sha256"]
+    assert len(report["reviews"]) == 2
+
+
+def test_change_gate_rejects_stale_or_incomplete_split_review(tmp_path) -> None:
+    gate = _load_script("inspect_change_gate.py")
+    core_paths = [
+        "src/novel_flywheel/workflows.py",
+        "src/novel_flywheel/planning_compiler.py",
+        "src/novel_flywheel/quality.py",
+    ]
+    payload = {
+        "version": 1,
+        "core_tree_sha256": "0" * 64,
+        "reviews": [],
+    }
+    report_path = tmp_path / "split-review.json"
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+    try:
+        gate._load_split_review_report(report_path, ROOT, core_paths)
+    except RuntimeError as exc:
+        assert "current core file snapshot" in str(exc)
+    else:
+        raise AssertionError("stale split review was accepted")
+
+    payload["core_tree_sha256"] = gate._core_review_sha256(ROOT, core_paths)
+    payload["reviews"] = [
+        {
+            "review_id": "incomplete",
+            "reviewer": "reviewer-a",
+            "status": "passed",
+            "core_paths": core_paths[:2],
+            "test_paths": ["tests/test_workflows.py"],
+            "evidence": "One slice only.",
+        },
+        {
+            "review_id": "duplicate",
+            "reviewer": "reviewer-b",
+            "status": "passed",
+            "core_paths": [core_paths[0]],
+            "test_paths": ["tests/test_quality.py"],
+            "evidence": "Duplicates one path and omits another.",
+        },
+    ]
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+    try:
+        gate._load_split_review_report(report_path, ROOT, core_paths)
+    except RuntimeError as exc:
+        assert "reviewed more than once" in str(exc)
+    else:
+        raise AssertionError("overlapping split review was accepted")
+
+
 def test_change_gate_allows_explicit_ui_test_mapping() -> None:
     gate = _load_script("inspect_change_gate.py")
     report = gate._classify(
@@ -444,3 +531,43 @@ def test_repository_policy_requires_root_cause_architecture_convergence() -> Non
     assert "deprecation, or deletion plan" in agents
     assert "MUST NOT be reported as root resolution" in agents
     assert "never `systemically_resolved`" in agents
+
+
+def test_repository_policy_requires_durable_systemic_end_to_end_acceptance() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    maintenance = (ROOT / "docs" / "maintenance.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Systemic Workflow Completion and Forward Acceptance Gate" in agents
+    assert "a complete draft candidate" in agents
+    assert "segment-level and whole-draft semantic receipts" in agents
+    assert "split/merge" in agents
+    assert "pre-final-review quality gates" in agents
+    assert "Forward-looking acceptance is a separate hard gate" in agents
+    for boundary in (
+        "causal chain",
+        "execution manifest",
+        "drafting",
+        "polish",
+        "targeted and manual revision",
+        "final review",
+        "formal promotion",
+    ):
+        assert boundary in agents
+    assert "MUST NOT trade away prose quality" in agents
+    assert "new task, window, process, or compacted context" in agents
+    assert "proportionate acceptance" in agents
+    assert "MUST NOT call a paid model API" in agents
+
+    assert "systemic completion gate" in skill
+    assert "complete draft candidate" in skill
+    assert "forward-looking acceptance" in skill
+    assert "new window or compacted context" in skill
+    assert "does not require paid-provider execution" in skill
+
+    assert "### Durable systemic completion and forward acceptance" in maintenance
+    assert "complete draft candidate" in maintenance
+    assert "independent forward-looking gate" in maintenance
+    assert "cannot be bypassed by opening a new task" in maintenance

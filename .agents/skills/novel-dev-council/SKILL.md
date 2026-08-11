@@ -77,13 +77,21 @@ When the user authorized implementation:
 5. Test the next authoritative boundary, not merely rejection or rollback.
 6. Run related cluster tests, then the complete suite before restart or completion when project policy requires it.
 7. For every L2/L3 source change, build a version 2 forward-risk report from the complete production-incident catalog. It must preserve the original requirement, classify its scope, state forbidden narrowing and resolution status, map every material MUST to implementation/test/evidence, name the historical families checked, project the underlying mechanisms into every structurally similar and later workflow boundary, explain why prior tests missed the production shape, and cite both production-shaped recovery tests and tests that cross the next authoritative boundary. A boundary may be marked not susceptible only with concrete code evidence. When a model-output boundary changes, cite at least six valid realizations spanning four topology classes, two valid unseen container/wrapper arrangements, two invalid/incomplete variants, two transport/capacity faults, unknown-variant behavior, and invariant-based tests; one canned response, one schema family with cosmetic variants, or an exact-prose golden is insufficient. When no model-output boundary changes, provide concrete not-applicable evidence.
-8. Run `scripts/inspect_change_gate.py --baseline <temporary-json> --declared-level <L1|L2|L3> --forward-risk-report <temporary-json> --strict`, using the council's risk classification. The script may raise that level but must not lower it. Declare each valid nonstandard test with a repeated `--related-test <changed-source>=<test-path>` mapping. Resolve or explicitly account for every finding. The strict gate must fail for L2/L3 source changes when the forward-risk report is absent or incomplete.
+8. Run `scripts/inspect_change_gate.py --baseline <temporary-json> --declared-level <L1|L2|L3> --forward-risk-report <temporary-json> --strict`, using the council's risk classification. The script may raise that level but must not lower it. Declare each valid nonstandard test with a repeated `--related-test <changed-source>=<test-path>` mapping. When more than two authority-critical modules change, submit `--split-review-report <temporary-json>`: version 1, final `core_tree_sha256`, and two-or-more distinct review slices, each covering at most two core paths with a distinct reviewer, passing status, concrete evidence, and existing tests. Every current core path must appear exactly once; stale, missing, overlapping, or failed slices do not satisfy the gate. Resolve or explicitly account for every finding. The strict gate must fail for L2/L3 source changes when the forward-risk report is absent or incomplete.
 9. Inspect the final diff from a clean context. Ask an independent test/review role only when the user explicitly requested **团队评审**.
 10. Reject a candidate change that fixes one target while creating a new hard failure, widening unauthorized scope, or regressing protected behavior.
 
 Without an explicit team-review request, rebuild context from the raw request, baseline, final diff, and raw test output and perform a single-agent clean-room self-review. Do not label it independent or describe it as a council. If the user explicitly required a genuinely independent review and it is unavailable, stop and report that boundary.
 
 Read `references/regression-shield.md` for failure families, change sizing, and monotonic acceptance rules.
+
+### Apply the systemic completion gate
+
+For an open-world or systemic planning, recovery, model-output, split/resume, or narrative-authority change, do not stop after the observed failure is repaired or the next authoritative boundary passes. Require a complete draft candidate from the production workflow, then verify deterministic split/merge ownership and reconstruction, segment-level and whole-draft semantic receipts, complete-draft integrity, whole-story continuity, polish, and the applicable pre-final-review quality gates.
+
+Treat forward-looking acceptance as an independent hard gate. Project the changed mechanism into the causal chain, execution manifest, drafting, split/merge, polish, targeted and manual revision, final review, and formal promotion. Test each reachable boundary or cite concrete code evidence that it is not susceptible. Do not accept protocol or structural success that weakens prose quality, narrative logic, character or knowledge state, timeline, viewpoint, pacing, setup/payoff, the confirmed ending, or user-selected scope.
+
+This gate is repository-backed and survives a new window or compacted context; always reconstruct it from `AGENTS.md` and this Skill. Keep acceptance proportional for localized closed-world work: a narrow change still uses focused, related, and complete-suite evidence appropriate to its risk, and does not require paid-provider execution. Automated tests remain offline. A user-authorized systemic workflow repair must complete the offline production-shaped end-to-end proof before any separately authorized real-provider canary.
 
 ## Respect hard boundaries
 
@@ -106,6 +114,6 @@ Use the final structure in `references/decision-contract.md`. Lead with the outc
 - remaining risk and user decisions;
 - whether the request is complete, safely contained, or still unresolved.
 
-Do not describe work as complete when only a guard rejected the bad result. Completion requires the intended successful path to cross its next authoritative boundary.
+Do not describe work as complete when only a guard rejected the bad result. Local completion requires the intended successful path to cross its next authoritative boundary. Open-world or systemic workflow completion additionally requires the complete-draft and independent forward-looking acceptance defined above.
 
 When modifying this Skill, validate it with the installed `skill-creator` `quick_validate.py` under Python UTF-8 mode (`python -X utf8 ...`) and run the repository tests covering both bundled scripts.

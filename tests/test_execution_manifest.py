@@ -7,8 +7,13 @@ import json
 
 import pytest
 
+from novel_flywheel.draft_split import DraftTaskContract, render_draft_task_prompt
 from novel_flywheel.execution_manifest import (
+    AtomicBeat,
+    FutureBeatGuard,
+    SegmentBeatContract,
     ShortExecutionManifest,
+    StateAssertion,
     bind_execution_manifest_receipt_evidence,
     execution_manifest_issues,
     execution_manifest_payload,
@@ -16,6 +21,8 @@ from novel_flywheel.execution_manifest import (
     execution_manifest_receipt_binding_issues,
     execution_manifest_receipt_issues_are_protocol_only,
     execution_manifest_sha256,
+    extend_future_beat_guard,
+    future_beat_guards,
     legacy_execution_index_requires_rebuild,
     merge_execution_manifest_fragments,
     parse_execution_manifest,
@@ -159,12 +166,16 @@ def test_v2_manifest_hash_omits_v3_optional_fields_for_saved_receipt_compatibili
             "presentation_order", "story_time", "timeline", "actor",
             "location", "viewpoint", "knowledge_delta", "relationship_delta",
         ):
-                beat.pop(field)
-    for segment in old_payload["segments"]:
-            for assertion in segment["entry_state"] + segment["exit_state"]:
-                producers = assertion["produced_by"]
-                assertion["produced_by"] = producers[0] if producers else ""
-                assertion.pop("claim")
+            beat.pop(field)
+    for index, segment in enumerate(old_payload["segments"]):
+        segment.pop("future_beat_guard")
+        segment["prohibited_future_beat_ids"] = copy.deepcopy(
+            payload["segments"][index]["prohibited_future_beat_ids"]
+        )
+        for assertion in segment["entry_state"] + segment["exit_state"]:
+            producers = assertion["produced_by"]
+            assertion["produced_by"] = producers[0] if producers else ""
+            assertion.pop("claim")
     expected = hashlib.sha256(json.dumps(
         old_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
@@ -174,8 +185,20 @@ def test_v2_manifest_hash_omits_v3_optional_fields_for_saved_receipt_compatibili
 
 def test_v5_state_assertion_round_trips_a_typed_narrative_claim() -> None:
     payload = manifest_payload()
+    legacy_manifest = parse_execution_manifest(payload)
     payload["version"] = 5
+    guards = future_beat_guards(
+        legacy_manifest.beats,
+        tuple(segment.segment for segment in legacy_manifest.segments),
+    )
     for segment in payload["segments"]:
+        segment.pop("prohibited_future_beat_ids")
+        guard = guards[segment["segment"]]
+        segment.update({
+            "future_beat_order_floor": guard.order_floor,
+            "future_beat_count": guard.count,
+            "future_beat_scope_sha256": guard.scope_sha256,
+        })
         for assertion in segment["entry_state"] + segment["exit_state"]:
             produced_by = assertion.get("produced_by")
             assertion["produced_by"] = [produced_by] if produced_by else []
@@ -199,12 +222,43 @@ def test_v5_state_assertion_round_trips_a_typed_narrative_claim() -> None:
     claim = manifest.segments[0].exit_state[0].claim
     assert claim is not None and claim.predicate == "identity.actual"
     assert serialized["segments"][0]["exit_state"][0]["claim"]["claim_id"] == "identity-revealed"
+    assert parse_execution_manifest(serialized) == manifest
+    assert not hasattr(manifest.segments[0], "prohibited_future_beat_ids")
+
+
+def test_v5_manifest_rejects_incomplete_or_stale_compact_future_guard() -> None:
+    legacy = parse_execution_manifest(manifest_payload())
+    payload = execution_manifest_payload(ShortExecutionManifest(
+        version=5,
+        status=legacy.status,
+        authority_sha256=legacy.authority_sha256,
+        outline_sha256=legacy.outline_sha256,
+        planning_sha256=legacy.planning_sha256,
+        causal_chain_sha256=legacy.causal_chain_sha256,
+        beats=legacy.beats,
+        segments=legacy.segments,
+        semantic_receipt=legacy.semantic_receipt,
+        repair_attempts=legacy.repair_attempts,
+    ))
+
+    incomplete = copy.deepcopy(payload)
+    incomplete["segments"][0].pop("future_beat_scope_sha256")
+    with pytest.raises(ValueError, match="future_beat_scope_sha256"):
+        parse_execution_manifest(incomplete)
+
+    stale = copy.deepcopy(payload)
+    stale["segments"][0]["future_beat_count"] += 1
+    with pytest.raises(ValueError, match="future_beat_count is stale"):
+        parse_execution_manifest(stale)
 
 
 def test_exit_state_cannot_be_produced_by_a_beat_owned_by_the_next_segment() -> None:
     payload = manifest_payload()
     payload["beats"][1]["owner_segment"] = 2
     payload["segments"][0]["beat_ids"] = ["EV-9D165428/01"]
+    payload["segments"][0]["prohibited_future_beat_ids"] = [
+        "EV-8E4BBA17/01", "EV-8E4BBA17/02",
+    ]
     payload["segments"][1]["beat_ids"] = [
         "EV-8E4BBA17/01", "EV-8E4BBA17/02",
     ]
@@ -228,19 +282,21 @@ def test_new_exit_state_requires_an_owned_producer() -> None:
     assert any(item["code"] == "exit_producer_missing" for item in issues)
 
 
-def test_segment_must_prohibit_the_exact_later_beat_set() -> None:
+def test_legacy_segment_future_list_is_validated_before_being_discarded() -> None:
     payload = manifest_payload()
     payload["segments"][0]["prohibited_future_beat_ids"] = []
 
-    issues = validate(payload)
-
-    assert any(item["code"] == "future_beat_prohibition_mismatch" for item in issues)
+    with pytest.raises(ValueError, match="prohibited_future_beat_ids is stale"):
+        parse_execution_manifest(payload)
 
 
 def test_manifest_reports_all_independent_ownership_and_boundary_failures() -> None:
     payload = manifest_payload()
     payload["beats"][1]["owner_segment"] = 2
     payload["segments"][0]["beat_ids"].append("EV-8E4BBA17/02")
+    payload["segments"][0]["prohibited_future_beat_ids"] = [
+        "EV-8E4BBA17/01", "EV-8E4BBA17/02",
+    ]
     payload["segments"][1]["entry_state"][0]["state"] = "核实身份的人尚未出发"
 
     codes = {item["code"] for item in validate(payload)}
@@ -400,16 +456,36 @@ def test_semantic_receipt_binds_every_beat_and_segment_to_exact_authority() -> N
     ]
 
 
-def test_semantic_receipt_rejects_evidence_not_present_in_authority() -> None:
+def test_semantic_receipt_rejects_evidence_not_bound_to_manifest_beat() -> None:
     payload = manifest_payload()
     authority_text = manifest_authority_text(payload)
     receipt = semantic_receipt(payload, authority_text)
     receipt["beat_receipts"][1]["evidence"] = "规划和大纲都没有这句话"
 
-    with pytest.raises(ValueError, match="beat evidence is not bound"):
+    with pytest.raises(ValueError, match="does not verify its source evidence"):
         validate_execution_manifest_receipt(
             parse_execution_manifest(payload), authority_text, receipt,
         )
+
+
+def test_multiline_beat_evidence_is_hash_bound_without_flat_text_duplication() -> None:
+    payload = manifest_payload()
+    payload["beats"][0]["source_evidence"] = "第一行原文。\n\n第二行原文。"
+    manifest = parse_execution_manifest(payload)
+    authority_text = "\n".join(
+        assertion["state"]
+        for segment in payload["segments"]
+        for assertion in segment["exit_state"]
+    )
+    receipt = semantic_receipt(payload, authority_text)
+
+    validated = validate_execution_manifest_receipt(
+        manifest, authority_text, receipt,
+    )
+
+    assert validated["beat_receipts"][0]["evidence"] == (
+        "第一行原文。\n\n第二行原文。"
+    )
 
 
 def test_runtime_binds_beat_and_formatted_segment_evidence_to_exact_authority() -> None:
@@ -434,6 +510,33 @@ def test_runtime_binds_beat_and_formatted_segment_evidence_to_exact_authority() 
     )
     assert bound["segment_receipts"][0]["evidence"] == exact_boundary
     assert execution_manifest_receipt_issues(manifest, authority_text, bound) == []
+
+
+def test_runtime_rejects_ambiguous_or_unrelated_legacy_segment_evidence() -> None:
+    payload = manifest_payload()
+    manifest = parse_execution_manifest(payload)
+    authority_text = manifest_authority_text(payload) + "\nconfirmed handoff"
+    receipt = semantic_receipt(payload, authority_text)
+    receipt["segment_receipts"][0].pop("evidence_id", None)
+
+    ambiguous = copy.deepcopy(receipt)
+    ambiguous["segment_receipts"][0]["evidence"] = "段末交接：confirmed handoff"
+    ambiguous = bind_execution_manifest_receipt_evidence(
+        manifest, authority_text, ambiguous,
+        segment_evidence_candidates={1: {
+            "SEG-01-E001": "confirmed handoff",
+            "SEG-01-E002": "**段末交接**：confirmed handoff",
+        }},
+    )
+    assert ambiguous["segment_receipts"][0]["evidence"] == ""
+
+    unrelated = copy.deepcopy(receipt)
+    unrelated["segment_receipts"][0]["evidence"] = manifest.beats[0].source_evidence
+    unrelated = bind_execution_manifest_receipt_evidence(
+        manifest, authority_text, unrelated,
+        segment_evidence_candidates={1: {"SEG-01-E001": "confirmed handoff"}},
+    )
+    assert unrelated["segment_receipts"][0]["evidence"] == ""
 
 
 def test_receipt_protocol_classifier_separates_binding_from_semantic_failure() -> None:
@@ -584,11 +687,97 @@ def test_fragment_merge_rebinds_global_ids_order_handoffs_and_future_bans() -> N
     ]
     assert [beat.order for beat in merged.beats] == [1, 2, 3]
     assert [beat.presentation_order for beat in merged.beats] == [1, 2, 3]
-    assert merged.segments[0].prohibited_future_beat_ids == ("EV-8E4BBA17/02",)
-    assert merged.version == 4
+    assert merged.segments[0].future_beat_guard == future_beat_guards(
+        merged.beats, (1, 2),
+    )[1]
+    assert merged.version == 5
+    serialized = execution_manifest_payload(merged)
+    assert "prohibited_future_beat_ids" not in serialized["segments"][0]
+    assert serialized["segments"][0]["future_beat_order_floor"] == 3
     assert merged.segments[1].previous_exit_sha256 == state_assertions_sha256(
-        merged.segments[0].exit_state, version=4,
+        merged.segments[0].exit_state, version=5,
     )
+
+
+def test_v5_manifest_and_draft_scope_stay_linear_without_future_id_enumeration() -> None:
+    def compact_size(count: int) -> int:
+        beats = tuple(
+            AtomicBeat(
+                beat_id=f"EV-{index:08X}/01",
+                source_event_id=f"EV-{index:08X}",
+                order=index,
+                action=f"action {index}",
+                preconditions=(f"before {index}",),
+                postconditions=(f"after {index}",),
+                owner_segment=index,
+                source_evidence=f"evidence {index}",
+                presentation_order=index,
+            )
+            for index in range(1, count + 1)
+        )
+        guards = future_beat_guards(beats, tuple(range(1, count + 1)))
+        segments = tuple(
+            SegmentBeatContract(
+                segment=index,
+                beat_ids=(f"EV-{index:08X}/01",),
+                entry_state=(StateAssertion(state=f"before {index}"),),
+                exit_state=(StateAssertion(
+                    state=f"after {index}",
+                    produced_by=(f"EV-{index:08X}/01",),
+                ),),
+                previous_exit_sha256="" if index == 1 else "a" * 64,
+                future_beat_guard=guards[index],
+            )
+            for index in range(1, count + 1)
+        )
+        manifest = ShortExecutionManifest(
+            version=5, status="ready",
+            authority_sha256="a" * 64, outline_sha256="b" * 64,
+            planning_sha256="c" * 64, causal_chain_sha256="d" * 64,
+            beats=beats, segments=segments, semantic_receipt={},
+        )
+        encoded = json.dumps(
+            execution_manifest_payload(manifest), separators=(",", ":"),
+        )
+        assert "prohibited_future_beat_ids" not in encoded
+        return len(encoded)
+
+    sizes = [compact_size(count) for count in (8, 16, 32)]
+    assert sizes[1] < sizes[0] * 2.4
+    assert sizes[2] < sizes[1] * 2.4
+
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64, task_id="segment-01", parent_task_id="run",
+        depth=0, target_han=1000, event_ids=("EV-00000001",),
+        scope="current segment only", entry_state="before", exit_requirement="after",
+        beat_ids=("EV-00000001/01",),
+        future_beat_guard=FutureBeatGuard(
+            order_floor=2, count=31, scope_sha256="e" * 64,
+        ),
+    )
+    prompt = render_draft_task_prompt("current authority", contract)
+    assert "EV-00000002/01" not in prompt
+    assert '"future_beat_count":31' in prompt
+    assert '"future_beat_scope_sha256":"' + "e" * 64 + '"' in prompt
+
+
+def test_split_child_extends_guard_once_without_retaining_deferred_ids() -> None:
+    beats = parse_execution_manifest(manifest_payload()).beats
+    parent = future_beat_guards(beats, (1, 2))[1]
+    child = extend_future_beat_guard(parent, (beats[1],))
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64, task_id="segment-01/sub-1",
+        parent_task_id="segment-01", depth=1, target_han=500,
+        event_ids=(beats[0].source_event_id,), scope="only first split beat",
+        entry_state="before", exit_requirement="handoff",
+        beat_ids=(beats[0].beat_id,), future_beat_guard=child,
+    )
+    prompt = render_draft_task_prompt("current authority", contract)
+
+    assert child.order_floor == beats[1].order
+    assert child.count == parent.count + 1
+    assert beats[1].beat_id not in prompt
+    assert "prohibited_future_beat_ids" not in prompt
 
 
 def test_fragment_merge_preserves_and_rebinds_every_composite_producer() -> None:

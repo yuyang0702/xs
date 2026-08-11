@@ -15,6 +15,7 @@ from novel_flywheel.draft_split import (
     validate_semantic_receipt,
     validate_whole_draft_receipt,
 )
+from novel_flywheel.execution_manifest import FutureBeatGuard
 
 
 def _contract(**changes) -> DraftTaskContract:
@@ -164,7 +165,9 @@ def test_atomic_beat_receipt_rejects_future_beat_and_wrong_viewpoint() -> None:
         beat_ids=("EV-8E4BBA17/01",),
         execution_manifest_sha256="b" * 64,
         viewpoint="first-person",
-        prohibited_future_beat_ids=("EV-8E4BBA17/02",),
+        future_beat_guard=FutureBeatGuard(
+            order_floor=2, count=1, scope_sha256="c" * 64,
+        ),
     )
     receipt = {
         "authority_sha256": contract.authority_sha256,
@@ -213,22 +216,52 @@ def test_semantic_receipt_reports_all_independent_contract_failures() -> None:
         "execution_manifest_sha256": contract.execution_manifest_sha256,
         "task_id": contract.task_id,
         "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
-        "beat_receipts": [],
-        "entry": {"satisfied": False, "evidence": ""},
-        "exit": {"satisfied": False, "evidence": ""},
+        "beat_receipts": [{
+            "beat_id": "EV-8E4BBA17/01",
+            "evidence": prose,
+            "actor_action_valid": False,
+            "actor_action_evidence": prose,
+            "state_valid": False,
+            "state_evidence": prose,
+            "scene_order_valid": False,
+            "scene_order_evidence": prose,
+        }],
+        "entry": {"satisfied": False, "evidence": prose},
+        "exit": {"satisfied": False, "evidence": prose},
         "outside_beat_ids": ["EV-99999999/01"],
         "future_beat_ids": ["EV-8E4BBA17/02"],
         "viewpoint_valid": False,
+        "viewpoint_evidence": prose,
         "causal_order_valid": False,
-        "summary": "",
+        "causal_order_evidence": prose,
+        "summary": "完整回执明确否定各项语义结论。",
     }
 
     codes = {item["code"] for item in semantic_receipt_issues(contract, prose, receipt)}
 
     assert {
-        "beat_coverage", "entry_state", "exit_state", "outside_beat",
-        "future_beat", "viewpoint", "causal_order", "missing_summary",
+        "actor_action", "state_continuity", "scene_order",
+        "entry_state", "exit_state", "outside_beat",
+        "future_beat", "viewpoint", "causal_order",
     } <= codes
+
+
+def test_semantic_receipt_missing_verdict_is_protocol_shape_failure() -> None:
+    prose = "我看着沈老夫人派人出府。"
+    contract = _contract(
+        event_ids=("EV-8E4BBA17",), beat_ids=("EV-8E4BBA17/01",),
+        execution_manifest_sha256="b" * 64, viewpoint="first-person",
+    )
+    receipt = {
+        "authority_sha256": contract.authority_sha256,
+        "execution_manifest_sha256": contract.execution_manifest_sha256,
+        "task_id": contract.task_id,
+        "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+    }
+
+    assert {
+        item["code"] for item in semantic_receipt_issues(contract, prose, receipt)
+    } == {"receipt_shape"}
 
 
 def test_semantic_receipt_aligns_unique_extracts_without_changing_verdicts() -> None:

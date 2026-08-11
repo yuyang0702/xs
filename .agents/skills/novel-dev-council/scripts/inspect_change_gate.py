@@ -73,6 +73,9 @@ RESOLUTION_STATUSES = {
     "systemically_resolved",
     "unresolved",
 }
+SPLIT_REVIEW_WARNING = (
+    "More than two authority-critical modules changed; require an L3 split review."
+)
 
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[bytes]:
@@ -213,7 +216,7 @@ def _classify(
             "Authority-critical code changed without task-local README.md or docs/maintenance.md."
         )
     if len(core) > 2:
-        warnings.append("More than two authority-critical modules changed; require an L3 split review.")
+        warnings.append(SPLIT_REVIEW_WARNING)
     if protected:
         blockers.append(
             "Protected project/runtime artifacts appear in the task change: "
@@ -310,6 +313,104 @@ def _repository_test_path(repository: Path, value: object, *, field: str) -> str
     if not test_path.is_file():
         raise RuntimeError(f"{field} test does not exist: {relative}")
     return test_path.relative_to(repository).as_posix()
+
+
+def _core_review_sha256(repository: Path, core_paths: list[str]) -> str:
+    snapshot = [
+        {"path": path, "fingerprint": _fingerprint(repository, path)}
+        for path in sorted(core_paths)
+    ]
+    encoded = json.dumps(
+        snapshot, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _load_split_review_report(
+    path: Path, repository: Path, expected_core_paths: list[str],
+) -> dict[str, object]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        raise RuntimeError("split-review report must be a version 1 JSON object")
+    expected = sorted(set(expected_core_paths))
+    if len(expected) <= 2:
+        raise RuntimeError("split-review report is only valid for more than two core paths")
+    expected_sha256 = _core_review_sha256(repository, expected)
+    if payload.get("core_tree_sha256") != expected_sha256:
+        raise RuntimeError("split-review report does not match the current core file snapshot")
+
+    reviews = payload.get("reviews")
+    if not isinstance(reviews, list) or len(reviews) < 2:
+        raise RuntimeError("split-review report requires at least two review slices")
+    covered: set[str] = set()
+    reviewers: set[str] = set()
+    normalized: list[dict[str, object]] = []
+    for index, raw in enumerate(reviews, 1):
+        if not isinstance(raw, dict):
+            raise RuntimeError(f"split-review reviews[{index}] must be an object")
+        review_id = raw.get("review_id")
+        reviewer = raw.get("reviewer")
+        evidence = raw.get("evidence")
+        if not isinstance(review_id, str) or not review_id.strip():
+            raise RuntimeError(f"split-review reviews[{index}] requires review_id")
+        if not isinstance(reviewer, str) or not reviewer.strip():
+            raise RuntimeError(f"split-review reviews[{index}] requires reviewer")
+        if reviewer.strip() in reviewers:
+            raise RuntimeError("split-review report requires distinct reviewers")
+        reviewers.add(reviewer.strip())
+        if raw.get("status") != "passed":
+            raise RuntimeError(f"split-review reviews[{index}] status must be passed")
+        if not isinstance(evidence, str) or not evidence.strip():
+            raise RuntimeError(f"split-review reviews[{index}] requires evidence")
+
+        paths = raw.get("core_paths")
+        if not isinstance(paths, list) or not 1 <= len(paths) <= 2:
+            raise RuntimeError(
+                f"split-review reviews[{index}] must cover one or two core_paths"
+            )
+        normalized_paths: list[str] = []
+        for value in paths:
+            if not isinstance(value, str) or not value.strip():
+                raise RuntimeError(
+                    f"split-review reviews[{index}].core_paths entries must be strings"
+                )
+            core_path = value.strip().replace("\\", "/")
+            if core_path not in expected:
+                raise RuntimeError(
+                    f"split-review reviews[{index}] contains unexpected core path: {core_path}"
+                )
+            if core_path in covered:
+                raise RuntimeError(f"split-review core path reviewed more than once: {core_path}")
+            covered.add(core_path)
+            normalized_paths.append(core_path)
+
+        tests = raw.get("test_paths")
+        if not isinstance(tests, list) or not tests:
+            raise RuntimeError(
+                f"split-review reviews[{index}] requires non-empty test_paths"
+            )
+        normalized_tests = [
+            _repository_test_path(
+                repository, value, field=f"split-review reviews[{index}].test_paths",
+            )
+            for value in tests
+        ]
+        normalized.append({
+            "review_id": review_id.strip(),
+            "reviewer": reviewer.strip(),
+            "status": "passed",
+            "core_paths": sorted(normalized_paths),
+            "test_paths": sorted(set(normalized_tests)),
+            "evidence": evidence.strip(),
+        })
+    missing = sorted(set(expected) - covered)
+    if missing:
+        raise RuntimeError("split-review report is missing core paths: " + ", ".join(missing))
+    return {
+        "version": 1,
+        "core_tree_sha256": expected_sha256,
+        "reviews": normalized,
+    }
 
 
 def _non_empty_strings(payload: dict[str, object], field: str) -> list[str]:
@@ -582,6 +683,15 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--split-review-report",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "Versioned, current-tree-bound evidence that an L3 change spanning more "
+            "than two authority-critical modules was reviewed in bounded slices."
+        ),
+    )
+    parser.add_argument(
         "--related-test",
         action="append",
         default=[],
@@ -627,12 +737,22 @@ def main() -> int:
             _load_forward_risk_report(args.forward_risk_report.resolve(), repository)
             if args.forward_risk_report else None
         )
+        split_review_report = (
+            _load_split_review_report(
+                args.split_review_report.resolve(),
+                repository,
+                list(report["core_paths"]),
+            )
+            if args.split_review_report else None
+        )
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps({"ok": False, "blockers": [str(exc)]}, ensure_ascii=False))
         return 2
 
     warnings = list(report["warnings"])
     blockers = list(report["blockers"])
+    if split_review_report is not None:
+        warnings = [warning for warning in warnings if warning != SPLIT_REVIEW_WARNING]
     if args.strict and not baseline_used and (
         report["source_paths"] or report["user_visible_paths"]
     ):
@@ -659,6 +779,7 @@ def main() -> int:
         "ok": not blockers and not (args.strict and warnings),
         "baseline_used": baseline_used,
         "forward_risk_report": forward_risk_report,
+        "split_review_report": split_review_report,
         **report,
         "warnings": warnings,
         "blockers": blockers,

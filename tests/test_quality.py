@@ -11,11 +11,43 @@ from novel_flywheel.quality import (
     review_evidence_batches,
     review_windows,
     issue_ledger,
+    merge_authoritative_issue_ledgers,
+    runtime_issue_ledger,
     issue_is_resolved,
     apply_evidence_gate,
     select_route,
     update_issue_status,
 )
+
+
+def test_runtime_issue_ledger_owns_identity_status_and_source() -> None:
+    ledger = runtime_issue_ledger([{
+        "category": "continuity", "severity": "critical",
+        "evidence": "The witness knows the secret too early.",
+        "location": "segment 4", "action": "Restore the reveal order.",
+        "issue_id": "model-chosen", "status": "resolved", "source": "model",
+    }], source="final-review-window-4")
+
+    assert ledger[0]["issue_id"].startswith("issue-")
+    assert ledger[0]["issue_id"] != "model-chosen"
+    assert ledger[0]["status"] == "unresolved"
+    assert ledger[0]["source"] == "final-review-window-4"
+    assert "location" in ledger[0]
+
+
+def test_authoritative_issue_merge_never_drops_earlier_findings() -> None:
+    initial = runtime_issue_ledger([{
+        "category": "story", "severity": "major", "evidence": "A",
+        "action": "Fix A",
+    }], source="initial")
+    window = runtime_issue_ledger([{
+        "category": "continuity", "severity": "critical", "evidence": "B",
+        "action": "Fix B",
+    }], source="window")
+
+    merged = merge_authoritative_issue_ledgers(initial, window, initial)
+
+    assert [item["source"] for item in merged] == ["initial", "window"]
 
 
 def test_reconcile_review_issues_moves_explicitly_resolved_prior_issue_to_history() -> None:
@@ -502,6 +534,25 @@ def test_quality_outcome_rejects_score_below_75() -> None:
     assert reasons == ["overall_below_75"]
 
 
+def test_legacy_quality_outcome_blocks_new_unresolved_critical_issue() -> None:
+    review = normalize_review({
+        "dimensions": {"commercial": 90, "story": 90, "prose": 90},
+        "hard_fail": False,
+        "decision": "pass",
+        "issues": [{
+            "category": "story",
+            "severity": "critical",
+            "evidence": "The promised reactor outcome is absent.",
+            "action": "Resolve the reactor before formal promotion.",
+        }],
+    })
+
+    outcome, reasons = quality_outcome(review)
+
+    assert outcome == "failed"
+    assert "unresolved_major_issue" in reasons
+
+
 @pytest.mark.parametrize("blocker", ["critical", "rewrite", "hard_fail"])
 def test_quality_outcome_keeps_safety_blockers(blocker) -> None:
     review = normalize_review({
@@ -518,7 +569,7 @@ def test_quality_outcome_keeps_safety_blockers(blocker) -> None:
     assert blocker in reasons
 
 
-def test_style_critical_is_downgraded_to_targeted_revision() -> None:
+def test_style_critical_uses_targeted_revision_but_blocks_promotion() -> None:
     review = normalize_review({
         "dimensions": {"commercial": 80, "story": 78, "prose": 76},
         "hard_fail": True,
@@ -530,8 +581,8 @@ def test_style_critical_is_downgraded_to_targeted_revision() -> None:
 
     assert review["hard_fail"] is False
     assert review["issues"][0]["severity_class"] == "targeted_revision"
-    assert outcome == "conditional_pass"
-    assert reasons == []
+    assert outcome == "failed"
+    assert reasons == ["unresolved_major_issue"]
 
 
 def test_manuscript_corruption_remains_blocking() -> None:

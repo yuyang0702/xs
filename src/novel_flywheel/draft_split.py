@@ -5,14 +5,186 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 import re
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from novel_flywheel.evidence_alignment import align_unique_evidence_span
+from novel_flywheel.execution_manifest import (
+    EMPTY_FUTURE_BEAT_GUARD,
+    FutureBeatGuard,
+)
 
 
 STALE_TARGET = re.compile(
     r"(?:目标约|本次唯一字数目标\s*[：:]\s*约?)\s*\d+\s*个正文汉字"
 )
 MAX_DRAFT_TASK_DEPTH = 2
+
+
+class _StrictReceipt(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class _StateReceipt(_StrictReceipt):
+    satisfied: bool
+    evidence: str = Field(min_length=1)
+
+
+class _EventReceipt(_StrictReceipt):
+    event_id: str = Field(min_length=1)
+    evidence: str = Field(min_length=1)
+
+
+class _BeatReceipt(_StrictReceipt):
+    beat_id: str = Field(min_length=1)
+    evidence: str = Field(min_length=1)
+    actor_action_valid: bool
+    actor_action_evidence: str = Field(min_length=1)
+    state_valid: bool
+    state_evidence: str = Field(min_length=1)
+    scene_order_valid: bool
+    scene_order_evidence: str = Field(min_length=1)
+
+
+class _EventSemanticReceipt(_StrictReceipt):
+    authority_sha256: str
+    task_id: str
+    prose_sha256: str
+    event_receipts: list[_EventReceipt]
+    entry: _StateReceipt
+    exit: _StateReceipt
+    outside_event_ids: list[str]
+    causal_order_valid: bool
+    causal_order_evidence: str = Field(min_length=1)
+    summary: str = Field(min_length=1)
+
+
+class _AtomicSemanticReceipt(_StrictReceipt):
+    authority_sha256: str
+    execution_manifest_sha256: str
+    task_id: str
+    prose_sha256: str
+    beat_receipts: list[_BeatReceipt]
+    entry: _StateReceipt
+    exit: _StateReceipt
+    outside_beat_ids: list[str]
+    future_beat_ids: list[str]
+    viewpoint_valid: bool | None = None
+    viewpoint_evidence: str | None = Field(default=None, min_length=1)
+    causal_order_valid: bool
+    causal_order_evidence: str = Field(min_length=1)
+    summary: str = Field(min_length=1)
+
+
+class _WholeEvidence(_StrictReceipt):
+    kind: str = "evidence"
+    excerpt: str = Field(min_length=1)
+
+
+class _ObligationIntroduction(_StrictReceipt):
+    kind: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    evidence: str = Field(min_length=1)
+
+
+class _ObligationReconciliation(_StrictReceipt):
+    obligation_id: str = Field(min_length=1)
+    status: Literal["open", "discharged"]
+    evidence: str = Field(min_length=1)
+
+
+class _ObligationSameWindowResolution(_StrictReceipt):
+    kind: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    introduced_evidence: str = Field(min_length=1)
+    discharged_evidence: str = Field(min_length=1)
+
+
+class _WholeDraftReceipt(_StrictReceipt):
+    authority_sha256: str
+    draft_sha256: str
+    segment_sha256: list[str]
+    event_ids: list[str]
+    missing_event_ids: list[str]
+    duplicate_event_ids: list[str]
+    out_of_order_event_ids: list[str]
+    causal_order_valid: bool
+    continuity_valid: bool
+    ending_valid: bool
+    commitments_valid: bool
+    evidence: list[_WholeEvidence] = Field(min_length=1)
+    summary: str = Field(min_length=1)
+
+
+class _WholeDraftWindowReceipt(_StrictReceipt):
+    authority_sha256: str
+    draft_sha256: str
+    segment_numbers: list[int]
+    segment_sha256: list[str]
+    event_ids: list[str]
+    missing_event_ids: list[str]
+    duplicate_event_ids: list[str]
+    out_of_order_event_ids: list[str]
+    causal_order_valid: bool
+    continuity_valid: bool
+    commitment_flow_valid: bool
+    ending_valid: bool
+    ending_evidence: str = Field(min_length=1)
+    introduced_obligations: list[_ObligationIntroduction]
+    resolved_within_window_obligations: list[_ObligationSameWindowResolution]
+    obligation_reconciliations: list[_ObligationReconciliation]
+    evidence: list[_WholeEvidence] = Field(min_length=1)
+    summary: str = Field(min_length=1)
+
+
+def semantic_receipt_shape_issues(
+    contract: "DraftTaskContract", receipt: object,
+) -> list[dict]:
+    model = _AtomicSemanticReceipt if contract.beat_ids else _EventSemanticReceipt
+    try:
+        model.model_validate(receipt)
+    except ValidationError as exc:
+        return [{
+            "code": "receipt_shape",
+            "message": "semantic receipt shape is invalid",
+            "paths": [".".join(map(str, item["loc"])) for item in exc.errors()],
+        }]
+    if contract.beat_ids and contract.viewpoint and isinstance(receipt, dict):
+        missing = [
+            field for field in ("viewpoint_valid", "viewpoint_evidence")
+            if receipt.get(field) in (None, "")
+        ]
+        if missing:
+            return [{
+                "code": "receipt_shape",
+                "message": "semantic receipt shape is invalid",
+                "paths": missing,
+            }]
+    return []
+
+
+def whole_draft_receipt_shape_issues(receipt: object) -> list[dict]:
+    try:
+        _WholeDraftReceipt.model_validate(receipt)
+    except ValidationError as exc:
+        return [{
+            "code": "receipt_shape",
+            "message": "whole draft receipt shape is invalid",
+            "paths": [".".join(map(str, item["loc"])) for item in exc.errors()],
+        }]
+    return []
+
+
+def whole_draft_window_receipt_shape_issues(receipt: object) -> list[dict]:
+    try:
+        _WholeDraftWindowReceipt.model_validate(receipt)
+    except ValidationError as exc:
+        return [{
+            "code": "receipt_shape",
+            "message": "whole draft window receipt shape is invalid",
+            "paths": [".".join(map(str, item["loc"])) for item in exc.errors()],
+        }]
+    return []
 
 
 @dataclass(frozen=True)
@@ -34,7 +206,7 @@ class DraftTaskContract:
     narrator_character_id: str = ""
     narrator_name: str = ""
     self_reference: str = ""
-    prohibited_future_beat_ids: tuple[str, ...] = ()
+    future_beat_guard: FutureBeatGuard = EMPTY_FUTURE_BEAT_GUARD
 
     def __post_init__(self) -> None:
         if not re.fullmatch(r"[0-9a-f]{64}", self.authority_sha256):
@@ -59,19 +231,31 @@ class DraftTaskContract:
             )
         if len(set(self.beat_ids)) != len(self.beat_ids):
             raise ValueError("beat_ids must not contain duplicates")
-        if len(set(self.prohibited_future_beat_ids)) != len(
-            self.prohibited_future_beat_ids
-        ):
-            raise ValueError("prohibited_future_beat_ids must not contain duplicates")
-        if set(self.beat_ids) & set(self.prohibited_future_beat_ids):
-            raise ValueError("owned beat_ids must not also be prohibited")
+        if not isinstance(self.future_beat_guard, FutureBeatGuard):
+            raise ValueError("future_beat_guard must be a compact FutureBeatGuard")
+
+
+def draft_task_contract_payload(contract: DraftTaskContract) -> dict:
+    """Return the bounded machine contract without enumerating future beats."""
+
+    payload_value = asdict(contract)
+    guard = payload_value.pop("future_beat_guard")
+    payload_value.update({
+        "future_beat_order_floor": guard["order_floor"],
+        "future_beat_count": guard["count"],
+        "future_beat_scope_sha256": guard["scope_sha256"],
+    })
+    return payload_value
 
 
 def render_draft_task_prompt(authority: str, contract: DraftTaskContract) -> str:
     """Render a task from immutable authority without inheriting a parent's target."""
     if STALE_TARGET.search(authority):
         raise ValueError("draft authority contains a stale numeric target")
-    payload = json.dumps(asdict(contract), ensure_ascii=False, separators=(",", ":"))
+    payload = json.dumps(
+        draft_task_contract_payload(contract),
+        ensure_ascii=False, separators=(",", ":"),
+    )
     minimum_han, maximum_han = target_bounds(contract.target_han)
     narrative_rule = ""
     if contract.narrative_mode.startswith("first_person") and contract.narrator_name:
@@ -135,6 +319,9 @@ def semantic_receipt_issues(
             "code": "invalid_receipt",
             "message": "semantic receipt must be a JSON object",
         }]
+    shape_issues = semantic_receipt_shape_issues(contract, receipt)
+    if shape_issues:
+        return shape_issues
     if receipt.get("authority_sha256") != contract.authority_sha256:
         add("authority_hash", "semantic receipt authority hash is stale")
     if receipt.get("task_id") != contract.task_id:
@@ -153,9 +340,6 @@ def semantic_receipt_issues(
     receipt_field = "beat_receipts" if atomic else "event_receipts"
     id_field = "beat_id" if atomic else "event_id"
     evidence_receipts = receipt.get(receipt_field)
-    if atomic and evidence_receipts is None:
-        evidence_receipts = receipt.get("event_receipts")
-        id_field = "event_id"
     expected_ids = list(contract.beat_ids if atomic else contract.event_ids)
     if not isinstance(evidence_receipts, list) or any(
         not isinstance(item, dict) for item in evidence_receipts
@@ -204,8 +388,6 @@ def semantic_receipt_issues(
 
     outside_field = "outside_beat_ids" if atomic else "outside_event_ids"
     outside = receipt.get(outside_field)
-    if atomic and outside is None:
-        outside = receipt.get("outside_event_ids")
     if outside != []:
         add(
             "outside_beat" if atomic else "outside_event",
@@ -440,6 +622,9 @@ def whole_draft_receipt_issues(
             "code": "receipt_schema",
             "message": "whole draft receipt must be a JSON object",
         }]
+    shape_issues = whole_draft_receipt_shape_issues(receipt)
+    if shape_issues:
+        return shape_issues
     if receipt.get("authority_sha256") != authority_sha256:
         add("authority_hash", "whole draft authority hash is stale")
     draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
