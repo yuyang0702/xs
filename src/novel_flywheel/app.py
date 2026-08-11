@@ -1,6 +1,7 @@
 from pathlib import Path
+from types import SimpleNamespace
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
@@ -10,11 +11,17 @@ from novel_flywheel.api.providers import router as providers_router
 from novel_flywheel.api.references import router as references_router
 from novel_flywheel.api.learning import router as learning_router
 from novel_flywheel.api.market import router as market_router
-from novel_flywheel.api.projects import router as projects_router
+from novel_flywheel.api.projects import (
+    recover_candidate_publications,
+    router as projects_router,
+)
 from novel_flywheel.api.revisions import router as revisions_router
 from novel_flywheel.api.runs import router as runs_router
 from novel_flywheel.api.skills import router as skills_router
-from novel_flywheel.api.wizards import router as wizards_router
+from novel_flywheel.api.wizards import (
+    build_initialize_skills_operation,
+    router as wizards_router,
+)
 from novel_flywheel.config import default_settings
 from novel_flywheel.db import Database
 from novel_flywheel.providers.registry import ProviderRegistry
@@ -96,6 +103,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.projects = ProjectStore(
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
     )
+    recover_candidate_publications(app.state.projects)
     app.state.quality_references = QualityReferenceService(
         db, app.state.references, app.state.projects,
     )
@@ -123,7 +131,61 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     app.state.skill_runtime = SkillRuntimeService(
         db, app.state.projects, gateway, app.state.skill_gate,
     )
-    app.state.run_tasks = RunTaskManager(db)
+    def resolve_run_operation(run: dict, payload: dict):
+        project_id = str(run["project_id"])
+        workflow = str(run["workflow"])
+        if workflow == "short-story":
+            return lambda run_id: app.state.workflows.run_short(
+                project_id, run_id=run_id,
+            )
+        if workflow == "long-setup":
+            return lambda run_id: app.state.workflows.run_long_setup(
+                project_id, run_id=run_id,
+            )
+        if workflow == "materials-audit":
+            return lambda run_id: app.state.workflows.run_materials_audit(
+                project_id, run_id=run_id,
+            )
+        if workflow == "materials-repair":
+            return lambda run_id: app.state.workflows.run_materials_repair(
+                project_id, run_id=run_id,
+            )
+        if workflow == "long-chapter" and str(payload.get("chapter_goal") or "").strip():
+            chapter_goal = str(payload["chapter_goal"])
+            return lambda run_id: app.state.workflows.run_chapter(
+                project_id, chapter_goal, run_id=run_id,
+            )
+        if workflow == "short-revision" and isinstance(payload.get("issue_ids"), list):
+            issue_ids = [str(item) for item in payload["issue_ids"]]
+            return lambda run_id: app.state.workflows.run_short_revision(
+                project_id, issue_ids, run_id=run_id,
+            )
+        if (
+            workflow == "initialize-skills"
+            and payload.get("version") == 1
+            and isinstance(payload.get("answers"), dict)
+            and isinstance(payload.get("learning_snapshot"), dict)
+            and isinstance(payload.get("outline_sha256"), str)
+        ):
+            try:
+                operation, _resume_payload = build_initialize_skills_operation(
+                    project_id, SimpleNamespace(app=app),
+                    frozen_answers=payload["answers"],
+                    frozen_learning_snapshot=payload["learning_snapshot"],
+                    expected_outline_sha256=payload["outline_sha256"],
+                )
+            except (HTTPException, LookupError, ValueError):
+                return None
+            return operation
+        return None
+
+    app.state.run_tasks = RunTaskManager(
+        db, operation_resolver=resolve_run_operation,
+    )
+
+    @app.on_event("startup")
+    async def resume_durable_runs() -> None:
+        app.state.run_tasks.recover_due_runs()
     app.state.migrator = ProjectMigrator(
         lambda project, command: app.state.skill_runtime._run_story_cli(project, [command, "."]),
     )

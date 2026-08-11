@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
 from novel_flywheel.reference_library import ReferenceLibrary
+from novel_flywheel.reference_distillation import canonical_sha256
 from novel_flywheel.secrets import MemorySecretStore
 
 
@@ -78,6 +79,38 @@ def confirmed_source(
         "content_type": content_type,
     }).json()
     return source, add_confirmed_mechanisms(client, source["id"], count)
+
+
+def add_confirmed_style_and_attraction(
+    client: TestClient, source_id: str, *, marker: str,
+) -> tuple[dict, dict]:
+    learning = client.app.state.learning
+    style = learning._save_node("style_rule", {
+        "field": "dialogue",
+        "rule": f"{marker}: every reply changes information or leverage",
+        "when_to_use": "conflict scenes",
+        "avoid": "exposition-only exchanges",
+        "supporting_windows": [1],
+        "confidence": 0.9,
+    }, source_id=source_id, status="confirmed")
+    attraction = learning._save_node("attraction_map", {
+        "fit": {"level": "strong", "explanation": f"{marker}: complete structure"},
+        "opening": {
+            "mechanism": "pressure_anomaly_promise",
+            "transfer_guidance": f"{marker}: open with pressure and one anomaly",
+            "evidence": [],
+        },
+        "core_goal": {"surface": "solve the visible problem", "emotional": "regain trust"},
+        "cycles": [],
+        "ending": {
+            "surface_payoff": "visible problem resolved",
+            "emotional_payoff": "trust tested",
+            "cost": "a meaningful sacrifice",
+            "transfer_guidance": f"{marker}: resolve goal, emotion and cost",
+        },
+        "review_state": "confirmed",
+    }, source_id=source_id, status="confirmed")
+    return style, attraction
 
 
 def create_completed_wizard(client: TestClient) -> tuple[dict, dict]:
@@ -231,6 +264,64 @@ def test_initialize_skills_returns_tracked_background_run(tmp_path) -> None:
     assert response.json()["workflow"] == "initialize-skills"
 
 
+def test_initialize_skills_resume_payload_rebuilds_after_process_restart(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    _wizard, project_data = create_completed_wizard(client)
+    project_id = project_data["id"]
+    candidate = client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates",
+        json={"title": "Restart-safe", "outline": "# Formal outline\n\n## Opening\nA door opens."},
+    ).json()
+    comparison = client.get(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/comparison",
+    ).json()
+    assert client.post(
+        f"/api/projects/{project_id}/learning/outline-candidates/{candidate['id']}/apply",
+        json={"expected_revision": comparison["state_revision"], "apply_whole": True},
+    ).status_code == 200
+    project = app.state.projects.get(project_id)
+    metadata = json.loads((project.path / "project.json").read_text(encoding="utf-8"))
+    metadata["initialization_skills"] = []
+    (project.path / "project.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+
+    started = client.post(f"/api/projects/{project_id}/initialize-skills")
+
+    assert started.status_code == 202
+    run_id = started.json()["id"]
+    supervision = db.get_workflow_supervision(run_id)
+    assert supervision is not None
+    payload = supervision["resume_payload"]
+    assert set(payload) == {
+        "version", "outline_sha256", "answers", "learning_snapshot",
+    }
+    assert payload["version"] == 1
+    assert len(payload["outline_sha256"]) == 64
+
+    restarted = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    operation = restarted.state.run_tasks.operation_resolver(
+        db.get_run(run_id), payload,
+    )
+    assert operation is not None
+    assert asyncio.run(operation(run_id)) == []
+
+    stale = {**payload, "outline_sha256": "0" * 64}
+    assert restarted.state.run_tasks.operation_resolver(
+        db.get_run(run_id), stale,
+    ) is None
+
+
 def test_initialization_freezes_learning_versions_and_skips_completed_stage(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(
@@ -290,9 +381,12 @@ def test_initialization_freezes_learning_versions_and_skips_completed_stage(tmp_
     class CapturingTasks:
         operation = None
 
-        def start(self, requested_project_id, workflow, operation):
+        def start(
+            self, requested_project_id, workflow, operation, *, resume_payload=None,
+        ):
             db.create_run("initialization-run", requested_project_id, workflow, status="queued")
             self.operation = operation
+            self.resume_payload = resume_payload
             return db.get_run("initialization-run")
 
     runtime = Runtime()
@@ -358,9 +452,12 @@ def test_initialization_skips_complete_stage_without_execution_history(tmp_path)
     class CapturingTasks:
         operation = None
 
-        def start(self, requested_project_id, workflow, operation):
+        def start(
+            self, requested_project_id, workflow, operation, *, resume_payload=None,
+        ):
             db.create_run("complete-materials-run", requested_project_id, workflow, status="queued")
             self.operation = operation
+            self.resume_payload = resume_payload
             return db.get_run("complete-materials-run")
 
     async def material_manifest(_project_id):
@@ -460,9 +557,12 @@ def test_initialization_rolls_back_all_earlier_stages_when_a_later_stage_fails(t
     class CapturingTasks:
         operation = None
 
-        def start(self, requested_project_id, workflow, operation):
+        def start(
+            self, requested_project_id, workflow, operation, *, resume_payload=None,
+        ):
             db.create_run("rollback-run", requested_project_id, workflow, status="queued")
             self.operation = operation
+            self.resume_payload = resume_payload
             return db.get_run("rollback-run")
 
     tasks = CapturingTasks()
@@ -536,9 +636,12 @@ def test_cancelling_initialization_restores_formal_materials(tmp_path) -> None:
     class CapturingTasks:
         operation = None
 
-        def start(self, requested_project_id, workflow, operation):
+        def start(
+            self, requested_project_id, workflow, operation, *, resume_payload=None,
+        ):
             db.create_run("cancel-run", requested_project_id, workflow, status="queued")
             self.operation = operation
+            self.resume_payload = resume_payload
             return db.get_run("cancel-run")
 
     runtime = Runtime()
@@ -733,6 +836,76 @@ def test_wizard_selection_order_survives_deduplication_adoptions_and_blueprint(t
     assert [item["node_id"] for item in learning.list_adoptions(project_id)] == expected
     blueprint = learning.get_artifact(project_id, "creative_blueprint")
     assert [item["provenance"]["node_id"] for item in blueprint["data"]["mechanisms"]] == expected
+
+
+def test_wizard_lists_and_adopts_style_and_attraction_without_competitor_pollution(
+    tmp_path,
+) -> None:
+    client = wizard_client(tmp_path)
+    reference, _reference_mechanisms = confirmed_source(
+        client, "Reusable guidance", "reference_work",
+    )
+    competitor, _competitor_mechanisms = confirmed_source(
+        client, "Competitor", "competitor_work",
+    )
+    style, attraction = add_confirmed_style_and_attraction(
+        client, reference["id"], marker="reference",
+    )
+    competitor_style, competitor_attraction = add_confirmed_style_and_attraction(
+        client, competitor["id"], marker="competitor",
+    )
+    wizard = client.post("/api/wizards", json={
+        "mode": "short", "reference_source_ids": [reference["id"]],
+    }).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "Guidance isolation", "policy": "locked"},
+        "genre": {"value": "mystery", "policy": "locked"},
+        "premise": {"value": "A witness retracts one detail.", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+    }})
+
+    choices = client.get(
+        f"/api/wizards/{wizard['id']}/confirmed-mechanisms",
+    ).json()
+    choices_by_id = {item["id"]: item for item in choices}
+    assert choices_by_id[style["id"]]["node_type"] == "style_rule"
+    assert choices_by_id[attraction["id"]]["node_type"] == "attraction_map"
+    assert competitor_style["id"] not in choices_by_id
+    assert competitor_attraction["id"] not in choices_by_id
+
+    created = client.post(f"/api/wizards/{wizard['id']}/confirm", json={
+        "selected_mechanism_ids": [style["id"], attraction["id"]],
+    })
+
+    assert created.status_code == 201
+    project_id = created.json()["id"]
+    adoptions = client.app.state.learning.list_adoptions(project_id)
+    assert [item["node_id"] for item in adoptions] == [style["id"], attraction["id"]]
+    blueprint = client.app.state.learning.get_artifact(
+        project_id, "creative_blueprint",
+    )["data"]
+    assert blueprint["mechanisms"] == []
+    assert [item["provenance"]["node_id"] for item in blueprint["style_rules"]] == [
+        style["id"],
+    ]
+    assert len(blueprint["attraction_guidance"]) == 1
+    plot_methods = client.app.state.learning.initialization_contexts(
+        project_id,
+    )["stages"]["plot-structure"]["creative_methods"]
+    assert all("every reply" not in json.dumps(item) for item in plot_methods)
+
+    client.app.state.learning.reject_adoption(
+        project_id, style["id"], "author declined this style",
+    )
+    with client.app.state.registry.db.connect() as connection:
+        feedback = connection.execute(
+            "SELECT subject_type,action FROM learning_feedback "
+            "WHERE project_id=? AND subject_id=? ORDER BY created_at,rowid",
+            (project_id, style["id"]),
+        ).fetchall()
+    assert [(item["subject_type"], item["action"]) for item in feedback] == [
+        ("style_rule", "adopted"), ("style_rule", "rejected"),
+    ]
 
 
 def test_wizard_rejects_missing_reference_creation_source(tmp_path) -> None:
@@ -1130,14 +1303,63 @@ def test_creative_blueprint_repairs_non_object_and_invalid_utf8_files(tmp_path) 
     repaired_non_object = json.loads(path.read_text(encoding="utf-8"))
 
     assert isinstance(repaired_non_object, dict)
-    assert repaired_non_object["version"] == 2
+    assert repaired_non_object["version"] == 1
 
     path.write_bytes(b"\xff\xfe")
     learning._save_creative_blueprint(project["id"])
     repaired_encoding = json.loads(path.read_text(encoding="utf-8"))
 
-    assert repaired_encoding["version"] == 3
-    assert len(learning.artifact_history(project["id"], "creative_blueprint")) == 3
+    authority = learning.get_artifact(project["id"], "creative_blueprint")
+    assert repaired_encoding["version"] == 1
+    assert repaired_encoding["id"] == authority["id"]
+    assert repaired_encoding["source_hash"] == authority["source_hash"]
+    assert repaired_encoding["data"] == authority["data"]
+    assert len(learning.artifact_history(project["id"], "creative_blueprint")) == 1
+
+
+def test_creative_blueprint_rebuilds_missing_recipe_after_interrupted_pair_write(
+    tmp_path,
+) -> None:
+    client = wizard_client(tmp_path)
+    source, nodes = confirmed_source(client, "Recipe recovery", "reference_work")
+    wizard = client.post("/api/wizards", json={
+        "mode": "short", "reference_source_ids": [source["id"]],
+    }).json()
+    client.put(f"/api/wizards/{wizard['id']}/answers", json={"answers": {
+        "title": {"value": "Recipe recovery", "policy": "locked"},
+        "genre": {"value": "mystery", "policy": "locked"},
+        "premise": {"value": "A clue survives an interrupted save.", "policy": "locked"},
+        "target_words": {"value": 8000, "policy": "suggestible"},
+    }})
+    project = client.post(f"/api/wizards/{wizard['id']}/confirm", json={
+        "selected_mechanism_ids": [nodes[0]["id"]],
+    }).json()
+    project_id = project["id"]
+    learning = client.app.state.learning
+    project_path = client.app.state.projects.get(project_id).path
+    recipe_path = project_path / "learning" / "creative_recipe.json"
+    assert learning.get_artifact(project_id, "creative_recipe") is not None
+    assert recipe_path.is_file()
+
+    with client.app.state.registry.db.connect() as connection:
+        connection.execute(
+            "DELETE FROM project_learning_artifacts "
+            "WHERE project_id=? AND artifact_type='creative_recipe'",
+            (project_id,),
+        )
+    recipe_path.unlink()
+
+    learning._save_creative_blueprint(project_id)
+
+    rebuilt = learning.get_artifact(project_id, "creative_recipe")
+    assert rebuilt is not None
+    assert rebuilt["status"] == "active"
+    sidecar = json.loads(recipe_path.read_text(encoding="utf-8"))
+    assert sidecar["data"] == rebuilt["data"]
+    blueprint = learning.get_artifact(project_id, "creative_blueprint")
+    assert blueprint["data"]["creative_recipe_sha256"] == canonical_sha256(
+        rebuilt["data"],
+    )
 
 
 def test_completed_wizard_retry_fills_feedback_after_feedback_write_failure(

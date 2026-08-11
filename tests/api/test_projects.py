@@ -3,12 +3,15 @@ import json
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 from unittest.mock import Mock
 
+from novel_flywheel.api import projects as projects_api
 from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.secrets import MemorySecretStore
+from novel_flywheel.storage import ProjectSnapshot
 
 
 class FakeStyleSamples:
@@ -42,6 +45,43 @@ def test_create_and_list_projects(tmp_path) -> None:
     assert response.status_code == 201
     assert response.json()["mode"] == "short"
     assert client.get("/api/projects").json()[0]["title"] == "Night Train"
+
+
+def test_project_rollout_flag_is_scoped_and_reversible(tmp_path) -> None:
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Canary", "mode": "short", "genre": "mystery",
+        "premise": "A sealed room opens.", "target_words": 6000,
+    }).json()
+    path = f"/api/projects/{project['id']}/rollout-flags/planning-ir-first"
+
+    enabled = client.put(path, json={
+        "enabled": True, "reason": "R6 controlled canary",
+    })
+    assert enabled.status_code == 200
+    assert enabled.json()["enabled"] is True
+    assert enabled.json()["scope_type"] == "project"
+    flags = client.get(f"/api/projects/{project['id']}/rollout-flags").json()
+    assert flags["planning_ir_first"]["config"]["reason"] == "R6 controlled canary"
+
+    disabled = client.put(path, json={"enabled": False, "reason": "rollback"})
+    assert disabled.status_code == 200
+    assert disabled.json()["enabled"] is False
+
+    client.app.state.registry.db.create_run(
+        "active-canary", project["id"], "short-story", status="running",
+    )
+    blocked = client.put(path, json={
+        "enabled": True, "reason": "must not race an active writer",
+    })
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "project_run_active"
+    assert client.get(f"/api/projects/{project['id']}/rollout-flags").json()[
+        "planning_ir_first"
+    ]["enabled"] is False
 
 
 def test_zhihu_publication_preview_and_create_api(tmp_path) -> None:
@@ -213,6 +253,542 @@ def test_candidate_diagnostics_and_controlled_publication(tmp_path) -> None:
     assert published.status_code == 201
     assert (root / "manuscript" / "story.md").read_text(encoding="utf-8") == "他说：“回来。”\n她关上门。"
     assert (root / "chapters" / "chapter-01.md").is_file()
+
+
+def test_candidate_publication_rejects_active_project_writer(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Publish lease", "mode": "short", "genre": "test",
+        "premise": "One writer owns promotion.", "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "best-candidate.md").write_text(
+        "A complete candidate manuscript.", encoding="utf-8",
+    )
+    db.create_run("active-run", project.id, "short-story", status="running")
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "project_run_active"
+    assert not (project.path / "manuscript" / "story.md").exists()
+
+
+def test_candidate_publication_rolls_back_all_files_on_write_failure(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    created = client.post("/api/projects", json={
+        "title": "Publish rollback", "mode": "short", "genre": "test",
+        "premise": "All formal files move together.", "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "best-candidate.md").write_text(
+        "New complete candidate.", encoding="utf-8",
+    )
+    formal = project.path / "manuscript" / "story.md"
+    chapter = project.path / "chapters" / "chapter-01.md"
+    receipt = project.path / "manuscript" / "publication.json"
+    formal.write_text("old formal", encoding="utf-8")
+    chapter.write_text("old chapter", encoding="utf-8")
+    receipt.write_text('{"version":1}', encoding="utf-8")
+    real_atomic_write = projects_api.atomic_write
+
+    def fail_chapter(path, content, *args, **kwargs):
+        if Path(path).resolve() == chapter.resolve():
+            raise OSError("injected chapter write failure")
+        return real_atomic_write(path, content, *args, **kwargs)
+
+    monkeypatch.setattr(projects_api, "atomic_write", fail_chapter)
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 500
+    assert formal.read_text(encoding="utf-8") == "old formal"
+    assert chapter.read_text(encoding="utf-8") == "old chapter"
+    assert receipt.read_text(encoding="utf-8") == '{"version":1}'
+    assert not db.has_active_runs(project.id)
+
+
+def test_candidate_publication_rejects_corpus_change_after_analysis(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    references = ReferenceLibrary(db, tmp_path / "references")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace", reference_library=references,
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Corpus CAS", "mode": "short", "genre": "test",
+        "premise": "Publication binds its comparison corpus.",
+        "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    app.state.projects.set_optimized_local_review(project.id, True)
+    source = references.import_text(
+        title="Reference", text="first reference version", source_type="paste",
+        content_type="reference_work", project_id=project.id,
+    )
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "best-candidate.md").write_text(
+        "A distinct complete candidate.", encoding="utf-8",
+    )
+    real_analyze = projects_api.analyze_manuscript
+    changed = False
+
+    def analyze_then_change(*args, **kwargs):
+        nonlocal changed
+        report = real_analyze(*args, **kwargs)
+        if not changed:
+            references.add_version(source["id"], "second reference version")
+            changed = True
+        return report
+
+    monkeypatch.setattr(projects_api, "analyze_manuscript", analyze_then_change)
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "candidate_analysis_stale"
+    assert not (project.path / "manuscript" / "story.md").exists()
+
+
+def test_candidate_publication_rechecks_authoritative_source_after_lease(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Candidate CAS", "mode": "short", "genre": "test",
+        "premise": "The publication lease must bind the selected source.",
+        "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    candidate_text = "The same complete manuscript can exist in two runs."
+    db.create_run("candidate-old", project.id, "short-story", status="failed")
+    old_output = project.path / "runs" / "candidate-old" / "outputs"
+    old_output.mkdir(parents=True)
+    (old_output / "best-candidate.md").write_text(candidate_text, encoding="utf-8")
+    real_create_run_if_idle = db.create_run_if_idle
+
+    def lease_then_supersede(run_id, project_id, workflow, status="queued"):
+        acquired = real_create_run_if_idle(run_id, project_id, workflow, status)
+        if acquired:
+            db.create_run(
+                "candidate-new", project.id, "short-story", status="failed",
+            )
+            new_output = project.path / "runs" / "candidate-new" / "outputs"
+            new_output.mkdir(parents=True)
+            (new_output / "best-candidate.md").write_text(
+                candidate_text, encoding="utf-8",
+            )
+        return acquired
+
+    monkeypatch.setattr(db, "create_run_if_idle", lease_then_supersede)
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "candidate_analysis_stale"
+    assert not (project.path / "manuscript" / "story.md").exists()
+    publication = next(
+        run for run in db.list_runs(project.id)
+        if run["workflow"] == "candidate-publish"
+    )
+    assert publication["status"] == "failed"
+
+
+def test_candidate_publication_rechecks_exact_source_text_hash_after_lease(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Source text CAS", "mode": "short", "genre": "test",
+        "premise": "Mechanical normalization must not hide a stale source.",
+        "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    candidate = outputs / "best-candidate.md"
+    original_source = '他说："回来。"'
+    equivalent_source = "他说：“回来。”"
+    assert projects_api.normalize_chinese_prose(original_source)[0] == (
+        projects_api.normalize_chinese_prose(equivalent_source)[0]
+    )
+    candidate.write_text(original_source, encoding="utf-8")
+    real_create_run_if_idle = db.create_run_if_idle
+
+    def lease_then_rewrite_equivalent(run_id, project_id, workflow, status="queued"):
+        acquired = real_create_run_if_idle(run_id, project_id, workflow, status)
+        if acquired:
+            candidate.write_text(equivalent_source, encoding="utf-8")
+        return acquired
+
+    monkeypatch.setattr(db, "create_run_if_idle", lease_then_rewrite_equivalent)
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "candidate_analysis_stale"
+    assert not (project.path / "manuscript" / "story.md").exists()
+
+
+@pytest.mark.parametrize(
+    "failure_target",
+    ["prepared_journal", "formal", "chapter", "receipt", "commit_journal"],
+)
+def test_candidate_publication_saga_rolls_back_each_precommit_write_failure(
+    tmp_path, monkeypatch, failure_target,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    created = client.post("/api/projects", json={
+        "title": f"Publish failure {failure_target}", "mode": "short",
+        "genre": "test", "premise": "Every saga step is recoverable.",
+        "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "best-candidate.md").write_text(
+        "A complete candidate for fault injection.", encoding="utf-8",
+    )
+    formal = project.path / "manuscript" / "story.md"
+    chapter = project.path / "chapters" / "chapter-01.md"
+    receipt = project.path / "manuscript" / "publication.json"
+    formal.write_text("old formal", encoding="utf-8")
+    chapter.write_text("old chapter", encoding="utf-8")
+    receipt.write_text('{"version":1}', encoding="utf-8")
+    real_atomic_write = projects_api.atomic_write
+    failed = False
+
+    def fail_selected_write(path, content, *args, **kwargs):
+        nonlocal failed
+        resolved = Path(path).resolve()
+        is_journal = resolved.name == "candidate-publication-journal.json"
+        status_marker = None
+        if is_journal:
+            try:
+                status_marker = json.loads(content).get("status")
+            except (json.JSONDecodeError, TypeError):
+                pass
+        selected = (
+            (failure_target == "formal" and resolved == formal.resolve())
+            or (failure_target == "chapter" and resolved == chapter.resolve())
+            or (failure_target == "receipt" and resolved == receipt.resolve())
+            or (
+                failure_target == "prepared_journal"
+                and is_journal and status_marker == "prepared"
+            )
+            or (
+                failure_target == "commit_journal"
+                and is_journal and status_marker == "committed"
+            )
+        )
+        if selected and not failed:
+            failed = True
+            raise OSError(f"injected {failure_target} failure")
+        return real_atomic_write(path, content, *args, **kwargs)
+
+    monkeypatch.setattr(projects_api, "atomic_write", fail_selected_write)
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 500
+    assert failed is True
+    assert formal.read_text(encoding="utf-8") == "old formal"
+    assert chapter.read_text(encoding="utf-8") == "old chapter"
+    assert receipt.read_text(encoding="utf-8") == '{"version":1}'
+    publication = next(
+        run for run in db.list_runs(project.id)
+        if run["workflow"] == "candidate-publish"
+    )
+    assert publication["status"] == "failed"
+    assert not db.has_active_runs(project.id)
+    assert not (project.path / "snapshots" / publication["id"]).exists()
+
+
+def test_candidate_publication_retains_committed_snapshot_until_db_terminal(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    created = client.post("/api/projects", json={
+        "title": "Durable publication terminal", "mode": "short",
+        "genre": "test", "premise": "DB completion can be retried.",
+        "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    candidate_text = (
+        "A committed candidate survives DB completion failure.\n\n"
+        "Its second paragraph proves exact Windows newline recovery."
+    )
+    (outputs / "best-candidate.md").write_text(candidate_text, encoding="utf-8")
+    real_update_run = db.update_run
+    failed_once = False
+
+    def fail_first_completion(run_id, status, current_stage=None, error=None):
+        nonlocal failed_once
+        if status == "completed" and not failed_once:
+            failed_once = True
+            raise OSError("injected durable DB completion failure")
+        return real_update_run(run_id, status, current_stage, error)
+
+    monkeypatch.setattr(db, "update_run", fail_first_completion)
+
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+
+    assert response.status_code == 500
+    publication = next(
+        run for run in db.list_runs(project.id)
+        if run["workflow"] == "candidate-publish"
+    )
+    run_id = publication["id"]
+    snapshot = project.path / "snapshots" / run_id
+    journal_path = (
+        project.path / "runs" / run_id / "outputs"
+        / "candidate-publication-journal.json"
+    )
+    assert failed_once is True
+    assert db.get_run(run_id)["status"] == "running"
+    assert json.loads(journal_path.read_text(encoding="utf-8"))["status"] == "committed"
+    assert snapshot.is_dir()
+    assert (project.path / "manuscript" / "story.md").read_text(
+        encoding="utf-8",
+    ) == candidate_text
+
+    create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    assert db.get_run(run_id)["status"] == "completed"
+    assert not snapshot.exists()
+    assert (project.path / "manuscript" / "story.md").read_text(
+        encoding="utf-8",
+    ) == candidate_text
+    create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    assert db.get_run(run_id)["status"] == "completed"
+
+
+@pytest.mark.parametrize(
+    ("artifact_name", "damage"),
+    [
+        ("formal", "missing"), ("formal", "tampered"),
+        ("chapter", "missing"), ("chapter", "tampered"),
+        ("receipt", "missing"), ("receipt", "tampered"),
+    ],
+)
+def test_startup_rolls_back_corrupt_committed_candidate_publication(
+    tmp_path, monkeypatch, artifact_name, damage,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    created = client.post("/api/projects", json={
+        "title": f"Committed integrity {artifact_name} {damage}",
+        "mode": "short", "genre": "test",
+        "premise": "Corrupt committed files must not become formal authority.",
+        "target_words": 1000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    outputs = project.path / "runs" / "candidate-run" / "outputs"
+    outputs.mkdir(parents=True)
+    (outputs / "best-candidate.md").write_text(
+        "A candidate whose committed write set is fully hash bound.",
+        encoding="utf-8",
+    )
+    real_update_run = db.update_run
+    failed_once = False
+
+    def fail_first_completion(run_id, status, current_stage=None, error=None):
+        nonlocal failed_once
+        if status == "completed" and not failed_once:
+            failed_once = True
+            raise OSError("injected terminal DB failure")
+        return real_update_run(run_id, status, current_stage, error)
+
+    monkeypatch.setattr(db, "update_run", fail_first_completion)
+    response = client.post(f"/api/projects/{project.id}/candidate/publish")
+    assert response.status_code == 500
+    publication = next(
+        run for run in db.list_runs(project.id)
+        if run["workflow"] == "candidate-publish"
+    )
+    run_id = publication["id"]
+    snapshot = project.path / "snapshots" / run_id
+    paths = {
+        "formal": project.path / "manuscript" / "story.md",
+        "chapter": project.path / "chapters" / "chapter-01.md",
+        "receipt": project.path / "manuscript" / "publication.json",
+    }
+    journal_path = (
+        project.path / "runs" / run_id / "outputs"
+        / "candidate-publication-journal.json"
+    )
+    journal = json.loads(journal_path.read_text(encoding="utf-8"))
+    assert journal["version"] == 3
+    assert journal["status"] == "committed"
+    assert journal["artifact_authority"]
+    assert snapshot.is_dir()
+
+    target = paths[artifact_name]
+    if damage == "missing":
+        target.unlink()
+    else:
+        target.write_text("tampered publication artifact", encoding="utf-8")
+
+    monkeypatch.setattr(db, "update_run", real_update_run)
+    create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+
+    assert db.get_run(run_id)["status"] == "failed"
+    assert not snapshot.exists()
+    assert all(not path.exists() for path in paths.values())
+    assert json.loads(journal_path.read_text(encoding="utf-8"))["status"] == (
+        "rolled_back"
+    )
+
+
+def test_startup_rolls_back_prepared_candidate_publication(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    first_app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+    )
+    created = first_app.state.projects.create(projects_api.ProjectCreate(
+        title="Crash recovery", mode="short", genre="test",
+        premise="A prepared saga is recoverable.", target_words=1000,
+    ))
+    run_id = "candidate-publish-crash"
+    db.create_run(run_id, created.id, "candidate-publish", status="running")
+    formal = created.path / "manuscript" / "story.md"
+    chapter = created.path / "chapters" / "chapter-01.md"
+    receipt = created.path / "manuscript" / "publication.json"
+    formal.write_text("old formal", encoding="utf-8")
+    chapter.write_text("old chapter", encoding="utf-8")
+    receipt.write_text('{"version":1}', encoding="utf-8")
+    snapshot_root = created.path / "snapshots" / run_id
+    ProjectSnapshot.create(
+        created.path, snapshot_root, [formal, chapter, receipt],
+    )
+    journal = created.path / "runs" / run_id / "outputs" / (
+        "candidate-publication-journal.json"
+    )
+    journal.parent.mkdir(parents=True)
+    journal.write_text(json.dumps({
+        "version": 1, "status": "prepared",
+        "publication_run_id": run_id,
+        "snapshot_path": snapshot_root.relative_to(created.path).as_posix(),
+    }), encoding="utf-8")
+    formal.write_text("partial new formal", encoding="utf-8")
+    chapter.write_text("partial new chapter", encoding="utf-8")
+
+    create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+    )
+
+    assert formal.read_text(encoding="utf-8") == "old formal"
+    assert chapter.read_text(encoding="utf-8") == "old chapter"
+    assert receipt.read_text(encoding="utf-8") == '{"version":1}'
+    assert db.get_run(run_id)["status"] == "failed"
+
+
+def test_candidate_api_cache_recomputes_when_reference_corpus_changes(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[tmp_path / "skills"],
+        workspace_root=tmp_path / "workspace",
+    )
+    app.state.references = ReferenceLibrary(db, tmp_path / "references")
+    client = TestClient(app)
+    created = client.post("/api/projects", json={
+        "title": "Corpus cache", "mode": "short", "genre": "suspense",
+        "premise": "A reference changes.", "target_words": 6000,
+    }).json()
+    project = app.state.projects.get(created["id"])
+    app.state.projects.set_optimized_local_review(project.id, True)
+    source = app.state.references.import_text(
+        title="Reference", text="雨夜里门锁被人更换。", source_type="paste",
+        content_type="reference_work", project_id=project.id,
+    )
+    db.create_run("candidate-run", project.id, "short-story", status="failed")
+    output = project.path / "runs" / "candidate-run" / "outputs"
+    output.mkdir(parents=True)
+    (output / "best-candidate.md").write_text(
+        "林晚发现门锁变了。", encoding="utf-8",
+    )
+    calls = []
+    real_analyze = projects_api.analyze_manuscript
+
+    def recording_analyze(*args, **kwargs):
+        calls.append(kwargs["reference_corpus_sha256"])
+        return real_analyze(*args, **kwargs)
+
+    monkeypatch.setattr(projects_api, "analyze_manuscript", recording_analyze)
+    assert client.get(f"/api/projects/{project.id}/candidate").status_code == 200
+    assert client.get(f"/api/projects/{project.id}/candidate").status_code == 200
+    app.state.references.add_version(
+        source["id"], "清晨时门锁又被人更换。",
+    )
+    assert client.get(f"/api/projects/{project.id}/candidate").status_code == 200
+
+    assert len(calls) == 2
+    assert calls[0] != calls[1]
+    cached = json.loads((output / "analysis-candidate.json").read_text(encoding="utf-8"))
+    assert cached["reference_corpus_sha256"] == calls[1]
 
 
 def test_candidate_analysis_does_not_recreate_project_after_trash(
@@ -785,15 +1361,15 @@ def test_project_style_sample_scope_defaults_to_polish_and_can_be_enabled_for_dr
     assert client.get(f"/api/projects/{project['id']}").json()["style_sample_scope"] == "draft_and_polish"
 
 
-def test_project_style_sample_rejects_invalid_analysis(tmp_path) -> None:
-    class InvalidStyleSamples(FakeStyleSamples):
+def test_project_style_sample_rejects_typed_invalid_input_before_service(tmp_path) -> None:
+    class UncalledStyleSamples(FakeStyleSamples):
         async def analyze(self, project, text, source_name):
-            raise ValueError("范文至少需要 200 个字符")
+            raise AssertionError("typed API validation must run before the service")
 
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(),
         skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
-        style_sample_service=InvalidStyleSamples(),
+        style_sample_service=UncalledStyleSamples(),
     ))
     project = client.post("/api/projects", json={
         "title": "Voice", "mode": "short", "genre": "悬疑",
@@ -803,7 +1379,76 @@ def test_project_style_sample_rejects_invalid_analysis(tmp_path) -> None:
     response = client.post(f"/api/projects/{project['id']}/style-sample", json={"text": "短"})
 
     assert response.status_code == 400
-    assert response.json()["detail"]["code"] == "invalid_style_sample"
+    assert response.json()["detail"] == {
+        "code": "invalid_style_sample",
+        "message": "Style sample must contain 200 to 60000 non-blank characters.",
+    }
+
+
+def test_project_style_sample_redacts_parser_value_error(tmp_path) -> None:
+    sentinel = "PARSER_RAW C:\\private\\parser.log API_KEY_SENTINEL"
+
+    class InvalidStyleSamples(FakeStyleSamples):
+        async def analyze(self, project, text, source_name):
+            raise ValueError(sentinel)
+
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+        style_sample_service=InvalidStyleSamples(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Safe parser error", "mode": "short", "genre": "悬疑",
+        "premise": "解析失败也不得暴露内部信息。", "target_words": 6000,
+    }).json()
+
+    response = client.post(
+        f"/api/projects/{project['id']}/style-sample",
+        json={"text": "有效长度的范文内容。" * 30},
+    )
+
+    body = json.dumps(response.json(), ensure_ascii=False)
+    assert response.status_code == 502
+    assert response.json()["detail"] == {
+        "code": "style_analysis_failed",
+        "message": "Style analysis provider is temporarily unavailable.",
+    }
+    assert "PARSER_RAW" not in body
+    assert "parser.log" not in body
+    assert "API_KEY_SENTINEL" not in body
+
+
+def test_project_style_sample_redacts_provider_failure(tmp_path) -> None:
+    sentinel = "PROVIDER_RAW C:\\private\\route.log API_KEY_SENTINEL"
+
+    class FailingStyleSamples(FakeStyleSamples):
+        async def analyze(self, project, text, source_name):
+            raise RuntimeError(sentinel)
+
+    client = TestClient(create_app(
+        Database(tmp_path / "app.db"), MemorySecretStore(),
+        skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
+        style_sample_service=FailingStyleSamples(),
+    ))
+    project = client.post("/api/projects", json={
+        "title": "Safe provider error", "mode": "short", "genre": "suspense",
+        "premise": "A provider fails.", "target_words": 6000,
+    }).json()
+
+    response = client.post(
+        f"/api/projects/{project['id']}/style-sample",
+        json={"text": "long-enough-style-sample" * 20},
+    )
+
+    body = json.dumps(response.json(), ensure_ascii=False)
+    assert response.status_code == 502
+    assert response.json()["detail"] == {
+        "code": "style_analysis_failed",
+        "message": "Style analysis provider is temporarily unavailable.",
+    }
+    assert "PROVIDER_RAW" not in body
+    assert "route.log" not in body
+    assert "API_KEY_SENTINEL" not in body
 
 
 def test_story_state_api_reads_edits_section_and_keeps_history(tmp_path) -> None:

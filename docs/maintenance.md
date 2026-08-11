@@ -201,6 +201,23 @@ DOCX extraction uses the standard library; PDF extraction uses `pypdf`; public U
 
 The typed graph lives in `learning_nodes`, `learning_edges`, `learning_evidence`, and `learning_revisions`. Project decisions and versioned derivatives live separately in `project_adoptions` and `project_learning_artifacts`. Deleting a source marks graph nodes and existing adoptions for review before deleting source versions. It never rewrites project files.
 
+Adoption classification is Runtime-owned. The immutable `learning_nodes.node_type`
+selects the mechanism, attraction, or style bucket; editable adoption data may
+refine a mechanism subtype but cannot change `node_type`, `mechanism_type`,
+provenance, or another classification field. Creative blueprints, compact
+creative recipes, and outline-generation context all use the same classifier.
+Legacy adoption JSON with a conflicting marker therefore stays in its original
+node-type bucket and cannot turn a prose rule into a plot method.
+
+SQLite is the authority for versioned learning artifacts. Sidecar JSON is a
+monotonic, human-readable projection: insertion and projection are serialized
+through SQLite's cross-process write transaction, the projector rereads the
+latest database version before writing, and readers repair a missing, stale, or
+hash-mismatched sidecar from that latest row. A delayed old writer can never
+replace a newer projection. Workflow checkpoint read/validate/attempt/upsert is
+likewise performed under `BEGIN IMMEDIATE`, so concurrent retries cannot lose an
+attempt or both accept conflicting validated authority.
+
 Active project artifacts are appended by `ProjectStore.load_constraints()` and therefore use the existing planning, draft, review, and polish routes. Stale artifacts are excluded. Candidate outlines and line edits stay below `<project>/learning/`; formal outlines and manuscripts are never direct targets.
 
 `reference_analysis`, `reference_synthesis`, and `line_edit` are normal role bindings with configured fallbacks. Only explicit UI actions call them. Regression examples in `src/novel_flywheel/quality_regression.json` and all automated tests remain provider-free.
@@ -1031,3 +1048,213 @@ that contains its own Markdown headings cannot split the plan or truncate the
 field. The compiler still verifies the envelope role, token, and SHA-256 before
 the value becomes planning authority; masking presentation does not make an
 invalid envelope acceptable.
+
+### Durable completion and IR-first rollout
+
+Run-level provider interruptions are supervised by a durable SQLite envelope.
+`waiting_provider` is an active, cancellable state with a persisted retry time;
+a restart retains the wait or converts an in-flight recovery state to
+`interrupted`, then resolves the stored operation inputs and resumes from
+validated checkpoints. Credential and capability failures wait for user action,
+while transport retry budgets are independent from the existing node-level
+protocol, semantic, and quality budgets. Resume payloads contain workflow inputs
+only and never provider secrets. They are closed, workflow-versioned contracts:
+long chapters persist one normalized goal, targeted revisions persist the frozen
+ordered issue IDs, and Skill initialization persists the accepted outline hash,
+Runtime-owned answers, and the frozen learning snapshot. Validation happens
+before a run is created or claimed, so an invalid payload cannot leave an orphan
+`queued` writer. Startup reconstructs `initialize-skills` and rejects a stale
+outline rather than replaying with changed authority. Workflow-attempt numbering
+uses a SQLite immediate transaction so concurrent recovery auditing cannot lose
+or duplicate an attempt. An unknown supervision contract version is not guessed;
+the run moves to `waiting_user` until an explicit compatible migration exists.
+Run creation or resume activation writes the run row, supervision envelope,
+initial attempt, and queue event in the same immediate transaction. Worker entry
+does the same for the running transition and started event. Synchronous launch
+or worker-entry failures are compensated to `interrupted` with a typed,
+hash-only incident record; raw provider messages, paths, response bodies, and
+credential-like values are never persisted.
+
+Worker outcomes use the same transaction boundary. Completion, provider wait,
+terminal failure, and cancellation each update the run row, supervision
+envelope, attempt ledger, public event, and applicable production-incident
+metadata under one `BEGIN IMMEDIATE`. Policy classification is calculated
+without persistence first, so a crash cannot leave `running/irrecoverable` or
+`completed/running` halves. A local outcome-commit fault is retried once, then
+uses a fixed hash-only degraded audit event while preserving the already-decided
+business outcome: cancellation stays cancelled, exhausted work stays failed or
+`waiting_user`, completion stays completed, and provider wait retains its retry
+time and budgets. Only failure to write the target state rows themselves moves
+both authorities to `interrupted`; that envelope stores the intended outcome so
+startup can reconcile it without blindly replaying completed or cancelled work.
+Startup also idempotently reconciles legacy split terminal pairs created before
+this boundary existed. Provider retry is scheduled only after the durable
+`waiting_provider` pair and its attempt/event ledger have committed.
+
+IR-first short planning is a project-scoped canary and defaults off until
+controlled R6 validation completes. Operators use
+`GET /api/projects/{project_id}/rollout-flags` and
+`PUT /api/projects/{project_id}/rollout-flags/planning-ir-first`; changes are
+rejected while a project run is active. Enabled projects generate
+`PlanningSemanticDraftV2`, inject Runtime-owned event identity and terminal
+topology, and render the legacy five-field Markdown only for downstream
+compatibility. The only tolerant wrapper conversion is the registered,
+versioned unique-envelope adapter; ambiguous candidates and machine controls
+fail closed.
+
+Every accepted draft segment is sealed with authority, input, output, entry,
+exit, quality, and dependency hashes. Exact repeats are idempotent, and a
+changed event or beat invalidates only dependent units. Existing
+whole-manuscript quality candidate competition remains the promotion authority,
+so sealing does not allow a locally valid segment to replace a better protected
+manuscript.
+
+Reference learning reduces all windows through resumable exact-coverage
+regions. Runtime injects child manifests and hashes at every promoted level; no
+fixed full-reference character truncation is used. Region capacity and dispatch
+use one versioned `reference_synthesis` route plan. A viable primary/fallback
+pair uses their safe common lower bound; a primary that cannot hold one semantic
+packet is bypassed in favor of a viable fallback, while a primary-only binding
+executes the primary directly. Region and final synthesis calls share the same
+executor. Structured-output headroom and fixed prompt overhead are reserved per
+route; an unknown third-party route is planned conservatively as 16K.
+Both serialized character size and estimated input tokens are enforced. The
+final synthesis separately reserves its actual local-candidate context, and a
+large local catalog becomes a content-addressed Runtime registry instead of
+being truncated. A reduction level that neither lowers packet count nor token
+size is rejected within a bounded depth, so route adaptation cannot loop
+forever. Validated region cache rows
+are immutable under concurrent writers and bind the content purpose, focus, and
+version-2 receipt contract. Every child is explicitly marked as promoted or as
+having no transferable claim; a promoted child cannot yield an empty semantic
+result. Promoted children have an exact one-to-one attribution ledger and must
+reach Runtime-resolved non-empty semantic JSON pointers. Direct
+claim/uncertainty paths are unique; shared semantics must use an acyclic typed
+merged/superseded relation to one anchored child. Free-form reason text is never
+accepted as coverage proof, and cyclic or missing A/B attribution fails the receipt. Project
+creative recipes contain transferable mechanism/style data and
+hash-only provenance. Missing blueprint/recipe sidecars or either half of an
+interrupted derived-artifact write are rebuilt idempotently. Style rules remain
+in the prose/style bucket and are not injected as plot-structure mechanisms.
+Competitor sources remain risk-only and cannot be adopted as creative guidance.
+The final synthesis is itself a `DistillationReceiptV2` region, so a semantic
+claim that survives the hierarchy cannot disappear at the last model call.
+Normalization is followed by the same attribution validation before the final
+semantic payload is accepted.
+
+Publication analysis compares all distinct local reference versions with
+independent literal winnowing, semantic-candidate, and event-chain gates. Hard
+evidence triggers only segment-scoped regeneration and a complete recheck;
+review-only semantic windows never cause automatic rewriting. Originality audit
+rows contain offsets and hashes, not source prose. Full operating and rollback
+instructions are in
+`docs/superpowers/specs/2026-08-11-durable-completion-ir-originality-r0-r6-design.md`.
+The analysis cache is also bound to a text-free reference-corpus authority hash
+covering every visible source/version ID, content hash, use mode,
+classification, and project scope. The authority and chunk stream use the same
+database snapshot, so a concurrent new version cannot be scanned under a stale
+hash. These fields are bound to `manuscript-analysis-v5`; earlier analysis cache
+files, or reports created against a changed corpus, are regenerated before they
+can participate in a publication gate.
+
+## R0-R6 final publication and maintenance boundaries
+
+Short-story publication is a single-writer, recoverable promotion. Runtime
+acquires the project mutation lease, compares the current reference-corpus
+authority and StoryState revision before any formal write, then promotes
+`manuscript/story.md`, the chapter view, the publication receipt, canon, and the
+next StoryState under one snapshot-backed saga. A stale corpus retries only the
+originality/publication/quality closure at most once; a persistently moving
+corpus preserves the candidate and writes no formal artifact. A stale
+StoryState detected before this run touches formal files is never "recovered"
+from the run's older snapshot, because that would overwrite a competing valid
+promotion. Candidate publication through the API uses the same project-idle,
+corpus-CAS, snapshot, and rollback boundary. After acquiring its publication
+lease and mutation lock, it re-resolves the current candidate and compares a
+versioned authority containing the source run, project-relative source path,
+exact source-byte hash, and normalized-manuscript hash; a newer run, path, or
+byte-equivalent-looking source cannot be promoted under an older decision. The
+publication journal's committed state is the filesystem commit point. Its
+snapshot remains available until the terminal database status is durably
+written and read back. Before startup finalizes a committed journal, it verifies
+the exact byte hashes of the formal manuscript, chapter projection, and
+publication receipt plus the receipt's source-run, manuscript, and reference
+corpus bindings. A missing, changed, or mutually inconsistent committed
+artifact restores the verified snapshot and records a failed publication;
+only a complete write set may become `completed`. Startup otherwise
+idempotently finalizes a valid committed journal or rolls back a merely
+prepared journal. Provider exceptions exposed by these APIs
+are stable redacted codes; only the API-owned Pydantic input contract may
+produce the fixed safe 400 response, while provider/parser failures—including
+`ValueError`—map to a fixed safe 502. Raw response text, paths, and credentials
+are not returned or persisted.
+
+Editorial eligibility precedes score comparison. A `passed` candidate can be
+replaced only by another fully authoritative `passed` candidate; a higher-score
+`conditional_pass` or `failed` candidate cannot become the protected best or a
+formal manuscript. Any originality repair or other prose mutation after an
+earlier quality decision creates a new hash-bound semantic integrity artifact
+and reruns the applicable terminal review. Formal promotion requires
+`quality-report.json`, `quality-checkpoint.json`, the selected prose, and the
+terminal reviewed hash to agree exactly. A rejected post-quality mutation is
+stored as a separate diagnostic candidate and never overwrites the last passing
+best/checkpoint pair.
+
+Maintenance output is an incremental proposal, not a replacement canon.
+Runtime preserves confirmed and locked facts, deep-merges unmentioned character
+state siblings, and accepts an existing scalar change only through an exact
+typed transition (`character`, dotted `field`, `from`, `to`, and exact prose
+evidence). Missing fields do not delete authority. Conflicting fact keys or
+state paths receive one bounded typed repair that includes the rejected
+proposal, every already-preserved safe unit, and the hash-bound authoritative
+manuscript. The only implicit shape adaptations are provably unambiguous
+singleton-to-list conversions for a world rule or timeline item; each writes a
+versioned adapter audit.
+
+When the complete maintenance request cannot fit the safe primary/fallback
+context, `MaintenanceWindowContractV1` covers the entire publication with
+ordered, overlapping, hash-bound windows. A still-large window is recursively
+bisected at a prose boundary without truncation. Model receipts contain only
+typed semantic deltas with unique exact evidence spans; window identity,
+StoryState entry hash, coverage, ordering, deduplication, and reduction belong
+to Runtime. Conflicting units are removed from the accepted projection and only
+their window is repaired. The sealed reduction stores accepted envelope hashes,
+coverage spans, rejection provenance, and a canonical hash, then Runtime
+replays every accepted unit from the source StoryState before accepting canon.
+Models cannot claim Runtime bundle/reduction versions. Per-window checkpoints
+bind the contract, entry-state hash, receipts, and replayed result, allowing a
+restart to reuse valid leading windows while invalidating only the changed
+window and its dependent suffix.
+
+The parser-authority invariant remains a P0 gate: all model-produced structured
+objects pass through `GeneratedArtifactGateway` and the versioned contract
+registry. Local `json.loads` is used only for Runtime-created, source-provenance
+sealed artifacts. Adding a convenient second parser in a workflow is a release
+blocker even if its functional tests pass.
+
+Execution-manifest version 6 makes source evidence content-addressed. Planning
+adaptation retains the ordered Runtime evidence catalogue (`evidence_id` plus
+exact text) once per event; a beat carries only non-empty, unique, contiguous
+`source_evidence_ids`. Raw evidence text is not duplicated across beats or
+serialized into a version 6 manifest. The registered
+`execution_manifest_evidence_reference` adapter accepts an explicit valid ID
+sequence, a uniquely mappable legacy exact atom sequence, or a uniquely
+extractive presentation-normalized span. It never uses actor, genre, provider,
+project, or semantic similarity to choose among multiple candidates. Unknown,
+cross-event, non-contiguous, conflicting, or ambiguous references remain a
+protocol failure and trigger the bounded fragment recovery path. Adapter audit
+contains only version, transformation codes, counts, and hashes. Historical
+version 2-5 manifests remain readable through their original byte/hash
+authority; they are not silently rewritten as version 6 checkpoints.
+
+Protocol-only receipt recovery is semantically monotonic. Once an execution,
+segment-draft, or whole-draft receipt has a complete positive semantic
+projection and fails only its schema, coverage, identity, evidence, or hash
+envelope, Runtime freezes the hash-bound semantic projection. A same-route or
+fallback receipt retry may repair only protocol-owned fields. A later retry
+that changes a previously proven actor, action, causality, continuity,
+commitment, or ending verdict is restored to the frozen projection and records
+`receipt_semantic_drift_contained`; it cannot spend a semantic-repair budget or
+authorize manifest/prose regeneration. An explicit semantic-negative receipt
+that was valid on its first authoritative attempt is still a semantic failure
+and follows the normal smallest-scope repair ladder.

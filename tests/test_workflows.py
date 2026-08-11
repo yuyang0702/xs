@@ -61,6 +61,7 @@ from novel_flywheel.quality_records import load_quality_checkpoint, write_qualit
 from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.recovery_engine import protocol_receipt_attempts
+from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.revision import segment_map
 from novel_flywheel.revision_operations import RevisionOperationError
 from novel_flywheel.scene_continuity import LocationRef
@@ -152,6 +153,81 @@ def test_workflow_analysis_writes_hash_matching_artifact_and_reuses_it(tmp_path)
     assert report["coverage"] == 1.0
     assert reused["text_hash"] == report["text_hash"]
     assert len(calls) == 1
+
+
+def test_workflow_analysis_cache_recomputes_when_reference_corpus_changes(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Corpus-bound analysis", mode="short", genre="suspense",
+        premise="A reference changes.", target_words=1000,
+    ))
+    store.set_optimized_local_review(project.id, True)
+    references = ReferenceLibrary(db, tmp_path / "references")
+    source = references.import_text(
+        title="Reference", text="门锁在雨夜被人更换。", source_type="paste",
+        content_type="reference_work", project_id=project.id,
+    )
+    calls = []
+    nlp = SimpleNamespace(analyze=lambda text: calls.append(text) or {
+        "backend": "ltp", "backend_version": "ltp-v2", "available": True,
+        "result": {"cws": [[]], "pos": [[]], "ner": [[]], "srl": [[]], "dep": [[]]},
+    })
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+        local_nlp=nlp, references=references,
+    )
+    run_path = project.path / "runs" / "corpus-analysis"
+    first = service._analyze_manuscript(
+        "林晚发现门锁变了。", run_path, project, "draft",
+    )
+    reused = service._analyze_manuscript(
+        "林晚发现门锁变了。", run_path, project, "draft",
+    )
+    references.add_version(source["id"], "门锁在清晨被人再次更换。")
+    refreshed = service._analyze_manuscript(
+        "林晚发现门锁变了。", run_path, project, "draft",
+    )
+
+    assert reused["reference_corpus_sha256"] == first["reference_corpus_sha256"]
+    assert refreshed["reference_corpus_sha256"] != first["reference_corpus_sha256"]
+    assert len(calls) == 2
+
+
+def test_short_formal_promotion_rejects_stale_reference_corpus_authority(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Promotion corpus CAS", mode="short", genre="suspense",
+        premise="A reference changes before promotion.", target_words=1000,
+    ))
+    references = ReferenceLibrary(db, tmp_path / "references")
+    source = references.import_text(
+        title="Reference", text="First reference version.", source_type="paste",
+        content_type="reference_work", project_id=project.id,
+    )
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+        references=references,
+    )
+    analyzed_corpus = references.reference_corpus_authority(project.id)["sha256"]
+
+    assert service._assert_current_reference_corpus_authority(
+        project, {"reference_corpus_sha256": analyzed_corpus},
+    ) == analyzed_corpus
+
+    references.add_version(source["id"], "Second reference version.")
+
+    with pytest.raises(RuntimeError, match="Reference corpus changed"):
+        service._assert_current_reference_corpus_authority(
+            project, {"reference_corpus_sha256": analyzed_corpus},
+        )
 
 
 def test_snapshot_recovery_failure_is_logged_without_replacing_primary_error(tmp_path) -> None:
@@ -706,7 +782,11 @@ def execution_manifest_body_from_prompt(user: str) -> dict:
         )
         beats = []
         for index, source in enumerate(expected, 1):
-            evidence = str(contract_by_id[source].get("evidence") or source)
+            evidence_ids = [
+                str(item.get("evidence_id") or "")
+                for item in contract_by_id[source].get("evidence_catalog", [])
+                if isinstance(item, dict) and str(item.get("evidence_id") or "")
+            ]
             beats.append({
                 "beat_id": f"{source}/01",
                 "source_event_id": source,
@@ -716,7 +796,7 @@ def execution_manifest_body_from_prompt(user: str) -> dict:
                 "preconditions": ["承接当前段入口"],
                 "postconditions": [f"完成 {source}"],
                 "owner_segment": segment,
-                "source_evidence": evidence,
+                "source_evidence_ids": evidence_ids,
             })
         entry_state = previous_exit or [{
             "state": "opening", "inherited_from": "opening",
@@ -805,7 +885,12 @@ def execution_manifest_receipt_from_prompt(user: str) -> str:
         "authority_sha256": manifest.authority_sha256,
         "manifest_sha256": execution_manifest_sha256(manifest),
         "beat_receipts": [{
-            "beat_id": beat.beat_id, "evidence": beat.source_evidence,
+            "beat_id": beat.beat_id,
+            **(
+                {"evidence_ids": list(beat.source_evidence_ids)}
+                if beat.source_evidence_ids else
+                {"evidence": beat.source_evidence}
+            ),
             "actor_action_valid": True,
         } for beat in manifest.beats],
         "segment_receipts": [{
@@ -1713,6 +1798,155 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert state.data["manuscript_revision"] == 1
     assert state.data["confirmed_facts"][0]["value"] == "The hero survived."
     assert any(item["event_type"] == "story_state_committed" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="IR Canary", mode="short", genre="mystery",
+        premise="A passenger vanishes from a locked carriage.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class IrFirstGateway(FakeGateway):
+        def __init__(self) -> None:
+            super().__init__()
+            self.responses = iter([
+                "# Draft\nRough story.",
+                json.dumps({"score": 86, "hard_fail": False, "issues": ["tighten prose"]}),
+                json.dumps({"score": 84, "hard_fail": False, "issues": ["strengthen paid hook"]}),
+                "# Final Story\nHuman, polished prose.",
+                json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+                json.dumps({"facts": ["The passenger was found."]}),
+            ])
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            if "IR_FIRST_SHORT_PLANNING_V2" in user:
+                self.roles.append(role)
+                self.systems.append(system)
+                return ModelResult(json.dumps({
+                    "version": 2,
+                    "initial_state": "The investigator enters the locked carriage.",
+                    "segments": [{
+                        "kind": "terminal", "segment": 1,
+                        "title": "The locked carriage",
+                        "events": [{
+                            "formal_event_ordinal": 1,
+                            "narrative": (
+                                "The investigator follows the physical evidence, resists "
+                                "the conductor's deception, finds the passenger, and exposes "
+                                "the method and cost of the disappearance."
+                            ),
+                        }],
+                    }],
+                }), {"role": role, "model_name": f"fake-{role}"})
+            if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
+                authority = user.split(
+                    "EXPECTED AUTHORITY SHA256: ", 1,
+                )[1].splitlines()[0]
+                planning_sha = user.split(
+                    "EXPECTED PLANNING SHA256: ", 1,
+                )[1].splitlines()[0]
+                segment = int(user.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+                expected = json.loads(
+                    user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+                )
+                candidates = json.loads(
+                    user.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1].split(
+                        "\n\nCURRENT ACCEPTED PLAN SEGMENT:", 1,
+                    )[0]
+                )
+                evidence_id = next(iter(candidates))
+                return ModelResult(json.dumps({
+                    "authority_sha256": authority,
+                    "planning_sha256": planning_sha,
+                    "segment": segment,
+                    "event_reviews": [{
+                        "event_id": event_id,
+                        "classification": "equivalent",
+                        "changed_dimensions": ["scene realization"],
+                        "invariants": {field: True for field in INVARIANT_FIELDS},
+                        "plan_evidence_ids": [evidence_id],
+                        "plan_evidence_quote": "",
+                        "reason": "The segment preserves the formal event function.",
+                    } for event_id in expected],
+                    "segment_order_preserved": True,
+                    "formal_direction_preserved": True,
+                    "summary": "The semantic plan preserves the formal event.",
+                }), {"role": role, "model_name": f"fake-{role}"})
+            if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in user:
+                authority = user.split(
+                    "EXPECTED AUTHORITY SHA256: ", 1,
+                )[1].splitlines()[0]
+                planning_sha = user.split(
+                    "EXPECTED PLANNING SHA256: ", 1,
+                )[1].splitlines()[0]
+                segments = json.loads(
+                    user.split("EXPECTED SEGMENTS:\n", 1)[1].splitlines()[0]
+                )
+                expected = json.loads(
+                    user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+                )
+                return ModelResult(json.dumps({
+                    "authority_sha256": authority,
+                    "planning_sha256": planning_sha,
+                    "segment_numbers": segments,
+                    "event_ids": expected,
+                    "causal_order_preserved": True,
+                    "adjacent_handoffs_preserved": True,
+                    "knowledge_progression_preserved": True,
+                    "relationship_progression_preserved": True,
+                    "viewpoint_timeline_preserved": True,
+                    "promises_ending_preserved": True,
+                    "formal_direction_preserved": True,
+                    "affected_segments": [],
+                    "affected_event_ids": [],
+                    "reason": "",
+                    "summary": "The whole plan preserves formal authority.",
+                }), {"role": role, "model_name": f"fake-{role}"})
+            return await super().complete(
+                role, system, user, max_output_tokens=max_output_tokens,
+            )
+
+    gateway = IrFirstGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    outline = (
+        "# Formal Outline\n\n## Vanishing\n\n"
+        "The passenger searches the locked carriage and exposes the conductor."
+    )
+    state = service.story_states.ensure(project.id, project.path)
+    candidate = service.story_states.create_candidate(
+        project.id, None, state.revision, "outline",
+        hashlib.sha256(outline.encode("utf-8")).hexdigest(),
+    )
+    service.story_states.commit(
+        candidate.id, state.revision,
+        {**state.data, "outline": {"content": outline, "events": []}},
+    )
+    db.set_feature_flag(
+        "planning_ir_first", True, scope_type="project", scope_id=project.id,
+    )
+
+    result = await service.run_short(project.id, use_crewai=False)
+    run_path = project.path / "runs" / result["id"]
+
+    assert result["status"] == "completed"
+    assert (run_path / "outputs" / "planning-semantic-v2.json").is_file()
+    assert (run_path / "outputs" / "planning-exit-topology-v1.json").is_file()
+    assert (project.path / "manuscript" / "story.md").read_text(
+        encoding="utf-8",
+    ) == "# Final Story\nHuman, polished prose."
+    assert db.get_sealed_generation_unit(result["id"], "draft_segment", "1")
+    assert any(
+        item["event_type"] == "planning_ir_first_compiled"
+        for item in db.list_run_events(result["id"])
+    )
 
 
 @pytest.mark.asyncio
@@ -7482,14 +7716,9 @@ async def test_lower_conditional_pass_returns_matching_protected_best(
     previous_review = service._review(quality_review(
         commercial=92, story=90, prose=88, decision="pass",
     ))
-    (run_path / "outputs" / "best-candidate.md").write_text(previous, encoding="utf-8")
-    (run_path / "outputs" / "quality-report.json").write_text(json.dumps({
-        "best_score": previous_review["score"],
-        "best_attempt": 1,
-        "status": "passed",
-        "terminal_reviewed_hash": hashlib.sha256(previous.encode("utf-8")).hexdigest(),
-        "final_attempts": [{"attempt": 1, "review": previous_review}],
-    }), encoding="utf-8")
+    service._save_quality_checkpoint(
+        run_path, previous, previous_review, 1, "passed",
+    )
 
     async def polish(*args, **kwargs):
         return lower
@@ -7527,7 +7756,78 @@ async def test_lower_conditional_pass_returns_matching_protected_best(
 
 
 @pytest.mark.asyncio
-async def test_short_story_stops_on_safe_conditional_pass(tmp_path) -> None:
+async def test_current_pass_is_not_replaced_by_higher_scoring_conditional_history(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Eligibility before score", mode="short", genre="suspense",
+        premise="A fully passing candidate must beat a conditional draft.",
+        target_words=8_000,
+    ))
+    project = store.apply_platform_profile(project.id, "zhihu-salt-short")
+    service = WorkflowService(
+        db, store, RecordingGateway([]), SkillGate(db, SkillScanner([])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    historical = "\u5386\u53f2\u6761\u4ef6\u901a\u8fc7\u5019\u9009\u3002" * 900
+    current = "\u5f53\u524d\u5b8c\u6574\u901a\u8fc7\u5019\u9009\u3002" * 900
+    historical_review = score_review({
+        "dimensions": {"commercial": 95, "story": 95, "prose": 67},
+        "hard_fail": False, "decision": "revise", "issues": [],
+        "judge_signature": "provider/final-model",
+    }, "zhihu-short-v2")
+    current_review = score_review({
+        "dimensions": {"commercial": 80, "story": 80, "prose": 80},
+        "hard_fail": False, "decision": "pass", "issues": [],
+        "judge_signature": "provider/final-model",
+    }, "zhihu-short-v2")
+    service._save_quality_checkpoint(
+        run_path, historical, historical_review, 1, "conditional_pass",
+    )
+
+    async def polish(*args, **kwargs):
+        return current
+
+    async def reader(*args, **kwargs):
+        return current_review
+
+    async def final_review(*args, **kwargs):
+        return current_review, {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 1, "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {
+        "coverage": 1.0,
+        "prose": {"blocking_count": 0},
+        "text_hash": hashlib.sha256(current.encode("utf-8")).hexdigest(),
+    })
+
+    selected, report = await service._quality_polish(
+        run_id, run_path, project, "constraints", current, current_review,
+    )
+
+    assert selected == current
+    assert report["status"] == "passed"
+    assert report["terminal_reviewed_hash"] == hashlib.sha256(
+        current.encode("utf-8"),
+    ).hexdigest()
+    checkpoint = load_quality_checkpoint(run_path)
+    assert checkpoint is not None
+    assert checkpoint["outcome"] == "passed"
+    assert checkpoint["manuscript_hash"] == report["terminal_reviewed_hash"]
+
+
+@pytest.mark.asyncio
+async def test_short_story_stops_on_safe_conditional_pass(
+    tmp_path, monkeypatch,
+) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
@@ -7535,6 +7835,7 @@ async def test_short_story_stops_on_safe_conditional_pass(tmp_path) -> None:
         title="Conditional", mode="short", genre="romance",
         premise="A relationship changes.", target_words=6000,
     ))
+    store.set_optimized_local_review(project.id, False)
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     conditional = quality_review(
@@ -7546,33 +7847,202 @@ async def test_short_story_stops_on_safe_conditional_pass(tmp_path) -> None:
             "action": "Tighten one paragraph.",
         }],
     )
+    service = WorkflowService(
+        db, store, RecordingGateway([]),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id, run_path = service._begin_run(project, "short-story", None)
+    candidate = "conditional manuscript " * 500
+    conditional_review = service._review(conditional)
+
+    async def polish(*args, **kwargs):
+        return candidate
+
+    async def reader(*args, **kwargs):
+        return conditional_review
+
+    async def final_review(*args, **kwargs):
+        return conditional_review, {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 1, "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_polish_short_segments", polish)
+    monkeypatch.setattr(service, "_reader_review", reader)
+    monkeypatch.setattr(service, "_full_manuscript_review", final_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args: {})
+
+    with pytest.raises(RuntimeError, match="requires a full pass"):
+        await service._quality_polish(
+            run_id, run_path, project, "constraints", candidate,
+            service._review(quality_review()),
+        )
+
+    report = json.loads((run_path / "outputs" / "quality-report.json").read_text(
+        encoding="utf-8",
+    ))
+    assert report["status"] == "conditional_pass"
+    assert report["final_attempts"][0]["outcome"] == "conditional_pass"
+    checkpoint = load_quality_checkpoint(run_path)
+    assert checkpoint is not None
+    assert checkpoint["outcome"] == "conditional_pass"
+    event = next(
+        item for item in db.list_run_events(run_id)
+        if item["event_type"] == "quality_conditional_pass"
+    )
+    assert event["severity"] == "warning"
+    assert "还不能设为正式稿" in event["message"]
+
+
+@pytest.mark.asyncio
+async def test_short_story_recovers_once_when_reference_corpus_changes_before_promotion(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Corpus retry", mode="short", genre="suspense",
+        premise="A stable publication retry.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
     gateway = RecordingGateway([
         "# Plan", "# Draft", quality_review(), quality_review(),
-        "# Publishable candidate", conditional,
-        json.dumps({"facts": []}),
+        "# Publishable candidate", quality_review(),
+        json.dumps({"facts": [], "state": {}}),
+        json.dumps({"facts": [], "state": {}}),
     ])
-    service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    checks = 0
+
+    def one_stale_check(_project, _analysis):
+        nonlocal checks
+        checks += 1
+        if checks == 1:
+            raise RuntimeError("Reference corpus changed after originality analysis")
+        return "stable-corpus"
+
+    monkeypatch.setattr(
+        service, "_assert_current_reference_corpus_authority", one_stale_check,
+    )
 
     result = await service.run_short(project.id, use_crewai=False)
 
     assert result["status"] == "completed"
-    assert gateway.roles.count("polish") == 1
-    assert gateway.roles.count("final_review") == 1
+    assert checks == 2
+    assert gateway.roles.count("maintenance") == 2
     assert (project.path / "manuscript" / "story.md").read_text(
         encoding="utf-8",
     ) == "# Publishable candidate"
-    report = json.loads((
-        project.path / "runs" / result["id"] / "outputs" / "quality-report.json"
-    ).read_text(encoding="utf-8"))
-    assert report["status"] == "conditional_pass"
-    assert report["final_attempts"][0]["outcome"] == "conditional_pass"
     event = next(
         item for item in db.list_run_events(result["id"])
-        if item["event_type"] == "quality_gate"
+        if item["event_type"] == "reference_corpus_changed_before_promotion"
     )
-    assert event["severity"] == "success"
-    assert event["metadata"]["outcome"] == "conditional_pass"
-    assert "条件通过" in event["message"]
+    assert event["metadata"]["attempt"] == 1
+
+
+@pytest.mark.asyncio
+async def test_short_story_stops_without_formal_write_when_corpus_never_stabilizes(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Corpus churn", mode="short", genre="suspense",
+        premise="The reference corpus keeps changing.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), quality_review(),
+        "# Publishable candidate", quality_review(),
+        json.dumps({"facts": [], "state": {}}),
+        json.dumps({"facts": [], "state": {}}),
+    ])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    formal = project.path / "manuscript" / "story.md"
+    formal.parent.mkdir(parents=True, exist_ok=True)
+    formal.write_text("protected formal manuscript", encoding="utf-8")
+
+    def always_stale(_project, _analysis):
+        raise RuntimeError("Reference corpus changed after originality analysis")
+
+    monkeypatch.setattr(
+        service, "_assert_current_reference_corpus_authority", always_stale,
+    )
+
+    with pytest.raises(RuntimeError, match="did not stabilize"):
+        await service.run_short(project.id, use_crewai=False)
+
+    assert formal.read_text(encoding="utf-8") == "protected formal manuscript"
+    assert gateway.roles.count("maintenance") == 2
+
+
+@pytest.mark.asyncio
+async def test_stale_story_state_never_rolls_back_a_newer_formal_promotion(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="StoryState CAS", mode="short", genre="suspense",
+        premise="Another writer commits first.", target_words=6000,
+    ))
+    initial_state = StoryStateStore(db).ensure(project.id, project.path)
+    formal = project.path / "manuscript" / "story.md"
+    formal.parent.mkdir(parents=True, exist_ok=True)
+    formal.write_text("old formal manuscript", encoding="utf-8")
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway([
+        "# Plan", "# Draft", quality_review(), quality_review(),
+        "# Stale candidate", quality_review(),
+        json.dumps({"facts": [], "state": {}}),
+    ])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    original_get = service.story_states.get
+    ready_for_concurrent_commit = False
+    concurrent_commit_done = False
+
+    def corpus_is_stable(_project, _analysis):
+        nonlocal ready_for_concurrent_commit
+        ready_for_concurrent_commit = True
+        return "stable-corpus"
+
+    def concurrent_story_state(project_id):
+        nonlocal concurrent_commit_done
+        if ready_for_concurrent_commit and not concurrent_commit_done:
+            concurrent_commit_done = True
+            formal.write_text("newer formal manuscript", encoding="utf-8")
+            with db.connect() as connection:
+                connection.execute(
+                    "UPDATE story_states SET revision=revision+1 WHERE project_id=?",
+                    (project_id,),
+                )
+        return original_get(project_id)
+
+    monkeypatch.setattr(
+        service, "_assert_current_reference_corpus_authority", corpus_is_stable,
+    )
+    monkeypatch.setattr(service.story_states, "get", concurrent_story_state)
+
+    with pytest.raises(RuntimeError, match="StoryState changed"):
+        await service.run_short(project.id, use_crewai=False)
+
+    assert concurrent_commit_done is True
+    assert formal.read_text(encoding="utf-8") == "newer formal manuscript"
+    current = original_get(project.id)
+    assert current is not None
+    assert current.revision == initial_state.revision + 1
 
 
 @pytest.mark.asyncio
@@ -8746,6 +9216,64 @@ async def test_stage_context_pressure_invokes_semantic_splitter_before_provider(
     assert any(item["event_type"] == "stage_capacity_split_requested" for item in events)
     assert any(item["event_type"] == "stage_capacity_split_completed" for item in events)
     assert not any(item["event_type"] == "stage_failed" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_nonlayered_maintenance_preflight_splits_before_small_routes(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="maintenance-model", provider_id="provider",
+        display_name="Maintenance", model_name="maintenance-model",
+        context_window=2048, max_output_tokens=768,
+    )
+    db.save_role_binding(
+        "maintenance", "provider", "maintenance-model", None, None,
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Maintenance preflight", mode="short", genre="science fiction",
+        premise="Every middle fact must reach StoryState.", target_words=5000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway(["provider must not be called"])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run(
+        "maintenance-preflight", project.id, "short-story", status="running",
+    )
+    run_path = project.path / "runs" / "maintenance-preflight"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    split_details: list[dict] = []
+
+    async def splitter(details):
+        split_details.append(details)
+        return '{"status":"complete"}'
+
+    result = await service._stage(
+        "maintenance-preflight", run_path, project, "maintenance",
+        "Preserve every confirmed fact.", "中段事实不可省略。" * 5000,
+        allow_tools=False,
+        route_capacity_guard=True,
+        capacity_splitter=splitter,
+        bounded_protocol_output=True,
+    )
+
+    assert result == '{"status":"complete"}'
+    assert result.receipt["execution_mode"] == "capacity_split"
+    assert split_details[0]["trigger"] == "preflight"
+    assert split_details[0]["context_window"] == 2048
+    assert gateway.calls == []
 
 
 @pytest.mark.asyncio
@@ -14728,6 +15256,666 @@ async def test_polish_semantic_drift_is_repaired_before_source_fallback(
         event["event_type"] == "polish_segment_preserved"
         for event in service.db.list_run_events("quality-source")
     )
+
+
+@pytest.mark.asyncio
+async def test_polish_chains_semantic_authority_from_prior_polish(
+    tmp_path, monkeypatch,
+) -> None:
+    source = (
+        "\u6797\u665a\u5728\u6863\u6848\u9986\u6838\u5bf9\u6bcf\u4e00\u6761\u65f6\u95f4\u8bb0\u5f55\u3002" * 30
+        + "\u5979\u786e\u8ba4\u8bb0\u5f55\u65e0\u8bef\uff0c\u5e26\u7740\u7ed3\u679c\u79bb\u5f00\u3002" * 20
+    ).strip()
+    first_polish = source.replace(
+        "\u6838\u5bf9\u6bcf\u4e00\u6761", "\u4ed4\u7ec6\u6838\u5bf9\u6bcf\u4e00\u6761", 1,
+    )
+    second_polish = first_polish.replace(
+        "\u5e26\u7740\u7ed3\u679c", "\u5e26\u7740\u5b8c\u6574\u7ed3\u679c", 1,
+    )
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source=source, target_words=500,
+    )
+    manifest, integrity = _attach_short_revision_semantic_authority(
+        service, project, source,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    chained = json.loads(json.dumps(integrity, ensure_ascii=False))
+    first_hash = hashlib.sha256(first_polish.encode("utf-8")).hexdigest()
+    chained.update({
+        "source_draft_sha256": hashlib.sha256(
+            source.encode("utf-8"),
+        ).hexdigest(),
+        "draft_sha256": first_hash,
+        "publication_sha256": first_hash,
+        "publication_segment_lengths": [len(first_polish)],
+    })
+    chained["segments"][0]["text_sha256"] = first_hash
+    chained["segments"][0]["han_characters"] = effective_han_characters(
+        first_polish,
+    )
+    contract = service._manifest_segment_contract(
+        project, manifest, chained, manifest.segments[0], first_polish, 1,
+    )
+    chained["semantic_segment_receipts"] = [
+        draft_semantic_receipt(asdict(contract), first_polish),
+    ]
+    (run_path / "outputs" / "polish-integrity.json").write_text(
+        json.dumps(chained, ensure_ascii=False, indent=2), encoding="utf-8",
+    )
+
+    original_assessment = __import__(
+        "novel_flywheel.workflows", fromlist=["assess_polish_candidate"],
+    ).assess_polish_candidate
+
+    def accept_second_polish(*args, **kwargs):
+        assessment = original_assessment(*args, **kwargs)
+        if len(args) > 1 and args[1] == second_polish:
+            assessment["accepted"] = True
+            assessment["reasons"] = []
+            assessment["hard_reasons"] = []
+        return assessment
+
+    async def stage(*args, **kwargs):
+        assert args[3] == "polish"
+        return second_polish
+
+    calls = {"segment": 0, "whole": 0}
+
+    async def segment_semantics(*args, **kwargs):
+        calls["segment"] += 1
+        return draft_semantic_receipt(asdict(args[4]), args[5])
+
+    async def whole_semantics(*args, **kwargs):
+        calls["whole"] += 1
+        return {"status": "passed"}
+
+    monkeypatch.setattr(service, "_stage", stage)
+    monkeypatch.setattr(service, "_verify_draft_semantic_node", segment_semantics)
+    monkeypatch.setattr(service, "_verify_whole_draft_semantics", whole_semantics)
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.assess_polish_candidate",
+        accept_second_polish,
+    )
+
+    result = await service._polish_short_segments(
+        "quality-source", run_path, project, "constraints", first_polish, "{}",
+        suffix="-chained",
+    )
+
+    next_integrity = json.loads(
+        (run_path / "outputs" / "polish-integrity-chained.json").read_text(
+            encoding="utf-8",
+        ),
+    )
+    assert result == second_polish
+    assert calls == {"segment": 1, "whole": 1}
+    assert next_integrity["source_draft_sha256"] == first_hash
+    assert next_integrity["draft_sha256"] == hashlib.sha256(
+        second_polish.encode("utf-8"),
+    ).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_post_mutation_quality_failure_preserves_protected_best(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, _ledger, _state = _short_revision_service(
+        tmp_path, [], target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    passing = service._review(quality_review())
+    source_hash = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    protected_report = {
+        "status": "passed",
+        "terminal_review_complete": True,
+        "terminal_reviewed_hash": source_hash,
+    }
+    service._save_quality_checkpoint(run_path, source, passing, 1, "passed")
+    service._write_quality_report(run_path, protected_report)
+    best_before = (run_path / "outputs" / "best-candidate.md").read_bytes()
+    checkpoint_before = (
+        run_path / "outputs" / "quality-checkpoint.json"
+    ).read_bytes()
+    report_before = (run_path / "outputs" / "quality-report.json").read_bytes()
+    mutated = source.replace("Two independent local issues.", "mutated", 1)
+    if mutated == source:
+        mutated = source + "\n\n\u8fd9\u662f\u672a\u901a\u8fc7\u7ec8\u5ba1\u7684\u6539\u5199\u3002"
+
+    async def failed_review(*args, **kwargs):
+        return service._review(quality_review(
+            commercial=40, story=40, prose=40, decision="rewrite",
+        )), {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 1, "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_full_manuscript_review", failed_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args, **kwargs: {})
+
+    with pytest.raises(RuntimeError, match="Post-mutation manuscript"):
+        await service._close_post_quality_mutation(
+            "quality-source", run_path, project, "constraints", mutated,
+            passing, protected_report, suffix="-originality", max_corrections=0,
+        )
+
+    assert (run_path / "outputs" / "best-candidate.md").read_bytes() == best_before
+    assert (
+        run_path / "outputs" / "quality-checkpoint.json"
+    ).read_bytes() == checkpoint_before
+    assert (run_path / "outputs" / "quality-report.json").read_bytes() == report_before
+    rejected = list((run_path / "outputs").glob("post-mutation-rejected-*.md"))
+    failures = list((run_path / "outputs").glob(
+        "post-mutation-quality-failure-*.json",
+    ))
+    assert len(rejected) == len(failures) == 1
+    assert rejected[0].read_text(encoding="utf-8") == mutated
+
+
+@pytest.mark.asyncio
+async def test_post_mutation_quality_pass_binds_exact_publication_hash(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, _ledger, _state = _short_revision_service(
+        tmp_path, [], target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    passing = service._review(quality_review())
+    mutated = source + "\n\n\u5979\u53ea\u6539\u5199\u4e86\u4e0e\u53c2\u8003\u6587\u672c\u8fd1\u4f3c\u7684\u8868\u8fbe\u3002"
+    calls = 0
+
+    async def passed_review(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return passing, {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 1, "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_full_manuscript_review", passed_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args, **kwargs: {})
+
+    selected, report = await service._close_post_quality_mutation(
+        "quality-source", run_path, project, "constraints", mutated,
+        passing, {"status": "passed"}, suffix="-originality",
+        max_corrections=0,
+    )
+
+    publication = "\n\n".join(service._split_segments(selected))
+    digest = hashlib.sha256(publication.encode("utf-8")).hexdigest()
+    checkpoint = load_quality_checkpoint(run_path)
+    assert calls == 1
+    assert report["status"] == "passed"
+    assert report["terminal_reviewed_hash"] == digest
+    assert checkpoint is not None
+    assert checkpoint["outcome"] == "passed"
+    assert checkpoint["manuscript_hash"] == digest
+    service._require_short_formal_quality_authority(run_path, report, publication)
+
+
+def test_maintenance_authority_is_incremental_and_conflicts_fail_closed() -> None:
+    state = {
+        "confirmed_facts": [{
+            "key": "character.hero.identity",
+            "value": "\u5979\u5df2\u786e\u8ba4\u81ea\u5df1\u7684\u771f\u5b9e\u8eab\u4efd\u3002",
+            "source": "earlier-run",
+        }],
+        "locked_facts": [],
+        "character_states": {"hero": {"knowledge": "identity-confirmed"}},
+        "world_rules": ["\u8eab\u4efd\u8bb0\u5f55\u4e0d\u53ef\u4f2a\u9020\u3002"],
+        "timeline_events": ["\u5979\u627e\u5230\u4e86\u6863\u6848\u3002"],
+    }
+    candidate = {
+        "facts": [{
+            "key": "character.hero.choice",
+            "value": "\u5979\u9009\u62e9\u7559\u4e0b\u5e76\u516c\u5f00\u540d\u5b57\u3002",
+        }],
+        "state": {
+            "hero": {"trust": "earned"},
+            "ally": {"trust": "earned"},
+        },
+        "world_rules": ["\u516c\u5f00\u627f\u8bfa\u5fc5\u987b\u7559\u6863\u3002"],
+        "timeline": ["\u5979\u5728\u4f17\u4eba\u9762\u524d\u4f5c\u51fa\u9009\u62e9\u3002"],
+    }
+
+    canon, confirmed = WorkflowService._merge_short_maintenance_authority(
+        state, candidate, run_id="new-run",
+    )
+
+    assert [item["key"] for item in confirmed] == [
+        "character.hero.identity", "character.hero.choice",
+    ]
+    assert canon["facts"] == confirmed
+    assert canon["state"] == {
+        "hero": {"knowledge": "identity-confirmed", "trust": "earned"},
+        "ally": {"trust": "earned"},
+    }
+    assert len(canon["world_rules"]) == 2
+    assert len(canon["timeline"]) == 2
+
+    with pytest.raises(ValueError, match="conflicts with protected fact"):
+        WorkflowService._merge_short_maintenance_authority(
+            state, {
+                **candidate,
+                "facts": [{
+                    "key": "character.hero.identity",
+                    "value": "\u5979\u4ece\u672a\u627e\u5230\u771f\u5b9e\u8eab\u4efd\u3002",
+                }],
+            },
+            run_id="conflicting-run",
+        )
+
+    with pytest.raises(ValueError, match="state conflicts"):
+        WorkflowService._merge_short_maintenance_authority(
+            state, {
+                **candidate,
+                "facts": [],
+                "state": {"hero": {"knowledge": "identity-denied"}},
+            },
+            run_id="state-conflict",
+            manuscript_text="The manuscript contains no supported transition.",
+        )
+
+    with pytest.raises(ValueError, match="world_rules must be an array"):
+        WorkflowService._merge_short_maintenance_authority(
+            state, {
+                "facts": [], "state": {},
+                "world_rules": "magic has a cost",
+                "timeline": {"event": "the hero pays"},
+            },
+            run_id="wrong-shape",
+        )
+
+    safe, duplicate_conflicts = WorkflowService._partition_short_maintenance_proposal(
+        state,
+        {
+            "facts": [
+                {"key": "new.fact", "value": "first"},
+                {"key": "new.fact", "value": "second"},
+            ],
+            "state": {}, "world_rules": [], "timeline": [],
+        },
+        run_id="duplicate-conflict",
+    )
+    assert safe["facts"] == [{"key": "new.fact", "value": "first"}]
+    assert len(duplicate_conflicts) == 1
+    assert duplicate_conflicts[0]["fact_key"] == "new.fact"
+
+    transitioned, _ = WorkflowService._merge_short_maintenance_authority(
+        state, {
+            **candidate,
+            "facts": [],
+            "state": {"hero": {
+                "knowledge": "identity-shared", "trust": "earned",
+            }},
+            "state_transitions": [{
+                "character": "hero",
+                "field": "knowledge",
+                "from": "identity-confirmed",
+                "to": "identity-shared",
+                "evidence": "She tells the ally her confirmed identity.",
+            }],
+        },
+        run_id="state-transition",
+        manuscript_text="She tells the ally her confirmed identity.",
+    )
+    assert transitioned["state"]["hero"] == {
+        "knowledge": "identity-shared", "trust": "earned",
+    }
+
+
+@pytest.mark.asyncio
+async def test_maintenance_authority_conflict_uses_one_bounded_repair(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, source, _ledger, _state = _short_revision_service(
+        tmp_path, [], target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    state = {
+        "confirmed_facts": [{
+            "key": "character.hero.identity",
+            "value": "confirmed identity",
+        }],
+        "locked_facts": [],
+    }
+    responses = [
+        {"facts": [
+            {
+                "key": "character.hero.identity", "value": "conflicting identity",
+            },
+            {
+                "key": "character.hero.choice", "value": "stays by choice",
+            },
+        ], "world_rules": "magic has a cost",
+           "timeline": {"event": "the hero pays"}},
+        {"facts": []},
+    ]
+    prompts: list[str] = []
+
+    async def maintenance_stage(*args, **kwargs):
+        prompts.append(args[5])
+        return json.dumps(responses[len(prompts) - 1])
+
+    monkeypatch.setattr(service, "_stage_with_role_fallback", maintenance_stage)
+
+    canon, confirmed = await service._close_short_maintenance_authority(
+        "quality-source", run_path, project, "constraints", source, state,
+    )
+
+    assert len(prompts) == 2
+    assert "maintenance-authority-repair-v1" in prompts[1]
+    repair_envelope = json.loads(prompts[1])
+    assert repair_envelope["authoritative_manuscript"]["text"] == source
+    assert repair_envelope["authoritative_manuscript"]["sha256"] == hashlib.sha256(
+        source.encode("utf-8"),
+    ).hexdigest()
+    assert repair_envelope["preserved_proposal"]["facts"] == [{
+        "key": "character.hero.choice", "value": "stays by choice",
+    }]
+    assert [item["key"] for item in confirmed] == [
+        "character.hero.identity", "character.hero.choice",
+    ]
+    assert canon["facts"] == confirmed
+    assert canon["world_rules"] == ["magic has a cost"]
+    assert canon["timeline"] == [{"event": "the hero pays"}]
+    adapter_audits = list((run_path / "receipts").glob(
+        "maintenance-adapter-*.json",
+    ))
+    assert len(adapter_audits) == 1
+    assert json.loads(adapter_audits[0].read_text(
+        encoding="utf-8",
+    ))["schema"] == "maintenance-contract-adapter-audit-v1"
+
+
+@pytest.mark.asyncio
+async def test_maintenance_state_transition_repair_receives_exact_prose_authority(
+    tmp_path, monkeypatch,
+) -> None:
+    manuscript = "她当众把确认过的身份告诉盟友，并交出档案副本。"
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source=manuscript, target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    state = {
+        "confirmed_facts": [],
+        "locked_facts": [],
+        "character_states": {"hero": {"knowledge": "identity-confirmed"}},
+    }
+    responses = [
+        {
+            "facts": [],
+            "state": {"hero": {"knowledge": "identity-shared"}},
+            "state_transitions": [{
+                "character": "hero",
+                "field": "knowledge",
+                "from": "identity-confirmed",
+                "to": "identity-shared",
+                "evidence": "她向盟友说明了自己的真实身份。",
+            }],
+        },
+        {
+            "facts": [],
+            "state": {"hero": {"knowledge": "identity-shared"}},
+            "state_transitions": [{
+                "character": "hero",
+                "field": "knowledge",
+                "from": "identity-confirmed",
+                "to": "identity-shared",
+                "evidence": manuscript,
+            }],
+        },
+    ]
+    prompts: list[str] = []
+
+    async def maintenance_stage(*args, **kwargs):
+        prompts.append(args[5])
+        if len(prompts) == 2:
+            authority = json.loads(prompts[-1])["authoritative_manuscript"]
+            assert authority["text"] == manuscript
+            assert authority["sha256"] == hashlib.sha256(
+                manuscript.encode("utf-8"),
+            ).hexdigest()
+        return json.dumps(responses[len(prompts) - 1], ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage_with_role_fallback", maintenance_stage)
+
+    canon, _confirmed = await service._close_short_maintenance_authority(
+        "quality-source", run_path, project, "constraints", manuscript, state,
+    )
+
+    assert len(prompts) == 2
+    assert canon["state"]["hero"]["knowledge"] == "identity-shared"
+    assert canon["state_transitions"][0]["evidence"] == manuscript
+
+
+@pytest.mark.asyncio
+async def test_maintenance_capacity_windows_cover_middle_facts_and_reduce_deterministically(
+    tmp_path, monkeypatch,
+) -> None:
+    markers = [
+        "首段事实：她收起蓝色钥匙。",
+        "中段事实：她把钥匙交给守门人。",
+        "尾段事实：守门人公开了档案。",
+    ]
+    manuscript = "\n\n".join(
+        marker + (f"第{index}段环境保持一致。" * 45)
+        for index, marker in enumerate(markers, 1)
+    )
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source=manuscript, target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    calls: list[dict] = []
+    recursive_splits = 0
+
+    async def capacity_stage(*args, **kwargs):
+        nonlocal recursive_splits
+        prompt = args[5]
+        if prompt == manuscript:
+            result = await kwargs["capacity_splitter"]({
+                "trigger": "preflight", "pressure": "split",
+                "context_window": 1800, "output_reserve": 1000,
+            })
+            return StageText(result, {"execution_mode": "capacity_split"})
+        request = json.loads(prompt)
+        assert request["schema"] == "maintenance-window-request-v1"
+        window_text = request["window_text"]
+        if len(window_text) > 250:
+            recursive_splits += 1
+            result = await kwargs["capacity_splitter"]({
+                "trigger": "provider", "pressure": "split",
+                "context_window": 900, "output_reserve": 500,
+            })
+            return StageText(result, {"execution_mode": "capacity_split"})
+        calls.append(request)
+        facts = [
+            {
+                "key": f"story.fact.{index}",
+                "value": marker,
+                "evidence": marker,
+            }
+            for index, marker in enumerate(markers, 1)
+            if marker in window_text
+        ]
+        return json.dumps({
+            "version": "maintenance-window-receipt-v1",
+            "facts": facts,
+            "state_deltas": [],
+            "state_transitions": [],
+            "world_rules": [],
+            "timeline": [],
+        }, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage_with_role_fallback", capacity_stage)
+
+    canon, confirmed = await service._close_short_maintenance_authority(
+        "quality-source", run_path, project, "constraints", manuscript,
+        {"confirmed_facts": [], "locked_facts": []},
+    )
+
+    assert len(calls) >= 3
+    assert recursive_splits >= 1
+    assert all(len(call["window_text"]) <= 250 for call in calls)
+    assert [item["key"] for item in confirmed] == [
+        "story.fact.1", "story.fact.2", "story.fact.3",
+    ]
+    assert canon["facts"] == confirmed
+    assert any(markers[1] in call["window_text"] for call in calls)
+    reduction_paths = list((run_path / "receipts").glob(
+        "maintenance-reduction-*.json",
+    ))
+    assert len(reduction_paths) == 1
+    reduction = json.loads(reduction_paths[0].read_text(encoding="utf-8"))
+    assert reduction["coverage_spans"][0][0] == 0
+    assert max(end for _start, end in reduction["coverage_spans"]) == len(manuscript)
+
+    first_window_call_count = len(calls)
+    resumed_canon, resumed_confirmed = await service._close_short_maintenance_authority(
+        "quality-source", run_path, project, "constraints", manuscript,
+        {"confirmed_facts": [], "locked_facts": []},
+    )
+    assert resumed_canon == canon
+    assert resumed_confirmed == confirmed
+    assert len(calls) == first_window_call_count
+    assert any(
+        event["event_type"] == "maintenance_window_checkpoint_reused"
+        for event in service.db.list_run_events("quality-source")
+    )
+
+
+@pytest.mark.asyncio
+async def test_maintenance_capacity_reduces_ordered_state_chain_and_repairs_fact_fork(
+    tmp_path, monkeypatch,
+) -> None:
+    first_state = "她先把身份状态改为已告知。"
+    second_state = "随后她把身份状态改为已公开。"
+    first_fact = "档案结论是版本甲。"
+    conflicting_fact = "档案结论被误写成版本乙。"
+    manuscript = "\n\n".join([
+        first_state + first_fact + ("首段继续。" * 70),
+        "中间状态保持。" + ("中段继续。" * 70),
+        second_state + conflicting_fact + ("尾段继续。" * 70),
+    ])
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source=manuscript, target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    repair_calls = 0
+
+    async def capacity_stage(*args, **kwargs):
+        nonlocal repair_calls
+        prompt = args[5]
+        if prompt == manuscript:
+            result = await kwargs["capacity_splitter"]({
+                "trigger": "preflight", "pressure": "split",
+                "context_window": 1800, "output_reserve": 1000,
+            })
+            return StageText(result, {"execution_mode": "capacity_split"})
+        request = json.loads(prompt)
+        window_text = request["window_text"]
+        repair = request.get("repair")
+        if repair:
+            repair_calls += 1
+            return json.dumps({
+                "version": "maintenance-window-receipt-v1",
+                "facts": [], "state_deltas": [], "state_transitions": [],
+                "world_rules": [], "timeline": [],
+            })
+        entry = request["entry_authority"]
+        knowledge = ((entry.get("character_states") or {}).get("hero") or {}).get(
+            "knowledge"
+        )
+        transitions = []
+        if first_state in window_text and knowledge == "hidden":
+            transitions.append({
+                "character": "hero", "field": "knowledge",
+                "from": "hidden", "to": "shared", "evidence": first_state,
+            })
+        if second_state in window_text and knowledge == "shared":
+            transitions.append({
+                "character": "hero", "field": "knowledge",
+                "from": "shared", "to": "public", "evidence": second_state,
+            })
+        facts = []
+        if first_fact in window_text:
+            facts.append({
+                "key": "archive.version", "value": "A", "evidence": first_fact,
+            })
+        if conflicting_fact in window_text:
+            facts.append({
+                "key": "archive.version", "value": "B",
+                "evidence": conflicting_fact,
+            })
+        return json.dumps({
+            "version": "maintenance-window-receipt-v1",
+            "facts": facts, "state_deltas": [],
+            "state_transitions": transitions,
+            "world_rules": [], "timeline": [],
+        }, ensure_ascii=False)
+
+    monkeypatch.setattr(service, "_stage_with_role_fallback", capacity_stage)
+    state = {
+        "confirmed_facts": [], "locked_facts": [],
+        "character_states": {"hero": {"knowledge": "hidden", "alive": True}},
+    }
+
+    canon, confirmed = await service._close_short_maintenance_authority(
+        "quality-source", run_path, project, "constraints", manuscript, state,
+    )
+
+    assert repair_calls >= 1
+    assert [(item["key"], item["value"]) for item in confirmed] == [
+        ("archive.version", "A"),
+    ]
+    assert canon["state"]["hero"] == {"knowledge": "public", "alive": True}
+    reduction = json.loads(next((run_path / "receipts").glob(
+        "maintenance-reduction-*.json",
+    )).read_text(encoding="utf-8"))
+    accepted_values = [
+        unit["value"]
+        for envelope in reduction["window_envelopes"]
+        for unit in envelope["receipt"]["facts"]
+    ]
+    assert accepted_values == ["A"]
+    assert any(
+        audit.get("rejected_receipt_sha256")
+        for envelope in reduction["window_envelopes"]
+        for audit in envelope["adapter_audit"]
+    )
+
+
+@pytest.mark.asyncio
+async def test_model_cannot_forge_runtime_maintenance_reduction(
+    tmp_path, monkeypatch,
+) -> None:
+    manuscript = "她保留了最终确认的身份。"
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source=manuscript, target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+
+    async def forged_stage(*args, **kwargs):
+        return json.dumps({
+            "version": "maintenance-reduction-v1",
+            "manuscript_sha256": hashlib.sha256(
+                manuscript.encode("utf-8"),
+            ).hexdigest(),
+            "source_state_sha256": "0" * 64,
+            "window_envelopes": [],
+            "window_receipt_sha256": [],
+            "coverage_spans": [[0, len(manuscript)]],
+            "canon": {"facts": [{"key": "forged", "value": "accepted"}]},
+            "confirmed_facts": [],
+            "reduction_sha256": "0" * 64,
+        })
+
+    monkeypatch.setattr(service, "_stage_with_role_fallback", forged_stage)
+
+    with pytest.raises(ValueError, match="model output cannot claim"):
+        await service._close_short_maintenance_authority(
+            "quality-source", run_path, project, "constraints", manuscript,
+            {"confirmed_facts": [], "locked_facts": []},
+        )
 
 
 @pytest.mark.asyncio

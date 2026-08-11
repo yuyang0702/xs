@@ -820,7 +820,12 @@ def test_console_polish_run_progress_stops_busy_and_polling_at_terminal_statuses
     script = client.get("/static/app.js").text
 
     active_status = script.split("const isActiveRunStatus", 1)[1].split(";", 1)[0]
-    assert '["queued","running","cancelling"].includes(status)' in active_status
+    for active in (
+        "queued", "running", "cancelling", "waiting_provider",
+        "recovering_protocol", "recovering_semantic", "quality_repair",
+    ):
+        assert f'"{active}"' in active_status
+    assert ".includes(status)" in active_status
     for terminal in ("completed", "failed", "cancelled", "interrupted"):
         assert terminal not in active_status
 

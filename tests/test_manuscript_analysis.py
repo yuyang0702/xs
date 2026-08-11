@@ -32,6 +32,18 @@ def test_analysis_rejects_cached_report_without_stable_units() -> None:
     assert analysis_matches(old_report, text) is False
 
 
+def test_analysis_cache_is_bound_to_reference_corpus_authority() -> None:
+    text = "正文不变，但参考资料库已经更新。"
+    report = analyze_manuscript(
+        text, nlp_analyze=None, reference_corpus_sha256="a" * 64,
+    )
+
+    assert report["reference_corpus_sha256"] == "a" * 64
+    assert analysis_matches(report, text, "a" * 64) is True
+    assert analysis_matches(report, text, "b" * 64) is False
+    assert compact_analysis(report)["reference_corpus_sha256"] == "a" * 64
+
+
 def test_analysis_normalizes_ltp_entities_and_events():
     def fake(_text):
         return {

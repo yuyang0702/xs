@@ -40,6 +40,10 @@ def test_p0_registry_covers_planning_writing_quality_and_runtime_recovery() -> N
         "planning", "writing", "quality",
     }
     assert ARTIFACT_CONTRACT_REGISTRY["short_causal_chain"].parser_strategy == "baml_sap"
+    assert ARTIFACT_CONTRACT_REGISTRY["reference_distillation_region"].version == 2
+    assert "attribution" in (
+        ARTIFACT_CONTRACT_REGISTRY["reference_distillation_region"].semantic_authority
+    )
     assert "minimal_regeneration" in ARTIFACT_CONTRACT_REGISTRY["final_review"].recovery_ladder
     assert all(item.semantic_authority for item in ARTIFACT_CONTRACT_REGISTRY.values())
     assert all(item.descriptive_fields == "open" for item in ARTIFACT_CONTRACT_REGISTRY.values())
@@ -80,6 +84,12 @@ def test_contract_adapter_architecture_budget_has_declared_single_owners() -> No
         ),
         "planning_event_realizations": (
             "planning_event_topology",
+        ),
+        "planning_semantic_v2": (
+            "planning_semantic_unique_envelope",
+        ),
+        "execution_manifest": (
+            "execution_manifest_evidence_reference",
         ),
     }
     source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"

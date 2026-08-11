@@ -24,7 +24,8 @@ class AtomicBeat:
     preconditions: tuple[str, ...]
     postconditions: tuple[str, ...]
     owner_segment: int
-    source_evidence: str
+    source_evidence: str = ""
+    source_evidence_ids: tuple[str, ...] = ()
     presentation_order: int = 0
     story_time: str = ""
     timeline: str = ""
@@ -274,6 +275,56 @@ def future_beat_guards(
     return result
 
 
+def bind_fragment_future_beat_guard(value: dict[str, Any]) -> dict[str, Any]:
+    """Inject the compact guard derived from a model fragment's local ownership."""
+
+    raw_beats = value.get("beats")
+    raw_segments = value.get("segments")
+    if (
+        not isinstance(raw_beats, list)
+        or not isinstance(raw_segments, list)
+        or len(raw_segments) != 1
+        or not isinstance(raw_segments[0], dict)
+    ):
+        return dict(value)
+    index = []
+    for raw_beat in raw_beats:
+        if not isinstance(raw_beat, dict):
+            return dict(value)
+        try:
+            index.append({
+                "beat_id": str(raw_beat.get("beat_id") or "").strip().upper(),
+                "order": int(raw_beat.get("order")),
+                "owner_segment": int(raw_beat.get("owner_segment")),
+            })
+        except (TypeError, ValueError):
+            return dict(value)
+    try:
+        segment = int(raw_segments[0].get("segment"))
+    except (TypeError, ValueError):
+        return dict(value)
+    ordered = sorted(index, key=lambda item: item["order"])
+    sequence_sha256 = hashlib.sha256(json.dumps(
+        ordered, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    future = [item for item in ordered if item["owner_segment"] > segment]
+    floor = min((item["order"] for item in future), default=0)
+    scope_sha256 = hashlib.sha256(json.dumps({
+        "beat_sequence_sha256": sequence_sha256,
+        "segment": segment,
+        "order_floor": floor,
+        "count": len(future),
+    }, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    raw_segment = dict(raw_segments[0])
+    raw_segment.pop("prohibited_future_beat_ids", None)
+    raw_segment.update({
+        "future_beat_order_floor": floor,
+        "future_beat_count": len(future),
+        "future_beat_scope_sha256": scope_sha256,
+    })
+    return {**value, "segments": [raw_segment]}
+
+
 def extend_future_beat_guard(
     parent: FutureBeatGuard, deferred_beats: tuple[AtomicBeat, ...],
 ) -> FutureBeatGuard:
@@ -334,8 +385,8 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
     if not isinstance(value, dict):
         raise ValueError("execution manifest must be a JSON object")
     version = value.get("version")
-    if version not in {2, 3, 4, 5}:
-        raise ValueError("execution manifest version must be 2, 3, 4 or 5")
+    if version not in {2, 3, 4, 5, 6}:
+        raise ValueError("execution manifest version must be 2, 3, 4, 5 or 6")
     raw_beats = value.get("beats")
     raw_segments = value.get("segments")
     if not isinstance(raw_beats, list) or not raw_beats:
@@ -358,6 +409,23 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
         if _BEAT_ID.fullmatch(beat_id).group(1) != source_event_id:
             raise ValueError(f"beat_id source does not match source_event_id: {beat_id}")
         order = _positive_int(item.get("order"), f"beats[{index}].order")
+        source_evidence = str(item.get("source_evidence") or "").strip()
+        source_evidence_ids = _string_tuple(
+            item.get("source_evidence_ids", []),
+            f"beats[{index}].source_evidence_ids",
+            allow_empty=(version < 6),
+        )
+        if version >= 6:
+            if source_evidence:
+                raise ValueError(
+                    f"beats[{index}] v6 evidence must use source_evidence_ids only"
+                )
+            if len(source_evidence_ids) != len(set(source_evidence_ids)):
+                raise ValueError(
+                    f"beats[{index}].source_evidence_ids must not contain duplicates"
+                )
+        elif not source_evidence:
+            raise ValueError(f"beats[{index}].source_evidence must not be empty")
         beats.append(AtomicBeat(
             beat_id=beat_id,
             source_event_id=source_event_id,
@@ -373,9 +441,8 @@ def parse_execution_manifest(value: object) -> ShortExecutionManifest:
             owner_segment=_positive_int(
                 item.get("owner_segment"), f"beats[{index}].owner_segment",
             ),
-            source_evidence=_text(
-                item.get("source_evidence"), f"beats[{index}].source_evidence",
-            ),
+            source_evidence=source_evidence,
+            source_evidence_ids=source_evidence_ids,
             presentation_order=_positive_int(
                 item.get("presentation_order", order),
                 f"beats[{index}].presentation_order",
@@ -560,6 +627,11 @@ def execution_manifest_payload(manifest: ShortExecutionManifest) -> dict[str, An
                 "location", "viewpoint", "knowledge_delta", "relationship_delta",
             ):
                 beat.pop(field, None)
+    for beat in payload.get("beats", []):
+        if manifest.version >= 6:
+            beat.pop("source_evidence", None)
+        else:
+            beat.pop("source_evidence_ids", None)
     return _json_compatible(payload)
 
 
@@ -689,7 +761,11 @@ def bind_execution_manifest_receipt_evidence(
             beat = beat_by_id.get(beat_id)
             if beat is not None:
                 item["beat_id"] = beat.beat_id
-                item["evidence"] = beat.source_evidence
+                if beat.source_evidence_ids:
+                    item["evidence_ids"] = list(beat.source_evidence_ids)
+                    item.pop("evidence", None)
+                else:
+                    item["evidence"] = beat.source_evidence
             bound_beats.append(item)
         result["beat_receipts"] = bound_beats
 
@@ -745,12 +821,15 @@ def validate_execution_manifest_receipt(
     assert isinstance(beat_receipts, list)
     normalized_beats = []
     for beat, item in zip(manifest.beats, beat_receipts):
-        receipt_evidence = str(item.get("evidence") or "").strip()
-        normalized_beats.append({
+        normalized = {
             "beat_id": beat.beat_id,
-            "evidence": receipt_evidence,
             "actor_action_valid": True,
-        })
+        }
+        if beat.source_evidence_ids:
+            normalized["evidence_ids"] = list(beat.source_evidence_ids)
+        else:
+            normalized["evidence"] = str(item.get("evidence") or "").strip()
+        normalized_beats.append(normalized)
     segment_receipts = receipt.get("segment_receipts")
     assert isinstance(segment_receipts, list)
     normalized_segments = []
@@ -774,6 +853,85 @@ def validate_execution_manifest_receipt(
 
 def _issue(code: str, message: str, **metadata: object) -> dict:
     return {"code": code, **metadata, "message": message}
+
+
+def beat_source_evidence_reference(beat: AtomicBeat) -> tuple[str, ...] | str:
+    """Return the versioned, compact evidence authority used by receipts."""
+
+    return beat.source_evidence_ids if beat.source_evidence_ids else beat.source_evidence
+
+
+def _event_evidence_catalogs(
+    expected_events: list[dict] | None,
+) -> dict[str, tuple[tuple[str, str], ...]]:
+    catalogs: dict[str, tuple[tuple[str, str], ...]] = {}
+    for event in expected_events or []:
+        if not isinstance(event, dict):
+            continue
+        event_id = str(event.get("id") or "").strip().upper()
+        if not event_id:
+            continue
+        entries: list[tuple[str, str]] = []
+        raw_entries = event.get("evidence_catalog")
+        if isinstance(raw_entries, list):
+            for raw_entry in raw_entries:
+                if not isinstance(raw_entry, dict):
+                    continue
+                evidence_id = str(raw_entry.get("evidence_id") or "").strip()
+                evidence = str(raw_entry.get("text") or "").strip()
+                if evidence_id and evidence:
+                    entries.append((evidence_id, evidence))
+        if not entries:
+            evidence = str(event.get("evidence") or "").strip()
+            if evidence:
+                digest = hashlib.sha256(
+                    (event_id + "\0" + evidence).encode("utf-8")
+                ).hexdigest().upper()
+                entries.append((f"EXEC-{digest[:24]}", evidence))
+        catalogs[event_id] = tuple(entries)
+    return catalogs
+
+
+def execution_event_contract_prompt_payload(
+    expected_events: list[dict],
+) -> list[dict[str, Any]]:
+    """Render evidence text once per atom and hash redundant whole-event copies."""
+
+    result: list[dict[str, Any]] = []
+    for raw_event in expected_events:
+        event = dict(raw_event)
+        evidence = str(event.pop("evidence", "") or "").strip()
+        formal_evidence = str(event.pop("formal_evidence", "") or "").strip()
+        if evidence:
+            event["evidence_sha256"] = hashlib.sha256(
+                evidence.encode("utf-8")
+            ).hexdigest()
+        if formal_evidence:
+            event["formal_evidence_sha256"] = hashlib.sha256(
+                formal_evidence.encode("utf-8")
+            ).hexdigest()
+        result.append(event)
+    return result
+
+
+def _beat_evidence_reference_issue(
+    beat: AtomicBeat, contract: dict | None,
+    catalog: tuple[tuple[str, str], ...],
+) -> str:
+    if beat.source_evidence_ids:
+        candidate_ids = tuple(item[0] for item in catalog)
+        selected = beat.source_evidence_ids
+        starts = [
+            index for index in range(len(candidate_ids))
+            if candidate_ids[index:index + len(selected)] == selected
+        ]
+        if len(starts) != 1:
+            return "source evidence references are unknown or non-contiguous"
+        return ""
+    evidence = str((contract or {}).get("evidence") or "").strip()
+    if evidence and beat.source_evidence not in evidence:
+        return "legacy source evidence is outside its formal event"
+    return ""
 
 
 def execution_manifest_receipt_issues(
@@ -849,21 +1007,31 @@ def execution_manifest_receipt_issues(
                 f"execution manifest beat actor/action is invalid: {beat.beat_id}",
                 **metadata,
             ))
-        evidence = str(item.get("evidence") or "").strip()
-        if not evidence:
-            issues.append(_issue(
-                "receipt_beat_evidence_unbound",
-                "execution manifest beat evidence is missing: "
-                + beat.beat_id,
-                beat_id=beat.beat_id,
-            ))
-        elif evidence != beat.source_evidence:
-            issues.append(_issue(
-                "receipt_beat_evidence_mismatch",
-                "execution manifest beat receipt does not verify its source evidence: "
-                + beat.beat_id,
-                beat_id=beat.beat_id,
-            ))
+        if beat.source_evidence_ids:
+            evidence_ids = item.get("evidence_ids")
+            if evidence_ids != list(beat.source_evidence_ids):
+                issues.append(_issue(
+                    "receipt_beat_evidence_mismatch",
+                    "execution manifest beat receipt does not bind its evidence references: "
+                    + beat.beat_id,
+                    beat_id=beat.beat_id,
+                ))
+        else:
+            evidence = str(item.get("evidence") or "").strip()
+            if not evidence:
+                issues.append(_issue(
+                    "receipt_beat_evidence_unbound",
+                    "execution manifest beat evidence is missing: "
+                    + beat.beat_id,
+                    beat_id=beat.beat_id,
+                ))
+            elif evidence != beat.source_evidence:
+                issues.append(_issue(
+                    "receipt_beat_evidence_mismatch",
+                    "execution manifest beat receipt does not verify its source evidence: "
+                    + beat.beat_id,
+                    beat_id=beat.beat_id,
+                ))
 
     segment_receipts = receipt.get("segment_receipts")
     expected_segments = [segment.segment for segment in manifest.segments]
@@ -947,7 +1115,11 @@ def execution_manifest_receipt_binding_issues(
         ))
     elif any(
         item.get("actor_action_valid") is not True
-        or str(item.get("evidence") or "").strip() != beat.source_evidence
+        or (
+            item.get("evidence_ids") != list(beat.source_evidence_ids)
+            if beat.source_evidence_ids else
+            str(item.get("evidence") or "").strip() != beat.source_evidence
+        )
         for beat, item in zip(manifest.beats, beat_receipts)
     ):
         issues.append(_issue(
@@ -1029,6 +1201,7 @@ def execution_manifest_issues(
         for item in (expected_events or [])
         if isinstance(item, dict) and str(item.get("id") or "").strip()
     }
+    evidence_catalogs = _event_evidence_catalogs(expected_events)
     event_orders = {
         event_id: index for index, event_id in enumerate(expected_ids)
     }
@@ -1039,13 +1212,16 @@ def execution_manifest_issues(
         contract = event_contracts.get(beat.source_event_id)
         if contract is None:
             continue
-        evidence = str(contract.get("evidence") or "").strip()
-        if evidence and beat.source_evidence not in evidence:
+        evidence_issue = _beat_evidence_reference_issue(
+            beat, contract, evidence_catalogs.get(beat.source_event_id, ()),
+        )
+        if evidence_issue:
             issues.append(_issue(
                 "source_evidence_mismatch",
                 "原子节拍证据不属于它声明的正式事件",
                 beat_id=beat.beat_id,
                 event_id=beat.source_event_id,
+                reason=evidence_issue,
             ))
     for previous, current in zip(collapsed_event_ids, collapsed_event_ids[1:]):
         if (
@@ -1241,6 +1417,7 @@ def execution_manifest_fragment_issues(
         for item in (expected_events or [])
         if isinstance(item, dict) and str(item.get("id") or "").strip()
     }
+    evidence_catalogs = _event_evidence_catalogs(expected_events)
     event_order = {event_id: index for index, event_id in enumerate(expected_ids)}
     collapsed: list[str] = []
     for beat in manifest.beats:
@@ -1252,13 +1429,16 @@ def execution_manifest_fragment_issues(
         if not collapsed or collapsed[-1] != beat.source_event_id:
             collapsed.append(beat.source_event_id)
         contract = contract_map.get(beat.source_event_id)
-        evidence = str(contract.get("evidence") or "").strip() if contract else ""
-        if evidence and beat.source_evidence not in evidence:
+        evidence_issue = _beat_evidence_reference_issue(
+            beat, contract, evidence_catalogs.get(beat.source_event_id, ()),
+        ) if contract else ""
+        if evidence_issue:
             issues.append(_issue(
                 "source_evidence_mismatch",
                 "原子节拍证据不属于它声明的正式事件",
                 segment=owner_segment, beat_id=beat.beat_id,
                 event_id=beat.source_event_id,
+                reason=evidence_issue,
             ))
     for previous, current in zip(collapsed, collapsed[1:]):
         if (
@@ -1394,14 +1574,14 @@ def merge_execution_manifest_fragments(
             entry_state=entry_state,
             exit_state=exit_state,
             previous_exit_sha256=(
-                state_assertions_sha256(previous_exit, version=5)
+                state_assertions_sha256(previous_exit, version=6)
                 if previous_exit else ""
             ),
             future_beat_guard=merged_future_guards[number],
         ))
         previous_exit = exit_state
     return ShortExecutionManifest(
-        version=5,
+        version=6,
         status="ready",
         authority_sha256=authority_hashes["authority_sha256"],
         outline_sha256=authority_hashes["outline_sha256"],
@@ -1417,7 +1597,7 @@ def merge_execution_manifest_fragments(
 def legacy_execution_index_requires_rebuild(value: object) -> bool:
     return not (
         isinstance(value, dict)
-        and value.get("version") in {3, 4, 5}
+        and value.get("version") in {3, 4, 5, 6}
         and isinstance(value.get("beats"), list)
         and bool(value.get("beats"))
         and isinstance(value.get("segments"), list)

@@ -292,6 +292,131 @@ def test_start_revision_dispatches_short_revision_run(
     assert response.json()["status"] in {"queued", "running"}
 
 
+def test_revision_api_persists_minimal_selection_and_rebuilds_after_restart(
+    tmp_path, monkeypatch,
+) -> None:
+    app, db, project, source, _source_hash, _ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    formal_path = project.path / "manuscript" / "story.md"
+    formal_before = formal_path.read_bytes()
+    state_before = StoryStateStore(db).get(project.id)
+
+    started = TestClient(app).post(
+        f"/api/projects/{project.id}/revisions",
+        json={"issue_ids": ["issue-time"]},
+    )
+
+    assert started.status_code == 202
+    run_id = started.json()["id"]
+    supervision = db.get_workflow_supervision(run_id)
+    assert supervision is not None
+    assert supervision["resume_payload"] == {"issue_ids": ["issue-time"]}
+    serialized = json.dumps(supervision["resume_payload"], ensure_ascii=False)
+    assert source not in serialized
+    assert "api_key" not in serialized.casefold()
+    assert "provider" not in serialized.casefold()
+
+    restarted = create_app(
+        db, MemorySecretStore(), skill_roots=[],
+        workspace_root=tmp_path / "workspace",
+    )
+    resumed = []
+
+    class RestartedWorkflows:
+        async def run_short_revision(self, project_id, issue_ids, run_id=None):
+            resumed.append((project_id, list(issue_ids), run_id))
+            return {"status": "waiting_confirmation"}
+
+    restarted.state.workflows = RestartedWorkflows()
+    operation = restarted.state.run_tasks.operation_resolver(
+        db.get_run(run_id), supervision["resume_payload"],
+    )
+    assert operation is not None
+    asyncio.run(operation(run_id))
+
+    assert resumed == [(project.id, ["issue-time"], run_id)]
+    assert formal_path.read_bytes() == formal_before
+    assert StoryStateStore(db).get(project.id) == state_before
+
+
+@pytest.mark.asyncio
+async def test_revision_startup_recovery_requeues_same_run_to_confirmation_boundary(
+    tmp_path, monkeypatch,
+) -> None:
+    app, db, project, _source, _source_hash, _ledger, _calls = _revision_app(
+        tmp_path, monkeypatch,
+    )
+    formal_path = project.path / "manuscript" / "story.md"
+    protected_best = (
+        project.path / "runs" / "quality-source" / "outputs" / "best-candidate.md"
+    )
+    formal_before = formal_path.read_bytes()
+    best_before = protected_best.read_bytes()
+    state_before = StoryStateStore(db).get(project.id)
+
+    with TestClient(app) as client:
+        started = client.post(
+            f"/api/projects/{project.id}/revisions",
+            json={"issue_ids": ["issue-time"]},
+        )
+        assert started.status_code == 202
+        run_id = started.json()["id"]
+        for _ in range(100):
+            if db.get_run(run_id)["status"] not in {"queued", "running"}:
+                break
+            time.sleep(0.01)
+
+    supervision = db.get_workflow_supervision(run_id)
+    assert supervision is not None
+    assert supervision["resume_payload"] == {"issue_ids": ["issue-time"]}
+    db.update_run(run_id, "interrupted", "repair_gate")
+    db.save_workflow_supervision(run_id=run_id, state="interrupted")
+
+    restarted = create_app(
+        db, MemorySecretStore(), skill_roots=[],
+        workspace_root=tmp_path / "workspace",
+    )
+    resumed_calls = []
+
+    class RestartedWorkflows:
+        async def run_short_revision(self, project_id, issue_ids, run_id=None):
+            resumed_calls.append((project_id, list(issue_ids), run_id))
+            store = RepairRunStore(
+                restarted.state.projects.get(project_id).path / "runs" / run_id,
+            )
+            store.write_checkpoint({
+                "version": 1,
+                "status": "waiting_confirmation",
+                "selected_issue_ids": list(issue_ids),
+                "resume_boundary": "repair_gate",
+            })
+            db.update_run(run_id, "waiting_confirmation", "repair_gate")
+            return {"status": "waiting_confirmation"}
+
+    restarted.state.workflows = RestartedWorkflows()
+
+    scheduled = restarted.state.run_tasks.recover_due_runs()
+    recovered = await restarted.state.run_tasks.wait(run_id)
+
+    assert scheduled == [run_id]
+    assert recovered["id"] == run_id
+    assert recovered["status"] == "waiting_confirmation"
+    assert resumed_calls == [(project.id, ["issue-time"], run_id)]
+    checkpoint = json.loads((
+        project.path / "runs" / run_id / "outputs" / "repair-checkpoint.json"
+    ).read_text(encoding="utf-8"))
+    assert checkpoint["selected_issue_ids"] == ["issue-time"]
+    assert checkpoint["resume_boundary"] == "repair_gate"
+    assert [
+        item["action"] for item in db.list_workflow_attempts(run_id)
+        if item["action"] in {"resume_validated_checkpoint", "execute_from_checkpoint"}
+    ][-2:] == ["resume_validated_checkpoint", "execute_from_checkpoint"]
+    assert formal_path.read_bytes() == formal_before
+    assert protected_best.read_bytes() == best_before
+    assert StoryStateStore(db).get(project.id) == state_before
+
+
 def test_read_revision_returns_only_public_summary_fields(
     tmp_path, monkeypatch,
 ) -> None:
@@ -436,6 +561,9 @@ def test_background_revision_failure_exposes_only_safe_error(
     assert detail is not None
     assert detail["status"] == "failed"
     assert detail["error"] == "定向返修未完成，已保留可恢复进度。"
+    assert detail["supervision"]["state"] in {"waiting_user", "irrecoverable"}
+    assert detail["recovery_attempts"]
+    assert all("failure_sha256" in item for item in detail["recovery_attempts"])
     assert sentinel not in json.dumps(detail, ensure_ascii=False)
 
 

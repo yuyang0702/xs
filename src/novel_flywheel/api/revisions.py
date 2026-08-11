@@ -66,6 +66,7 @@ async def start_revision(
 
     return request.app.state.run_tasks.start(
         project_id, "short-revision", operation,
+        resume_payload={"issue_ids": list(selected)},
     )
 
 

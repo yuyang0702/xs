@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import hashlib
+import copy
+from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import (
@@ -18,6 +21,7 @@ from pydantic import (
 
 FINAL_REVIEW_VERDICT_CONTRACT_VERSION = "final-review-verdict/v1"
 WHOLE_STORY_OBLIGATION_CATALOG_VERSION = "whole-story-obligation-catalog-v2"
+RECEIPT_SEMANTIC_AUTHORITY_VERSION = "receipt-semantic-authority/v1"
 
 
 class _StrictReceipt(BaseModel):
@@ -32,6 +36,161 @@ NonEmptyStrictString = Annotated[StrictStr, Field(min_length=1)]
 Sha256String = Annotated[StrictStr, Field(pattern=r"^[0-9a-f]{64}$")]
 BeatIdString = Annotated[StrictStr, Field(pattern=r"^EV-[0-9A-F]{8}/[0-9]{2}$")]
 EventIdString = Annotated[StrictStr, Field(pattern=r"^EV-[0-9A-F]{8}$")]
+
+
+@dataclass(frozen=True)
+class ReceiptSemanticCollectionSpec:
+    field: str
+    identity_field: str
+    expected_identities: tuple[str | int, ...]
+    semantic_paths: tuple[tuple[str, ...], ...]
+
+
+class ReceiptSemanticAuthorityV1(_StrictReceipt):
+    version: Literal["receipt-semantic-authority/v1"] = (
+        RECEIPT_SEMANTIC_AUTHORITY_VERSION
+    )
+    boundary: NonEmptyStrictString
+    semantic_sha256: Sha256String
+    payload: dict[str, Any]
+
+    @model_validator(mode="after")
+    def semantic_hash_is_bound(self) -> "ReceiptSemanticAuthorityV1":
+        expected = hashlib.sha256(json.dumps(
+            self.payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+        if self.semantic_sha256 != expected:
+            raise ValueError("receipt semantic authority hash is stale")
+        return self
+
+
+def _semantic_path_get(value: dict[str, Any], path: Sequence[str]) -> tuple[bool, Any]:
+    current: Any = value
+    for part in path:
+        if not isinstance(current, dict) or part not in current:
+            return False, None
+        current = current[part]
+    return True, current
+
+
+def _semantic_path_set(value: dict[str, Any], path: Sequence[str], item: Any) -> None:
+    current = value
+    for part in path[:-1]:
+        child = current.get(part)
+        if not isinstance(child, dict):
+            child = {}
+            current[part] = child
+        current = child
+    current[path[-1]] = copy.deepcopy(item)
+
+
+def freeze_receipt_semantics(
+    receipt: object, *, boundary: str,
+    scalar_paths: Sequence[Sequence[str]],
+    collections: Sequence[ReceiptSemanticCollectionSpec] = (),
+) -> ReceiptSemanticAuthorityV1 | None:
+    """Freeze a complete semantic verdict independently from its protocol envelope."""
+
+    if not isinstance(receipt, dict):
+        return None
+    payload: dict[str, Any] = {"scalars": {}, "collections": {}}
+    for path in scalar_paths:
+        exists, value = _semantic_path_get(receipt, path)
+        if not exists:
+            return None
+        payload["scalars"][".".join(path)] = copy.deepcopy(value)
+    for spec in collections:
+        rows = receipt.get(spec.field)
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            return None
+        by_identity: dict[str | int, dict[str, Any]] = {}
+        for row in rows:
+            identity = row.get(spec.identity_field)
+            if identity not in spec.expected_identities:
+                continue
+            semantic: dict[str, Any] = {}
+            for path in spec.semantic_paths:
+                exists, value = _semantic_path_get(row, path)
+                if not exists:
+                    return None
+                semantic[".".join(path)] = copy.deepcopy(value)
+            existing = by_identity.get(identity)
+            if existing is not None and existing != semantic:
+                return None
+            by_identity[identity] = semantic
+        if tuple(identity for identity in spec.expected_identities if identity in by_identity) != (
+            spec.expected_identities
+        ):
+            return None
+        payload["collections"][spec.field] = [
+            {"identity": identity, "semantic": by_identity[identity]}
+            for identity in spec.expected_identities
+        ]
+    semantic_sha256 = hashlib.sha256(json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    return ReceiptSemanticAuthorityV1(
+        boundary=boundary,
+        semantic_sha256=semantic_sha256,
+        payload=payload,
+    )
+
+
+def apply_frozen_receipt_semantics(
+    receipt: object, authority: ReceiptSemanticAuthorityV1, *,
+    scalar_paths: Sequence[Sequence[str]],
+    collections: Sequence[ReceiptSemanticCollectionSpec] = (),
+) -> tuple[object, bool]:
+    """Restore frozen verdict fields while leaving protocol/evidence fields repairable."""
+
+    if not isinstance(receipt, dict):
+        return receipt, False
+    result = copy.deepcopy(receipt)
+    drifted = False
+    frozen_scalars = authority.payload.get("scalars")
+    if not isinstance(frozen_scalars, dict):
+        raise ValueError("receipt semantic authority scalars are invalid")
+    for path in scalar_paths:
+        key = ".".join(path)
+        if key not in frozen_scalars:
+            raise ValueError("receipt semantic authority scalar is incomplete")
+        exists, current = _semantic_path_get(result, path)
+        frozen = frozen_scalars[key]
+        if exists and current != frozen:
+            drifted = True
+        _semantic_path_set(result, path, frozen)
+    frozen_collections = authority.payload.get("collections")
+    if not isinstance(frozen_collections, dict):
+        raise ValueError("receipt semantic authority collections are invalid")
+    for spec in collections:
+        frozen_rows = frozen_collections.get(spec.field)
+        if not isinstance(frozen_rows, list):
+            raise ValueError("receipt semantic authority collection is incomplete")
+        frozen_by_identity = {
+            item.get("identity"): item.get("semantic")
+            for item in frozen_rows if isinstance(item, dict)
+        }
+        rows = result.get(spec.field)
+        if not isinstance(rows, list):
+            continue
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            semantic = frozen_by_identity.get(row.get(spec.identity_field))
+            if not isinstance(semantic, dict):
+                continue
+            for path in spec.semantic_paths:
+                key = ".".join(path)
+                if key not in semantic:
+                    raise ValueError(
+                        "receipt semantic authority collection row is incomplete"
+                    )
+                exists, current = _semantic_path_get(row, path)
+                frozen = semantic[key]
+                if exists and current != frozen:
+                    drifted = True
+                _semantic_path_set(row, path, frozen)
+    return result, drifted
 
 
 class WholeStoryPlanningBindingV2(_StrictReceipt):

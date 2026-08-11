@@ -1,14 +1,82 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import shutil
 import uuid
+from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from pathlib import Path
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.local_editorial import ANALYZER, VERSION, analyze_prose
+from novel_flywheel.originality import OriginalitySourceChunkV1
 from novel_flywheel.reference_classification import CONTENT_TYPES, classify_reference
 from novel_flywheel.reference_policy import build_classification_snapshot
+from novel_flywheel.reference_distillation import source_use_mode
+
+
+@dataclass(frozen=True)
+class _ReferenceVersionForOriginality:
+    source_id: str
+    title: str
+    version_id: str
+    version_sha256: str
+    path: Path
+    character_count: int
+    use_mode: str
+
+
+class _OriginalityChunkStream(Iterable[OriginalitySourceChunkV1]):
+    """Re-iterable, bounded source reader used by all local originality gates."""
+
+    def __init__(
+        self, versions: tuple[_ReferenceVersionForOriginality, ...], *,
+        chunk_characters: int, overlap_characters: int,
+    ) -> None:
+        self._versions = versions
+        self._chunk_characters = chunk_characters
+        self._overlap_characters = overlap_characters
+
+    def __iter__(self) -> Iterator[OriginalitySourceChunkV1]:
+        step = self._chunk_characters - self._overlap_characters
+        for version in self._versions:
+            if version.character_count <= self._chunk_characters:
+                chunk_count = 1
+            else:
+                remaining = version.character_count - self._chunk_characters
+                chunk_count = 1 + (remaining + step - 1) // step
+            with version.path.open("r", encoding="utf-8") as handle:
+                text = handle.read(self._chunk_characters)
+                digest = hashlib.sha256()
+                digest.update(text.encode("utf-8"))
+                start = 0
+                index = 0
+                while text:
+                    yield OriginalitySourceChunkV1(
+                        id=(
+                            f"reference:{version.source_id}:"
+                            f"{version.version_id}"
+                        ),
+                        title=version.title,
+                        text=text,
+                        source_start=start,
+                        source_end=start + len(text),
+                        chunk_index=index,
+                        chunk_count=chunk_count,
+                        version_id=version.version_id,
+                        version_sha256=version.version_sha256,
+                        use_mode=version.use_mode,
+                    )
+                    next_text = handle.read(step)
+                    if not next_text:
+                        break
+                    digest.update(next_text.encode("utf-8"))
+                    start += len(text) - self._overlap_characters
+                    text = text[-self._overlap_characters:] + next_text
+                    index += 1
+                if digest.hexdigest() != version.version_sha256:
+                    raise ValueError("reference version content does not match its provenance hash")
 
 
 class ReferenceLibrary:
@@ -19,6 +87,17 @@ class ReferenceLibrary:
         self.root = root.resolve()
 
     def import_text(self, *, title: str, text: str, source_type: str,
+                    source_uri: str | None = None, warnings: list[str] | None = None,
+                    platform: str | None = None, content_type: str | None = None,
+                    project_id: str | None = None) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            return self._import_text(
+                title=title, text=text, source_type=source_type,
+                source_uri=source_uri, warnings=warnings, platform=platform,
+                content_type=content_type, project_id=project_id,
+            )
+
+    def _import_text(self, *, title: str, text: str, source_type: str,
                     source_uri: str | None = None, warnings: list[str] | None = None,
                     platform: str | None = None, content_type: str | None = None,
                     project_id: str | None = None) -> dict:
@@ -82,6 +161,10 @@ class ReferenceLibrary:
         return self.get(source_id)
 
     def add_version(self, source_id: str, text: str) -> dict:
+        with WIZARD_MUTATION_LOCK:
+            return self._add_version(source_id, text)
+
+    def _add_version(self, source_id: str, text: str) -> dict:
         self._validate_id(source_id)
         if self.db.get_reference_source(source_id) is None:
             raise LookupError(f"Reference source not found: {source_id}")
@@ -95,29 +178,124 @@ class ReferenceLibrary:
     def list(self) -> list[dict]:
         return [self.get(item["id"]) for item in self.db.list_reference_sources()]
 
-    def comparison_sources(self, project_id: str | None = None,
-                           character_cap: int = 100_000) -> list[dict[str, str]]:
-        result, used, hashes = [], 0, set()
-        for source in self.list():
-            if source.get("content_type") != "competitor_work":
-                continue
-            if source.get("project_id") and source.get("project_id") != project_id:
-                continue
-            version = source.get("latest_version")
-            if not version:
-                continue
-            text = self.read_text(source["id"], version["id"])
-            digest = self._hash(text)
-            if digest in hashes or used >= character_cap:
-                continue
-            text = text[:character_cap - used]
-            result.append({
-                "id": f"reference:{source['id']}:{version['id']}",
-                "title": source["title"], "text": text,
+    def _visible_originality_versions(
+        self, project_id: str | None,
+    ) -> list[dict]:
+        scope = (
+            "source.project_id IS NULL"
+            if project_id is None
+            else "(source.project_id IS NULL OR source.project_id=?)"
+        )
+        arguments = () if project_id is None else (project_id,)
+        with self.db.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT source.id AS source_id,source.title,source.platform,"
+                "source.content_type,source.project_id,source.classification_json,"
+                "source.status,version.id AS version_id,version.version,"
+                "version.content_hash,version.character_count,version.storage_path "
+                "FROM reference_sources source JOIN reference_versions version "
+                "ON version.source_id=source.id "
+                "WHERE source.content_type<>'platform_rule' AND " + scope + " "
+                "ORDER BY source.id,version.version,version.id",
+                arguments,
+            )]
+
+    def reference_corpus_authority(
+        self, project_id: str | None = None,
+    ) -> dict:
+        """Return a text-free, content-addressed originality corpus manifest."""
+
+        visible_versions = self._visible_originality_versions(project_id)
+        grouped: dict[str, dict] = {}
+        for row in visible_versions:
+            source_id = str(row["source_id"])
+            source = grouped.get(source_id)
+            if source is None:
+                try:
+                    raw_classification = json.loads(
+                        row.get("classification_json") or "{}",
+                    )
+                except (TypeError, ValueError):
+                    raw_classification = {}
+                if not isinstance(raw_classification, dict):
+                    raw_classification = {}
+                content_type = str(row.get("content_type") or "reference_work")
+                source = {
+                    "source_id": source_id,
+                    "project_scope": str(row.get("project_id") or "global"),
+                    "status": str(row.get("status") or "active"),
+                    "use_mode": source_use_mode(content_type).value,
+                    "classification": {
+                        **raw_classification,
+                        "platform": str(row.get("platform") or ""),
+                        "content_type": content_type,
+                    },
+                    "versions": [],
+                }
+                grouped[source_id] = source
+            source["versions"].append({
+                "version_id": str(row["version_id"]),
+                "version": int(row["version"]),
+                "content_sha256": str(row["content_hash"]),
             })
-            hashes.add(digest)
-            used += len(text)
-        return result
+        manifest = {
+            "version": 1,
+            "requested_project_scope": str(project_id or "global"),
+            "sources": list(grouped.values()),
+        }
+        encoded = json.dumps(
+            manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        return {
+            "version": 1,
+            "sha256": hashlib.sha256(encoded).hexdigest(),
+            "manifest": manifest,
+            "_visible_versions": tuple(dict(row) for row in visible_versions),
+        }
+
+    def comparison_sources(
+        self, project_id: str | None = None, *,
+        chunk_characters: int = 32_768,
+        overlap_characters: int = 1_024,
+        authority: dict | None = None,
+    ) -> Iterable[OriginalitySourceChunkV1]:
+        """Stream every distinct eligible version as bounded overlapping chunks.
+
+        The overlap is wider than the semantic review window, so literal and
+        semantic evidence crossing a chunk boundary remains discoverable. No
+        prefix is dropped and only one source chunk is resident at a time.
+        """
+
+        if chunk_characters < 1_024:
+            raise ValueError("originality chunks must contain at least 1024 characters")
+        if overlap_characters < 480 or overlap_characters >= chunk_characters:
+            raise ValueError(
+                "originality chunk overlap must preserve a complete semantic window",
+            )
+        if authority is not None:
+            expected_scope = str(project_id or "global")
+            manifest = authority.get("manifest") or {}
+            if manifest.get("requested_project_scope") != expected_scope:
+                raise ValueError("reference corpus authority scope does not match the scan")
+            visible_rows = [dict(row) for row in authority.get("_visible_versions") or ()]
+        else:
+            visible_rows = self._visible_originality_versions(project_id)
+        versions: list[_ReferenceVersionForOriginality] = []
+        for row in visible_rows:
+            content_type = str(row.get("content_type") or "reference_work")
+            versions.append(_ReferenceVersionForOriginality(
+                source_id=str(row["source_id"]),
+                title=str(row["title"]),
+                version_id=str(row["version_id"]),
+                version_sha256=str(row["content_hash"]),
+                path=self._contained(Path(str(row["storage_path"]))),
+                character_count=int(row["character_count"]),
+                use_mode=source_use_mode(content_type).value,
+            ))
+        return _OriginalityChunkStream(
+            tuple(versions), chunk_characters=chunk_characters,
+            overlap_characters=overlap_characters,
+        )
 
     def platform_rules(self, platform: str | None) -> list[dict[str, str]]:
         normalized = (platform or "").strip().lower()

@@ -3,14 +3,18 @@ from __future__ import annotations
 import hashlib
 import re
 from difflib import SequenceMatcher
-from typing import Callable
+from typing import Any, Callable, Iterable, Mapping
 
 from novel_flywheel.prose_quality import analyze_prose
 from novel_flywheel.quality import review_windows
 from novel_flywheel.narrative_ledger import build_narrative_ledger
+from novel_flywheel.originality import OriginalityEngine, OriginalitySourceChunkV1
 
 
-ANALYSIS_VERSION = "manuscript-analysis-v3"
+ANALYSIS_VERSION = "manuscript-analysis-v5"
+EMPTY_REFERENCE_CORPUS_SHA256 = hashlib.sha256(
+    b"novel-flywheel:reference-corpus:disabled:v1",
+).hexdigest()
 _HAN = re.compile(r"[\u4e00-\u9fff]")
 _NAME = re.compile(r"[赵钱孙李周吴郑王冯陈褚卫蒋沈韩杨朱秦尤许何吕施张孔曹严华金魏陶姜戚谢邹喻柏水窦章云苏潘葛奚范彭郎鲁韦昌马苗凤花方俞任袁柳鲍史唐费廉岑薛雷贺倪汤滕殷罗毕郝邬安常乐于傅皮卞齐康伍余元卜顾孟平黄和穆萧尹姚邵湛汪祁毛禹狄米贝明臧计伏成戴谈宋茅庞熊纪舒屈项祝董梁杜阮蓝闵席季麻强贾路娄危江童颜郭梅盛林刁钟徐邱骆高夏蔡田樊胡凌霍虞万支柯昝管卢莫经房裘缪干解应宗丁宣邓郁单杭洪包诸左石崔吉龚程嵇邢滑裴陆荣翁荀羊甄曲封芮储靳汲邴糜松井段富巫乌焦巴弓牧隗山谷车侯宓蓬全郗班仰秋仲伊宫宁仇栾暴甘钭厉戎祖武符刘景詹束龙叶幸司韶郜黎蓟薄印宿白怀蒲台从鄂索咸籍赖卓蔺屠蒙池乔阴胥能苍双闻莘党翟谭贡劳逄姬申扶堵冉宰郦雍璩桑桂濮牛寿通边扈燕冀浦尚农温别庄晏柴瞿阎充慕连茹习宦艾鱼容向古易慎戈廖庾终暨居衡步都耿满弘匡国文寇广禄阙东欧利师巩聂晁勾敖融冷辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公]{1}[\u4e00-\u9fff]{1,2}")
 _TIME = re.compile(r"(?:第[一二三四五六七八九十\d]+天|当天|次日|翌日|清晨|傍晚|深夜|\d{1,2}[点时])")
@@ -24,7 +28,10 @@ def analyze_manuscript(
     text: str,
     *,
     nlp_analyze: Callable[[str], dict] | None,
-    comparison_sources: list[dict[str, str]] | None = None,
+    comparison_sources: Iterable[
+        OriginalitySourceChunkV1 | Mapping[str, Any]
+    ] | None = None,
+    reference_corpus_sha256: str = EMPTY_REFERENCE_CORPUS_SHA256,
     market_baseline: dict | None = None,
 ) -> dict:
     units = stable_text_units(text)
@@ -63,6 +70,7 @@ def analyze_manuscript(
     result = {
         "analysis_version": ANALYSIS_VERSION,
         "text_hash": _hash(text),
+        "reference_corpus_sha256": reference_corpus_sha256,
         "units": units,
         "characters": len(text),
         "coverage": 1.0 if windows and windows[-1]["end"] == len(text) else (1.0 if not text else 0.0),
@@ -90,7 +98,9 @@ def analyze_manuscript(
         "promises": questions,
         "setups": conflicts,
         "payoffs": narrative_ledger.get("payoffs", []),
-        "originality": _originality(text, entities, comparison_sources or []),
+        "originality": _originality(
+            text, entities, events, comparison_sources or [],
+        ),
         "narrative_ledger": narrative_ledger,
     }
     result["impact_index"] = build_impact_index(result)
@@ -165,10 +175,14 @@ def build_impact_index(report: dict) -> dict:
     return index
 
 
-def analysis_matches(report: dict, text: str) -> bool:
+def analysis_matches(
+    report: dict, text: str,
+    reference_corpus_sha256: str = EMPTY_REFERENCE_CORPUS_SHA256,
+) -> bool:
     return (
         report.get("analysis_version") == ANALYSIS_VERSION
         and report.get("text_hash") == _hash(text)
+        and report.get("reference_corpus_sha256") == reference_corpus_sha256
     )
 
 
@@ -177,6 +191,7 @@ def compact_analysis(report: dict, *, max_findings: int = 12) -> dict:
     return {
         "analysis_version": report.get("analysis_version"),
         "text_hash": report.get("text_hash"),
+        "reference_corpus_sha256": report.get("reference_corpus_sha256"),
         "coverage": report.get("coverage"),
         "opening": report.get("opening", {}),
         "metrics": prose.get("metrics", {}),
@@ -379,25 +394,46 @@ def _window_for(offset: int, windows: list[dict]) -> int | None:
     return next((item["index"] for item in windows if item["start"] <= offset < item["end"]), None)
 
 
-def _originality(text: str, entities: list[dict], sources: list[dict[str, str]]) -> dict:
-    passages, names, semantic = [], [], []
+def _originality(
+    text: str, entities: list[dict], events: list[dict],
+    sources: Iterable[OriginalitySourceChunkV1 | Mapping[str, Any]],
+) -> dict:
+    report = OriginalityEngine().scan(
+        text, sources, manuscript_events=events,
+    )
+    passages = [{
+        "source_id": item.source_id,
+        "manuscript_start": item.manuscript_start,
+        "manuscript_end": item.manuscript_end,
+        "source_start": item.source_start,
+        "source_end": item.source_end,
+        "text": text[item.manuscript_start:item.manuscript_end],
+        "characters": item.manuscript_end - item.manuscript_start,
+        "score": item.score,
+        "severity": item.severity,
+        "evidence_sha256": item.evidence_sha256,
+        "method": "winnowing_v1",
+        "metadata": item.metadata,
+    } for item in report.findings if item.finding_type == "literal_winnowing"]
+    semantic = [{
+        "kind": item.finding_type,
+        "source_id": item.source_id,
+        "manuscript_start": item.manuscript_start,
+        "manuscript_end": item.manuscript_end,
+        "source_start": item.source_start,
+        "source_end": item.source_end,
+        "similarity": item.score,
+        "severity": item.severity,
+        "evidence_sha256": item.evidence_sha256,
+        **item.metadata,
+    } for item in report.findings if item.finding_type != "literal_winnowing"]
+    names = []
     manuscript_names = {item["text"] for item in entities if len(item["text"]) in (2, 3)}
     if not manuscript_names:
         manuscript_names.update(_NAME.findall(text))
-    manuscript_terms = _terms(text)
     for source in sources:
         source_text = str(source.get("text", ""))
         source_id = str(source.get("id", "unknown"))
-        matcher = SequenceMatcher(None, text, source_text, autojunk=False)
-        for block in matcher.get_matching_blocks():
-            candidate = text[block.a:block.a + block.size]
-            han_count = len(_HAN.findall(candidate))
-            if han_count >= 6:
-                passages.append({
-                    "source_id": source_id, "manuscript_start": block.a,
-                    "source_start": block.b, "text": candidate,
-                    "characters": block.size,
-                })
         source_names = set(_NAME.findall(source_text))
         for left in manuscript_names:
             for right in source_names:
@@ -407,26 +443,13 @@ def _originality(text: str, entities: list[dict], sources: list[dict[str, str]])
                         "source_id": source_id, "manuscript_name": left,
                         "source_name": right, "similarity": round(score, 3),
                     })
-        shared = sorted(manuscript_terms & _terms(source_text))
-        if shared:
-            kinds = []
-            if any(_SETTING.search(item) for item in shared):
-                kinds.append("setting")
-            if any(_PLOT.search(item) for item in shared):
-                kinds.append("key_plot")
-            if passages:
-                kinds.append("distinctive_expression")
-            for kind in kinds or ["key_plot"]:
-                semantic.append({
-                    "kind": kind, "source_id": source_id,
-                    "manuscript_window": 1, "source_excerpt": source_text[:240],
-                    "shared_terms": shared[:20], "requires_model_review": True,
-                })
     return {
         "continuous_passages": passages,
         "similar_names": _dedupe(names),
         "semantic_candidates": semantic,
-        "scope": "local_corpus_only",
+        "scope": report.scope,
+        "layers": report.layers,
+        "source_ids": report.source_ids,
     }
 
 

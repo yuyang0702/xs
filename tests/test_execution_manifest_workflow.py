@@ -84,7 +84,6 @@ def manifest_body(segment: int, *, conflicting_owner: bool = False) -> dict:
             "preconditions": preconditions,
             "postconditions": postconditions,
             "owner_segment": owner,
-            "source_evidence": evidence,
         }],
         "segments": [{
             "segment": segment,
@@ -209,7 +208,11 @@ def receipt_for_prompt(prompt: str) -> str:
         "manifest_sha256": execution_manifest_sha256(manifest),
         "beat_receipts": [{
             "beat_id": beat.beat_id,
-            "evidence": beat.source_evidence,
+            **(
+                {"evidence_ids": list(beat.source_evidence_ids)}
+                if beat.source_evidence_ids else
+                {"evidence": beat.source_evidence}
+            ),
             "actor_action_valid": True,
         } for beat in manifest.beats],
         "segment_receipts": [{
@@ -284,7 +287,7 @@ async def test_execution_manifest_repairs_owner_conflict_before_draft(tmp_path) 
             encoding="utf-8",
         )
     )
-    assert manifest.version == saved["version"] == 5
+    assert manifest.version == saved["version"] == 6
     assert manifest.repair_attempts == saved["repair_attempts"] == 1
     assert saved["status"] == "ready"
     assert saved["semantic_receipt"]["formal_plot_unchanged"] is True
@@ -453,8 +456,8 @@ async def test_formatted_receipt_evidence_is_bound_without_manifest_rebuild(
 
     assert manifest.status == "ready"
     assert calls == {"planning": 1, "review": 1}
-    assert manifest.semantic_receipt["beat_receipts"][0]["evidence"] == (
-        "沈老夫人派人外出核实花穗身份"
+    assert manifest.semantic_receipt["beat_receipts"][0]["evidence_ids"] == list(
+        manifest.beats[0].source_evidence_ids
     )
     assert manifest.semantic_receipt["segment_receipts"][0]["evidence"] == (
         "核实身份的人已经出发"
@@ -583,7 +586,7 @@ async def test_semantic_repair_reentering_schema_failure_recovers_before_ready(
         )
     )
     assert manifest.status == saved["status"] == "ready"
-    assert saved["version"] == 5
+    assert saved["version"] == 6
     assert saved["repair_attempts"] == 2
     assert saved["segments"][0]["exit_state"][0]["produced_by"] == [
         f"{EVENT_ID}/01",
@@ -597,6 +600,163 @@ async def test_semantic_repair_reentering_schema_failure_recovers_before_ready(
         for item in events
     )
     assert any(item["event_type"] == "planning_manifest_ready" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_execution_manifest_runtime_binds_model_evidence_without_retry(
+    tmp_path,
+) -> None:
+    service, project, run_path, state = make_service(tmp_path)
+    stages: list[str] = []
+
+    async def fake_stage(*args, **kwargs):
+        stage = args[3]
+        prompt = args[5]
+        stages.append(stage)
+        if stage == "review":
+            return receipt_for_prompt(prompt)
+        segment = int(prompt.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        body = manifest_body(segment)
+        return json.dumps(body, ensure_ascii=False)
+
+    service._stage = fake_stage
+    manifest = await service._ensure_short_execution_manifest(
+        "manifest-run", run_path, project, "constraints", 7, state,
+        complete_manifest_plan(),
+        {
+            "core_goal": "查清误认",
+            "ending": "花穗确认误认是人为安排",
+            "covered_event_ids": [EVENT_ID],
+        },
+        [{
+            "id": EVENT_ID,
+            "order": 1,
+            "label": "误认身份被核实",
+            "section": "第一章",
+            "kind": "narrative",
+        }],
+        2,
+    )
+
+    assert manifest.status == "ready"
+    assert stages == ["planning", "review", "planning", "review"]
+    adapter_events = [
+        item for item in service.db.list_run_events("manifest-run")
+        if item["event_type"] == "contract_adapter_applied"
+        and item["metadata"].get("adapter_name")
+        == "execution_manifest_evidence_reference"
+    ]
+    assert len(adapter_events) == 2
+    assert all(item["metadata"]["binding_count"] == 1 for item in adapter_events)
+
+
+@pytest.mark.asyncio
+async def test_ambiguous_execution_evidence_retries_only_reference_protocol(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        body = manifest_body(1)
+        if calls == 1:
+            body["beats"][0]["source_evidence"] = "shared exact excerpt"
+        else:
+            body["beats"][0]["source_evidence_ids"] = ["PLAN-E001"]
+        return json.dumps(body, ensure_ascii=False)
+
+    service._stage = fake_stage
+    fragment, repairs, issues, _body = (
+        await service._generate_short_execution_fragment(
+            "manifest-run", run_path, project, "constraints",
+            {
+                "authority_sha256": "a" * 64,
+                "outline_sha256": "b" * 64,
+                "planning_sha256": "c" * 64,
+                "causal_chain_sha256": "d" * 64,
+            },
+            1,
+            [{
+                "id": EVENT_ID,
+                "evidence": "shared exact excerpt\n\nshared exact excerpt",
+                "evidence_catalog": [
+                    {"evidence_id": "PLAN-E001", "text": "shared exact excerpt"},
+                    {"evidence_id": "PLAN-E002", "text": "shared exact excerpt"},
+                ],
+            }],
+            complete_manifest_plan(1),
+            {"covered_event_ids": [EVENT_ID]},
+            (), "", {},
+        )
+    )
+
+    assert fragment is not None
+    assert issues == []
+    assert calls == 2
+    assert repairs == {"schema_repairs": 1, "integrity_repairs": 0}
+    assert fragment.beats[0].source_evidence_ids == ("PLAN-E001",)
+    assert any(
+        item["event_type"] == "planning_manifest_fragment_repair"
+        and item["metadata"]["issues"][0]["code"]
+        == "source_evidence_authority_conflict"
+        for item in service.db.list_run_events("manifest-run")
+    )
+
+
+@pytest.mark.asyncio
+async def test_manifest_protocol_retry_cannot_reopen_passed_semantics(tmp_path) -> None:
+    service, project, run_path, state = make_service(tmp_path)
+    planning_calls = 0
+    review_calls = 0
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal planning_calls, review_calls
+        stage = args[3]
+        prompt = args[5]
+        if stage == "planning":
+            planning_calls += 1
+            return json.dumps(manifest_body(1), ensure_ascii=False)
+        review_calls += 1
+        receipt = json.loads(receipt_for_prompt(prompt))
+        if review_calls == 1:
+            receipt["segment_receipts"].append(
+                dict(receipt["segment_receipts"][0])
+            )
+        else:
+            receipt["beat_receipts"][0]["actor_action_valid"] = False
+            receipt["beat_receipts"][0]["field_verdicts"] = {"actor": False}
+            receipt["beat_receipts"][0]["invalid_fields"] = ["actor"]
+        return json.dumps(receipt, ensure_ascii=False)
+
+    service._stage = fake_stage
+    manifest = await service._ensure_short_execution_manifest(
+        "manifest-run", run_path, project, "constraints", 7, state,
+        complete_manifest_plan(1),
+        {
+            "core_goal": "查清误认", "ending": "核实身份的人已经出发",
+            "covered_event_ids": [EVENT_ID],
+        },
+        [{
+            "id": EVENT_ID, "order": 1, "label": "误认身份被核实",
+            "section": "第一章", "kind": "narrative",
+        }],
+        1,
+    )
+
+    assert manifest.status == "ready"
+    assert planning_calls == 1
+    assert review_calls == 2
+    assert manifest.semantic_receipt["beat_receipts"][0][
+        "actor_action_valid"
+    ] is True
+    events = service.db.list_run_events("manifest-run")
+    assert any(
+        item["event_type"] == "receipt_semantic_drift_contained"
+        and item["metadata"]["boundary"] == "execution_manifest_receipt"
+        for item in events
+    )
 
 
 @pytest.mark.asyncio
@@ -675,12 +835,13 @@ def test_runtime_handoff_binding_does_not_normalize_malformed_entry_state() -> N
     assert added == 0
     assert bound["segments"][0]["entry_state"] == "not-a-list"
     assert bound["segments"][0]["previous_exit_sha256"] == (
-        state_assertions_sha256(previous_exit, version=4)
+            state_assertions_sha256(previous_exit, version=6)
     )
+    bound["beats"][0]["source_evidence_ids"] = ["E-1"]
     with pytest.raises(ValueError, match="entry_state must be a non-empty list"):
-        parse_execution_manifest({
-            **bound,
-            "version": 4,
+            parse_execution_manifest({
+                **bound,
+                "version": 6,
             "status": "fragment_ready",
             "authority_sha256": "a" * 64,
             "outline_sha256": "b" * 64,
@@ -742,6 +903,9 @@ async def test_draft_semantic_evidence_retry_keeps_prose_immutable(tmp_path) -> 
             payload["beat_receipts"][0]["actor_action_evidence"] = (
                 "审核模型误写了正文中不存在的证据"
             )
+        else:
+            payload["beat_receipts"][0]["actor_action_valid"] = False
+            payload["entry"]["satisfied"] = False
         return json.dumps(payload, ensure_ascii=False)
 
     service._stage = fake_stage
@@ -755,6 +919,11 @@ async def test_draft_semantic_evidence_retry_keeps_prose_immutable(tmp_path) -> 
     events = service.db.list_run_events("manifest-run")
     assert any(
         item["event_type"] == "semantic_receipt_protocol_retry"
+        for item in events
+    )
+    assert any(
+        item["event_type"] == "receipt_semantic_drift_contained"
+        and item["metadata"]["boundary"] == "draft_semantic_receipt"
         for item in events
     )
 
@@ -1012,9 +1181,7 @@ async def test_whole_draft_semantic_protocol_retry_keeps_draft_immutable(
         nonlocal calls
         calls += 1
         prompts.append(args[5])
-        if calls == 1:
-            return "not json"
-        return json.dumps({
+        payload = {
             "authority_sha256": authority_sha256,
             "draft_sha256": draft_sha256,
             "segment_sha256": segment_sha256,
@@ -1034,7 +1201,13 @@ async def test_whole_draft_semantic_protocol_retry_keeps_draft_immutable(
                 "excerpt": "确认误认是人为安排",
             }],
             "summary": "整篇事件顺序、因果、连续性和结局均有正文证据。",
-        }, ensure_ascii=False)
+        }
+        if calls == 1:
+            payload["draft_sha256"] = "0" * 64
+        else:
+            payload["ending_valid"] = False
+            payload["commitments_valid"] = False
+        return json.dumps(payload, ensure_ascii=False)
 
     service._stage = fake_stage
     receipt = await service._verify_whole_draft_semantics(
@@ -1053,6 +1226,11 @@ async def test_whole_draft_semantic_protocol_retry_keeps_draft_immutable(
         if item["event_type"] == "whole_semantic_receipt_protocol_retry"
     )
     assert retry["metadata"]["draft_sha256"] == draft_sha256
+    assert any(
+        item["event_type"] == "receipt_semantic_drift_contained"
+        and item["metadata"]["boundary"] == "whole_draft_semantic_receipt"
+        for item in events
+    )
 
 
 @pytest.mark.asyncio

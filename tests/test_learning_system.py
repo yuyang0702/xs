@@ -1,12 +1,17 @@
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 
 import pytest
 
 from novel_flywheel.db import Database
-from novel_flywheel.learning import LearningSystem
+from novel_flywheel.context_policy import estimate_input_tokens
+from novel_flywheel.learning import LearningSystem, ReferenceSynthesisRoutePlanV1
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.reference_distillation import validate_distillation_receipt
 from novel_flywheel.reference_library import ReferenceLibrary
+import novel_flywheel.learning as learning_module
 
 
 def setup_system(tmp_path):
@@ -278,6 +283,172 @@ def test_adoption_requires_confirmation_and_never_overwrites_outline(tmp_path) -
     assert adopted["status"] == "adopted"
     assert outline.read_text(encoding="utf-8") == "# 原大纲\n"
     assert system.get_artifact(project.id, "creative_blueprint")["data"]["mechanisms"]
+
+
+def test_adoption_edits_cannot_change_immutable_classification(tmp_path) -> None:
+    _db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="Immutable adoption", mode="short", genre="mystery",
+        premise="A choice changes the investigation", target_words=6_000,
+    ))
+    source = library.import_text(
+        title="Style source", source_type="paste",
+        text="A reply changes leverage without explaining the conflict.",
+    )
+    style = system._save_node("style_rule", {
+        "field": "dialogue", "rule": "Let replies change leverage.",
+        "confidence": 0.9,
+    }, source_id=source["id"], status="confirmed")
+
+    with pytest.raises(ValueError, match="classification authority"):
+        system.adopt(project.id, style["id"], {
+            "mechanism_type": "causal_structure",
+            "transfer_guidance": "Alter the plot",
+        })
+
+    assert system.list_adoptions(project.id) == []
+
+
+def test_legacy_adoption_markers_cannot_cross_node_type_buckets(tmp_path) -> None:
+    db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="Legacy classification", mode="short", genre="mystery",
+        premise="Authority must survive legacy data", target_words=6_000,
+    ))
+    source = library.import_text(
+        title="Authority source", source_type="paste",
+        text="The method and prose rule are independently attributable.",
+    )
+    style = system._save_node("style_rule", {
+        "field": "dialogue", "rule": "Keep replies adversarial.",
+        "confidence": 0.9,
+    }, source_id=source["id"], status="confirmed")
+    mechanism = system._save_node("mechanism", {
+        "name": "Escalating choice", "transfer_guidance": "Narrow the options.",
+        "confidence": 0.9,
+    }, source_id=source["id"], status="confirmed")
+    attraction = system._save_node("attraction_map", {
+        "review_state": "confirmed", "opening": {
+            "mechanism": "pressure_anomaly",
+            "transfer_guidance": "Open with pressure and an anomaly.",
+        },
+    }, source_id=source["id"], status="confirmed")
+    rows = (
+        (style["id"], {
+            "field": "dialogue", "rule": "Keep replies adversarial.",
+            "mechanism_type": "causal_structure",
+            "transfer_guidance": "STYLE_MUST_NOT_ENTER_PLOT",
+        }),
+        (mechanism["id"], {
+            "name": "Escalating choice", "transfer_guidance": "Narrow the options.",
+            "mechanism_type": "attraction_guidance",
+            "opening_rule": "FORGED_ATTRACTION_RULE",
+        }),
+        (attraction["id"], {
+            "mechanism_type": "causal_structure",
+            "opening_rule": "Open with pressure and an anomaly.",
+        }),
+    )
+    with db.connect() as connection:
+        for ordinal, (node_id, data) in enumerate(rows, start=1):
+            data["provenance"] = {"source_id": source["id"], "node_id": node_id}
+            connection.execute(
+                "INSERT INTO project_adoptions VALUES (?, ?, ?, 'adopted', ?, "
+                "datetime('now'), datetime('now'))",
+                (f"legacy-{ordinal}", project.id, node_id,
+                 json.dumps(data, ensure_ascii=False)),
+            )
+
+    system._save_creative_blueprint(project.id)
+
+    blueprint = system.get_artifact(project.id, "creative_blueprint")["data"]
+    assert blueprint["causal_structure"] == []
+    assert [item["name"] for item in blueprint["mechanisms"]] == ["Escalating choice"]
+    assert [item["field"] for item in blueprint["style_rules"]] == ["dialogue"]
+    assert blueprint["attraction_guidance"][0]["opening_rule"] == (
+        "Open with pressure and an anomaly."
+    )
+    assert "STYLE_MUST_NOT_ENTER_PLOT" not in blueprint["rules"]
+    assert "Narrow the options." in blueprint["rules"]
+
+    recipe = system.get_artifact(project.id, "creative_recipe")["data"]
+    assert len(recipe["mechanisms"]) == 1
+    assert len(recipe["style_rules"]) == 1
+    assert len(recipe["attraction_guidance"]) == 1
+    context = system._outline_generation_context(project.id, project.metadata, "")
+    assert context["writing_methods"] == [{
+        "name": "Escalating choice", "transfer_guidance": "Narrow the options.",
+    }]
+    assert "FORGED_ATTRACTION_RULE" not in context["attraction_rules"]
+    assert "Open with pressure and an anomaly." in context["attraction_rules"]
+
+
+def test_learning_artifact_sidecar_projection_is_monotonic_across_writers(
+    tmp_path, monkeypatch,
+) -> None:
+    db, library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="Monotonic projection", mode="short", genre="mystery",
+        premise="Concurrent artifact updates", target_words=6_000,
+    ))
+    second_system = LearningSystem(db, library, projects)
+    original_atomic_write = learning_module.atomic_write
+    slow_projection_started = threading.Event()
+    release_slow_projection = threading.Event()
+
+    def delayed_atomic_write(path, content):
+        payload = json.loads(content)
+        if payload.get("data", {}).get("writer") == "slow":
+            slow_projection_started.set()
+            assert release_slow_projection.wait(timeout=5)
+        return original_atomic_write(path, content)
+
+    monkeypatch.setattr(learning_module, "atomic_write", delayed_atomic_write)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        slow = executor.submit(
+            system.save_artifact, project.id, "voice_profiles", {"writer": "slow"},
+        )
+        assert slow_projection_started.wait(timeout=5)
+        fast = executor.submit(
+            second_system.save_artifact,
+            project.id, "voice_profiles", {"writer": "fast"},
+        )
+        release_slow_projection.set()
+        slow.result(timeout=10)
+        fast.result(timeout=10)
+
+    latest = system.get_artifact(project.id, "voice_profiles")
+    sidecar = json.loads(
+        (project.path / "learning" / "voice_profiles.json").read_text(encoding="utf-8")
+    )
+    assert latest is not None
+    assert latest["version"] == 2
+    assert latest["data"] == {"writer": "fast"}
+    assert sidecar == system._artifact_sidecar_payload(latest)
+
+
+def test_learning_artifact_read_repairs_a_stale_sidecar_from_db_authority(tmp_path) -> None:
+    _db, _library, projects, system = setup_system(tmp_path)
+    project = projects.create(ProjectCreate(
+        title="Repair projection", mode="short", genre="mystery",
+        premise="Repair a stale projection", target_words=6_000,
+    ))
+    artifact = system.save_artifact(
+        project.id, "voice_profiles", {"hero": {"voice": "terse"}},
+    )
+    sidecar_path = project.path / "learning" / "voice_profiles.json"
+    sidecar_path.write_text(json.dumps({
+        "id": "stale", "version": 0, "status": "active",
+        "source_hash": "0" * 64,
+        "data": {"writer": "old"},
+    }), encoding="utf-8")
+
+    loaded = system.get_artifact(project.id, "voice_profiles")
+
+    assert loaded == artifact
+    assert json.loads(sidecar_path.read_text(encoding="utf-8")) == (
+        system._artifact_sidecar_payload(artifact)
+    )
 
 
 def test_adoption_accepts_chinese_confidence_from_model_output(tmp_path) -> None:
@@ -676,7 +847,473 @@ class FakeGateway:
         self.roles.append(role)
         self.users.append(user)
         self.requests.append({"role": role, "system": system, "user": user, **kwargs})
-        return SimpleNamespace(text=next(self.outputs), receipt={"model_id": "fake"})
+        return SimpleNamespace(
+            text=_final_receipt_for_prompt(user, next(self.outputs)),
+            receipt={"model_id": "fake"},
+        )
+
+    async def complete_primary(self, role, system, user, **kwargs):
+        return await self.complete(role, system, user, **kwargs)
+
+
+class ExactDistillationGateway:
+    def __init__(self):
+        self.requests = []
+
+    async def complete(self, role, system, user, **kwargs):
+        self.requests.append({"role": role, "system": system, "user": user, **kwargs})
+        manifest_text = user.split("CHILD MANIFEST:\n", 1)[1].split(
+            "\nCHILD PAYLOADS:\n", 1,
+        )[0]
+        child_ids = json.loads(manifest_text)
+        receipt = {
+            "version": 2,
+            "covered_child_ids": child_ids,
+            "child_dispositions": [
+                {
+                    "child_id": child_id,
+                    "disposition": "no_transferable_claim",
+                    "reason": "该窗口没有可安全迁移的抽象发现",
+                }
+                for child_id in child_ids
+            ],
+            "semantic": {
+                "mechanisms": [], "attraction_map": {}, "style_profile": {},
+            },
+        }
+        return SimpleNamespace(
+            text=json.dumps(receipt, ensure_ascii=False),
+            receipt={"model_id": "fake"},
+        )
+
+    async def complete_primary(self, role, system, user, **kwargs):
+        return await self.complete(role, system, user, **kwargs)
+
+    async def complete_configured_fallback(self, role, system, user, **kwargs):
+        return await self.complete(role, system, user, **kwargs)
+
+
+def hierarchical_claims(count: int, *, body_size: int = 0) -> list[dict]:
+    return [{
+        "data": {
+            "window": index + 1,
+            "window_start": index * 100,
+            "window_end": index * 100 + 100,
+            "result": {
+                "marker": f"claim-{index}",
+                "body": "甲" * body_size,
+            },
+        },
+    } for index in range(count)]
+
+
+@pytest.mark.asyncio
+async def test_hierarchical_distillation_binds_purpose_focus_and_reuses_exact_cache(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    source = library.import_text(
+        title="Hierarchical", source_type="paste", text="reference text",
+    )
+    gateway = ExactDistillationGateway()
+    system = LearningSystem(db, library, projects, gateway)
+    version = source["latest_version"]
+    claim_set = hierarchical_claims(13)
+
+    first = await system._hierarchical_reference_claims(
+        version=version, claims=claim_set,
+        content_type="reference_work", focus="extract structure",
+    )
+    first_calls = len(gateway.requests)
+    repeated = await system._hierarchical_reference_claims(
+        version=version, claims=claim_set,
+        content_type="reference_work", focus="extract structure",
+    )
+    assert len(gateway.requests) == first_calls
+    assert repeated == first
+
+    await system._hierarchical_reference_claims(
+        version=version, claims=claim_set,
+        content_type="writing_tutorial", focus="extract structure",
+    )
+    purpose_calls = len(gateway.requests)
+    assert purpose_calls > first_calls
+    await system._hierarchical_reference_claims(
+        version=version, claims=claim_set,
+        content_type="writing_tutorial", focus="extract prose guidance",
+    )
+    assert len(gateway.requests) > purpose_calls
+    assert first_calls == 3
+
+
+@pytest.mark.asyncio
+async def test_hierarchical_distillation_capacity_splits_six_large_children_losslessly(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    source = library.import_text(
+        title="Capacity", source_type="paste", text="large reference text",
+    )
+    db.save_provider(
+        provider_id="primary", name="Primary", protocol="openai",
+        base_url="https://primary.invalid", auth_type="none",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_provider(
+        provider_id="fallback", name="Fallback", protocol="openai",
+        base_url="https://fallback.invalid", auth_type="none",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="primary-16k", provider_id="primary", display_name="Primary 16K",
+        model_name="primary-16k", context_window=16_384,
+        max_output_tokens=4_096,
+    )
+    db.save_model(
+        model_id="fallback-20k", provider_id="fallback", display_name="Fallback 20K",
+        model_name="fallback-20k", context_window=20_000,
+        max_output_tokens=4_096,
+    )
+    db.save_role_binding(
+        "reference_synthesis", "primary", "primary-16k",
+        "fallback", "fallback-20k",
+    )
+    gateway = ExactDistillationGateway()
+    system = LearningSystem(db, library, projects, gateway)
+
+    reduced = await system._hierarchical_reference_claims(
+        version=source["latest_version"],
+        claims=hierarchical_claims(6, body_size=3_000),
+        content_type="reference_work", focus="preserve every child",
+    )
+
+    assert system._reference_synthesis_input_token_limit() == 9_011
+    assert system._reference_synthesis_route_plan().mode == "auto"
+    assert len(gateway.requests) == 3
+    all_prompts = "".join(item["user"] for item in gateway.requests)
+    assert all(f"claim-{index}" in all_prompts for index in range(6))
+    assert all(
+        estimate_input_tokens(item["system"] + item["user"]) < 9_011
+        for item in gateway.requests
+    )
+    assert [
+        child
+        for item in reduced
+        for child in item["runtime_coverage"]["child_ids"]
+    ] == [f"window:{index}" for index in range(1, 7)]
+
+
+def test_reference_synthesis_unknown_route_uses_conservative_context_budget(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    system = LearningSystem(db, library, projects, ExactDistillationGateway())
+
+    assert system._reference_synthesis_input_token_limit() == 9_011
+
+
+@pytest.mark.asyncio
+async def test_reference_synthesis_route_plan_bypasses_tiny_primary_for_fallback(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    db.save_provider(
+        provider_id="tiny", name="Tiny", protocol="openai",
+        base_url="https://tiny.invalid", auth_type="none",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_provider(
+        provider_id="large", name="Large", protocol="openai",
+        base_url="https://large.invalid", auth_type="none",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="primary-4k", provider_id="tiny", display_name="Primary 4K",
+        model_name="primary-4k", context_window=4_096,
+        max_output_tokens=4_096,
+    )
+    db.save_model(
+        model_id="fallback-32k", provider_id="large", display_name="Fallback 32K",
+        model_name="fallback-32k", context_window=32_768,
+        max_output_tokens=4_096,
+    )
+    db.save_role_binding(
+        "reference_synthesis", "tiny", "primary-4k",
+        "large", "fallback-32k",
+    )
+
+    class RouteGateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete(self, *_args, **_kwargs):
+            self.routes.append("auto")
+            raise AssertionError("tiny primary must not receive the request")
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            self.routes.append("fallback")
+            return SimpleNamespace(text='{"ok":true}', receipt={})
+
+    gateway = RouteGateway()
+    system = LearningSystem(db, library, projects, gateway)
+    plan = system._reference_synthesis_route_plan()
+
+    response, value = await system._execute_reference_synthesis(
+        route_plan=plan, system="system", user="user",
+        validator=lambda text: json.loads(text),
+    )
+
+    assert plan.version == 1
+    assert plan.mode == "fallback"
+    assert plan.input_token_limit == 22_118
+    assert gateway.routes == ["fallback"]
+    assert response.receipt == {}
+    assert value == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_reference_synthesis_auto_expands_to_explicit_route_schedule(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+
+    class RouteGateway:
+        def __init__(self):
+            self.routes = []
+            self.fallback_outputs = iter(["not-json", '{"ok":true}'])
+
+        async def complete(self, *_args, **_kwargs):
+            raise AssertionError("auto must not use hidden gateway routing")
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.routes.append("primary")
+            return SimpleNamespace(text="not-json", receipt={})
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            self.routes.append("fallback")
+            return SimpleNamespace(text=next(self.fallback_outputs), receipt={})
+
+    gateway = RouteGateway()
+    system = LearningSystem(db, library, projects, gateway)
+    plan = ReferenceSynthesisRoutePlanV1(
+        version=1, mode="auto", input_token_limit=9_000,
+        primary_input_token_limit=9_000,
+        fallback_input_token_limit=10_000,
+    )
+
+    _response, value = await system._execute_reference_synthesis(
+        route_plan=plan, system="system", user="user", validator=json.loads,
+    )
+
+    assert gateway.routes == ["primary", "primary", "fallback", "fallback"]
+    assert value == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_reference_synthesis_route_plan_uses_primary_when_it_is_only_route(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    db.save_provider(
+        provider_id="primary", name="Primary", protocol="openai",
+        base_url="https://primary.invalid", auth_type="none",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="primary-32k", provider_id="primary", display_name="Primary 32K",
+        model_name="primary-32k", context_window=32_768,
+        max_output_tokens=4_096,
+    )
+    db.save_role_binding(
+        "reference_synthesis", "primary", "primary-32k", None, None,
+    )
+
+    class RouteGateway:
+        def __init__(self):
+            self.routes = []
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.routes.append("primary")
+            return SimpleNamespace(text='{"ok":true}', receipt={})
+
+        async def complete(self, *_args, **_kwargs):
+            self.routes.append("auto")
+            raise AssertionError("primary-only plan must use direct primary execution")
+
+    gateway = RouteGateway()
+    system = LearningSystem(db, library, projects, gateway)
+    plan = system._reference_synthesis_route_plan()
+
+    _response, value = await system._execute_reference_synthesis(
+        route_plan=plan, system="system", user="user",
+        validator=lambda text: json.loads(text),
+    )
+
+    assert plan.mode == "primary"
+    assert gateway.routes == ["primary"]
+    assert value == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_reference_synthesis_primary_only_retries_one_invalid_receipt(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    db.save_provider(
+        provider_id="primary", name="Primary", protocol="openai",
+        base_url="https://primary.invalid", auth_type="none",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="primary-32k", provider_id="primary", display_name="Primary 32K",
+        model_name="primary-32k", context_window=32_768,
+        max_output_tokens=4_096,
+    )
+    db.save_role_binding(
+        "reference_synthesis", "primary", "primary-32k", None, None,
+    )
+
+    class RouteGateway:
+        def __init__(self):
+            self.outputs = iter(["not-json", '{"ok":true}'])
+            self.routes = []
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.routes.append("primary")
+            return SimpleNamespace(text=next(self.outputs), receipt={})
+
+    gateway = RouteGateway()
+    system = LearningSystem(db, library, projects, gateway)
+
+    _response, value = await system._execute_reference_synthesis(
+        route_plan=system._reference_synthesis_route_plan(),
+        system="system", user="user", validator=json.loads,
+    )
+
+    assert gateway.routes == ["primary", "primary"]
+    assert value == {"ok": True}
+
+
+@pytest.mark.asyncio
+async def test_final_synthesis_cannot_discard_promoted_hierarchy_semantics(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    system = LearningSystem(db, library, projects)
+    prior = {
+        "semantic": {
+            "mechanisms": [{"name": "retained-A"}],
+            "attraction_map": {}, "style_profile": {},
+        },
+        "runtime_coverage": {
+            "child_ids": ["window:1"], "child_count": 1,
+            "input_sha256": "a" * 64, "source_range": [0, 10],
+            "semantic_sha256": "b" * 64,
+        },
+    }
+    region = system._final_synthesis_region([prior], max_payload_tokens=7_000)
+    child_id = region.child_ids[0]
+    bad = {
+        "version": 2, "covered_child_ids": [child_id],
+        "child_dispositions": [{
+            "child_id": child_id, "disposition": "no_transferable_claim",
+            "reason": "The prior semantic is incorrectly discarded here.",
+        }],
+        "child_attributions": [],
+        "semantic": {
+            "mechanisms": [], "attraction_map": {}, "style_profile": {},
+        },
+    }
+    good = {
+        "version": 2, "covered_child_ids": [child_id],
+        "child_dispositions": [{
+            "child_id": child_id, "disposition": "promoted",
+            "reason": "The prior semantic remains in the final mechanism.",
+        }],
+        "child_attributions": [{
+            "child_id": child_id, "relation": "claim",
+            "semantic_path": "/mechanisms/0", "related_child_ids": [],
+        }],
+        "semantic": {
+            "mechanisms": [{"name": "retained-A"}],
+            "attraction_map": {}, "style_profile": {},
+        },
+    }
+
+    class Gateway:
+        def __init__(self):
+            self.outputs = iter([bad, good])
+            self.calls = 0
+
+        async def complete(self, *_args, **_kwargs):
+            self.calls += 1
+            return SimpleNamespace(text=json.dumps(next(self.outputs)), receipt={})
+
+    gateway = Gateway()
+    system.gateway = gateway
+    _response, semantic = await system._execute_reference_synthesis(
+        route_plan=system._reference_synthesis_route_plan(),
+        system="system", user="user",
+        validator=lambda text: validate_distillation_receipt(
+            region, json.loads(text),
+        ),
+    )
+
+    assert gateway.calls == 2
+    assert semantic["mechanisms"] == [{"name": "retained-A"}]
+
+
+@pytest.mark.asyncio
+async def test_hierarchical_distillation_fails_when_semantic_payload_does_not_converge(
+    tmp_path,
+) -> None:
+    db, library, projects, _system = setup_system(tmp_path)
+    source = library.import_text(
+        title="Non-converging", source_type="paste", text="reference text",
+    )
+
+    class NonConvergingGateway:
+        async def complete(self, role, system, user, **kwargs):
+            child_ids = json.loads(user.split("CHILD MANIFEST:\n", 1)[1].split(
+                "\nCHILD PAYLOADS:\n", 1,
+            )[0])
+            semantic = {
+                "mechanisms": [{
+                    "name": "保持超大语义负载",
+                    "supporting_windows": [1],
+                    "transfer_guidance": "甲" * 4_000,
+                }],
+                "attraction_map": {}, "style_profile": {},
+            }
+            receipt = {
+                "version": 2,
+                "covered_child_ids": child_ids,
+                "child_dispositions": [{
+                    "child_id": child_id, "disposition": "promoted",
+                    "reason": "该窗口保留到聚合机制中",
+                } for child_id in child_ids],
+                "child_attributions": [{
+                    "child_id": child_ids[0], "relation": "claim",
+                    "semantic_path": "/mechanisms/0", "related_child_ids": [],
+                }, *[{
+                    "child_id": child_id, "relation": "merged",
+                    "semantic_path": None, "related_child_ids": [child_ids[0]],
+                } for child_id in child_ids[1:]]],
+                "semantic": semantic,
+            }
+            return SimpleNamespace(
+                text=json.dumps(receipt, ensure_ascii=False), receipt={},
+            )
+
+    system = LearningSystem(db, library, projects, NonConvergingGateway())
+
+    with pytest.raises(ValueError, match="did not reduce"):
+        await system._hierarchical_reference_claims(
+            version=source["latest_version"],
+            claims=hierarchical_claims(6, body_size=500),
+            content_type="reference_work", focus="preserve semantics",
+            final_payload_tokens=2_000, regional_payload_tokens=6_000,
+        )
 
 
 async def test_model_analysis_resumes_after_any_failed_window(tmp_path) -> None:
@@ -1061,20 +1698,21 @@ async def test_model_analysis_keeps_independent_new_finding_as_model_only(tmp_pa
 
 async def test_model_analysis_rejects_english_user_facing_synthesis(tmp_path) -> None:
     db, library, projects, _system = setup_system(tmp_path)
+    english_synthesis = json.dumps({
+        "mechanisms": [{
+            "name": "The Small Currency Covenant", "supporting_windows": [1],
+            "trigger_conditions": ["small payment"], "structural_position": "opening",
+            "state_change": "trust begins", "emotional_effect": "warmth",
+            "required_preparation": ["protector appears"], "downstream_consequence": "future rescue",
+            "transfer_guidance": "Use a small payment to establish trust",
+            "incompatible_conditions": [], "confidence": 0.9,
+            "local_match_id": None, "model_verdict": "new", "review_reason": "Found by model",
+        }],
+        "attraction_map": {},
+    })
     gateway = FakeGateway([
         valid_window_result(),
-        json.dumps({
-            "mechanisms": [{
-                "name": "The Small Currency Covenant", "supporting_windows": [1],
-                "trigger_conditions": ["small payment"], "structural_position": "opening",
-                "state_change": "trust begins", "emotional_effect": "warmth",
-                "required_preparation": ["protector appears"], "downstream_consequence": "future rescue",
-                "transfer_guidance": "Use a small payment to establish trust",
-                "incompatible_conditions": [], "confidence": 0.9,
-                "local_match_id": None, "model_verdict": "new", "review_reason": "Found by model",
-            }],
-            "attraction_map": {},
-        }),
+        english_synthesis, english_synthesis,
     ])
     system = LearningSystem(db, library, projects, gateway)
     source = library.import_text(title="英文输出样本", source_type="paste", text="他递出十元钱，约定以后再见。")
@@ -1256,7 +1894,8 @@ async def test_model_analysis_retries_one_transient_invalid_fallback_response(tm
         async def complete_configured_fallback(self, role, system, user, **kwargs):
             self.fallback_roles.append(role)
             return SimpleNamespace(
-                text=next(self.fallback_outputs), receipt={"model_id": "fallback"},
+                text=_final_receipt_for_prompt(user, next(self.fallback_outputs)),
+                receipt={"model_id": "fallback"},
             )
 
     gateway = GatewayWithTransientFallback()
@@ -1280,6 +1919,60 @@ def valid_window_result() -> str:
 
 def valid_synthesis_result() -> str:
     return json.dumps({"mechanisms": [], "attraction_map": {}})
+
+
+def _final_receipt_for_prompt(user: str, raw: str) -> str:
+    """Let legacy test fixtures answer the production final receipt contract."""
+
+    if "FINAL CHILD MANIFEST:\n" not in user:
+        return raw
+    try:
+        semantic = json.loads(raw)
+    except (TypeError, ValueError):
+        return raw
+    if isinstance(semantic, dict) and semantic.get("version") == 2:
+        return raw
+    manifest_text = user.split("FINAL CHILD MANIFEST:\n", 1)[1].split(
+        "\n\nINDEPENDENT WINDOW CLAIMS:\n", 1,
+    )[0]
+    child_ids = json.loads(manifest_text)
+    has_semantic = bool(
+        isinstance(semantic, dict)
+        and any(semantic.get(key) for key in (
+            "mechanisms", "attraction_map", "style_profile",
+        ))
+    )
+    dispositions = [{
+        "child_id": child_id,
+        "disposition": "promoted" if has_semantic else "no_transferable_claim",
+        "reason": (
+            "The child contributes to the retained aggregate semantic."
+            if has_semantic else
+            "The child contains no safely transferable aggregate semantic."
+        ),
+    } for child_id in child_ids]
+    attributions = []
+    if has_semantic:
+        anchor_path = next(
+            f"/{key}" for key in (
+                "mechanisms", "attraction_map", "style_profile",
+            ) if semantic.get(key)
+        )
+        attributions.append({
+            "child_id": child_ids[0], "relation": "claim",
+            "semantic_path": anchor_path, "related_child_ids": [],
+        })
+        attributions.extend({
+            "child_id": child_id, "relation": "merged",
+            "semantic_path": None, "related_child_ids": [child_ids[0]],
+        } for child_id in child_ids[1:])
+    return json.dumps({
+        "version": 2,
+        "covered_child_ids": child_ids,
+        "child_dispositions": dispositions,
+        "child_attributions": attributions,
+        "semantic": semantic,
+    }, ensure_ascii=False)
 
 
 def test_synthesis_result_wraps_one_complete_mechanism_object() -> None:
@@ -1340,7 +2033,10 @@ async def test_model_analysis_uses_fallback_for_wrong_synthesis_shape(tmp_path) 
 
         async def complete_configured_fallback(self, role, system, user, **kwargs):
             self.fallback_roles.append(role)
-            return SimpleNamespace(text=valid_synthesis_result(), receipt={"model_id": "fallback"})
+            return SimpleNamespace(
+                text=_final_receipt_for_prompt(user, valid_synthesis_result()),
+                receipt={"model_id": "fallback"},
+            )
 
     gateway = GatewayWithFallback()
     system = LearningSystem(db, library, projects, gateway)
@@ -1373,7 +2069,10 @@ async def test_model_analysis_uses_fallback_when_mechanism_lacks_supporting_wind
 
         async def complete_configured_fallback(self, role, system, user, **kwargs):
             self.fallback_roles.append(role)
-            return SimpleNamespace(text=valid_synthesis_result(), receipt={"model_id": "fallback"})
+            return SimpleNamespace(
+                text=_final_receipt_for_prompt(user, valid_synthesis_result()),
+                receipt={"model_id": "fallback"},
+            )
 
     gateway = GatewayWithFallback()
     system = LearningSystem(db, library, projects, gateway)
@@ -1399,7 +2098,8 @@ async def test_model_analysis_retries_one_transient_invalid_synthesis_fallback(t
         async def complete_configured_fallback(self, role, system, user, **kwargs):
             self.fallback_roles.append(role)
             return SimpleNamespace(
-                text=next(self.fallback_outputs), receipt={"model_id": "fallback"},
+                text=_final_receipt_for_prompt(user, next(self.fallback_outputs)),
+                receipt={"model_id": "fallback"},
             )
 
     gateway = GatewayWithTransientSynthesisFallback()

@@ -1,6 +1,9 @@
+from pathlib import Path
+
 import pytest
 
 from novel_flywheel.db import Database
+from novel_flywheel.originality import OriginalityEngine
 from novel_flywheel.reference_library import ReferenceLibrary
 
 
@@ -87,3 +90,137 @@ def test_local_analysis_is_cached_per_source_version(tmp_path) -> None:
     assert second["cached"] is True
     assert "checklist_judgment" in {item["rule_id"] for item in first["result"]["findings"]}
     assert third["id"] != first["id"]
+
+
+def test_originality_comparison_includes_every_distinct_reference_version(tmp_path) -> None:
+    references = library(tmp_path)
+    source = references.import_text(
+        title="Versioned reference", text="first distinct reference version",
+        source_type="paste", content_type="reference_work",
+    )
+    references.add_version(source["id"], "second distinct reference version")
+
+    comparisons = list(references.comparison_sources())
+
+    assert len(comparisons) == 2
+    assert {item.text for item in comparisons} == {
+        "first distinct reference version", "second distinct reference version",
+    }
+    assert all(item.id.startswith(f"reference:{source['id']}:") for item in comparisons)
+
+
+def test_originality_stream_covers_tail_after_old_prefix_cap_with_absolute_provenance(
+    tmp_path,
+) -> None:
+    references = library(tmp_path)
+    marker = "尾部独有证据在旧上限以后仍然必须参与完整原创性核验"
+    full_text = "前" * 110_000 + marker + "后" * 12_000
+    source = references.import_text(
+        title="Long version", text=full_text, source_type="paste",
+        content_type="reference_work",
+    )
+
+    stream = references.comparison_sources(
+        chunk_characters=4_096, overlap_characters=512,
+    )
+    assert not isinstance(stream, list)
+    chunks = list(stream)
+    assert len(chunks) == chunks[0].chunk_count
+    assert max(len(item.text) for item in chunks) <= 4_096
+
+    cursor = 0
+    reconstructed = []
+    for chunk in chunks:
+        assert chunk.source_start <= cursor
+        reconstructed.append(chunk.text[max(0, cursor - chunk.source_start):])
+        cursor = max(cursor, chunk.source_end)
+    assert "".join(reconstructed) == full_text
+
+    report = OriginalityEngine().scan(f"开场。{marker}。收束。", stream)
+    tail_findings = [
+        item for item in report.findings
+        if item.finding_type == "literal_winnowing" and item.source_start > 100_000
+    ]
+    assert tail_findings
+    expected_version = source["latest_version"]
+    assert {
+        item.metadata["source_version_id"] for item in tail_findings
+    } == {expected_version["id"]}
+    assert {
+        item.metadata["source_version_sha256"] for item in tail_findings
+    } == {expected_version["content_hash"]}
+
+
+def test_originality_stream_rejects_file_that_no_longer_matches_version_hash(
+    tmp_path,
+) -> None:
+    references = library(tmp_path)
+    source = references.import_text(
+        title="Bound version", text="受版本哈希约束的完整参考正文。" * 100,
+        source_type="paste", content_type="reference_work",
+    )
+    version_path = source["latest_version"]["storage_path"]
+    Path(version_path).write_text(
+        "已被外部替换的参考正文。" * 100, encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="provenance hash"):
+        list(references.comparison_sources())
+
+
+def test_reference_corpus_authority_is_text_free_and_tracks_every_visible_change(
+    tmp_path, monkeypatch,
+) -> None:
+    references = library(tmp_path)
+    references.db.save_project("book", "Book", "short", tmp_path / "book")
+    empty = references.reference_corpus_authority("book")
+    source = references.import_text(
+        title="Scoped source", text="第一版完整参考正文。",
+        source_type="paste", content_type="reference_work", project_id="book",
+    )
+
+    def forbid_full_text(*_args, **_kwargs):
+        raise AssertionError("corpus authority must not read reference prose")
+
+    monkeypatch.setattr(references, "read_text", forbid_full_text)
+    first = references.reference_corpus_authority("book")
+    assert first["sha256"] != empty["sha256"]
+    assert references.reference_corpus_authority("other")["manifest"]["sources"] == []
+    manifest_source = first["manifest"]["sources"][0]
+    assert manifest_source["project_scope"] == "book"
+    assert manifest_source["use_mode"] == "reference_mechanism"
+    assert list(manifest_source["versions"][0]) == [
+        "version_id", "version", "content_sha256",
+    ]
+    frozen_version_ids = {
+        version["version_id"] for version in manifest_source["versions"]
+    }
+
+    references.add_version(source["id"], "第二版完整参考正文。")
+    version_changed = references.reference_corpus_authority("book")
+    assert version_changed["sha256"] != first["sha256"]
+    assert {
+        chunk.version_id
+        for chunk in references.comparison_sources("book", authority=first)
+    } == frozen_version_ids
+    assert {
+        chunk.version_id
+        for chunk in references.comparison_sources(
+            "book", authority=version_changed,
+        )
+    } == {
+        version["version_id"]
+        for version in version_changed["manifest"]["sources"][0]["versions"]
+    }
+
+    references.update_metadata(
+        source["id"], platform="番茄", content_type="competitor_work",
+        project_id="book",
+    )
+    classification_changed = references.reference_corpus_authority("book")
+    assert classification_changed["sha256"] != version_changed["sha256"]
+    assert classification_changed["manifest"]["sources"][0]["use_mode"] \
+        == "competitor_risk_only"
+
+    references.delete(source["id"])
+    assert references.reference_corpus_authority("book")["sha256"] == empty["sha256"]

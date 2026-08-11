@@ -1002,8 +1002,9 @@ def test_effective_contract_merges_same_event_evidence_across_continuous_segment
             "event_id": EVENT_ID,
             "classification": "presentation",
             "changed_dimensions": ["dialogue"],
-            "invariants": invariant_payload(),
-            "plan_evidence": ["第一段先让花穗听见报信，并决定亲自核验。"],
+                "invariants": invariant_payload(),
+                "plan_evidence_ids": ["PLAN-01-E001"],
+                "plan_evidence": ["第一段先让花穗听见报信，并决定亲自核验。"],
             "reason": "补充报信场景。",
         }],
     }
@@ -1012,8 +1013,9 @@ def test_effective_contract_merges_same_event_evidence_across_continuous_segment
             "event_id": EVENT_ID,
             "classification": "equivalent",
             "changed_dimensions": ["evidence_method"],
-            "invariants": invariant_payload(),
-            "plan_evidence": ["第二段由花穗进入库房复核账箱，完成同一事件。"],
+                "invariants": invariant_payload(),
+                "plan_evidence_ids": ["PLAN-02-E001"],
+                "plan_evidence": ["第二段由花穗进入库房复核账箱，完成同一事件。"],
             "reason": "把核验过程展开到连续下一段。",
         }],
     }

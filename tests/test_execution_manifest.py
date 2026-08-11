@@ -16,6 +16,7 @@ from novel_flywheel.execution_manifest import (
     StateAssertion,
     bind_execution_manifest_receipt_evidence,
     execution_manifest_issues,
+    execution_event_contract_prompt_payload,
     execution_manifest_payload,
     execution_manifest_receipt_issues,
     execution_manifest_receipt_binding_issues,
@@ -29,6 +30,7 @@ from novel_flywheel.execution_manifest import (
     state_assertions_sha256,
     validate_execution_manifest_receipt,
 )
+from novel_flywheel.generated_artifacts import adapt_registered_contract
 
 
 AUTHORITY = {
@@ -162,6 +164,7 @@ def test_v2_manifest_hash_omits_v3_optional_fields_for_saved_receipt_compatibili
     old_payload = asdict(manifest)
     old_payload.pop("semantic_receipt")
     for beat in old_payload["beats"]:
+        beat.pop("source_evidence_ids")
         for field in (
             "presentation_order", "story_time", "timeline", "actor",
             "location", "viewpoint", "knowledge_delta", "relationship_delta",
@@ -605,6 +608,152 @@ def test_manifest_evidence_must_belong_to_its_declared_event_contract() -> None:
     assert any(item["code"] == "source_evidence_mismatch" for item in issues)
 
 
+def test_registered_execution_evidence_adapter_maps_contiguous_legacy_atoms() -> None:
+    payload = manifest_payload()
+    first = payload["beats"][0]["source_evidence"]
+    second = payload["beats"][1]["source_evidence"]
+    third = payload["beats"][2]["source_evidence"]
+    expected_events = [
+        {"id": payload["beats"][0]["source_event_id"], "evidence_catalog": [
+            {"evidence_id": "PLAN-E001", "text": first},
+        ]},
+        {"id": payload["beats"][1]["source_event_id"], "evidence_catalog": [
+            {"evidence_id": "PLAN-E002", "text": second},
+            {"evidence_id": "PLAN-E003", "text": third},
+        ]},
+    ]
+    payload["beats"][0].pop("source_evidence")
+    payload["beats"][1]["source_evidence"] = second + third
+    payload["beats"][2]["source_evidence_ids"] = ["PLAN-E003"]
+
+    result = adapt_registered_contract(
+        payload, contract_name="execution_manifest",
+        context={"expected_events": expected_events},
+    )
+
+    assert [beat["source_evidence_ids"] for beat in result.payload["beats"]] == [
+        ["PLAN-E001"], ["PLAN-E002", "PLAN-E003"], ["PLAN-E003"],
+    ]
+    assert all("source_evidence" not in beat for beat in result.payload["beats"])
+    assert result.audits[0].adapter_name == "execution_manifest_evidence_reference"
+    assert len(result.audits[0].proof_sha256) == 64
+
+
+def test_registered_execution_evidence_adapter_maps_unique_extractive_span() -> None:
+    result = adapt_registered_contract(
+        {"beats": [{
+            "source_event_id": "EV-9D165428",
+            "source_evidence": "clue survives",
+        }]},
+        contract_name="execution_manifest",
+        context={"expected_events": [{
+            "id": "EV-9D165428", "evidence_catalog": [
+                {"evidence_id": "E-1", "text": "The first witness leaves."},
+                {
+                    "evidence_id": "E-2",
+                    "text": "The hidden clue survives, despite the fire.",
+                },
+            ],
+        }]},
+    )
+
+    assert result.payload["beats"][0]["source_evidence_ids"] == ["E-2"]
+    assert "source_evidence" not in result.payload["beats"][0]
+
+
+def test_registered_execution_evidence_adapter_rejects_unknown_event() -> None:
+    with pytest.raises(ValueError, match="unknown Runtime event"):
+        adapt_registered_contract(
+            {"beats": [{
+                "source_event_id": "EV-FFFFFFFF", "source_evidence": "untrusted",
+            }]},
+            contract_name="execution_manifest",
+            context={"expected_events": [{
+                "id": "EV-9D165428", "evidence": "authoritative",
+            }]},
+        )
+
+
+def test_registered_execution_evidence_adapter_rejects_conflicting_catalog() -> None:
+    with pytest.raises(ValueError, match="conflicting Runtime text"):
+        adapt_registered_contract(
+            {"beats": [{
+                "source_event_id": "EV-9D165428", "source_evidence_ids": ["E-1"],
+            }]},
+            contract_name="execution_manifest",
+            context={"expected_events": [
+                {"id": "EV-9D165428", "evidence_catalog": [
+                    {"evidence_id": "E-1", "text": "first"},
+                ]},
+                {"id": "EV-00000001", "evidence_catalog": [
+                    {"evidence_id": "E-1", "text": "second"},
+                ]},
+            ]},
+        )
+
+
+def test_registered_execution_evidence_adapter_rejects_ambiguous_legacy_text() -> None:
+    with pytest.raises(ValueError, match="multiple Runtime mappings"):
+        adapt_registered_contract(
+            {"beats": [{
+                "source_event_id": "EV-9D165428", "source_evidence": "same text",
+            }]},
+            contract_name="execution_manifest",
+            context={"expected_events": [{
+                "id": "EV-9D165428", "evidence_catalog": [
+                    {"evidence_id": "E-1", "text": "same text"},
+                    {"evidence_id": "E-2", "text": "same text"},
+                ],
+            }]},
+        )
+
+
+def test_registered_execution_evidence_adapter_is_idempotent() -> None:
+    context = {"expected_events": [{
+        "id": "EV-9D165428", "evidence_catalog": [
+            {"evidence_id": "E-1", "text": "exact evidence"},
+        ],
+    }]}
+    first = adapt_registered_contract(
+        {"beats": [{
+            "source_event_id": "EV-9D165428", "source_evidence": "exact evidence",
+        }]},
+        contract_name="execution_manifest", context=context,
+    )
+    second = adapt_registered_contract(
+        first.payload, contract_name="execution_manifest", context=context,
+    )
+
+    assert second.payload == first.payload
+    assert second.audits == ()
+
+
+def test_execution_evidence_prompt_projection_is_linear_and_text_is_unique() -> None:
+    sizes = []
+    for count in (8, 16, 32):
+        catalog = [
+            {
+                "evidence_id": f"PLAN-E{index:03d}",
+                "text": f"unique-evidence-{index}-" + ("x" * 80),
+            }
+            for index in range(count)
+        ]
+        evidence = "\n\n".join(item["text"] for item in catalog)
+        projected = execution_event_contract_prompt_payload([{
+            "id": "EV-9D165428",
+            "evidence": evidence,
+            "formal_evidence": evidence,
+            "evidence_catalog": catalog,
+        }])
+        serialized = json.dumps(projected, ensure_ascii=False)
+        sizes.append(len(serialized))
+        assert "formal_evidence" not in projected[0]
+        assert "evidence" not in projected[0]
+        assert all(serialized.count(item["text"]) == 1 for item in catalog)
+    assert sizes[1] < sizes[0] * 2.2
+    assert sizes[2] < sizes[1] * 2.2
+
+
 def test_semantic_receipt_reports_hash_actor_boundary_and_plot_errors_together() -> None:
     payload = manifest_payload()
     authority_text = manifest_authority_text(payload)
@@ -690,7 +839,7 @@ def test_fragment_merge_rebinds_global_ids_order_handoffs_and_future_bans() -> N
     assert merged.segments[0].future_beat_guard == future_beat_guards(
         merged.beats, (1, 2),
     )[1]
-    assert merged.version == 5
+    assert merged.version == 6
     serialized = execution_manifest_payload(merged)
     assert "prohibited_future_beat_ids" not in serialized["segments"][0]
     assert serialized["segments"][0]["future_beat_order_floor"] == 3

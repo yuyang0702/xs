@@ -1,8 +1,10 @@
 import json
 import hashlib
+import re
 import sqlite3
 import threading
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -10,6 +12,103 @@ from novel_flywheel.production_incidents import classify_production_failure
 
 
 WIZARD_MUTATION_LOCK = threading.RLock()
+
+ACTIVE_RUN_STATUSES = (
+    "queued", "running", "cancelling", "waiting_provider",
+    "recovering_protocol", "recovering_semantic", "quality_repair",
+)
+WORKFLOW_SUPERVISION_CONTRACT_VERSION = 1
+
+_SECRET_FIELD_PATTERNS = (
+    re.compile(
+        r"(?:^|_)(?:api_?key|secret|password|credential|authorization|"
+        r"authentication|auth|access_token|refresh_token|provider_token|token)(?:_|$)"
+    ),
+)
+
+_WORKFLOW_RESUME_FIELDS = {
+    "short-story": frozenset(),
+    "long-setup": frozenset(),
+    "materials-audit": frozenset(),
+    "materials-repair": frozenset(),
+    "long-chapter": frozenset({"chapter_goal"}),
+    "short-revision": frozenset({"issue_ids"}),
+    "initialize-skills": frozenset({
+        "version", "outline_sha256", "answers", "learning_snapshot",
+    }),
+}
+
+
+def _assert_secret_free_resume_payload(value: object, path: str = "resume_payload") -> None:
+    if isinstance(value, dict):
+        for raw_key, child in value.items():
+            raw_key_text = str(raw_key)
+            expanded = re.sub(
+                r"(?<=[a-z0-9])(?=[A-Z])", "_", raw_key_text,
+            )
+            key = re.sub(r"[^a-z0-9]+", "_", expanded.casefold()).strip("_")
+            compact = key.replace("_", "")
+            if (
+                any(pattern.search(key) for pattern in _SECRET_FIELD_PATTERNS)
+                or compact in {
+                    "apikey", "secret", "password", "credential",
+                    "authorization", "authentication", "auth",
+                    "accesstoken", "refreshtoken", "providertoken", "token",
+                }
+                or any(
+                    marker in raw_key_text
+                    for marker in ("密钥", "密码", "凭据", "令牌", "认证", "授权头")
+                )
+            ):
+                raise ValueError(f"{path} contains a forbidden secret-bearing field")
+            _assert_secret_free_resume_payload(child, f"{path}.{raw_key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _assert_secret_free_resume_payload(child, f"{path}[{index}]")
+
+
+def _assert_workflow_resume_contract(workflow: str, payload: object) -> None:
+    if not isinstance(payload, dict):
+        raise ValueError("resume_payload must be an object")
+    allowed = _WORKFLOW_RESUME_FIELDS.get(workflow)
+    if allowed is None:
+        if payload:
+            raise ValueError("workflow does not declare a resume payload contract")
+        return
+    if set(payload) != set(allowed):
+        raise ValueError("resume_payload does not match the workflow contract")
+    if workflow == "long-chapter":
+        goal = payload.get("chapter_goal")
+        if not isinstance(goal, str) or not goal.strip() or goal != goal.strip():
+            raise ValueError("long-chapter resume payload is not canonical")
+    elif workflow == "short-revision":
+        issue_ids = payload.get("issue_ids")
+        if (
+            not isinstance(issue_ids, list)
+            or any(not isinstance(item, str) or not item.strip() for item in issue_ids)
+            or len(issue_ids) != len(set(issue_ids))
+        ):
+            raise ValueError("short-revision resume payload is not canonical")
+    elif workflow == "initialize-skills":
+        snapshot = payload.get("learning_snapshot")
+        if (
+            payload.get("version") != 1
+            or not isinstance(payload.get("outline_sha256"), str)
+            or re.fullmatch(r"[0-9a-f]{64}", payload["outline_sha256"]) is None
+            or not isinstance(payload.get("answers"), dict)
+            or not isinstance(snapshot, dict)
+            or set(snapshot) != {
+                "versions", "summary", "stages", "skipped_conflicts",
+            }
+            or any(
+                not isinstance(snapshot.get(key), expected)
+                for key, expected in (
+                    ("versions", dict), ("summary", dict),
+                    ("stages", dict), ("skipped_conflicts", list),
+                )
+            )
+        ):
+            raise ValueError("initialize-skills resume payload is not canonical")
 
 
 SCHEMA = """
@@ -404,6 +503,99 @@ CREATE TABLE IF NOT EXISTS workflow_node_checkpoints(
 );
 CREATE INDEX IF NOT EXISTS idx_workflow_node_checkpoints_resume
   ON workflow_node_checkpoints(run_id, node_key, authority_sha256, status);
+CREATE TABLE IF NOT EXISTS workflow_supervision(
+  run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
+  contract_version INTEGER NOT NULL DEFAULT 1,
+  state TEXT NOT NULL,
+  resume_payload_json TEXT NOT NULL DEFAULT '{}',
+  retry_budgets_json TEXT NOT NULL DEFAULT '{}',
+  used_budgets_json TEXT NOT NULL DEFAULT '{}',
+  next_retry_at TEXT,
+  lease_owner TEXT,
+  lease_expires_at TEXT,
+  last_failure_class TEXT,
+  last_failure_sha256 TEXT,
+  last_error_summary TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_supervision_due
+  ON workflow_supervision(state, next_retry_at);
+CREATE TABLE IF NOT EXISTS workflow_attempts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  attempt INTEGER NOT NULL,
+  state TEXT NOT NULL,
+  action TEXT NOT NULL,
+  failure_class TEXT,
+  failure_sha256 TEXT,
+  authority_sha256 TEXT,
+  checkpoint_sha256 TEXT,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  UNIQUE(run_id, attempt)
+);
+CREATE TABLE IF NOT EXISTS feature_flags(
+  scope_type TEXT NOT NULL,
+  scope_id TEXT NOT NULL,
+  flag_name TEXT NOT NULL,
+  enabled INTEGER NOT NULL,
+  config_json TEXT NOT NULL DEFAULT '{}',
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(scope_type, scope_id, flag_name)
+);
+CREATE TABLE IF NOT EXISTS sealed_generation_units(
+  run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  unit_type TEXT NOT NULL,
+  unit_id TEXT NOT NULL,
+  generation INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  authority_sha256 TEXT NOT NULL,
+  input_sha256 TEXT NOT NULL,
+  output_sha256 TEXT NOT NULL,
+  entry_state_sha256 TEXT NOT NULL DEFAULT '',
+  exit_state_sha256 TEXT NOT NULL DEFAULT '',
+  quality_sha256 TEXT NOT NULL DEFAULT '',
+  dependencies_json TEXT NOT NULL DEFAULT '[]',
+  invalidated_by TEXT,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(run_id, unit_type, unit_id, generation)
+);
+CREATE INDEX IF NOT EXISTS idx_sealed_generation_units_current
+  ON sealed_generation_units(run_id, unit_type, unit_id, status, generation DESC);
+CREATE TABLE IF NOT EXISTS reference_distillation_regions(
+  version_id TEXT NOT NULL REFERENCES reference_versions(id) ON DELETE CASCADE,
+  level INTEGER NOT NULL,
+  region_index INTEGER NOT NULL,
+  source_start INTEGER NOT NULL,
+  source_end INTEGER NOT NULL,
+  input_sha256 TEXT NOT NULL,
+  output_sha256 TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(version_id, level, region_index, input_sha256)
+);
+CREATE TABLE IF NOT EXISTS originality_findings(
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  run_id TEXT REFERENCES runs(id) ON DELETE CASCADE,
+  source_id TEXT REFERENCES reference_sources(id) ON DELETE SET NULL,
+  source_version_id TEXT REFERENCES reference_versions(id) ON DELETE SET NULL,
+  finding_type TEXT NOT NULL,
+  severity TEXT NOT NULL,
+  manuscript_start INTEGER NOT NULL,
+  manuscript_end INTEGER NOT NULL,
+  source_start INTEGER,
+  source_end INTEGER,
+  evidence_sha256 TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  status TEXT NOT NULL DEFAULT 'open',
+  created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_market_entries_work
   ON market_entries(work_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_market_entries_snapshot
@@ -422,6 +614,15 @@ class Database:
     def __init__(self, path: Path) -> None:
         self.path = path
 
+    @staticmethod
+    def validate_workflow_resume_payload(
+        workflow: str, payload: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        normalized = payload if payload is not None else {}
+        _assert_secret_free_resume_payload(normalized)
+        _assert_workflow_resume_contract(workflow, normalized)
+        return normalized
+
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
         connection = sqlite3.connect(self.path)
@@ -435,6 +636,18 @@ class Database:
             raise
         finally:
             connection.close()
+
+    @contextmanager
+    def _connection_scope(
+        self, connection: sqlite3.Connection | None = None,
+    ) -> Iterator[sqlite3.Connection]:
+        """Reuse a caller-owned transaction or open one for a public method."""
+
+        if connection is not None:
+            yield connection
+            return
+        with self.connect() as owned:
+            yield owned
 
     def migrate(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -504,7 +717,7 @@ class Database:
                 "WHERE checkpoint_version<2"
             )
             connection.execute(
-                "UPDATE schema_version SET version=2 WHERE version<2"
+                "UPDATE schema_version SET version=3 WHERE version<3"
             )
 
     def _backup_before_story_state_upgrade(self) -> None:
@@ -547,6 +760,10 @@ class Database:
         )
 
         with self.connect() as connection:
+            # Serialize the read/validate/attempt/upsert sequence across
+            # processes.  A deferred transaction lets two writers both
+            # validate the same predecessor and silently lose an attempt.
+            connection.execute("BEGIN IMMEDIATE")
             effective_validation_stage = validation_stage or (
                 "promoted" if status == "validated" else "transport"
             )
@@ -630,6 +847,313 @@ class Database:
         result = dict(row)
         result["payload"] = json.loads(result.pop("payload_json"))
         return result
+
+    def save_workflow_supervision(
+        self, *, run_id: str, state: str,
+        resume_payload: dict[str, Any] | None = None,
+        retry_budgets: dict[str, int] | None = None,
+        used_budgets: dict[str, int] | None = None,
+        next_retry_at: str | None = None,
+        last_failure_class: str | None = None,
+        last_failure_sha256: str | None = None,
+        last_error_summary: str | None = None,
+    ) -> dict[str, Any]:
+        """Upsert the durable run supervisor envelope.
+
+        Secrets and provider payloads are deliberately excluded.  Callers may
+        persist only the small deterministic inputs required to reconstruct a
+        workflow operation after a process restart.
+        """
+
+        with self.connect() as connection:
+            workflow_row = connection.execute(
+                "SELECT workflow FROM runs WHERE id=?", (run_id,),
+            ).fetchone()
+            if workflow_row is None:
+                raise LookupError("run not found for workflow supervision")
+            current = connection.execute(
+                "SELECT * FROM workflow_supervision WHERE run_id=?", (run_id,),
+            ).fetchone()
+            payload = resume_payload if resume_payload is not None else (
+                json.loads(current["resume_payload_json"]) if current else {}
+            )
+            payload = self.validate_workflow_resume_payload(
+                str(workflow_row["workflow"]), payload,
+            )
+            budgets = retry_budgets if retry_budgets is not None else (
+                json.loads(current["retry_budgets_json"]) if current else {}
+            )
+            used = used_budgets if used_budgets is not None else (
+                json.loads(current["used_budgets_json"]) if current else {}
+            )
+            connection.execute(
+                """INSERT INTO workflow_supervision
+                (run_id,contract_version,state,resume_payload_json,retry_budgets_json,
+                 used_budgets_json,next_retry_at,lease_owner,lease_expires_at,
+                 last_failure_class,last_failure_sha256,last_error_summary,
+                 created_at,updated_at)
+                VALUES (?,?,?,?,?,?,?,NULL,NULL,?,?,?,datetime('now'),datetime('now'))
+                ON CONFLICT(run_id) DO UPDATE SET
+                contract_version=excluded.contract_version,
+                state=excluded.state,
+                resume_payload_json=excluded.resume_payload_json,
+                retry_budgets_json=excluded.retry_budgets_json,
+                used_budgets_json=excluded.used_budgets_json,
+                next_retry_at=excluded.next_retry_at,
+                last_failure_class=COALESCE(excluded.last_failure_class,workflow_supervision.last_failure_class),
+                last_failure_sha256=COALESCE(excluded.last_failure_sha256,workflow_supervision.last_failure_sha256),
+                last_error_summary=COALESCE(excluded.last_error_summary,workflow_supervision.last_error_summary),
+                updated_at=datetime('now')""",
+                (
+                    run_id, WORKFLOW_SUPERVISION_CONTRACT_VERSION, state,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                    json.dumps(budgets, ensure_ascii=False, sort_keys=True),
+                    json.dumps(used, ensure_ascii=False, sort_keys=True),
+                    next_retry_at, last_failure_class, last_failure_sha256,
+                    last_error_summary,
+                ),
+            )
+        result = self.get_workflow_supervision(run_id)
+        assert result is not None
+        return result
+
+    def get_workflow_supervision(self, run_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM workflow_supervision WHERE run_id=?", (run_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        for source, target in (
+            ("resume_payload_json", "resume_payload"),
+            ("retry_budgets_json", "retry_budgets"),
+            ("used_budgets_json", "used_budgets"),
+        ):
+            result[target] = json.loads(result.pop(source) or "{}")
+        return result
+
+    def list_recoverable_workflow_supervisions(
+        self, *, now: str | None = None, include_future: bool = False,
+    ) -> list[dict[str, Any]]:
+        effective_now = now or datetime.now(timezone.utc).isoformat()
+        due_clause = "" if include_future else (
+            "AND (s.next_retry_at IS NULL OR s.next_retry_at<=?) "
+        )
+        arguments: tuple[str, ...] = () if include_future else (effective_now,)
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT s.run_id FROM workflow_supervision s JOIN runs r ON r.id=s.run_id "
+                "WHERE s.state IN ('waiting_provider','interrupted') "
+                "AND r.status IN ('waiting_provider','interrupted') "
+                + due_clause +
+                "ORDER BY COALESCE(s.next_retry_at,s.created_at),s.run_id",
+                arguments,
+            ).fetchall()
+        return [
+            item for row in rows
+            if (item := self.get_workflow_supervision(row["run_id"])) is not None
+        ]
+
+    def record_workflow_attempt(
+        self, *, run_id: str, state: str, action: str,
+        failure_class: str | None = None,
+        failure_sha256: str | None = None,
+        authority_sha256: str | None = None,
+        checkpoint_sha256: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> int:
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))""",
+                (
+                    run_id, attempt, state, action, failure_class,
+                    failure_sha256, authority_sha256, checkpoint_sha256,
+                    json.dumps(metadata or {}, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+        return attempt
+
+    def list_workflow_attempts(self, run_id: str) -> list[dict[str, Any]]:
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM workflow_attempts WHERE run_id=? ORDER BY attempt", (run_id,),
+            ).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["metadata"] = json.loads(item.pop("metadata_json") or "{}")
+            result.append(item)
+        return result
+
+    def set_feature_flag(
+        self, flag_name: str, enabled: bool, *, scope_type: str = "global",
+        scope_id: str = "*", config: dict[str, Any] | None = None,
+    ) -> None:
+        if scope_type not in {"global", "project"}:
+            raise ValueError("unsupported feature flag scope")
+        with self.connect() as connection:
+            connection.execute(
+                """INSERT INTO feature_flags
+                (scope_type,scope_id,flag_name,enabled,config_json,updated_at)
+                VALUES (?,?,?,?,?,datetime('now'))
+                ON CONFLICT(scope_type,scope_id,flag_name) DO UPDATE SET
+                enabled=excluded.enabled,config_json=excluded.config_json,
+                updated_at=datetime('now')""",
+                (
+                    scope_type, scope_id, flag_name, int(enabled),
+                    json.dumps(config or {}, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+
+    def set_project_feature_flag_if_idle(
+        self, project_id: str, flag_name: str, enabled: bool, *,
+        config: dict[str, Any] | None = None,
+    ) -> bool:
+        """Atomically prove project idleness and update one rollout flag."""
+
+        active = ",".join("?" for _ in ACTIVE_RUN_STATUSES)
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            busy = connection.execute(
+                f"SELECT 1 FROM runs WHERE project_id=? AND status IN ({active}) LIMIT 1",
+                (project_id, *ACTIVE_RUN_STATUSES),
+            ).fetchone()
+            if busy:
+                return False
+            connection.execute(
+                """INSERT INTO feature_flags
+                (scope_type,scope_id,flag_name,enabled,config_json,updated_at)
+                VALUES ('project',?,?,?,?,datetime('now'))
+                ON CONFLICT(scope_type,scope_id,flag_name) DO UPDATE SET
+                enabled=excluded.enabled,config_json=excluded.config_json,
+                updated_at=datetime('now')""",
+                (
+                    project_id, flag_name, int(enabled),
+                    json.dumps(config or {}, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+        return True
+
+    def feature_flag(
+        self, flag_name: str, *, project_id: str | None = None,
+        default: bool = False,
+    ) -> dict[str, Any]:
+        scopes = []
+        if project_id:
+            scopes.append(("project", project_id))
+        scopes.append(("global", "*"))
+        with self.connect() as connection:
+            for scope_type, scope_id in scopes:
+                row = connection.execute(
+                    "SELECT * FROM feature_flags WHERE scope_type=? AND scope_id=? AND flag_name=?",
+                    (scope_type, scope_id, flag_name),
+                ).fetchone()
+                if row:
+                    return {
+                        "name": flag_name, "enabled": bool(row["enabled"]),
+                        "config": json.loads(row["config_json"] or "{}"),
+                        "scope_type": scope_type, "scope_id": scope_id,
+                    }
+        return {
+            "name": flag_name, "enabled": bool(default), "config": {},
+            "scope_type": "default", "scope_id": "*",
+        }
+
+    def seal_generation_unit(
+        self, *, run_id: str, unit_type: str, unit_id: str,
+        authority_sha256: str, input_sha256: str, output_sha256: str,
+        entry_state_sha256: str = "", exit_state_sha256: str = "",
+        quality_sha256: str = "", dependencies: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Seal one immutable generation.  Identical retries are idempotent."""
+
+        with self.connect() as connection:
+            current = connection.execute(
+                "SELECT * FROM sealed_generation_units WHERE run_id=? AND unit_type=? "
+                "AND unit_id=? ORDER BY generation DESC LIMIT 1",
+                (run_id, unit_type, unit_id),
+            ).fetchone()
+            if current and current["status"] == "sealed":
+                same = (
+                    current["authority_sha256"] == authority_sha256
+                    and current["input_sha256"] == input_sha256
+                    and current["output_sha256"] == output_sha256
+                )
+                if same:
+                    return self.get_sealed_generation_unit(
+                        run_id, unit_type, unit_id,
+                    ) or dict(current)
+                raise ValueError("sealed generation unit conflict; invalidate its dependency scope first")
+            generation = int(current["generation"]) + 1 if current else 1
+            connection.execute(
+                """INSERT INTO sealed_generation_units
+                (run_id,unit_type,unit_id,generation,status,authority_sha256,
+                 input_sha256,output_sha256,entry_state_sha256,exit_state_sha256,
+                 quality_sha256,dependencies_json,invalidated_by,metadata_json,
+                 created_at,updated_at)
+                VALUES (?,?,?,?,'sealed',?,?,?,?,?,?,?,NULL,?,datetime('now'),datetime('now'))""",
+                (
+                    run_id, unit_type, unit_id, generation, authority_sha256,
+                    input_sha256, output_sha256, entry_state_sha256,
+                    exit_state_sha256, quality_sha256,
+                    json.dumps(dependencies or [], ensure_ascii=False),
+                    json.dumps(metadata or {}, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+        result = self.get_sealed_generation_unit(run_id, unit_type, unit_id)
+        assert result is not None
+        return result
+
+    def get_sealed_generation_unit(
+        self, run_id: str, unit_type: str, unit_id: str,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM sealed_generation_units WHERE run_id=? AND unit_type=? "
+                "AND unit_id=? ORDER BY generation DESC LIMIT 1",
+                (run_id, unit_type, unit_id),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["dependencies"] = json.loads(result.pop("dependencies_json") or "[]")
+        result["metadata"] = json.loads(result.pop("metadata_json") or "{}")
+        return result
+
+    def invalidate_generation_scope(
+        self, *, run_id: str, dependency_ids: set[str], reason: str,
+    ) -> list[str]:
+        """Invalidate only sealed units whose declared dependency set intersects."""
+
+        if not dependency_ids:
+            return []
+        invalidated: list[str] = []
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM sealed_generation_units WHERE run_id=? AND status='sealed'",
+                (run_id,),
+            ).fetchall()
+            for row in rows:
+                dependencies = set(json.loads(row["dependencies_json"] or "[]"))
+                if not dependencies.intersection(dependency_ids):
+                    continue
+                connection.execute(
+                    "UPDATE sealed_generation_units SET status='invalidated',invalidated_by=?,"
+                    "updated_at=datetime('now') WHERE run_id=? AND unit_type=? AND unit_id=? AND generation=?",
+                    (reason, run_id, row["unit_type"], row["unit_id"], row["generation"]),
+                )
+                invalidated.append(f"{row['unit_type']}:{row['unit_id']}")
+        return sorted(invalidated)
 
     def save_provider(
         self,
@@ -876,16 +1400,569 @@ class Database:
 
     def create_run_if_idle(self, run_id: str, project_id: str, workflow: str,
                            status: str = "queued") -> bool:
+        active = ",".join("?" for _ in ACTIVE_RUN_STATUSES)
         with self.connect() as connection:
             cursor = connection.execute(
                 "INSERT INTO runs (id, project_id, workflow, status, current_stage, error, created_at, updated_at) "
                 "SELECT ?, ?, ?, ?, NULL, NULL, datetime('now'), datetime('now') "
                 "WHERE NOT EXISTS ("
-                "SELECT 1 FROM runs WHERE project_id=? AND status IN ('queued','running','cancelling')"
+                f"SELECT 1 FROM runs WHERE project_id=? AND status IN ({active})"
                 ")",
-                (run_id, project_id, workflow, status, project_id),
+                (run_id, project_id, workflow, status, project_id, *ACTIVE_RUN_STATUSES),
             )
         return cursor.rowcount == 1
+
+    def activate_supervised_run(
+        self, *, run_id: str, project_id: str, workflow: str,
+        resume_payload: dict[str, Any], retry_budgets: dict[str, int],
+        expected_statuses: set[str] | None = None,
+        attempt_action: str | None = None,
+    ) -> bool:
+        """Atomically create/claim a run and install its queued supervisor.
+
+        ``expected_statuses is None`` creates a new run. Otherwise the same
+        transaction claims an existing run. A failed supervision write rolls
+        back the run insert/status claim, so no active run can exist without a
+        durable restart envelope.
+        """
+
+        payload = self.validate_workflow_resume_payload(workflow, resume_payload)
+        active = ",".join("?" for _ in ACTIVE_RUN_STATUSES)
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            current_run = connection.execute(
+                "SELECT * FROM runs WHERE id=?", (run_id,),
+            ).fetchone()
+            current_supervision = connection.execute(
+                "SELECT state FROM workflow_supervision WHERE run_id=?", (run_id,),
+            ).fetchone()
+            if expected_statuses is None:
+                if current_run is not None:
+                    return False
+                cursor = connection.execute(
+                    "INSERT INTO runs "
+                    "(id,project_id,workflow,status,current_stage,error,created_at,updated_at) "
+                    "SELECT ?,?,?,'queued',NULL,NULL,datetime('now'),datetime('now') "
+                    "WHERE NOT EXISTS ("
+                    f"SELECT 1 FROM runs WHERE project_id=? AND status IN ({active})"
+                    ")",
+                    (run_id, project_id, workflow, project_id, *ACTIVE_RUN_STATUSES),
+                )
+                action = "created"
+            else:
+                if current_run is None:
+                    return False
+                ordered = sorted(expected_statuses)
+                if not ordered:
+                    return False
+                placeholders = ",".join("?" for _ in ordered)
+                cursor = connection.execute(
+                    "UPDATE runs SET status='queued',current_stage=NULL,error=NULL,"
+                    "updated_at=datetime('now') WHERE id=? AND project_id=? AND workflow=? "
+                    f"AND status IN ({placeholders}) AND NOT EXISTS ("
+                    "SELECT 1 FROM runs active WHERE active.project_id=? AND active.id<>? "
+                    f"AND active.status IN ({active}))",
+                    (
+                        run_id, project_id, workflow, *ordered, project_id, run_id,
+                        *ACTIVE_RUN_STATUSES,
+                    ),
+                )
+                if current_supervision is None:
+                    action = "created"
+                elif str(current_run["status"]) == "waiting_provider":
+                    action = "resume_validated_checkpoint"
+                else:
+                    action = "manual_resume"
+            if attempt_action is not None:
+                if attempt_action not in {
+                    "created", "manual_resume", "resume_validated_checkpoint",
+                }:
+                    raise ValueError("unsupported supervised run activation action")
+                action = attempt_action
+            if cursor.rowcount != 1:
+                return False
+
+            connection.execute(
+                """INSERT INTO workflow_supervision
+                (run_id,contract_version,state,resume_payload_json,retry_budgets_json,
+                 used_budgets_json,next_retry_at,lease_owner,lease_expires_at,
+                 last_failure_class,last_failure_sha256,last_error_summary,
+                 created_at,updated_at)
+                VALUES (?,?,'queued',?,?,?,NULL,NULL,NULL,NULL,NULL,NULL,
+                        datetime('now'),datetime('now'))
+                ON CONFLICT(run_id) DO UPDATE SET
+                contract_version=excluded.contract_version,
+                state='queued',resume_payload_json=excluded.resume_payload_json,
+                next_retry_at=NULL,lease_owner=NULL,lease_expires_at=NULL,
+                updated_at=datetime('now')""",
+                (
+                    run_id, WORKFLOW_SUPERVISION_CONTRACT_VERSION,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                    json.dumps(retry_budgets, ensure_ascii=False, sort_keys=True),
+                    json.dumps({}, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,'queued',?,NULL,NULL,NULL,NULL,'{}',datetime('now'))""",
+                (run_id, attempt, action),
+            )
+            event_type = "queued" if expected_statuses is None else "resumed"
+            message = (
+                "Run queued" if expected_statuses is None
+                else "Resuming from validated progress"
+            )
+            connection.execute(
+                """INSERT INTO run_events
+                (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                VALUES (?,'info',?,'queue',?,'{}',datetime('now'))""",
+                (run_id, event_type, message),
+            )
+        return True
+
+    def enter_supervised_run_running(self, run_id: str) -> bool:
+        """Atomically enter worker execution with matching durable audit state."""
+
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                "UPDATE runs SET status='running',current_stage='starting',error=NULL,"
+                "updated_at=datetime('now') WHERE id=? AND status='queued'",
+                (run_id,),
+            )
+            if cursor.rowcount != 1:
+                return False
+            supervision = connection.execute(
+                "UPDATE workflow_supervision SET state='running',next_retry_at=NULL,"
+                "updated_at=datetime('now') WHERE run_id=? AND state='queued'",
+                (run_id,),
+            )
+            if supervision.rowcount != 1:
+                raise RuntimeError("queued run is missing its queued supervision envelope")
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,'running','execute_from_checkpoint',NULL,NULL,
+                        NULL,NULL,'{}',datetime('now'))""",
+                (run_id, attempt),
+            )
+            connection.execute(
+                """INSERT INTO run_events
+                (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                VALUES (?,'info','started','starting','Run started','{}',datetime('now'))""",
+                (run_id,),
+            )
+        return True
+
+    def interrupt_supervised_run_launch_failure(
+        self, run_id: str, *, failure_sha256: str,
+        failure_code: str = "runtime.worker_launch_failed",
+        action: str = "worker_launch_failed",
+        summary: str | None = None,
+    ) -> None:
+        """Atomically make a failed queued-to-worker handoff resumable."""
+
+        safe_summary = summary or (
+            "The workflow worker could not be launched; validated progress "
+            "was preserved for restart recovery."
+        )
+        metadata = json.dumps({
+            "failure_code": failure_code,
+            "failure_class": "unknown",
+            "failure_sha256": failure_sha256,
+            "error_summary": safe_summary,
+        }, ensure_ascii=False, sort_keys=True)
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            cursor = connection.execute(
+                "UPDATE runs SET status='interrupted',error=?,updated_at=datetime('now') "
+                "WHERE id=? AND status='queued'",
+                (safe_summary, run_id),
+            )
+            if cursor.rowcount != 1:
+                return
+            connection.execute(
+                "UPDATE workflow_supervision SET state='interrupted',next_retry_at=NULL,"
+                "last_failure_class='unknown',last_failure_sha256=?,last_error_summary=?,"
+                "updated_at=datetime('now') WHERE run_id=?",
+                (failure_sha256, safe_summary, run_id),
+            )
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,'interrupted',?,'unknown',?,
+                        NULL,NULL,?,datetime('now'))""",
+                (run_id, attempt, action, failure_sha256, metadata),
+            )
+            connection.execute(
+                """INSERT INTO run_events
+                (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                VALUES (?,'warning',?,'queue',?,?,datetime('now'))""",
+                (run_id, action, safe_summary, metadata),
+            )
+
+    def interrupt_supervised_run_outcome_failure(
+        self, run_id: str, *, failure_sha256: str,
+        intended_outcome: str,
+        intended_transition: dict[str, Any] | None = None,
+        action: str = "worker_outcome_commit_failed",
+        summary: str | None = None,
+    ) -> bool:
+        """Atomically make a failed worker-outcome commit restart-recoverable."""
+
+        if intended_outcome not in {
+            "completed", "waiting_provider", "waiting_user", "failed", "cancelled",
+        }:
+            raise ValueError("unsupported intended worker outcome")
+
+        safe_summary = summary or (
+            "The worker outcome could not be committed; validated progress "
+            "was preserved for restart recovery."
+        )
+        metadata = json.dumps({
+            "failure_code": "runtime.worker_outcome_commit_failed",
+            "failure_class": "unknown",
+            "failure_sha256": failure_sha256,
+            "error_summary": safe_summary,
+            "intended_outcome": intended_outcome,
+            "intended_transition": intended_transition or {},
+        }, ensure_ascii=False, sort_keys=True)
+        coherent_terminal_pairs = {
+            ("completed", "completed"),
+            ("failed", "irrecoverable"),
+            ("waiting_user", "waiting_user"),
+            ("cancelled", "cancelled"),
+            ("waiting_provider", "waiting_provider"),
+            ("interrupted", "interrupted"),
+        }
+        allowed_run_statuses = {
+            *ACTIVE_RUN_STATUSES, "completed", "failed", "waiting_user",
+            "cancelled", "interrupted",
+        }
+        allowed_supervision_states = {
+            "queued", "running", "waiting_provider", "recovering_protocol",
+            "recovering_semantic", "quality_repair", "waiting_user",
+            "irrecoverable", "completed", "cancelled", "interrupted",
+        }
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            pair = connection.execute(
+                "SELECT r.status,s.state FROM runs r "
+                "JOIN workflow_supervision s ON s.run_id=r.id WHERE r.id=?",
+                (run_id,),
+            ).fetchone()
+            if pair is None:
+                return False
+            current_pair = (str(pair["status"]), str(pair["state"]))
+            if current_pair in coherent_terminal_pairs:
+                return True
+            if (
+                current_pair[0] not in allowed_run_statuses
+                or current_pair[1] not in allowed_supervision_states
+            ):
+                return False
+            connection.execute(
+                "UPDATE runs SET status='interrupted',error=?,updated_at=datetime('now') "
+                "WHERE id=?",
+                (safe_summary, run_id),
+            )
+            connection.execute(
+                "UPDATE workflow_supervision SET state='interrupted',next_retry_at=NULL,"
+                "last_failure_class='unknown',last_failure_sha256=?,last_error_summary=?,"
+                "lease_owner=NULL,lease_expires_at=NULL,updated_at=datetime('now') "
+                "WHERE run_id=?",
+                (failure_sha256, safe_summary, run_id),
+            )
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,'interrupted',?,'unknown',?,NULL,NULL,?,datetime('now'))""",
+                (run_id, attempt, action, failure_sha256, metadata),
+            )
+            connection.execute(
+                """INSERT INTO run_events
+                (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                VALUES (?,'warning',?,'runtime',?,?,datetime('now'))""",
+                (run_id, action, safe_summary, metadata),
+            )
+        return True
+
+    def _commit_supervised_transition(
+        self, *, run_id: str, expected_run_statuses: set[str],
+        expected_supervision_states: set[str], run_status: str,
+        run_stage: str | None, run_error: str | None,
+        supervision_state: str, used_budgets: dict[str, int] | None,
+        next_retry_at: str | None, failure_class: str | None,
+        failure_sha256: str | None, last_error_summary: str | None,
+        attempt_action: str, attempt_metadata: dict[str, Any] | None,
+        event_severity: str, event_type: str, event_stage: str | None,
+        event_message: str, event_metadata: dict[str, Any] | None,
+        incident: dict[str, str] | None = None,
+    ) -> bool:
+        """Commit one legal worker outcome as a single durable state change."""
+
+        legal_pairs = {
+            ("waiting_provider", "waiting_provider"),
+            ("waiting_user", "waiting_user"),
+            ("failed", "irrecoverable"),
+            ("completed", "completed"),
+            ("cancelled", "cancelled"),
+        }
+        if (run_status, supervision_state) not in legal_pairs:
+            raise ValueError("unsupported supervised run transition")
+        if not expected_run_statuses or not expected_supervision_states:
+            raise ValueError("supervised transition requires expected states")
+        if incident is not None and event_severity != "error":
+            raise ValueError("incident transitions must emit an error event")
+
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            run = connection.execute(
+                "SELECT status FROM runs WHERE id=?", (run_id,),
+            ).fetchone()
+            supervision = connection.execute(
+                "SELECT state,used_budgets_json FROM workflow_supervision WHERE run_id=?",
+                (run_id,),
+            ).fetchone()
+            if run is None or supervision is None:
+                return False
+            current_run = str(run["status"])
+            current_supervision = str(supervision["state"])
+            if (
+                current_run == run_status
+                and current_supervision == supervision_state
+            ):
+                return True
+            if (
+                current_run not in expected_run_statuses
+                or current_supervision not in expected_supervision_states
+            ):
+                return False
+
+            connection.execute(
+                "UPDATE runs SET status=?,current_stage=?,error=?,"
+                "updated_at=datetime('now') WHERE id=?",
+                (run_status, run_stage, run_error, run_id),
+            )
+            effective_used = used_budgets
+            if effective_used is None:
+                try:
+                    loaded_used = json.loads(supervision["used_budgets_json"] or "{}")
+                except (TypeError, json.JSONDecodeError):
+                    loaded_used = {}
+                effective_used = loaded_used if isinstance(loaded_used, dict) else {}
+            connection.execute(
+                "UPDATE workflow_supervision SET state=?,used_budgets_json=?,"
+                "next_retry_at=?,last_failure_class=COALESCE(?,last_failure_class),"
+                "last_failure_sha256=COALESCE(?,last_failure_sha256),"
+                "last_error_summary=COALESCE(?,last_error_summary),"
+                "lease_owner=NULL,lease_expires_at=NULL,updated_at=datetime('now') "
+                "WHERE run_id=?",
+                (
+                    supervision_state,
+                    json.dumps(effective_used, ensure_ascii=False, sort_keys=True),
+                    next_retry_at, failure_class, failure_sha256,
+                    last_error_summary, run_id,
+                ),
+            )
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,?,?,?,?,NULL,NULL,?,datetime('now'))""",
+                (
+                    run_id, attempt, supervision_state, attempt_action,
+                    failure_class, failure_sha256,
+                    json.dumps(attempt_metadata or {}, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+            if incident is not None:
+                self.record_run_failure(
+                    run_id, event_type, event_message, stage=event_stage,
+                    incident=incident, connection=connection,
+                )
+            else:
+                connection.execute(
+                    """INSERT INTO run_events
+                    (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                    VALUES (?,?,?,?,?,?,datetime('now'))""",
+                    (
+                        run_id, event_severity, event_type, event_stage,
+                        event_message,
+                        json.dumps(event_metadata or {}, ensure_ascii=False, sort_keys=True),
+                    ),
+                )
+        return True
+
+    def commit_supervised_provider_wait(
+        self, *, run_id: str, stage: str, error_summary: str,
+        used_budgets: dict[str, int], next_retry_at: str,
+        failure_class: str, failure_sha256: str,
+        attempt_action: str, retry_metadata: dict[str, Any],
+        event_metadata: dict[str, Any],
+        degraded_failure_sha256: str | None = None,
+    ) -> bool:
+        degraded = degraded_failure_sha256 is not None
+        audit_metadata = {
+            **event_metadata,
+            **({
+                "intended_outcome": "waiting_provider",
+                "outcome_commit_failure_sha256": degraded_failure_sha256,
+            } if degraded else {}),
+        }
+        return self._commit_supervised_transition(
+            run_id=run_id,
+            expected_run_statuses={"running", "waiting_provider"},
+            expected_supervision_states={"running", "waiting_provider"},
+            run_status="waiting_provider", run_stage=stage,
+            run_error=error_summary, supervision_state="waiting_provider",
+            used_budgets=used_budgets, next_retry_at=next_retry_at,
+            failure_class=failure_class, failure_sha256=failure_sha256,
+            last_error_summary=error_summary,
+            attempt_action=(
+                "worker_outcome_commit_degraded" if degraded else attempt_action
+            ),
+            attempt_metadata={
+                **retry_metadata, **(audit_metadata if degraded else {}),
+            },
+            event_severity="warning",
+            event_type=(
+                "worker_outcome_commit_degraded" if degraded else "waiting_provider"
+            ),
+            event_stage=stage, event_message=error_summary,
+            event_metadata=audit_metadata,
+        )
+
+    def commit_supervised_terminal_failure(
+        self, *, run_id: str, supervision_state: str, stage: str,
+        error_summary: str, used_budgets: dict[str, int],
+        failure_class: str, failure_sha256: str, attempt_action: str,
+        attempt_metadata: dict[str, Any], event_type: str,
+        incident: dict[str, str] | None,
+        event_metadata: dict[str, Any] | None = None,
+        degraded_failure_sha256: str | None = None,
+    ) -> bool:
+        if supervision_state not in {"waiting_user", "irrecoverable"}:
+            raise ValueError("unsupported terminal supervision state")
+        run_status = "waiting_user" if supervision_state == "waiting_user" else "failed"
+        degraded = degraded_failure_sha256 is not None
+        audit_metadata = {
+            **(event_metadata if event_metadata is not None else incident or {}),
+            **({
+                "intended_outcome": run_status,
+                "outcome_commit_failure_sha256": degraded_failure_sha256,
+            } if degraded else {}),
+        }
+        return self._commit_supervised_transition(
+            run_id=run_id,
+            expected_run_statuses={"running", "failed", "waiting_user"},
+            expected_supervision_states={"running", supervision_state},
+            run_status=run_status, run_stage=stage, run_error=error_summary,
+            supervision_state=supervision_state, used_budgets=used_budgets,
+            next_retry_at=None, failure_class=failure_class,
+            failure_sha256=failure_sha256,
+            last_error_summary=error_summary,
+            attempt_action=(
+                "worker_outcome_commit_degraded" if degraded else attempt_action
+            ),
+            attempt_metadata={
+                **attempt_metadata, **(audit_metadata if degraded else {}),
+            },
+            event_severity="error",
+            event_type=(
+                "worker_outcome_commit_degraded" if degraded else event_type
+            ),
+            event_stage=stage,
+            event_message=error_summary,
+            event_metadata=audit_metadata,
+            incident=None if degraded else incident,
+        )
+
+    def commit_supervised_completion(
+        self, run_id: str, *, degraded_failure_sha256: str | None = None,
+    ) -> bool:
+        degraded = degraded_failure_sha256 is not None
+        metadata = ({
+            "intended_outcome": "completed",
+            "outcome_commit_failure_sha256": degraded_failure_sha256,
+        } if degraded else {})
+        return self._commit_supervised_transition(
+            run_id=run_id,
+            expected_run_statuses={"running", "completed"},
+            expected_supervision_states={"running", "completed"},
+            run_status="completed", run_stage="archive", run_error=None,
+            supervision_state="completed", used_budgets=None,
+            next_retry_at=None, failure_class=None, failure_sha256=None,
+            last_error_summary=None,
+            attempt_action=(
+                "worker_outcome_commit_degraded"
+                if degraded else "all_gates_completed"
+            ),
+            attempt_metadata=metadata, event_severity="success",
+            event_type=(
+                "worker_outcome_commit_degraded" if degraded else "completed"
+            ),
+            event_stage="archive", event_message="Run completed",
+            event_metadata=metadata,
+        )
+
+    def commit_supervised_cancellation(
+        self, run_id: str, *, degraded_failure_sha256: str | None = None,
+    ) -> bool:
+        degraded = degraded_failure_sha256 is not None
+        metadata = ({
+            "intended_outcome": "cancelled",
+            "outcome_commit_failure_sha256": degraded_failure_sha256,
+        } if degraded else {})
+        return self._commit_supervised_transition(
+            run_id=run_id,
+            expected_run_statuses={
+                "queued", "running", "cancelling", "waiting_provider",
+                "waiting_user", "cancelled",
+            },
+            expected_supervision_states={
+                "queued", "running", "waiting_provider", "waiting_user", "cancelled",
+            },
+            run_status="cancelled", run_stage=None,
+            run_error="Cancelled by user", supervision_state="cancelled",
+            used_budgets=None, next_retry_at=None, failure_class=None,
+            failure_sha256=None, last_error_summary=None,
+            attempt_action=(
+                "worker_outcome_commit_degraded"
+                if degraded else "cancelled_by_user"
+            ),
+            attempt_metadata=metadata,
+            event_severity="warning", event_type=(
+                "worker_outcome_commit_degraded" if degraded else "cancelled"
+            ),
+            event_stage=None, event_message="Run cancelled by user",
+            event_metadata=metadata,
+        )
 
     def update_run(self, run_id: str, status: str, current_stage: str | None = None,
                    error: str | None = None) -> None:
@@ -907,15 +1984,16 @@ class Database:
         idle_clause = ""
         arguments: list[Any] = [status, current_stage, run_id, *ordered]
         if require_project_idle:
+            active = ",".join("?" for _ in ACTIVE_RUN_STATUSES)
             idle_clause = (
                 " AND NOT EXISTS ("
                 "SELECT 1 FROM runs active WHERE active.project_id=("
                 "SELECT project_id FROM runs WHERE id=?"
                 ") AND active.id<>? "
-                "AND active.status IN ('queued','running','cancelling')"
+                f"AND active.status IN ({active})"
                 ")"
             )
-            arguments.extend((run_id, run_id))
+            arguments.extend((run_id, run_id, *ACTIVE_RUN_STATUSES))
         with self.connect() as connection:
             cursor = connection.execute(
                 "UPDATE runs SET status=?, current_stage=?, error=NULL, "
@@ -937,11 +2015,25 @@ class Database:
                 (project_id,),
             )]
 
+    def list_nonterminal_workflow_runs(
+        self, workflow: str,
+    ) -> list[dict[str, Any]]:
+        """Return only durable workflow sagas that may require recovery."""
+
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT * FROM runs WHERE workflow=? "
+                "AND status NOT IN ('completed','failed','cancelled') "
+                "ORDER BY created_at, rowid",
+                (workflow,),
+            )]
+
     def has_active_runs(self, project_id: str) -> bool:
+        active = ",".join("?" for _ in ACTIVE_RUN_STATUSES)
         with self.connect() as connection:
             row = connection.execute(
-                "SELECT 1 FROM runs WHERE project_id=? AND status IN ('queued', 'running', 'cancelling') LIMIT 1",
-                (project_id,),
+                f"SELECT 1 FROM runs WHERE project_id=? AND status IN ({active}) LIMIT 1",
+                (project_id, *ACTIVE_RUN_STATUSES),
             ).fetchone()
         return row is not None
 
@@ -1015,9 +2107,10 @@ class Database:
     def record_run_failure(
         self, run_id: str, event_type: str, message: str, *,
         stage: str | None, incident: dict[str, str],
+        connection: sqlite3.Connection | None = None,
     ) -> dict[str, Any]:
         """Atomically record one terminal failure and its recurrence metadata."""
-        with self.connect() as connection:
+        with self._connection_scope(connection) as connection:
             rows = connection.execute(
                 "SELECT e.run_id, e.metadata_json, e.message, e.stage, e.created_at, "
                 "r.workflow, r.current_stage "
@@ -1162,13 +2255,210 @@ class Database:
         )
 
     def interrupt_active_runs(self) -> int:
+        # A provider wait is already a durable timer and survives restart.
+        # In-flight execution/recovery states lose their worker lease and must
+        # be converted to an explicit resumable interruption.
+        in_flight = (
+            "'queued', 'running', 'cancelling', 'recovering_protocol', "
+            "'recovering_semantic', 'quality_repair'"
+        )
         with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            # A last-resort interrupted state retains the business outcome in
+            # a hash-only attempt envelope.  Reconcile that intent before the
+            # generic interrupted-run scheduler can replay completed,
+            # cancelled or exhausted work.
+            intended_rows = connection.execute(
+                "SELECT r.id,a.metadata_json FROM runs r "
+                "JOIN workflow_supervision s ON s.run_id=r.id "
+                "JOIN workflow_attempts a ON a.id=(SELECT MAX(latest.id) "
+                "FROM workflow_attempts latest WHERE latest.run_id=r.id) "
+                "WHERE r.status='interrupted' AND s.state='interrupted' "
+                "AND a.action='worker_outcome_commit_failed'"
+            ).fetchall()
+            intended_targets = {
+                "completed": ("completed", "completed", "archive", None),
+                "cancelled": ("cancelled", "cancelled", None, "Cancelled by user"),
+                "failed": ("failed", "irrecoverable", None, None),
+                "waiting_user": ("waiting_user", "waiting_user", None, None),
+                "waiting_provider": (
+                    "waiting_provider", "waiting_provider", None, None,
+                ),
+            }
+            for row in intended_rows:
+                try:
+                    metadata = json.loads(row["metadata_json"] or "{}")
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                if not isinstance(metadata, dict):
+                    continue
+                intended_outcome = metadata.get("intended_outcome")
+                transition = metadata.get("intended_transition") or {}
+                if (
+                    not isinstance(intended_outcome, str)
+                    or intended_outcome not in intended_targets
+                    or not isinstance(transition, dict)
+                ):
+                    continue
+                run_status, supervision_state, default_stage, default_error = \
+                    intended_targets[str(intended_outcome)]
+                stage = transition.get("stage") or default_stage
+                error_summary = transition.get("error_summary") or default_error
+                used_budgets = transition.get("used_budgets")
+                if not isinstance(used_budgets, dict):
+                    used_budgets = None
+                next_retry_at = transition.get("next_retry_at")
+                if not isinstance(next_retry_at, str):
+                    next_retry_at = None
+                failure_class = transition.get("failure_class")
+                if not isinstance(failure_class, str):
+                    failure_class = None
+                failure_sha256 = transition.get("failure_sha256")
+                if not isinstance(failure_sha256, str):
+                    failure_sha256 = None
+                connection.execute(
+                    "UPDATE runs SET status=?,current_stage=?,error=?,"
+                    "updated_at=datetime('now') WHERE id=?",
+                    (run_status, stage, error_summary, row["id"]),
+                )
+                connection.execute(
+                    "UPDATE workflow_supervision SET state=?,"
+                    "used_budgets_json=COALESCE(?,used_budgets_json),"
+                    "next_retry_at=?,last_failure_class=COALESCE(?,last_failure_class),"
+                    "last_failure_sha256=COALESCE(?,last_failure_sha256),"
+                    "last_error_summary=COALESCE(?,last_error_summary),"
+                    "updated_at=datetime('now') WHERE run_id=?",
+                    (
+                        supervision_state,
+                        (
+                            json.dumps(used_budgets, ensure_ascii=False, sort_keys=True)
+                            if used_budgets is not None else None
+                        ),
+                        next_retry_at, failure_class, failure_sha256,
+                        error_summary, row["id"],
+                    ),
+                )
+                attempt = int(connection.execute(
+                    "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                    (row["id"],),
+                ).fetchone()[0])
+                connection.execute(
+                    """INSERT INTO workflow_attempts
+                    (run_id,attempt,state,action,failure_class,failure_sha256,
+                     authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                    VALUES (?,?,?,'startup_outcome_intent_reconciliation',NULL,NULL,
+                            NULL,NULL,'{}',datetime('now'))""",
+                    (row["id"], attempt, supervision_state),
+                )
+                connection.execute(
+                    """INSERT INTO run_events
+                    (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                    VALUES (?,'warning','outcome_intent_reconciled','startup',
+                            'Recovered the intended worker outcome','{}',datetime('now'))""",
+                    (row["id"],),
+                )
+
+            # Reconcile legacy split writes before treating live work as an
+            # interruption.  A terminal supervisor decision is authoritative
+            # over an active run; a terminal/public run is authoritative over
+            # an in-flight supervisor.  New worker outcomes use one transaction,
+            # but this read-time bridge keeps pre-upgrade rows recoverable.
+            terminal_supervision = {
+                "completed": ("completed", "archive"),
+                "irrecoverable": ("failed", None),
+                "waiting_user": ("waiting_user", None),
+                "cancelled": ("cancelled", None),
+                "waiting_provider": ("waiting_provider", None),
+            }
+            split_supervisor_rows = connection.execute(
+                "SELECT r.id,r.status,s.state FROM runs r "
+                "JOIN workflow_supervision s ON s.run_id=r.id "
+                f"WHERE r.status IN ({in_flight},'interrupted') "
+                "AND s.state IN ('completed','irrecoverable','waiting_user',"
+                "'cancelled','waiting_provider')"
+            ).fetchall()
+            for row in split_supervisor_rows:
+                target_status, target_stage = terminal_supervision[str(row["state"])]
+                connection.execute(
+                    "UPDATE runs SET status=?,current_stage=COALESCE(?,current_stage),"
+                    "updated_at=datetime('now') WHERE id=?",
+                    (target_status, target_stage, row["id"]),
+                )
+                attempt = int(connection.execute(
+                    "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                    (row["id"],),
+                ).fetchone()[0])
+                connection.execute(
+                    """INSERT INTO workflow_attempts
+                    (run_id,attempt,state,action,failure_class,failure_sha256,
+                     authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                    VALUES (?,?,?,'startup_terminal_reconciliation',NULL,NULL,
+                            NULL,NULL,'{}',datetime('now'))""",
+                    (row["id"], attempt, row["state"]),
+                )
+                connection.execute(
+                    """INSERT INTO run_events
+                    (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                    VALUES (?,'warning','terminal_state_reconciled','startup',
+                            'Recovered a legacy split terminal transition','{}',datetime('now'))""",
+                    (row["id"],),
+                )
+
+            run_terminal = {
+                "completed": "completed",
+                "failed": "irrecoverable",
+                "cancelled": "cancelled",
+                "waiting_user": "waiting_user",
+                "waiting_provider": "waiting_provider",
+            }
+            split_run_rows = connection.execute(
+                "SELECT r.id,r.status,s.state FROM runs r "
+                "JOIN workflow_supervision s ON s.run_id=r.id "
+                "WHERE r.status IN ('completed','failed','cancelled','waiting_user',"
+                "'waiting_provider') AND s.state IN ('queued','running',"
+                "'recovering_protocol','recovering_semantic','quality_repair')"
+            ).fetchall()
+            for row in split_run_rows:
+                target_state = run_terminal[str(row["status"])]
+                connection.execute(
+                    "UPDATE workflow_supervision SET state=?,next_retry_at=NULL,"
+                    "lease_owner=NULL,lease_expires_at=NULL,updated_at=datetime('now') "
+                    "WHERE run_id=?",
+                    (target_state, row["id"]),
+                )
+                attempt = int(connection.execute(
+                    "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                    (row["id"],),
+                ).fetchone()[0])
+                connection.execute(
+                    """INSERT INTO workflow_attempts
+                    (run_id,attempt,state,action,failure_class,failure_sha256,
+                     authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                    VALUES (?,?,?,'startup_terminal_reconciliation',NULL,NULL,
+                            NULL,NULL,'{}',datetime('now'))""",
+                    (row["id"], attempt, target_state),
+                )
+                connection.execute(
+                    """INSERT INTO run_events
+                    (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                    VALUES (?,'warning','terminal_state_reconciled','startup',
+                            'Recovered a legacy split terminal transition','{}',datetime('now'))""",
+                    (row["id"],),
+                )
+
             rows = connection.execute(
-                "SELECT id FROM runs WHERE status IN ('queued', 'running', 'cancelling')"
+                f"SELECT id FROM runs WHERE status IN ({in_flight})"
             ).fetchall()
             connection.execute(
                 "UPDATE runs SET status='interrupted', error='Program restarted while task was active', "
-                "updated_at=datetime('now') WHERE status IN ('queued', 'running', 'cancelling')"
+                f"updated_at=datetime('now') WHERE status IN ({in_flight})"
+            )
+            connection.execute(
+                "UPDATE workflow_supervision SET state='interrupted',next_retry_at=NULL,"
+                "lease_owner=NULL,lease_expires_at=NULL,updated_at=datetime('now') "
+                "WHERE run_id IN (SELECT id FROM runs WHERE status='interrupted') "
+                "AND state IN ('queued','running','waiting_provider','recovering_protocol',"
+                "'recovering_semantic','quality_repair')"
             )
             for row in rows:
                 connection.execute(
@@ -1704,6 +2994,134 @@ class Database:
             return None
         result = dict(row)
         result["result"] = json.loads(result.pop("result_json"))
+        return result
+
+    def save_reference_distillation_region(
+        self, *, version_id: str, level: int, region_index: int,
+        source_start: int, source_end: int, input_sha256: str,
+        output_sha256: str, payload: dict[str, Any],
+        status: str = "validated",
+    ) -> dict[str, Any]:
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM reference_distillation_regions WHERE version_id=? "
+                "AND level=? AND region_index=? AND input_sha256=?",
+                (version_id, level, region_index, input_sha256),
+            ).fetchone()
+            if row and row["status"] == "validated" and (
+                status != "validated"
+                or row["output_sha256"] != output_sha256
+                or row["payload_json"] != json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True,
+                )
+            ):
+                raise ValueError("validated reference distillation region conflict")
+            connection.execute(
+                """INSERT INTO reference_distillation_regions
+                (version_id,level,region_index,source_start,source_end,input_sha256,
+                 output_sha256,status,payload_json,created_at,updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,datetime('now'),datetime('now'))
+                ON CONFLICT(version_id,level,region_index,input_sha256) DO UPDATE SET
+                output_sha256=excluded.output_sha256,status=excluded.status,
+                payload_json=excluded.payload_json,updated_at=datetime('now')""",
+                (
+                    version_id, level, region_index, source_start, source_end,
+                    input_sha256, output_sha256, status,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+        result = self.get_reference_distillation_region(
+            version_id=version_id, level=level, region_index=region_index,
+            input_sha256=input_sha256,
+        )
+        assert result is not None
+        return result
+
+    def get_reference_distillation_region(
+        self, *, version_id: str, level: int, region_index: int,
+        input_sha256: str,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM reference_distillation_regions WHERE version_id=? "
+                "AND level=? AND region_index=? AND input_sha256=?",
+                (version_id, level, region_index, input_sha256),
+            ).fetchone()
+        if row is None:
+            return None
+        result = dict(row)
+        result["payload"] = json.loads(result.pop("payload_json") or "{}")
+        return result
+
+    def record_originality_findings(
+        self, *, project_id: str, run_id: str | None, label: str,
+        findings: list[dict[str, Any]],
+    ) -> list[str]:
+        """Persist hash/offset-only originality evidence idempotently."""
+
+        recorded: list[str] = []
+        with self.connect() as connection:
+            for finding in findings:
+                source_key = str(finding.get("source_id") or "")
+                source_id = source_version_id = None
+                if source_key.startswith("reference:"):
+                    parts = source_key.split(":", 2)
+                    if len(parts) == 3:
+                        source_id, source_version_id = parts[1], parts[2]
+                identity = hashlib.sha256(json.dumps({
+                    "project_id": project_id, "run_id": run_id, "label": label,
+                    "finding_type": finding.get("finding_type"),
+                    "source": source_key,
+                    "manuscript_start": finding.get("manuscript_start"),
+                    "manuscript_end": finding.get("manuscript_end"),
+                    "source_start": finding.get("source_start"),
+                    "source_end": finding.get("source_end"),
+                    "evidence_sha256": finding.get("evidence_sha256"),
+                }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+                metadata = {
+                    **dict(finding.get("metadata") or {}),
+                    "analysis_label": label,
+                    "score": finding.get("score"),
+                    "comparison_source_key": source_key,
+                }
+                connection.execute(
+                    """INSERT OR IGNORE INTO originality_findings
+                    (id,project_id,run_id,source_id,source_version_id,finding_type,
+                     severity,manuscript_start,manuscript_end,source_start,source_end,
+                     evidence_sha256,metadata_json,status,created_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'open',datetime('now'))""",
+                    (
+                        identity, project_id, run_id, source_id, source_version_id,
+                        str(finding.get("finding_type") or "unknown"),
+                        str(finding.get("severity") or "review"),
+                        int(finding.get("manuscript_start") or 0),
+                        int(finding.get("manuscript_end") or 0),
+                        int(finding.get("source_start") or 0),
+                        int(finding.get("source_end") or 0),
+                        str(finding.get("evidence_sha256") or ""),
+                        json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+                    ),
+                )
+                recorded.append(identity)
+        return recorded
+
+    def list_originality_findings(
+        self, project_id: str, *, run_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        query = "SELECT * FROM originality_findings WHERE project_id=?"
+        params: list[Any] = [project_id]
+        if run_id is not None:
+            query += " AND run_id=?"
+            params.append(run_id)
+        query += " ORDER BY created_at,id"
+        with self.connect() as connection:
+            rows = connection.execute(query, params).fetchall()
+        result = []
+        for row in rows:
+            item = dict(row)
+            item["metadata"] = json.loads(item.pop("metadata_json") or "{}")
+            result.append(item)
         return result
 
     def save_change_request(self, request_id: str, project_id: str, lock_key: str,

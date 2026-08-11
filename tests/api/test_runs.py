@@ -184,11 +184,21 @@ def test_start_long_setup_and_chapter(tmp_path) -> None:
     setup = client.post(f"/api/projects/{project['id']}/runs/setup")
     assert setup.status_code == 202
     assert setup.json()["workflow"] == "long-setup"
+    whitespace = client.post(
+        f"/api/projects/{project['id']}/runs/chapter", json={"chapter_goal": " \t\n "},
+    )
+    assert whitespace.status_code == 422
     response = client.post(
-        f"/api/projects/{project['id']}/runs/chapter", json={"chapter_goal": "Reveal the old oath"},
+        f"/api/projects/{project['id']}/runs/chapter",
+        json={"chapter_goal": "  Reveal the old oath  "},
     )
     assert response.status_code == 202
     assert response.json()["workflow"] == "long-chapter"
+    supervision = client.app.state.registry.db.get_workflow_supervision(
+        response.json()["id"],
+    )
+    assert supervision is not None
+    assert supervision["resume_payload"] == {"chapter_goal": "Reveal the old oath"}
 
 
 def test_start_material_audit_and_repair_runs(tmp_path) -> None:

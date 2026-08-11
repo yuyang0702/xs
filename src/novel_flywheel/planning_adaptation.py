@@ -2001,12 +2001,32 @@ def effective_event_contracts(
         event = dict(contract)
         event_id = str(event.get("id") or "").upper()
         event_reviews = reviews.get(event_id, [])
-        evidence = list(dict.fromkeys(
-            str(item)
-            for review in event_reviews
-            for item in review.get("plan_evidence", [])
-            if str(item).strip()
-        ))
+        evidence_catalog: list[dict[str, str]] = []
+        evidence_by_id: dict[str, str] = {}
+        for review in event_reviews:
+            evidence_ids = review.get("plan_evidence_ids")
+            evidence_values = review.get("plan_evidence")
+            if not isinstance(evidence_ids, list) or not isinstance(evidence_values, list):
+                continue
+            if len(evidence_ids) != len(evidence_values):
+                raise ValueError(
+                    "accepted planning evidence IDs and texts must align exactly"
+                )
+            for raw_id, raw_text in zip(evidence_ids, evidence_values, strict=True):
+                evidence_id = str(raw_id or "").strip()
+                evidence_text = str(raw_text or "").strip()
+                if not evidence_id or not evidence_text:
+                    raise ValueError("accepted planning evidence entry is incomplete")
+                existing = evidence_by_id.get(evidence_id)
+                if existing is not None and existing != evidence_text:
+                    raise ValueError("accepted planning evidence ID has conflicting text")
+                if existing is None:
+                    evidence_by_id[evidence_id] = evidence_text
+                    evidence_catalog.append({
+                        "evidence_id": evidence_id,
+                        "text": evidence_text,
+                    })
+        evidence = [item["text"] for item in evidence_catalog]
         if event_reviews and evidence:
             review_classifications = [
                 _runtime_event_classification(
@@ -2060,6 +2080,7 @@ def effective_event_contracts(
             }
             event["formal_evidence"] = str(event.get("evidence") or "")
             event["evidence"] = "\n\n".join(str(item) for item in evidence)
+            event["evidence_catalog"] = evidence_catalog
             event["source"] = "accepted_plan_adaptation"
             event["adaptation"] = {
                 "classification": classification,

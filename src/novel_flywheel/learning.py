@@ -4,12 +4,14 @@ import hashlib
 import json
 import re
 import uuid
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
+from novel_flywheel.context_policy import estimate_input_tokens
 from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 from novel_flywheel.model_output import canonical_model_label
 from novel_flywheel.narrative_attraction import (
@@ -19,6 +21,19 @@ from novel_flywheel.narrative_attraction import (
 )
 from novel_flywheel.outlines import compact_market_reference
 from novel_flywheel.reference_library import ReferenceLibrary
+from novel_flywheel.reference_distillation import (
+    adoption_authority_kind,
+    canonical_sha256 as distillation_sha256,
+    compile_creative_recipe,
+    DistillationItemV1,
+    DistillationRegionV1,
+    DistillationReceiptV2,
+    distillation_needs_reduction,
+    distillation_regions,
+    leaf_distillation_items,
+    promoted_distillation_items,
+    validate_distillation_receipt,
+)
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.style_context import default_style_profile
 
@@ -30,6 +45,18 @@ WINDOW_RESULT_FIELDS = (
     "relationship_changes", "style_evidence",
 )
 WINDOW_MODEL_OUTPUT_TOKENS = 4096
+REFERENCE_DISTILLATION_CONTRACT = "reference-distillation-v2-attribution-v1"
+REFERENCE_DISTILLATION_MAX_INPUT_CHARACTERS = 48_000
+REFERENCE_SYNTHESIS_UNKNOWN_CONTEXT_TOKENS = 16_384
+REFERENCE_SYNTHESIS_CONTEXT_UTILIZATION = 0.80
+REFERENCE_DISTILLATION_PROMPT_RESERVE_TOKENS = 1_400
+REFERENCE_FINAL_PROMPT_RESERVE_TOKENS = 2_400
+REFERENCE_DISTILLATION_MIN_PAYLOAD_TOKENS = 1_024
+LOCAL_CANDIDATE_PROMPT_TOKENS = 6_000
+ADOPTION_IMMUTABLE_EDIT_FIELDS = frozenset({
+    "adoption_kind", "mechanism_type", "node_id", "node_type", "provenance",
+    "source_id",
+})
 STYLE_RULE_FIELDS = {
     "viewpoint", "narrative_distance", "sentence_rhythm", "paragraph_rhythm",
     "dialogue", "psychology", "action_sensation", "professional_detail",
@@ -85,12 +112,400 @@ class OutlineGenerationNotReady(ValueError):
     pass
 
 
+@dataclass(frozen=True)
+class ReferenceSynthesisRoutePlanV1:
+    """One capacity and dispatch decision shared by every synthesis call."""
+
+    version: Literal[1]
+    mode: Literal["auto", "primary", "fallback"]
+    input_token_limit: int
+    primary_input_token_limit: int
+    fallback_input_token_limit: int | None
+
+
 class LearningSystem:
     def __init__(self, db: Database, references: ReferenceLibrary, projects, gateway=None) -> None:
         self.db = db
         self.references = references
         self.projects = projects
         self.gateway = gateway
+
+    async def _hierarchical_reference_claims(
+        self, *, version: dict, claims: list[dict], content_type: str,
+        focus: str, progress=None, fanout: int = 6,
+        final_payload_tokens: int | None = None,
+        regional_payload_tokens: int | None = None,
+        route_plan: ReferenceSynthesisRoutePlanV1 | None = None,
+    ) -> list[dict]:
+        """Reduce every claim through resumable exact-coverage regions.
+
+        The returned list is always small enough for the final synthesis. No
+        claim is dropped or character-truncated: each level proves an exact
+        ordered child manifest and persists its validated semantic result.
+        """
+
+        route_plan = route_plan or self._reference_synthesis_route_plan()
+        route_input_tokens = route_plan.input_token_limit
+        final_payload_tokens = (
+            int(final_payload_tokens)
+            if final_payload_tokens is not None
+            else route_input_tokens - REFERENCE_DISTILLATION_PROMPT_RESERVE_TOKENS
+        )
+        regional_payload_tokens = (
+            int(regional_payload_tokens)
+            if regional_payload_tokens is not None
+            else route_input_tokens - REFERENCE_DISTILLATION_PROMPT_RESERVE_TOKENS
+        )
+        if min(final_payload_tokens, regional_payload_tokens) < (
+            REFERENCE_DISTILLATION_MIN_PAYLOAD_TOKENS
+        ):
+            raise ValueError(
+                "reference synthesis route has insufficient context for one semantic packet"
+            )
+
+        items = leaf_distillation_items(claims)
+        level = 0
+        while items and distillation_needs_reduction(
+            items, fanout=fanout,
+            max_payload_characters=REFERENCE_DISTILLATION_MAX_INPUT_CHARACTERS,
+            max_payload_tokens=final_payload_tokens,
+        ):
+            previous_count = len(items)
+            previous_tokens = sum(estimate_input_tokens(json.dumps(
+                item.payload, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), default=str,
+            )) for item in items)
+            regions = distillation_regions(
+                items, level=level, fanout=fanout,
+                max_payload_characters=REFERENCE_DISTILLATION_MAX_INPUT_CHARACTERS,
+                max_payload_tokens=regional_payload_tokens,
+            )
+            results: list[dict] = []
+            for region in regions:
+                scoped_input_sha256 = distillation_sha256({
+                    "contract": REFERENCE_DISTILLATION_CONTRACT,
+                    "content_type": content_type,
+                    "focus": focus,
+                    "region_input_sha256": region.input_sha256,
+                })
+                cached = self.db.get_reference_distillation_region(
+                    version_id=version["id"], level=level,
+                    region_index=region.region_index,
+                    input_sha256=scoped_input_sha256,
+                )
+                if (
+                    cached
+                    and cached.get("status") == "validated"
+                    and cached.get("output_sha256")
+                    == distillation_sha256(cached.get("payload") or {})
+                ):
+                    result = validate_distillation_receipt(
+                        region, cached["payload"],
+                    )
+                else:
+                    prompt = (
+                        "REFERENCE_DISTILLATION_REGION_V2. Return exactly one JSON "
+                        "receipt with version=2, covered_child_ids, child_dispositions, "
+                        "child_attributions, and semantic. covered_child_ids and "
+                        "child_dispositions must list "
+                        "the supplied child IDs once in exact order. Each disposition is "
+                        "promoted or no_transferable_claim and requires a concrete reason. "
+                        "Every promoted child needs typed child_attributions: use relation "
+                        "claim or uncertainty with a JSON-pointer semantic_path to a non-empty "
+                        "output value, or relation merged or superseded with related_child_ids "
+                        "that transitively reach such an output value. reason text is descriptive "
+                        "and never proves attribution. Supply exactly one attribution per promoted "
+                        "child. Direct claim/uncertainty paths must be unique; shared semantics "
+                        "must use an acyclic merged/superseded edge to one anchored child. "
+                        "semantic contains mechanisms, attraction_map, and style_profile. "
+                        "Abstract only reusable structure and style rules; remove names, "
+                        "distinctive wording, settings, and concrete plot packaging. "
+                        "Use Simplified Chinese for human-visible fields. mechanisms must "
+                        "be an array with at most 3 items; each item requires name, "
+                        "supporting_windows, transfer_guidance, structural_position, "
+                        "trigger_conditions, state_change, emotional_effect, "
+                        "required_preparation, downstream_consequence, incompatible_conditions, "
+                        "applicable_modes, applicable_stages, applicable_genres, and confidence. "
+                        "attraction_map may be {}. style_profile may be {}, otherwise it "
+                        "requires summary, rules, and uncertainties. Preserve every child "
+                        "identity in supporting_windows or uncertainty evidence; do not invent "
+                        "Runtime IDs.\n"
+                        f"REFERENCE PURPOSE: {content_type}. {focus}\n"
+                        f"LEVEL: {level}\nREGION: {region.region_index}\n"
+                        "CHILD MANIFEST:\n"
+                        + json.dumps(region.child_ids, ensure_ascii=False)
+                        + "\nCHILD PAYLOADS:\n"
+                        + json.dumps(region.payloads, ensure_ascii=False)
+                    )
+                    _response, receipt = await self._execute_reference_synthesis(
+                        route_plan=route_plan,
+                        system=(
+                            "You perform evidence-preserving hierarchical reference "
+                            "distillation."
+                        ),
+                        user=prompt,
+                        validator=lambda text: GeneratedArtifactGateway().convert_object(
+                            text,
+                            contract_name="reference_distillation_region",
+                            semantic_normalizer=lambda value: (
+                                self._normalize_distillation_receipt(region, value)
+                            ),
+                        ).payload,
+                    )
+                    result = validate_distillation_receipt(region, receipt)
+                    self.db.save_reference_distillation_region(
+                        version_id=version["id"], level=level,
+                        region_index=region.region_index,
+                        source_start=region.source_start,
+                        source_end=region.source_end,
+                        input_sha256=scoped_input_sha256,
+                        output_sha256=distillation_sha256(receipt),
+                        payload=receipt,
+                    )
+                results.append(result)
+                if progress:
+                    progress({
+                        "phase": "distilling_regions", "level": level,
+                        "completed_regions": len(results),
+                        "total_regions": len(regions),
+                    })
+            items = promoted_distillation_items(regions, results)
+            current_tokens = sum(estimate_input_tokens(json.dumps(
+                item.payload, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), default=str,
+            )) for item in items)
+            if len(items) >= previous_count and current_tokens >= previous_tokens:
+                raise ValueError(
+                    "reference distillation did not reduce its route-bound semantic payload"
+                )
+            level += 1
+            if level > 12:
+                raise ValueError("reference distillation exceeded its bounded reduction depth")
+        return [item.payload for item in items]
+
+    def _reference_synthesis_route_plan(self) -> ReferenceSynthesisRoutePlanV1:
+        """Negotiate one versioned route/capacity contract for the whole reduction."""
+        binding = self.db.get_role_binding("reference_synthesis") or {}
+        primary_model_id = binding.get("primary_model_id")
+        fallback_model_id = (
+            binding.get("fallback_model_id")
+            if binding.get("fallback_provider_id") and binding.get("fallback_model_id")
+            else None
+        )
+        if (
+            not binding
+            and callable(getattr(self.gateway, "complete_configured_fallback", None))
+        ):
+            # Test/embedded gateways may own routing without a registry-backed
+            # binding. Treat that declared executor as an unknown-capacity
+            # fallback; configured production bindings remain authoritative.
+            fallback_model_id = "__gateway_managed_fallback__"
+
+        def route_limit(model_id: object) -> int:
+            model = self.db.get_model(str(model_id)) if model_id else None
+            context_window = (
+                int(model.get("context_window"))
+                if model and isinstance(model.get("context_window"), int)
+                and int(model["context_window"]) > 0
+                else REFERENCE_SYNTHESIS_UNKNOWN_CONTEXT_TOKENS
+            )
+            declared_output = (
+                int(model.get("max_output_tokens"))
+                if model and isinstance(model.get("max_output_tokens"), int)
+                and int(model["max_output_tokens"]) > 0
+                else WINDOW_MODEL_OUTPUT_TOKENS
+            )
+            output_reserve = min(WINDOW_MODEL_OUTPUT_TOKENS, declared_output)
+            return (
+                int(context_window * REFERENCE_SYNTHESIS_CONTEXT_UTILIZATION)
+                - output_reserve
+            )
+
+        primary_limit = route_limit(primary_model_id)
+        fallback_limit = route_limit(fallback_model_id) if fallback_model_id else None
+        primary_viable = primary_limit >= REFERENCE_DISTILLATION_MIN_PAYLOAD_TOKENS
+        fallback_viable = (
+            fallback_limit is not None
+            and fallback_limit >= REFERENCE_DISTILLATION_MIN_PAYLOAD_TOKENS
+        )
+
+        if primary_viable and fallback_viable:
+            mode: Literal["auto", "primary", "fallback"] = "auto"
+            input_limit = min(primary_limit, fallback_limit)
+        elif primary_viable:
+            mode = "primary"
+            input_limit = primary_limit
+        elif fallback_viable:
+            mode = "fallback"
+            input_limit = fallback_limit
+        else:
+            raise ValueError(
+                "reference synthesis has no route with enough context headroom"
+            )
+        return ReferenceSynthesisRoutePlanV1(
+            version=1, mode=mode, input_token_limit=input_limit,
+            primary_input_token_limit=primary_limit,
+            fallback_input_token_limit=fallback_limit,
+        )
+
+    def _reference_synthesis_input_token_limit(self) -> int:
+        """Compatibility projection of the selected versioned route plan."""
+
+        return self._reference_synthesis_route_plan().input_token_limit
+
+    async def _execute_reference_synthesis(
+        self, *, route_plan: ReferenceSynthesisRoutePlanV1,
+        system: str, user: str, validator,
+    ) -> tuple[object, Any]:
+        """Execute and validate one region/final call under the same route plan."""
+
+        if self.gateway is None:
+            raise ValueError("Reference analysis model gateway is unavailable")
+
+        async def dispatch(mode: Literal["auto", "primary", "fallback"]):
+            if mode == "fallback":
+                complete = getattr(self.gateway, "complete_configured_fallback", None)
+                if not callable(complete):
+                    raise LookupError(
+                        "reference synthesis fallback route is not executable"
+                    )
+                return await complete(
+                    "reference_synthesis", system, user,
+                    max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                )
+            if mode == "primary":
+                complete = getattr(self.gateway, "complete_primary", None)
+                if callable(complete):
+                    return await complete(
+                        "reference_synthesis", system, user,
+                        max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                    )
+                if (
+                    route_plan.mode == "primary"
+                    and route_plan.fallback_input_token_limit is None
+                ):
+                    # An unbound embedded gateway is a single declared route.
+                    # Production bindings expose ``complete_primary`` so that
+                    # a primary attempt can never hide a fallback internally.
+                    return await self.gateway.complete(
+                        "reference_synthesis", system, user,
+                        max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                    )
+                raise LookupError(
+                    "reference synthesis primary route is not executable"
+                )
+            raise RuntimeError(
+                "reference synthesis auto route must be expanded explicitly"
+            )
+
+        # The Runtime owns the complete retry schedule. ``auto`` is only a
+        # capacity-negotiation label; it is expanded before dispatch so the
+        # gateway's generic completion method can never perform a hidden
+        # primary-to-fallback transition or double-spend the retry budget.
+        attempts: list[Literal["primary", "fallback"]]
+        if route_plan.mode == "auto":
+            attempts = ["primary", "primary", "fallback", "fallback"]
+        else:
+            attempts = [route_plan.mode, route_plan.mode]
+
+        last_error: Exception | None = None
+        for mode in attempts:
+            try:
+                response = await dispatch(mode)
+            except Exception as exc:
+                last_error = exc
+                continue
+            try:
+                return response, validator(response.text)
+            except (ValueError, json.JSONDecodeError) as exc:
+                last_error = exc
+        assert last_error is not None
+        raise last_error
+
+    def _normalize_distillation_receipt(
+        self, region, value: object,
+    ) -> dict | None:
+        try:
+            receipt = DistillationReceiptV2.model_validate(value)
+            semantic = validate_distillation_receipt(region, receipt.model_dump(mode="json"))
+            normalized_semantic = self._synthesis_result(
+                json.dumps(semantic, ensure_ascii=False),
+            )
+            self._require_chinese_synthesis(normalized_semantic)
+        except (TypeError, ValueError):
+            return None
+        return receipt.model_copy(
+            update={"semantic": normalized_semantic},
+        ).model_dump(mode="json")
+
+    @staticmethod
+    def _final_synthesis_region(
+        claims: list[dict], *, max_payload_tokens: int,
+    ) -> DistillationRegionV1:
+        """Bind the final creative synthesis to every promoted hierarchy item."""
+
+        if not claims:
+            raise ValueError("reference synthesis requires at least one evidenced claim")
+        items: list[DistillationItemV1] = []
+        for index, claim in enumerate(claims):
+            payload = dict(claim)
+            coverage = payload.get("runtime_coverage")
+            source_range = (
+                coverage.get("source_range")
+                if isinstance(coverage, dict) else None
+            )
+            start = (
+                int(source_range[0])
+                if isinstance(source_range, list) and len(source_range) == 2
+                else index
+            )
+            end = (
+                int(source_range[1])
+                if isinstance(source_range, list) and len(source_range) == 2
+                else index + 1
+            )
+            digest = distillation_sha256(payload)
+            items.append(DistillationItemV1(
+                item_id=f"final:{index}:{digest[:16]}",
+                source_start=max(0, start), source_end=max(start + 1, end),
+                payload=payload, payload_sha256=digest,
+            ))
+        regions = distillation_regions(
+            items, level=0, fanout=max(2, len(items)),
+            max_payload_characters=REFERENCE_DISTILLATION_MAX_INPUT_CHARACTERS,
+            max_payload_tokens=max_payload_tokens,
+        )
+        if len(regions) != 1:
+            raise ValueError("final reference synthesis claims exceed the negotiated route")
+        return regions[0]
+
+    @staticmethod
+    def _local_candidate_prompt_context(
+        candidates: list[dict], *, max_tokens: int = LOCAL_CANDIDATE_PROMPT_TOKENS,
+    ) -> str:
+        """Provide a complete list when it fits, otherwise an explicit registry receipt.
+
+        The full candidate catalog remains Runtime-owned in ``local_by_id``. A
+        capacity reduction never cuts JSON or pretends the model compared an
+        entry it could not see; independent source synthesis continues with
+        ``local_match_id=null`` for that call.
+        """
+
+        serialized = json.dumps(candidates, ensure_ascii=False, separators=(",", ":"))
+        if max_tokens < 256:
+            raise ValueError("local candidate prompt capacity is too small")
+        if estimate_input_tokens(serialized) <= max_tokens:
+            return serialized
+        return json.dumps({
+            "mode": "content_addressed_registry",
+            "candidate_count": len(candidates),
+            "catalog_sha256": distillation_sha256(candidates),
+            "model_comparison_available": False,
+            "instruction": (
+                "The Runtime retained the full local catalog. Return local_match_id=null; "
+                "perform independent synthesis from the evidence claims."
+            ),
+        }, ensure_ascii=False, separators=(",", ":"))
 
     def analyze_reference(self, source_id: str) -> dict:
         source = self.references.get(source_id)
@@ -314,6 +729,39 @@ class LearningSystem:
                 "total_windows": len(windows), "reused_windows": reused_count,
                 "current_window": None,
             })
+        route_plan = self._reference_synthesis_route_plan()
+        route_input_tokens = route_plan.input_token_limit
+        local_candidate_tokens = min(
+            LOCAL_CANDIDATE_PROMPT_TOKENS,
+            max(
+                512,
+                int(
+                    (route_input_tokens - REFERENCE_FINAL_PROMPT_RESERVE_TOKENS)
+                    * 0.35
+                ),
+            ),
+        )
+        local_candidate_context = self._local_candidate_prompt_context(
+            local_mechanisms, max_tokens=local_candidate_tokens,
+        )
+        final_payload_tokens = (
+            route_input_tokens
+            - REFERENCE_FINAL_PROMPT_RESERVE_TOKENS
+            - estimate_input_tokens(local_candidate_context)
+        )
+        regional_payload_tokens = (
+            route_input_tokens - REFERENCE_DISTILLATION_PROMPT_RESERVE_TOKENS
+        )
+        synthesis_claims = await self._hierarchical_reference_claims(
+            version=version, claims=claims, content_type=content_type,
+            focus=focus, progress=progress,
+            final_payload_tokens=final_payload_tokens,
+            regional_payload_tokens=regional_payload_tokens,
+            route_plan=route_plan,
+        )
+        final_region = self._final_synthesis_region(
+            synthesis_claims, max_payload_tokens=final_payload_tokens,
+        )
         synthesis_system = (
             f"Abstract reusable mechanisms for {content_type}. {focus} "
             "Remove names, wording, settings, and concrete plot packaging. "
@@ -321,8 +769,15 @@ class LearningSystem:
         )
         synthesis_prompt = (
             "所有面向用户的文字必须使用简体中文。先根据窗口证据独立归纳，再与本地候选比较。"
-            "Return exactly one JSON object with this shape and no prose: "
+            "Return exactly one DistillationReceiptV2 JSON object and no prose. "
+            "It requires version=2, covered_child_ids, child_dispositions, "
+            "child_attributions, and semantic. covered_child_ids and dispositions "
+            "must list FINAL CHILD MANIFEST once in exact order. semantic has shape "
             '{"mechanisms":[],"attraction_map":{},"style_profile":{}}. '
+            "Every promoted child requires exactly one typed attribution. Use claim "
+            "or uncertainty with a unique JSON-pointer semantic_path to a non-empty "
+            "semantic unit. Shared output must be declared through merged or superseded "
+            "with related_child_ids; descriptive reason text is never coverage proof. "
             "mechanisms must always be an array. Use at most 3 mechanisms. "
             "Each mechanism needs name, trigger_conditions, structural_position, "
             "state_change, emotional_effect, required_preparation, downstream_consequence, transfer_guidance, "
@@ -344,46 +799,37 @@ class LearningSystem:
             "Describe general techniques only; never imitate distinctive wording, names, settings, or plot packaging. "
             f"The current reference purpose is {content_type}.\n\n"
             "LOCAL WRITING CANDIDATES（只用于比较和复核）:\n" +
-            json.dumps(local_mechanisms, ensure_ascii=False)[:20_000] +
+            local_candidate_context +
+            "\n\nFINAL CHILD MANIFEST:\n" +
+            json.dumps(final_region.child_ids, ensure_ascii=False) +
             "\n\nINDEPENDENT WINDOW CLAIMS:\n" +
-            json.dumps([item["data"]["result"] for item in claims], ensure_ascii=False)[:100_000]
+            json.dumps(synthesis_claims, ensure_ascii=False)
         )
-        synthesis = await self.gateway.complete(
-            "reference_synthesis", synthesis_system, synthesis_prompt,
-            max_output_tokens=4096,
-        )
-        used_synthesis = synthesis
-        try:
-            result = self._synthesis_result(synthesis.text)
+        def validate_synthesis(text: str) -> dict:
+            converted = GeneratedArtifactGateway().convert_object(
+                text, contract_name="reference_distillation_region",
+                semantic_normalizer=lambda value: (
+                    DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+                ),
+            )
+            receipt = DistillationReceiptV2.model_validate(converted.payload)
+            semantic = validate_distillation_receipt(
+                final_region, receipt.model_dump(mode="json"),
+            )
+            result = self._synthesis_result(
+                json.dumps(semantic, ensure_ascii=False),
+            )
             self._require_chinese_synthesis(result)
-        except ValueError as exc:
-            if not callable(fallback):
-                raise ValueError(f"全文汇总阶段失败：{exc}。请重新分析；已有窗口分析结果会保留。") from exc
-            if progress:
-                progress({
-                    "phase": "fallback_synthesis", "completed_windows": len(windows),
-                    "total_windows": len(windows), "reused_windows": reused_count,
-                    "current_window": None,
-                })
-            fallback_exc = None
-            for _attempt in range(2):
-                fallback_synthesis = await fallback(
-                    "reference_synthesis", synthesis_system, synthesis_prompt,
-                    max_output_tokens=4096,
-                )
-                try:
-                    result = self._synthesis_result(fallback_synthesis.text)
-                    self._require_chinese_synthesis(result)
-                    used_synthesis = fallback_synthesis
-                    break
-                except ValueError as candidate_exc:
-                    fallback_exc = candidate_exc
-            else:
-                assert fallback_exc is not None
-                raise ValueError(
-                    f"全文汇总阶段的主模型和备用模型都没有返回有效结果：{fallback_exc}。"
-                    "已有窗口分析结果会保留。"
-                ) from fallback_exc
+            validate_distillation_receipt(
+                final_region,
+                receipt.model_copy(update={"semantic": result}).model_dump(mode="json"),
+            )
+            return result
+
+        used_synthesis, result = await self._execute_reference_synthesis(
+            route_plan=route_plan, system=synthesis_system,
+            user=synthesis_prompt, validator=validate_synthesis,
+        )
         mechanisms = []
         local_by_id = {item["id"]: item for item in local_report["mechanisms"]}
         synthesis_receipt = getattr(used_synthesis, "receipt", {})
@@ -695,9 +1141,13 @@ class LearningSystem:
                 except (LookupError, ValueError) as exc:
                     raise ValueError("首次选择的写法或来源已经变化") from exc
                 if (
-                    node["node_type"] != "mechanism"
+                    node["node_type"] not in {
+                        "mechanism", "attraction_map", "style_rule",
+                    }
                     or node["status"] != "confirmed"
-                    or source.get("content_type") not in {"reference_work", "popular_sample"}
+                    or source.get("content_type") not in {
+                        "reference_work", "popular_sample", "writing_tutorial",
+                    }
                 ):
                     raise ValueError("首次选择的写法或来源已经变化")
             with self.db.connect() as connection:
@@ -715,12 +1165,15 @@ class LearningSystem:
                 with self.db.connect() as connection:
                     feedback_exists = connection.execute(
                         "SELECT 1 FROM learning_feedback "
-                        "WHERE project_id=? AND subject_type='mechanism' "
+                        "WHERE project_id=? AND subject_type=? "
                         "AND subject_id=? AND action='adopted' LIMIT 1",
-                        (project_id, node_id),
+                        (project_id, self.get_node(node_id)["node_type"], node_id),
                     ).fetchone()
                 if not feedback_exists:
-                    self.record_feedback(project_id, "mechanism", node_id, "adopted", {})
+                    self.record_feedback(
+                        project_id, self.get_node(node_id)["node_type"],
+                        node_id, "adopted", {},
+                    )
             self._save_creative_blueprint(project_id)
             by_id = {item["node_id"]: item for item in self.list_adoptions(project_id)}
             return [by_id[node_id] for node_id in selected_ids]
@@ -728,6 +1181,9 @@ class LearningSystem:
     def _adopt(self, project_id: str, node_id: str, edits: dict | None = None) -> dict:
         self.projects.get(project_id)
         node = self.get_node(node_id)
+        edits = dict(edits or {})
+        if ADOPTION_IMMUTABLE_EDIT_FIELDS.intersection(edits):
+            raise ValueError("Adoption edits cannot change classification authority")
         if node["status"] not in {"proposed", "confirmed"}:
             raise ValueError("这条写法已失效，重新确认后才能应用到作品")
         if float(node["data"].get("confidence", 0)) < 0.7 and node["status"] != "confirmed":
@@ -737,12 +1193,12 @@ class LearningSystem:
             data = {
                 "mechanism_type": "attraction_guidance",
                 **compact_attraction_guidance(node["data"]),
-                **(edits or {}),
+                **edits,
                 "provenance": {"source_id": node["source_id"], "node_id": node_id},
             }
         else:
             data = {
-                **node["data"], **(edits or {}),
+                **node["data"], **edits,
                 "provenance": {"source_id": node["source_id"], "node_id": node_id},
             }
         with self.db.connect() as connection:
@@ -753,22 +1209,28 @@ class LearningSystem:
             )
         self._save_creative_blueprint(project_id)
         adoptions = self.list_adoptions(project_id)
-        self.record_feedback(project_id, "mechanism", node_id, "adopted", edits or {})
+        self.record_feedback(
+            project_id, node["node_type"], node_id, "adopted", edits or {},
+        )
         return next(item for item in adoptions if item["node_id"] == node_id)
 
     def _save_creative_blueprint(self, project_id: str) -> None:
         adoptions = self.list_adoptions(project_id)
+        classified = [
+            (adoption_authority_kind(item), item["data"])
+            for item in adoptions
+        ]
         causal_structure = [
-            item["data"] for item in adoptions
-            if item["data"].get("mechanism_type") == "causal_structure"
+            data for kind, data in classified if kind == "causal_structure"
         ]
         attraction_guidance = [
-            item["data"] for item in adoptions
-            if item["data"].get("mechanism_type") == "attraction_guidance"
+            data for kind, data in classified if kind == "attraction_guidance"
         ]
         mechanisms = [
-            item["data"] for item in adoptions
-            if item["data"].get("mechanism_type") not in {"causal_structure", "attraction_guidance"}
+            data for kind, data in classified if kind == "mechanism"
+        ]
+        style_rules = [
+            data for kind, data in classified if kind == "style_rule"
         ]
         attraction_rules = []
         for guidance in attraction_guidance:
@@ -779,15 +1241,30 @@ class LearningSystem:
                     attraction_rules.extend(item for item in value if isinstance(item, str) and item)
         blueprint = {
             "status": "candidate", "mechanisms": mechanisms,
-            "causal_structure": causal_structure,
+            "causal_structure": causal_structure, "style_rules": style_rules,
             "attraction_guidance": attraction_guidance,
             "rules": [
-                item["data"].get("transfer_guidance", "") for item in adoptions
-                if item["data"].get("transfer_guidance")
+                data.get("transfer_guidance", "")
+                for kind, data in classified
+                if kind in {"mechanism", "causal_structure"}
+                if data.get("transfer_guidance")
             ] + attraction_rules,
         }
+        recipe = compile_creative_recipe(project_id, adoptions)
+        blueprint["creative_recipe_sha256"] = recipe.authority_sha256
         current = self.get_artifact(project_id, "creative_blueprint")
-        if current and current["status"] == "active" and current["data"] == blueprint:
+        recipe_payload = recipe.model_dump(mode="json")
+        current_recipe = self.get_artifact(project_id, "creative_recipe")
+        blueprint_current = bool(
+            current and current["status"] == "active" and current["data"] == blueprint
+        )
+        recipe_current = bool(
+            current_recipe and current_recipe["status"] == "active"
+            and current_recipe["data"] == recipe_payload
+        )
+        blueprint_sidecar_current = False
+        recipe_sidecar_current = False
+        if blueprint_current:
             path = self.projects.get(project_id).path / "learning" / "creative_blueprint.json"
             try:
                 saved = json.loads(path.read_text(encoding="utf-8"))
@@ -801,11 +1278,31 @@ class LearningSystem:
                 and saved.get("status") == "active"
                 and saved.get("data") == blueprint
             ):
-                return
-        self.save_artifact(project_id, "creative_blueprint", blueprint)
+                blueprint_sidecar_current = True
+        if recipe_current:
+            recipe_path = self.projects.get(project_id).path / "learning" / "creative_recipe.json"
+            try:
+                saved_recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
+                if not isinstance(saved_recipe, dict):
+                    saved_recipe = {}
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                saved_recipe = {}
+            recipe_sidecar_current = bool(
+                saved_recipe.get("id") == current_recipe["id"]
+                and saved_recipe.get("version") == current_recipe["version"]
+                and saved_recipe.get("status") == "active"
+                and saved_recipe.get("data") == recipe_payload
+            )
+        if blueprint_sidecar_current and recipe_sidecar_current:
+            return
+        if not recipe_current or not recipe_sidecar_current:
+            self.save_artifact(project_id, "creative_recipe", recipe_payload)
+        if not blueprint_current or not blueprint_sidecar_current:
+            self.save_artifact(project_id, "creative_blueprint", blueprint)
 
     def reject_adoption(self, project_id: str, node_id: str, reason: str = "") -> dict:
         self.projects.get(project_id)
+        node = self.get_node(node_id)
         with self.db.connect() as connection:
             existing = connection.execute(
                 "SELECT id FROM project_adoptions WHERE project_id=? AND node_id=?", (project_id, node_id),
@@ -817,19 +1314,24 @@ class LearningSystem:
                 (adoption_id, project_id, node_id, json.dumps({"reason": reason}, ensure_ascii=False)),
             )
         self._save_creative_blueprint(project_id)
-        self.record_feedback(project_id, "mechanism", node_id, "rejected", {"reason": reason})
+        self.record_feedback(
+            project_id, node["node_type"], node_id, "rejected", {"reason": reason},
+        )
         return {"project_id": project_id, "node_id": node_id, "status": "rejected", "reason": reason}
 
     def list_adoptions(self, project_id: str) -> list[dict]:
         with self.db.connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM project_adoptions WHERE project_id=? AND status='adopted' "
-                "ORDER BY created_at, rowid", (project_id,),
+                "SELECT adoption.*,node.node_type FROM project_adoptions adoption "
+                "LEFT JOIN learning_nodes node ON node.id=adoption.node_id "
+                "WHERE adoption.project_id=? AND adoption.status='adopted' "
+                "ORDER BY adoption.created_at, adoption.rowid", (project_id,),
             ).fetchall()
         result = []
         for row in rows:
             item = {**dict(row), "data": json.loads(row["data_json"])}
-            item["data"] = self._normalize_mechanism_data(item["data"])
+            if item.get("node_type") == "mechanism":
+                item["data"] = self._normalize_mechanism_data(item["data"])
             source_id = item["data"].get("provenance", {}).get("source_id")
             try:
                 item["source_title"] = self.references.get(source_id)["title"] if source_id else "手动设置"
@@ -858,6 +1360,7 @@ class LearningSystem:
         serialized = json.dumps(data, ensure_ascii=False, sort_keys=True)
         digest = self._hash(serialized)
         with self.db.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             latest = connection.execute(
                 "SELECT COALESCE(MAX(version),0) FROM project_learning_artifacts WHERE project_id=? AND artifact_type=?",
                 (project_id, artifact_type),
@@ -867,12 +1370,65 @@ class LearningSystem:
                 "INSERT INTO project_learning_artifacts VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))",
                 (artifact_id, project_id, artifact_type, int(latest) + 1, status, serialized, digest),
             )
-        root = project.path / "learning"
-        root.mkdir(exist_ok=True)
-        atomic_write(root / f"{artifact_type}.json", json.dumps({
-            "id": artifact_id, "version": int(latest) + 1, "status": status, "data": data,
-        }, ensure_ascii=False, indent=2) + "\n")
-        return self.get_artifact(project_id, artifact_type)
+        return self._project_latest_artifact_sidecar(
+            project_id, artifact_type, project_path=project.path,
+        )
+
+    @staticmethod
+    def _artifact_public_row(row: Any) -> dict:
+        value = dict(row)
+        return {**value, "data": json.loads(value["data_json"])}
+
+    @staticmethod
+    def _artifact_sidecar_payload(artifact: dict) -> dict:
+        return {
+            "id": artifact["id"],
+            "version": int(artifact["version"]),
+            "status": artifact["status"],
+            "source_hash": artifact["source_hash"],
+            "data": artifact["data"],
+        }
+
+    def _artifact_sidecar_matches(self, path: Path, artifact: dict) -> bool:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return False
+        return payload == self._artifact_sidecar_payload(artifact)
+
+    def _project_latest_artifact_sidecar(
+        self, project_id: str, artifact_type: str, *, project_path: Path | None = None,
+    ) -> dict:
+        """Monotonically project the DB authority to its human-readable sidecar.
+
+        The SQLite write transaction is also the cross-process projection lock.
+        Every projector rereads the latest row while holding that lock, so a
+        delayed old writer can never overwrite a newer sidecar.
+        """
+
+        path = (project_path or self.projects.get(project_id).path) / "learning"
+        path.mkdir(exist_ok=True)
+        sidecar = path / f"{artifact_type}.json"
+        with self.db.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM project_learning_artifacts "
+                "WHERE project_id=? AND artifact_type=? "
+                "ORDER BY version DESC LIMIT 1",
+                (project_id, artifact_type),
+            ).fetchone()
+            if row is None:
+                raise LookupError("learning artifact disappeared before projection")
+            artifact = self._artifact_public_row(row)
+            if not self._artifact_sidecar_matches(sidecar, artifact):
+                atomic_write(
+                    sidecar,
+                    json.dumps(
+                        self._artifact_sidecar_payload(artifact),
+                        ensure_ascii=False, indent=2,
+                    ) + "\n",
+                )
+        return artifact
 
     def get_artifact(self, project_id: str, artifact_type: str) -> dict | None:
         with self.db.connect() as connection:
@@ -880,7 +1436,13 @@ class LearningSystem:
                 "SELECT * FROM project_learning_artifacts WHERE project_id=? AND artifact_type=? ORDER BY version DESC LIMIT 1",
                 (project_id, artifact_type),
             ).fetchone()
-        return {**dict(row), "data": json.loads(row["data_json"])} if row else None
+        if row is None:
+            return None
+        artifact = self._artifact_public_row(row)
+        sidecar = self.projects.get(project_id).path / "learning" / f"{artifact_type}.json"
+        if not self._artifact_sidecar_matches(sidecar, artifact):
+            return self._project_latest_artifact_sidecar(project_id, artifact_type)
+        return artifact
 
     def list_artifacts(self, project_id: str) -> list[dict]:
         with self.db.connect() as connection:
@@ -1253,11 +1815,12 @@ class LearningSystem:
             values = [values]
         elif not isinstance(values, list):
             values = []
-        if rule in values:
-            return current
-        data[field] = [*values, rule]
-        artifact = self.save_artifact(project_id, "prose_baseline", data)
-        self.record_feedback(project_id, "style_rule", node_id, "adopted", {"field": field})
+        if rule not in values:
+            data[field] = [*values, rule]
+            artifact = self.save_artifact(project_id, "prose_baseline", data)
+        else:
+            artifact = current
+        self._adopt(project_id, node_id, {"field": field, "rule": rule})
         return artifact
 
     def save_voice_profiles(self, project_id: str, profiles: dict) -> dict:
@@ -1356,14 +1919,15 @@ class LearningSystem:
         attraction_rules = []
         for adoption in self.list_adoptions(project_id):
             data = adoption["data"]
-            if data.get("mechanism_type") == "attraction_guidance":
+            authority_kind = adoption_authority_kind(adoption)
+            if authority_kind == "attraction_guidance":
                 for field in OUTLINE_ATTRACTION_RULE_FIELDS:
                     value = data.get(field)
                     values = value if isinstance(value, list) else [value]
                     for rule in values:
                         if isinstance(rule, str) and (rule := rule.strip()) and rule not in attraction_rules:
                             attraction_rules.append(rule)
-            else:
+            elif authority_kind in {"mechanism", "causal_structure"}:
                 method = {
                     field: data[field].strip()
                     for field in ("name", "transfer_guidance")

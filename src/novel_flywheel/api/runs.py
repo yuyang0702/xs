@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
@@ -81,7 +81,9 @@ async def start_short_run(project_id: str, request: Request) -> dict:
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_short(project_id, run_id=run_id)
 
-    return request.app.state.run_tasks.start(project_id, "short-story", operation)
+    return request.app.state.run_tasks.start(
+        project_id, "short-story", operation, resume_payload={},
+    )
 
 
 @router.post("/projects/{project_id}/runs/setup", status_code=status.HTTP_202_ACCEPTED)
@@ -94,7 +96,9 @@ async def start_long_setup(project_id: str, request: Request) -> dict:
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_long_setup(project_id, run_id=run_id)
 
-    return request.app.state.run_tasks.start(project_id, "long-setup", operation)
+    return request.app.state.run_tasks.start(
+        project_id, "long-setup", operation, resume_payload={},
+    )
 
 
 @router.post("/projects/{project_id}/runs/materials-audit", status_code=status.HTTP_202_ACCEPTED)
@@ -109,7 +113,9 @@ async def start_materials_audit(project_id: str, request: Request) -> dict:
                       and run["status"] in {"failed", "cancelled"}), None)
     if resumable:
         return request.app.state.run_tasks.resume(resumable["id"], operation)
-    return request.app.state.run_tasks.start(project_id, "materials-audit", operation)
+    return request.app.state.run_tasks.start(
+        project_id, "materials-audit", operation, resume_payload={},
+    )
 
 
 @router.post("/projects/{project_id}/runs/materials-repair", status_code=status.HTTP_202_ACCEPTED)
@@ -119,11 +125,21 @@ async def start_materials_repair(project_id: str, request: Request) -> dict:
     async def operation(run_id: str) -> object:
         return await request.app.state.workflows.run_materials_repair(project_id, run_id=run_id)
 
-    return request.app.state.run_tasks.start(project_id, "materials-repair", operation)
+    return request.app.state.run_tasks.start(
+        project_id, "materials-repair", operation, resume_payload={},
+    )
 
 
 class ChapterRun(BaseModel):
-    chapter_goal: str = Field(min_length=1)
+    chapter_goal: str = Field(min_length=1, pattern=r".*\S.*")
+
+    @field_validator("chapter_goal")
+    @classmethod
+    def _normalize_chapter_goal(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("chapter_goal must contain non-whitespace text")
+        return normalized
 
 
 @router.post("/projects/{project_id}/runs/chapter", status_code=status.HTTP_202_ACCEPTED)
@@ -138,7 +154,10 @@ async def start_long_chapter(project_id: str, payload: ChapterRun, request: Requ
             project_id, payload.chapter_goal, run_id=run_id,
         )
 
-    return request.app.state.run_tasks.start(project_id, "long-chapter", operation)
+    return request.app.state.run_tasks.start(
+        project_id, "long-chapter", operation,
+        resume_payload={"chapter_goal": payload.chapter_goal},
+    )
 
 
 @router.post("/runs/{run_id}/cancel")
@@ -191,6 +210,10 @@ async def resume_run(run_id: str, request: Request) -> dict:
         return request.app.state.run_tasks.resume(
             run_id, operation,
             allow_interrupted=run["workflow"] == "short-revision",
+            resume_payload=(
+                {"issue_ids": list(revision_issue_ids or [])}
+                if run["workflow"] == "short-revision" else {}
+            ),
         )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail={"code": "run_not_resumable"}) from exc
@@ -217,6 +240,8 @@ def get_run(run_id: str, request: Request) -> dict:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"})
     run["tool_receipts"] = request.app.state.registry.db.list_tool_receipts(run_id)
     run["events"] = request.app.state.registry.db.list_run_events(run_id)
+    run["supervision"] = request.app.state.registry.db.get_workflow_supervision(run_id)
+    run["recovery_attempts"] = request.app.state.registry.db.list_workflow_attempts(run_id)
     project = request.app.state.registry.db.get_project(run["project_id"])
     if project:
         report_path = Path(project["path"]) / "runs" / run_id / "outputs" / "quality-report.json"

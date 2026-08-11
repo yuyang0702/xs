@@ -138,14 +138,19 @@ const formatLocalTimestamp = (value, timeOnly = false) => {
 const isQualityRejected = run => run.status === "failed" && String(run.error || "").includes("quality gate");
 const runStatusLabel = run => isQualityRejected(run) ? "质量未通过" : ({
   queued:"排队中", running:"执行中", cancelling:"终止中", completed:"已完成",
+  waiting_provider:"等待服务恢复", recovering_protocol:"修复返回协议中",
+  recovering_semantic:"修复语义合同中", quality_repair:"质量返修中",
   cancelled:"已终止", failed:"失败", waiting_confirmation:"等待你确认",
   waiting_local_fix:"需要人工处理", interrupted:"意外中断，可继续"
 }[run.status] || "状态待确认");
-const isActiveRunStatus = status => ["queued","running","cancelling"].includes(status);
+const isActiveRunStatus = status => [
+  "queued","running","cancelling","waiting_provider",
+  "recovering_protocol","recovering_semantic","quality_repair",
+].includes(status);
 
 function deriveWorkbenchTaskState(snapshot) {
   const runs=snapshot.runs||[];
-  const activeRun=runs.find(item=>["queued","running","cancelling"].includes(item.status));
+  const activeRun=runs.find(item=>isActiveRunStatus(item.status));
   const latestRevision=runs.find(item=>item.workflow==="short-revision");
   const resumableRevision=latestRevision&&snapshot.revisionRun?.id===latestRevision.id&&["failed","cancelled","interrupted"].includes(latestRevision.status);
   const issues=(snapshot.issues||[]).filter(item=>!["resolved","closed","preserved"].includes(item.status));
@@ -1789,7 +1794,7 @@ function renderRevisionWorkspace(detail,report) {
   state.revisionRun={...detail,projectId:detail.project_id||state.activeProject?.id};state.revisionReport=report;
   workspace.hidden=false;
   const phase=revisionPhase(detail,report),complete=detail.status==="completed";
-  const active=["queued","running","cancelling"].includes(detail.status);
+  const active=isActiveRunStatus(detail.status);
   const failed=["failed","cancelled","interrupted"].includes(detail.status);
   const title=complete?"返修已经完成":detail.status==="waiting_confirmation"?"修改建议已生成，需要你确认":detail.status==="waiting_local_fix"?"本地检查没有通过":failed?"本次返修没有完成":phase===1?"正在确认修改位置":phase===2?`正在修改第 ${Math.max(1,(report.groups||[]).filter(item=>["ready_for_confirmation","failed","rejected"].includes(item.status)).length+1)} 项`:phase===3?"正在检查是否影响其他剧情":"正在进行局部复核或全文复核";
   const detailText=complete?"返修结果已通过检查，正式稿仍需由你单独确认。":detail.status==="waiting_confirmation"?"请逐组查看修改前后，再决定采用或拒绝。":detail.status==="waiting_local_fix"?"已保留当前最佳稿。请先查看没有通过的项目。":failed?"已保留当前最佳稿，可以从失败的问题继续。":active?"页面会自动更新进度，请保持当前页面打开。":"已保留当前最佳稿。";
@@ -1830,7 +1835,7 @@ async function refreshRevisionRun(runId,schedule=true,projectId=state.revisionRu
     const report=await api(`/api/runs/${runId}/revision`);
     if(!revisionContextMatches(projectId,runId,generation))return;
     renderRevisionWorkspace(detail,report);
-    if(schedule&&["queued","running","cancelling"].includes(detail.status))state.revisionPollTimer=setTimeout(()=>refreshRevisionRun(runId,true,projectId,generation),900);
+    if(schedule&&isActiveRunStatus(detail.status))state.revisionPollTimer=setTimeout(()=>refreshRevisionRun(runId,true,projectId,generation),900);
   }catch(error){if(!revisionContextMatches(projectId,runId,generation))return;setRevisionOperationStatus("error","返修状态读取失败",revisionSafeError(error,"暂时无法读取返修进度，请刷新页面。"),5,true);}
 }
 async function decideRevisionGroup(groupId,decision) {
@@ -2212,7 +2217,7 @@ function renderMaterialsTabs() {
 }
 function renderMaterialAudit(detail) {
   const shell=$("#material-audit-status"); shell.hidden=false;
-  if (["queued","running","cancelling"].includes(detail.status)) { shell.className="material-audit-status busy"; shell.textContent="正在分窗检查项目资料与正文的一致性..."; return; }
+  if (isActiveRunStatus(detail.status)) { shell.className="material-audit-status busy"; shell.textContent="正在分窗检查项目资料与正文的一致性..."; return; }
   if (detail.status!=="completed") { shell.className="material-audit-status error"; shell.textContent=`冲突检查失败：${detail.error || "请查看工作台日志"}`; return; }
   const issues=detail.conflict_report?.issues || [];
   shell.className="material-audit-status";
@@ -2307,10 +2312,10 @@ async function renderActiveProject() {
   await loadLatestRevisionWorkspace(projectId,runs,generation);
   if(!workbenchContextMatches(projectId,generation))return;
   const initialization = runs.find(run => run.workflow === "initialize-skills");
-  const initializing = initialization && ["queued","running","cancelling"].includes(initialization.status);
+  const initializing = initialization && isActiveRunStatus(initialization.status);
   const initialized = initialization?.status === "completed";
   const hasFormalOutline=Boolean(state.workbenchOutline?.current?.exists);
-  const activeRun = runs.find(run => ["queued","running","cancelling"].includes(run.status));
+  const activeRun = runs.find(run => isActiveRunStatus(run.status));
   const latestRun = runs[0];
   if(!activeRun&&state.activeRunProjectId===projectId)stopRunMonitor();
   $("#initialize-project").hidden = !hasFormalOutline || initialized || initializing;

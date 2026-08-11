@@ -89,6 +89,13 @@ _REGISTRATIONS = (
         legacy_labels=("planning event realization array",),
     ),
     ArtifactContractRegistration(
+        name="planning_semantic_v2", version=2, phase="planning",
+        semantic_authority=(
+            "PlanningSemanticDraftV2 plus Runtime-owned formal event and exit topology"
+        ),
+        legacy_labels=("Markdown-first short planning",),
+    ),
+    ArtifactContractRegistration(
         name="short_causal_chain", phase="planning", parser_strategy="baml_sap",
         semantic_authority="normalize_causal_packet_payload",
         legacy_labels=("Short causal chain", "Causal chain event packet"),
@@ -136,8 +143,19 @@ _REGISTRATIONS = (
     ),
     ArtifactContractRegistration(
         name="maintenance_facts", phase="runtime",
-        semantic_authority="StoryState maintenance fact validator",
+        semantic_authority=(
+            "Runtime incremental StoryState adapter with stable fact keys, "
+            "typed state transitions, and audited singleton normalization"
+        ),
         legacy_labels=("maintenance facts",),
+    ),
+    ArtifactContractRegistration(
+        name="maintenance_window_receipt", phase="runtime",
+        semantic_authority=(
+            "MaintenanceWindowReceiptV1 plus unique exact manuscript evidence "
+            "and Runtime-owned window/StoryState authority"
+        ),
+        legacy_labels=("maintenance authority window",),
     ),
     ArtifactContractRegistration(
         name="material_audit", phase="quality",
@@ -168,6 +186,14 @@ _REGISTRATIONS = (
         name="capability_probe", phase="runtime",
         semantic_authority="provider capability probe validator",
         legacy_labels=("Capability probe output",),
+    ),
+    ArtifactContractRegistration(
+        name="reference_distillation_region", version=2, phase="runtime",
+        semantic_authority=(
+            "DistillationReceiptV2 exact child disposition and typed semantic "
+            "attribution ledgers plus LearningSystem._synthesis_result"
+        ),
+        legacy_labels=("truncated full-reference synthesis payload",),
     ),
 )
 
@@ -321,6 +347,47 @@ PLANNING_EVENT_TOPOLOGY_ADAPTER = ContractAdapterRegistration(
 )
 
 
+PLANNING_SEMANTIC_ENVELOPE_ADAPTER = ContractAdapterRegistration(
+    name="planning_semantic_unique_envelope",
+    version=1,
+    contract_name="planning_semantic_v2",
+    source_shapes=(
+        "canonical semantic object",
+        "single nested data/result/payload envelope",
+        "single unseen nested object envelope",
+    ),
+    canonical_shape="PlanningSemanticDraftV2 object",
+    proof_obligation=(
+        "Exactly one nested object satisfies the complete semantic contract; "
+        "no second candidate or machine-control field exists. Wrapper scalars "
+        "are descriptive only and Runtime authority is injected afterwards."
+    ),
+)
+
+
+EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER = ContractAdapterRegistration(
+    name="execution_manifest_evidence_reference",
+    version=1,
+    contract_name="execution_manifest",
+    source_shapes=(
+        "Runtime evidence ID references",
+        "legacy exact Runtime evidence echo",
+        "unique presentation-normalized extractive Runtime evidence echo",
+        "omitted evidence with one Runtime candidate",
+    ),
+    canonical_shape=(
+        "atomic beat proposals with ordered Runtime-owned source_evidence_ids"
+    ),
+    proof_obligation=(
+        "Every evidence reference belongs to the beat's Runtime source event and "
+        "forms one unique contiguous ordered span of that event's evidence catalog. "
+        "Legacy text is accepted only when it is one uniquely located extractive span; "
+        "unknown, non-extractive, cross-event, duplicate, conflicting, or ambiguous "
+        "inputs fail closed."
+    ),
+)
+
+
 CONTRACT_ADAPTER_REGISTRY: Mapping[str, tuple[ContractAdapterRegistration, ...]] = {
     "planning_adaptation_facet": (
         PLANNING_FACET_CLOSED_TRUTH_ADAPTER,
@@ -329,7 +396,41 @@ CONTRACT_ADAPTER_REGISTRY: Mapping[str, tuple[ContractAdapterRegistration, ...]]
     "planning_event_realizations": (
         PLANNING_EVENT_TOPOLOGY_ADAPTER,
     ),
+    "planning_semantic_v2": (
+        PLANNING_SEMANTIC_ENVELOPE_ADAPTER,
+    ),
+    "execution_manifest": (
+        EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER,
+    ),
 }
+
+
+def _unique_semantic_envelope(
+    payload: dict[str, Any], semantic_normalizer: SemanticNormalizer,
+) -> tuple[dict[str, Any], tuple[str, ...], int] | None:
+    """Prove a single complete semantic object inside descriptive wrappers."""
+
+    if isinstance(semantic_normalizer(payload), dict):
+        return None
+    unsafe = _unsafe_machine_control_keys(payload)
+    if unsafe:
+        raise ValueError(
+            "semantic envelope contains unknown machine controls: "
+            + ", ".join(sorted(set(unsafe)))
+        )
+    candidates: list[tuple[str, dict[str, Any]]] = []
+    for path, child in _walk(payload):
+        if path == "$" or not isinstance(child, dict):
+            continue
+        normalized = semantic_normalizer(child)
+        if isinstance(normalized, dict):
+            candidates.append((path, normalized))
+    if len(candidates) > 1:
+        raise ValueError("semantic envelope contains multiple complete candidates")
+    if not candidates:
+        return None
+    path, canonical = candidates[0]
+    return canonical, ("planning_semantic_unique_envelope", f"source:{path}"), 1
 
 
 def _closed_name(value: object) -> str:
@@ -693,6 +794,196 @@ def _adapt_planning_event_topology(
     )
 
 
+def _evidence_reference_key(value: object) -> str:
+    """Normalize presentation only; never infer or summarize narrative meaning."""
+
+    normalized = unicodedata.normalize("NFKC", str(value or "")).casefold()
+    return "".join(character for character in normalized if character.isalnum())
+
+
+def _execution_event_evidence_catalog(
+    expected_events: Sequence[Mapping[str, Any]],
+) -> dict[str, tuple[tuple[str, str], ...]]:
+    catalog: dict[str, tuple[tuple[str, str], ...]] = {}
+    globally_bound: dict[str, str] = {}
+    for raw_event in expected_events:
+        event_id = str(raw_event.get("id") or "").strip().upper()
+        if not event_id:
+            continue
+        entries: list[tuple[str, str]] = []
+        raw_entries = raw_event.get("evidence_catalog")
+        if isinstance(raw_entries, list):
+            for raw_entry in raw_entries:
+                if not isinstance(raw_entry, Mapping):
+                    raise ValueError("execution evidence catalog entry must be an object")
+                evidence_id = str(raw_entry.get("evidence_id") or "").strip()
+                evidence = str(raw_entry.get("text") or "").strip()
+                if not evidence_id or not evidence:
+                    raise ValueError("execution evidence catalog entry is incomplete")
+                entries.append((evidence_id, evidence))
+        if not entries:
+            evidence = str(raw_event.get("evidence") or "").strip()
+            if evidence:
+                digest = hashlib.sha256(
+                    (event_id + "\0" + evidence).encode("utf-8")
+                ).hexdigest().upper()
+                entries.append((f"EXEC-{digest[:24]}", evidence))
+        if not entries:
+            raise ValueError("execution event has no Runtime evidence catalog")
+        ids = [evidence_id for evidence_id, _ in entries]
+        if len(ids) != len(set(ids)):
+            raise ValueError("execution event evidence IDs must be unique")
+        for evidence_id, evidence in entries:
+            previous = globally_bound.get(evidence_id)
+            if previous is not None and previous != evidence:
+                raise ValueError("execution evidence ID has conflicting Runtime text")
+            globally_bound[evidence_id] = evidence
+        catalog[event_id] = tuple(entries)
+    return catalog
+
+
+def _unique_contiguous_evidence_ids(
+    evidence: str, candidates: tuple[tuple[str, str], ...],
+) -> tuple[str, ...]:
+    key = _evidence_reference_key(evidence)
+    if not key:
+        return ()
+    atom_keys = tuple(_evidence_reference_key(text) for _, text in candidates)
+    joined = "".join(atom_keys)
+    boundaries: list[tuple[int, int]] = []
+    cursor = 0
+    for atom_key in atom_keys:
+        boundaries.append((cursor, cursor + len(atom_key)))
+        cursor += len(atom_key)
+    matches: list[tuple[str, ...]] = []
+    offset = 0
+    while True:
+        start = joined.find(key, offset)
+        if start < 0:
+            break
+        end = start + len(key)
+        owned = tuple(
+            evidence_id
+            for (evidence_id, _), (atom_start, atom_end)
+            in zip(candidates, boundaries, strict=True)
+            if atom_start < end and atom_end > start
+        )
+        if owned:
+            matches.append(owned)
+        offset = start + 1
+    unique = list(dict.fromkeys(matches))
+    if len(unique) > 1:
+        raise ValueError("execution source evidence has multiple Runtime mappings")
+    return unique[0] if unique else ()
+
+
+def _adapt_execution_manifest_evidence_references(
+    payload: dict[str, Any], *, expected_events: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], ContractAdapterAudit] | None:
+    raw_beats = payload.get("beats")
+    if not isinstance(raw_beats, list):
+        return None
+    catalog = _execution_event_evidence_catalog(expected_events)
+    canonical = dict(payload)
+    canonical_beats: list[Any] = []
+    transformations: set[str] = set()
+    proof_rows: list[dict[str, Any]] = []
+    changed = False
+    for raw_beat in raw_beats:
+        if not isinstance(raw_beat, Mapping):
+            canonical_beats.append(raw_beat)
+            continue
+        beat = dict(raw_beat)
+        event_id = str(beat.get("source_event_id") or "").strip().upper()
+        candidates = catalog.get(event_id)
+        if candidates is None:
+            raise ValueError("execution beat references an unknown Runtime event")
+        candidate_ids = tuple(item[0] for item in candidates)
+        raw_ids = beat.get("source_evidence_ids")
+        selected: tuple[str, ...] = ()
+        source_shape = "Runtime evidence ID references"
+        if raw_ids is not None:
+            if (
+                not isinstance(raw_ids, list)
+                or not raw_ids
+                or any(not isinstance(value, str) or not value.strip() for value in raw_ids)
+            ):
+                raise ValueError("source_evidence_ids must be a non-empty string list")
+            selected = tuple(value.strip() for value in raw_ids)
+            if len(selected) != len(set(selected)):
+                raise ValueError("source_evidence_ids must not contain duplicates")
+            start_indexes = [
+                index for index in range(len(candidate_ids))
+                if candidate_ids[index:index + len(selected)] == selected
+            ]
+            if len(start_indexes) != 1:
+                raise ValueError(
+                    "source_evidence_ids are unknown, cross-event, or non-contiguous"
+                )
+            transformations.add("execution_evidence_ids_verified")
+        else:
+            legacy = str(beat.get("source_evidence") or "").strip()
+            if legacy:
+                selected = _unique_contiguous_evidence_ids(legacy, candidates)
+                if not selected:
+                    raise ValueError(
+                        "legacy source evidence has no exact Runtime mapping"
+                    )
+                canonical_text = "\n\n".join(
+                    text for evidence_id, text in candidates
+                    if evidence_id in selected
+                )
+                source_shape = (
+                    "legacy exact Runtime evidence echo"
+                    if legacy == canonical_text else
+                    "unique presentation-normalized extractive Runtime evidence echo"
+                )
+                transformations.add("execution_legacy_evidence_mapped")
+            elif len(candidates) == 1:
+                selected = (candidates[0][0],)
+                source_shape = "omitted evidence with one Runtime candidate"
+                transformations.add("execution_single_evidence_bound")
+            else:
+                raise ValueError(
+                    "execution beat omitted evidence with multiple Runtime candidates"
+                )
+        legacy = str(beat.get("source_evidence") or "").strip()
+        if legacy and raw_ids is not None:
+            legacy_ids = _unique_contiguous_evidence_ids(legacy, candidates)
+            if legacy_ids != selected:
+                raise ValueError("execution evidence text conflicts with evidence IDs")
+        if beat.get("source_evidence_ids") != list(selected) or "source_evidence" in beat:
+            changed = True
+        beat["source_evidence_ids"] = list(selected)
+        beat.pop("source_evidence", None)
+        canonical_beats.append(beat)
+        proof_rows.append({
+            "event_authority_sha256": canonical_sha256(candidates),
+            "selected_sha256": canonical_sha256(selected),
+            "candidate_count": len(candidates),
+            "reference_count": len(selected),
+            "source_shape": source_shape,
+        })
+    if not changed:
+        return None
+    canonical["beats"] = canonical_beats
+    descriptor = EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER
+    return canonical, ContractAdapterAudit(
+        adapter_name=descriptor.name,
+        adapter_version=descriptor.version,
+        contract_name=descriptor.contract_name,
+        source_shape="; ".join(sorted({row["source_shape"] for row in proof_rows})),
+        canonical_shape=descriptor.canonical_shape,
+        transformations=tuple(sorted(transformations)),
+        input_sha256=canonical_sha256(payload),
+        output_sha256=canonical_sha256(canonical),
+        proof_sha256=canonical_sha256({
+            "rows": proof_rows,
+            "beat_count": len(proof_rows),
+        }),
+    )
+
+
 def adapt_registered_contract(
     payload: Mapping[str, Any], *, contract_name: str,
     context: Mapping[str, Any] | None = None,
@@ -725,6 +1016,14 @@ def adapt_registered_contract(
             )
             adapted = _adapt_planning_event_topology(
                 current, expected_event_ids=expected_event_ids,
+            )
+        elif descriptor.name == EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER.name:
+            expected_events = tuple(
+                item for item in (context or {}).get("expected_events", ())
+                if isinstance(item, Mapping)
+            )
+            adapted = _adapt_execution_manifest_evidence_references(
+                current, expected_events=expected_events,
             )
         else:  # pragma: no cover - registry construction rejects unowned adapters
             raise RuntimeError(f"contract adapter has no implementation: {descriptor.name}")
@@ -1020,6 +1319,33 @@ class GeneratedArtifactGateway:
             )
 
         normalized = semantic_normalizer(payload) if semantic_normalizer else payload
+        if (
+            not isinstance(normalized, dict)
+            and semantic_normalizer is not None
+            and PLANNING_SEMANTIC_ENVELOPE_ADAPTER
+            in CONTRACT_ADAPTER_REGISTRY.get(contract_name, ())
+        ):
+            try:
+                adapted = _unique_semantic_envelope(payload, semantic_normalizer)
+            except ValueError as exc:
+                ambiguous = "multiple complete candidates" in str(exc)
+                audit = ArtifactConversionAudit(
+                    contract_name=contract_name,
+                    contract_version=registration.version,
+                    raw_sha256=raw_digest,
+                    method="rejected",
+                    transformations=transformations,
+                    candidate_count=(2 if ambiguous else 0),
+                    failure_code=(
+                        "ambiguous_semantic_candidates"
+                        if ambiguous else "unknown_machine_control"
+                    ),
+                )
+                raise ArtifactConversionError(str(exc), audit=audit) from exc
+            if adapted is not None:
+                normalized, adapter_transformations, candidate_count = adapted
+                transformations += adapter_transformations
+                method = "baml_sap"
         if not isinstance(normalized, dict):
             audit = ArtifactConversionAudit(
                 contract_name=contract_name,

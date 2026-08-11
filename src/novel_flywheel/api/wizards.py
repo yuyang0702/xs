@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from typing import Literal
 import asyncio
+import hashlib
 import json
 
 from novel_flywheel.db import WIZARD_MUTATION_LOCK
@@ -115,47 +116,63 @@ def save_answers(wizard_id: str, payload: WizardAnswers, request: Request) -> di
         raise HTTPException(status_code=400, detail={"code": "invalid_answers", "message": str(exc)}) from exc
 
 
-def _confirmed_mechanisms(request: Request, wizard: dict) -> list[dict]:
+def _confirmed_creative_guidance(request: Request, wizard: dict) -> list[dict]:
+    """Return every confirmed adoptable creative node through one UI contract."""
+
     source_ids = wizard.get("schema", {}).get("creation_context", {}).get(
         "reference_source_ids", [],
     )
     scoped_sources = _reference_creation_sources(request, source_ids)
     scoped_by_id = {source["id"]: source for source in scoped_sources}
-    mechanisms_by_source = {source_id: [] for source_id in scoped_by_id}
-    result = []
-    for item in request.app.state.learning.list_mechanisms(view="active"):
-        if item.get("status") != "confirmed" or item.get("node_type") != "mechanism":
+    candidates = list(request.app.state.learning.list_mechanisms(view="active"))
+    candidates.extend(
+        request.app.state.learning.list_style_candidates(view="active")
+    )
+    attraction_sources = scoped_sources or request.app.state.references.list()
+    for source in attraction_sources:
+        attraction = request.app.state.learning.attraction_map(source["id"])
+        if attraction:
+            candidates.append(attraction)
+    result: list[dict] = []
+    scoped_results = {source["id"]: [] for source in scoped_sources}
+    for item in candidates:
+        if item.get("status") != "confirmed" or item.get("node_type") not in {
+            "mechanism", "attraction_map", "style_rule",
+        }:
             continue
-        if scoped_sources:
-            source = scoped_by_id.get(item.get("source_id"))
-            if source is None:
-                continue
-        else:
+        source = scoped_by_id.get(item.get("source_id")) if scoped_sources else None
+        if source is None:
             try:
                 source = request.app.state.references.get(item["source_id"])
-            except (LookupError, ValueError):
+            except (LookupError, ValueError, KeyError):
                 continue
-        if not scoped_sources and source.get("content_type") == "competitor_work":
+        if scoped_sources and source["id"] not in scoped_by_id:
             continue
+        if source.get("content_type") == "competitor_work":
+            continue
+        data = item.get("data") or {}
         choice = {
             "id": item["id"],
-            "name": item.get("data", {}).get("name") or "已确认写法",
-            "use": item.get("data", {}).get("transfer_guidance") or "用于后续创作规则",
-            "confidence": item.get("data", {}).get("confidence"),
+            "name": data.get("name") or data.get("field") or "Creative guidance",
+            "use": (
+                data.get("transfer_guidance") or data.get("rule")
+                or "Use as abstract structural guidance"
+            ),
+            "confidence": data.get("confidence"),
+            "node_type": item.get("node_type"),
             "source_id": source["id"],
-            "source_title": source.get("title") or "参考资料",
+            "source_title": source.get("title") or "Reference source",
         }
         if scoped_sources:
-            mechanisms_by_source[source["id"]].append(choice)
+            scoped_results[source["id"]].append(choice)
             continue
         result.append(choice)
-        if len(result) >= 12:
+        if not scoped_sources and len(result) >= 12:
             break
     if scoped_sources:
         return [
-            item
-            for source in scoped_sources
-            for item in mechanisms_by_source[source["id"]]
+            item for source in scoped_sources
+            for item in scoped_results[source["id"]]
         ]
     return result
 
@@ -163,7 +180,9 @@ def _confirmed_mechanisms(request: Request, wizard: dict) -> list[dict]:
 @router.get("/wizards/{wizard_id}/confirmed-mechanisms")
 def confirmed_wizard_mechanisms(wizard_id: str, request: Request) -> list[dict]:
     with WIZARD_MUTATION_LOCK:
-        return _confirmed_mechanisms(request, _wizard_or_404(request, wizard_id))
+        return _confirmed_creative_guidance(
+            request, _wizard_or_404(request, wizard_id),
+        )
 
 
 @router.post("/wizards/{wizard_id}/confirm", status_code=status.HTTP_201_CREATED)
@@ -203,7 +222,7 @@ def confirm_wizard(wizard_id: str, request: Request, payload: WizardConfirm | No
                         "code": "invalid_learning_selection",
                         "message": "一次最多选择 12 条已确认写法。",
                     })
-                choices = _confirmed_mechanisms(request, wizard)
+                choices = _confirmed_creative_guidance(request, wizard)
                 source_ids = context.get("reference_source_ids", [])
                 confirmed_source_ids = {item["source_id"] for item in choices}
                 if any(source_id not in confirmed_source_ids for source_id in source_ids):
@@ -300,13 +319,30 @@ def apply_interview_suggestions(wizard_id: str, message_id: str,
                             detail={"code": "wizard_not_editable", "message": str(exc)}) from exc
 
 
-@router.post("/projects/{project_id}/initialize-skills", status_code=status.HTTP_202_ACCEPTED)
-async def initialize_project_skills(project_id: str, request: Request) -> dict:
+def build_initialize_skills_operation(
+    project_id: str, request: Request, *,
+    frozen_answers: dict | None = None,
+    frozen_learning_snapshot: dict | None = None,
+    expected_outline_sha256: str | None = None,
+) -> tuple[object, dict]:
+    """Build one restart-safe initialization operation and its frozen inputs."""
+
     try:
         project = request.app.state.projects.get(project_id)
         current_outline = request.app.state.outlines.current(project_id)
-        answers = initialization_answers(project, current_outline)
-        learning_snapshot = request.app.state.learning.initialization_contexts(project_id)
+        outline_sha256 = hashlib.sha256(
+            str(current_outline.get("content") or "").encode("utf-8"),
+        ).hexdigest()
+        if expected_outline_sha256 and expected_outline_sha256 != outline_sha256:
+            raise ValueError("initialization outline authority changed")
+        answers = (
+            frozen_answers if frozen_answers is not None
+            else initialization_answers(project, current_outline)
+        )
+        learning_snapshot = (
+            frozen_learning_snapshot if frozen_learning_snapshot is not None
+            else request.app.state.learning.initialization_contexts(project_id)
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found", "message": str(exc)}) from exc
     readiness = request.app.state.outlines.writing_readiness(project_id)
@@ -457,4 +493,21 @@ async def initialize_project_skills(project_id: str, request: Request) -> dict:
         batch_snapshot.discard()
         return results
 
-    return request.app.state.run_tasks.start(project_id, "initialize-skills", operation)
+    resume_payload = {
+        "version": 1,
+        "outline_sha256": outline_sha256,
+        "answers": answers,
+        "learning_snapshot": learning_snapshot,
+    }
+    return operation, resume_payload
+
+
+@router.post("/projects/{project_id}/initialize-skills", status_code=status.HTTP_202_ACCEPTED)
+async def initialize_project_skills(project_id: str, request: Request) -> dict:
+    operation, resume_payload = build_initialize_skills_operation(
+        project_id, request,
+    )
+    return request.app.state.run_tasks.start(
+        project_id, "initialize-skills", operation,
+        resume_payload=resume_payload,
+    )

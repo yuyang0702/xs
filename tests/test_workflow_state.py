@@ -1,4 +1,6 @@
 import hashlib
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -40,6 +42,63 @@ def test_workflow_node_checkpoint_is_idempotent_and_hash_bound(tmp_path) -> None
     assert CheckpointEnvelope.model_validate(second).version == 2
     assert second["validation_stage"] == "promoted"
     assert loaded is not None and loaded["payload"] == {"segment": 5}
+
+
+def test_concurrent_checkpoint_retries_have_monotonic_attempts(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    make_run(db)
+    barrier = threading.Barrier(8)
+    values = {
+        "run_id": "run", "node_key": "parallel-retry",
+        "authority_sha256": digest("authority"),
+        "input_sha256": digest("input"),
+        "output_sha256": digest("output"),
+        "status": "validated",
+    }
+
+    def save_once() -> int:
+        barrier.wait(timeout=5)
+        return int(db.save_workflow_node_checkpoint(**values)["attempt"])
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        attempts = list(executor.map(lambda _index: save_once(), range(8)))
+
+    assert sorted(attempts) == list(range(1, 9))
+
+
+def test_concurrent_conflicting_validated_checkpoints_have_one_winner(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    make_run(db)
+    barrier = threading.Barrier(2)
+    base = {
+        "run_id": "run", "node_key": "parallel-conflict",
+        "authority_sha256": digest("authority"),
+        "input_sha256": digest("input"), "status": "validated",
+    }
+
+    def save(output: str) -> tuple[str, str]:
+        barrier.wait(timeout=5)
+        try:
+            result = db.save_workflow_node_checkpoint(
+                **base, output_sha256=digest(output),
+            )
+            return "accepted", result["output_sha256"]
+        except ValueError as exc:
+            return "rejected", str(exc)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(save, ("candidate-a", "candidate-b")))
+
+    assert sorted(status for status, _value in results) == ["accepted", "rejected"]
+    loaded = db.load_workflow_node_checkpoint(
+        run_id="run", node_key="parallel-conflict",
+        authority_sha256=base["authority_sha256"],
+        input_sha256=base["input_sha256"],
+    )
+    accepted_hash = next(value for status, value in results if status == "accepted")
+    assert loaded is not None and loaded["output_sha256"] == accepted_hash
 
 
 def test_stale_or_conflicting_checkpoint_cannot_resume(tmp_path) -> None:

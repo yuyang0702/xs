@@ -9,11 +9,18 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from pydantic import (
+    BaseModel, Field, ValidationError, field_validator, model_validator,
+)
 
+from novel_flywheel.db import WIZARD_MUTATION_LOCK
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.publication import build_zhihu_package, preview_zhihu_package
-from novel_flywheel.manuscript_analysis import analysis_matches, analyze_manuscript
+from novel_flywheel.manuscript_analysis import (
+    EMPTY_REFERENCE_CORPUS_SHA256,
+    analysis_matches,
+    analyze_manuscript,
+)
 from novel_flywheel.narrative_contract import (
     confirm_narrative_contract,
     ensure_narrative_contract,
@@ -75,8 +82,63 @@ MATERIAL_META_LABELS = {
 
 
 class StyleSamplePayload(BaseModel):
-    text: str = Field(min_length=1, max_length=60_000)
-    source_name: str = Field(default="reference.txt", max_length=160)
+    """Transport DTO; the API converts it into its validated command below."""
+
+    text: str
+    source_name: str = "reference.txt"
+
+
+class StyleSampleAnalysisInputV1(BaseModel):
+    """API-owned input contract, independent from provider/parser exceptions."""
+
+    version: Literal[1] = 1
+    text: str = Field(min_length=200, max_length=60_000)
+    source_name: str = Field(min_length=1, max_length=160)
+
+    @field_validator("text", "source_name", mode="before")
+    @classmethod
+    def strip_input(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
+
+
+class CandidatePublicationAuthorityV1(BaseModel):
+    """Content-addressed identity of the exact candidate selected for promotion."""
+
+    version: Literal[1] = 1
+    project_id: str = Field(min_length=1)
+    source_run_id: str = Field(min_length=1)
+    source_path: str = Field(min_length=1)
+    source_text_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    manuscript_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CandidatePublicationArtifactAuthorityV1(BaseModel):
+    """Expected byte identities for the complete formal publication write set."""
+
+    version: Literal[1] = 1
+    formal_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    chapter_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    receipt_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class CandidatePublicationJournalV2(BaseModel):
+    """Durable Saga journal; version 1 journals remain readable for recovery."""
+
+    version: Literal[1, 2, 3]
+    status: Literal["prepared", "committed", "rolled_back"]
+    publication_run_id: str = Field(min_length=1)
+    snapshot_path: str = Field(min_length=1)
+    source_run_id: str | None = None
+    source_authority: CandidatePublicationAuthorityV1 | None = None
+    reference_corpus_sha256: str | None = None
+    manuscript_sha256: str | None = None
+    artifact_authority: CandidatePublicationArtifactAuthorityV1 | None = None
+
+    @model_validator(mode="after")
+    def require_v3_artifact_authority(self) -> "CandidatePublicationJournalV2":
+        if self.version == 3 and self.artifact_authority is None:
+            raise ValueError("Publication journal v3 requires artifact authority")
+        return self
 
 
 class StyleSampleScopePayload(BaseModel):
@@ -114,6 +176,11 @@ class ZhihuPublicationPayload(BaseModel):
 
 class PlatformProfilePayload(BaseModel):
     profile_id: Literal["zhihu-salt-short"] | None = None
+
+
+class ProjectRolloutFlagPayload(BaseModel):
+    enabled: bool
+    reason: str = Field(default="", max_length=300)
 
 
 class QualityReferenceConfirmationPayload(BaseModel):
@@ -225,22 +292,38 @@ def _candidate(project: Project, store: ProjectStore) -> tuple[Path, str] | None
 
 def _candidate_analysis(request: Request, project: Project, run_id: str, text: str) -> dict:
     path = project.path / "runs" / run_id / "outputs" / "analysis-candidate.json"
+    enabled = bool(project.metadata.get("optimized_local_review_enabled", False))
+    local_nlp = getattr(request.app.state, "local_nlp", None)
+    references = getattr(request.app.state, "references", None)
+    reference_corpus_sha256 = EMPTY_REFERENCE_CORPUS_SHA256
+    reference_corpus_authority = None
+    if (
+        enabled and references
+        and hasattr(references, "reference_corpus_authority")
+    ):
+        reference_corpus_authority = references.reference_corpus_authority(
+            project.id,
+        )
+        reference_corpus_sha256 = str(reference_corpus_authority["sha256"])
     try:
         cached = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         cached = {}
-    if analysis_matches(cached, text):
+    if analysis_matches(cached, text, reference_corpus_sha256):
         return cached
-    enabled = bool(project.metadata.get("optimized_local_review_enabled", False))
-    local_nlp = getattr(request.app.state, "local_nlp", None)
-    references = getattr(request.app.state, "references", None)
     report = analyze_manuscript(
         text,
         nlp_analyze=(local_nlp.analyze if enabled and local_nlp else None),
         comparison_sources=(
-            references.comparison_sources(project.id)
-            if enabled and references and hasattr(references, "comparison_sources") else []
+            references.comparison_sources(
+                project.id, authority=reference_corpus_authority,
+            )
+            if enabled and references and reference_corpus_authority is not None
+            else references.comparison_sources(project.id)
+            if enabled and references and hasattr(references, "comparison_sources")
+            else []
         ),
+        reference_corpus_sha256=reference_corpus_sha256,
         market_baseline=request.app.state.projects.active_learning_data(
             project.id, "market_baseline",
         ),
@@ -270,6 +353,216 @@ def _candidate_quality_summary(project: Project, run_id: str, text: str) -> dict
         project, run_id, text, _quality_report(project, run_id),
         reconcile_legacy_checkpoint(run_path),
     )
+
+
+def _candidate_publication_authority(
+    project: Project, path: Path, run_id: str, source_text: str,
+    manuscript: str,
+) -> CandidatePublicationAuthorityV1:
+    project_root = project.path.resolve()
+    source_path = path.resolve()
+    if not source_path.is_relative_to(project_root):
+        raise ValueError("Candidate source is outside the project")
+    return CandidatePublicationAuthorityV1(
+        project_id=project.id,
+        source_run_id=run_id,
+        source_path=source_path.relative_to(project_root).as_posix(),
+        source_text_sha256=hashlib.sha256(
+            source_text.encode("utf-8"),
+        ).hexdigest(),
+        manuscript_sha256=hashlib.sha256(
+            manuscript.encode("utf-8"),
+        ).hexdigest(),
+    )
+
+
+def _write_candidate_publication_journal(
+    path: Path, journal: CandidatePublicationJournalV2,
+) -> None:
+    atomic_write(
+        path,
+        json.dumps(
+            journal.model_dump(mode="json"), ensure_ascii=False,
+            indent=2, sort_keys=True,
+        ),
+    )
+
+
+def _persist_candidate_publication_terminal(
+    store: ProjectStore, run_id: str, terminal_status: Literal["completed", "failed"],
+    *, error: str | None = None,
+) -> None:
+    current_stage = "archive" if terminal_status == "completed" else None
+    store.db.update_run(
+        run_id, terminal_status, current_stage, error=error,
+    )
+    current = store.db.get_run(run_id)
+    if current is None or current.get("status") != terminal_status:
+        raise RuntimeError("Candidate publication terminal state was not durable")
+
+
+def _rollback_candidate_publication(
+    journal_path: Path, journal: CandidatePublicationJournalV2,
+    snapshot: ProjectSnapshot,
+) -> CandidatePublicationJournalV2:
+    snapshot.restore()
+    rolled_back = journal.model_copy(update={"status": "rolled_back"})
+    _write_candidate_publication_journal(journal_path, rolled_back)
+    return rolled_back
+
+
+def _candidate_publication_artifacts_match(
+    project: Project, journal: CandidatePublicationJournalV2,
+) -> bool:
+    """Prove the complete committed write set before finalizing its DB state."""
+
+    if (
+        not journal.manuscript_sha256
+        or not journal.source_run_id
+        or not journal.reference_corpus_sha256
+    ):
+        return False
+    formal = project.path / "manuscript" / "story.md"
+    chapter = project.path / "chapters" / "chapter-01.md"
+    receipt_path = project.path / "manuscript" / "publication.json"
+    try:
+        formal_bytes = formal.read_bytes()
+        chapter_bytes = chapter.read_bytes()
+        receipt_bytes = receipt_path.read_bytes()
+        receipt = json.loads(receipt_bytes.decode("utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(receipt, dict):
+        return False
+    manuscript_sha256 = journal.manuscript_sha256
+    if (
+        hashlib.sha256(formal_bytes).hexdigest() != manuscript_sha256
+        or hashlib.sha256(chapter_bytes).hexdigest() != manuscript_sha256
+    ):
+        return False
+    if journal.artifact_authority is not None and (
+        hashlib.sha256(formal_bytes).hexdigest()
+        != journal.artifact_authority.formal_sha256
+        or hashlib.sha256(chapter_bytes).hexdigest()
+        != journal.artifact_authority.chapter_sha256
+        or hashlib.sha256(receipt_bytes).hexdigest()
+        != journal.artifact_authority.receipt_sha256
+    ):
+        return False
+    source_file = (
+        Path(journal.source_authority.source_path).name
+        if journal.source_authority is not None else None
+    )
+    return (
+        receipt.get("version") == 2
+        and receipt.get("source_run") == journal.source_run_id
+        and receipt.get("manuscript_sha256") == manuscript_sha256
+        and receipt.get("reference_corpus_sha256")
+        == journal.reference_corpus_sha256
+        and (source_file is None or receipt.get("source_file") == source_file)
+    )
+
+
+def _abort_candidate_publication(
+    store: ProjectStore, run_id: str, snapshot: ProjectSnapshot | None,
+    journal_path: Path | None, journal: CandidatePublicationJournalV2 | None,
+    *, error: str,
+) -> bool:
+    """Roll back a pre-commit Saga and durably release its writer lease.
+
+    A committed journal is the filesystem commit point.  Such a Saga must be
+    finalized as completed by recovery; it must never be relabelled failed or
+    restored to the snapshot after its authoritative writes were committed.
+    """
+
+    if journal is not None and journal.status == "committed":
+        return False
+    if snapshot is not None:
+        snapshot.restore()
+        if journal is not None and journal_path is not None:
+            journal = journal.model_copy(update={"status": "rolled_back"})
+            _write_candidate_publication_journal(journal_path, journal)
+    _persist_candidate_publication_terminal(
+        store, run_id, "failed", error=error,
+    )
+    if snapshot is not None:
+        snapshot.discard()
+    return True
+
+
+def recover_candidate_publications(store: ProjectStore) -> list[str]:
+    """Recover interrupted manual publication sagas before serving requests."""
+
+    recovered: list[str] = []
+    with WIZARD_MUTATION_LOCK:
+        for run in store.db.list_nonterminal_workflow_runs("candidate-publish"):
+            try:
+                project = store.get(str(run["project_id"]))
+            except (LookupError, OSError, UnicodeError, json.JSONDecodeError):
+                store.db.update_run(
+                    str(run["id"]), "failed", error=(
+                        "Candidate publication project metadata is unavailable."
+                    ),
+                )
+                continue
+            journal_path = (
+                project.path / "runs" / str(run["id"]) / "outputs"
+                / "candidate-publication-journal.json"
+            )
+            try:
+                journal = CandidatePublicationJournalV2.model_validate_json(
+                    journal_path.read_text(encoding="utf-8"),
+                )
+                if journal.publication_run_id != str(run["id"]):
+                    raise ValueError("Publication journal run identity is stale")
+                snapshot_path = (
+                    project.path / journal.snapshot_path
+                ).resolve()
+                snapshot = ProjectSnapshot.load(project.path, snapshot_path)
+            except (
+                OSError, UnicodeError, json.JSONDecodeError,
+                KeyError, TypeError, ValueError, ValidationError,
+            ):
+                store.db.update_run(
+                    str(run["id"]), "failed", error=(
+                        "Candidate publication recovery metadata is invalid."
+                    ),
+                )
+                continue
+            if journal.status == "committed":
+                if not _candidate_publication_artifacts_match(project, journal):
+                    journal = _rollback_candidate_publication(
+                        journal_path, journal, snapshot,
+                    )
+                    _persist_candidate_publication_terminal(
+                        store, str(run["id"]), "failed", error=(
+                            "Committed candidate publication artifacts failed "
+                            "integrity recovery."
+                        ),
+                    )
+                    snapshot.discard()
+                    recovered.append(str(run["id"]))
+                    continue
+                _persist_candidate_publication_terminal(
+                    store, str(run["id"]), "completed",
+                )
+                snapshot.discard()
+                recovered.append(str(run["id"]))
+                continue
+            if journal.status != "rolled_back":
+                journal = _rollback_candidate_publication(
+                    journal_path, journal, snapshot,
+                )
+            else:
+                snapshot.restore()
+            _persist_candidate_publication_terminal(
+                store, str(run["id"]), "failed", error=(
+                    "Interrupted candidate publication was rolled back."
+                ),
+            )
+            snapshot.discard()
+            recovered.append(str(run["id"]))
+    return recovered
 
 
 @router.get("/projects")
@@ -306,17 +599,25 @@ async def analyze_style_sample(project_id: str, payload: StyleSamplePayload, req
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     try:
+        command = StyleSampleAnalysisInputV1.model_validate(
+            payload.model_dump(),
+        )
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail={
+            "code": "invalid_style_sample",
+            "message": (
+                "Style sample must contain 200 to 60000 non-blank characters."
+            ),
+        }) from exc
+    try:
         await request.app.state.style_samples.analyze(
-            project, payload.text, payload.source_name,
+            project, command.text, command.source_name,
         )
         return _style_sample_status(project, request)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail={
-            "code": "invalid_style_sample", "message": str(exc),
-        }) from exc
-    except (LookupError, RuntimeError, OSError) as exc:
+    except Exception as exc:
         raise HTTPException(status_code=502, detail={
-            "code": "style_analysis_failed", "message": str(exc),
+            "code": "style_analysis_failed",
+            "message": "Style analysis provider is temporarily unavailable.",
         }) from exc
 
 
@@ -877,13 +1178,17 @@ def publish_candidate(project_id: str, request: Request) -> dict:
     if resolved is None:
         raise HTTPException(status_code=409, detail={"code": "candidate_not_generated"})
     path, run_id = resolved
-    text, repairs = normalize_chinese_prose(path.read_text(encoding="utf-8").strip())
+    source_text = path.read_text(encoding="utf-8")
+    text, repairs = normalize_chinese_prose(source_text.strip())
+    candidate_authority = _candidate_publication_authority(
+        project, path, run_id, source_text, text,
+    )
     diagnostics = analyze_prose(text)
     if not text or diagnostics["blocking_count"]:
         raise HTTPException(status_code=409, detail={"code": "candidate_blocked",
             "message": "候选稿包含生产说明或正文损坏，不能发布"})
     analysis = _candidate_analysis(request, project, run_id, text)
-    expected_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    expected_hash = candidate_authority.manuscript_sha256
     if analysis.get("coverage") != 1.0 or analysis.get("text_hash") != expected_hash:
         raise HTTPException(status_code=409, detail={"code": "candidate_analysis_stale"})
     quality_summary = _candidate_quality_summary(project, run_id, text)
@@ -894,15 +1199,162 @@ def publish_candidate(project_id: str, request: Request) -> dict:
             "message": "当前候选稿还不能设为正式稿",
             "reasons": authority["blocking_reasons"],
         })
+    publication_run_id = f"candidate-publish-{uuid.uuid4().hex}"
+    if not get_store(request).db.create_run_if_idle(
+        publication_run_id, project.id, "candidate-publish", status="running",
+    ):
+        raise HTTPException(
+            status_code=409, detail={"code": "project_run_active"},
+        )
     formal = project.path / "manuscript" / "story.md"
     chapter = project.path / "chapters" / "chapter-01.md"
-    atomic_write(formal, text)
-    atomic_write(chapter, text)
-    published_at = datetime.now(timezone.utc).isoformat()
-    atomic_write(project.path / "manuscript" / "publication.json", (
-        f'{{"source_run":"{run_id}","source_file":"{path.name}",'
-        f'"published_at":"{published_at}","mechanical_repairs":{len(repairs)}}}\n'
-    ))
+    publication_receipt = project.path / "manuscript" / "publication.json"
+    snapshot: ProjectSnapshot | None = None
+    journal_path: Path | None = None
+    journal: CandidatePublicationJournalV2 | None = None
+    try:
+        with WIZARD_MUTATION_LOCK:
+            current_project = get_store(request).get(project.id)
+            current_resolved = _candidate(
+                current_project, get_store(request),
+            )
+            if current_resolved is None:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "candidate_analysis_stale"},
+                )
+            current_path, current_run_id = current_resolved
+            try:
+                current_source_text = current_path.read_text(encoding="utf-8")
+                current_text, _current_repairs = normalize_chinese_prose(
+                    current_source_text.strip(),
+                )
+                current_authority = _candidate_publication_authority(
+                    current_project, current_path, current_run_id,
+                    current_source_text, current_text,
+                )
+            except (OSError, UnicodeError, ValueError) as exc:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "candidate_analysis_stale"},
+                ) from exc
+            if (
+                current_project.path.resolve() != project.path.resolve()
+                or current_authority != candidate_authority
+            ):
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "candidate_analysis_stale"},
+                )
+            references = getattr(request.app.state, "references", None)
+            optimized = bool(
+                current_project.metadata.get("optimized_local_review_enabled", False)
+            )
+            current_corpus_sha256 = EMPTY_REFERENCE_CORPUS_SHA256
+            if (
+                optimized and references
+                and hasattr(references, "reference_corpus_authority")
+            ):
+                current_corpus_sha256 = str(
+                    references.reference_corpus_authority(project.id)["sha256"]
+                )
+            if analysis.get("reference_corpus_sha256") != current_corpus_sha256:
+                raise HTTPException(
+                    status_code=409,
+                    detail={"code": "candidate_analysis_stale"},
+                )
+            current_quality = _candidate_quality_summary(
+                current_project, current_run_id, current_text,
+            )["publication_authority"]
+            if not current_quality["can_set_formal"]:
+                raise HTTPException(status_code=409, detail={
+                    "code": "candidate_quality_blocked",
+                    "reasons": current_quality["blocking_reasons"],
+                })
+
+            snapshot_root = (
+                project.path / "snapshots" / publication_run_id
+            )
+            snapshot = ProjectSnapshot.create(
+                project.path, snapshot_root,
+                [formal, chapter, publication_receipt],
+            )
+            journal_path = (
+                project.path / "runs" / publication_run_id / "outputs"
+                / "candidate-publication-journal.json"
+            )
+            published_at = datetime.now(timezone.utc).isoformat()
+            receipt_payload = {
+                "version": 2,
+                "source_run": current_run_id,
+                "source_file": current_path.name,
+                "published_at": published_at,
+                "mechanical_repairs": len(repairs),
+                "manuscript_sha256": expected_hash,
+                "reference_corpus_sha256": current_corpus_sha256,
+            }
+            receipt_text = json.dumps(
+                receipt_payload, ensure_ascii=False, indent=2, sort_keys=True,
+            ) + "\n"
+            journal = CandidatePublicationJournalV2(
+                version=3,
+                status="prepared",
+                publication_run_id=publication_run_id,
+                source_run_id=current_run_id,
+                source_authority=current_authority,
+                snapshot_path=snapshot_root.relative_to(
+                    project.path,
+                ).as_posix(),
+                reference_corpus_sha256=current_corpus_sha256,
+                manuscript_sha256=expected_hash,
+                artifact_authority=CandidatePublicationArtifactAuthorityV1(
+                    formal_sha256=expected_hash,
+                    chapter_sha256=expected_hash,
+                    receipt_sha256=hashlib.sha256(
+                        receipt_text.encode("utf-8"),
+                    ).hexdigest(),
+                ),
+            )
+            _write_candidate_publication_journal(journal_path, journal)
+            try:
+                atomic_write(formal, text, preserve_newlines=True)
+                atomic_write(chapter, text, preserve_newlines=True)
+                atomic_write(
+                    publication_receipt,
+                    receipt_text,
+                    preserve_newlines=True,
+                )
+                committed = journal.model_copy(update={"status": "committed"})
+                _write_candidate_publication_journal(
+                    journal_path, committed,
+                )
+                journal = committed
+            except Exception:
+                journal = _rollback_candidate_publication(
+                    journal_path, journal, snapshot,
+                )
+                raise
+            _persist_candidate_publication_terminal(
+                get_store(request), publication_run_id, "completed",
+            )
+            snapshot.discard()
+            snapshot = None
+    except HTTPException as exc:
+        _abort_candidate_publication(
+            get_store(request), publication_run_id, snapshot,
+            journal_path, journal, error=str(
+                exc.detail.get("code") if isinstance(exc.detail, dict)
+                else "candidate_publication_rejected"
+            ),
+        )
+        raise
+    except Exception:
+        _abort_candidate_publication(
+            get_store(request), publication_run_id, snapshot,
+            journal_path, journal,
+            error="Candidate publication failed and was rolled back.",
+        )
+        raise
     return {"status": "published", "project_id": project.id, "run_id": run_id,
             "path": str(formal.resolve()), "diagnostics": diagnostics}
 
@@ -919,6 +1371,41 @@ def recommend_quality_references(project_id: str, request: Request) -> dict:
         return request.app.state.quality_references.recommend(project.id, profile_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+
+
+@router.get("/projects/{project_id}/rollout-flags")
+def get_project_rollout_flags(project_id: str, request: Request) -> dict:
+    try:
+        get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    return {
+        "planning_ir_first": get_store(request).db.feature_flag(
+            "planning_ir_first", project_id=project_id, default=False,
+        ),
+    }
+
+
+@router.put("/projects/{project_id}/rollout-flags/planning-ir-first")
+def set_project_planning_rollout(
+    project_id: str, payload: ProjectRolloutFlagPayload, request: Request,
+) -> dict:
+    try:
+        get_store(request).get(project_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
+    updated = get_store(request).db.set_project_feature_flag_if_idle(
+        project_id, "planning_ir_first", payload.enabled,
+        config={"reason": payload.reason.strip(), "managed_by": "project_api"},
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "project_run_active"},
+        )
+    return get_store(request).db.feature_flag(
+        "planning_ir_first", project_id=project_id,
+    )
 
 
 @router.get("/projects/{project_id}/narrative-contract")
