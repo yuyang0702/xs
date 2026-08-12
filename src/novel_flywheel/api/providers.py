@@ -4,11 +4,34 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, model_validator
 
+from novel_flywheel.api.errors import bounded_public_code, safe_http_exception
 from novel_flywheel.providers.probe import CapabilityProbe, ProbeResult
 from novel_flywheel.providers.registry import ProviderRegistry
 
 
 router = APIRouter(prefix="/api", tags=["providers"])
+
+
+_PROVIDER_CODES = frozenset({
+    "unsupported_protocol", "invalid_provider", "provider_not_found",
+    "invalid_model", "model_not_found", "missing_api_key",
+})
+
+
+def _provider_error(exc: BaseException, boundary: str) -> HTTPException:
+    code = bounded_public_code(
+        exc, allowed=_PROVIDER_CODES, default="provider_request_invalid",
+    )
+    return safe_http_exception(
+        exc, status_code=404 if code in {"provider_not_found", "model_not_found"} else 400,
+        boundary=boundary, code=code,
+        family=("request.resource_not_found" if code.endswith("not_found")
+                else "request.domain_validation"),
+        message=("供应商或模型不存在，请刷新配置后重试。"
+                 if code.endswith("not_found") else
+                 "供应商或模型配置未通过校验，请检查后重试。"),
+        recovery_action="review_provider_configuration",
+    )
 
 
 class ProviderCreate(BaseModel):
@@ -75,7 +98,7 @@ def create_provider(payload: ProviderCreate, registry: ProviderRegistry = Depend
     try:
         provider_id = registry.add_provider(**payload.model_dump())
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
+        raise _provider_error(exc, "provider.create") from exc
     provider = registry.db.get_provider(provider_id)
     assert provider is not None
     return _public_provider(provider, registry)
@@ -87,10 +110,7 @@ def update_provider(provider_id: str, payload: ProviderUpdate,
     try:
         registry.update_provider(provider_id, **payload.model_dump())
     except ValueError as exc:
-        raise HTTPException(
-            status_code=404 if str(exc) == "provider_not_found" else 400,
-            detail={"code": str(exc)},
-        ) from exc
+        raise _provider_error(exc, "provider.update") from exc
     provider = registry.db.get_provider(provider_id)
     assert provider is not None
     return _public_provider(provider, registry)
@@ -107,8 +127,7 @@ def update_provider_api_key(provider_id: str, payload: ApiKeyUpdate,
     try:
         registry.update_api_key(provider_id, payload.api_key)
     except ValueError as exc:
-        raise HTTPException(status_code=404 if str(exc) == "provider_not_found" else 400,
-                            detail={"code": str(exc)}) from exc
+        raise _provider_error(exc, "provider.api_key") from exc
     return {"id": provider_id, "has_api_key": True}
 
 
@@ -126,7 +145,7 @@ def create_model(provider_id: str, payload: ModelCreate,
             max_output_tokens=payload.max_output_tokens,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
+        raise _provider_error(exc, "provider.model.create") from exc
     model = registry.db.get_model(model_id)
     assert model is not None
     return model
@@ -144,7 +163,7 @@ def update_model_capabilities(
             provider_id, model_id, payload.model_dump(),
         )
     except ValueError as exc:
-        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
+        raise _provider_error(exc, "provider.model.capabilities") from exc
 
 
 @router.post("/providers/{provider_id}/models/{model_id}/probe")
@@ -153,7 +172,7 @@ async def probe_model(provider_id: str, model_id: str,
     try:
         resolved = registry.resolve(provider_id, model_id)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": str(exc)}) from exc
+        raise _provider_error(exc, "provider.model.probe") from exc
     result = await CapabilityProbe(resolved.adapter).run(resolved.model_name)
     if result.chat:
         probed_at = datetime.now(timezone.utc)

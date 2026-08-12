@@ -8,6 +8,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from novel_flywheel.failure_boundary import project_safe_failure
 
 class LocalNLPManager:
     """Manages an optional LTP install; ordinary startup never downloads models."""
@@ -93,8 +94,16 @@ class LocalNLPManager:
             cache.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
             return {**result, "backend_version": self.BACKEND_VERSION, "cached": False}
         except Exception as exc:
+            failure = project_safe_failure(
+                exc, boundary="nlp.local_worker",
+                code="nlp.worker_failed", family="runtime.local_dependency_failure",
+                message="本地语义模型暂不可用，已回退到规则分析。",
+                retryable=True, recovery_action="install_or_retry_local_nlp",
+            )
             return {"backend": "rules", "available": False,
-                    "backend_version": self.BACKEND_VERSION, "reason": str(exc)[:300]}
+                    "backend_version": self.BACKEND_VERSION,
+                    "reason": failure.message,
+                    "incident_id": failure.failure_sha256[:16]}
 
     def _read(self) -> dict:
         try:

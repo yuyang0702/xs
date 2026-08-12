@@ -20,6 +20,7 @@ from novel_flywheel.contract_runtime import (
 from novel_flywheel.generated_artifacts import (
     ArtifactConversionError,
 )
+from novel_flywheel.failure_boundary import safe_local_validation_message
 from novel_flywheel.learning_artifacts import (
     apply_learning_artifact_invalidations,
     artifact_sidecar_payload,
@@ -751,7 +752,7 @@ class LearningSystem:
                         "模型返回空内容或未闭合的结构化结果"
                         if isinstance(exc, ArtifactConversionError)
                         and exc.audit.failure_code == "output_truncated"
-                        else str(exc)
+                        else safe_local_validation_message(exc)
                     )
                     raise ValueError(
                         f"第 {window['index']} 个文本窗口分析失败：{detail}。"

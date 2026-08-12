@@ -120,8 +120,10 @@ def test_missing_or_failed_required_skill_blocks_stage(tmp_path) -> None:
     db.approve_skill(skill.name, skill.content_hash)
     with pytest.raises(RuntimeError, match="broken"):
         gate.run_required("review", ["broken"], {"broken": ["scripts/run.py"]})
-    assert db.list_skill_receipts()[-1]["status"] == "failed"
-    assert "validation detail" in db.list_skill_receipts()[-1]["output"]
+    receipt = db.list_skill_receipts()[-1]
+    assert receipt["status"] == "failed"
+    assert "skill.execution_failed" in receipt["output"]
+    assert "validation detail" not in receipt["output"]
 
 
 def test_javascript_skill_uses_configured_bundled_runtime(tmp_path) -> None:

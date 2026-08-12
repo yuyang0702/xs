@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 
+from novel_flywheel.api.errors import safe_http_exception
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
@@ -19,9 +20,11 @@ def _ensure_project(project_id: str, request: Request) -> None:
     try:
         request.app.state.projects.get(project_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={
-            "code": "project_not_found", "message": str(exc),
-        }) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="run.project_lookup",
+            code="project.not_found", family="request.resource_not_found",
+            message="作品不存在或已被删除。",
+        ) from exc
 
 
 def _ensure_confirmed_outline(project_id: str, request: Request) -> None:

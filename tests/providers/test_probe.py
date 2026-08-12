@@ -179,7 +179,10 @@ async def test_optional_tool_support_is_not_misclassified_as_strict_tool() -> No
 async def test_probe_includes_actionable_error_message() -> None:
     result = await CapabilityProbe(FailingProbeAdapter()).run("model")
 
-    assert result.error == "RuntimeError: endpoint returned text/html"
+    assert result.error is not None
+    assert "模型能力探测未完成" in result.error
+    assert "provider.probe_failed" in result.error
+    assert "endpoint returned text/html" not in result.error
     assert result.diagnostic_code == "connection_failed"
 
 

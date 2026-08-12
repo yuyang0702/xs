@@ -10,6 +10,14 @@ from typing import Any
 _JSON_TOKEN_CHARACTERS = frozenset('{}[]:,.+-0123456789truefalsnulEe \t\r\n')
 
 
+class MultipleJSONObjectError(ValueError):
+    """A response contains more than one complete JSON object."""
+
+
+class AdditionalMalformedJSONValueError(json.JSONDecodeError):
+    """One complete object is followed by another malformed JSON value."""
+
+
 def normalize_model_label(value: object) -> str:
     """Normalize a generated control label without touching free-form prose."""
     text = unicodedata.normalize("NFKC", str(value or "")).strip().casefold()
@@ -158,12 +166,12 @@ def parse_json_object(text: str, *, label: str = "Model output") -> dict[str, An
     objects = [value for value in candidates if isinstance(value, dict)]
     if len(objects) == 1:
         if malformed_container:
-            raise json.JSONDecodeError(
+            raise AdditionalMalformedJSONValueError(
                 f"{label} contains an additional malformed JSON value", source, 0,
             )
         return objects[0]
     if len(objects) > 1:
-        raise ValueError(f"{label} contains multiple JSON objects")
+        raise MultipleJSONObjectError(f"{label} contains multiple JSON objects")
     if candidates:
         raise ValueError(f"{label} must be a JSON object")
     raise json.JSONDecodeError(

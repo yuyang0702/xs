@@ -3,6 +3,8 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
+from novel_flywheel.api.errors import safe_http_exception
+from novel_flywheel.failure_boundary import safe_local_validation_message
 from novel_flywheel.learning import OutlineGenerationNotReady
 
 
@@ -96,9 +98,17 @@ def _handle(call):
     try:
         return call()
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="learning.lookup",
+            code="learning.resource_not_found", family="request.resource_not_found",
+            message="请求的学习资源不存在或已被删除。",
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="learning.domain_validation",
+            code="learning.request_invalid", family="request.domain_validation",
+            message="学习操作未通过校验，请确认当前学习节点并检查输入后重试。",
+        ) from exc
 
 
 def _preflight_reference_roles(request: Request) -> None:
@@ -133,9 +143,17 @@ async def model_analyze_reference(source_id: str, request: Request) -> dict:
             lambda progress: _learning(request).model_analyze_reference(source_id, progress),
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="learning.reference_analysis.lookup",
+            code="reference.not_found", family="request.resource_not_found",
+            message="请求的参考资料不存在或已被删除。",
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="learning.reference_analysis.preflight",
+            code="reference.analysis_not_ready", family="request.domain_validation",
+            message="参考资料分析尚未就绪，请检查模型角色和 API 配置后重试。",
+        ) from exc
 
 
 @router.get("/references/{source_id}/attraction-map")
@@ -167,7 +185,11 @@ def nlp_analyze_reference(source_id: str, request: Request) -> dict:
         text = request.app.state.references.read_text(source_id)
         return request.app.state.local_nlp.analyze(text)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="learning.nlp.lookup",
+            code="reference.not_found", family="request.resource_not_found",
+            message="请求的参考资料不存在或已被删除。",
+        ) from exc
 
 
 @router.get("/learning/mechanisms")
@@ -343,9 +365,17 @@ async def semantic_review_outline_candidate(project_id: str, candidate_id: str, 
     try:
         return await request.app.state.outlines.semantic_review(project_id, candidate_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="learning.outline_review.lookup",
+            code="outline.candidate_not_found", family="request.resource_not_found",
+            message="大纲候选不存在或已发生变化。",
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="learning.outline_review.validation",
+            code="outline.review_invalid", family="request.domain_validation",
+            message="大纲候选未通过语义审核，请刷新候选状态后重试。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/learning/outline-candidates/{candidate_id}/apply")
@@ -375,15 +405,20 @@ async def generate_outline(project_id: str, payload: OutlineGeneratePayload, req
     try:
         return await _learning(request).generate_outline_candidate(project_id, payload.brief)
     except OutlineGenerationNotReady as exc:
-        raise HTTPException(status_code=422, detail={
-            "code": "outline_generation_not_ready",
-            "message": str(exc),
-        }) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="learning.outline_generation.preflight",
+            code="outline_generation_not_ready", family="request.domain_validation",
+            message=safe_local_validation_message(
+                exc, fallback="大纲生成条件尚未满足，请检查学习节点和模型配置。",
+            ),
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail={
-            "code": "outline_generation_failed",
-            "message": "大纲生成失败，作品已经创建，可以稍后重试。",
-        }) from exc
+        raise safe_http_exception(
+            exc, status_code=502, boundary="learning.outline_generation.model",
+            code="outline_generation_failed", family="provider.request_failed",
+            message="大纲生成失败，作品已经创建，可以稍后重试。",
+            retryable=True, recovery_action="retry_outline_generation",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/learning/line-edits", status_code=status.HTTP_201_CREATED)
@@ -402,7 +437,12 @@ async def model_line_edit(project_id: str, payload: ModelLineEditPayload, reques
             adjacent_context=payload.adjacent_context,
         )
     except (LookupError, ValueError) as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="learning.model_line_edit",
+            code="learning.line_edit_invalid", family="request.domain_validation",
+            message="模型修改未通过校验，原文和锁定事实已保留。",
+            retryable=True, recovery_action="review_input_and_retry",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/learning/material-change")

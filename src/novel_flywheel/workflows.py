@@ -101,7 +101,13 @@ from novel_flywheel.context_packet import (
     validate_rule_coverage,
 )
 from novel_flywheel.config import configure_runtime_environment
-from novel_flywheel.errors import describe_error
+from novel_flywheel.failure_boundary import (
+    failure_evidence_sha256,
+    project_safe_failure,
+    safe_local_validation_message,
+    safe_persistence_error,
+)
+from novel_flywheel.workflow_coordination import WorkflowCoordinator
 from novel_flywheel.models import (
     ModelGateway,
     ModelRoutesExhaustedError,
@@ -587,6 +593,29 @@ def _draft_narrative_contract_fields(project: Project) -> dict[str, str]:
     }
 
 
+def _safe_workflow_error(
+    exc: BaseException, *, boundary: str,
+    message: str = "工作流未完成，已保留可恢复进度。",
+) -> str:
+    return safe_persistence_error(
+        exc, boundary=boundary, code="workflow.execution_failed",
+        family="runtime.workflow_failure", message=message,
+        retryable=True, recovery_action="resume_from_checkpoint",
+    )
+
+
+def _safe_workflow_event_metadata(
+    exc: BaseException, *, boundary: str, code: str,
+    family: str = "provider.request_failed",
+    recovery_action: str = "retry_current_scope",
+) -> dict[str, object]:
+    return project_safe_failure(
+        exc, boundary=boundary, code=code, family=family,
+        message="模型阶段暂时未完成，已保留当前有效内容。",
+        retryable=True, recovery_action=recovery_action,
+    ).event_metadata()
+
+
 # ponytail: one local console process needs serialization, not a lock registry.
 _SHORT_REVISION_LOCK = threading.Lock()
 _SHORT_CHECKPOINT_RESTORE_LOCK = threading.Lock()
@@ -617,6 +646,7 @@ class WorkflowService:
         self.references = references
         self.generated_artifacts = GeneratedArtifactGateway()
         self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
+        self.coordinator = WorkflowCoordinator(self)
 
     def _convert_generated_object(
         self, raw: str, run_path: Path, *, contract_name: str,
@@ -654,9 +684,12 @@ class WorkflowService:
             self.db.add_run_event(
                 run_id, "warning", "snapshot_restore_failed",
                 "项目文件恢复未完全完成，系统已保留最初的失败原因",
-                stage="archive", metadata={
-                    "recovery_error": str(recovery_error)[:500],
-                },
+                stage="archive", metadata=_safe_workflow_event_metadata(
+                    recovery_error, boundary="workflow.snapshot_restore",
+                    code="workflow.snapshot_restore_failed",
+                    family="runtime.storage_recovery",
+                    recovery_action="inspect_snapshot_and_retry",
+                ),
             )
             return False
         return True
@@ -754,21 +787,17 @@ class WorkflowService:
 
     async def run_short(self, project_id: str, use_crewai: bool = True,
                         run_id: str | None = None) -> dict:
-        project = self.projects.get(project_id)
-        if project.mode != "short":
-            raise ValueError("Short-story workflow requires a short project")
-        if use_crewai:
-            return await self._run_in_crewai(lambda: self._short_pipeline(project, run_id))
-        return await self._short_pipeline(project, run_id)
+        return await self.coordinator.run_short(
+            project_id, use_crewai=use_crewai, run_id=run_id,
+        )
 
     async def run_short_revision(
         self, project_id: str, issue_ids: list[str],
         run_id: str | None = None,
     ) -> dict:
-        project = self.projects.get(project_id)
-        if project.mode != "short":
-            raise ValueError("定向返修目前只支持短篇作品")
-        return await self._short_revision_pipeline(project, issue_ids, run_id)
+        return await self.coordinator.run_short_revision(
+            project_id, issue_ids, run_id=run_id,
+        )
 
     def decide_short_revision_group(
         self, run_id: str, group_id: str, decision: str,
@@ -903,8 +932,8 @@ class WorkflowService:
                     self.db, run_id,
                     workflow=str(run.get("workflow") or "short-revision"),
                     stage=stage,
-                    raw_error=describe_error(exc),
-                    user_message=str(run.get("error") or exc.message),
+                    raw_error=str(exc),
+                    user_message="返修任务未完成，已保留修改决定和可恢复进度。",
                     event_type="short_revision_failed",
                     failure=getattr(exc, "reliability_failure", None),
                 )
@@ -923,7 +952,7 @@ class WorkflowService:
                     self.db, run_id,
                     workflow=str(run.get("workflow") or "short-revision"),
                     stage="revision_finalize",
-                    raw_error=describe_error(exc),
+                    raw_error=str(exc),
                     user_message="返修终审未完成，已保留修改决定，可以稍后重试。",
                     event_type="short_revision_failed",
                     failure=getattr(exc, "reliability_failure", None),
@@ -1139,7 +1168,10 @@ class WorkflowService:
             except (DraftSemanticValidationError, ValueError) as exc:
                 issues = (
                     exc.issues if isinstance(exc, DraftSemanticValidationError)
-                    else [{"code": "whole_semantic_gate", "message": str(exc)}]
+                    else [{
+                        "code": "whole_semantic_gate",
+                        "message": safe_local_validation_message(exc),
+                    }]
                 )
                 try:
                     recovered = await self._recover_short_revision_semantic_subset(
@@ -1820,7 +1852,11 @@ class WorkflowService:
                                         "正文保持不变，正在只重新获取当前修改组的机器执行合同",
                                         stage="repair_groups", metadata={
                                             "group_id": group_id,
-                                            "error": str(exc)[:500],
+                                            **_safe_workflow_event_metadata(
+                                                exc,
+                                                boundary="revision.contract_retry",
+                                                code="revision.contract_retry",
+                                            ),
                                         },
                                     )
                                 continue
@@ -1874,7 +1910,7 @@ class WorkflowService:
                 except ExpansionRejectedError as exc:
                     record.update({
                         "status": "rejected",
-                        "message": str(exc),
+                        "message": "当前修改组未通过扩写或语义约束。",
                     })
                     record.pop("patch_group", None)
                     record["patch_result"] = {
@@ -1893,7 +1929,8 @@ class WorkflowService:
                     )
                     self.db.add_run_event(
                         run_id, "warning",
-                        "short_revision_group_rejected", str(exc),
+                        "short_revision_group_rejected",
+                        "当前修改组未通过扩写或语义约束，已保留原正文。",
                         stage="repair_groups",
                         metadata={
                             "group_id": group_id,
@@ -2530,7 +2567,11 @@ class WorkflowService:
                             "正文保持不变，正在只重新获取扩写场景的机器执行合同",
                             stage="repair_groups", metadata={
                                 "group_id": group_id,
-                                "error": str(exc)[:500],
+                                **_safe_workflow_event_metadata(
+                                    exc,
+                                    boundary="revision.expansion_contract_retry",
+                                    code="revision.expansion_contract_retry",
+                                ),
                             },
                         )
                     continue
@@ -3040,31 +3081,27 @@ class WorkflowService:
 
     async def run_chapter(self, project_id: str, chapter_goal: str,
                           use_crewai: bool = True, run_id: str | None = None) -> dict:
-        project = self.projects.get(project_id)
-        if project.mode != "long":
-            raise ValueError("Long chapter workflow requires a long project")
-        pipeline = lambda: self._chapter_pipeline(project, chapter_goal, run_id)
-        return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
+        return await self.coordinator.run_chapter(
+            project_id, chapter_goal, use_crewai=use_crewai, run_id=run_id,
+        )
 
     async def run_long_setup(self, project_id: str, use_crewai: bool = True,
                              run_id: str | None = None) -> dict:
-        project = self.projects.get(project_id)
-        if project.mode != "long":
-            raise ValueError("Long setup workflow requires a long project")
-        pipeline = lambda: self._long_setup_pipeline(project, run_id)
-        return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
+        return await self.coordinator.run_long_setup(
+            project_id, use_crewai=use_crewai, run_id=run_id,
+        )
 
     async def run_materials_audit(self, project_id: str, use_crewai: bool = True,
                                   run_id: str | None = None) -> dict:
-        project = self.projects.get(project_id)
-        pipeline = lambda: self._materials_audit_pipeline(project, run_id)
-        return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
+        return await self.coordinator.run_materials_audit(
+            project_id, use_crewai=use_crewai, run_id=run_id,
+        )
 
     async def run_materials_repair(self, project_id: str, use_crewai: bool = True,
                                    run_id: str | None = None) -> dict:
-        project = self.projects.get(project_id)
-        pipeline = lambda: self._materials_repair_pipeline(project, run_id)
-        return await self._run_in_crewai(pipeline) if use_crewai else await pipeline()
+        return await self.coordinator.run_materials_repair(
+            project_id, use_crewai=use_crewai, run_id=run_id,
+        )
 
     def _material_manuscript(self, project: Project) -> str:
         for run in self.db.list_runs(project.id):
@@ -3259,297 +3296,6 @@ class WorkflowService:
                 )
                 raise
 
-    async def _materials_audit_pipeline(self, project: Project,
-                                        run_id: str | None = None) -> dict:
-        run_id, run_path = self._begin_run(project, "materials-audit", run_id)
-        try:
-            manuscript = self._material_manuscript(project)
-            if not manuscript.strip():
-                raise RuntimeError("No manuscript is available for conflict checking")
-            constraints = self.projects.load_constraints(project.id)
-            packet_target = self._material_audit_packet_target()
-            reference = build_material_reference_authority(
-                project.path, target_characters=packet_target,
-            )
-            windows = review_windows(
-                manuscript, target=packet_target,
-                overlap=min(400, max(0, packet_target // 8)),
-            )
-            packets = build_material_audit_packets(
-                reference, manuscript, windows,
-            )
-            receipts = []
-            fallback_circuit_open = any(
-                event["event_type"] == "materials_audit_circuit_opened"
-                for event in self.db.list_run_events(run_id)
-            )
-            for packet in packets:
-                manuscript_text = manuscript[
-                    packet.manuscript_start:packet.manuscript_end
-                ]
-                reference_text = reference.text_for(packet.reference_chunk)
-                node_key = f"materials-audit-packet-{packet.sequence:06d}"
-                checkpoint = self.db.load_workflow_node_checkpoint(
-                    run_id=run_id,
-                    node_key=node_key,
-                    authority_sha256=packet.reference_authority_sha256,
-                    input_sha256=packet.packet_id,
-                    min_validation_stage="local_semantics",
-                )
-                cached_receipt = validate_material_audit_checkpoint(
-                    checkpoint.get("payload") if checkpoint else None,
-                    packet, manuscript_text=manuscript_text,
-                )
-                if cached_receipt is not None:
-                    receipts.append(cached_receipt)
-                    self.db.add_run_event(
-                        run_id, "success", "materials_audit_checkpoint_reused",
-                        "材料审核已从语义检查点恢复一个完整的正文窗口/资料分片。",
-                        stage="final_review", metadata={
-                            "packet": packet.sequence,
-                            "window": packet.manuscript_window_index,
-                        },
-                    )
-                    continue
-                packet_receipt, used_fallback, route_fingerprint = (
-                    await self._material_audit_packet_receipt(
-                        run_id, run_path, project, constraints, packet,
-                        manuscript_text=manuscript_text,
-                        reference_text=reference_text,
-                        fallback_circuit_open=fallback_circuit_open,
-                    )
-                )
-                if (not fallback_circuit_open
-                        and used_fallback):
-                    fallback_circuit_open = True
-                    self.db.add_run_event(
-                        run_id, "warning", "materials_audit_circuit_opened",
-                        "材料审核首选路由已回退成功，后续资料分片直接使用配置备用路由。",
-                        stage="final_review", metadata={
-                            "packet": packet.sequence,
-                            "window": packet.manuscript_window_index,
-                        },
-                    )
-                receipts.append(packet_receipt)
-                checkpoint_payload = material_audit_checkpoint_payload(
-                    packet, packet_receipt,
-                )
-                self.db.save_workflow_node_checkpoint(
-                    run_id=run_id,
-                    node_key=node_key,
-                    authority_sha256=packet.reference_authority_sha256,
-                    input_sha256=packet.packet_id,
-                    output_sha256=canonical_sha256(packet_receipt),
-                    status="validated",
-                    validation_stage="local_semantics",
-                    route_fingerprint=route_fingerprint,
-                    payload=checkpoint_payload,
-                )
-            issues = merge_material_audit_receipts(receipts)
-            report = {"project_id": project.id, "issues": issues, "count": len(issues)}
-            self._commit_material_audit_report(
-                project, run_id, run_path, report=report, issues=issues,
-                source_authority_sha256=canonical_json_sha256({
-                    "version": 1,
-                    "manuscript_sha256": hashlib.sha256(
-                        manuscript.encode("utf-8")
-                    ).hexdigest(),
-                    "reference_authority_sha256": (
-                        reference.authority.authority_sha256
-                    ),
-                    "packet_ids": [packet.packet_id for packet in packets],
-                    "report_sha256": canonical_json_sha256(report),
-                }),
-            )
-            return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
-        except asyncio.CancelledError:
-            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
-            raise
-        except Exception as exc:
-            recovery_pending = self._project_mutation_recovery_pending(
-                project, run_id,
-            )
-            current_run = self.db.get_run(run_id)
-            if (
-                not recovery_pending
-                and (current_run is None or current_run.get("status") != "failed")
-            ):
-                self.db.update_run(run_id, "failed", error=str(exc))
-            raise
-
-    async def _materials_repair_pipeline(self, project: Project,
-                                         run_id: str | None = None) -> dict:
-        run_id, run_path = self._begin_run(project, "materials-repair", run_id)
-        try:
-            audit = next((item for item in self.db.list_runs(project.id)
-                          if item["workflow"] == "materials-audit" and item["status"] == "completed"), None)
-            if not audit:
-                raise RuntimeError("Run a material conflict audit before repair")
-            report_path = project.path / "runs" / audit["id"] / "outputs" / "conflict-report.json"
-            report = json.loads(report_path.read_text(encoding="utf-8"))
-            issues = report.get("issues", [])
-            if not issues:
-                raise RuntimeError("The latest material audit has no conflicts to repair")
-            manuscript = self._material_manuscript(project)
-            constraints = self.projects.load_constraints(project.id)
-            repaired = await self._polish_short_segments(
-                run_id, run_path, project, constraints, manuscript,
-                json.dumps({"material_conflicts": issues}, ensure_ascii=False),
-                suffix="-materials", structural=True,
-            )
-            initial = normalize_review({
-                "score": 80, "dimensions": {"commercial": 80, "story": 80, "prose": 80},
-                "hard_fail": False, "decision": "revise", "issues": issues,
-            })
-            final, evidence = await self._full_manuscript_review(
-                run_id, run_path, project, constraints, repaired, initial,
-                suffix="-materials",
-            )
-            outcome, reasons = quality_outcome(final)
-            atomic_write(run_path / "outputs" / "best-candidate.md", repaired)
-            atomic_write(run_path / "outputs" / "quality-report.json", json.dumps({
-                "status": outcome, "failure_reasons": reasons, "final_review": final,
-                "final_review_evidence": evidence, "source_audit": audit["id"],
-            }, ensure_ascii=False, indent=2))
-            if outcome == "failed":
-                raise RuntimeError("Material conflict repair did not pass the final quality gate")
-            self.db.update_run(run_id, "completed", "archive")
-            return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
-        except asyncio.CancelledError:
-            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
-            raise
-        except Exception as exc:
-            self.db.update_run(run_id, "failed", error=str(exc))
-            raise
-
-    async def _long_setup_pipeline(self, project: Project, run_id: str | None = None) -> dict:
-        run_id, run_path = self._begin_run(project, "long-setup", run_id)
-        outline_path = project.path / "memory" / "book-plan.md"
-        canon_path = project.path / "memory" / "canon.json"
-        volumes_path = project.path / "memory" / "volumes.json"
-        try:
-            constraints = self.projects.load_constraints(project.id)
-            brief = (
-                "Expand the immutable confirmed outline into a complete long-form execution plan with "
-                "fixed ending, protagonist arc, act structure, "
-                "3-5 volumes, chapter map, hooks, foreshadowing, characters, relationships, world rules, "
-                "timeline and knowledge boundaries. Do not replace or contradict the confirmed outline.\n\n" +
-                json.dumps(project.metadata, ensure_ascii=False, indent=2)
-            )
-            outline = await self._stage(run_id, run_path, project, "planning", constraints, brief)
-            review = self._review(await self._stage(
-                run_id, run_path, project, "review", constraints, outline,
-            ))
-            if review["score"] < 80 or review["hard_fail"]:
-                raise RuntimeError("Book setup review did not pass")
-            canon = self._convert_generated_object(
-                await self._stage(
-                    run_id, run_path, project, "maintenance", constraints, outline,
-                ),
-                run_path, contract_name="long_setup_maintenance",
-            )
-            if not isinstance(canon.get("facts"), list):
-                raise ValueError("Maintenance output must contain a facts array")
-            target_text = {
-                outline_path: outline,
-                canon_path: json.dumps(canon, ensure_ascii=False, indent=2),
-            }
-            if isinstance(canon.get("volumes"), list):
-                target_text[volumes_path] = json.dumps(
-                    {"volumes": canon["volumes"]},
-                    ensure_ascii=False, indent=2,
-                )
-            memory_effects = []
-            seen_fact_keys = set()
-            for index, fact in enumerate(canon["facts"]):
-                if isinstance(fact, dict):
-                    key = str(fact.get("fact_key") or f"setup.{index}")
-                    value = str(fact.get("value") or fact.get("fact") or "")
-                    if key in seen_fact_keys:
-                        continue
-                    seen_fact_keys.add(key)
-                    memory_effects.append(ProjectMutationCanonFactV1(
-                        fact_key=key, value=value, confirmed=True,
-                        source="book-setup", preserve_existing=True,
-                    ))
-            with WIZARD_MUTATION_LOCK:
-                state = self.story_states.ensure(project.id, project.path)
-                managed_paths = list(target_text)
-                snapshot_root = (
-                    project.path / "snapshots" / f"{run_id}-long-setup"
-                )
-                snapshot = ProjectSnapshot.create(
-                    project.path, snapshot_root, managed_paths,
-                )
-                journal_path = project_mutation_journal_path(
-                    project.path, run_id,
-                )
-                journal = ProjectMutationJournalV1(
-                    status="prepared", operation="long-setup",
-                    run_id=run_id, project_id=project.id,
-                    snapshot_path=snapshot_root.relative_to(
-                        project.path,
-                    ).as_posix(),
-                    source_authority_sha256=canonical_json_sha256({
-                        "version": 1,
-                        "outline_sha256": hashlib.sha256(
-                            outline.encode("utf-8")
-                        ).hexdigest(),
-                        "canon_sha256": canonical_json_sha256(canon),
-                        "managed_paths": [
-                            path.relative_to(project.path).as_posix()
-                            for path in managed_paths
-                        ],
-                        "base_story_state_revision": state.revision,
-                    }),
-                    expected_story_state_revision=state.revision,
-                    managed_paths=tuple(
-                        path.relative_to(project.path).as_posix()
-                        for path in managed_paths
-                    ),
-                    memory_effects=tuple(memory_effects),
-                )
-                write_project_mutation_journal(journal_path, journal)
-                try:
-                    for path, content in target_text.items():
-                        atomic_write(path, content)
-                    self._post_write_maintenance(run_id, project)
-                    artifacts = stage_project_mutation_targets(
-                        project.path, snapshot, managed_paths,
-                    )
-                    journal = ProjectMutationJournalV1.model_validate(
-                        journal.model_copy(update={
-                            "status": "artifacts_committed",
-                            "artifacts": artifacts,
-                        }).model_dump(mode="python"),
-                    )
-                    write_project_mutation_journal(journal_path, journal)
-                    complete_project_mutation(self.projects, run_id)
-                except Exception:
-                    abort_project_mutation_request(
-                        self.projects, run_id, snapshot,
-                        journal_path, journal,
-                        error=(
-                            "Long setup authority commit failed and was "
-                            "rolled back."
-                        ),
-                    )
-                    raise
-            return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
-        except asyncio.CancelledError:
-            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
-            raise
-        except Exception as exc:
-            recovery_pending = self._project_mutation_recovery_pending(
-                project, run_id,
-            )
-            current_run = self.db.get_run(run_id)
-            if (
-                not recovery_pending
-                and (current_run is None or current_run.get("status") != "failed")
-            ):
-                self.db.update_run(run_id, "failed", error=str(exc))
-            raise
 
     async def _resume_long_chapter_publication(
         self, project: Project, run_id: str, run_path: Path,
@@ -3607,7 +3353,9 @@ class WorkflowService:
                 self._bind_long_chapter_volume_gate_receipt(
                     project, run_id, chapter_number,
                 )
-                self.db.update_run(run_id, "failed", error=str(exc))
+                self.db.update_run(run_id, "failed", error=_safe_workflow_error(
+                    exc, boundary="workflow.failed",
+                ))
                 raise
             if self._bind_long_chapter_volume_gate_receipt(
                 project, run_id, chapter_number,
@@ -3619,222 +3367,6 @@ class WorkflowService:
             "id": run_id, "status": "completed",
         }
 
-    async def _chapter_pipeline(self, project: Project, chapter_goal: str,
-                                run_id: str | None = None) -> dict:
-        run_id, run_path = self._begin_run(project, "long-chapter", run_id)
-        resumed = await self._resume_long_chapter_publication(
-            project, run_id, run_path,
-        )
-        if resumed is not None:
-            return resumed
-        numbers = [
-            int(match.group(1)) for path in project.path.joinpath("chapters").glob("chapter-*.md")
-            if (match := re.fullmatch(r"chapter-(\d+)\.md", path.name))
-        ]
-        chapter_number = max(numbers, default=0) + 1
-        chapter_id = f"chapter-{chapter_number:02d}"
-        chapter_path = project.path / "chapters" / f"{chapter_id}.md"
-        canon_path = project.path / "memory" / "canon.json"
-        voice_path = (
-            project.path / "memory" / "style-metrics"
-            / f"chapter-{chapter_number:02d}.json"
-        )
-        self._ensure_previous_volume_passed(project, chapter_number)
-        snapshot_root = (
-            project.path / "snapshots"
-            / f"{run_id}-long-chapter-{uuid.uuid4().hex[:8]}"
-        )
-        snapshot = ProjectSnapshot.create(
-            project.path, snapshot_root,
-            [chapter_path, canon_path, voice_path],
-        )
-        committed = False
-        journal_path: Path | None = None
-        journal: ProjectMutationJournalV1 | None = None
-        try:
-            constraints = self.projects.load_constraints(project.id)
-            context = self.memory.context(project.id, chapter_goal)
-            brief = json.dumps({
-                "chapter_number": chapter_number,
-                "goal": chapter_goal,
-                "project": project.metadata,
-                "retrieved_memory": context,
-            }, ensure_ascii=False, indent=2)
-            plan = await self._stage(run_id, run_path, project, "planning", constraints, brief)
-            draft = await self._stage(run_id, run_path, project, "draft", constraints, plan)
-            draft_analysis = self._analyze_manuscript(draft, run_path, project, "draft")
-            review = self._review(await self._stage(
-                run_id, run_path, project, "review", constraints,
-                f"MEMORY:\n{json.dumps(context, ensure_ascii=False)}\n\nDRAFT:\n{draft}\n\n"
-                "LOCAL FULL MANUSCRIPT SUMMARY:\n"
-                f"{json.dumps(compact_analysis(draft_analysis), ensure_ascii=False)}",
-            ))
-            polished, _ = await self._quality_polish(
-                run_id, run_path, project, constraints, draft, review,
-                chapter_number=chapter_number,
-                chapter_goal=chapter_goal,
-                volume_end=self._is_volume_end(project, chapter_number),
-            )
-            canon = self._convert_generated_object(
-                await self._stage(
-                    run_id, run_path, project, "maintenance", constraints, polished,
-                ),
-                run_path, contract_name="long_chapter_maintenance",
-            )
-            if not isinstance(canon.get("facts"), list):
-                raise ValueError("Maintenance output must contain a facts array")
-            chapter_text = self._chapter_file(
-                project, polished, chapter_number,
-            )
-            canon_text = json.dumps(canon, ensure_ascii=False, indent=2)
-            memory_effects = [ProjectMutationChapterIndexV1(
-                chapter_id=chapter_id,
-                chapter_number=chapter_number,
-                content=polished,
-                content_sha256=hashlib.sha256(
-                    polished.encode("utf-8")
-                ).hexdigest(),
-                summary=chapter_goal,
-            )]
-            if isinstance(canon.get("state"), dict):
-                memory_effects.append(ProjectMutationChapterStateV1(
-                    chapter_id=chapter_id,
-                    state=canon["state"],
-                    state_sha256=canonical_json_sha256(canon["state"]),
-                ))
-            state = self.story_states.ensure(project.id, project.path)
-            volume = self._volume_for_chapter(project, chapter_number)
-            post_commit_gate = None
-            if (
-                volume is not None
-                and chapter_number == int(volume.get("end_chapter", -1))
-            ):
-                gate_payload = {
-                    "chapter_number": chapter_number,
-                    "volume_number": int(volume["number"]),
-                }
-                post_commit_gate = ProjectMutationPostCommitGateV1(
-                    name="volume_audit",
-                    payload=gate_payload,
-                    payload_sha256=canonical_json_sha256(gate_payload),
-                )
-            managed_paths = [chapter_path, canon_path, voice_path]
-            journal_path = project_mutation_journal_path(
-                project.path, run_id,
-            )
-            journal = ProjectMutationJournalV1(
-                status="prepared", operation="long-chapter",
-                run_id=run_id, project_id=project.id,
-                snapshot_path=snapshot_root.relative_to(
-                    project.path,
-                ).as_posix(),
-                source_authority_sha256=canonical_json_sha256({
-                    "version": 1,
-                    "chapter_number": chapter_number,
-                    "chapter_sha256": hashlib.sha256(
-                        chapter_text.encode("utf-8")
-                    ).hexdigest(),
-                    "canon_sha256": hashlib.sha256(
-                        canon_text.encode("utf-8")
-                    ).hexdigest(),
-                    "chapter_memory_sha256": hashlib.sha256(
-                        polished.encode("utf-8")
-                    ).hexdigest(),
-                    "chapter_goal_sha256": hashlib.sha256(
-                        chapter_goal.encode("utf-8")
-                    ).hexdigest(),
-                    "base_story_state_revision": state.revision,
-                    "post_commit_gate": (
-                        post_commit_gate.model_dump(mode="json")
-                        if post_commit_gate is not None else None
-                    ),
-                }),
-                expected_story_state_revision=state.revision,
-                managed_paths=tuple(
-                    path.relative_to(project.path).as_posix()
-                    for path in managed_paths
-                ),
-                memory_effects=tuple(memory_effects),
-                post_commit_gate=post_commit_gate,
-            )
-            write_project_mutation_journal(journal_path, journal)
-            with WIZARD_MUTATION_LOCK:
-                atomic_write(chapter_path, chapter_text)
-                self._record_voice_drift(
-                    run_id, project, chapter_number, polished,
-                )
-                atomic_write(canon_path, canon_text)
-                self._post_write_maintenance(run_id, project)
-                artifacts = stage_project_mutation_targets(
-                    project.path, snapshot, managed_paths,
-                )
-                journal = ProjectMutationJournalV1.model_validate(
-                    journal.model_copy(update={
-                        "status": "artifacts_committed",
-                        "artifacts": artifacts,
-                    }).model_dump(mode="python"),
-                )
-                write_project_mutation_journal(journal_path, journal)
-                if post_commit_gate is None:
-                    complete_project_mutation(self.projects, run_id)
-                else:
-                    commit_project_mutation_authority(
-                        self.projects, run_id,
-                    )
-            committed = True
-            if post_commit_gate is not None:
-                try:
-                    await self._audit_volume_boundary(
-                        run_id, run_path, project, chapter_number, constraints,
-                    )
-                except Exception:
-                    self._bind_long_chapter_volume_gate_receipt(
-                        project, run_id, chapter_number,
-                    )
-                    raise
-                if self._bind_long_chapter_volume_gate_receipt(
-                    project, run_id, chapter_number,
-                ) != "passed":
-                    raise RuntimeError(
-                        "Volume audit receipt did not prove success"
-                    )
-                with WIZARD_MUTATION_LOCK:
-                    finalize_project_mutation(self.projects, run_id)
-            return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
-        except asyncio.CancelledError:
-            if not committed:
-                if journal_path is None or journal is None:
-                    snapshot.restore()
-                    snapshot.discard()
-                else:
-                    abort_project_mutation_request(
-                        self.projects, run_id, snapshot, journal_path, journal,
-                        error=(
-                            "Long-chapter publication was cancelled and "
-                            "rolled back."
-                        ),
-                    )
-            self.db.update_run(run_id, "cancelled", error="Cancelled by user")
-            raise
-
-        except Exception as exc:
-            if not committed:
-                if journal_path is None or journal is None:
-                    snapshot.restore()
-                    snapshot.discard()
-                    rolled_back = True
-                else:
-                    rolled_back = abort_project_mutation_request(
-                        self.projects, run_id, snapshot, journal_path, journal,
-                        error=(
-                            "Long-chapter publication failed before its durable "
-                            "authority commit and was rolled back."
-                        ),
-                    )
-                if not rolled_back:
-                    raise
-            self.db.update_run(run_id, "failed", error=str(exc))
-            raise
 
     def _record_voice_drift(self, run_id: str, project: Project, chapter_number: int,
                             text: str) -> None:
@@ -3869,7 +3401,11 @@ class WorkflowService:
                 self.db, self.story_states, project,
             )
         except Exception as exc:
-            self.db.update_run(run_id, "failed", "archive", error=str(exc))
+            self.db.update_run(
+                run_id, "failed", "archive", error=_safe_workflow_error(
+                    exc, boundary="short.recovery",
+                ),
+            )
             raise
         state = self.story_states.ensure(project.id, project.path)
         candidate_id = None
@@ -4396,10 +3932,16 @@ class WorkflowService:
                         self._restore_snapshot_after_failure(run_id, snapshot)
                     snapshot.discard()
             if candidate_id:
-                self.story_states.reject(candidate_id, str(exc))
+                self.story_states.reject(candidate_id, _safe_workflow_error(
+                    exc, boundary="short.candidate_reject",
+                ))
             if draft_candidate_id:
-                self.story_states.reject(draft_candidate_id, str(exc))
-            self.db.update_run(run_id, "failed", error=str(exc))
+                self.story_states.reject(draft_candidate_id, _safe_workflow_error(
+                    exc, boundary="short.draft_reject",
+                ))
+            self.db.update_run(run_id, "failed", error=_safe_workflow_error(
+                exc, boundary="workflow.failed",
+            ))
             raise
         finally:
             if promotion_lock_acquired:
@@ -4414,7 +3956,11 @@ class WorkflowService:
             self.db.add_run_event(
                 run_id, "warning", "causal_chain_parse_failed",
                 "短篇因果链解析失败，规划稿将先进入本地修正",
-                stage="planning", metadata={"error": str(exc)[:300]},
+                stage="planning", metadata=_safe_workflow_event_metadata(
+                    exc, boundary="planning.causal_chain_parse",
+                    code="planning.causal_chain_parse_failed",
+                    family="model.protocol_invalid",
+                ),
             )
             return plan, None
         if not chain:
@@ -5585,7 +5131,9 @@ class WorkflowService:
                         "segment": segment,
                         "attempt": granular_attempt,
                         "error_type": type(exc).__name__,
-                        "message": describe_error(exc),
+                        "message": _safe_workflow_error(
+                            exc, boundary="planning.recovery",
+                        ),
                     })
                     write_planning_recovery(
                         run_path / "outputs", recovery_state, best_plan,
@@ -6321,7 +5869,8 @@ class WorkflowService:
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt: object = {}
                 last_issues = [{
-                    "code": "receipt_schema", "message": str(exc)[:500],
+                    "code": "receipt_schema",
+                    "message": safe_local_validation_message(exc),
                 }]
             else:
                 receipt = normalize_planning_adaptation_receipt(
@@ -7294,7 +6843,9 @@ class WorkflowService:
                         contract_name="planning_adaptation_facet",
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                    last_issues = ["receipt_schema:" + str(exc)[:300]]
+                    last_issues = [
+                        "receipt_schema:" + safe_local_validation_message(exc)
+                    ]
                     rebound_fields: list[str] = []
                 else:
                     (
@@ -7622,7 +7173,7 @@ class WorkflowService:
                         contract_name="planning_adaptation_facet",
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                    last_error = str(exc)
+                    last_error = safe_local_validation_message(exc)
                 else:
                     (
                         receipt, semantic_issues, rebound_fields,
@@ -8748,7 +8299,7 @@ class WorkflowService:
                         expected_event_ids=expected_event_ids,
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                    last_error = str(exc)
+                    last_error = safe_local_validation_message(exc)
                     if not attempt.is_last:
                         protocol_retries += 1
                         continue
@@ -8952,7 +8503,7 @@ class WorkflowService:
                             inherited=batch,
                         )
                     except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                        last_error = str(exc)
+                        last_error = safe_local_validation_message(exc)
                         if not attempt.is_last:
                             protocol_retries += 1
                             continue
@@ -9159,7 +8710,8 @@ class WorkflowService:
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt: object = {}
                 last_issues = [{
-                    "code": "whole_receipt_schema", "message": str(exc)[:500],
+                    "code": "whole_receipt_schema",
+                    "message": safe_local_validation_message(exc),
                 }]
             else:
                 receipt = normalize_planning_adaptation_whole_receipt(payload)
@@ -11496,7 +11048,7 @@ class WorkflowService:
                     "resolved_issue_keys": [],
                     "retained_issue_keys": sorted(planning_issue_keys(best_issues)),
                     "reason": "candidate_generation_failed",
-                    "error": str(exc)[:500],
+                    "error": safe_local_validation_message(exc),
                     "failure_class": failure_class,
                     "candidate_segment": target_segment,
                     "candidate_segments": list(target_unit),
@@ -11512,7 +11064,7 @@ class WorkflowService:
                 )
                 if protocol_exhausted:
                     current_protocol_failures.append({
-                        "error": str(exc)[:500],
+                        "error": safe_local_validation_message(exc),
                         "mode": mode,
                         "attempt": attempt,
                         "candidate_segments": list(target_unit),
@@ -11523,7 +11075,7 @@ class WorkflowService:
                 if failure_class != "normal_invalid_output":
                     failure_record = {
                         "failure_class": failure_class,
-                        "error": str(exc)[:500],
+                        "error": safe_local_validation_message(exc),
                         "attempt": attempt,
                         "mode": mode,
                         "candidate_segment": target_segment,
@@ -13857,7 +13409,7 @@ class WorkflowService:
             chain = parse_chain(raw)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             chain = None
-            last_error = str(exc)
+            last_error = safe_local_validation_message(exc)
         else:
             last_error = (
                 "" if chain is not None
@@ -13884,7 +13436,7 @@ class WorkflowService:
                     raise
                 except Exception as exc:
                     chain = None
-                    last_error = str(exc)
+                    last_error = safe_local_validation_message(exc)
                     continue
             else:
                 repaired = await self._stage(
@@ -13906,7 +13458,7 @@ class WorkflowService:
                 chain = parse_chain(repaired)
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 chain = None
-                last_error = str(exc)
+                last_error = safe_local_validation_message(exc)
             else:
                 last_error = (
                     "" if chain is not None
@@ -14352,7 +13904,8 @@ class WorkflowService:
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 last_issues = [{
-                    "code": "invalid_manifest_json", "message": str(exc)[:500],
+                    "code": "invalid_manifest_json",
+                    "message": safe_local_validation_message(exc),
                 }]
                 if schema_repairs >= max_schema_repairs:
                     break
@@ -14368,7 +13921,7 @@ class WorkflowService:
                 except ValueError as exc:
                     last_issues = [{
                         "code": "source_evidence_authority_conflict",
-                        "message": str(exc)[:500],
+                        "message": safe_local_validation_message(exc),
                     }]
                     if schema_repairs >= max_schema_repairs:
                         break
@@ -14433,7 +13986,8 @@ class WorkflowService:
                     fragment = parse_execution_manifest(payload)
                 except (TypeError, ValueError) as exc:
                     last_issues = [{
-                        "code": "invalid_manifest_schema", "message": str(exc)[:500],
+                    "code": "invalid_manifest_schema",
+                    "message": safe_local_validation_message(exc),
                     }]
                     if schema_repairs >= max_schema_repairs:
                         break
@@ -14575,7 +14129,8 @@ class WorkflowService:
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt_payload = {}
                 last_issues = [{
-                    "code": "receipt_schema", "message": str(exc)[:500],
+                    "code": "receipt_schema",
+                    "message": safe_local_validation_message(exc),
                 }]
             else:
                 for raw_item in (receipt_payload.get("beat_receipts") or []):
@@ -15073,7 +14628,8 @@ class WorkflowService:
                 "content_status": "content_valid" if protocol_failure else "invalid",
                 "receipt_status": "failed" if protocol_failure else "not_ready",
                 "issues": failure_issues or [{
-                    "code": "manifest_failure", "message": str(exc)[:500],
+                    "code": "manifest_failure",
+                    "message": safe_local_validation_message(exc),
                 }],
             }, ensure_ascii=False, indent=2))
             self.db.add_run_event(
@@ -15334,11 +14890,11 @@ class WorkflowService:
         if publish_blockers:
             self.db.add_run_event(
                 run_id, "error", "publish_local_gate_failed",
-                "鍙戝竷鍓嶅叏鏂囨鏌ュ彂鐜版鏂囧紓甯革紝宸蹭繚鐣欐渶浣崇浣嗕笉浼氬啓鍏ユ寮忕",
+                "发布前本地门禁仍检测到不可接受的原创性风险，正式稿未晋升。",
                 stage="quality", metadata={"findings": publish_blockers[:12]},
             )
             raise ValueError(
-                "鍙戝竷鍓嶅叏鏂囨鏌ユ湭閫氳繃锛岃鍏堝鐞嗘鏂囧畬鏁存€ч棶棰?"
+                "发布前本地门禁未通过；已保留最佳候选，正式稿不会被覆盖。"
             )
         self._require_short_formal_quality_authority(
             run_path, quality_report, publish_text,
@@ -15626,7 +15182,7 @@ class WorkflowService:
             safe_state, safe_transitions = {}, []
             conflicts = [{
                 "state_path": "state",
-                "reason": str(exc),
+                "reason": safe_local_validation_message(exc),
                 "proposal_sha256": canonical_sha256(candidate.get("state")),
             }]
         conflicts = [*shape_conflicts, *conflicts]
@@ -15689,7 +15245,7 @@ class WorkflowService:
                     fact_key = "invalid-fact"
                 conflicts.append({
                     "fact_key": fact_key,
-                    "reason": str(exc),
+                    "reason": safe_local_validation_message(exc),
                     "proposal_sha256": canonical_sha256(raw),
                 })
             else:
@@ -16415,7 +15971,10 @@ class WorkflowService:
                     stage="review", metadata={
                         "failed_role": reader_role,
                         "fallback_role": "review",
-                        "error": str(exc),
+                        **_safe_workflow_event_metadata(
+                            exc, boundary="review.reader_fallback",
+                            code="review.reader_fallback",
+                        ),
                     },
                 )
                 reader_review = {
@@ -16609,7 +16168,9 @@ class WorkflowService:
                 report["failure_reasons"] = [message]
                 if isinstance(exc, FinalReviewJSONError):
                     report["status"] = "final_review_incomplete"
-                    report["failure_reasons"] = [str(exc)]
+                    report["failure_reasons"] = [
+                        safe_local_validation_message(exc)
+                    ]
                     report["failure_detail"] = exc.detail
                     report["final_review_recovery"] = {
                         "attempted": True, "succeeded": False,
@@ -16618,12 +16179,15 @@ class WorkflowService:
                     }
                     report_status = "final_review_incomplete"
                     event_type = "final_review_model_failed"
-                    message = str(exc)
+                    message = "终审结构化恢复未完成；最佳候选已保留。"
                 atomic_write(run_path / "outputs" / "best-candidate.md", best_polished)
                 self._write_quality_report(run_path, report)
                 self.db.add_run_event(
                     run_id, "error", event_type, message,
-                    stage="final_review", metadata={"error": str(exc)},
+                    stage="final_review", metadata=_safe_workflow_event_metadata(
+                        exc, boundary="review.final_review",
+                        code="review.final_review_failed",
+                    ),
                 )
                 raise RuntimeError(message) from exc
             final_review["issues"] = issue_ledger(final_review.get("issues", []))
@@ -18190,7 +17754,7 @@ class WorkflowService:
         try:
             topology = planning_ownership_topology(planning_ir)
         except ValueError as exc:
-            return [str(exc)]
+            return [safe_local_validation_message(exc)]
         raw_coverage = causal_chain.get("covered_event_ids")
         if not isinstance(raw_coverage, list):
             return ["causal_coverage_shape"]
@@ -19840,7 +19404,11 @@ class WorkflowService:
                         run_id, "warning", "polish_input_compact_retry",
                         "当前模型明确拒绝了过长输入，正在保留叙事权威后压缩建议重试",
                         stage="polish", metadata={
-                            **metadata, "error": describe_error(exc)[:500],
+                            **metadata,
+                            **_safe_workflow_event_metadata(
+                                exc, boundary="polish.primary.capacity",
+                                code="polish.input_capacity",
+                            ),
                             "route": "primary",
                             "failure_class": "input_context_overflow",
                         },
@@ -19854,7 +19422,11 @@ class WorkflowService:
                         run_id, "warning", "polish_transport_retry",
                         "润色请求因网络中断，正在同一路由使用相同内容重试一次",
                         stage="polish", metadata={
-                            **metadata, "error": describe_error(exc)[:500],
+                            **metadata,
+                            **_safe_workflow_event_metadata(
+                                exc, boundary="polish.primary.transport",
+                                code="polish.transport_interrupted",
+                            ),
                             "route": "primary",
                             "failure_class": "transport_interrupted",
                         },
@@ -19871,7 +19443,11 @@ class WorkflowService:
                     run_id, "warning", "polish_configured_fallback",
                     "首选润色路由未产生可用正文，正在使用配置的备用路由",
                     stage="polish", metadata={
-                        **metadata, "error": describe_error(primary_error)[:500],
+                        **metadata,
+                        **_safe_workflow_event_metadata(
+                            primary_error, boundary="polish.primary.deferred_failure",
+                            code="polish.primary_failed",
+                        ),
                         "compact_input": fallback_compact,
                         "failure_class": classify_model_failure(primary_error),
                     },
@@ -19897,7 +19473,11 @@ class WorkflowService:
                             run_id, "warning", "polish_input_compact_retry",
                             "备用模型明确拒绝了过长输入，正在保留叙事权威后压缩建议重试",
                             stage="polish", metadata={
-                                **metadata, "error": describe_error(exc)[:500],
+                                **metadata,
+                                **_safe_workflow_event_metadata(
+                                    exc, boundary="polish.fallback.capacity",
+                                    code="polish.input_capacity",
+                                ),
                                 "route": "fallback",
                                 "failure_class": "input_context_overflow",
                             },
@@ -19912,7 +19492,11 @@ class WorkflowService:
             run_id, "warning", "polish_segment_preserved",
             "本段未完成精修，已保留原文并继续",
             stage="polish", metadata={
-                **metadata, "error": describe_error(primary_error)[:500],
+                **metadata,
+                **_safe_workflow_event_metadata(
+                    primary_error, boundary="polish.primary.fallback_selected",
+                    code="polish.primary_failed",
+                ),
                 "failure_class": classify_model_failure(primary_error),
             },
         )
@@ -20689,7 +20273,7 @@ class WorkflowService:
             except (json.JSONDecodeError, TypeError, ValueError) as exc:
                 latest_error = DraftSemanticValidationError(group_id, [{
                     "code": "semantic_repair_contract",
-                    "message": str(exc),
+                    "message": safe_local_validation_message(exc),
                 }])
                 continue
             self.db.add_run_event(
@@ -20981,7 +20565,8 @@ class WorkflowService:
                 )
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
-                    "code": "invalid_receipt", "message": str(exc),
+                    "code": "invalid_receipt",
+                    "message": safe_local_validation_message(exc),
                 }]
             else:
                 if semantic_authority is not None:
@@ -21273,7 +20858,7 @@ class WorkflowService:
         except ValueError as exc:
             return [{
                 "code": "obligation_catalog",
-                "message": str(exc),
+                "message": safe_local_validation_message(exc),
             }]
         return []
 
@@ -21501,7 +21086,8 @@ class WorkflowService:
                 )
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
-                    "code": "receipt_schema", "message": str(exc),
+                    "code": "receipt_schema",
+                    "message": safe_local_validation_message(exc),
                 }]
             else:
                 if semantic_authority is not None:
@@ -22014,7 +21600,10 @@ class WorkflowService:
                         contract_name="draft_whole_window_receipt",
                     )
                 except (json.JSONDecodeError, ValueError) as exc:
-                    issues = [{"code": "receipt_schema", "message": str(exc)}]
+                    issues = [{
+                        "code": "receipt_schema",
+                        "message": safe_local_validation_message(exc),
+                    }]
                 else:
                     window_receipt, issues = normalize_window_receipt(
                         window_receipt,
@@ -22306,7 +21895,10 @@ class WorkflowService:
                         contract_name="draft_whole_reducer_receipt",
                     )
                 except (json.JSONDecodeError, ValueError) as exc:
-                    reducer_issues = [{"code": "receipt_schema", "message": str(exc)}]
+                    reducer_issues = [{
+                        "code": "receipt_schema",
+                        "message": safe_local_validation_message(exc),
+                    }]
                 else:
                     candidate, reducer_issues = normalize_reducer_receipt(candidate)
                     if not reducer_issues:
@@ -23568,7 +23160,10 @@ class WorkflowService:
                             stage="polish", metadata={
                                 "segment": index, "characters": len(part),
                                 "split_depth": recovery_depth,
-                                "error": describe_error(exc)[:500],
+                                **_safe_workflow_event_metadata(
+                                    exc, boundary="polish.split.unsplittable",
+                                    code="polish.segment_unsplittable",
+                                ),
                                 "failure_class": classify_model_failure(exc),
                             },
                         )
@@ -23588,7 +23183,10 @@ class WorkflowService:
                         "segment": index, "characters": len(part),
                         "child_characters": [len(child) for child in children],
                         "split_depth": recovery_depth + 1, "failed_route": route,
-                        "error": describe_error(exc),
+                        **_safe_workflow_event_metadata(
+                            exc, boundary="polish.split.route_failure",
+                            code="polish.route_failed",
+                        ),
                         "failure_class": classify_model_failure(exc),
                     },
                 )
@@ -23666,7 +23264,10 @@ class WorkflowService:
                     "当前定向修订片段的首选和备用模型均失败，已保留原文并继续其他片段",
                     stage="polish", metadata={
                         "segment": index, "characters": len(part),
-                        "error": describe_error(exc),
+                        **_safe_workflow_event_metadata(
+                            exc, boundary="polish.targeted.routes_exhausted",
+                            code="polish.routes_exhausted",
+                        ),
                     },
                 )
             except Exception as exc:
@@ -23682,7 +23283,11 @@ class WorkflowService:
                         run_id, "warning", "polish_segment_preserved",
                         "润色路由因网络波动全部失败，已保留当前父段且不拆分正文",
                         stage="polish", metadata={
-                            "segment": index, "error": describe_error(exc)[:500],
+                            "segment": index,
+                            **_safe_workflow_event_metadata(
+                                exc, boundary="polish.segment_preserved",
+                                code="polish.segment_preserved",
+                            ),
                         },
                     )
                 else:
@@ -24499,7 +24104,11 @@ class WorkflowService:
                     run_id, "warning", "model_fallback",
                     "Revision planning model failed; retrying with the review role",
                     stage="revision_plan", metadata={
-                        "fallback_role": "review", "error": str(exc),
+                        "fallback_role": "review",
+                        **_safe_workflow_event_metadata(
+                            exc, boundary="revision.plan_fallback",
+                            code="revision.plan_fallback",
+                        ),
                     },
                 )
                 output = await self._stage(
@@ -24522,7 +24131,11 @@ class WorkflowService:
                 run_id, "error", "revision_plan_blocked",
                 "Structural revision plan is invalid; revision stopped to preserve the best candidate",
                 stage="revision_plan",
-                metadata={"error": str(exc)},
+                metadata=_safe_workflow_event_metadata(
+                    exc, boundary="revision.plan_validation",
+                    code="revision.plan_invalid",
+                    family="model.protocol_invalid",
+                ),
             )
             raise RevisionPlanError(f"Structural revision plan failed: {exc}") from exc
         else:
@@ -24597,13 +24210,20 @@ class WorkflowService:
         )
         report["status"] = "halted"
         report["halt_reason"] = reason
-        report["failure_reasons"] = [str(error)]
+        report["failure_reasons"] = [safe_local_validation_message(error)]
         atomic_write(run_path / "outputs" / "best-candidate.md", candidate)
         self._write_quality_report(run_path, report)
         self.db.add_run_event(
             run_id, "error", "quality_revision_halted",
             "Quality revision stopped and preserved the best candidate",
-            stage="quality", metadata={"reason": reason, "error": str(error)},
+            stage="quality", metadata={
+                "reason": reason,
+                **_safe_workflow_event_metadata(
+                    error, boundary="quality.revision_halt",
+                    code="quality.revision_halted",
+                    family="runtime.quality_recovery",
+                ),
+            },
         )
         raise RuntimeError(
             f"Quality revision halted; preserved best candidate ({reason})"
@@ -25594,7 +25214,7 @@ class WorkflowService:
                         ),
                         "output_reserve": route_output_reserve,
                         "context_window": context_window,
-                        "provider_error": str(exc)[:500],
+                        "provider_error": "input_context_overflow",
                     }
                 elif not targeted_retry:
                     raise
@@ -25603,7 +25223,9 @@ class WorkflowService:
                     # primary/fallback schedule. Domain-specific targeted
                     # recovery may classify the unit, but cannot choose a
                     # hidden model route of its own.
-                    raise TargetedGroupError(str(exc)) from exc
+                    raise TargetedGroupError(
+                        safe_local_validation_message(exc)
+                    ) from exc
             if provider_capacity_split is not None:
                 return await complete_capacity_split(provider_capacity_split)
             result.receipt.setdefault("requested_max_output_tokens", output_budget)
@@ -25926,15 +25548,22 @@ class WorkflowService:
                         "Review primary and configured fallback did not produce usable output"
                     ),
                     stage=stage,
-                    metadata={} if short_revision else {"error": str(exc)},
+                    metadata={} if short_revision else _safe_workflow_event_metadata(
+                        exc, boundary=f"stage.{stage}.routes_exhausted",
+                        code="stage.routes_exhausted",
+                    ),
                 )
             self.db.add_run_event(
                 run_id, "error", "stage_failed",
                 (
                     "定向返修模型阶段未完成，已保留可恢复进度。"
-                    if short_revision else describe_error(exc)
+                    if short_revision else
+                    "模型阶段未完成，已保留当前有效内容和可恢复进度。"
                 ),
-                stage=stage,
+                stage=stage, metadata=_safe_workflow_event_metadata(
+                    exc, boundary=f"stage.{stage}", code="stage.execution_failed",
+                    recovery_action="resume_stage",
+                ),
             )
             raise
 
@@ -25959,7 +25588,12 @@ class WorkflowService:
                 f"{stage} 首选模型失败，已切换到 {fallback_role} 角色模型",
                 stage=stage, metadata={
                     "fallback_role": fallback_role,
-                    **({} if short_revision else {"error": str(exc)}),
+                    **(
+                        {} if short_revision else _safe_workflow_event_metadata(
+                            exc, boundary=f"stage.{stage}.role_fallback",
+                            code="stage.role_fallback",
+                        )
+                    ),
                 },
             )
             return await self._stage(
@@ -26076,9 +25710,9 @@ class WorkflowService:
                     run_id, stage, attempt.route,
                 )
             code = f"protocol_route_{failure_kind}"
-            error_sha256 = hashlib.sha256(
-                describe_error(exc).encode("utf-8", errors="replace"),
-            ).hexdigest()
+            error_sha256 = failure_evidence_sha256(
+                exc, boundary=f"protocol_route.{failure_kind}",
+            )
             failure = ReliabilityFailure(
                 code=code,
                 failure_class=failure_class,

@@ -42,7 +42,7 @@ def test_learning_api_confirmation_artifacts_and_candidate_guards(tmp_path) -> N
         f"/api/projects/{project_id}/learning/adoptions/{node_id}", json={"edits": {}},
     )
     assert blocked.status_code == 422
-    assert "确认" in blocked.json()["detail"]
+    assert "确认" in blocked.json()["detail"]["message"]
     assert client.post(
         f"/api/learning/nodes/{node_id}/revisions", json={"action": "confirm", "data": {}},
     ).status_code == 200
@@ -270,7 +270,8 @@ def test_model_analysis_reports_missing_role_api_key_before_starting(tmp_path) -
     response = client.post(f"/api/references/{source['id']}/model-learn")
 
     assert response.status_code == 422
-    assert response.json()["detail"] == "参考资料分窗分析使用的 deepseek 缺少 API Key，请先到“模型与 API”补充密钥"
+    assert response.json()["detail"]["code"] == "reference.analysis_not_ready"
+    assert "模型角色和 API 配置" in response.json()["detail"]["message"]
     status = client.get(f"/api/references/{source['id']}/model-learn/status").json()
     assert status["status"] == "idle"
 
@@ -348,7 +349,7 @@ def test_style_candidate_api_requires_confirmation_and_updates_project_baseline(
     listed = client.get("/api/learning/style-candidates?view=all").json()
 
     assert blocked.status_code == 422
-    assert "先确认" in blocked.json()["detail"]
+    assert "确认" in blocked.json()["detail"]["message"]
     assert applied.status_code == 200
     assert applied.json()["data"]["sentence_rhythm"] == ["动作句短，观察句稍长"]
     assert listed[0]["source_title"] == "文笔来源"
@@ -753,10 +754,10 @@ def test_outline_generation_failure_is_recoverable_without_mutating_project_stat
         )
 
         assert failed.status_code == 502
-        assert failed.json()["detail"] == {
-            "code": "outline_generation_failed",
-            "message": "大纲生成失败，作品已经创建，可以稍后重试。",
-        }
+        assert failed.json()["detail"]["code"] == "outline_generation_failed"
+        assert failed.json()["detail"]["message"] == (
+            "大纲生成失败，作品已经创建，可以稍后重试。"
+        )
         assert "PROVIDER_PRIVATE" not in failed.text
         assert "SECRET_GATEWAY_NOT_READY" not in failed.text
         assert client.get(f"/api/projects/{project_id}").json() == snapshots["project"]
@@ -800,10 +801,10 @@ def test_outline_generation_not_ready_errors_are_fixed_chinese(tmp_path) -> None
     )
 
     assert no_adoption.status_code == 422
-    assert no_adoption.json()["detail"] == {
-        "code": "outline_generation_not_ready",
-        "message": "请先确认并采用至少一条写法，再生成大纲。",
-    }
+    assert no_adoption.json()["detail"]["code"] == "outline_generation_not_ready"
+    assert no_adoption.json()["detail"]["message"] == (
+        "请先确认并采用至少一条写法，再生成大纲。"
+    )
 
     client.post(
         f"/api/learning/nodes/{node_id}/revisions",
@@ -820,7 +821,7 @@ def test_outline_generation_not_ready_errors_are_fixed_chinese(tmp_path) -> None
     )
 
     assert no_model.status_code == 422
-    assert no_model.json()["detail"] == {
-        "code": "outline_generation_not_ready",
-        "message": "规划模型当前不可用，请先检查模型配置。",
-    }
+    assert no_model.json()["detail"]["code"] == "outline_generation_not_ready"
+    assert no_model.json()["detail"]["message"] == (
+        "规划模型当前不可用，请先检查模型配置。"
+    )

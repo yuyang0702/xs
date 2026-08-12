@@ -14,6 +14,7 @@ from novel_flywheel.contract_runtime import execute_model_route_runtime
 from novel_flywheel.domain.models import ToolDefinition
 from novel_flywheel.projects import Project
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
+from novel_flywheel.failure_boundary import project_safe_failure
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.outlines import (
     extract_outline_characters,
@@ -951,10 +952,20 @@ class SkillRuntimeToolbox:
             self.db.update_skill_execution(self.execution_id, "completed")
         except Exception as exc:
             snapshot.restore()
+            failure = project_safe_failure(
+                exc, boundary=f"skill_runtime.{self.contract.skill_name}",
+                code="skill.runtime_failed", family="runtime.skill_failure",
+                message="技能运行未完成，已恢复正式资料并保留候选。",
+                retryable=True, recovery_action="resume_skill_runtime",
+            )
             for proposal in candidates:
                 if proposal["status"] == "pending":
-                    self.db.update_file_proposal(proposal["id"], "failed", str(exc))
-            self.db.update_skill_execution(self.execution_id, "recoverable", str(exc))
+                    self.db.update_file_proposal(
+                        proposal["id"], "failed", failure.persistence_summary(),
+                    )
+            self.db.update_skill_execution(
+                self.execution_id, "recoverable", failure.persistence_summary(),
+            )
             raise
 
     def finalize_on_tool_limit(self) -> str | None:

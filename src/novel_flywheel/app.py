@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -7,6 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from novel_flywheel.api.errors import safe_http_exception
 from novel_flywheel.api.providers import router as providers_router
 from novel_flywheel.api.references import router as references_router
 from novel_flywheel.api.learning import router as learning_router
@@ -49,6 +51,17 @@ from novel_flywheel.analysis_tasks import ReferenceAnalysisTaskManager
 from novel_flywheel.outlines import OutlineService
 
 
+@asynccontextmanager
+async def _application_lifespan(app: FastAPI):
+    """Own asynchronous recovery exactly once for each application instance."""
+
+    if not getattr(app.state, "durable_recovery_started", False):
+        app.state.durable_recovery_started = True
+        app.state.run_tasks.recover_due_runs()
+        app.state.reference_analysis_tasks.recover_pending()
+    yield
+
+
 def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                skill_roots: list[Path] | None = None, workspace_root: Path | None = None,
                root_constraints: list[Path] | None = None,
@@ -57,7 +70,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
                style_sample_service: object | None = None,
                reference_library: object | None = None,
                market_service: object | None = None) -> FastAPI:
-    app = FastAPI(title="Novel Flywheel Console")
+    app = FastAPI(title="Novel Flywheel Console", lifespan=_application_lifespan)
 
     @app.exception_handler(RequestValidationError)
     async def revision_validation_error(
@@ -77,9 +90,13 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
 
     @app.exception_handler(ProjectRunActiveError)
     async def project_run_active_error(request: Request, exc: ProjectRunActiveError):
-        return JSONResponse(status_code=409, content={"detail": {
-            "code": "project_run_active", "message": str(exc),
-        }})
+        projected = safe_http_exception(
+            exc, status_code=409, boundary="run.project_writer_lease",
+            code="project_run_active", family="runtime.concurrent_writer",
+            message="作品当前已有活动任务，请等待完成后重试。",
+            recovery_action="wait_for_active_run",
+        )
+        return JSONResponse(status_code=409, content={"detail": projected.detail})
 
     @app.middleware("http")
     async def disable_local_asset_cache(request: Request, call_next):
@@ -196,10 +213,6 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         db, operation_resolver=resolve_run_operation,
     )
 
-    @app.on_event("startup")
-    async def resume_durable_runs() -> None:
-        app.state.run_tasks.recover_due_runs()
-        app.state.reference_analysis_tasks.recover_pending()
     app.state.migrator = ProjectMigrator(
         lambda project, command: app.state.skill_runtime._run_story_cli(project, [command, "."]),
     )

@@ -12,6 +12,18 @@ from novel_flywheel.generated_artifacts import (
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
+class InterviewRequestError(ValueError):
+    """A local user-input defect classified without parsing message text."""
+
+
+class InterviewProtocolError(ValueError):
+    """The provider response failed the registered interview contract."""
+
+
+class InterviewModelUnavailable(RuntimeError):
+    """The configured interview route could not be executed."""
+
+
 class InterviewSuggestion(BaseModel):
     field_id: str = Field(min_length=1)
     value: Any
@@ -52,14 +64,14 @@ class WizardInterviewService:
             wizard = self._editable_wizard(wizard_id)
             message = (user_message or "").strip()
             if len(message) > 4000:
-                raise ValueError("Interview message is too long")
+                raise InterviewRequestError("Interview message is too long")
             if message:
                 history = self.db.list_interview_messages(wizard_id)
                 if not (history and history[-1]["role"] == "user"
                         and history[-1]["content"] == message):
                     self.db.save_interview_message(uuid.uuid4().hex, wizard_id, "user", message, [])
             elif self.db.list_interview_messages(wizard_id):
-                raise ValueError("Interview message is required")
+                raise InterviewRequestError("Interview message is required")
             context = self._context(wizard_id, wizard)
 
         try:
@@ -78,9 +90,11 @@ class WizardInterviewService:
                 max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )
         except LookupError as exc:
-            raise RuntimeError(str(exc)) from exc
+            raise InterviewModelUnavailable(
+                "The configured interview model route is unavailable"
+            ) from exc
         except ArtifactConversionError as exc:
-            raise ValueError(
+            raise InterviewProtocolError(
                 "Planning model did not return one valid JSON object"
             ) from exc
         output = InterviewModelOutput.model_validate(runtime.payload)

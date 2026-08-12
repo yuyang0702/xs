@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from novel_flywheel.db import Database
+from novel_flywheel.failure_boundary import project_safe_failure
 
 
 @dataclass(frozen=True)
@@ -100,11 +101,22 @@ class SkillGate:
             try:
                 output = self._execute(skill, argv, cwd)
             except subprocess.CalledProcessError as exc:
-                detail = (exc.stderr or exc.stdout or str(exc)).strip()[:8000]
-                self._record(stage, skill, "failed", detail)
-                raise RuntimeError(f"Required Skill failed: {name}: {detail}") from exc
+                failure = project_safe_failure(
+                    exc, boundary=f"skill.{stage}.{name}",
+                    code="skill.execution_failed", family="runtime.skill_failure",
+                    message="必需技能执行失败，正式资料没有变化。",
+                    retryable=True, recovery_action="review_skill_and_retry",
+                )
+                self._record(stage, skill, "failed", failure.persistence_summary())
+                raise RuntimeError(f"Required Skill failed: {name}") from exc
             except Exception as exc:
-                self._record(stage, skill, "failed", str(exc))
+                failure = project_safe_failure(
+                    exc, boundary=f"skill.{stage}.{name}",
+                    code="skill.execution_failed", family="runtime.skill_failure",
+                    message="必需技能执行失败，正式资料没有变化。",
+                    retryable=True, recovery_action="review_skill_and_retry",
+                )
+                self._record(stage, skill, "failed", failure.persistence_summary())
                 raise RuntimeError(f"Required Skill failed: {name}") from exc
             receipts.append(self._record(stage, skill, "succeeded", output))
         return SkillRun("\n\n".join(prompt), receipts)

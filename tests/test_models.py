@@ -36,10 +36,9 @@ class StructuredRecordingAdapter:
 def test_routes_exhausted_names_errors_without_provider_detail() -> None:
     error = ModelRoutesExhaustedError(TimeoutError(), RuntimeError())
 
-    assert str(error) == (
-        "主模型失败：TimeoutError (provider returned no error detail)；"
-        "备用模型失败：RuntimeError (provider returned no error detail)"
-    )
+    assert str(error) == "primary and fallback model routes were exhausted"
+    assert isinstance(error.primary_error, TimeoutError)
+    assert isinstance(error.fallback_error, RuntimeError)
 
 
 class FakeRegistry:
@@ -414,7 +413,8 @@ async def test_gateway_uses_fallback_when_primary_key_is_missing(tmp_path) -> No
 
     assert result.text == "fallback result"
     assert result.receipt["provider_id"] == "fallback-provider"
-    assert result.receipt["primary_error"] == "missing_api_key"
+    assert "code=model.route_failed" in result.receipt["primary_error"]
+    assert "missing_api_key" not in result.receipt["primary_error"]
     assert fallback_receipt_fields(result) == {
         "fallback_used": True,
         "fallback_from_provider_id": "primary-provider",
@@ -438,8 +438,9 @@ async def test_gateway_preserves_both_route_errors_when_primary_and_fallback_key
             "planning", "rules", "plan",
         )
 
-    assert "missing_api_key: primary-provider" in str(caught.value)
-    assert "missing_api_key: fallback-provider" in str(caught.value)
+    assert str(caught.value) == "primary and fallback model routes were exhausted"
+    assert "primary-provider" not in str(caught.value)
+    assert "fallback-provider" not in str(caught.value)
     assert "missing_api_key: primary-provider" in str(caught.value.primary_error)
     assert "missing_api_key: fallback-provider" in str(caught.value.fallback_error)
 
@@ -573,7 +574,8 @@ async def test_gateway_retries_full_timeout_once_before_fallback(tmp_path, monke
 
     assert primary.calls == 2
     assert result.receipt["fallback_used"] is True
-    assert result.receipt["primary_error"] == "request timed out"
+    assert "code=model.route_failed" in result.receipt["primary_error"]
+    assert "request timed out" not in result.receipt["primary_error"]
 
 
 @pytest.mark.asyncio
@@ -633,7 +635,8 @@ async def test_tool_gateway_uses_fallback_when_primary_key_is_missing(tmp_path) 
 
     assert result.text == "fallback result"
     assert result.receipt["provider_id"] == "fallback-provider"
-    assert result.receipt["primary_error"] == "missing_api_key"
+    assert "code=model.route_failed" in result.receipt["primary_error"]
+    assert "missing_api_key" not in result.receipt["primary_error"]
     assert fallback_receipt_fields(result) == {
         "fallback_used": True,
         "fallback_from_provider_id": "primary-provider",
@@ -1061,4 +1064,5 @@ async def test_gateway_falls_back_only_for_tool_capability_error(tmp_path) -> No
         "review", "rules", "review", Toolbox(), fallback_context=lambda: "EVIDENCE", run_id="run-1",
     )
     assert result.receipt["execution_mode"] == "degraded_prompt_mode"
-    assert result.receipt["fallback_reason"] == "tools unsupported"
+    assert "code=model.route_failed" in result.receipt["fallback_reason"]
+    assert "tools unsupported" not in result.receipt["fallback_reason"]

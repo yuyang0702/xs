@@ -7,6 +7,7 @@ from typing import Awaitable, Callable
 
 from novel_flywheel.db import Database
 from novel_flywheel.production_incidents import classify_production_failure
+from novel_flywheel.failure_boundary import failure_evidence_sha256
 
 
 ProgressCallback = Callable[[dict], None]
@@ -162,13 +163,14 @@ class ReferenceAnalysisTaskManager:
             self.db.cancel_resource_task(task_id)
             raise
         except Exception as exc:
-            evidence = f"{type(exc).__name__}:{str(exc)}"
-            failure_sha256 = hashlib.sha256(
-                evidence.encode("utf-8", errors="replace")
-            ).hexdigest()
+            failure_sha256 = failure_evidence_sha256(
+                exc, boundary="reference_analysis.task",
+            )
+            reliability = getattr(exc, "reliability_failure", None)
             classified = classify_production_failure(
-                str(exc), workflow="reference-analysis", stage="model_analysis",
-                failure=getattr(exc, "reliability_failure", None),
+                str(getattr(reliability, "code", "") or type(exc).__name__),
+                workflow="reference-analysis", stage="model_analysis",
+                failure=reliability,
             )
             self.db.fail_resource_task(
                 task_id,

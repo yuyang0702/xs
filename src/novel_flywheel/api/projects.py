@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel, Field, ValidationError, field_validator, model_validator,
 )
 
+from novel_flywheel.api.errors import safe_http_exception
 from novel_flywheel.db import WIZARD_MUTATION_LOCK
 from novel_flywheel.projects import Project, ProjectCreate, ProjectStore
 from novel_flywheel.publication import build_zhihu_package, preview_zhihu_package
@@ -52,6 +53,18 @@ from novel_flywheel.story_state import StaleStoryState, StoryStateStore
 
 
 router = APIRouter(prefix="/api", tags=["projects"])
+
+
+def _project_failure(
+    exc: BaseException, *, status_code: int, boundary: str, code: str,
+    message: str, family: str = "request.domain_validation",
+    retryable: bool = False, recovery_action: str = "refresh_and_retry",
+) -> HTTPException:
+    return safe_http_exception(
+        exc, status_code=status_code, boundary=boundary, code=code,
+        family=family, message=message, retryable=retryable,
+        recovery_action=recovery_action,
+    )
 HAN_CHARACTER = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 WORD_TOKEN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]|[A-Za-z]+(?:['’-][A-Za-z]+)*|\d+(?:[.,]\d+)*")
 
@@ -1160,7 +1173,11 @@ async def analyze_material_impact(project_id: str, impact_id: str, request: Requ
             project.path, impact_id, _impact_documents(project),
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=404, boundary="project.material_impact.analyze",
+            code="material_impact.not_found", family="request.resource_not_found",
+            message="材料影响记录不存在或已发生变化。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/material-impacts/{impact_id}/dismiss")
@@ -1169,7 +1186,11 @@ def dismiss_material_impact(project_id: str, impact_id: str, request: Request) -
         project = get_store(request).get(project_id)
         return request.app.state.material_impacts.resolve(project.path, impact_id, "dismissed")
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=404, boundary="project.material_impact.dismiss",
+            code="material_impact.not_found", family="request.resource_not_found",
+            message="材料影响记录不存在或已发生变化。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/material-impacts/{impact_id}/apply")
@@ -1201,12 +1222,16 @@ def apply_material_impact(
                     project.path, impact_id, payload.proposal_ids,
                 )
             except LookupError as exc:
-                raise HTTPException(
-                    status_code=404, detail={"code": str(exc)},
+                raise _project_failure(
+                    exc, status_code=404, boundary="project.material_impact.apply.lookup",
+                    code="material_impact.not_found", family="request.resource_not_found",
+                    message="材料影响记录或提案不存在。",
                 ) from exc
             except ValueError as exc:
-                raise HTTPException(
-                    status_code=409, detail={"code": str(exc)},
+                raise _project_failure(
+                    exc, status_code=409, boundary="project.material_impact.apply.state",
+                    code="material_impact.stale", family="runtime.stale_authority",
+                    message="材料影响提案已经变化，请刷新后重新选择。",
                 ) from exc
             impact_path = request.app.state.material_impacts.impact_path(
                 project.path, impact_id,
@@ -1672,9 +1697,11 @@ def update_narrative_contract(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={
-            "code": "narrator_confirmation_invalid", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.narrative_contract",
+            code="narrative.confirmation_invalid", family="runtime.stale_authority",
+            message="叙述者确认与当前项目资料不一致，请刷新后重试。",
+        ) from exc
 
 
 @router.get("/projects/{project_id}/quality-references")
@@ -1699,9 +1726,11 @@ def confirm_quality_references(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={
-            "code": "quality_references_changed", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.quality_references.confirm",
+            code="quality_references.changed", family="runtime.stale_authority",
+            message="质量参考项已经变化，请刷新后重新确认。",
+        ) from exc
 
 
 @router.delete("/projects/{project_id}/quality-references/{item_id:path}")
@@ -1710,9 +1739,11 @@ def remove_quality_reference(project_id: str, item_id: str, request: Request) ->
         project, profile_id = _quality_reference_scope(project_id, request)
         return request.app.state.quality_references.remove(project.id, profile_id, item_id)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={
-            "code": "quality_reference_not_found", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=404, boundary="project.quality_references.remove",
+            code="quality_reference.not_found", family="request.resource_not_found",
+            message="质量参考项不存在或已被删除。",
+        ) from exc
 
 
 @router.get("/projects/{project_id}/quality-references/history")
@@ -1761,9 +1792,11 @@ def create_passage_protection(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={
-            "code": "passage_selection_invalid", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.passage_protection.create",
+            code="passage.selection_invalid", family="request.domain_validation",
+            message="保护片段无法在当前候选稿中唯一定位，请重新选择。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/passage-protections/{protection_id}/allow-next-change")
@@ -1776,13 +1809,17 @@ def allow_protected_passage_change(
             project_id, protection_id,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={
-            "code": "passage_protection_not_found", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=404, boundary="project.passage_protection.allow.lookup",
+            code="passage_protection.not_found", family="request.resource_not_found",
+            message="片段保护记录不存在或已发生变化。",
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={
-            "code": "passage_protection_inactive", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.passage_protection.allow.state",
+            code="passage_protection.inactive", family="runtime.stale_authority",
+            message="片段保护已失效，请刷新后重试。",
+        ) from exc
 
 
 @router.delete("/projects/{project_id}/passage-protections/{protection_id}")
@@ -1795,9 +1832,11 @@ def remove_passage_protection(
             project_id, protection_id,
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={
-            "code": "passage_protection_not_found", "message": str(exc),
-        }) from exc
+        raise _project_failure(
+            exc, status_code=404, boundary="project.passage_protection.remove",
+            code="passage_protection.not_found", family="request.resource_not_found",
+            message="片段保护记录不存在或已发生变化。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/locations/{kind}/open")
@@ -1823,7 +1862,10 @@ def create_project(payload: ProjectCreate, request: Request) -> dict:
     try:
         return _public(get_store(request).create(payload))
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": "invalid_project", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=400, boundary="project.create",
+            code="project.invalid", message="作品参数未通过校验，请检查后重试。",
+        ) from exc
 
 
 @router.delete("/projects/{project_id}")
@@ -1834,7 +1876,11 @@ def trash_project(project_id: str, request: Request) -> dict:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={"code": "trash_failed", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.trash",
+            code="project.trash_failed", family="runtime.stale_authority",
+            message="作品当前无法移入回收站，请确认没有活动任务后重试。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/restore")
@@ -1844,7 +1890,11 @@ def restore_project(project_id: str, request: Request) -> dict:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "trashed_project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={"code": "restore_failed", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.restore",
+            code="project.restore_failed", family="runtime.stale_authority",
+            message="原位置属于其他作品；两份内容均已保留，请选择新的恢复位置后重试。",
+        ) from exc
 
 
 @router.delete("/projects/{project_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
@@ -1854,7 +1904,11 @@ def delete_project_permanently(project_id: str, request: Request) -> None:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "trashed_project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409, detail={"code": "delete_failed", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=409, boundary="project.delete_permanently",
+            code="project.delete_failed", family="runtime.stale_authority",
+            message="作品当前无法永久删除，请确认状态后重试。",
+        ) from exc
 
 
 @router.get("/projects/{project_id}/migration")
@@ -1872,7 +1926,12 @@ def migrate_project(project_id: str, request: Request) -> dict:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except (ValueError, RuntimeError, PermissionError) as exc:
-        raise HTTPException(status_code=422, detail={"code": "migration_failed", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=422, boundary="project.migration",
+            code="project.migration_failed", family="runtime.migration_failure",
+            message="项目迁移未完成，原项目资料已保留。",
+            retryable=True, recovery_action="review_migration_and_retry",
+        ) from exc
 
 
 @router.get("/projects/{project_id}/publication/zhihu/preview")
@@ -1882,7 +1941,11 @@ def preview_zhihu_publication(project_id: str, request: Request) -> dict:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail={"code": "publication_not_ready", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=422, boundary="project.publication.preview",
+            code="publication.not_ready", family="request.domain_validation",
+            message="正式稿尚未满足发布预览条件。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/publication/zhihu", status_code=status.HTTP_201_CREATED)
@@ -1896,7 +1959,11 @@ def create_zhihu_publication(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail={"code": "publication_failed", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=422, boundary="project.publication.create",
+            code="publication.failed", family="request.domain_validation",
+            message="发布包生成失败，正式稿没有变化。",
+        ) from exc
 
 
 @router.post("/projects/{project_id}/platform-profile/preview")
@@ -1908,7 +1975,11 @@ def preview_platform_profile(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail={"code": "profile_not_available", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=422, boundary="project.platform_profile.preview",
+            code="platform_profile.not_available", family="request.domain_validation",
+            message="目标平台配置不可用，请刷新配置后重试。",
+        ) from exc
 
 
 @router.put("/projects/{project_id}/platform-profile")
@@ -1920,4 +1991,8 @@ def apply_platform_profile(
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail={"code": "profile_not_available", "message": str(exc)}) from exc
+        raise _project_failure(
+            exc, status_code=422, boundary="project.platform_profile.apply",
+            code="platform_profile.not_available", family="request.domain_validation",
+            message="目标平台配置不可用，请刷新配置后重试。",
+        ) from exc

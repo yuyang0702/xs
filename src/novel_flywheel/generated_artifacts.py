@@ -12,7 +12,11 @@ from json_repair import repair_json
 from pydantic import BaseModel, ConfigDict, Field
 
 from novel_flywheel.evidence_alignment import align_unique_evidence_span
-from novel_flywheel.model_output import parse_json_object
+from novel_flywheel.model_output import (
+    AdditionalMalformedJSONValueError,
+    MultipleJSONObjectError,
+    parse_json_object,
+)
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.semantic_packets import canonical_sha256
 from novel_flywheel.storage import atomic_write
@@ -639,7 +643,9 @@ def _unique_semantic_envelope(
         if normalized is not None:
             candidates.append((path, normalized))
     if len(candidates) > 1:
-        raise ValueError("semantic envelope contains multiple complete candidates")
+        raise AmbiguousSemanticEnvelopeError(
+            "semantic envelope contains multiple complete candidates"
+        )
     if not candidates:
         return None
     path, canonical = candidates[0]
@@ -679,7 +685,7 @@ def _adapt_planning_semantic_root_projection(
             if _try_semantic_normalizer(semantic_normalizer, child) is not None:
                 nested_candidates.append(path)
     if nested_candidates:
-        raise ValueError(
+        raise AmbiguousSemanticEnvelopeError(
             "planning semantic root projection contains a second complete candidate"
         )
     descriptor = PLANNING_SEMANTIC_ROOT_PROJECTION_ADAPTER
@@ -1491,6 +1497,14 @@ def adapt_registered_contract(
     return ContractAdaptationResult(payload=current, audits=tuple(audits))
 
 
+class AmbiguousSemanticEnvelopeError(ValueError):
+    """More than one complete semantic candidate survived local proof."""
+
+
+class StructurallyTruncatedArtifactError(ValueError):
+    """The response ended before its top-level JSON object was closed."""
+
+
 class ArtifactConversionError(ValueError):
     def __init__(self, message: str, *, audit: ArtifactConversionAudit) -> None:
         super().__init__(message)
@@ -1594,15 +1608,17 @@ def _json_candidate(
     try:
         return parse_json_object(raw, label="Generated artifact"), "exact_json", ()
     except (TypeError, ValueError, json.JSONDecodeError) as exact_error:
-        if (
-            "multiple JSON objects" in str(exact_error)
-            or "additional malformed JSON value" in str(exact_error)
+        if isinstance(
+            exact_error,
+            (MultipleJSONObjectError, AdditionalMalformedJSONValueError),
         ):
             raise ValueError(str(exact_error)) from exact_error
         if not allow_syntax_repair:
             raise ValueError(str(exact_error)) from exact_error
         if not _has_closed_json_object(raw):
-            raise ValueError("generated artifact is structurally truncated") from exact_error
+            raise StructurallyTruncatedArtifactError(
+                "generated artifact is structurally truncated"
+            ) from exact_error
         try:
             repaired = repair_json(raw, return_objects=True)
         except Exception as repair_error:  # library errors are an input boundary
@@ -1681,7 +1697,7 @@ class GeneratedArtifactGateway:
         except ValueError as exc:
             failure_code = (
                 "output_truncated"
-                if "structurally truncated" in str(exc)
+                if isinstance(exc, StructurallyTruncatedArtifactError)
                 else "json_object_unavailable"
             )
             audit = ArtifactConversionAudit(
@@ -1797,7 +1813,7 @@ class GeneratedArtifactGateway:
                 automatic_only=True,
             )
         except ValueError as exc:
-            ambiguous = "second complete candidate" in str(exc) or "multiple" in str(exc)
+            ambiguous = isinstance(exc, AmbiguousSemanticEnvelopeError)
             audit = ArtifactConversionAudit(
                 contract_name=contract_name,
                 contract_version=registration.version,

@@ -5,6 +5,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
+from novel_flywheel.api.errors import safe_http_exception
 from novel_flywheel.reference_extractors import extract_docx, extract_pdf, fetch_public_url
 from novel_flywheel.reference_policy import reference_receipt, reference_usage
 
@@ -90,8 +91,20 @@ def _after_import(request: Request, source: dict) -> dict:
     return _with_market(request, source, (match or {}).get("match"))
 
 
-def _not_found(exc: Exception) -> HTTPException:
-    return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+def _not_found(exc: BaseException, boundary: str = "reference.lookup") -> HTTPException:
+    return safe_http_exception(
+        exc, status_code=404, boundary=boundary,
+        code="reference.not_found", family="request.resource_not_found",
+        message="请求的参考资料不存在或已被删除。",
+    )
+
+
+def _invalid(exc: BaseException, boundary: str) -> HTTPException:
+    return safe_http_exception(
+        exc, status_code=422, boundary=boundary,
+        code="reference.request_invalid", family="request.domain_validation",
+        message="参考资料未通过校验，请检查输入后重试。",
+    )
 
 
 @router.get("")
@@ -108,7 +121,7 @@ def import_reference(payload: ReferenceImport, request: Request) -> dict:
             platform=payload.platform, content_type=payload.content_type, project_id=payload.project_id,
         ))
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise _invalid(exc, "reference.import_text") from exc
 
 
 @router.post("/import", status_code=status.HTTP_201_CREATED)
@@ -128,9 +141,9 @@ def import_extracted_reference(payload: ExtractedReferenceImport, request: Reque
             content_type=payload.content_type, project_id=payload.project_id,
         ))
     except LookupError as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.import_extracted.lookup") from exc
     except (ValueError, httpx.HTTPError) as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise _invalid(exc, "reference.import_extracted") from exc
 
 
 @router.get("/{source_id}")
@@ -138,7 +151,7 @@ def get_reference(source_id: str, request: Request) -> dict:
     try:
         return _with_market(request, _library(request).get(source_id))
     except (LookupError, ValueError) as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.get") from exc
 
 
 @router.get("/{source_id}/content")
@@ -146,7 +159,7 @@ def get_reference_content(source_id: str, request: Request) -> dict:
     try:
         return {"source_id": source_id, "text": _library(request).read_text(source_id)}
     except (LookupError, ValueError) as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.content") from exc
 
 
 @router.post("/{source_id}/analyze")
@@ -154,7 +167,7 @@ def analyze_reference(source_id: str, request: Request) -> dict:
     try:
         return _public(_library(request).analyze(source_id))
     except (LookupError, ValueError) as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.analysis") from exc
 
 
 @router.patch("/{source_id}/metadata")
@@ -169,11 +182,9 @@ def update_reference_metadata(
             project_id=payload.project_id,
         ))
     except LookupError as exc:
-        raise _not_found(exc) from exc
-    except LookupError as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.metadata.lookup") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise _invalid(exc, "reference.metadata") from exc
 
 
 @router.post("/{source_id}/popular-analysis")
@@ -187,9 +198,9 @@ def popular_reference_analysis(source_id: str, request: Request) -> dict:
         report["market_evidence"] = request.app.state.market.reference_context(source_id)
         return report
     except LookupError as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.popular_analysis.lookup") from exc
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise _invalid(exc, "reference.popular_analysis") from exc
 
 
 @router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,5 +208,5 @@ def delete_reference(source_id: str, request: Request) -> Response:
     try:
         _library(request).delete(source_id)
     except (LookupError, ValueError) as exc:
-        raise _not_found(exc) from exc
+        raise _not_found(exc, "reference.delete") from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -5,10 +5,15 @@ import json
 import time
 from typing import Literal
 
+import httpx
+
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
-from novel_flywheel.errors import describe_error
-from novel_flywheel.context_policy import normalize_finish_reason
+from novel_flywheel.failure_boundary import (
+    project_safe_failure,
+    safe_local_validation_message,
+)
+from novel_flywheel.context_policy import classify_model_failure, normalize_finish_reason
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.structured_artifacts import (
@@ -21,6 +26,15 @@ from novel_flywheel.structured_artifacts import (
 )
 
 
+def _safe_model_error(exc: BaseException, *, boundary: str) -> str:
+    return project_safe_failure(
+        exc, boundary=boundary, code="model.route_failed",
+        family="provider.request_failed",
+        message="模型路由未完成。", retryable=True,
+        recovery_action="retry_or_select_fallback",
+    ).persistence_summary()
+
+
 @dataclass(frozen=True)
 class ModelResult:
     text: str
@@ -29,10 +43,7 @@ class ModelResult:
 
 class ModelRoutesExhaustedError(RuntimeError):
     def __init__(self, primary_error: Exception, fallback_error: Exception) -> None:
-        super().__init__(
-            f"主模型失败：{describe_error(primary_error)}；"
-            f"备用模型失败：{describe_error(fallback_error)}"
-        )
+        super().__init__("primary and fallback model routes were exhausted")
         self.primary_error = primary_error
         self.fallback_error = fallback_error
 
@@ -42,13 +53,10 @@ class CapabilityRoutesExhaustedError(RuntimeError):
 
     def __init__(self, route_errors: list[tuple[str, str, Exception]]) -> None:
         self.route_errors = list(route_errors)
-        summary = "；".join(
-            f"路线 {index} 失败：{describe_error(error)}"
-            for index, (_provider_id, _model_id, error) in enumerate(
-                self.route_errors, 1,
-            )
+        super().__init__(
+            "all structured-output routes were exhausted"
+            if self.route_errors else "no structured-output route is configured"
         )
-        super().__init__(summary or "没有可用的结构化输出路线")
 
 
 class TransportInterruptedError(RuntimeError):
@@ -308,7 +316,11 @@ class ModelGateway:
                     "fallback_used": True,
                     "fallback_from_provider_id": primary[0],
                     "fallback_from_model_id": primary[1],
-                    "primary_error": describe_error(errors[0][2]) if errors else "",
+                    "primary_error": (
+                        _safe_model_error(
+                            errors[0][2], boundary="model.capability_roster.primary",
+                        ) if errors else ""
+                    ),
                 })
             return ModelResult(result.text, receipt)
         raise CapabilityRoutesExhaustedError(errors)
@@ -396,13 +408,15 @@ class ModelGateway:
 
     @staticmethod
     def _is_transient_connect_error(exc: Exception) -> bool:
-        message = str(exc).lower()
-        return any(marker in message for marker in (
-            "connection attempts failed", "connection reset", "connection refused",
-            "connecterror", "server disconnected", "peer closed connection",
-            "incomplete chunked read", "readerror", "timeout", "timed out",
-            "transport ended before a terminal response",
-        ))
+        return isinstance(exc, (
+            httpx.TransportError,
+            asyncio.TimeoutError,
+            ConnectionError,
+            TimeoutError,
+            TransportInterruptedError,
+        )) or classify_model_failure(exc) in {
+            "transport_interrupted", "timeout", "connection_failed",
+        }
 
     async def _complete_resolved(
         self, role, system, user, resolved, max_output_tokens, *,
@@ -557,7 +571,9 @@ class ModelGateway:
                     raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
                 recovered = ModelResult(recovered.text, {
                     **recovered.receipt,
-                    "fallback_route_error": describe_error(fallback_exc),
+                    "fallback_route_error": _safe_model_error(
+                        fallback_exc, boundary="model.tools.fallback_recovery",
+                    ),
                 })
                 return self._mark_fallback(
                     recovered, binding["primary_provider_id"],
@@ -648,7 +664,9 @@ class ModelGateway:
             "execution_mode": "native_tools",
             "tool_call_count": 0,
             "proposal_recovered": True,
-            "route_error": describe_error(error),
+            "route_error": _safe_model_error(
+                error, boundary="model.tools.proposal_recovery",
+            ),
         })
 
     async def _complete_with_tools_resolved(
@@ -758,9 +776,22 @@ class ModelGateway:
                         status = "succeeded"
                         error = None
                     except (LookupError, PermissionError, RuntimeError, ValueError) as exc:
-                        result = {"error": str(exc), "retryable": True}
+                        failure = project_safe_failure(
+                            exc, boundary=f"model.tool.{call.name}",
+                            code="model.tool_failed", family="runtime.tool_failure",
+                            message="工具执行失败，已保留当前任务状态。",
+                            retryable=True, recovery_action="repair_tool_input_or_retry",
+                        )
+                        result = {
+                            "error": safe_local_validation_message(
+                                exc, fallback=failure.message,
+                            ),
+                            "error_code": failure.code,
+                            "incident_id": failure.failure_sha256[:16],
+                            "retryable": True,
+                        }
                         status = "failed"
-                        error = str(exc)
+                        error = failure.persistence_summary()
                     encoded = json.dumps(result, ensure_ascii=False)
                     self.db.save_tool_receipt(
                         run_id=run_id, stage=role, model_id=resolved.model_id,
@@ -790,8 +821,11 @@ class ModelGateway:
         except ToolCapabilityError as exc:
             if mode == "enabled":
                 raise
-            return await self._fallback(role, system, user, fallback_context(), resolved, run_id,
-                                        str(exc), max_output_tokens)
+            return await self._fallback(
+                role, system, user, fallback_context(), resolved, run_id,
+                _safe_model_error(exc, boundary="model.tools.capability"),
+                max_output_tokens,
+            )
 
     def _resolve_configured_fallback(self, binding):
         provider_id = binding.get("fallback_provider_id")
@@ -820,7 +854,9 @@ class ModelGateway:
             "fallback_used": True,
             "fallback_from_provider_id": primary_provider_id,
             "fallback_from_model_id": primary_model_id,
-            "primary_error": describe_error(error),
+            "primary_error": _safe_model_error(
+                error, boundary="model.configured_fallback.primary",
+            ),
         })
 
     async def _fallback(self, role, system, user, evidence, resolved, run_id, reason,

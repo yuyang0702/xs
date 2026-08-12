@@ -1,8 +1,10 @@
 from typing import Literal
 
+import httpx
 from pydantic import BaseModel
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
+from novel_flywheel.failure_boundary import project_safe_failure
 from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 from novel_flywheel.providers.base import ProviderAdapter
 from novel_flywheel.providers.http import ToolCapabilityError
@@ -32,19 +34,37 @@ class CapabilityProbe:
 
     @staticmethod
     def _error(exc: Exception) -> str:
-        detail = str(exc).strip()
-        return f"{type(exc).__name__}: {detail[:240]}" if detail else type(exc).__name__
+        return project_safe_failure(
+            exc, boundary="provider.capability_probe",
+            code="provider.probe_failed", family="provider.request_failed",
+            message="模型能力探测未完成。", retryable=True,
+            recovery_action="verify_endpoint_and_retry_probe",
+        ).persistence_summary()
 
     @staticmethod
     def _diagnostic_code(exc: Exception) -> str:
-        detail = str(exc).casefold()
-        if "404" in detail or "not found" in detail:
+        if isinstance(exc, httpx.HTTPStatusError):
+            status_code = exc.response.status_code
+            if status_code == 404:
+                return "route_endpoint_not_found"
+            if status_code in {401, 403}:
+                return "credentials_rejected"
+            if status_code == 429:
+                return "rate_limited"
+        if isinstance(exc, httpx.TimeoutException):
+            return "timeout"
+        # Some third-party routers surface HTTP/transport failures through a
+        # generic SDK exception. Classification is deliberately performed in
+        # memory before the exception crosses the safe-failure boundary; the
+        # raw provider text is never returned or persisted.
+        diagnostic = str(exc).strip().casefold()
+        if "404" in diagnostic or "not found" in diagnostic:
             return "route_endpoint_not_found"
-        if "401" in detail or "403" in detail or "unauthorized" in detail:
+        if any(token in diagnostic for token in ("401", "403", "unauthorized", "forbidden")):
             return "credentials_rejected"
-        if "429" in detail or "rate limit" in detail:
+        if "429" in diagnostic or "rate limit" in diagnostic:
             return "rate_limited"
-        if "timeout" in detail or "timed out" in detail:
+        if "timeout" in diagnostic or "timed out" in diagnostic:
             return "timeout"
         return "connection_failed"
 
@@ -131,15 +151,7 @@ class CapabilityProbe:
             )
             try:
                 tool_response = await self.adapter.complete(tool_request)
-            except ToolCapabilityError as exc:
-                error = str(exc).lower()
-                if not (
-                    "tool_choice" in error
-                    and any(term in error for term in (
-                        "does not support", "not supported", "unsupported", "incompatible",
-                    ))
-                ):
-                    raise
+            except ToolCapabilityError:
                 tool_response = None
             strict_tool_ok = bool(
                 tool_response

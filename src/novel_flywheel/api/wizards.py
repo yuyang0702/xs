@@ -6,7 +6,13 @@ import hashlib
 import json
 
 from novel_flywheel.db import WIZARD_MUTATION_LOCK
-from novel_flywheel.errors import describe_error
+from novel_flywheel.api.errors import safe_http_exception
+from novel_flywheel.failure_boundary import project_safe_failure
+from novel_flywheel.interviews import (
+    InterviewModelUnavailable,
+    InterviewProtocolError,
+    InterviewRequestError,
+)
 from novel_flywheel.skill_runtime import initialization_answers, initialization_stage_issues
 from novel_flywheel.storage import ProjectSnapshot
 
@@ -113,7 +119,11 @@ def save_answers(wizard_id: str, payload: WizardAnswers, request: Request) -> di
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "wizard_not_found"}) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": "invalid_answers", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=400, boundary="wizard.answers",
+            code="wizard.answers_invalid", family="request.domain_validation",
+            message="开书答案未通过校验，请检查后重试。",
+        ) from exc
 
 
 def _confirmed_creative_guidance(request: Request, wizard: dict) -> list[dict]:
@@ -263,7 +273,11 @@ def confirm_wizard(wizard_id: str, request: Request, payload: WizardConfirm | No
             "message": "创建作品所需的数据已发生变化，请返回检查后重试。",
         }) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail={"code": "wizard_incomplete", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=400, boundary="wizard.confirmation",
+            code="wizard.incomplete", family="request.domain_validation",
+            message="开书信息尚未完整，请返回检查后重试。",
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=503, detail={
             "code": "wizard_confirmation_incomplete",
@@ -292,18 +306,40 @@ async def interview_turn(wizard_id: str, payload: InterviewTurn, request: Reques
     try:
         return await request.app.state.interviews.turn(wizard_id, payload.message)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "wizard_not_found", "message": str(exc)}) from exc
-    except ValueError as exc:
-        code = "invalid_model_output" if "valid JSON" in str(exc) else "invalid_interview"
-        raise HTTPException(status_code=422 if code == "invalid_model_output" else 400,
-                            detail={"code": code, "message": str(exc)}) from exc
-    except (PermissionError, RuntimeError) as exc:
-        raise HTTPException(status_code=422,
-                            detail={"code": "interview_model_failed", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="wizard.interview.lookup",
+            code="wizard_not_found", family="request.resource_not_found",
+            message="开书会话不存在或已结束。",
+        ) from exc
+    except InterviewRequestError as exc:
+        raise safe_http_exception(
+            exc, status_code=400, boundary="wizard.interview.request",
+            code="wizard.interview_invalid", family="request.domain_validation",
+            message="访谈消息为空或超出长度限制，请修改后重试。",
+        ) from exc
+    except InterviewProtocolError as exc:
+        raise safe_http_exception(
+            exc, status_code=422, boundary="wizard.interview.protocol",
+            code="wizard.interview_protocol_invalid", family="model.protocol_invalid",
+            message="访谈模型返回格式不完整，系统已保留会话，请重试。",
+            retryable=True, recovery_action="retry_interview",
+        ) from exc
+    except (
+        PermissionError, ConnectionError, InterviewModelUnavailable, RuntimeError,
+    ) as exc:
+        raise safe_http_exception(
+            exc, status_code=422, boundary="wizard.interview.model",
+            code="interview_model_failed", family="provider.request_failed",
+            message="访谈模型暂时不可用，请检查模型配置或稍后重试。",
+            retryable=True, recovery_action="check_model_and_retry",
+        ) from exc
     except Exception as exc:
-        raise HTTPException(status_code=422, detail={
-            "code": "interview_model_failed", "message": describe_error(exc),
-        }) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="wizard.interview.internal",
+            code="wizard.interview_failed", family="runtime.internal_failure",
+            message="访谈暂时无法完成，现有会话内容已保留。",
+            retryable=True, recovery_action="retry_interview",
+        ) from exc
 
 
 @router.post("/wizards/{wizard_id}/interview/{message_id}/apply")
@@ -312,11 +348,17 @@ def apply_interview_suggestions(wizard_id: str, message_id: str,
     try:
         return request.app.state.interviews.apply(wizard_id, message_id, payload.field_ids)
     except LookupError as exc:
-        raise HTTPException(status_code=404,
-                            detail={"code": "interview_message_not_found", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="wizard.interview.apply.lookup",
+            code="wizard.interview_message_not_found", family="request.resource_not_found",
+            message="访谈消息不存在或已发生变化。",
+        ) from exc
     except ValueError as exc:
-        raise HTTPException(status_code=409,
-                            detail={"code": "wizard_not_editable", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=409, boundary="wizard.interview.apply.state",
+            code="wizard.not_editable", family="runtime.stale_authority",
+            message="开书会话状态已经变化，请刷新后重试。",
+        ) from exc
 
 
 def build_initialize_skills_operation(
@@ -344,7 +386,11 @@ def build_initialize_skills_operation(
             else request.app.state.learning.initialization_contexts(project_id)
         )
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "project_not_found", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="wizard.initialize.project",
+            code="project.not_found", family="request.resource_not_found",
+            message="作品不存在或已被删除。",
+        ) from exc
     readiness = request.app.state.outlines.writing_readiness(project_id)
     if not current_outline["exists"]:
         raise HTTPException(status_code=409, detail={
@@ -474,10 +520,19 @@ def build_initialize_skills_operation(
             except Exception as exc:
                 rollback_batch("后续初始化阶段失败，已恢复批次开始前的正式资料")
                 proposal_summary = getattr(exc, "proposal_summary", None)
+                failure = project_safe_failure(
+                    exc, boundary=f"wizard.initialize.{skill_name}",
+                    code="wizard.skill_failed", family="runtime.skill_failure",
+                    message="初始化技能执行失败，已保留可恢复提案。",
+                    retryable=True, recovery_action="resume_initialization",
+                )
                 request.app.state.registry.db.add_run_event(
-                    run_id, "error", "skill_failed", str(exc), stage=skill_name,
-                    metadata={"proposal_summary": proposal_summary}
-                    if isinstance(proposal_summary, dict) else None,
+                    run_id, "error", "skill_failed", failure.message,
+                    stage=skill_name, metadata={
+                        **failure.event_metadata(),
+                        **({"proposal_summary": proposal_summary}
+                           if isinstance(proposal_summary, dict) else {}),
+                    },
                 )
                 request.app.state.registry.db.add_run_event(
                     run_id, "warning", "initialization_rolled_back",

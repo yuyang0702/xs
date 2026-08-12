@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from novel_flywheel.db import Database
+from novel_flywheel.failure_boundary import project_safe_failure
 from novel_flywheel.reference_library import ReferenceLibrary
 
 
@@ -348,15 +349,21 @@ class MarketService:
                 "work_count": len(parsed), "captured_at": attempted_at,
             }
         except Exception as exc:
+            failure = project_safe_failure(
+                exc, boundary="market.refresh",
+                code="market.refresh_failed", family="provider.request_failed",
+                message="市场数据更新失败，旧快照仍然有效。",
+                retryable=True, recovery_action="retry_market_refresh",
+            )
             with self.db.connect() as connection:
                 connection.execute(
                     """UPDATE market_sources SET refresh_status='failed',refresh_error=?,
                     last_attempt_at=?,updated_at=? WHERE id=?""",
-                    (str(exc), attempted_at, attempted_at, source_id),
+                    (failure.persistence_summary(), attempted_at, attempted_at, source_id),
                 )
             if isinstance(exc, ValueError):
                 raise
-            raise ValueError(f"榜单更新失败：{exc}") from exc
+            raise ValueError("market_refresh_failed") from exc
 
     def get_source(self, source_id: str) -> dict[str, Any] | None:
         with self.db.connect() as connection:

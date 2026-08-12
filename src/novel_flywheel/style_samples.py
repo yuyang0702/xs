@@ -102,15 +102,8 @@ class StyleSampleService:
         runtime = await execute_contract_runtime(
             self.gateway,
             role="planning",
-            system=runtime_system or (
-                "浣犳槸灏忚鏂囦綋鍒嗘瀽缂栬緫銆傚彧鎻愮偧鍙縼绉荤殑鏅€氬啓浣滅壒寰侊紝涓嶅鍒诲師鍙ャ€佷笓鍚嶃€佹儏鑺傦紝"
-                "涓嶅垽鏂垨鐚滄祴浣滆€呰韩浠姐€備粎杩斿洖涓ユ牸 JSON銆?"
-            ),
-            user=runtime_user or (
-                "鍒嗘瀽涓嬮潰鑼冩枃骞惰繑鍥炲璞★紝瀛楁蹇呴』涓?summary 瀛楃涓诧紝浠ュ強 sentence_rhythm銆乨ialogue銆?"
-                "narrative_distance銆乧haracterization銆乨iction銆乤void 鍏釜瀛楃涓叉暟缁勩€傛瘡涓暟缁?1-5 鏉★紝"
-                "姣忔潯蹇呴』鏄彲鎵ц鐨勪腑鏂囧啓浣滆鍒欍€俓n\n鑼冩枃锛歕n" + sample
-            ),
+            system=runtime_system,
+            user=runtime_user,
             contract_name="style_analysis",
             structured_contract=STYLE_ANALYSIS_STRUCTURED_CONTRACT,
             semantic_normalizer=self._normalize_profile_payload,

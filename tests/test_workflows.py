@@ -309,7 +309,12 @@ def test_snapshot_recovery_failure_is_logged_without_replacing_primary_error(tmp
         if item["event_type"] == "snapshot_restore_failed"
     )
     assert event["message"] == "项目文件恢复未完全完成，系统已保留最初的失败原因"
-    assert "Invalid argument" in event["metadata"]["recovery_error"]
+    assert event["metadata"]["failure_code"] == (
+        "workflow.snapshot_restore_failed"
+    )
+    assert "Invalid argument" not in json.dumps(
+        event["metadata"], ensure_ascii=False,
+    )
 
 
 @pytest.mark.asyncio
@@ -3369,7 +3374,7 @@ async def test_long_setup_writes_book_bible_and_canon(tmp_path) -> None:
 async def test_long_setup_resumes_exact_memory_projection_after_artifact_stage(
     tmp_path, monkeypatch,
 ) -> None:
-    import novel_flywheel.workflows as workflows_module
+    import novel_flywheel.long_workflow as workflows_module
     from novel_flywheel.project_transactions import recover_project_mutations
 
     db = Database(tmp_path / "app.db")
@@ -3505,7 +3510,7 @@ async def test_blocked_volume_preserves_published_chapter_and_memory(
 async def test_long_chapter_resumes_post_commit_volume_gate_without_regeneration(
     tmp_path, monkeypatch,
 ) -> None:
-    import novel_flywheel.workflows as workflows_module
+    import novel_flywheel.long_workflow as workflows_module
     from novel_flywheel.project_transactions import (
         load_project_mutation_journal,
         project_mutation_journal_path,
@@ -5940,8 +5945,9 @@ async def test_indivisible_causal_packet_preserves_both_credential_failures(
 
     assert str(caught.value.primary_error) == "missing_api_key: planning-primary"
     assert str(caught.value.fallback_error) == "missing_api_key: planning-fallback"
-    assert "missing_api_key: planning-primary" in str(caught.value)
-    assert "missing_api_key: planning-fallback" in str(caught.value)
+    assert str(caught.value) == "primary and fallback model routes were exhausted"
+    assert "planning-primary" not in str(caught.value)
+    assert "planning-fallback" not in str(caught.value)
 
 
 @pytest.mark.asyncio
@@ -10940,9 +10946,7 @@ async def test_stage_provider_context_overflow_invokes_same_semantic_splitter(
     assert result.receipt["trigger"] == "provider"
     assert gateway.calls == 1
     assert split_details[0]["trigger"] == "provider"
-    assert "context" in split_details[0]["provider_error"].lower() or (
-        "413" in split_details[0]["provider_error"]
-    )
+    assert split_details[0]["provider_error"] == "input_context_overflow"
     events = db.list_run_events("provider-capacity")
     requested = next(
         item for item in events

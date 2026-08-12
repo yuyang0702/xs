@@ -3,6 +3,7 @@ from dataclasses import asdict
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from novel_flywheel.api.errors import safe_http_exception
 from novel_flywheel.skills import SkillGate
 
 
@@ -74,11 +75,24 @@ def run_stage(stage: str, payload: StageRun, request: Request) -> dict:
     try:
         result = get_gate(request).run_required(stage, payload.required, payload.commands)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "required_skill_missing", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="skill.stage.lookup",
+            code="skill.required_missing", family="request.resource_not_found",
+            message="必需技能不存在或版本已经变化。",
+        ) from exc
     except PermissionError as exc:
-        raise HTTPException(status_code=409, detail={"code": "skill_approval_required", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=409, boundary="skill.stage.approval",
+            code="skill.approval_required", family="runtime.permission_required",
+            message="技能版本需要重新确认后才能执行。",
+        ) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=424, detail={"code": "required_skill_failed", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=424, boundary="skill.stage.execution",
+            code="skill.required_failed", family="runtime.skill_failure",
+            message="必需技能执行失败，已保留当前项目资料。",
+            retryable=True, recovery_action="review_skill_and_retry",
+        ) from exc
     return {"prompt": result.prompt, "receipts": [asdict(receipt) for receipt in result.receipts]}
 
 
@@ -92,11 +106,24 @@ async def run_skill_runtime(project_id: str, skill_name: str, payload: RuntimeRu
     try:
         return await request.app.state.skill_runtime.run(project_id, skill_name, payload.answers)
     except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": "skill_not_found", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=404, boundary="skill.runtime.lookup",
+            code="skill.not_found", family="request.resource_not_found",
+            message="技能不存在或版本已经变化。",
+        ) from exc
     except PermissionError as exc:
-        raise HTTPException(status_code=409, detail={"code": "skill_contract_required", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=409, boundary="skill.runtime.contract",
+            code="skill.contract_required", family="runtime.permission_required",
+            message="技能写入合同尚未确认，正式资料没有变化。",
+        ) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=422, detail={"code": "skill_runtime_failed", "message": str(exc)}) from exc
+        raise safe_http_exception(
+            exc, status_code=422, boundary="skill.runtime.execution",
+            code="skill.runtime_failed", family="runtime.skill_failure",
+            message="技能执行失败，已保留候选和正式资料。",
+            retryable=True, recovery_action="resume_skill_runtime",
+        ) from exc
 
 
 @router.get("/projects/{project_id}/locks")

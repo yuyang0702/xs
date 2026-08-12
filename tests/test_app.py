@@ -26,3 +26,23 @@ def test_revision_routes_are_registered(tmp_path) -> None:
 
     assert "/api/projects/{project_id}/revisions" in paths
     assert "/api/runs/{run_id}/revision" in paths
+
+
+def test_lifespan_owns_durable_recovery_once_per_app(tmp_path, monkeypatch) -> None:
+    app = create_app(Database(tmp_path / "app.db"), MemorySecretStore())
+    calls: list[str] = []
+    monkeypatch.setattr(
+        app.state.run_tasks, "recover_due_runs",
+        lambda: calls.append("runs") or [],
+    )
+    monkeypatch.setattr(
+        app.state.reference_analysis_tasks, "recover_pending",
+        lambda: calls.append("references") or [],
+    )
+
+    with TestClient(app) as client:
+        assert client.get("/api/health").status_code == 200
+    with TestClient(app) as client:
+        assert client.get("/api/health").status_code == 200
+
+    assert calls == ["runs", "references"]

@@ -1432,3 +1432,43 @@ short StoryState maintenance is distinct from long-book setup and long-chapter
 memory maintenance. Their existing prompts, domain validators, quality gates,
 and promotion behavior remain authoritative while parser, route, protocol
 repair, and audit mechanics converge underneath them.
+
+## Residual architecture convergence
+
+The final residual-convergence pass keeps business authority where it already
+lives but removes competing infrastructure behavior. `SafeFailureEnvelopeV1`
+is the sole public and persistent exception projection. Raw exception text may
+still be inspected in memory by the incident classifier and hashed for
+correlation, but API details, run errors, events, checkpoints, and sidecars
+receive only a stable code, family, fixed safe message, retry guidance, and
+hash. Local Pydantic/domain validation feedback may remain actionable only
+after deterministic secret and path redaction.
+
+`WorkflowCoordinator` now owns public workflow selection, project-mode guards,
+and optional CrewAI wrapping for all six project workflow families. The
+facade's `run_*` methods delegate to it; planning, causal, manifest, draft,
+polish, revision, maintenance, quality, checkpoint, and promotion validators
+remain single-copy domain authorities in `WorkflowService`. This is a modular
+monolith boundary, not a second workflow engine. Material audit/repair
+coordination lives in `materials_workflow.py`, and long-book setup/chapter
+publication coordination lives in `long_workflow.py`; both call the existing
+service validators and transactional commit helpers. The short-story and
+short-revision pipelines remain the single formal-promotion authorities in
+`WorkflowService` because splitting those transaction closures would duplicate
+or weaken their checkpoint/quality/StoryState commit semantics.
+
+FastAPI asynchronous durable recovery is registered through one lifespan and
+is idempotent per application instance. Existing construction-time candidate
+publication and project-file Saga reconciliation remains synchronous because
+the project store must not be exposed before interrupted authoritative writes
+are reconciled. Deprecated `on_event` registration is prohibited by source
+tests.
+
+The source tree also has a permanent UTF-8 reachability gate: Python files may
+not contain Unicode Private Use characters, and an unreachable corrupted style
+prompt fallback was deleted. The old `describe_error` helper was removed after
+all callers crossed the typed failure boundary. The focused gates for this
+architecture are `test_failure_boundary.py`, `test_workflow_coordination.py`,
+`test_source_encoding.py`, and the lifespan test in `test_app.py`; they augment,
+not replace, the API, task/supervisor, structured-artifact, workflow, current
+project snapshot, and 13K/20K/30K complete-flow acceptance suites.

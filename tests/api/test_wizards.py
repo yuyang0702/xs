@@ -702,9 +702,11 @@ def test_wizard_interview_returns_provider_connection_error(tmp_path) -> None:
     response = client.post(f"/api/wizards/{wizard['id']}/interview", json={"message": "outline"})
 
     assert response.status_code == 422
-    assert response.json()["detail"] == {
-        "code": "interview_model_failed", "message": "planning provider disconnected",
-    }
+    assert response.json()["detail"]["code"] == "interview_model_failed"
+    assert response.json()["detail"]["message"] == (
+        "访谈模型暂时不可用，请检查模型配置或稍后重试。"
+    )
+    assert "planning provider disconnected" not in response.text
 
 
 def test_wizard_interview_returns_not_found_when_draft_was_deleted(tmp_path) -> None:
@@ -1027,7 +1029,7 @@ def test_rejected_high_confidence_method_cannot_be_adopted_directly(tmp_path) ->
     )
 
     assert response.status_code == 422
-    assert "重新确认后才能应用到作品" in response.json()["detail"]
+    assert "确认" in response.json()["detail"]["message"]
     assert client.get(f"/api/projects/{project['id']}/learning").json()["adoptions"] == []
 
 
