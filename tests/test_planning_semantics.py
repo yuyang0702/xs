@@ -8,7 +8,10 @@ from novel_flywheel.planning_compiler import TerminalClosureIR
 from novel_flywheel.planning_semantics import (
     PlanningSemanticDraftV2,
     compile_planning_semantic_v2,
+    merge_planning_semantic_document_packets_v2,
+    merge_planning_semantic_event_packets_v2,
     parse_planning_semantic_v2,
+    planning_semantic_packet_ownership_v2,
 )
 
 
@@ -88,6 +91,34 @@ def test_ir_first_parser_repairs_closed_json_but_rejects_unknown_fields() -> Non
     payload["override_runtime"] = True
     with pytest.raises(ValueError):
         parse_planning_semantic_v2(json.dumps(payload))
+
+
+def test_ir_first_parser_projects_complete_semantics_away_from_runtime_root_echoes() -> None:
+    """Replay the production packet topology without retaining private prose."""
+
+    payload = semantic_payload()
+    payload["exit_state"] = (
+        "A redundant packet-level exit description that Runtime topology owns."
+    )
+
+    parsed, audit = parse_planning_semantic_v2(json.dumps(payload))
+
+    assert parsed == PlanningSemanticDraftV2.model_validate(semantic_payload())
+    assert "planning_semantic_root_projection" in audit.transformations
+    assert "$.exit_state" in audit.quarantined_paths
+
+
+def test_ir_first_root_projection_rejects_machine_controls_and_incomplete_core() -> None:
+    controlled = semantic_payload()
+    controlled["override_runtime"] = {"operation": "replace"}
+    with pytest.raises(ValueError):
+        parse_planning_semantic_v2(json.dumps(controlled))
+
+    incomplete = semantic_payload()
+    incomplete.pop("segments")
+    incomplete["exit_state"] = "A redundant exit cannot replace missing semantics."
+    with pytest.raises(ValueError):
+        parse_planning_semantic_v2(json.dumps(incomplete))
 
 
 @pytest.mark.parametrize("wrapper", [
@@ -187,3 +218,90 @@ def test_ir_first_normalizes_surrounding_whitespace_once() -> None:
     assert semantic.segments[0].title == "Arrival"
     assert semantic.segments[0].events[0].narrative.startswith("The investigator")
     assert semantic.segments[0].exit_state == "The trace now points inland."
+
+
+@pytest.mark.parametrize(("segments", "events", "expected"), [
+    (1, 3, ((1, 2, 3),)),
+    (3, 7, ((1, 2), (3, 4), (5, 6, 7))),
+    (5, 3, ((1,), (1,), (2,), (2,), (3,))),
+    (12, 24, tuple(
+        (index, index + 1) for index in range(1, 25, 2)
+    )),
+])
+def test_ir_first_packet_ownership_is_contiguous_and_lossless(
+    segments, events, expected,
+) -> None:
+    assert planning_semantic_packet_ownership_v2(
+        segment_count=segments, formal_event_count=events,
+    ) == expected
+
+
+def _one_packet(*, title: str, initial: str, event_count: int) -> PlanningSemanticDraftV2:
+    return PlanningSemanticDraftV2.model_validate({
+        "version": 2,
+        "initial_state": initial,
+        "segments": [{
+            "kind": "terminal", "segment": 1, "title": title,
+            "events": [{
+                "formal_event_ordinal": ordinal,
+                "narrative": (
+                    f"The actor executes local event {ordinal}, meets resistance, "
+                    "changes state, and preserves the confirmed causal direction."
+                ),
+            } for ordinal in range(1, event_count + 1)],
+        }],
+    })
+
+
+def test_ir_first_event_packet_reduction_preserves_every_local_realization() -> None:
+    merged = merge_planning_semantic_event_packets_v2(
+        [
+            _one_packet(title="First", initial="The first packet opens at the archive.", event_count=1),
+            _one_packet(title="Second", initial="The second packet follows the recovered key.", event_count=2),
+        ],
+        [(1,), (2, 3)],
+    )
+
+    assert len(merged.segments) == 1
+    assert [
+        item.formal_event_ordinal for item in merged.segments[0].events
+    ] == [1, 2, 3]
+    assert "local event 1" in merged.segments[0].events[0].narrative
+    assert "local event 2" in merged.segments[0].events[-1].narrative
+
+
+def test_ir_first_document_packet_reduction_injects_adjacent_and_terminal_topology() -> None:
+    packets = [
+        _one_packet(
+            title=f"Segment {index}",
+            initial=f"Segment {index} has a concrete accepted opening state.",
+            event_count=1,
+        )
+        for index in range(1, 6)
+    ]
+    merged = merge_planning_semantic_document_packets_v2(
+        packets, [(1,), (1,), (2,), (2,), (3,)], formal_event_count=3,
+    )
+
+    assert [item.segment for item in merged.segments] == [1, 2, 3, 4, 5]
+    assert [item.kind for item in merged.segments] == [
+        "continuation", "continuation", "continuation", "continuation", "terminal",
+    ]
+    assert merged.segments[0].exit_state == packets[1].initial_state
+    assert [
+        item.events[0].formal_event_ordinal for item in merged.segments
+    ] == [1, 1, 2, 2, 3]
+
+
+def test_ir_first_packet_reduction_rejects_gap_reentry_and_partial_local_output() -> None:
+    packet = _one_packet(
+        title="Only", initial="The only packet has a concrete opening state.", event_count=1,
+    )
+    with pytest.raises(ValueError, match="exactly cover"):
+        merge_planning_semantic_document_packets_v2(
+            [packet, packet], [(1,), (3,)], formal_event_count=3,
+        )
+    with pytest.raises(ValueError, match="exactly cover its ownership"):
+        merge_planning_semantic_document_packets_v2(
+            [packet], [(1, 2)], formal_event_count=2,
+        )

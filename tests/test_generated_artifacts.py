@@ -1,3 +1,4 @@
+import ast
 import json
 from pathlib import Path
 
@@ -6,11 +7,14 @@ import pytest
 from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
     CONTRACT_ADAPTER_REGISTRY,
+    EXECUTABLE_RECOVERY_STEP_OWNERS,
+    ArtifactContractRegistration,
     ArtifactConversionError,
     GeneratedArtifactGateway,
     adapt_registered_contract,
     write_conversion_audit,
     _baml_causal_cycles,
+    validate_executable_contract_registry,
 )
 from novel_flywheel.semantic_packets import normalize_causal_packet_payload
 
@@ -44,6 +48,53 @@ def test_p0_registry_covers_planning_writing_quality_and_runtime_recovery() -> N
     assert "attribution" in (
         ARTIFACT_CONTRACT_REGISTRY["reference_distillation_region"].semantic_authority
     )
+    assert "MaterialAuditReceiptV1" in (
+        ARTIFACT_CONTRACT_REGISTRY["material_audit"].semantic_authority
+    )
+    assert "MaterialImpactOutput" in (
+        ARTIFACT_CONTRACT_REGISTRY[
+            "material_impact_analysis"
+        ].semantic_authority
+    )
+    assert "exact-substring" in (
+        ARTIFACT_CONTRACT_REGISTRY[
+            "outline_material_manifest"
+        ].semantic_authority
+    )
+    assert "change-ID" in (
+        ARTIFACT_CONTRACT_REGISTRY[
+            "outline_semantic_review"
+        ].semantic_authority
+    )
+    assert {
+        "draft_atomic_semantic_receipt",
+        "draft_segment_semantic_receipt",
+        "draft_whole_semantic_receipt",
+        "draft_whole_window_receipt",
+        "draft_whole_reducer_receipt",
+    } <= set(ARTIFACT_CONTRACT_REGISTRY)
+    assert "beat" in (
+        ARTIFACT_CONTRACT_REGISTRY[
+            "draft_atomic_semantic_receipt"
+        ].semantic_authority
+    )
+    assert "whole-story" in (
+        ARTIFACT_CONTRACT_REGISTRY[
+            "draft_whole_semantic_receipt"
+        ].semantic_authority
+    )
+    assert {
+        "revision_plan",
+        "revision_patch_contract",
+        "final_review",
+        "final_review_window",
+        "final_review_regional",
+        "final_review_detail",
+        "reader_review",
+        "short_maintenance_facts",
+        "long_setup_maintenance",
+        "long_chapter_maintenance",
+    } <= set(ARTIFACT_CONTRACT_REGISTRY)
     assert "minimal_regeneration" in ARTIFACT_CONTRACT_REGISTRY["final_review"].recovery_ladder
     assert all(item.semantic_authority for item in ARTIFACT_CONTRACT_REGISTRY.values())
     assert all(item.descriptive_fields == "open" for item in ARTIFACT_CONTRACT_REGISTRY.values())
@@ -52,6 +103,36 @@ def test_p0_registry_covers_planning_writing_quality_and_runtime_recovery() -> N
         item.narrative_invariants == "runtime_authoritative"
         for item in ARTIFACT_CONTRACT_REGISTRY.values()
     )
+
+
+def test_p0_every_declared_recovery_step_has_one_executable_owner() -> None:
+    validate_executable_contract_registry()
+    declared = {
+        step
+        for registration in ARTIFACT_CONTRACT_REGISTRY.values()
+        for step in registration.recovery_ladder
+    }
+
+    assert declared <= set(EXECUTABLE_RECOVERY_STEP_OWNERS)
+    assert all(EXECUTABLE_RECOVERY_STEP_OWNERS[step] for step in declared)
+
+
+def test_p0_contract_registry_rejects_an_invalid_recovery_order(monkeypatch) -> None:
+    monkeypatch.setitem(
+        ARTIFACT_CONTRACT_REGISTRY,
+        "test_invalid_order",
+        ArtifactContractRegistration(
+            name="test_invalid_order",
+            phase="runtime",
+            semantic_authority="test-only authority",
+            recovery_ladder=(
+                "exact_json", "model_fallback", "semantic_protocol_retry",
+            ),
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="recovery_order_invalid"):
+        validate_executable_contract_registry()
 
 
 def test_contract_adapters_are_versioned_provider_and_narrative_agnostic() -> None:
@@ -87,10 +168,24 @@ def test_contract_adapter_architecture_budget_has_declared_single_owners() -> No
         ),
         "planning_semantic_v2": (
             "planning_semantic_unique_envelope",
+            "planning_semantic_root_projection",
         ),
         "execution_manifest": (
             "execution_manifest_evidence_reference",
         ),
+        "reference_distillation_region": (
+            "reference_distillation_v2_ledger_alignment",
+        ),
+    }
+    assert {
+        item.name
+        for registrations in CONTRACT_ADAPTER_REGISTRY.values()
+        for item in registrations
+        if item.automatic_conversion
+    } == {
+        "planning_semantic_unique_envelope",
+        "planning_semantic_root_projection",
+        "reference_distillation_v2_ledger_alignment",
     }
     source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
     workflow_source = (source_root / "workflows.py").read_text(encoding="utf-8")
@@ -431,8 +526,242 @@ def test_p0_no_parallel_model_output_parser_authority_is_reintroduced() -> None:
     assert remaining == {
         "generated_artifacts.py": 1,
         "model_output.py": 1,
-        "workflows.py": 5,
     }
+
+
+def test_p0_business_services_cannot_own_direct_model_dispatch() -> None:
+    source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
+    owners: dict[str, set[str]] = {}
+    for path in source_root.rglob("*.py"):
+        if "baml_client" in path.parts:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+                continue
+            target = node.func.value
+            if (
+                isinstance(target, ast.Attribute)
+                and target.attr == "gateway"
+                and node.func.attr.startswith("complete")
+            ):
+                owners.setdefault(
+                    path.relative_to(source_root).as_posix(), set(),
+                ).add(node.func.attr)
+
+    assert owners == {}
+
+
+def test_p0_deleted_business_parser_shadows_cannot_return() -> None:
+    """Historical readers live in the registry, never beside each service."""
+
+    source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
+    forbidden = {
+        "style_samples.py": {"_parse_profile"},
+        "material_impacts.py": {"_json_object"},
+        "interviews.py": {"_parse_output"},
+        "learning.py": {"_json_object"},
+        "workflows.py": {"_json_object"},
+    }
+    discovered = set()
+    for filename, names in forbidden.items():
+        tree = ast.parse(
+            (source_root / filename).read_text(encoding="utf-8"),
+            filename=filename,
+        )
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.name in names:
+                    discovered.add((filename, node.name))
+    assert discovered == set()
+
+
+def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> None:
+    def static_contract_names(value: ast.expr) -> set[str] | None:
+        if isinstance(value, ast.Constant) and isinstance(value.value, str):
+            return {value.value}
+        if isinstance(value, ast.IfExp):
+            left = static_contract_names(value.body)
+            right = static_contract_names(value.orelse)
+            return None if left is None or right is None else left | right
+        return None
+
+    source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
+    discovered: list[tuple[str, int, str]] = []
+    for path in source_root.rglob("*.py"):
+        if "baml_client" in path.parts:
+            continue
+        if path.name in {"contract_runtime.py", "generated_artifacts.py"}:
+            # These two infrastructure owners are deliberately parameterized;
+            # business callers must select the registered contract literally.
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            name = (
+                node.func.id
+                if isinstance(node.func, ast.Name)
+                else node.func.attr if isinstance(node.func, ast.Attribute) else ""
+            )
+            if name not in {
+                "convert_object", "execute_contract_runtime",
+                "_convert_generated_object",
+            }:
+                continue
+            keyword = next(
+                (item for item in node.keywords if item.arg == "contract_name"),
+                None,
+            )
+            assert keyword is not None, f"{path}:{node.lineno} has no contract_name"
+            contract_names = static_contract_names(keyword.value)
+            if contract_names is None:
+                is_workflow_conversion_owner = (
+                    path.name == "workflows.py"
+                    and isinstance(keyword.value, ast.Name)
+                    and keyword.value.id == "contract_name"
+                    and any(
+                        function.name == "_convert_generated_object"
+                        and node in ast.walk(function)
+                        for function in ast.walk(tree)
+                        if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    )
+                )
+                is_workflow_stage_runtime_owner = (
+                    path.name == "workflows.py"
+                    and isinstance(keyword.value, ast.Attribute)
+                    and keyword.value.attr == "name"
+                    and isinstance(keyword.value.value, ast.Name)
+                    and keyword.value.value.id == "structured_contract"
+                    and any(
+                        function.name == "_stage"
+                        and node in ast.walk(function)
+                        for function in ast.walk(tree)
+                        if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    )
+                )
+                assert (
+                    is_workflow_conversion_owner
+                    or is_workflow_stage_runtime_owner
+                ), (
+                    f"{path}:{node.lineno} uses a dynamic structured contract"
+                )
+                continue
+            discovered.extend(
+                (
+                    path.relative_to(source_root).as_posix(),
+                    node.lineno,
+                    contract_name,
+                )
+                for contract_name in contract_names
+            )
+
+    assert discovered
+    unknown = [item for item in discovered if item[2] not in ARTIFACT_CONTRACT_REGISTRY]
+    assert unknown == []
+
+
+def test_static_runtime_wire_contract_versions_match_registered_business_contracts() -> None:
+    """Catch a wrong contract/wire pairing before a long-running task starts."""
+
+    source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
+    checked = []
+    for path in source_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        wire_versions = {}
+        for node in tree.body:
+            if not (
+                isinstance(node, (ast.Assign, ast.AnnAssign))
+                and isinstance(node.value, ast.Call)
+                and (
+                    (isinstance(node.value.func, ast.Name)
+                     and node.value.func.id == "StructuredArtifactContract")
+                    or (isinstance(node.value.func, ast.Attribute)
+                        and node.value.func.attr == "StructuredArtifactContract")
+                )
+            ):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            version = next(
+                (
+                    keyword.value.value
+                    for keyword in node.value.keywords
+                    if keyword.arg == "version"
+                    and isinstance(keyword.value, ast.Constant)
+                    and isinstance(keyword.value.value, int)
+                ),
+                None,
+            )
+            for target in targets:
+                if isinstance(target, ast.Name) and version is not None:
+                    wire_versions[target.id] = version
+
+        for call in ast.walk(tree):
+            if not (
+                isinstance(call, ast.Call)
+                and (
+                    (isinstance(call.func, ast.Name)
+                     and call.func.id == "execute_contract_runtime")
+                    or (isinstance(call.func, ast.Attribute)
+                        and call.func.attr == "execute_contract_runtime")
+                )
+            ):
+                continue
+            contract_keyword = next(
+                (item for item in call.keywords if item.arg == "contract_name"),
+                None,
+            )
+            wire_keyword = next(
+                (item for item in call.keywords if item.arg == "structured_contract"),
+                None,
+            )
+            if not (
+                contract_keyword is not None
+                and isinstance(contract_keyword.value, ast.Constant)
+                and isinstance(contract_keyword.value.value, str)
+                and wire_keyword is not None
+                and isinstance(wire_keyword.value, ast.Name)
+                and wire_keyword.value.id in wire_versions
+            ):
+                continue
+            contract_name = contract_keyword.value.value
+            wire_version = wire_versions[wire_keyword.value.id]
+            checked.append((
+                path.relative_to(source_root).as_posix(), call.lineno,
+                contract_name, wire_version,
+            ))
+            assert ARTIFACT_CONTRACT_REGISTRY[contract_name].version == wire_version
+
+    assert checked
+
+
+def test_reference_window_model_calls_have_one_specific_executable_contract() -> None:
+    source = (
+        Path(__file__).parents[1] / "src" / "novel_flywheel" / "learning.py"
+    ).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    method = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "model_analyze_reference"
+    )
+    contracts = []
+    for node in ast.walk(method):
+        if not isinstance(node, ast.Call):
+            continue
+        name = (
+            node.func.id if isinstance(node.func, ast.Name)
+            else node.func.attr if isinstance(node.func, ast.Attribute) else ""
+        )
+        if name != "execute_contract_runtime":
+            continue
+        keyword = next(item for item in node.keywords if item.arg == "contract_name")
+        assert isinstance(keyword.value, ast.Constant)
+        contracts.append(keyword.value.value)
+
+    assert contracts.count("reference_analysis_window") == 2
+    assert contracts.count("reference_distillation_region") == 1
+    assert "learning_artifact" not in contracts
 
 
 @pytest.mark.parametrize("container", ["steps", "causal_cycles"])

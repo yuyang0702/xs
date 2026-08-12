@@ -22,8 +22,34 @@ def setup_system(tmp_path):
     return db, library, projects, LearningSystem(db, library, projects)
 
 
+def test_local_attraction_context_never_truncates_partial_json() -> None:
+    small = {"questions": [{"excerpt": "small"}], "turns": []}
+    small_context = LearningSystem._local_attraction_prompt_context(
+        small, max_tokens=512,
+    )
+    assert json.loads(small_context) == small
+
+    large = {
+        "questions": [
+            {"excerpt": f"evidence-{index}-" + "x" * 80}
+            for index in range(1_000)
+        ],
+        "opening": {"pressure": [], "anomaly": []},
+    }
+    large_context = LearningSystem._local_attraction_prompt_context(
+        large, max_tokens=512,
+    )
+    receipt = json.loads(large_context)
+
+    assert receipt["mode"] == "content_addressed_registry"
+    assert receipt["model_comparison_available"] is False
+    assert receipt["topology_counts"]["questions"] == 1_000
+    assert len(receipt["catalog_sha256"]) == 64
+    assert "evidence-999" not in large_context
+
+
 def test_model_window_style_field_aliases_and_unknown_descriptions_are_non_blocking() -> None:
-    value = LearningSystem._window_result(json.dumps({
+    value = LearningSystem._window_result({
         "events": [], "state_changes": [], "reader_questions": [],
         "turning_points": [], "relationship_changes": [],
         "style_evidence": [
@@ -36,7 +62,7 @@ def test_model_window_style_field_aliases_and_unknown_descriptions_are_non_block
                 "fact": "环境逐步收紧", "interpretation": "形成压力",
             },
         ],
-    }, ensure_ascii=False))
+    })
 
     assert value["style_evidence"][0]["field"] == "psychology"
     assert value["style_evidence"][0]["raw_field"] == "心理描写"
@@ -44,7 +70,7 @@ def test_model_window_style_field_aliases_and_unknown_descriptions_are_non_block
 
 
 def test_synthesis_unknown_style_rule_is_preserved_but_not_executed() -> None:
-    value = LearningSystem._synthesis_result(json.dumps({
+    value = LearningSystem._synthesis_result({
         "mechanisms": [], "attraction_map": {},
         "style_profile": {
             "summary": "保留可核对的文笔规则",
@@ -55,7 +81,7 @@ def test_synthesis_unknown_style_rule_is_preserved_but_not_executed() -> None:
             }],
             "uncertainties": [],
         },
-    }, ensure_ascii=False))
+    })
 
     assert value["style_profile"]["rules"] == []
     assert value["style_profile"]["unrecognized_rules"][0]["field"] == "自定义氛围"
@@ -781,7 +807,7 @@ def test_synthesis_rejects_generic_claim_shape_that_page_cannot_explain() -> Non
     }
 
     with pytest.raises(ValueError, match="开头分析格式不完整"):
-        LearningSystem._synthesis_result(json.dumps(value, ensure_ascii=False))
+        LearningSystem._synthesis_result(value)
 
 
 def test_artifact_restore_creates_new_version_and_effective_overview(tmp_path) -> None:
@@ -1324,7 +1350,7 @@ async def test_model_analysis_resumes_after_any_failed_window(tmp_path) -> None:
 
     class FailsOnThirdWindow(FakeGateway):
         async def complete(self, role, system, user, **kwargs):
-            if role == "reference_analysis" and self.roles.count(role) == 2:
+            if role == "reference_analysis" and self.roles.count(role) >= 2:
                 self.roles.append(role)
                 raise RuntimeError("第三个窗口临时失败")
             return await super().complete(role, system, user, **kwargs)
@@ -1784,21 +1810,9 @@ async def test_model_analysis_saves_proposed_attraction_map_with_local_evidence(
     assert system.attraction_map(source["id"])["id"] == result["attraction_map"]["id"]
 
 
-def test_reference_model_json_accepts_fenced_or_explained_object() -> None:
-    assert LearningSystem._json_object('```json\n{"events": []}\n```') == {"events": []}
-    assert LearningSystem._json_object('分析如下：\n```json\n{"events": []}\n```\n请确认。') == {"events": []}
-
-
-def test_reference_model_json_rejects_multiple_objects_instead_of_using_example() -> None:
-    with pytest.raises(ValueError, match="唯一"):
-        LearningSystem._json_object(
-            '示例：{"events": []}\n最终：{"events": [{"name": "真实事件"}]}'
-        )
-
-
 async def test_model_analysis_explains_empty_window_response(tmp_path) -> None:
     db, library, projects, _system = setup_system(tmp_path)
-    system = LearningSystem(db, library, projects, FakeGateway([""]))
+    system = LearningSystem(db, library, projects, FakeGateway(["", ""]))
     source = library.import_text(title="empty-model", source_type="paste", text="一段需要分析的正文。")
 
     with pytest.raises(ValueError, match="第 1 个文本窗口.*空内容"):
@@ -1811,7 +1825,7 @@ async def test_model_analysis_uses_configured_fallback_for_invalid_json(tmp_path
     class GatewayWithFallback(FakeGateway):
         def __init__(self):
             super().__init__([
-                "",
+                "", "",
                 valid_synthesis_result(),
             ])
             self.fallback_roles = []
@@ -1837,7 +1851,7 @@ async def test_model_analysis_retries_a_transient_fallback_failure(tmp_path) -> 
 
     class GatewayWithTransientFallback(FakeGateway):
         def __init__(self):
-            super().__init__(["", valid_synthesis_result()])
+            super().__init__(["", "", valid_synthesis_result()])
             self.fallback_calls = 0
 
         async def complete_configured_fallback(self, role, system, user, **kwargs):
@@ -1863,7 +1877,7 @@ async def test_model_analysis_reuses_valid_fallback_for_remaining_windows(tmp_pa
 
     class GatewayWithReusableFallback(FakeGateway):
         def __init__(self):
-            super().__init__(["", valid_synthesis_result()])
+            super().__init__(["", "", valid_synthesis_result()])
             self.fallback_roles = []
 
         async def complete_configured_fallback(self, role, system, user, **kwargs):
@@ -1878,7 +1892,9 @@ async def test_model_analysis_reuses_valid_fallback_for_remaining_windows(tmp_pa
     result = await system.model_analyze_reference(source["id"])
 
     assert result["claims"] == 2
-    assert gateway.roles == ["reference_analysis", "reference_synthesis"]
+    assert gateway.roles == [
+        "reference_analysis", "reference_analysis", "reference_synthesis",
+    ]
     assert gateway.fallback_roles == ["reference_analysis", "reference_analysis"]
 
 
@@ -1887,7 +1903,7 @@ async def test_model_analysis_retries_one_transient_invalid_fallback_response(tm
 
     class GatewayWithTransientFallback(FakeGateway):
         def __init__(self):
-            super().__init__(["", valid_synthesis_result()])
+            super().__init__(["", "", valid_synthesis_result()])
             self.fallback_outputs = iter(["not-json", valid_window_result()])
             self.fallback_roles = []
 
@@ -1990,7 +2006,7 @@ def test_synthesis_result_wraps_one_complete_mechanism_object() -> None:
         "confidence": 0.8,
     }
 
-    result = LearningSystem._synthesis_result(json.dumps(mechanism, ensure_ascii=False))
+    result = LearningSystem._synthesis_result(mechanism)
 
     assert result == {"mechanisms": [mechanism], "attraction_map": {}, "style_profile": {}}
 
@@ -2001,6 +2017,7 @@ async def test_model_analysis_uses_fallback_for_wrong_window_shape(tmp_path) -> 
     class GatewayWithFallback(FakeGateway):
         def __init__(self):
             super().__init__([
+                '{"start":0,"end":10,"fact":"single claim"}',
                 '{"start":0,"end":10,"fact":"single claim"}',
                 valid_synthesis_result(),
             ])

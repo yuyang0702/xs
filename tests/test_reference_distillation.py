@@ -4,7 +4,9 @@ import json
 
 import pytest
 
+from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
 from novel_flywheel.reference_distillation import (
+    DistillationReceiptV2,
     SourceUseMode,
     compile_creative_recipe,
     distillation_needs_reduction,
@@ -146,6 +148,140 @@ def test_promoted_children_require_runtime_verifiable_output_attribution() -> No
         "semantic_path": None, "related_child_ids": [region.child_ids[0]],
     })
     assert validate_distillation_receipt(region, receipt) == semantic
+
+
+def test_registered_distillation_adapter_normalizes_alternate_v2_ledger() -> None:
+    """Replay the five-window production failure's representation class."""
+
+    region = distillation_regions(leaf_distillation_items(claims(2)))[0]
+    semantic = {
+        "mechanisms": [{"name": "A transferable state-change mechanism"}],
+        "attraction_map": {}, "style_profile": {},
+    }
+    alternate = {
+        "version": 2,
+        "covered_child_ids": list(region.child_ids),
+        "child_dispositions": [{
+            "child_id": region.child_ids[0], "disposition": "promoted",
+        }, {
+            "child_id": region.child_ids[1], "disposition": "merged",
+            "related_child_ids": [region.child_ids[0]],
+        }],
+        "child_attributions": [{
+            "child_id": region.child_ids[0],
+            "attribution_type": "claim",
+            "semantic_path": "/semantic/mechanisms/0",
+        }],
+        "semantic": semantic,
+    }
+
+    converted = GeneratedArtifactGateway().convert_object(
+        json.dumps(alternate),
+        contract_name="reference_distillation_region",
+        semantic_normalizer=lambda value: (
+            DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+        ),
+    )
+
+    receipt = DistillationReceiptV2.model_validate(converted.payload)
+    assert [item.disposition for item in receipt.child_dispositions] == [
+        "promoted", "promoted",
+    ]
+    assert all(item.reason.strip() for item in receipt.child_dispositions)
+    assert [item.relation for item in receipt.child_attributions] == [
+        "claim", "merged",
+    ]
+    assert receipt.child_attributions[0].semantic_path == "/mechanisms/0"
+    assert validate_distillation_receipt(region, converted.payload) == semantic
+    assert "reference_distillation_v2_ledger_alignment" in converted.audit.transformations
+
+
+def test_distillation_adapter_rejects_ambiguous_merged_ownership() -> None:
+    region = distillation_regions(leaf_distillation_items(claims(2)))[0]
+    alternate = {
+        "version": 2,
+        "covered_child_ids": list(region.child_ids),
+        "child_dispositions": [{
+            "child_id": region.child_ids[0], "disposition": "promoted",
+        }, {
+            "child_id": region.child_ids[1], "disposition": "merged",
+            "related_child_ids": [region.child_ids[0]],
+        }],
+        "child_attributions": [{
+            "child_id": region.child_ids[0], "attribution_type": "claim",
+            "semantic_path": "/semantic/mechanisms/0",
+        }, {
+            "child_id": region.child_ids[1], "attribution_type": "claim",
+            "semantic_path": "/semantic/mechanisms/1",
+        }],
+        "semantic": {
+            "mechanisms": [{"name": "first"}, {"name": "conflicting second"}],
+            "attraction_map": {}, "style_profile": {},
+        },
+    }
+
+    with pytest.raises(ValueError):
+        GeneratedArtifactGateway().convert_object(
+            json.dumps(alternate),
+            contract_name="reference_distillation_region",
+            semantic_normalizer=lambda value: (
+                DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+            ),
+        )
+
+
+def test_distillation_adapter_replays_current_five_window_failure_topology() -> None:
+    """Sanitized replay: 5 children, 3 anchors, and 2 declared merges."""
+
+    region = distillation_regions(leaf_distillation_items(claims(5)))[0]
+    anchors = (region.child_ids[0], region.child_ids[2], region.child_ids[4])
+    semantic = {
+        "mechanisms": [
+            {"name": "anchor-zero"},
+            {"name": "anchor-two"},
+            {"name": "anchor-four"},
+        ],
+        "attraction_map": {},
+        "style_profile": {},
+    }
+    alternate = {
+        "version": 2,
+        "covered_child_ids": list(region.child_ids),
+        "child_dispositions": [
+            {"child_id": region.child_ids[0], "disposition": "promoted"},
+            {
+                "child_id": region.child_ids[1], "disposition": "merged",
+                "related_child_ids": [region.child_ids[0]],
+            },
+            {"child_id": region.child_ids[2], "disposition": "promoted"},
+            {
+                "child_id": region.child_ids[3], "disposition": "merged",
+                "related_child_ids": [region.child_ids[2], region.child_ids[4]],
+            },
+            {"child_id": region.child_ids[4], "disposition": "promoted"},
+        ],
+        "child_attributions": [
+            {
+                "child_id": child_id, "attribution_type": "claim",
+                "semantic_path": f"/semantic/mechanisms/{index}",
+            }
+            for index, child_id in enumerate(anchors)
+        ],
+        "semantic": semantic,
+    }
+
+    converted = GeneratedArtifactGateway().convert_object(
+        json.dumps(alternate),
+        contract_name="reference_distillation_region",
+        semantic_normalizer=lambda value: (
+            DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+        ),
+    )
+
+    assert validate_distillation_receipt(region, converted.payload) == semantic
+    assert [
+        item["relation"] for item in converted.payload["child_attributions"]
+    ] == ["claim", "claim", "claim", "merged", "merged"]
 
 
 def test_promoted_children_cannot_claim_the_same_semantic_path_independently() -> None:

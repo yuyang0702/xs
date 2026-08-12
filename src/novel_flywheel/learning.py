@@ -7,12 +7,25 @@ import uuid
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
 from novel_flywheel.context_policy import estimate_input_tokens
-from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
+from novel_flywheel.contract_runtime import (
+    contract_route_capacity_plan,
+    execute_contract_runtime,
+    execute_text_runtime,
+)
+from novel_flywheel.generated_artifacts import (
+    ArtifactConversionError,
+)
+from novel_flywheel.learning_artifacts import (
+    apply_learning_artifact_invalidations,
+    artifact_sidecar_payload,
+    plan_learning_artifact_invalidations,
+    write_learning_artifact_sidecar_targets,
+)
 from novel_flywheel.model_output import canonical_model_label
 from novel_flywheel.narrative_attraction import (
     compact_attraction_guidance,
@@ -36,6 +49,7 @@ from novel_flywheel.reference_distillation import (
 )
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.style_context import default_style_profile
+from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
 WINDOW_VERSION = "learning-window-v2"
@@ -84,6 +98,50 @@ OUTLINE_PROJECT_FIELDS = (
 OUTLINE_ATTRACTION_RULE_FIELDS = (
     "opening_rule", "cycle_rules", "question_rules",
     "relationship_rules", "reversal_rule", "ending_rule",
+)
+
+
+REFERENCE_DISTILLATION_STRUCTURED_CONTRACT = StructuredArtifactContract(
+    name="reference_distillation_receipt_v2",
+    version=2,
+    schema=DistillationReceiptV2.model_json_schema(),
+    runtime_authority={
+        "contract": REFERENCE_DISTILLATION_CONTRACT,
+        "ownership": "runtime_child_manifest",
+    },
+)
+
+
+REFERENCE_WINDOW_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0},
+        "fact": {"type": "string", "minLength": 1},
+        "interpretation": {"type": "string", "minLength": 1},
+        "confidence": {"type": ["number", "string", "null"]},
+        "field": {"type": "string"},
+    },
+    "required": ["start", "end", "fact", "interpretation"],
+    "additionalProperties": True,
+}
+REFERENCE_WINDOW_STRUCTURED_CONTRACT = StructuredArtifactContract(
+    name="reference_window_claims",
+    version=2,
+    schema={
+        "type": "object",
+        "properties": {
+            field: {
+                "type": "array",
+                "maxItems": 1,
+                "items": REFERENCE_WINDOW_ITEM_SCHEMA,
+            }
+            for field in WINDOW_RESULT_FIELDS
+        },
+        "required": list(WINDOW_RESULT_FIELDS),
+        "additionalProperties": False,
+    },
+    runtime_authority={"window_offsets": "runtime_owned"},
 )
 INITIALIZATION_STYLE_FIELDS = {
     "character-management": ("dialogue", "psychology", "viewpoint", "narrative_distance"),
@@ -237,21 +295,31 @@ class LearningSystem:
                         + "\nCHILD PAYLOADS:\n"
                         + json.dumps(region.payloads, ensure_ascii=False)
                     )
-                    _response, receipt = await self._execute_reference_synthesis(
-                        route_plan=route_plan,
+                    runtime = await execute_contract_runtime(
+                        self.gateway,
+                        role="reference_synthesis",
                         system=(
                             "You perform evidence-preserving hierarchical reference "
                             "distillation."
                         ),
                         user=prompt,
-                        validator=lambda text: GeneratedArtifactGateway().convert_object(
-                            text,
-                            contract_name="reference_distillation_region",
-                            semantic_normalizer=lambda value: (
-                                self._normalize_distillation_receipt(region, value)
-                            ),
-                        ).payload,
+                        contract_name="reference_distillation_region",
+                        structured_contract=(
+                            REFERENCE_DISTILLATION_STRUCTURED_CONTRACT
+                        ),
+                        semantic_normalizer=lambda value: (
+                            self._normalize_distillation_receipt(region, value)
+                        ),
+                        domain_validator=lambda payload: (
+                            validate_distillation_receipt(region, dict(payload))
+                        ),
+                        max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                        attempt_routes=self._reference_synthesis_attempt_routes(
+                            route_plan,
+                        ),
+                        retry_domain_failures=True,
                     )
+                    receipt = runtime.payload
                     result = validate_distillation_receipt(region, receipt)
                     self.db.save_reference_distillation_region(
                         version_id=version["id"], level=level,
@@ -285,44 +353,15 @@ class LearningSystem:
 
     def _reference_synthesis_route_plan(self) -> ReferenceSynthesisRoutePlanV1:
         """Negotiate one versioned route/capacity contract for the whole reduction."""
-        binding = self.db.get_role_binding("reference_synthesis") or {}
-        primary_model_id = binding.get("primary_model_id")
-        fallback_model_id = (
-            binding.get("fallback_model_id")
-            if binding.get("fallback_provider_id") and binding.get("fallback_model_id")
-            else None
+        capacity = contract_route_capacity_plan(
+            self.db, self.gateway,
+            role="reference_synthesis",
+            output_reserve_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+            context_utilization=REFERENCE_SYNTHESIS_CONTEXT_UTILIZATION,
+            unknown_context_tokens=REFERENCE_SYNTHESIS_UNKNOWN_CONTEXT_TOKENS,
         )
-        if (
-            not binding
-            and callable(getattr(self.gateway, "complete_configured_fallback", None))
-        ):
-            # Test/embedded gateways may own routing without a registry-backed
-            # binding. Treat that declared executor as an unknown-capacity
-            # fallback; configured production bindings remain authoritative.
-            fallback_model_id = "__gateway_managed_fallback__"
-
-        def route_limit(model_id: object) -> int:
-            model = self.db.get_model(str(model_id)) if model_id else None
-            context_window = (
-                int(model.get("context_window"))
-                if model and isinstance(model.get("context_window"), int)
-                and int(model["context_window"]) > 0
-                else REFERENCE_SYNTHESIS_UNKNOWN_CONTEXT_TOKENS
-            )
-            declared_output = (
-                int(model.get("max_output_tokens"))
-                if model and isinstance(model.get("max_output_tokens"), int)
-                and int(model["max_output_tokens"]) > 0
-                else WINDOW_MODEL_OUTPUT_TOKENS
-            )
-            output_reserve = min(WINDOW_MODEL_OUTPUT_TOKENS, declared_output)
-            return (
-                int(context_window * REFERENCE_SYNTHESIS_CONTEXT_UTILIZATION)
-                - output_reserve
-            )
-
-        primary_limit = route_limit(primary_model_id)
-        fallback_limit = route_limit(fallback_model_id) if fallback_model_id else None
+        primary_limit = capacity.primary_input_token_limit
+        fallback_limit = capacity.fallback_input_token_limit
         primary_viable = primary_limit >= REFERENCE_DISTILLATION_MIN_PAYLOAD_TOKENS
         fallback_viable = (
             fallback_limit is not None
@@ -353,74 +392,43 @@ class LearningSystem:
 
         return self._reference_synthesis_route_plan().input_token_limit
 
+    @staticmethod
+    def _reference_synthesis_attempt_routes(
+        route_plan: ReferenceSynthesisRoutePlanV1,
+    ) -> tuple[Literal["primary", "configured_fallback"], ...]:
+        if route_plan.mode == "auto":
+            return (
+                "primary", "primary",
+                "configured_fallback", "configured_fallback",
+            )
+        if route_plan.mode == "fallback":
+            return ("configured_fallback", "configured_fallback")
+        return ("primary", "primary")
+
     async def _execute_reference_synthesis(
         self, *, route_plan: ReferenceSynthesisRoutePlanV1,
         system: str, user: str, validator,
     ) -> tuple[object, Any]:
-        """Execute and validate one region/final call under the same route plan."""
+        """Compatibility projection of the shared contract runtime."""
 
         if self.gateway is None:
             raise ValueError("Reference analysis model gateway is unavailable")
-
-        async def dispatch(mode: Literal["auto", "primary", "fallback"]):
-            if mode == "fallback":
-                complete = getattr(self.gateway, "complete_configured_fallback", None)
-                if not callable(complete):
-                    raise LookupError(
-                        "reference synthesis fallback route is not executable"
-                    )
-                return await complete(
-                    "reference_synthesis", system, user,
-                    max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-                )
-            if mode == "primary":
-                complete = getattr(self.gateway, "complete_primary", None)
-                if callable(complete):
-                    return await complete(
-                        "reference_synthesis", system, user,
-                        max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-                    )
-                if (
-                    route_plan.mode == "primary"
-                    and route_plan.fallback_input_token_limit is None
-                ):
-                    # An unbound embedded gateway is a single declared route.
-                    # Production bindings expose ``complete_primary`` so that
-                    # a primary attempt can never hide a fallback internally.
-                    return await self.gateway.complete(
-                        "reference_synthesis", system, user,
-                        max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-                    )
-                raise LookupError(
-                    "reference synthesis primary route is not executable"
-                )
-            raise RuntimeError(
-                "reference synthesis auto route must be expanded explicitly"
-            )
-
-        # The Runtime owns the complete retry schedule. ``auto`` is only a
-        # capacity-negotiation label; it is expanded before dispatch so the
-        # gateway's generic completion method can never perform a hidden
-        # primary-to-fallback transition or double-spend the retry budget.
-        attempts: list[Literal["primary", "fallback"]]
-        if route_plan.mode == "auto":
-            attempts = ["primary", "primary", "fallback", "fallback"]
-        else:
-            attempts = [route_plan.mode, route_plan.mode]
-
-        last_error: Exception | None = None
-        for mode in attempts:
-            try:
-                response = await dispatch(mode)
-            except Exception as exc:
-                last_error = exc
-                continue
-            try:
-                return response, validator(response.text)
-            except (ValueError, json.JSONDecodeError) as exc:
-                last_error = exc
-        assert last_error is not None
-        raise last_error
+        runtime = await execute_contract_runtime(
+            self.gateway,
+            role="reference_synthesis",
+            system=system,
+            user=user,
+            contract_name="reference_distillation_region",
+            structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
+            semantic_normalizer=lambda value: value if isinstance(value, dict) else None,
+            domain_validator=lambda payload: validator(json.dumps(
+                dict(payload), ensure_ascii=False,
+            )),
+            max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+            attempt_routes=self._reference_synthesis_attempt_routes(route_plan),
+            retry_domain_failures=True,
+        )
+        return runtime.model_response, runtime.domain_value
 
     def _normalize_distillation_receipt(
         self, region, value: object,
@@ -428,9 +436,7 @@ class LearningSystem:
         try:
             receipt = DistillationReceiptV2.model_validate(value)
             semantic = validate_distillation_receipt(region, receipt.model_dump(mode="json"))
-            normalized_semantic = self._synthesis_result(
-                json.dumps(semantic, ensure_ascii=False),
-            )
+            normalized_semantic = self._synthesis_result(semantic)
             self._require_chinese_synthesis(normalized_semantic)
         except (TypeError, ValueError):
             return None
@@ -504,6 +510,43 @@ class LearningSystem:
             "instruction": (
                 "The Runtime retained the full local catalog. Return local_match_id=null; "
                 "perform independent synthesis from the evidence claims."
+            ),
+        }, ensure_ascii=False, separators=(",", ":"))
+
+    @staticmethod
+    def _local_attraction_prompt_context(
+        candidates: Mapping[str, Any], *,
+        max_tokens: int = LOCAL_CANDIDATE_PROMPT_TOKENS,
+    ) -> str:
+        """Never cut a Runtime candidate object into invalid/partial JSON."""
+
+        payload = dict(candidates)
+        serialized = json.dumps(
+            payload, ensure_ascii=False, separators=(",", ":"),
+        )
+        if max_tokens < 256:
+            raise ValueError("local attraction prompt capacity is too small")
+        if estimate_input_tokens(serialized) <= max_tokens:
+            return serialized
+
+        def count(value: Any) -> int:
+            if isinstance(value, list):
+                return len(value)
+            if isinstance(value, dict):
+                return sum(count(item) for item in value.values())
+            return int(value not in (None, "", False))
+
+        return json.dumps({
+            "mode": "content_addressed_registry",
+            "catalog_sha256": distillation_sha256(payload),
+            "topology_counts": {
+                str(key): count(value) for key, value in payload.items()
+            },
+            "model_comparison_available": False,
+            "instruction": (
+                "The Runtime retained the complete local signal catalog. "
+                "Analyze the full SOURCE WINDOW independently; do not infer "
+                "a missing local signal from this registry receipt."
             ),
         }, ensure_ascii=False, separators=(",", ":"))
 
@@ -605,20 +648,24 @@ class LearningSystem:
         use_fallback_for_windows = False
 
         async def complete_fallback_window(prompt: str):
-            last_error = None
-            for _attempt in range(2):
-                try:
-                    response = await fallback(
-                        "reference_analysis", f"You extract evidenced reference facts. {focus}",
-                        prompt, max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-                    )
-                    value = self._window_result(response.text)
-                    self._require_chinese_window(value)
-                    return response, value
-                except Exception as exc:
-                    last_error = exc
-            assert last_error is not None
-            raise last_error
+            runtime = await execute_contract_runtime(
+                self.gateway,
+                role="reference_analysis",
+                system=f"You extract evidenced reference facts. {focus}",
+                user=prompt,
+                contract_name="reference_analysis_window",
+                structured_contract=REFERENCE_WINDOW_STRUCTURED_CONTRACT,
+                semantic_normalizer=self._window_result,
+                domain_validator=lambda payload: (
+                    self._require_chinese_window(dict(payload)) or dict(payload)
+                ),
+                max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                attempt_routes=(
+                    "configured_fallback", "configured_fallback",
+                ),
+                retry_domain_failures=True,
+            )
+            return runtime.model_response, runtime.domain_value
 
         if progress:
             progress({
@@ -658,7 +705,7 @@ class LearningSystem:
                 + style_instruction + "\n\n"
                 "SOURCE WINDOW（先独立判断这一部分）:\n" + window["text"]
                 + "\n\nLOCAL ATTRACTION CANDIDATES（独立判断完成后再复核；这些不是结论）:\n"
-                + json.dumps(local_candidates, ensure_ascii=False)[:20_000]
+                + self._local_attraction_prompt_context(local_candidates)
             )
             if use_fallback_for_windows:
                 if progress:
@@ -676,35 +723,52 @@ class LearningSystem:
                         f"{exc}。已经完成的本地结果不会丢失。"
                     ) from exc
             else:
-                response = await self.gateway.complete(
-                    "reference_analysis", f"You extract evidenced reference facts. {focus}",
-                    prompt, max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-                )
-                used_response = response
                 try:
-                    value = self._window_result(response.text)
-                    self._require_chinese_window(value)
-                except ValueError as exc:
-                    if not callable(fallback):
-                        raise ValueError(
-                            f"第 {window['index']} 个文本窗口分析失败：{exc}。"
-                            "请重新分析；已经完成的本地结果不会丢失。"
-                        ) from exc
+                    window_runtime = await execute_contract_runtime(
+                        self.gateway,
+                        role="reference_analysis",
+                        system=f"You extract evidenced reference facts. {focus}",
+                        user=prompt,
+                        contract_name="reference_analysis_window",
+                        structured_contract=REFERENCE_WINDOW_STRUCTURED_CONTRACT,
+                        semantic_normalizer=self._window_result,
+                        domain_validator=lambda payload: (
+                            self._require_chinese_window(dict(payload))
+                            or dict(payload)
+                        ),
+                        max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+                        attempt_routes=(
+                            (
+                                "primary", "primary",
+                                "configured_fallback", "configured_fallback",
+                            )
+                            if callable(fallback) else ("primary", "primary")
+                        ),
+                        retry_domain_failures=True,
+                    )
+                except (ArtifactConversionError, ValueError) as exc:
+                    detail = (
+                        "模型返回空内容或未闭合的结构化结果"
+                        if isinstance(exc, ArtifactConversionError)
+                        and exc.audit.failure_code == "output_truncated"
+                        else str(exc)
+                    )
+                    raise ValueError(
+                        f"第 {window['index']} 个文本窗口分析失败：{detail}。"
+                        "请重新分析；已经完成的本地结果不会丢失。"
+                    ) from exc
+                used_response = window_runtime.model_response
+                value = window_runtime.domain_value
+                if window_runtime.attempt.route == "configured_fallback":
+                    use_fallback_for_windows = callable(fallback)
                     if progress:
                         progress({
                             "phase": "fallback_window",
                             "completed_windows": reused_count + generated_count,
-                            "total_windows": len(windows), "reused_windows": reused_count,
+                            "total_windows": len(windows),
+                            "reused_windows": reused_count,
                             "current_window": window["index"],
                         })
-                    try:
-                        used_response, value = await complete_fallback_window(prompt)
-                        use_fallback_for_windows = True
-                    except ValueError as fallback_exc:
-                        raise ValueError(
-                            f"第 {window['index']} 个文本窗口的主模型和备用模型都没有返回有效结果："
-                            f"{fallback_exc}。已经完成的本地结果不会丢失。"
-                        ) from fallback_exc
             if getattr(used_response, "receipt", {}).get("fallback_used"):
                 use_fallback_for_windows = callable(fallback)
             claim = self._save_node("model_claim", {
@@ -805,20 +869,12 @@ class LearningSystem:
             "\n\nINDEPENDENT WINDOW CLAIMS:\n" +
             json.dumps(synthesis_claims, ensure_ascii=False)
         )
-        def validate_synthesis(text: str) -> dict:
-            converted = GeneratedArtifactGateway().convert_object(
-                text, contract_name="reference_distillation_region",
-                semantic_normalizer=lambda value: (
-                    DistillationReceiptV2.model_validate(value).model_dump(mode="json")
-                ),
-            )
-            receipt = DistillationReceiptV2.model_validate(converted.payload)
+        def validate_synthesis(payload: Mapping[str, Any]) -> dict:
+            receipt = DistillationReceiptV2.model_validate(payload)
             semantic = validate_distillation_receipt(
                 final_region, receipt.model_dump(mode="json"),
             )
-            result = self._synthesis_result(
-                json.dumps(semantic, ensure_ascii=False),
-            )
+            result = self._synthesis_result(semantic)
             self._require_chinese_synthesis(result)
             validate_distillation_receipt(
                 final_region,
@@ -826,10 +882,23 @@ class LearningSystem:
             )
             return result
 
-        used_synthesis, result = await self._execute_reference_synthesis(
-            route_plan=route_plan, system=synthesis_system,
-            user=synthesis_prompt, validator=validate_synthesis,
+        synthesis_runtime = await execute_contract_runtime(
+            self.gateway,
+            role="reference_synthesis",
+            system=synthesis_system,
+            user=synthesis_prompt,
+            contract_name="reference_distillation_region",
+            structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
+            semantic_normalizer=lambda value: (
+                DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+            ),
+            domain_validator=validate_synthesis,
+            max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
+            attempt_routes=self._reference_synthesis_attempt_routes(route_plan),
+            retry_domain_failures=True,
         )
+        used_synthesis = synthesis_runtime.model_response
+        result = synthesis_runtime.domain_value
         mechanisms = []
         local_by_id = {item["id"]: item for item in local_report["mechanisms"]}
         synthesis_receipt = getattr(used_synthesis, "receipt", {})
@@ -1381,13 +1450,7 @@ class LearningSystem:
 
     @staticmethod
     def _artifact_sidecar_payload(artifact: dict) -> dict:
-        return {
-            "id": artifact["id"],
-            "version": int(artifact["version"]),
-            "status": artifact["status"],
-            "source_hash": artifact["source_hash"],
-            "data": artifact["data"],
-        }
+        return artifact_sidecar_payload(artifact)
 
     def _artifact_sidecar_matches(self, path: Path, artifact: dict) -> bool:
         try:
@@ -1857,23 +1920,16 @@ class LearningSystem:
 
     def mark_material_change(self, project_id: str, source_path: str, changes: list[str]) -> dict:
         project = self.projects.get(project_id)
-        affected = []
-        with self.db.connect() as connection:
-            rows = connection.execute(
-                "SELECT id,artifact_type,version FROM project_learning_artifacts WHERE project_id=? AND status='active'",
-                (project_id,),
-            ).fetchall()
-            for row in rows:
-                connection.execute("UPDATE project_learning_artifacts SET status='stale' WHERE id=?", (row["id"],))
-                affected.append({"artifact_type": row["artifact_type"], "version": row["version"], "severity": "review"})
-        for item in affected:
-            path = project.path / "learning" / f"{item['artifact_type']}.json"
-            try:
-                value = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
-            value["status"] = "stale"
-            atomic_write(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+        plan = plan_learning_artifact_invalidations(self.db, project_id)
+        apply_learning_artifact_invalidations(
+            self.db, project_id, plan.effects,
+        )
+        write_learning_artifact_sidecar_targets(project.path, plan)
+        affected = [{
+            "artifact_type": item.artifact_type,
+            "version": item.artifact_version,
+            "severity": "review",
+        } for item in plan.effects]
         return {"source_path": source_path, "changes": changes, "affected": affected, "formal_files_changed": False}
 
     def create_outline_candidate(self, project_id: str, outline: str) -> dict:
@@ -1887,6 +1943,64 @@ class LearningSystem:
         atomic_write(path, outline.rstrip() + "\n")
         return {"id": candidate_id, "status": "pending", "path": str(path), "formal_outline_changed": False}
 
+    async def _outline_text_runtime(
+        self, role: str, system: str, user: str,
+        max_output_tokens: int | None = None,
+    ):
+        return await execute_text_runtime(
+            self.gateway,
+            role=role,
+            system=system,
+            user=user,
+            domain_validator=self._outline_candidate_text,
+            max_output_tokens=max_output_tokens,
+            retry_domain_failures=True,
+        )
+
+    async def _line_edit_text_runtime(
+        self, role: str, system: str, user: str,
+        max_output_tokens: int | None = None,
+    ):
+        locked_text = user.split("\nLOCKED FACTS:\n", 1)[1].split(
+            "\nPROSE BASELINE:\n", 1,
+        )[0]
+        source = user.split("\nSOURCE PASSAGE:\n", 1)[1]
+        locked_facts = json.loads(locked_text)
+        return await execute_text_runtime(
+            self.gateway,
+            role=role,
+            system=system,
+            user=user,
+            domain_validator=lambda text: self._line_edit_text(
+                text, source=source, locked_facts=locked_facts,
+            ),
+            max_output_tokens=max_output_tokens,
+            retry_domain_failures=True,
+        )
+
+    @staticmethod
+    def _outline_candidate_text(text: str) -> str:
+        candidate = str(text or "").strip()
+        if not candidate:
+            raise ValueError("outline candidate cannot be empty")
+        if len(candidate) > 100_000:
+            raise ValueError("outline candidate exceeds the supported authority bound")
+        return candidate
+
+    @staticmethod
+    def _line_edit_text(
+        text: str, *, source: str, locked_facts: list[str],
+    ) -> str:
+        candidate = str(text or "").strip()
+        if not candidate or candidate == source.strip():
+            raise ValueError("line edit must be materially different")
+        if any(
+            fact and fact in source and fact not in candidate
+            for fact in locked_facts
+        ):
+            raise ValueError("line edit removed locked facts")
+        return candidate
+
     async def generate_outline_candidate(self, project_id: str, brief: str = "") -> dict:
         if self.gateway is None:
             raise OutlineGenerationNotReady("规划模型当前不可用，请先检查模型配置。")
@@ -1898,7 +2012,7 @@ class LearningSystem:
         if not context["writing_methods"] and not context["attraction_rules"]:
             raise OutlineGenerationNotReady("请先确认并采用至少一条写法，再生成大纲。")
         try:
-            response = await self.gateway.complete(
+            response = await self._outline_text_runtime(
                 "planning",
                 "只根据原创作品简报、用户补充和人工确认的抽象写法生成候选小说大纲。"
                 "不得复现参考资料的人名、设定、具体情节或独特表达。"
@@ -1910,7 +2024,7 @@ class LearningSystem:
             )
         except Exception as exc:
             raise RuntimeError("outline generation gateway failed") from exc
-        return self.create_outline_candidate(project_id, response.text)
+        return self.create_outline_candidate(project_id, response.domain_value)
 
     def _outline_generation_context(
         self, project_id: str, metadata: dict, brief: str,
@@ -1972,7 +2086,7 @@ class LearningSystem:
             raise ValueError("Line-edit model gateway is unavailable")
         baseline = self.get_artifact(project_id, "prose_baseline")
         profiles = self.get_artifact(project_id, "voice_profiles")
-        response = await self.gateway.complete(
+        response = await self._line_edit_text_runtime(
             "line_edit",
             "Perform a narrow line edit only. Do not change event order, decisions, scene count, setups, payoffs, or ending facts.",
             "ISSUES:\n" + json.dumps(issues, ensure_ascii=False) +
@@ -1983,7 +2097,8 @@ class LearningSystem:
             max_output_tokens=8192,
         )
         return self.create_line_edit_candidate(
-            project_id, source, response.text, issues=issues, locked_facts=locked_facts,
+            project_id, source, response.domain_value,
+            issues=issues, locked_facts=locked_facts,
         )
 
     def record_feedback(self, project_id: str | None, subject_type: str, subject_id: str,
@@ -2135,7 +2250,7 @@ class LearningSystem:
         if not isinstance(result, dict):
             return False
         try:
-            value = self._window_result(json.dumps(result, ensure_ascii=False))
+            value = self._window_result(result)
             self._require_chinese_window(value)
         except ValueError:
             return False
@@ -2416,21 +2531,9 @@ class LearningSystem:
     def _hash(value: str) -> str:
         return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
-    @staticmethod
-    def _json_object(text: str) -> dict:
-        cleaned = text.strip()
-        if not cleaned:
-            raise ValueError("模型返回了空内容")
-        try:
-            return GeneratedArtifactGateway().convert_object(
-                cleaned, contract_name="learning_artifact",
-            ).payload
-        except (json.JSONDecodeError, ValueError) as exc:
-            raise ValueError(f"模型返回的内容不是唯一可识别的 JSON 对象：{exc}") from exc
-
     @classmethod
-    def _window_result(cls, text: str) -> dict:
-        value = cls._json_object(text)
+    def _window_result(cls, source: Mapping[str, Any]) -> dict:
+        value = dict(source)
         missing = [key for key in WINDOW_RESULT_FIELDS if not isinstance(value.get(key), list)]
         if missing:
             raise ValueError("窗口分析缺少列表字段：" + "、".join(missing))
@@ -2523,8 +2626,8 @@ class LearningSystem:
                         raise ValueError(f"文笔候选的{field}没有使用简体中文")
 
     @classmethod
-    def _synthesis_result(cls, text: str) -> dict:
-        value = cls._json_object(text)
+    def _synthesis_result(cls, source: Mapping[str, Any]) -> dict:
+        value = dict(source)
         mechanism_fields = {"name", "supporting_windows", "transfer_guidance"}
         if not isinstance(value.get("mechanisms"), list) and mechanism_fields.issubset(value):
             value = {"mechanisms": [value], "attraction_map": {}, "style_profile": {}}

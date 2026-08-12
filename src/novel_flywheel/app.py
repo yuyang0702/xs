@@ -13,6 +13,7 @@ from novel_flywheel.api.learning import router as learning_router
 from novel_flywheel.api.market import router as market_router
 from novel_flywheel.api.projects import (
     recover_candidate_publications,
+    recover_project_file_state_mutations,
     router as projects_router,
 )
 from novel_flywheel.api.revisions import router as revisions_router
@@ -104,6 +105,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         db, workspace_root or settings.data_dir / "projects", root_constraints or _default_constraints(),
     )
     recover_candidate_publications(app.state.projects)
+    recover_project_file_state_mutations(app.state.projects)
     app.state.quality_references = QualityReferenceService(
         db, app.state.references, app.state.projects,
     )
@@ -119,7 +121,18 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         db, app.state.projects, gateway, local_nlp=app.state.local_nlp,
     )
     app.state.learning.outlines = app.state.outlines
-    app.state.reference_analysis_tasks = ReferenceAnalysisTaskManager()
+    def resolve_reference_analysis(source_id: str):
+        try:
+            app.state.references.get(source_id)
+        except LookupError:
+            return None
+        return lambda progress: app.state.learning.model_analyze_reference(
+            source_id, progress,
+        )
+
+    app.state.reference_analysis_tasks = ReferenceAnalysisTaskManager(
+        db, operation_resolver=resolve_reference_analysis,
+    )
     app.state.material_impacts = MaterialImpactService(gateway)
     app.state.style_samples = style_sample_service or StyleSampleService(gateway)
     app.state.interviews = interview_service or WizardInterviewService(db, gateway)
@@ -186,6 +199,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     @app.on_event("startup")
     async def resume_durable_runs() -> None:
         app.state.run_tasks.recover_due_runs()
+        app.state.reference_analysis_tasks.recover_pending()
     app.state.migrator = ProjectMigrator(
         lambda project, command: app.state.skill_runtime._run_story_cli(project, [command, "."]),
     )

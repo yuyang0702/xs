@@ -22,6 +22,7 @@ from novel_flywheel.planning_compiler import (
     planning_document_exit_topology,
     planning_markdown_presentation_view,
     planning_ownership_topology,
+    rebind_runtime_repaired_planning_field,
     render_planning_segment_ir,
 )
 
@@ -49,6 +50,36 @@ def test_runtime_owned_markdown_heading_is_atomic_presentation(newline: str) -> 
     assert len(visible) == len(rendered)
     assert visible.count("\n") == rendered.count("\n")
     assert "## Ending beat" not in visible
+
+
+def test_runtime_deterministic_event_repair_reseals_only_its_owned_field() -> None:
+    original = PlanningSegmentIR(
+        segment=1,
+        heading="### Segment 1: repaired",
+        event_ids=("EV-1234ABCD",),
+        outline="Authoritative outline evidence.",
+        opening="The accepted opening state remains fixed.",
+        event_body="The protagonist checks the first clue and changes the state.",
+        handoff="The verified result passes to the next segment.",
+        source_sha256="0" * 64,
+    )
+    rendered = render_planning_segment_ir(original)
+    stale = rendered.replace(
+        "checks the first clue",
+        "checks the first clue and the Runtime-owned obligation",
+    )
+    assert compile_planning_segment(stale).protocol_issues == (
+        "owned planning field event failed its content hash",
+    )
+
+    rebound = rebind_runtime_repaired_planning_field(stale, role="event")
+    compiled = compile_planning_segment(rebound)
+
+    assert compiled.protocol_issues == ()
+    assert "Runtime-owned obligation" in compiled.field("event")
+    assert compiled.field("outline") == original.outline
+    assert compiled.field("opening") == original.opening
+    assert compiled.field("handoff") == original.handoff
 
 
 def test_recorded_production_table_normalizes_then_reveals_ownership_stage() -> None:

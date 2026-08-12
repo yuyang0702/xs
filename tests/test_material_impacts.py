@@ -75,6 +75,54 @@ async def test_analysis_keeps_only_exact_safe_material_patches(tmp_path: Path) -
     assert result["proposals"][0]["target_hash"]
 
 
+@pytest.mark.asyncio
+async def test_analysis_partitions_all_complete_material_files_without_truncation(
+    tmp_path: Path,
+) -> None:
+    documents = []
+    for suffix in ("a", "b"):
+        path = tmp_path / "plot" / f"{suffix}.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        marker = f"UNIQUE-END-{suffix.upper()}"
+        content = (f"material-{suffix} " * 3_700) + marker
+        path.write_text(content, encoding="utf-8")
+        documents.append({"path": f"plot/{suffix}.md", "content": content})
+
+    class PacketGateway:
+        def __init__(self):
+            self.prompts = []
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            self.prompts.append(user)
+            suffix = "a" if "FILE plot/a.md" in user else "b"
+            marker = f"UNIQUE-END-{suffix.upper()}"
+            return type("Result", (), {"text": json.dumps({
+                "summary": f"packet {suffix}",
+                "proposals": [{
+                    "path": f"plot/{suffix}.md",
+                    "reason": "retired setting affects this material",
+                    "old_text": marker,
+                    "new_text": f"UPDATED-{suffix.upper()}",
+                }],
+            })})()
+
+    gateway = PacketGateway()
+    service = MaterialImpactService(gateway)
+    impact = service.record(
+        "book", tmp_path, "characters/lin.md",
+        "Retired setting", "Confirmed setting",
+        retire_removed_settings=True,
+    )
+    result = await service.analyze(tmp_path, impact["id"], documents)
+
+    assert len(gateway.prompts) == 2
+    assert sum("UNIQUE-END-A" in prompt for prompt in gateway.prompts) == 1
+    assert sum("UNIQUE-END-B" in prompt for prompt in gateway.prompts) == 1
+    assert {item["path"] for item in result["proposals"]} == {
+        "plot/a.md", "plot/b.md",
+    }
+
+
 def test_prepare_apply_rejects_material_changed_after_analysis(tmp_path: Path) -> None:
     plot = tmp_path / "plot" / "arc.md"
     plot.parent.mkdir(parents=True)

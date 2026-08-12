@@ -358,6 +358,32 @@ CREATE TABLE IF NOT EXISTS reference_analyses(
 );
 CREATE INDEX IF NOT EXISTS idx_reference_analyses_version
   ON reference_analyses(version_id, analyzer, analyzer_version);
+CREATE TABLE IF NOT EXISTS resource_tasks(
+  id TEXT PRIMARY KEY,
+  resource_type TEXT NOT NULL,
+  resource_id TEXT NOT NULL,
+  operation TEXT NOT NULL,
+  contract_version INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  completed_units INTEGER NOT NULL DEFAULT 0,
+  total_units INTEGER NOT NULL DEFAULT 0,
+  reused_units INTEGER NOT NULL DEFAULT 0,
+  current_unit INTEGER,
+  result_json TEXT,
+  error_code TEXT,
+  failure_sha256 TEXT,
+  safe_message TEXT,
+  resume_payload_json TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  finished_at TEXT
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_resource_tasks_active
+  ON resource_tasks(resource_type, resource_id, operation)
+  WHERE status IN ('queued','running');
+CREATE INDEX IF NOT EXISTS idx_resource_tasks_resource
+  ON resource_tasks(resource_type, resource_id, operation, updated_at DESC);
 CREATE TABLE IF NOT EXISTS quality_reference_groups(
   id TEXT PRIMARY KEY,
   project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -745,6 +771,166 @@ class Database:
         with self.connect() as connection:
             rows = connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
             return {row[0] for row in rows}
+
+    @staticmethod
+    def _resource_task_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+        if row is None:
+            return None
+        value = dict(row)
+        value["result"] = json.loads(value.pop("result_json") or "null")
+        value["resume_payload"] = json.loads(
+            value.pop("resume_payload_json") or "{}"
+        )
+        return value
+
+    def create_resource_task(
+        self, *, task_id: str, resource_type: str, resource_id: str,
+        operation: str, resume_payload: dict[str, Any] | None = None,
+        contract_version: int = 1,
+    ) -> tuple[dict[str, Any], bool]:
+        payload = dict(resume_payload or {})
+        _assert_secret_free_resume_payload(payload)
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT * FROM resource_tasks WHERE resource_type=? AND "
+                "resource_id=? AND operation=? AND status IN ('queued','running') "
+                "ORDER BY created_at DESC LIMIT 1",
+                (resource_type, resource_id, operation),
+            ).fetchone()
+            if existing is not None:
+                result = self._resource_task_row(existing)
+                assert result is not None
+                return result, False
+            connection.execute(
+                "INSERT INTO resource_tasks(id,resource_type,resource_id,operation,"
+                "contract_version,status,phase,resume_payload_json,created_at,updated_at) "
+                "VALUES(?,?,?,?,?,'queued','queued',?,?,?)",
+                (
+                    task_id, resource_type, resource_id, operation,
+                    contract_version,
+                    json.dumps(payload, ensure_ascii=False, sort_keys=True),
+                    now, now,
+                ),
+            )
+            row = connection.execute(
+                "SELECT * FROM resource_tasks WHERE id=?", (task_id,),
+            ).fetchone()
+            result = self._resource_task_row(row)
+            assert result is not None
+            return result, True
+
+    def get_resource_task(self, task_id: str) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM resource_tasks WHERE id=?", (task_id,),
+            ).fetchone()
+        return self._resource_task_row(row)
+
+    def get_latest_resource_task(
+        self, *, resource_type: str, resource_id: str, operation: str,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM resource_tasks WHERE resource_type=? AND "
+                "resource_id=? AND operation=? ORDER BY created_at DESC LIMIT 1",
+                (resource_type, resource_id, operation),
+            ).fetchone()
+        return self._resource_task_row(row)
+
+    def requeue_active_resource_tasks(
+        self, *, resource_type: str, operation: str,
+    ) -> list[dict[str, Any]]:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "UPDATE resource_tasks SET status='queued',phase='resume_pending',"
+                "updated_at=? WHERE resource_type=? AND operation=? "
+                "AND status='running'",
+                (now, resource_type, operation),
+            )
+            rows = connection.execute(
+                "SELECT * FROM resource_tasks WHERE resource_type=? AND operation=? "
+                "AND status='queued' ORDER BY created_at",
+                (resource_type, operation),
+            ).fetchall()
+        return [
+            value for row in rows
+            if (value := self._resource_task_row(row)) is not None
+        ]
+
+    def claim_resource_task(self, task_id: str) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            updated = connection.execute(
+                "UPDATE resource_tasks SET status='running',phase='starting',"
+                "updated_at=?,finished_at=NULL,error_code=NULL,failure_sha256=NULL,"
+                "safe_message=NULL WHERE id=? AND status='queued'",
+                (now, task_id),
+            )
+            return updated.rowcount == 1
+
+    def update_resource_task_progress(
+        self, task_id: str, *, phase: str, completed_units: int,
+        total_units: int, reused_units: int, current_unit: int | None,
+    ) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            updated = connection.execute(
+                "UPDATE resource_tasks SET phase=?,completed_units=?,total_units=?,"
+                "reused_units=?,current_unit=?,updated_at=? "
+                "WHERE id=? AND status='running'",
+                (
+                    phase, completed_units, total_units, reused_units,
+                    current_unit, now, task_id,
+                ),
+            )
+            return updated.rowcount == 1
+
+    def complete_resource_task(self, task_id: str, result: dict[str, Any]) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            updated = connection.execute(
+                "UPDATE resource_tasks SET status='completed',phase='completed',"
+                "result_json=?,error_code=NULL,failure_sha256=NULL,safe_message=NULL,"
+                "updated_at=?,finished_at=? WHERE id=? AND status='running'",
+                (
+                    json.dumps(result, ensure_ascii=False, sort_keys=True),
+                    now, now, task_id,
+                ),
+            )
+            return updated.rowcount == 1
+
+    def fail_resource_task(
+        self, task_id: str, *, error_code: str, failure_sha256: str,
+        safe_message: str,
+    ) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            updated = connection.execute(
+                "UPDATE resource_tasks SET status='failed',phase='failed',"
+                "error_code=?,failure_sha256=?,safe_message=?,updated_at=?,"
+                "finished_at=? WHERE id=? AND status IN ('queued','running')",
+                (
+                    error_code, failure_sha256, safe_message,
+                    now, now, task_id,
+                ),
+            )
+            return updated.rowcount == 1
+
+    def cancel_resource_task(self, task_id: str) -> bool:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.connect() as connection:
+            updated = connection.execute(
+                "UPDATE resource_tasks SET status='cancelled',phase='cancelled',"
+                "updated_at=?,finished_at=? WHERE id=? "
+                "AND status IN ('queued','running')",
+                (now, now, task_id),
+            )
+            return updated.rowcount == 1
 
     def save_workflow_node_checkpoint(
         self, *, run_id: str, node_key: str, authority_sha256: str,

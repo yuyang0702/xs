@@ -399,14 +399,14 @@ class ProjectStore:
                     )
                 )
             if content.strip():
-                parts.append("# Current Confirmed Outline\n\n" + content[:30_000])
+                parts.append("# Current Confirmed Outline\n\n" + content)
         book_plan = project.path / "memory" / "book-plan.md"
         legacy_plan = project.path / "outline.md"
         plan_path = book_plan if book_plan.is_file() else legacy_plan
         if plan_path.is_file():
             parts.append("# Confirmed Long-form Execution Plan\n\n" + plan_path.read_text(
                 encoding="utf-8",
-            )[:30_000])
+            ))
         profile = resolve_platform_profile(
             project.metadata.get("platform_profile_id"), project,
             self.active_learning_data(project_id, "market_baseline"),
@@ -436,7 +436,6 @@ class ProjectStore:
             "epistemic_state": "Character Knowledge Boundaries",
             "scene_briefs": "Scene Briefs",
         }
-        learning_size = 0
         for name, label in labels.items():
             path = learning_root / f"{name}.json"
             if not path.is_file():
@@ -448,10 +447,7 @@ class ProjectStore:
             if value.get("status") != "active":
                 continue
             content = json.dumps(value.get("data", {}), ensure_ascii=False, indent=2)
-            if learning_size + len(content) > 40_000:
-                continue
             parts.append(f"# {label}\n\n{content}")
-            learning_size += len(content)
         return "\n\n".join(parts)
 
     @staticmethod

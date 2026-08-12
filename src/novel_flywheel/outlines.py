@@ -7,18 +7,44 @@ import hashlib
 import json
 import re
 import unicodedata
+import uuid
 from pathlib import Path
 
-from novel_flywheel.db import Database
+from novel_flywheel.contract_runtime import (
+    contract_route_capacity_plan,
+    execute_contract_runtime,
+)
+from novel_flywheel.context_policy import estimate_input_tokens
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
+from novel_flywheel.learning_artifacts import (
+    apply_learning_artifact_invalidations,
+    plan_learning_artifact_invalidations,
+    write_learning_artifact_sidecar_targets,
+)
+from novel_flywheel.project_transactions import (
+    ProjectMutationJournalV1,
+    ProjectMutationStoryStateV1,
+    abort_project_mutation_request,
+    canonical_json_sha256,
+    complete_project_mutation,
+    project_mutation_journal_path,
+    stage_project_mutation_targets,
+    write_project_mutation_journal,
+)
 from novel_flywheel.model_output import canonical_model_label
 from novel_flywheel.projects import ProjectCreate, ProjectStore
-from novel_flywheel.storage import atomic_write
+from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
+from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
 MAX_OUTLINE_CHARACTERS = 100_000
 MARKET_REFERENCE_MECHANISM_LIMIT = 5
+OUTLINE_SEMANTIC_REVIEW_UNKNOWN_CONTEXT_TOKENS = 32_768
+OUTLINE_SEMANTIC_REVIEW_OUTPUT_TOKENS = 2_048
+OUTLINE_SEMANTIC_REVIEW_CONTEXT_UTILIZATION = 0.72
+OUTLINE_SEMANTIC_REVIEW_MAX_CHANGES_PER_PACKET = 10
 _OUTLINE_QUESTION_SIGNAL = re.compile(r"[？?]|为什么|怎么会|究竟")
 _OUTLINE_ANOMALY_SIGNAL = re.compile(r"突然|竟然?|却|失踪|死亡|异常|不见了|消失")
 OUTLINE_EVENT_SKIP_TERMS = (
@@ -268,6 +294,59 @@ OUTLINE_MANIFEST_KEYS = (
     "promises", "questions", "constraints",
 )
 
+_OUTLINE_MANIFEST_ITEM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "text": {"type": "string"},
+        "role": {"type": "string"},
+        "kind": {"type": "string"},
+        "evidence": {"type": "string", "minLength": 1},
+    },
+    "required": ["evidence"],
+    "additionalProperties": False,
+}
+OUTLINE_MANIFEST_STRUCTURED_CONTRACT = StructuredArtifactContract(
+    name="outline_material_manifest",
+    version=1,
+    schema={
+        "type": "object",
+        "properties": {
+            key: {"type": "array", "items": _OUTLINE_MANIFEST_ITEM_SCHEMA}
+            for key in OUTLINE_MANIFEST_KEYS
+        },
+        "required": list(OUTLINE_MANIFEST_KEYS),
+        "additionalProperties": False,
+    },
+    runtime_authority={"outline_evidence": "runtime_exact_substring"},
+)
+OUTLINE_SEMANTIC_REVIEW_STRUCTURED_CONTRACT = StructuredArtifactContract(
+    name="outline_semantic_review",
+    version=1,
+    schema={
+        "type": "object",
+        "properties": {
+            "decisions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "minLength": 1},
+                        "type": {"type": "string", "minLength": 1},
+                        "explanation": {"type": "string"},
+                        "impact": {"type": "string"},
+                    },
+                    "required": ["id", "type"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["decisions"],
+        "additionalProperties": False,
+    },
+    runtime_authority={"allowed_change_ids": "runtime_owned"},
+)
+
 
 def local_outline_manifest(content: str) -> dict[str, list[dict[str, str]]]:
     """Read explicit Markdown structure without treating ordinary prose as entities."""
@@ -379,15 +458,6 @@ def _merge_manifests(*manifests: dict) -> dict[str, list[dict[str, str]]]:
         ])
         for key in OUTLINE_MANIFEST_KEYS
     })
-
-
-def _json_object(text: str) -> dict:
-    try:
-        return GeneratedArtifactGateway().convert_object(
-            text, contract_name="outline_analysis",
-        ).payload
-    except (json.JSONDecodeError, ValueError) as exc:
-        raise ValueError(f"资料清单没有返回唯一有效 JSON：{exc}") from exc
 
 
 def _ltp_entity_candidates(text: str, payload: dict) -> list[dict[str, str]]:
@@ -890,6 +960,178 @@ class OutlineService:
         self.local_nlp = local_nlp
         self.states = StoryStateStore(db)
 
+    async def _material_manifest_contract(
+        self, role: str, system: str, user: str,
+        max_output_tokens: int | None = None,
+    ):
+        request = json.loads(user)
+        content = str(request.get("confirmed_outline") or "")
+        return await execute_contract_runtime(
+            self.gateway,
+            role=role,
+            system=system,
+            user=user,
+            contract_name="outline_material_manifest",
+            structured_contract=OUTLINE_MANIFEST_STRUCTURED_CONTRACT,
+            semantic_normalizer=lambda value: (
+                dict(value) if isinstance(value, dict) else None
+            ),
+            domain_validator=lambda payload: _validated_manifest(
+                dict(payload), content,
+            ),
+            max_output_tokens=max_output_tokens,
+        )
+
+    async def _semantic_review_contract(
+        self, role: str, system: str, user: str,
+        max_output_tokens: int | None = None,
+    ):
+        request = json.loads(user)
+        allowed_ids = {
+            str(item.get("id") or "")
+            for item in request.get("changes", [])
+            if isinstance(item, dict) and str(item.get("id") or "")
+        }
+        capacity = self._semantic_review_capacity_plan()
+        return await execute_contract_runtime(
+            self.gateway,
+            role=role,
+            system=system,
+            user=user,
+            contract_name="outline_semantic_review",
+            structured_contract=OUTLINE_SEMANTIC_REVIEW_STRUCTURED_CONTRACT,
+            semantic_normalizer=lambda value: (
+                dict(value) if isinstance(value, dict) else None
+            ),
+            domain_validator=lambda payload: self._complete_semantic_decisions_payload(
+                dict(payload), allowed_ids,
+            ),
+            max_output_tokens=max_output_tokens,
+            retry_domain_failures=True,
+            attempt_routes=capacity.attempt_routes(
+                estimate_input_tokens(user),
+            ),
+        )
+
+    async def _semantic_review_partitioned(
+        self, report: dict, uncertain: list[dict], locked_facts: list,
+    ) -> dict:
+        """Review every uncertain change through complete, route-bounded packets."""
+
+        decisions: list[dict] = []
+        last_receipt: dict = {}
+        for request in self._semantic_review_requests(uncertain, locked_facts):
+            result = await self._semantic_review_contract(
+                "planning",
+                "Judge only the supplied outline changes that Runtime could not "
+                "determine locally. Do not rewrite the outline. Return one decision "
+                "for every supplied change ID and no other IDs.",
+                request,
+                max_output_tokens=2048,
+            )
+            decisions.extend(result.domain_value)
+            last_receipt = getattr(result.model_response, "receipt", {})
+
+        by_id = {item["id"]: item for item in decisions}
+        changes = [
+            {**item, **by_id[item["id"]]} if item["id"] in by_id else item
+            for item in report["changes"]
+        ]
+        report["changes"] = changes
+        report["summary"] = {
+            "added": sum(item["type"] == "added" for item in changes),
+            "removed": sum(item["type"] == "removed" for item in changes),
+            "changed": sum(
+                item["type"] in {"changed", "reordered", "uncertain"}
+                for item in changes
+            ),
+            "uncertain": sum(item["type"] == "uncertain" for item in changes),
+        }
+        report["model_called"] = True
+        report["semantic_review_recommended"] = bool(report["summary"]["uncertain"])
+        report["model_receipt"] = last_receipt
+        return report
+
+    def _semantic_review_capacity_plan(self):
+        return contract_route_capacity_plan(
+            self.db, self.gateway,
+            role="planning",
+            output_reserve_tokens=OUTLINE_SEMANTIC_REVIEW_OUTPUT_TOKENS,
+            context_utilization=OUTLINE_SEMANTIC_REVIEW_CONTEXT_UTILIZATION,
+            unknown_context_tokens=OUTLINE_SEMANTIC_REVIEW_UNKNOWN_CONTEXT_TOKENS,
+        )
+
+    def _semantic_review_input_token_limit(self) -> int:
+        """Return the largest explicit route budget for complete change packets."""
+
+        return self._semantic_review_capacity_plan().maximum_input_token_limit
+
+    @staticmethod
+    def _semantic_review_evidence(change: dict) -> dict:
+        """Project one complete Runtime-owned change without prefix truncation."""
+
+        return {
+            "id": change["id"],
+            "type": change["type"],
+            "label": change["label"],
+            "current_text": str(change.get("current_text") or ""),
+            "candidate_text": str(change.get("candidate_text") or ""),
+        }
+
+    def _semantic_review_requests(
+        self, uncertain: list[dict], locked_facts: list,
+    ) -> list[str]:
+        """Pack whole change units while preserving the complete locked authority."""
+
+        authority = list(locked_facts)
+        token_limit = self._semantic_review_input_token_limit()
+
+        def render(changes: list[dict]) -> str:
+            return json.dumps({
+                "changes": changes,
+                "locked_facts": authority,
+            }, ensure_ascii=False, indent=2)
+
+        empty_request = render([])
+        if estimate_input_tokens(empty_request) > token_limit:
+            raise ValueError(
+                "locked outline authority exceeds every configured planning route; "
+                "no locked fact was truncated"
+            )
+
+        requests: list[str] = []
+        packet: list[dict] = []
+        for raw_change in uncertain:
+            change = self._semantic_review_evidence(raw_change)
+            if not packet:
+                rendered = render([change])
+                if estimate_input_tokens(rendered) > token_limit:
+                    raise ValueError(
+                        f"outline change {change['id']} exceeds every configured planning "
+                        "route as one indivisible semantic unit; its evidence was not truncated"
+                    )
+                packet = [change]
+                continue
+            candidate = [*packet, change]
+            rendered = render(candidate)
+            if (
+                len(candidate) > OUTLINE_SEMANTIC_REVIEW_MAX_CHANGES_PER_PACKET
+                or estimate_input_tokens(rendered) > token_limit
+            ):
+                requests.append(render(packet))
+                packet = [change]
+                rendered = render(packet)
+                if estimate_input_tokens(rendered) > token_limit:
+                    raise ValueError(
+                        f"outline change {change['id']} exceeds every configured planning "
+                        "route as one indivisible semantic unit; its evidence was not truncated"
+                    )
+            else:
+                packet = candidate
+        if packet:
+            requests.append(render(packet))
+        return requests
+
     async def material_manifest(self, project_id: str) -> dict:
         project = self.projects.get(project_id)
         current = self.current(project_id)
@@ -920,7 +1162,7 @@ class OutlineService:
         model_name = ""
         if self.gateway is not None:
             try:
-                response = await self.gateway.complete(
+                response = await self._material_manifest_contract(
                     "planning",
                     "从正式大纲中提取初始化资料清单，只提取原文明确支持的内容，禁止补写、合并人物或猜测别名。"
                     "返回严格 JSON，键固定为 characters、world、locations、plot_arcs、timeline、promises、"
@@ -936,8 +1178,10 @@ class OutlineService:
                     }, ensure_ascii=False),
                     max_output_tokens=4096,
                 )
-                model = _validated_manifest(_json_object(response.text), content)
-                model_name = str(response.receipt.get("model_name") or "")
+                model = response.domain_value
+                model_name = str(
+                    response.model_response.receipt.get("model_name") or ""
+                )
                 review = {"status": "model_confirmed", "message": "规划模型已按正式大纲原文复核资料清单。"}
             except Exception:
                 pass
@@ -1230,66 +1474,188 @@ class OutlineService:
                         allow_full_with_manuscript: bool = False,
                         source: str = "candidate",
                         canon_choices: dict[str, str] | None = None) -> dict:
-        project = self.projects.get(project_id)
-        candidate = self._candidate(project_id, candidate_id)
-        candidate_content = self._candidate_content(project_id, candidate)
-        current = self.current(project_id)
-        if current["manuscript_exists"] and change_ids is None and not allow_full_with_manuscript:
-            raise ValueError("作品已有正文；整体应用前需要再次确认，现有正文不会被修改")
-        report = self.compare_candidate(project_id, candidate_id)
-        if expected_revision is not None and expected_revision != report["state_revision"]:
-            raise ValueError("当前大纲已经变化，请刷新比较结果后再应用")
-        if report["lock_failures"]:
-            raise ValueError("候选大纲遗漏了锁定设定，不能应用")
-        content = (
-            candidate_content if change_ids is None
-            else self._merge_selected(current["content"], candidate_content, report["changes"], change_ids)
-        )
-        state = self.states.get(project_id)
-        if state is None:
-            raise LookupError("StoryState not found")
-        final_conflicts = detect_canon_conflicts(project, state.data, content)
-        choices = canon_choices or {}
-        unresolved = [item for item in final_conflicts if choices.get(item["id"]) not in {
-            "keep_current", "use_candidate",
-        }]
-        if unresolved:
-            raise ValueError("请先决定每一处设定冲突最终采用哪一项")
-        confirmed_facts = list(state.data.get("confirmed_facts", []))
-        for item in final_conflicts:
-            choice = choices[item["id"]]
-            if choice == "use_candidate" and not item["can_use_candidate"]:
-                raise ValueError(f"“{item['label']}”已被锁定，请先在项目资料中修改")
-            if choice == "keep_current":
-                content = content.replace(item["candidate_value"], item["current_value"])
-                continue
-            fact_key = f"outline.{item['key']}"
-            confirmed_facts = [
-                fact for fact in confirmed_facts
-                if not isinstance(fact, dict) or fact.get("key") != fact_key
-            ]
-            confirmed_facts.append({
-                "key": fact_key, "value": item["candidate_value"],
-                "level": "confirmed", "source": f"outline:{candidate_id}",
-            })
-        lock_failures = validate_locked_facts(current["content"], content, state.data)
-        if lock_failures:
-            raise ValueError("候选大纲遗漏了锁定设定，不能应用")
-        version = current["outline_version"] + 1
-        outline = {
-            "content": content, "version": version, "source": source,
-            "candidate_id": candidate_id, "updated_at": self._now(),
-            "content_hash": self._hash(content),
-            "events": outline_events(content),
-        }
-        committed = self.states.commit(
-            candidate_id, expected_revision or state.revision,
-            {**state.data, "confirmed_facts": confirmed_facts, "outline": outline},
-        )
-        atomic_write(project.path / "plot" / "outline.md", content)
-        self._mark_outline_artifacts_stale(project.path, project_id)
+        run_id = f"ola-{uuid.uuid4().hex}"
+        if not self.db.create_run_if_idle(
+            run_id, project_id, "outline-apply", status="running",
+        ):
+            raise ValueError("项目当前有其他任务正在写入，请稍后重试")
+        snapshot: ProjectSnapshot | None = None
+        journal_path: Path | None = None
+        journal: ProjectMutationJournalV1 | None = None
+        try:
+            with WIZARD_MUTATION_LOCK:
+                project = self.projects.get(project_id)
+                candidate = self._candidate(project_id, candidate_id)
+                candidate_content = self._candidate_content(
+                    project_id, candidate,
+                )
+                current = self.current(project_id)
+                if (
+                    current["manuscript_exists"] and change_ids is None
+                    and not allow_full_with_manuscript
+                ):
+                    raise ValueError(
+                        "作品已有正文；整体应用前需要再次确认，现有正文不会被修改"
+                    )
+                report = self.compare_candidate(project_id, candidate_id)
+                if (
+                    expected_revision is not None
+                    and expected_revision != report["state_revision"]
+                ):
+                    raise ValueError("当前大纲已经变化，请刷新比较结果后再应用")
+                if report["lock_failures"]:
+                    raise ValueError("候选大纲遗漏了锁定设定，不能应用")
+                content = (
+                    candidate_content if change_ids is None
+                    else self._merge_selected(
+                        current["content"], candidate_content,
+                        report["changes"], change_ids,
+                    )
+                )
+                state = self.states.get(project_id)
+                if state is None:
+                    raise LookupError("StoryState not found")
+                final_conflicts = detect_canon_conflicts(
+                    project, state.data, content,
+                )
+                choices = canon_choices or {}
+                unresolved = [
+                    item for item in final_conflicts
+                    if choices.get(item["id"]) not in {
+                        "keep_current", "use_candidate",
+                    }
+                ]
+                if unresolved:
+                    raise ValueError("请先决定每一处设定冲突最终采用哪一项")
+                confirmed_facts = list(state.data.get("confirmed_facts", []))
+                for item in final_conflicts:
+                    choice = choices[item["id"]]
+                    if (
+                        choice == "use_candidate"
+                        and not item["can_use_candidate"]
+                    ):
+                        raise ValueError(
+                            f"“{item['label']}”已被锁定，请先在项目资料中修改"
+                        )
+                    if choice == "keep_current":
+                        content = content.replace(
+                            item["candidate_value"], item["current_value"],
+                        )
+                        continue
+                    fact_key = f"outline.{item['key']}"
+                    confirmed_facts = [
+                        fact for fact in confirmed_facts
+                        if not isinstance(fact, dict)
+                        or fact.get("key") != fact_key
+                    ]
+                    confirmed_facts.append({
+                        "key": fact_key,
+                        "value": item["candidate_value"],
+                        "level": "confirmed",
+                        "source": f"outline:{candidate_id}",
+                    })
+                lock_failures = validate_locked_facts(
+                    current["content"], content, state.data,
+                )
+                if lock_failures:
+                    raise ValueError("候选大纲遗漏了锁定设定，不能应用")
+                version = current["outline_version"] + 1
+                outline = {
+                    "content": content,
+                    "version": version,
+                    "source": source,
+                    "candidate_id": candidate_id,
+                    "updated_at": self._now(),
+                    "content_hash": self._hash(content),
+                    "events": outline_events(content),
+                }
+                next_data = {
+                    **state.data,
+                    "confirmed_facts": confirmed_facts,
+                    "outline": outline,
+                }
+                invalidations = plan_learning_artifact_invalidations(
+                    self.db, project_id,
+                    artifact_types=("scene_briefs", "short_causal_chain"),
+                    latest_only=True,
+                )
+                outline_path = project.path / "plot" / "outline.md"
+                sidecar_paths = [
+                    project.path / "learning" / f"{artifact_type}.json"
+                    for artifact_type in sorted(invalidations.sidecars)
+                ]
+                managed_paths = [outline_path, *sidecar_paths]
+                snapshot_root = project.path / "snapshots" / run_id
+                snapshot = ProjectSnapshot.create(
+                    project.path, snapshot_root, managed_paths,
+                )
+                source_authority = canonical_json_sha256({
+                    "candidate_id": candidate_id,
+                    "candidate_content_sha256": self._hash(candidate_content),
+                    "selected_content_sha256": self._hash(content),
+                    "change_ids": change_ids,
+                    "canon_choices": choices,
+                    "source": source,
+                    "base_revision": state.revision,
+                })
+                journal_path = project_mutation_journal_path(
+                    project.path, run_id,
+                )
+                journal = ProjectMutationJournalV1(
+                    status="prepared",
+                    operation="outline-apply",
+                    run_id=run_id,
+                    project_id=project.id,
+                    snapshot_path=snapshot_root.relative_to(
+                        project.path,
+                    ).as_posix(),
+                    source_authority_sha256=source_authority,
+                    expected_story_state_revision=state.revision,
+                    managed_paths=tuple(
+                        path.relative_to(project.path).as_posix()
+                        for path in managed_paths
+                    ),
+                    learning_artifact_invalidations=invalidations.effects,
+                )
+                write_project_mutation_journal(journal_path, journal)
+
+                atomic_write(outline_path, content)
+                write_learning_artifact_sidecar_targets(
+                    project.path, invalidations,
+                )
+                artifacts = stage_project_mutation_targets(
+                    project.path, snapshot, managed_paths,
+                )
+                target = ProjectMutationStoryStateV1(
+                    candidate_id=candidate_id,
+                    expected_revision=state.revision,
+                    target_revision=state.revision + 1,
+                    state_sha256=canonical_json_sha256(next_data),
+                    data=next_data,
+                )
+                journal = ProjectMutationJournalV1.model_validate(
+                    journal.model_copy(update={
+                        "status": "artifacts_committed",
+                        "artifacts": artifacts,
+                        "story_state": target,
+                    }).model_dump(mode="python"),
+                )
+                write_project_mutation_journal(journal_path, journal)
+                completed = complete_project_mutation(self.projects, run_id)
+                committed_revision = (
+                    completed.story_state.target_revision
+                    if completed.story_state is not None
+                    else completed.expected_story_state_revision
+                )
+        except Exception:
+            abort_project_mutation_request(
+                self.projects, run_id, snapshot, journal_path, journal,
+                error="Outline application failed and was rolled back.",
+            )
+            raise
         return {
-            **self.current(project_id), "story_state_revision": committed.revision,
+            **self.current(project_id),
+            "story_state_revision": committed_revision,
             "formal_manuscript_changed": False,
         }
 
@@ -1362,39 +1728,9 @@ class OutlineService:
             raise ValueError("规划模型当前不可用，请先检查模型配置")
         state = self.states.get(project_id)
         locked_facts = (state.data.get("locked_facts") if state else []) or []
-        evidence = [{
-            "id": item["id"], "type": item["type"], "label": item["label"],
-            "current_text": item["current_text"][:1_000],
-            "candidate_text": item["candidate_text"][:1_000],
-        } for item in uncertain[:10]]
-        user = json.dumps({
-            "changes": evidence,
-            "locked_facts": locked_facts[:20],
-        }, ensure_ascii=False, indent=2)
-        result = await self.gateway.complete(
-            "planning",
-            "你只判断候选大纲中本地程序无法确定的变化。返回 JSON，不改写大纲。"
-            "格式：{\"decisions\":[{\"id\":\"变化ID\",\"type\":\"changed或reordered\","
-            "\"explanation\":\"一句易懂说明\",\"impact\":\"会影响哪里\"}]}。",
-            user[:30_000], max_output_tokens=2048,
+        return await self._semantic_review_partitioned(
+            report, uncertain, locked_facts,
         )
-        decisions = self._semantic_decisions(result.text, {item["id"] for item in uncertain})
-        by_id = {item["id"]: item for item in decisions}
-        changes = []
-        for item in report["changes"]:
-            decision = by_id.get(item["id"])
-            changes.append({**item, **decision} if decision else item)
-        report["changes"] = changes
-        report["summary"] = {
-            "added": sum(item["type"] == "added" for item in changes),
-            "removed": sum(item["type"] == "removed" for item in changes),
-            "changed": sum(item["type"] in {"changed", "reordered", "uncertain"} for item in changes),
-            "uncertain": sum(item["type"] == "uncertain" for item in changes),
-        }
-        report["model_called"] = True
-        report["semantic_review_recommended"] = bool(report["summary"]["uncertain"])
-        report["model_receipt"] = result.receipt
-        return report
 
     def _legacy_outline(self, project_id: str, project_path: Path) -> str:
         for run in self.db.list_runs(project_id):
@@ -1537,10 +1873,16 @@ class OutlineService:
     def _semantic_decisions(text: str, allowed_ids: set[str]) -> list[dict]:
         try:
             payload = GeneratedArtifactGateway().convert_object(
-                text, contract_name="outline_analysis",
+                text, contract_name="outline_semantic_review",
             ).payload
         except (json.JSONDecodeError, ValueError) as exc:
             raise ValueError("模型没有返回可读取的判断结果，请重新尝试") from exc
+        return OutlineService._semantic_decisions_payload(payload, allowed_ids)
+
+    @staticmethod
+    def _semantic_decisions_payload(
+        payload: dict, allowed_ids: set[str],
+    ) -> list[dict]:
         decisions = payload.get("decisions") if isinstance(payload, dict) else None
         if not isinstance(decisions, list):
             raise ValueError("模型判断结果缺少变化列表，请重新尝试")
@@ -1562,30 +1904,30 @@ class OutlineService:
             raise ValueError("模型没有识别出可用的变化判断，请重新尝试")
         return cleaned
 
+    @staticmethod
+    def _complete_semantic_decisions_payload(
+        payload: dict, allowed_ids: set[str],
+    ) -> list[dict]:
+        decisions = OutlineService._semantic_decisions_payload(
+            payload, allowed_ids,
+        )
+        identities = [item["id"] for item in decisions]
+        if len(identities) != len(set(identities)) or set(identities) != allowed_ids:
+            raise ValueError(
+                "outline semantic decisions must cover every requested change exactly once"
+            )
+        return decisions
+
     def _mark_outline_artifacts_stale(self, project_path: Path, project_id: str) -> None:
-        artifact_types = ("scene_briefs", "short_causal_chain")
-        with self.db.connect() as connection:
-            rows = connection.execute(
-                "SELECT id,artifact_type FROM project_learning_artifacts a "
-                "WHERE project_id=? AND status='active' "
-                "AND artifact_type IN (?,?) AND version=("
-                "SELECT MAX(version) FROM project_learning_artifacts "
-                "WHERE project_id=a.project_id AND artifact_type=a.artifact_type)",
-                (project_id, *artifact_types),
-            ).fetchall()
-            for row in rows:
-                connection.execute(
-                    "UPDATE project_learning_artifacts SET status='stale' WHERE id=?",
-                    (row["id"],),
-                )
-        for row in rows:
-            path = project_path / "learning" / f"{row['artifact_type']}.json"
-            try:
-                value = json.loads(path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
-            value["status"] = "stale"
-            atomic_write(path, json.dumps(value, ensure_ascii=False, indent=2) + "\n")
+        plan = plan_learning_artifact_invalidations(
+            self.db, project_id,
+            artifact_types=("scene_briefs", "short_causal_chain"),
+            latest_only=True,
+        )
+        apply_learning_artifact_invalidations(
+            self.db, project_id, plan.effects,
+        )
+        write_learning_artifact_sidecar_targets(project_path, plan)
 
     @staticmethod
     def _hash(content: str) -> str:

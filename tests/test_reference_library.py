@@ -42,6 +42,22 @@ def test_import_stores_classification_and_metadata_can_be_updated(tmp_path) -> N
     assert updated["content_type"] == "competitor_work"
 
 
+def test_platform_rules_preserve_complete_rule_text(tmp_path) -> None:
+    references = library(tmp_path)
+    tail = "PLATFORM-RULE-AFTER-TWENTY-THOUSAND"
+    source = references.import_text(
+        title="Complete platform policy",
+        text=("rule " * 4_100) + tail,
+        source_type="paste", platform="example",
+        content_type="platform_rule",
+    )
+
+    rules = references.platform_rules("example")
+
+    assert [item["id"] for item in rules] == [source["id"]]
+    assert rules[0]["text"].endswith(tail)
+
+
 @pytest.mark.parametrize("title,text,source_type", [
     ("", "正文", "paste"),
     ("x" * 121, "正文", "paste"),

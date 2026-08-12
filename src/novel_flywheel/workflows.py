@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from itertools import combinations
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.draft_split import (
@@ -83,6 +83,12 @@ from novel_flywheel.context_policy import (
     scoped_creative_output_budget,
     stage_output_budget,
 )
+from novel_flywheel.contract_runtime import (
+    dispatch_explicit_model_route,
+    execute_contract_runtime,
+    execute_model_route_runtime,
+    model_route_attempts,
+)
 from novel_flywheel.execution_authority import (
     compile_execution_fragment_authority,
     planning_evidence_reference,
@@ -101,7 +107,6 @@ from novel_flywheel.models import (
     ModelRoutesExhaustedError,
     TransportInterruptedError,
 )
-from novel_flywheel.model_output import parse_json_object
 from novel_flywheel.generated_artifacts import (
     ArtifactConversionError,
     GeneratedArtifactGateway,
@@ -203,6 +208,17 @@ from novel_flywheel.maintenance_authority import (
     validate_maintenance_reduction,
     validate_maintenance_window_bundle,
 )
+from novel_flywheel.material_audit_authority import (
+    MATERIAL_AUDIT_STRUCTURED_CONTRACT,
+    MaterialAuditPacketV1,
+    build_material_audit_packets,
+    build_material_reference_authority,
+    material_audit_checkpoint_payload,
+    material_audit_packet_prompt,
+    merge_material_audit_receipts,
+    normalize_material_audit_receipt,
+    validate_material_audit_checkpoint,
+)
 from novel_flywheel.narrative_ledger import (
     build_narrative_ledger,
     build_semantic_boundary_ledger,
@@ -302,6 +318,28 @@ from novel_flywheel.revision import (
 )
 from novel_flywheel.prose_quality import analyze_prose, compare_voice_metrics, prose_metrics
 from novel_flywheel.prose_policy import load_prose_validation_policy
+from novel_flywheel.project_transactions import (
+    ProjectMutationCanonFactV1,
+    ProjectMutationChapterIndexV1,
+    ProjectMutationChapterStateV1,
+    ProjectMutationJournalV1,
+    ProjectMutationPostCommitGateV1,
+    ProjectMutationStoryStateV1,
+    abort_project_mutation_request,
+    canonical_json_sha256,
+    commit_project_mutation_authority,
+    complete_project_mutation,
+    finalize_project_mutation,
+    load_project_mutation_journal,
+    project_mutation_journal_path,
+    record_project_mutation_gate_result,
+    recover_project_mutations,
+    stage_project_mutation_targets,
+    write_project_mutation_journal,
+)
+from novel_flywheel.legacy_short_promotion import (
+    recover_legacy_short_formal_promotions,
+)
 from novel_flywheel.style_context import character_fingerprints, ensure_style_profile
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 from novel_flywheel.skills import SkillGate
@@ -319,7 +357,6 @@ from novel_flywheel.recovery_engine import (
     ProtocolRouteCircuitBreaker,
     ReliabilityFailure,
     ProtocolReceiptAttempt,
-    protocol_receipt_attempts,
 )
 from novel_flywheel.narrative_rules import validate_narrative_graph
 from novel_flywheel.planning_compiler import (
@@ -336,12 +373,19 @@ from novel_flywheel.planning_compiler import (
     planning_field_sections,
     planning_markdown_presentation_view,
     planning_ownership_topology,
+    rebind_runtime_repaired_planning_field,
     render_planning_segment_ir,
 )
 from novel_flywheel.planning_semantics import (
+    PlanningSemanticDraftV2,
     compile_planning_semantic_v2,
+    merge_planning_semantic_document_packets_v2,
+    merge_planning_semantic_event_packets_v2,
+    normalize_planning_semantic_v2_payload,
     parse_planning_semantic_v2,
+    planning_semantic_packet_ownership_v2,
     planning_semantic_schema_v2,
+    semantic_planning_packet_prompt_v2,
     semantic_planning_prompt_v2,
 )
 
@@ -617,198 +661,6 @@ class WorkflowService:
             return False
         return True
 
-    @staticmethod
-    def _formal_promotion_file_hash(path: Path) -> str | None:
-        return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
-
-    @staticmethod
-    def _formal_promotion_project_path(
-        project: Project, relative: object,
-    ) -> Path:
-        if not isinstance(relative, str) or not relative.strip():
-            raise RuntimeError("正式稿晋升恢复日志包含无效文件路径")
-        project_root = project.path.resolve()
-        path = (project_root / relative).resolve()
-        if not path.is_relative_to(project_root):
-            raise RuntimeError("正式稿晋升恢复日志包含项目外路径")
-        return path
-
-    @staticmethod
-    def _set_formal_promotion_journal_status(
-        journal_path: Path, status: str, **updates,
-    ) -> None:
-        try:
-            journal = json.loads(journal_path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError):
-            return
-        if not isinstance(journal, dict):
-            return
-        journal.update(updates)
-        journal["status"] = status
-        atomic_write(
-            journal_path,
-            json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
-        )
-
-    def _recover_short_formal_promotions(self, project: Project) -> None:
-        """Resolve any process-interrupted formal manuscript promotion.
-
-        A prepared journal means formal files may have been partially written.
-        If StoryState did not advance, restore the pre-promotion snapshot. If
-        StoryState already committed and all file hashes match, finalize the
-        promotion. A later StoryState revision supersedes the stale journal and
-        must never be overwritten by its older snapshot.
-        """
-        for journal_path in sorted(project.path.glob(
-            "runs/*/outputs/formal-promotion-journal.json",
-        )):
-            try:
-                journal = json.loads(journal_path.read_text(encoding="utf-8"))
-            except (OSError, UnicodeError, json.JSONDecodeError):
-                continue
-            if not isinstance(journal, dict) or journal.get("version") != 1:
-                continue
-            if journal.get("status") not in {"prepared", "files_written"}:
-                continue
-            run_id = str(journal.get("run_id") or journal_path.parents[2].name)
-            base_revision = int(journal.get("base_revision") or -1)
-            target_revision = int(journal.get("target_revision") or -1)
-            files = journal.get("files")
-            if base_revision < 0 or target_revision != base_revision + 1 \
-                    or not isinstance(files, list) or not files:
-                raise RuntimeError("正式稿晋升恢复日志无效，已停止新的写作任务")
-            state = self.story_states.ensure(project.id, project.path)
-            resolved_files: list[tuple[Path, dict]] = []
-            seen_paths: set[Path] = set()
-            for item in files:
-                if not isinstance(item, dict) \
-                        or not isinstance(item.get("new_sha256"), str):
-                    raise RuntimeError("正式稿晋升恢复日志包含无效文件记录")
-                path = self._formal_promotion_project_path(project, item.get("path"))
-                if path in seen_paths:
-                    raise RuntimeError("正式稿晋升恢复日志包含重复文件记录")
-                seen_paths.add(path)
-                resolved_files.append((path, item))
-            required_paths = {
-                (project.path / "manuscript" / "story.md").resolve(),
-                (project.path / "chapters" / "chapter-01.md").resolve(),
-                (project.path / "memory" / "canon.json").resolve(),
-            }
-            if seen_paths != required_paths:
-                raise RuntimeError("正式稿晋升恢复日志的权威文件集合不完整")
-            expected_match = all(
-                self._formal_promotion_file_hash(path) == item["new_sha256"]
-                for path, item in resolved_files
-            )
-            snapshot_relative = journal.get("snapshot_path")
-            if not isinstance(snapshot_relative, str):
-                raise RuntimeError("正式稿晋升恢复日志缺少项目快照位置")
-            snapshot_root = (project.path / snapshot_relative).resolve()
-            snapshots_root = (project.path / "snapshots").resolve()
-            if not snapshot_root.is_relative_to(snapshots_root):
-                raise RuntimeError("正式稿晋升恢复快照不在项目快照目录内")
-            if state.revision == target_revision and expected_match:
-                ProjectSnapshot(project.path, snapshot_root, []).discard()
-                journal["status"] = "committed_recovered"
-                atomic_write(
-                    journal_path,
-                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
-                )
-                self.db.add_run_event(
-                    run_id, "success", "formal_promotion_recovered",
-                    "检测到正式稿与故事状态均已提交，已完成中断后的晋升收尾",
-                    stage="archive",
-                )
-                continue
-            if state.revision == target_revision:
-                recovery_contents: list[tuple[Path, str]] = []
-                recovery_root = (
-                    journal_path.parent / "formal-promotion-payload"
-                ).resolve()
-                try:
-                    for path, item in resolved_files:
-                        recovery_relative = item.get("recovery_path")
-                        if not isinstance(recovery_relative, str):
-                            raise RuntimeError(
-                                "故事状态已提交但正式稿不完整，恢复日志缺少确定性恢复载荷；"
-                                "已保留恢复日志并停止新的写作任务"
-                            )
-                        recovery_path = self._formal_promotion_project_path(
-                            project, recovery_relative,
-                        )
-                        if not recovery_path.is_relative_to(recovery_root):
-                            raise RuntimeError(
-                                "正式稿晋升恢复载荷不在当前运行的载荷目录内"
-                            )
-                        content = recovery_path.read_text(encoding="utf-8")
-                        if hashlib.sha256(content.encode("utf-8")).hexdigest() \
-                                != item["new_sha256"]:
-                            raise RuntimeError("正式稿晋升恢复载荷哈希不匹配")
-                        recovery_contents.append((path, content))
-                except (OSError, UnicodeError) as exc:
-                    raise RuntimeError(
-                        "故事状态已提交但正式稿不完整，且确定性恢复载荷不可用；"
-                        "已保留恢复日志并停止新的写作任务"
-                    ) from exc
-                for path, content in recovery_contents:
-                    atomic_write(path, content)
-                if not all(
-                    self._formal_promotion_file_hash(path) == item["new_sha256"]
-                    for path, item in resolved_files
-                ):
-                    raise RuntimeError(
-                        "故事状态已提交但正式稿确定性恢复后仍不一致；"
-                        "已保留恢复日志并停止新的写作任务"
-                    )
-                ProjectSnapshot(project.path, snapshot_root, []).discard()
-                journal["status"] = "committed_repaired"
-                atomic_write(
-                    journal_path,
-                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
-                )
-                self.db.add_run_event(
-                    run_id, "warning", "formal_promotion_repaired",
-                    "检测到故事状态已提交但正式稿文件不完整，已按哈希绑定载荷恢复",
-                    stage="archive",
-                )
-                continue
-            if state.revision == base_revision:
-                try:
-                    snapshot = ProjectSnapshot.load(project.path, snapshot_root)
-                except ValueError as exc:
-                    raise RuntimeError(
-                        "正式稿晋升中断且原始快照不可用，已停止新的写作任务"
-                    ) from exc
-                snapshot.restore()
-                snapshot.discard()
-                candidate_id = str(journal.get("candidate_id") or "")
-                if candidate_id:
-                    self.story_states.reject(
-                        candidate_id, "formal promotion recovered after process interruption",
-                    )
-                journal["status"] = "rolled_back_recovered"
-                atomic_write(
-                    journal_path,
-                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
-                )
-                self.db.add_run_event(
-                    run_id, "warning", "formal_promotion_rolled_back",
-                    "检测到正式稿晋升在故事状态提交前中断，已恢复原正式稿",
-                    stage="archive",
-                )
-                continue
-            if state.revision > target_revision:
-                # Another later accepted promotion owns the current formal
-                # state. Never restore an older snapshot over it.
-                ProjectSnapshot(project.path, snapshot_root, []).discard()
-                journal["status"] = "superseded"
-                atomic_write(
-                    journal_path,
-                    json.dumps(journal, ensure_ascii=False, indent=2, sort_keys=True),
-                )
-                continue
-            raise RuntimeError("正式稿晋升恢复状态与 StoryState 版本不一致")
-
     def _analyze_manuscript(
         self, text: str, run_path: Path, project: Project, label: str,
     ) -> dict:
@@ -894,11 +746,11 @@ class WorkflowService:
         rules = self.references.platform_rules(project.metadata.get("platform"))
         if not rules:
             return constraints
-        compact = [
-            {"title": item["title"], "text": item["text"][:8000]}
-            for item in rules[:5]
+        complete_rules = [
+            {"title": item["title"], "text": item["text"]}
+            for item in rules
         ]
-        return constraints + marker + json.dumps(compact, ensure_ascii=False)
+        return constraints + marker + json.dumps(complete_rules, ensure_ascii=False)
 
     async def run_short(self, project_id: str, use_crewai: bool = True,
                         run_id: str | None = None) -> dict:
@@ -1947,7 +1799,7 @@ class WorkflowService:
                                 value = normalize_repair_contract(
                                     self._convert_generated_object(
                                         raw, run_path,
-                                        contract_name="revision_plan",
+                                        contract_name="revision_patch_contract",
                                     ), candidate, {group_id},
                                 )
                                 if len(value["groups"]) != 1:
@@ -3226,15 +3078,186 @@ class WorkflowService:
         return "\n\n".join(path.read_text(encoding="utf-8")
                             for path in sorted((project.path / "chapters").glob("chapter-*.md")))
 
-    def _material_reference(self, project: Project) -> str:
-        files = [project.path / "constraints.md"]
-        for folder in ("characters", "worldbuilding", "plot"):
-            files.extend(sorted((project.path / folder).rglob("*.md")))
-        parts = []
-        for path in files:
-            if path.is_file() and "_index.md" not in path.name:
-                parts.append(f"FILE {path.relative_to(project.path).as_posix()}\n{path.read_text(encoding='utf-8')}")
-        return "\n\n".join(parts)[:60_000]
+    def _material_audit_packet_target(self) -> int:
+        """Bound both semantic axes to the smallest configured review route."""
+
+        context_window = self._route_safe_context_window(
+            "final_review", include_configured_fallback=True,
+        )
+        return max(600, min(5_000, (context_window - 5_000) // 3))
+
+    async def _material_audit_packet_receipt(
+        self, run_id: str, run_path: Path, project: Project,
+        constraints: str, packet: MaterialAuditPacketV1,
+        *, manuscript_text: str, reference_text: str,
+        fallback_circuit_open: bool,
+    ) -> tuple[dict, bool, str]:
+        prompt = material_audit_packet_prompt(
+            packet, manuscript_text=manuscript_text,
+            reference_text=reference_text,
+        )
+        audits = []
+
+        async def execute_attempt(
+            attempt, _role, system, user, _max_output_tokens, contract,
+        ):
+            return await self._stage(
+                run_id, run_path, project, "final_review", constraints, user,
+                suffix=(
+                    f"-materials-{packet.sequence:06d}-"
+                    f"attempt-{attempt.attempt_index}"
+                ),
+                allow_tools=False,
+                primary_only=attempt.route == "primary",
+                prefer_configured_fallback=(
+                    attempt.route == "configured_fallback"
+                ),
+                expected_output_characters=1_800,
+                route_capacity_guard=True,
+                bounded_protocol_output=True,
+                structured_contract=contract,
+                protocol_system_contract=system,
+                story_skeleton_override="",
+                compact_input=True,
+                defer_route_failure_audit=True,
+            )
+
+        runtime = await execute_contract_runtime(
+            self.gateway,
+            role="final_review",
+            system=(
+                "You audit contradictions between one exact manuscript span "
+                "and one exact project-reference span. Preserve every story "
+                "fact; return only the registered receipt."
+            ),
+            user=prompt,
+            contract_name="material_audit",
+            structured_contract=MATERIAL_AUDIT_STRUCTURED_CONTRACT,
+            semantic_normalizer=lambda value: normalize_material_audit_receipt(
+                value, manuscript_text=manuscript_text,
+            ),
+            domain_validator=lambda payload: payload,
+            max_output_tokens=2_048,
+            attempt_routes=(
+                ("configured_fallback", "configured_fallback")
+                if fallback_circuit_open else None
+            ),
+            retry_domain_failures=True,
+            audit_sink=audits.append,
+            attempt_executor=execute_attempt,
+        )
+        if audits:
+            self._record_contract_adapter_audits(
+                run_id, stage="final_review",
+                boundary="materials_audit_packet",
+                audits=[item.model_dump(mode="json") for item in audits],
+                unit_metadata={
+                    "packet_sha256": packet.packet_id,
+                    "sequence": packet.sequence,
+                },
+            )
+        receipt = getattr(runtime.model_response, "receipt", {})
+        used_fallback = bool(
+            runtime.attempt.route == "configured_fallback"
+            or receipt.get("fallback_used")
+            or receipt.get("configured_fallback_direct")
+        )
+        return (
+            runtime.payload,
+            used_fallback,
+            canonical_sha256({"route": runtime.attempt.route}),
+        )
+
+    def _commit_material_audit_report(
+        self, project: Project, run_id: str, run_path: Path, *,
+        report: dict, issues: list[dict], source_authority_sha256: str,
+    ) -> None:
+        """Atomically publish the report and its unchanged issue-ledger meaning."""
+
+        report_path = run_path / "outputs" / "conflict-report.json"
+        snapshot = None
+        journal = None
+        journal_path = None
+        with WIZARD_MUTATION_LOCK:
+            state = self.story_states.ensure(project.id, project.path)
+            snapshot_root = (
+                project.path / "snapshots" / f"{run_id}-materials-audit"
+            )
+            snapshot = ProjectSnapshot.create(
+                project.path, snapshot_root, [report_path],
+            )
+            journal_path = project_mutation_journal_path(
+                project.path, run_id,
+            )
+            journal = ProjectMutationJournalV1(
+                status="prepared",
+                operation="materials-audit",
+                run_id=run_id,
+                project_id=project.id,
+                snapshot_path=snapshot_root.relative_to(
+                    project.path,
+                ).as_posix(),
+                source_authority_sha256=source_authority_sha256,
+                expected_story_state_revision=state.revision,
+                managed_paths=(
+                    report_path.relative_to(project.path).as_posix(),
+                ),
+            )
+            write_project_mutation_journal(journal_path, journal)
+            try:
+                atomic_write(
+                    report_path,
+                    json.dumps(report, ensure_ascii=False, indent=2),
+                )
+                target = None
+                if issues:
+                    candidate = self.story_states.create_candidate(
+                        project.id, run_id, state.revision,
+                        "materials_audit",
+                        hashlib.sha256(
+                            json.dumps(
+                                issues, ensure_ascii=False,
+                            ).encode("utf-8")
+                        ).hexdigest(),
+                        {"issue_count": len(issues)},
+                    )
+                    ledger = [
+                        item for item in state.data.get("issue_ledger", [])
+                        if item.get("source") != "materials_audit"
+                    ]
+                    ledger.extend(
+                        {**item, "source": "materials_audit"}
+                        for item in issues
+                    )
+                    next_data = {**state.data, "issue_ledger": ledger}
+                    target = ProjectMutationStoryStateV1(
+                        candidate_id=candidate.id,
+                        expected_revision=state.revision,
+                        target_revision=state.revision + 1,
+                        state_sha256=canonical_json_sha256(next_data),
+                        data=next_data,
+                    )
+                artifacts = stage_project_mutation_targets(
+                    project.path, snapshot, [report_path],
+                )
+                journal = ProjectMutationJournalV1.model_validate(
+                    journal.model_copy(update={
+                        "status": "artifacts_committed",
+                        "artifacts": artifacts,
+                        "story_state": target,
+                    }).model_dump(mode="python"),
+                )
+                write_project_mutation_journal(journal_path, journal)
+                complete_project_mutation(self.projects, run_id)
+            except Exception:
+                abort_project_mutation_request(
+                    self.projects, run_id, snapshot, journal_path, journal,
+                    error=(
+                        "Material audit authority commit failed and was "
+                        "rolled back."
+                    ),
+                )
+                raise
 
     async def _materials_audit_pipeline(self, project: Project,
                                         run_id: str | None = None) -> dict:
@@ -3243,86 +3266,115 @@ class WorkflowService:
             manuscript = self._material_manuscript(project)
             if not manuscript.strip():
                 raise RuntimeError("No manuscript is available for conflict checking")
-            reference = self._material_reference(project)
             constraints = self.projects.load_constraints(project.id)
-            issues = []
-            windows = review_windows(manuscript)
-            checkpoint_root = run_path / "outputs" / "materials-audit-checkpoints"
-            checkpoint_root.mkdir(parents=True, exist_ok=True)
+            packet_target = self._material_audit_packet_target()
+            reference = build_material_reference_authority(
+                project.path, target_characters=packet_target,
+            )
+            windows = review_windows(
+                manuscript, target=packet_target,
+                overlap=min(400, max(0, packet_target // 8)),
+            )
+            packets = build_material_audit_packets(
+                reference, manuscript, windows,
+            )
+            receipts = []
             fallback_circuit_open = any(
                 event["event_type"] == "materials_audit_circuit_opened"
                 for event in self.db.list_run_events(run_id)
             )
-            for window in windows:
-                checkpoint_path = checkpoint_root / f"window-{window['index']:03d}.json"
-                source_hash = hashlib.sha256(
-                    (reference + "\0" + constraints + "\0" + window["text"]
-                     + f"\0{window['index']}/{len(windows)}").encode("utf-8")
-                ).hexdigest()
-                try:
-                    checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
-                except (OSError, json.JSONDecodeError):
-                    checkpoint = {}
-                if (checkpoint.get("source_hash") == source_hash
-                        and isinstance(checkpoint.get("issues"), list)):
-                    issues.extend(item for item in checkpoint["issues"] if isinstance(item, dict))
+            for packet in packets:
+                manuscript_text = manuscript[
+                    packet.manuscript_start:packet.manuscript_end
+                ]
+                reference_text = reference.text_for(packet.reference_chunk)
+                node_key = f"materials-audit-packet-{packet.sequence:06d}"
+                checkpoint = self.db.load_workflow_node_checkpoint(
+                    run_id=run_id,
+                    node_key=node_key,
+                    authority_sha256=packet.reference_authority_sha256,
+                    input_sha256=packet.packet_id,
+                    min_validation_stage="local_semantics",
+                )
+                cached_receipt = validate_material_audit_checkpoint(
+                    checkpoint.get("payload") if checkpoint else None,
+                    packet, manuscript_text=manuscript_text,
+                )
+                if cached_receipt is not None:
+                    receipts.append(cached_receipt)
                     self.db.add_run_event(
                         run_id, "success", "materials_audit_checkpoint_reused",
-                        f"材料审核第 {window['index']}/{len(windows)} 窗口已从检查点恢复",
-                        stage="final_review", metadata={"window": window["index"]},
+                        "材料审核已从语义检查点恢复一个完整的正文窗口/资料分片。",
+                        stage="final_review", metadata={
+                            "packet": packet.sequence,
+                            "window": packet.manuscript_window_index,
+                        },
                     )
                     continue
-                prompt = (
-                    "MATERIAL CONSISTENCY AUDIT. Compare this manuscript window against the project "
-                    "reference. Return JSON only: {\"issues\":[...]}. Each issue must contain category, "
-                    "severity (low|medium|high|critical), evidence, location, old_setting, new_setting, "
-                    "and action. Report only evidenced contradictions, not style preferences. Do not rewrite.\n\n"
-                    f"PROJECT REFERENCE:\n{reference}\n\nWINDOW {window['index']}/{len(windows)} "
-                    f"CHARACTERS {window['start']}-{window['end']}:\n{window['text']}"
-                )
-                result = await self._stage(
-                    run_id, run_path, project, "final_review", constraints, prompt,
-                    suffix=f"-window-{window['index']}", allow_tools=False,
-                    prefer_configured_fallback=fallback_circuit_open,
+                packet_receipt, used_fallback, route_fingerprint = (
+                    await self._material_audit_packet_receipt(
+                        run_id, run_path, project, constraints, packet,
+                        manuscript_text=manuscript_text,
+                        reference_text=reference_text,
+                        fallback_circuit_open=fallback_circuit_open,
+                    )
                 )
                 if (not fallback_circuit_open
-                        and getattr(result, "receipt", {}).get("fallback_used")):
+                        and used_fallback):
                     fallback_circuit_open = True
                     self.db.add_run_event(
                         run_id, "warning", "materials_audit_circuit_opened",
-                        "材料审核首选模型已回退成功，后续窗口直接使用配置备用模型",
-                        stage="final_review", metadata={"window": window["index"]},
+                        "材料审核首选路由已回退成功，后续资料分片直接使用配置备用路由。",
+                        stage="final_review", metadata={
+                            "packet": packet.sequence,
+                            "window": packet.manuscript_window_index,
+                        },
                     )
-                value = self._convert_generated_object(
-                    result, run_path, contract_name="material_audit",
+                receipts.append(packet_receipt)
+                checkpoint_payload = material_audit_checkpoint_payload(
+                    packet, packet_receipt,
                 )
-                window_issues = [item for item in value.get("issues", []) if isinstance(item, dict)]
-                issues.extend(window_issues)
-                atomic_write(checkpoint_path, json.dumps({
-                    "source_hash": source_hash, "issues": window_issues,
-                }, ensure_ascii=False, indent=2))
+                self.db.save_workflow_node_checkpoint(
+                    run_id=run_id,
+                    node_key=node_key,
+                    authority_sha256=packet.reference_authority_sha256,
+                    input_sha256=packet.packet_id,
+                    output_sha256=canonical_sha256(packet_receipt),
+                    status="validated",
+                    validation_stage="local_semantics",
+                    route_fingerprint=route_fingerprint,
+                    payload=checkpoint_payload,
+                )
+            issues = merge_material_audit_receipts(receipts)
             report = {"project_id": project.id, "issues": issues, "count": len(issues)}
-            atomic_write(run_path / "outputs" / "conflict-report.json",
-                         json.dumps(report, ensure_ascii=False, indent=2))
-            state = self.story_states.ensure(project.id, project.path)
-            if issues:
-                candidate = self.story_states.create_candidate(
-                    project.id, run_id, state.revision, "materials_audit",
-                    hashlib.sha256(json.dumps(issues, ensure_ascii=False).encode()).hexdigest(),
-                    {"issue_count": len(issues)},
-                )
-                ledger = [item for item in state.data.get("issue_ledger", [])
-                          if item.get("source") != "materials_audit"]
-                ledger.extend({**item, "source": "materials_audit"} for item in issues)
-                self.story_states.commit(candidate.id, state.revision,
-                                         {**state.data, "issue_ledger": ledger})
-            self.db.update_run(run_id, "completed", "archive")
+            self._commit_material_audit_report(
+                project, run_id, run_path, report=report, issues=issues,
+                source_authority_sha256=canonical_json_sha256({
+                    "version": 1,
+                    "manuscript_sha256": hashlib.sha256(
+                        manuscript.encode("utf-8")
+                    ).hexdigest(),
+                    "reference_authority_sha256": (
+                        reference.authority.authority_sha256
+                    ),
+                    "packet_ids": [packet.packet_id for packet in packets],
+                    "report_sha256": canonical_json_sha256(report),
+                }),
+            )
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
             self.db.update_run(run_id, "cancelled", error="Cancelled by user")
             raise
         except Exception as exc:
-            self.db.update_run(run_id, "failed", error=str(exc))
+            recovery_pending = self._project_mutation_recovery_pending(
+                project, run_id,
+            )
+            current_run = self.db.get_run(run_id)
+            if (
+                not recovery_pending
+                and (current_run is None or current_run.get("status") != "failed")
+            ):
+                self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
     async def _materials_repair_pipeline(self, project: Project,
@@ -3375,9 +3427,6 @@ class WorkflowService:
         outline_path = project.path / "memory" / "book-plan.md"
         canon_path = project.path / "memory" / "canon.json"
         volumes_path = project.path / "memory" / "volumes.json"
-        snapshot = ProjectSnapshot.create(
-            project.path, project.path / "snapshots" / run_id, [outline_path, canon_path, volumes_path],
-        )
         try:
             constraints = self.projects.load_constraints(project.id)
             brief = (
@@ -3397,33 +3446,187 @@ class WorkflowService:
                 await self._stage(
                     run_id, run_path, project, "maintenance", constraints, outline,
                 ),
-                run_path, contract_name="maintenance_facts",
+                run_path, contract_name="long_setup_maintenance",
             )
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
-            atomic_write(outline_path, outline)
-            atomic_write(canon_path, json.dumps(canon, ensure_ascii=False, indent=2))
+            target_text = {
+                outline_path: outline,
+                canon_path: json.dumps(canon, ensure_ascii=False, indent=2),
+            }
             if isinstance(canon.get("volumes"), list):
-                atomic_write(volumes_path, json.dumps({"volumes": canon["volumes"]}, ensure_ascii=False, indent=2))
+                target_text[volumes_path] = json.dumps(
+                    {"volumes": canon["volumes"]},
+                    ensure_ascii=False, indent=2,
+                )
+            memory_effects = []
+            seen_fact_keys = set()
             for index, fact in enumerate(canon["facts"]):
                 if isinstance(fact, dict):
                     key = str(fact.get("fact_key") or f"setup.{index}")
                     value = str(fact.get("value") or fact.get("fact") or "")
-                    self.memory.add_fact(project.id, key, value, True, "book-setup")
-            self._post_write_maintenance(run_id, project)
-            self.db.update_run(run_id, "completed", "archive")
+                    if key in seen_fact_keys:
+                        continue
+                    seen_fact_keys.add(key)
+                    memory_effects.append(ProjectMutationCanonFactV1(
+                        fact_key=key, value=value, confirmed=True,
+                        source="book-setup", preserve_existing=True,
+                    ))
+            with WIZARD_MUTATION_LOCK:
+                state = self.story_states.ensure(project.id, project.path)
+                managed_paths = list(target_text)
+                snapshot_root = (
+                    project.path / "snapshots" / f"{run_id}-long-setup"
+                )
+                snapshot = ProjectSnapshot.create(
+                    project.path, snapshot_root, managed_paths,
+                )
+                journal_path = project_mutation_journal_path(
+                    project.path, run_id,
+                )
+                journal = ProjectMutationJournalV1(
+                    status="prepared", operation="long-setup",
+                    run_id=run_id, project_id=project.id,
+                    snapshot_path=snapshot_root.relative_to(
+                        project.path,
+                    ).as_posix(),
+                    source_authority_sha256=canonical_json_sha256({
+                        "version": 1,
+                        "outline_sha256": hashlib.sha256(
+                            outline.encode("utf-8")
+                        ).hexdigest(),
+                        "canon_sha256": canonical_json_sha256(canon),
+                        "managed_paths": [
+                            path.relative_to(project.path).as_posix()
+                            for path in managed_paths
+                        ],
+                        "base_story_state_revision": state.revision,
+                    }),
+                    expected_story_state_revision=state.revision,
+                    managed_paths=tuple(
+                        path.relative_to(project.path).as_posix()
+                        for path in managed_paths
+                    ),
+                    memory_effects=tuple(memory_effects),
+                )
+                write_project_mutation_journal(journal_path, journal)
+                try:
+                    for path, content in target_text.items():
+                        atomic_write(path, content)
+                    self._post_write_maintenance(run_id, project)
+                    artifacts = stage_project_mutation_targets(
+                        project.path, snapshot, managed_paths,
+                    )
+                    journal = ProjectMutationJournalV1.model_validate(
+                        journal.model_copy(update={
+                            "status": "artifacts_committed",
+                            "artifacts": artifacts,
+                        }).model_dump(mode="python"),
+                    )
+                    write_project_mutation_journal(journal_path, journal)
+                    complete_project_mutation(self.projects, run_id)
+                except Exception:
+                    abort_project_mutation_request(
+                        self.projects, run_id, snapshot,
+                        journal_path, journal,
+                        error=(
+                            "Long setup authority commit failed and was "
+                            "rolled back."
+                        ),
+                    )
+                    raise
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
-            snapshot.restore()
             self.db.update_run(run_id, "cancelled", error="Cancelled by user")
             raise
         except Exception as exc:
-            snapshot.restore()
-            self.db.update_run(run_id, "failed", error=str(exc))
+            recovery_pending = self._project_mutation_recovery_pending(
+                project, run_id,
+            )
+            current_run = self.db.get_run(run_id)
+            if (
+                not recovery_pending
+                and (current_run is None or current_run.get("status") != "failed")
+            ):
+                self.db.update_run(run_id, "failed", error=str(exc))
             raise
+
+    async def _resume_long_chapter_publication(
+        self, project: Project, run_id: str, run_path: Path,
+    ) -> dict | None:
+        """Resume only a journal-owned publication/gate, never regenerate it."""
+
+        journal_path = project_mutation_journal_path(project.path, run_id)
+        if not journal_path.is_file():
+            return None
+        journal = load_project_mutation_journal(journal_path)
+        if journal.operation != "long-chapter":
+            raise ValueError("Long-chapter mutation journal identity is stale")
+        if journal.status == "rolled_back":
+            return None
+        if journal.status == "prepared":
+            # Nothing crossed the durable target boundary. Restore the exact
+            # old project and let this same supervised run regenerate safely.
+            commit_project_mutation_authority(self.projects, run_id)
+            self.db.update_run(run_id, "running", "starting", error=None)
+            return None
+
+        with WIZARD_MUTATION_LOCK:
+            journal = commit_project_mutation_authority(
+                self.projects, run_id,
+            )
+        gate = journal.post_commit_gate
+        if gate is not None:
+            if gate.name != "volume_audit":
+                raise ValueError("Long-chapter post-commit gate is unsupported")
+            chapter_number = int(gate.payload.get("chapter_number") or 0)
+            if chapter_number < 1:
+                raise ValueError("Long-chapter gate chapter number is invalid")
+            gate_status = self._bind_long_chapter_volume_gate_receipt(
+                project, run_id, chapter_number,
+            )
+            journal = load_project_mutation_journal(journal_path)
+            if journal.post_commit_gate is not None:
+                gate_status = journal.post_commit_gate.status
+            if gate_status == "blocked":
+                error = "Volume audit blocked the published volume"
+                self.db.update_run(run_id, "failed", error=error)
+                raise RuntimeError(error)
+            if gate_status == "passed":
+                with WIZARD_MUTATION_LOCK:
+                    finalize_project_mutation(self.projects, run_id)
+                return self.db.get_run(run_id) or {
+                    "id": run_id, "status": "completed",
+                }
+            constraints = self.projects.load_constraints(project.id)
+            try:
+                await self._audit_volume_boundary(
+                    run_id, run_path, project, chapter_number, constraints,
+                )
+            except Exception as exc:
+                self._bind_long_chapter_volume_gate_receipt(
+                    project, run_id, chapter_number,
+                )
+                self.db.update_run(run_id, "failed", error=str(exc))
+                raise
+            if self._bind_long_chapter_volume_gate_receipt(
+                project, run_id, chapter_number,
+            ) != "passed":
+                raise RuntimeError("Volume audit receipt did not prove success")
+        with WIZARD_MUTATION_LOCK:
+            finalize_project_mutation(self.projects, run_id)
+        return self.db.get_run(run_id) or {
+            "id": run_id, "status": "completed",
+        }
 
     async def _chapter_pipeline(self, project: Project, chapter_goal: str,
                                 run_id: str | None = None) -> dict:
+        run_id, run_path = self._begin_run(project, "long-chapter", run_id)
+        resumed = await self._resume_long_chapter_publication(
+            project, run_id, run_path,
+        )
+        if resumed is not None:
+            return resumed
         numbers = [
             int(match.group(1)) for path in project.path.joinpath("chapters").glob("chapter-*.md")
             if (match := re.fullmatch(r"chapter-(\d+)\.md", path.name))
@@ -3432,12 +3635,22 @@ class WorkflowService:
         chapter_id = f"chapter-{chapter_number:02d}"
         chapter_path = project.path / "chapters" / f"{chapter_id}.md"
         canon_path = project.path / "memory" / "canon.json"
-        run_id, run_path = self._begin_run(project, "long-chapter", run_id)
+        voice_path = (
+            project.path / "memory" / "style-metrics"
+            / f"chapter-{chapter_number:02d}.json"
+        )
         self._ensure_previous_volume_passed(project, chapter_number)
+        snapshot_root = (
+            project.path / "snapshots"
+            / f"{run_id}-long-chapter-{uuid.uuid4().hex[:8]}"
+        )
         snapshot = ProjectSnapshot.create(
-            project.path, project.path / "snapshots" / run_id, [chapter_path, canon_path],
+            project.path, snapshot_root,
+            [chapter_path, canon_path, voice_path],
         )
         committed = False
+        journal_path: Path | None = None
+        journal: ProjectMutationJournalV1 | None = None
         try:
             constraints = self.projects.load_constraints(project.id)
             context = self.memory.context(project.id, chapter_goal)
@@ -3466,30 +3679,160 @@ class WorkflowService:
                 await self._stage(
                     run_id, run_path, project, "maintenance", constraints, polished,
                 ),
-                run_path, contract_name="maintenance_facts",
+                run_path, contract_name="long_chapter_maintenance",
             )
             if not isinstance(canon.get("facts"), list):
                 raise ValueError("Maintenance output must contain a facts array")
-            atomic_write(chapter_path, self._chapter_file(project, polished, chapter_number))
-            self._record_voice_drift(run_id, project, chapter_number, polished)
-            atomic_write(canon_path, json.dumps(canon, ensure_ascii=False, indent=2))
-            self._post_write_maintenance(run_id, project)
-            self.memory.index_chapter(project.id, chapter_id, chapter_number, polished, chapter_goal)
+            chapter_text = self._chapter_file(
+                project, polished, chapter_number,
+            )
+            canon_text = json.dumps(canon, ensure_ascii=False, indent=2)
+            memory_effects = [ProjectMutationChapterIndexV1(
+                chapter_id=chapter_id,
+                chapter_number=chapter_number,
+                content=polished,
+                content_sha256=hashlib.sha256(
+                    polished.encode("utf-8")
+                ).hexdigest(),
+                summary=chapter_goal,
+            )]
             if isinstance(canon.get("state"), dict):
-                self.memory.save_state(project.id, chapter_id, canon["state"])
+                memory_effects.append(ProjectMutationChapterStateV1(
+                    chapter_id=chapter_id,
+                    state=canon["state"],
+                    state_sha256=canonical_json_sha256(canon["state"]),
+                ))
+            state = self.story_states.ensure(project.id, project.path)
+            volume = self._volume_for_chapter(project, chapter_number)
+            post_commit_gate = None
+            if (
+                volume is not None
+                and chapter_number == int(volume.get("end_chapter", -1))
+            ):
+                gate_payload = {
+                    "chapter_number": chapter_number,
+                    "volume_number": int(volume["number"]),
+                }
+                post_commit_gate = ProjectMutationPostCommitGateV1(
+                    name="volume_audit",
+                    payload=gate_payload,
+                    payload_sha256=canonical_json_sha256(gate_payload),
+                )
+            managed_paths = [chapter_path, canon_path, voice_path]
+            journal_path = project_mutation_journal_path(
+                project.path, run_id,
+            )
+            journal = ProjectMutationJournalV1(
+                status="prepared", operation="long-chapter",
+                run_id=run_id, project_id=project.id,
+                snapshot_path=snapshot_root.relative_to(
+                    project.path,
+                ).as_posix(),
+                source_authority_sha256=canonical_json_sha256({
+                    "version": 1,
+                    "chapter_number": chapter_number,
+                    "chapter_sha256": hashlib.sha256(
+                        chapter_text.encode("utf-8")
+                    ).hexdigest(),
+                    "canon_sha256": hashlib.sha256(
+                        canon_text.encode("utf-8")
+                    ).hexdigest(),
+                    "chapter_memory_sha256": hashlib.sha256(
+                        polished.encode("utf-8")
+                    ).hexdigest(),
+                    "chapter_goal_sha256": hashlib.sha256(
+                        chapter_goal.encode("utf-8")
+                    ).hexdigest(),
+                    "base_story_state_revision": state.revision,
+                    "post_commit_gate": (
+                        post_commit_gate.model_dump(mode="json")
+                        if post_commit_gate is not None else None
+                    ),
+                }),
+                expected_story_state_revision=state.revision,
+                managed_paths=tuple(
+                    path.relative_to(project.path).as_posix()
+                    for path in managed_paths
+                ),
+                memory_effects=tuple(memory_effects),
+                post_commit_gate=post_commit_gate,
+            )
+            write_project_mutation_journal(journal_path, journal)
+            with WIZARD_MUTATION_LOCK:
+                atomic_write(chapter_path, chapter_text)
+                self._record_voice_drift(
+                    run_id, project, chapter_number, polished,
+                )
+                atomic_write(canon_path, canon_text)
+                self._post_write_maintenance(run_id, project)
+                artifacts = stage_project_mutation_targets(
+                    project.path, snapshot, managed_paths,
+                )
+                journal = ProjectMutationJournalV1.model_validate(
+                    journal.model_copy(update={
+                        "status": "artifacts_committed",
+                        "artifacts": artifacts,
+                    }).model_dump(mode="python"),
+                )
+                write_project_mutation_journal(journal_path, journal)
+                if post_commit_gate is None:
+                    complete_project_mutation(self.projects, run_id)
+                else:
+                    commit_project_mutation_authority(
+                        self.projects, run_id,
+                    )
             committed = True
-            await self._audit_volume_boundary(run_id, run_path, project, chapter_number, constraints)
-            self.db.update_run(run_id, "completed", "archive")
+            if post_commit_gate is not None:
+                try:
+                    await self._audit_volume_boundary(
+                        run_id, run_path, project, chapter_number, constraints,
+                    )
+                except Exception:
+                    self._bind_long_chapter_volume_gate_receipt(
+                        project, run_id, chapter_number,
+                    )
+                    raise
+                if self._bind_long_chapter_volume_gate_receipt(
+                    project, run_id, chapter_number,
+                ) != "passed":
+                    raise RuntimeError(
+                        "Volume audit receipt did not prove success"
+                    )
+                with WIZARD_MUTATION_LOCK:
+                    finalize_project_mutation(self.projects, run_id)
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
             if not committed:
-                snapshot.restore()
+                if journal_path is None or journal is None:
+                    snapshot.restore()
+                    snapshot.discard()
+                else:
+                    abort_project_mutation_request(
+                        self.projects, run_id, snapshot, journal_path, journal,
+                        error=(
+                            "Long-chapter publication was cancelled and "
+                            "rolled back."
+                        ),
+                    )
             self.db.update_run(run_id, "cancelled", error="Cancelled by user")
             raise
 
         except Exception as exc:
             if not committed:
-                snapshot.restore()
+                if journal_path is None or journal is None:
+                    snapshot.restore()
+                    snapshot.discard()
+                    rolled_back = True
+                else:
+                    rolled_back = abort_project_mutation_request(
+                        self.projects, run_id, snapshot, journal_path, journal,
+                        error=(
+                            "Long-chapter publication failed before its durable "
+                            "authority commit and was rolled back."
+                        ),
+                    )
+                if not rolled_back:
+                    raise
             self.db.update_run(run_id, "failed", error=str(exc))
             raise
 
@@ -3519,7 +3862,12 @@ class WorkflowService:
     async def _short_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "short-story", run_id)
         try:
-            self._recover_short_formal_promotions(project)
+            recover_project_mutations(
+                self.projects, workflow="short-story",
+            )
+            recover_legacy_short_formal_promotions(
+                self.db, self.story_states, project,
+            )
         except Exception as exc:
             self.db.update_run(run_id, "failed", "archive", error=str(exc))
             raise
@@ -3530,6 +3878,7 @@ class WorkflowService:
         formal_mutation_started = False
         promotion_lock_acquired = False
         promotion_journal_path: Path | None = None
+        promotion_journal: ProjectMutationJournalV1 | None = None
         formal = [
             project.path / "manuscript" / "story.md",
             project.path / "chapters" / "chapter-01.md",
@@ -3599,12 +3948,24 @@ class WorkflowService:
                 plan = partial_bundle.plan
                 causal_chain = partial_bundle.causal_chain
                 planning_adaptation = partial_bundle.planning_adaptation
-                formal_outline = state.data.get("outline") or {}
-                formal_outline_content = str(formal_outline.get("content") or "")
+                # A validated partial checkpoint already owns its exact
+                # Planning IR topology.  Only a confirmed outline may further
+                # constrain it here; generating a fresh project-brief seed ID
+                # would replace the recovered authority and reject a valid
+                # cross-run prefix.
+                partial_outline = state.data.get("outline") or {}
+                partial_outline_content = (
+                    str(partial_outline.get("content") or "")
+                    if isinstance(partial_outline, dict) else ""
+                )
                 formal_outline_events = (
-                    narrative_outline_event_contracts(formal_outline_content)
-                    if formal_outline_content.strip()
-                    else formal_outline.get("events") or []
+                    narrative_outline_event_contracts(
+                        partial_outline_content,
+                    )
+                    if partial_outline_content.strip()
+                    else list(partial_outline.get("events") or [])
+                    if isinstance(partial_outline, dict)
+                    else []
                 )
                 await self._ensure_short_execution_manifest(
                     run_id, run_path, project, constraints, state.revision,
@@ -3617,6 +3978,9 @@ class WorkflowService:
                 )
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
+                    base_constraints_sha256=str(
+                        checkpoint_context["constraints_sha256"]
+                    ),
                 )
                 self._save_short_checkpoint(
                     run_path / "outputs", checkpoint_context,
@@ -3629,12 +3993,8 @@ class WorkflowService:
                     },
                 )
             else:
-                formal_outline = state.data.get("outline") or {}
-                formal_outline_content = str(formal_outline.get("content") or "")
-                formal_outline_events = (
-                    narrative_outline_event_contracts(formal_outline_content)
-                    if formal_outline_content.strip()
-                    else formal_outline.get("events") or []
+                formal_outline_events = self._short_formal_event_authority(
+                    project, state.data,
                 )
                 brief = json.dumps({
                     **project.metadata,
@@ -3696,49 +4056,21 @@ class WorkflowService:
                         },
                     )
                 else:
-                    ir_first = self.db.feature_flag(
-                        # R2 is rolled out project-by-project until the R6
-                        # canary has completed. An explicit project/global
-                        # enable remains authoritative and fails closed if its
-                        # formal planning inputs are incomplete.
-                        "planning_ir_first", project_id=project.id, default=False,
+                    # New short-fiction planning has one authoritative entry:
+                    # typed semantic IR.  Legacy Markdown plans remain readable
+                    # only through checkpoint/recovery migration below; they are
+                    # no longer a selectable generation route.
+                    plan = await self._plan_short_ir_first(
+                        run_id, run_path, project, constraints, brief,
+                        state.data, formal_outline_events, segment_count,
+                        expected_plan_characters,
                     )
-                    if ir_first["enabled"]:
-                        plan = await self._plan_short_ir_first(
-                            run_id, run_path, project, constraints, brief,
-                            state.data, formal_outline_events, segment_count,
-                            expected_plan_characters,
-                        )
-                        causal_chain = None
-                    else:
-                        proactive_split = self._route_requires_semantic_split(
-                            "planning", expected_plan_characters,
-                        )
-                        try:
-                            if proactive_split:
-                                raise IncompleteModelOutputError(
-                                    "planning", StageText(
-                                        "", {"finish_reason": "predicted_limit"},
-                                    ),
-                                )
-                            plan = await self._stage(
-                                run_id, run_path, project, "planning", constraints, brief,
-                                allow_tools=self._planning_uses_tools(state),
-                                expected_output_characters=expected_plan_characters,
-                                completion_check=lambda value: self._short_plan_output_complete(
-                                    project, state.data, value, segment_count,
-                                ),
-                            )
-                        except IncompleteModelOutputError:
-                            plan = await self._plan_short_in_batches(
-                                run_id, run_path, project, constraints, brief,
-                                state.data, segment_count,
-                            )
-                        plan, causal_chain = self._extract_short_causal_chain(run_id, plan)
+                    causal_chain = None
                 original_local_plan = plan
                 plan = await self._recover_short_plan_local_gate(
                     run_id, run_path, project, constraints, brief, state.data,
                     plan, segment_count, expected_plan_characters,
+                    formal_events=formal_outline_events,
                     generation_context_sha256=(
                         checkpoint_context["generation_context_sha256"]
                     ),
@@ -3778,6 +4110,9 @@ class WorkflowService:
                 )
                 draft = await self._draft_short_in_segments(
                     run_id, run_path, project, constraints, plan,
+                    base_constraints_sha256=str(
+                        checkpoint_context["constraints_sha256"]
+                    ),
                 )
                 atomic_write(run_path / "outputs" / "draft.md", draft)
                 self._save_short_checkpoint(
@@ -3919,91 +4254,123 @@ class WorkflowService:
             candidate_id = candidate.id
             chapter_text = self._chapter_file(project, polished)
             canon_json = json.dumps(canon, ensure_ascii=False, indent=2)
-            promotion_journal_path = (
-                run_path / "outputs" / "formal-promotion-journal.json"
-            )
             promotion_files = [
                 (formal[0], polished),
                 (formal[1], chapter_text),
                 (formal[2], canon_json),
             ]
-            promotion_payload_root = (
-                run_path / "outputs" / "formal-promotion-payload"
+            next_data = {
+                **state.data,
+                "confirmed_facts": confirmed,
+                "character_states": canon.get(
+                    "state", state.data.get("character_states", {}),
+                ),
+                "world_rules": canon.get(
+                    "world_rules", state.data.get("world_rules", []),
+                ),
+                "timeline_events": canon.get(
+                    "timeline", state.data.get("timeline_events", []),
+                ),
+                "manuscript_revision": int(
+                    state.data.get("manuscript_revision", 0),
+                ) + 1,
+            }
+            promotion_journal_path = project_mutation_journal_path(
+                project.path, run_id,
             )
-            promotion_file_records = []
-            for index, (path, content) in enumerate(promotion_files):
-                recovery_path = promotion_payload_root / f"{index:02d}-{path.name}"
-                atomic_write(recovery_path, content)
-                promotion_file_records.append({
-                    "path": path.relative_to(project.path).as_posix(),
-                    "new_sha256": hashlib.sha256(
-                        content.encode("utf-8"),
-                    ).hexdigest(),
-                    "recovery_path": recovery_path.relative_to(
-                        project.path,
-                    ).as_posix(),
-                })
-            atomic_write(
-                promotion_journal_path,
-                json.dumps({
-                    "version": 1,
-                    "status": "prepared",
-                    "run_id": run_id,
+            promotion_journal = ProjectMutationJournalV1(
+                status="prepared",
+                operation="short-story",
+                run_id=run_id,
+                project_id=project.id,
+                snapshot_path=snapshot.snapshot_root.relative_to(
+                    project.path,
+                ).as_posix(),
+                source_authority_sha256=canonical_json_sha256({
                     "candidate_id": candidate.id,
-                    "base_revision": state.revision,
-                    "target_revision": state.revision + 1,
-                    "snapshot_path": snapshot.snapshot_root.relative_to(
-                        project.path,
-                    ).as_posix(),
-                    "files": promotion_file_records,
-                }, ensure_ascii=False, indent=2, sort_keys=True),
+                    "publication_sha256": hashlib.sha256(
+                        polished.encode("utf-8"),
+                    ).hexdigest(),
+                    "canon_sha256": hashlib.sha256(
+                        canon_json.encode("utf-8"),
+                    ).hexdigest(),
+                    "base_story_state_revision": state.revision,
+                    "quality_terminal_sha256": str(
+                        quality_report.get("terminal_reviewed_hash") or ""
+                    ),
+                    "reference_corpus_sha256": str(
+                        publish_analysis.get("reference_corpus_sha256")
+                        or EMPTY_REFERENCE_CORPUS_SHA256
+                    ),
+                }),
+                expected_story_state_revision=state.revision,
+                managed_paths=tuple(
+                    path.relative_to(project.path).as_posix()
+                    for path, _content in promotion_files
+                ),
+            )
+            write_project_mutation_journal(
+                promotion_journal_path, promotion_journal,
             )
             formal_mutation_started = True
             atomic_write(formal[0], polished)
             atomic_write(formal[1], chapter_text)
             atomic_write(formal[2], canon_json)
-            self._set_formal_promotion_journal_status(
-                promotion_journal_path, "files_written",
-            )
             self._post_write_maintenance(run_id, project)
-            next_data = {
-                **state.data,
-                "confirmed_facts": confirmed,
-                "character_states": canon.get("state", state.data.get("character_states", {})),
-                "world_rules": canon.get("world_rules", state.data.get("world_rules", [])),
-                "timeline_events": canon.get("timeline", state.data.get("timeline_events", [])),
-                "manuscript_revision": int(state.data.get("manuscript_revision", 0)) + 1,
-            }
-            committed = self.story_states.commit(candidate.id, state.revision, next_data)
-            state_committed = True
-            self._set_formal_promotion_journal_status(
-                promotion_journal_path, "committed",
-                committed_revision=committed.revision,
+            artifacts = stage_project_mutation_targets(
+                project.path, snapshot, formal,
             )
-            snapshot.discard()
+            target = ProjectMutationStoryStateV1(
+                candidate_id=candidate.id,
+                expected_revision=state.revision,
+                target_revision=state.revision + 1,
+                state_sha256=canonical_json_sha256(next_data),
+                data=next_data,
+            )
+            promotion_journal = ProjectMutationJournalV1.model_validate(
+                promotion_journal.model_copy(update={
+                    "status": "artifacts_committed",
+                    "artifacts": artifacts,
+                    "story_state": target,
+                }).model_dump(mode="python"),
+            )
+            write_project_mutation_journal(
+                promotion_journal_path, promotion_journal,
+            )
+            completed_journal = complete_project_mutation(
+                self.projects, run_id,
+            )
+            state_committed = True
             self.story_states.reject(draft_candidate.id, "superseded by accepted polish")
             self.db.add_run_event(
                 run_id, "success", "story_state_committed", "正式稿与权威故事状态已提交",
                 stage="archive", metadata={
                     "candidate_id": candidate.id,
                     "base_revision": state.revision,
-                    "revision": committed.revision,
+                    "revision": (
+                        completed_journal.story_state.target_revision
+                        if completed_journal.story_state is not None
+                        else state.revision
+                    ),
                 },
             )
-            self.db.update_run(run_id, "completed", "archive")
             return self.db.get_run(run_id) or {"id": run_id, "status": "completed"}
         except asyncio.CancelledError:
             if not state_committed:
-                restored = (
-                    self._restore_snapshot_after_failure(run_id, snapshot)
-                    if formal_mutation_started else True
-                )
-                if not formal_mutation_started:
-                    snapshot.discard()
-                if restored and promotion_journal_path is not None:
-                    self._set_formal_promotion_journal_status(
-                        promotion_journal_path, "rolled_back",
+                if promotion_journal is not None:
+                    rolled_back = abort_project_mutation_request(
+                        self.projects, run_id, snapshot,
+                        promotion_journal_path, promotion_journal,
+                        error=(
+                            "Short-story formal promotion was cancelled and "
+                            "rolled back."
+                        ),
                     )
+                    if not rolled_back:
+                        raise
+                else:
+                    if formal_mutation_started:
+                        self._restore_snapshot_after_failure(run_id, snapshot)
                     snapshot.discard()
             if candidate_id:
                 self.story_states.reject(candidate_id, "cancelled")
@@ -4013,16 +4380,20 @@ class WorkflowService:
             raise
         except Exception as exc:
             if not state_committed:
-                restored = (
-                    self._restore_snapshot_after_failure(run_id, snapshot)
-                    if formal_mutation_started else True
-                )
-                if not formal_mutation_started:
-                    snapshot.discard()
-                if restored and promotion_journal_path is not None:
-                    self._set_formal_promotion_journal_status(
-                        promotion_journal_path, "rolled_back",
+                if promotion_journal is not None:
+                    rolled_back = abort_project_mutation_request(
+                        self.projects, run_id, snapshot,
+                        promotion_journal_path, promotion_journal,
+                        error=(
+                            "Short-story formal promotion failed before its "
+                            "durable authority commit and was rolled back."
+                        ),
                     )
+                    if not rolled_back:
+                        raise
+                else:
+                    if formal_mutation_started:
+                        self._restore_snapshot_after_failure(run_id, snapshot)
                     snapshot.discard()
             if candidate_id:
                 self.story_states.reject(candidate_id, str(exc))
@@ -4060,29 +4431,338 @@ class WorkflowService:
             return False
         return not self._short_plan_issues(project, state, outline, segment_count)
 
-    def _route_requires_semantic_split(
-        self, role: str, expected_output_characters: int,
-    ) -> bool:
-        binding = self.db.get_role_binding(role) or {}
-        provider_id = str(binding.get("primary_provider_id") or "")
-        model_id = str(binding.get("primary_model_id") or "")
-        if not provider_id or not model_id:
-            return False
-        stable_limits = [
-            profile["suspected_stable_output_tokens"]
-            for profile in (
-                self.db.latest_model_output_profile(provider_id, model_id, "plain"),
-                self.db.latest_model_output_profile(
-                    provider_id, model_id, "native_tool_round",
+    @staticmethod
+    def _short_semantic_packet_brief_projection(
+        brief: str, *, global_segment: int, segment_count: int,
+        global_event_ordinals: tuple[int, ...],
+    ) -> str:
+        """Project the Runtime-built brief without truncating story authority."""
+
+        try:
+            payload = json.loads(brief)
+        except json.JSONDecodeError as exc:
+            raise ValueError("IR-first planning brief must be Runtime JSON") from exc
+        if not isinstance(payload, dict):
+            raise ValueError("IR-first planning brief must be one object")
+        projection = {
+            key: payload.get(key)
+            for key in (
+                "title", "mode", "genre", "premise", "pov", "tone",
+                "target_words", "must_include", "must_avoid",
+            )
+            if payload.get(key) not in (None, "", [], {})
+        }
+        generation_contract = payload.get("generation_contract")
+        if isinstance(generation_contract, dict):
+            projection["generation_contract"] = {
+                key: generation_contract.get(key)
+                for key in (
+                    "target_total_words", "segment_count", "require_segment_map",
+                )
+                if generation_contract.get(key) not in (None, "", [], {})
+            }
+        projection["packet_scope"] = {
+            "global_segment": global_segment,
+            "segment_count": segment_count,
+            "global_event_ordinals": list(global_event_ordinals),
+        }
+        projection["authority_refs"] = {
+            "brief_sha256": hashlib.sha256(brief.encode("utf-8")).hexdigest(),
+            "formal_story_facts_sha256": canonical_sha256(
+                payload.get("formal_story_facts") or [],
+            ),
+            "formal_outline_events_sha256": canonical_sha256(
+                payload.get("formal_outline_events") or [],
+            ),
+        }
+        return json.dumps(
+            projection, ensure_ascii=False, sort_keys=True, indent=2,
+        )
+
+    async def _plan_short_ir_first_capacity_split(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        brief: str, formal_events: list[dict], formal_ending: dict,
+        segment_count: int, expected_output_characters: int, details: dict,
+    ) -> str:
+        """Generate canonical v2 semantics through Runtime-owned packets."""
+
+        ownership = planning_semantic_packet_ownership_v2(
+            segment_count=segment_count,
+            formal_event_count=len(formal_events),
+        )
+        parent_brief_sha256 = hashlib.sha256(brief.encode("utf-8")).hexdigest()
+        parent_authority_sha256 = canonical_sha256({
+            "contract": "planning-semantic-v2-capacity-split-v1",
+            "brief_sha256": parent_brief_sha256,
+            "formal_events_sha256": canonical_sha256(formal_events),
+            "formal_ending_sha256": canonical_sha256(formal_ending),
+            "segment_count": segment_count,
+            "ownership": ownership,
+        })
+        checkpoint_root = (
+            run_path / "outputs" / "planning-semantic-v2-packets"
+        )
+        checkpoint_root.mkdir(parents=True, exist_ok=True)
+        packet_output_characters = max(
+            1200, math.ceil(expected_output_characters / segment_count),
+        )
+        packet_records: list[dict] = []
+
+        def packet_projection(packet: PlanningSemanticDraftV2) -> str:
+            segment = packet.segments[0]
+            return json.dumps({
+                "semantic_sha256": canonical_sha256(
+                    packet.model_dump(mode="json"),
+                ),
+                "initial_state": packet.initial_state,
+                "last_event_narrative": segment.events[-1].narrative,
+            }, ensure_ascii=False, sort_keys=True)
+
+        def validate_packet(
+            value: str, owned_count: int,
+        ) -> tuple[PlanningSemanticDraftV2, object]:
+            semantic, audit = parse_planning_semantic_v2(value)
+            merged = merge_planning_semantic_event_packets_v2(
+                [semantic], [tuple(range(1, owned_count + 1))],
+            )
+            if merged.model_dump(mode="json") != semantic.model_dump(mode="json"):
+                raise ValueError("planning semantic packet changed during validation")
+            return semantic, audit
+
+        async def generate_packet(
+            *, global_segment: int, global_ordinals: tuple[int, ...],
+            sequence: str, predecessor_sha256: str,
+            predecessor_projection: str,
+            root_owned_count: int,
+        ) -> PlanningSemanticDraftV2:
+            owned_events = [formal_events[ordinal - 1] for ordinal in global_ordinals]
+            packet_authority = {
+                "contract": "planning-semantic-v2-packet-v1",
+                "parent_authority_sha256": parent_authority_sha256,
+                "global_segment": global_segment,
+                "segment_count": segment_count,
+                "global_event_ordinals": list(global_ordinals),
+                "formal_events_sha256": canonical_sha256(owned_events),
+                "predecessor_semantic_sha256": predecessor_sha256,
+                "sequence": sequence,
+            }
+            packet_authority_sha256 = canonical_sha256(packet_authority)
+            checkpoint_path = checkpoint_root / (
+                f"segment-{global_segment:02d}-packet-{sequence.replace('.', '-')}.json"
+            )
+            try:
+                cached = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+                if not isinstance(cached, dict):
+                    raise ValueError("packet checkpoint is not an object")
+                if cached.get("version") != 1:
+                    raise ValueError("packet checkpoint version mismatch")
+                if cached.get("authority_sha256") != packet_authority_sha256:
+                    raise ValueError("packet checkpoint authority mismatch")
+                semantic = PlanningSemanticDraftV2.model_validate(cached.get("semantic"))
+                validated, _audit = validate_packet(
+                    semantic.model_dump_json(), len(global_ordinals),
+                )
+                if cached.get("semantic_sha256") != canonical_sha256(
+                    validated.model_dump(mode="json"),
+                ):
+                    raise ValueError("packet checkpoint semantic hash mismatch")
+            except (OSError, TypeError, ValueError, json.JSONDecodeError):
+                semantic = None
+            if semantic is not None:
+                self.db.add_run_event(
+                    run_id, "success", "planning_semantic_packet_reused",
+                    "Reused one hash-bound IR-first planning semantic packet.",
+                    stage="planning", metadata={
+                        "global_segment": global_segment,
+                        "global_event_ordinals": list(global_ordinals),
+                        "sequence": sequence,
+                        "authority_sha256": packet_authority_sha256,
+                    },
+                )
+                packet_records.append({
+                    **packet_authority,
+                    "authority_sha256": packet_authority_sha256,
+                    "semantic_sha256": canonical_sha256(
+                        semantic.model_dump(mode="json"),
+                    ),
+                    "reused": True,
+                })
+                return semantic
+
+            story_brief_projection = self._short_semantic_packet_brief_projection(
+                brief,
+                global_segment=global_segment,
+                segment_count=segment_count,
+                global_event_ordinals=global_ordinals,
+            )
+            prompt = semantic_planning_packet_prompt_v2(
+                global_segment=global_segment,
+                segment_count=segment_count,
+                global_event_ordinals=global_ordinals,
+                formal_events=owned_events,
+                story_brief_projection=story_brief_projection,
+                parent_brief_sha256=parent_brief_sha256,
+                predecessor_semantic_sha256=predecessor_sha256,
+                predecessor_projection=predecessor_projection,
+            )
+            packet_contract = StructuredArtifactContract(
+                name="planning_semantic_v2",
+                version=2,
+                schema=planning_semantic_schema_v2(),
+                runtime_authority=packet_authority,
+            )
+
+            async def split_again(split_details: dict) -> str:
+                midpoint = len(global_ordinals) // 2
+                left_ordinals = global_ordinals[:midpoint]
+                right_ordinals = global_ordinals[midpoint:]
+                left = await generate_packet(
+                    global_segment=global_segment,
+                    global_ordinals=left_ordinals,
+                    sequence=sequence + ".0",
+                    predecessor_sha256=predecessor_sha256,
+                    predecessor_projection=predecessor_projection,
+                    root_owned_count=root_owned_count,
+                )
+                left_sha256 = canonical_sha256(left.model_dump(mode="json"))
+                right = await generate_packet(
+                    global_segment=global_segment,
+                    global_ordinals=right_ordinals,
+                    sequence=sequence + ".1",
+                    predecessor_sha256=left_sha256,
+                    predecessor_projection=packet_projection(left),
+                    root_owned_count=root_owned_count,
+                )
+                merged = merge_planning_semantic_event_packets_v2(
+                    [left, right], [
+                        tuple(range(1, len(left_ordinals) + 1)),
+                        tuple(range(
+                            len(left_ordinals) + 1,
+                            len(global_ordinals) + 1,
+                        )),
+                    ],
+                )
+                return merged.model_dump_json()
+
+            expected_characters = max(
+                900,
+                math.ceil(
+                    packet_output_characters
+                    * len(global_ordinals) / root_owned_count
                 ),
             )
-            if isinstance(profile.get("suspected_stable_output_tokens"), int)
-            and profile["suspected_stable_output_tokens"] > 0
-        ]
-        if not stable_limits:
-            return False
-        stable = min(stable_limits)
-        return estimate_input_tokens("汉" * expected_output_characters) >= int(stable * 0.75)
+            raw = await self._stage(
+                run_id, run_path, project, "planning", constraints, prompt,
+                suffix=(
+                    f"-semantic-v2-segment-{global_segment:02d}-packet-"
+                    + sequence.replace(".", "-")
+                ),
+                allow_tools=False,
+                expected_output_characters=expected_characters,
+                completion_check=lambda value: self._completion_check_safe(
+                    lambda candidate: bool(
+                        validate_packet(candidate, len(global_ordinals))[0]
+                    ),
+                    value,
+                ),
+                structured_contract=packet_contract,
+                compact_input=True,
+                route_capacity_guard=True,
+                capacity_splitter=(
+                    split_again if len(global_ordinals) > 1 else None
+                ),
+                story_skeleton_override=self._stage_story_skeleton(
+                    project, constraints, run_path,
+                    owner_event_ids=[
+                        str(
+                            formal_events[ordinal - 1].get("id")
+                            or formal_events[ordinal - 1].get("event_id")
+                            or ""
+                        ).strip().upper()
+                        for ordinal in global_ordinals
+                    ],
+                    index_only=False,
+                ),
+                scoped_creative_output=True,
+            )
+            semantic, audit = validate_packet(raw, len(global_ordinals))
+            write_conversion_audit(
+                run_path / "outputs" / "conversion-audits", audit,
+            )
+            semantic_sha256 = canonical_sha256(
+                semantic.model_dump(mode="json"),
+            )
+            atomic_write(checkpoint_path, json.dumps({
+                "version": 1,
+                "authority_sha256": packet_authority_sha256,
+                "semantic_sha256": semantic_sha256,
+                "semantic": semantic.model_dump(mode="json"),
+            }, ensure_ascii=False, sort_keys=True, indent=2))
+            packet_records.append({
+                **packet_authority,
+                "authority_sha256": packet_authority_sha256,
+                "semantic_sha256": semantic_sha256,
+                "reused": False,
+            })
+            self.db.add_run_event(
+                run_id, "success", "planning_semantic_packet_completed",
+                "Completed one Runtime-owned IR-first planning semantic packet.",
+                stage="planning", metadata={
+                    "global_segment": global_segment,
+                    "global_event_ordinals": list(global_ordinals),
+                    "sequence": sequence,
+                    "authority_sha256": packet_authority_sha256,
+                },
+            )
+            return semantic
+
+        packets: list[PlanningSemanticDraftV2] = []
+        predecessor_sha256 = ""
+        predecessor_projection = ""
+        for global_segment, global_ordinals in enumerate(ownership, 1):
+            packet = await generate_packet(
+                global_segment=global_segment,
+                global_ordinals=global_ordinals,
+                sequence=f"{global_segment:06d}",
+                predecessor_sha256=predecessor_sha256,
+                predecessor_projection=predecessor_projection,
+                root_owned_count=len(global_ordinals),
+            )
+            packets.append(packet)
+            predecessor_sha256 = canonical_sha256(packet.model_dump(mode="json"))
+            predecessor_projection = packet_projection(packet)
+
+        merged = merge_planning_semantic_document_packets_v2(
+            packets, ownership, formal_event_count=len(formal_events),
+        )
+        compiled = compile_planning_semantic_v2(
+            merged, formal_events, formal_ending=formal_ending,
+            expected_segment_count=segment_count,
+        )
+        merged_sha256 = canonical_sha256(merged.model_dump(mode="json"))
+        atomic_write(
+            checkpoint_root / "index.json",
+            json.dumps({
+                "version": 1,
+                "parent_authority_sha256": parent_authority_sha256,
+                "trigger": str(details.get("trigger") or "preflight"),
+                "ownership": [list(item) for item in ownership],
+                "packets": packet_records,
+                "merged_semantic_sha256": merged_sha256,
+                "planning_authority_sha256": compiled.document.authority_sha256,
+            }, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        self.db.add_run_event(
+            run_id, "success", "planning_semantic_packets_reduced",
+            "Runtime merged every IR-first planning packet and proved complete authority.",
+            stage="planning", metadata={
+                "segment_count": segment_count,
+                "formal_event_count": len(formal_events),
+                "merged_semantic_sha256": merged_sha256,
+                "planning_authority_sha256": compiled.document.authority_sha256,
+            },
+        )
+        return merged.model_dump_json()
 
     async def _plan_short_ir_first(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
@@ -4125,6 +4805,13 @@ class WorkflowService:
                 conversion_audit=audit,
             )
 
+        def validate_semantic_payload(payload: Mapping[str, Any]):
+            semantic = PlanningSemanticDraftV2.model_validate(payload)
+            return compile_planning_semantic_v2(
+                semantic, formal_events, formal_ending=formal_ending,
+                expected_segment_count=segment_count,
+            )
+
         raw = await self._stage(
             run_id, run_path, project, "planning", constraints, prompt,
             suffix="-semantic-v2", allow_tools=False,
@@ -4135,7 +4822,19 @@ class WorkflowService:
             structured_contract=contract,
             compact_input=True,
             route_capacity_guard=True,
+            capacity_splitter=lambda details: (
+                self._plan_short_ir_first_capacity_split(
+                    run_id, run_path, project, constraints, brief,
+                    formal_events, formal_ending, segment_count,
+                    expected_output_characters, details,
+                )
+            ),
             scoped_creative_output=True,
+            structured_semantic_normalizer=(
+                normalize_planning_semantic_v2_payload
+            ),
+            structured_domain_validator=validate_semantic_payload,
+            retry_structured_domain_failures=True,
         )
         compiled = compile_raw(raw)
         outputs = run_path / "outputs"
@@ -4167,94 +4866,6 @@ class WorkflowService:
             },
         )
         return compiled.plan
-
-    async def _plan_short_in_batches(
-        self, run_id: str, run_path: Path, project: Project, constraints: str,
-        brief: str, state: dict, segment_count: int,
-    ) -> str:
-        if segment_count < 2:
-            raise ValueError("单段短篇规划超过供应商可完整返回的范围，无法安全拆分")
-        batch_size = max(1, math.ceil(segment_count / 2))
-        ranges = [
-            (start, min(segment_count, start + batch_size - 1))
-            for start in range(1, segment_count + 1, batch_size)
-        ]
-        self.db.add_run_event(
-            run_id, "warning", "planning_task_split",
-            "规划单次输出可能不完整，已按连续写作段拆成内部子任务",
-            stage="planning", metadata={
-                "subtasks": len(ranges), "segment_count": segment_count,
-            },
-        )
-        blocks: list[str] = []
-        checkpoint_root = run_path / "outputs" / "planning-checkpoints"
-        authority = hashlib.sha256(
-            (brief + constraints).encode("utf-8")
-        ).hexdigest()
-        for batch_number, (start, end) in enumerate(ranges, 1):
-            previous = "\n\n".join(blocks)
-            previous_hash = hashlib.sha256(previous.encode("utf-8")).hexdigest()
-            checkpoint_path = checkpoint_root / f"batch-{batch_number:02d}.json"
-            try:
-                cached = json.loads(checkpoint_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError, AttributeError):
-                cached = {}
-            block = str(cached.get("text") or "")
-            if not (
-                cached.get("authority_sha256") == authority
-                and cached.get("previous_sha256") == previous_hash
-                and cached.get("range") == [start, end]
-                and cached.get("text_sha256")
-                == hashlib.sha256(block.encode("utf-8")).hexdigest()
-                and self._short_plan_batch_complete(block, start, end)
-            ):
-                prompt = (
-                    f"{brief}\n\nAUTOMATIC INTERNAL PLANNING SUBTASK {batch_number}/{len(ranges)}\n"
-                    f"本次只返回第 {start} 段到第 {end} 段的完整规划块，标题必须使用"
-                    f"“### 第 {start} 段：标题”到“### 第 {end} 段：标题”。"
-                    "每段仍须包含事件ID、大纲依据、段首承接、本段事件、段末交接。"
-                    "根据正式大纲顺序认领事件，不得重写前面批次，不得提前分配后续批次。"
-                    + (f"\n\n前面已验收批次：\n{previous}" if previous else "")
-                )
-                block = await self._stage(
-                    run_id, run_path, project, "planning", constraints, prompt,
-                    suffix=f"-batch-{batch_number:02d}", allow_tools=False,
-                    expected_output_characters=max(1800, (end - start + 1) * 1200),
-                    completion_check=lambda value, first=start, last=end: (
-                        self._short_plan_batch_complete(value, first, last)
-                    ),
-                )
-                if not self._short_plan_batch_complete(block, start, end):
-                    raise ValueError(
-                        f"规划内部子任务 {batch_number} 未完整返回第 {start}-{end} 段"
-                    )
-                atomic_write(checkpoint_path, json.dumps({
-                    "version": 1, "authority_sha256": authority,
-                    "previous_sha256": previous_hash, "range": [start, end],
-                    "text_sha256": hashlib.sha256(block.encode("utf-8")).hexdigest(),
-                    "text": block,
-                }, ensure_ascii=False, indent=2))
-            blocks.append(block.strip())
-        combined = "\n\n".join(blocks)
-        if self._short_plan_issues(project, state, combined, segment_count):
-            self.db.add_run_event(
-                run_id, "warning", "planning_batches_need_repair",
-                "规划内部子任务已合并，正在通过原有全篇检查定位事件分工问题",
-                stage="planning",
-            )
-        return combined
-
-    @classmethod
-    def _short_plan_batch_complete(cls, value: str, start: int, end: int) -> bool:
-        headings = {
-            number for _match, number in cls._short_plan_headings(value)
-            if number is not None
-        }
-        return headings == set(range(start, end + 1)) and all(
-            cls._short_plan_field(block, "event")
-            and cls._short_plan_field(block, "handoff")
-            for block in cls._short_plan_segments_for_range(value, start, end)
-        )
 
     @classmethod
     def _replace_short_plan_segment(
@@ -4489,6 +5100,72 @@ class WorkflowService:
         }
 
     @staticmethod
+    def _short_formal_event_authority(
+        project: Project, state: dict,
+    ) -> list[dict]:
+        """Return the sole Runtime-owned event authority for short planning.
+
+        Confirmed outline prose remains the strongest source.  Imported typed
+        outline events are the second source.  A brand-new project may not
+        have either yet, so the exact user-authored project brief becomes one
+        deterministic seed event.  The seed does not invent plot semantics;
+        it only preserves the pre-existing ability to start a story directly
+        from its premise while keeping IR-first ownership and terminal
+        topology provable.
+        """
+
+        outline = state.get("outline") if isinstance(state, dict) else {}
+        outline = outline if isinstance(outline, dict) else {}
+        outline_content = str(outline.get("content") or "")
+        if outline_content.strip():
+            contracts = narrative_outline_event_contracts(outline_content)
+            if contracts:
+                return contracts
+        stored = [
+            dict(item) for item in narrative_outline_events(
+                list(outline.get("events") or []),
+            )
+            if isinstance(item, dict) and str(item.get("id") or "").strip()
+        ]
+        if stored:
+            return stored
+
+        premise = str(project.metadata.get("premise") or "").strip()
+        if not premise:
+            raise ValueError(
+                "short planning requires a confirmed outline or a non-empty project premise"
+            )
+        identity = {
+            "contract": "project-brief-formal-event-v1",
+            "title": str(project.metadata.get("title") or project.title).strip(),
+            "genre": str(project.metadata.get("genre") or "").strip(),
+            "premise": premise,
+            "must_include": str(
+                project.metadata.get("must_include") or ""
+            ).strip(),
+            "must_avoid": str(project.metadata.get("must_avoid") or "").strip(),
+        }
+        event_id = "EV-" + canonical_sha256(identity)[:8].upper()
+        return [{
+            "id": event_id,
+            "order": 1,
+            "source_order": 1,
+            "label": str(identity["title"] or "Project brief"),
+            "section": "project_brief",
+            "kind": "narrative",
+            "source": "project_brief",
+            "evidence": premise,
+            "presentation_order": 1,
+            "story_time": "",
+            "timeline": "",
+            "actor": "",
+            "location": "",
+            "viewpoint": "",
+            "knowledge_delta": [],
+            "relationship_delta": [],
+        }]
+
+    @staticmethod
     def _short_formal_ending_authority(
         state: dict, formal_events: list[dict],
     ) -> dict:
@@ -4517,6 +5194,7 @@ class WorkflowService:
     @classmethod
     def _normalize_short_plan_terminal_boundary(
         cls, plan: str, *, state: dict, segment_count: int,
+        formal_events: list[dict] | None = None,
     ) -> tuple[str, dict | None]:
         """Migrate a provable terminal no-handoff shape into legacy display.
 
@@ -4531,13 +5209,13 @@ class WorkflowService:
         if len(segments) != segment_count:
             return plan, None
         outline_content = str(((state.get("outline") or {}).get("content")) or "")
-        formal_events = (
+        formal_events = list(formal_events or (
             narrative_outline_event_contracts(outline_content)
             if outline_content.strip() else
             cls._planning_adaptation_contracts(
                 state, list((state.get("outline") or {}).get("events") or []),
             )
-        )
+        ))
         if not formal_events:
             return plan, None
         compiled_segments = tuple(
@@ -4767,11 +5445,13 @@ class WorkflowService:
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         brief: str, state: dict, plan: str, segment_count: int,
         expected_plan_characters: int, *, generation_context_sha256: str,
+        formal_events: list[dict] | None = None,
     ) -> str:
         """Resolve local plan defects without allowing repair regression."""
         best_plan, terminal_boundary_audit = (
             self._normalize_short_plan_terminal_boundary(
                 plan, state=state, segment_count=segment_count,
+                formal_events=formal_events,
             )
         )
         if terminal_boundary_audit and terminal_boundary_audit.get("converted"):
@@ -5087,10 +5767,17 @@ class WorkflowService:
                     ),
                 )
             except IncompleteModelOutputError:
-                raw_candidate = await self._plan_short_in_batches(
+                # Keep capacity recovery on the same typed PlanningSemanticV2
+                # entry. The retired Markdown batch planner created a second
+                # generation protocol and could not prove ownership/topology.
+                raw_candidate = await self._plan_short_ir_first(
                     run_id, run_path, project, constraints,
                     brief + "\n\nLOCAL RECOVERY REQUIREMENTS:\n" + repair_prompt,
-                    state, segment_count,
+                    state,
+                    list(formal_events or self._short_formal_event_authority(
+                        project, state,
+                    )),
+                    segment_count, expected_plan_characters,
                 )
             candidate, _candidate_chain = self._extract_short_causal_chain(
                 run_id, raw_candidate,
@@ -5221,9 +5908,13 @@ class WorkflowService:
         for path in paths:
             try:
                 raw = path.read_text(encoding="utf-8")
-                payload = parse_json_object(
-                    raw, label=f"Stored planning adaptation receipt {path.name}",
-                )
+                payload = GeneratedArtifactGateway().convert_object(
+                    raw,
+                    contract_name=(
+                        "planning_adaptation_whole"
+                        if whole else "planning_adaptation_segment"
+                    ),
+                ).payload
             except (OSError, UnicodeError, TypeError, ValueError, json.JSONDecodeError):
                 continue
             payloads.append((payload, path.name))
@@ -7475,9 +8166,9 @@ class WorkflowService:
         coverage, or protocol defects make the artifact incomplete.
         """
         try:
-            payload = parse_json_object(
-                value, label=f"Planning adaptation receipt segment {segment}",
-            )
+            payload = GeneratedArtifactGateway().convert_object(
+                value, contract_name="planning_adaptation_segment",
+            ).payload
             receipt = normalize_planning_adaptation_receipt(
                 payload, evidence_candidates=evidence_candidates,
             )
@@ -7518,9 +8209,9 @@ class WorkflowService:
         inherited: list[dict] | None = None,
     ) -> bool:
         try:
-            payload = parse_json_object(
-                value, label="Planning adaptation hierarchy receipt",
-            )
+            payload = GeneratedArtifactGateway().convert_object(
+                value, contract_name="planning_adaptation_hierarchy",
+            ).payload
             cls._normalize_planning_hierarchy_receipt(
                 payload,
                 source_sha256=source_sha256,
@@ -7539,9 +8230,9 @@ class WorkflowService:
         expected_event_ids: list[str],
     ) -> bool:
         try:
-            payload = parse_json_object(
-                value, label="Whole planning adaptation receipt",
-            )
+            payload = GeneratedArtifactGateway().convert_object(
+                value, contract_name="planning_adaptation_whole",
+            ).payload
             receipt = normalize_planning_adaptation_whole_receipt(payload)
             if not isinstance(receipt, dict):
                 return False
@@ -7770,9 +8461,9 @@ class WorkflowService:
                     ).hexdigest():
                         continue
                 else:
-                    payload = parse_json_object(
-                        raw, label="Stored planning hierarchy receipt",
-                    )
+                    payload = GeneratedArtifactGateway().convert_object(
+                        raw, contract_name="planning_adaptation_hierarchy",
+                    ).payload
                 receipt = self._normalize_planning_hierarchy_receipt(
                     payload,
                     source_sha256=source_sha256,
@@ -9957,8 +10648,12 @@ class WorkflowService:
                 "保留当前段已经有效的对话、细节、节奏和可写性，只修正回执指出的最小范围。"
             )
             prompt = (
-                protocol + "\n"
-                f"只返回完整的“### 第 {segment} 段：标题”规划块，不要返回其他段、说明或因果链。"
+                protocol + "\nSHORT_PLAN_EVENT_REALIZATION_REPAIR_V3\n"
+                "Return exactly one JSON object with one field named events. "
+                "events must contain exactly one object for every EXPECTED EVENT ID, "
+                "in the same order, with only event_id and narrative fields. Runtime "
+                "owns the segment heading, event ownership, outline basis, opening, and "
+                "handoff; do not return or rewrite those controls. "
                 + instruction
                 + "不得改变主要执行者、剧情功能、因果依赖、入口/出口、知情、关系、视角、"
                 "依赖性时间顺序、伏笔或结局。允许等价的触发方式、次要参与者、局部地点、"
@@ -10314,6 +11009,17 @@ class WorkflowService:
         segment_count: int, *, generation_context_sha256: str | None = None,
     ) -> tuple[str, dict | None, bool]:
         contracts = self._planning_adaptation_contracts(state, formal_outline_events)
+        # A project-brief seed preserves the legacy "start from premise"
+        # capability, but it is not a detailed formal outline whose facets can
+        # be independently audited.  Its exact ownership has already been
+        # proved by PlanningSemanticV2 and the terminal topology compiler.
+        # Requiring a model-authored adaptation receipt here would invent a
+        # second semantic authority where the previous workflow had none.
+        if contracts and all(
+            str(item.get("source") or "") == "project_brief"
+            for item in contracts
+        ):
+            return plan, None, False
         if not contracts or not all(str(item.get("evidence") or "").strip() for item in contracts):
             return plan, None, False
         outputs = run_path / "outputs"
@@ -10383,6 +11089,10 @@ class WorkflowService:
                 segment_repairs = [*segment_repairs, *completion_repairs]
                 if completed == block or not segment_repairs:
                     continue
+                if "NOVEL_FLYWHEEL_PLANNING_FIELD_V1_START" in completed:
+                    completed = rebind_runtime_repaired_planning_field(
+                        completed, role="event",
+                    )
                 current = self._replace_short_plan_segment(
                     current, segment_count, segment, completed,
                 )
@@ -12790,6 +13500,8 @@ class WorkflowService:
                     "packet owning the last formal event may fill ending. Other global fields "
                     "must use their empty JSON form.\n"
                     f"PACKET CONTRACT:\n{contract.model_dump_json()}\n"
+                    f"OWNS OPENING: {str(required_ids[0] in contract.owned_event_ids).lower()}\n"
+                    f"OWNS ENDING: {str(required_ids[-1] in contract.owned_event_ids).lower()}\n"
                     f"PLAN SHA256: {plan_sha256}\n"
                     "EXPECTED EVENT IDS:\n"
                     + json.dumps(list(contract.owned_event_ids), ensure_ascii=False)
@@ -13626,6 +14338,13 @@ class WorkflowService:
                 ),
                 allow_tools=False,
                 expected_output_characters=max(1800, 850 * len(event_contracts)),
+                compact_input=True,
+                route_capacity_guard=True,
+                bounded_protocol_output=True,
+                story_skeleton_override=self._stage_story_skeleton(
+                    project, constraints, run_path,
+                    owner_event_ids=expected_event_ids, index_only=True,
+                ),
             )
             try:
                 body = self._convert_generated_object(
@@ -15538,7 +16257,8 @@ class WorkflowService:
                 json.loads(str(canon_text))
                 if runtime_capacity_result else
                 self._convert_generated_object(
-                    str(canon_text), run_path, contract_name="maintenance_facts",
+                    str(canon_text), run_path,
+                    contract_name="short_maintenance_facts",
                 )
             )
             if raw_payload.get("version") == MAINTENANCE_REDUCTION_VERSION:
@@ -16323,7 +17043,13 @@ class WorkflowService:
 
         def convert(value: str) -> dict:
             payload = self._convert_generated_object(
-                value, run_path, contract_name="final_review",
+                value, run_path,
+                contract_name=(
+                    "final_review_window" if recovery_kind == "window" else
+                    "final_review_regional" if recovery_kind == "regional" else
+                    "final_review_detail" if recovery_kind == "detail" else
+                    "final_review"
+                ),
             )
             if recovery_kind == "window":
                 payload = validate_final_review_window_receipt(payload)
@@ -17217,15 +17943,39 @@ class WorkflowService:
         )
         try:
             payload = self._convert_generated_object(
-                output, run_path, contract_name="final_review",
+                output, run_path, contract_name="reader_review",
             )
             return normalize_review(payload)
         except (json.JSONDecodeError, ArtifactConversionError):
-            repaired = normalize_review(self._reader_json_object(output))
+            repair_runtime = await execute_contract_runtime(
+                self.gateway,
+                role=model_role or "review",
+                system=constraints,
+                user=prompt,
+                contract_name="reader_review",
+                structured_contract=StructuredArtifactContract(
+                    name="reader_review_receipt",
+                    version=1,
+                    schema={"type": "object"},
+                    runtime_authority={"source": "frozen_reader_review"},
+                ),
+                semantic_normalizer=lambda value: (
+                    value if isinstance(value, dict) else None
+                ),
+                domain_validator=lambda payload: normalize_review(dict(payload)),
+                max_output_tokens=4096,
+                audit_sink=lambda audit: write_conversion_audit(
+                    run_path / "receipts" / "artifact-conversions", audit,
+                ),
+            )
+            repaired = repair_runtime.domain_value
             self.db.add_run_event(
                 run_id, "warning", "reader_review_repaired",
-                "Reader review returned malformed JSON and was repaired locally",
-                stage="review", metadata={"strategy": "conservative_json_repair"},
+                "Reader review protocol was regenerated against the same authority",
+                stage="review", metadata={
+                    "strategy": "shared_same_task_contract_retry",
+                    "attempt_route": repair_runtime.attempt.route,
+                },
             )
             return repaired
 
@@ -19826,7 +20576,7 @@ class WorkflowService:
                 )
                 value = normalize_repair_contract(
                     self._convert_generated_object(
-                        raw, run_path, contract_name="revision_plan",
+                        raw, run_path, contract_name="revision_patch_contract",
                     ), candidate_before, {group_id},
                 )
                 if len(value["groups"]) != 1:
@@ -20223,7 +20973,11 @@ class WorkflowService:
             last_route_failure = None
             try:
                 raw_receipt = self._convert_generated_object(
-                    raw, run_path, contract_name="draft_semantic_receipt",
+                    raw, run_path,
+                    contract_name=(
+                        "draft_atomic_semantic_receipt"
+                        if atomic else "draft_segment_semantic_receipt"
+                    ),
                 )
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
@@ -20742,7 +21496,8 @@ class WorkflowService:
             last_route_failure = None
             try:
                 raw_receipt = self._convert_generated_object(
-                    raw, run_path, contract_name="draft_semantic_receipt",
+                    raw, run_path,
+                    contract_name="draft_whole_semantic_receipt",
                 )
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
@@ -21255,7 +22010,8 @@ class WorkflowService:
                 last_route_failure = None
                 try:
                     window_receipt = self._convert_generated_object(
-                        raw, run_path, contract_name="draft_semantic_receipt",
+                        raw, run_path,
+                        contract_name="draft_whole_window_receipt",
                     )
                 except (json.JSONDecodeError, ValueError) as exc:
                     issues = [{"code": "receipt_schema", "message": str(exc)}]
@@ -21546,7 +22302,8 @@ class WorkflowService:
                 last_route_failure = None
                 try:
                     candidate = self._convert_generated_object(
-                        raw, run_path, contract_name="draft_semantic_receipt",
+                        raw, run_path,
+                        contract_name="draft_whole_reducer_receipt",
                     )
                 except (json.JSONDecodeError, ValueError) as exc:
                     reducer_issues = [{"code": "receipt_schema", "message": str(exc)}]
@@ -21603,8 +22360,16 @@ class WorkflowService:
         )
         return json.dumps(validated, ensure_ascii=False)
 
-    async def _draft_short_in_segments(self, run_id: str, run_path: Path, project: Project,
-                                        constraints: str, plan: str) -> str:
+    async def _draft_short_in_segments(
+        self, run_id: str, run_path: Path, project: Project,
+        constraints: str, plan: str, *,
+        base_constraints_sha256: str | None = None,
+    ) -> str:
+        if (
+            base_constraints_sha256 is not None
+            and re.fullmatch(r"[0-9a-f]{64}", base_constraints_sha256) is None
+        ):
+            raise ValueError("base constraints authority SHA256 is invalid")
         target_words = int(project.metadata["target_words"])
         count = self._short_segment_count(target_words)
         target = math.ceil(target_words / count)
@@ -22009,11 +22774,11 @@ class WorkflowService:
             "execution_manifest_sha256": execution_manifest_hash,
             "plan_sha256": hashlib.sha256(plan.encode("utf-8")).hexdigest(),
             "constraints_sha256": hashlib.sha256(constraints.encode("utf-8")).hexdigest(),
-            "base_constraints_sha256": hashlib.sha256(
-                constraints.split("\n\n# Short Story Causal Chain\n\n", 1)[0].encode(
-                    "utf-8",
-                ),
-            ).hexdigest(),
+            "base_constraints_sha256": (
+                base_constraints_sha256
+                if base_constraints_sha256 is not None
+                else hashlib.sha256(constraints.encode("utf-8")).hexdigest()
+            ),
             "story_state_sha256": story_state_sha256,
             "draft_sha256": hashlib.sha256(draft.encode("utf-8")).hexdigest(),
             "expected_event_ids": expected_event_ids,
@@ -24144,6 +24909,13 @@ class WorkflowService:
                      bounded_protocol_output: bool = False,
                      scoped_creative_output: bool = False,
                      structured_contract: StructuredArtifactContract | None = None,
+                     structured_semantic_normalizer: Callable[
+                         [object], dict[str, Any] | None
+                     ] | None = None,
+                     structured_domain_validator: Callable[
+                         [Mapping[str, Any]], Any
+                     ] | None = None,
+                     retry_structured_domain_failures: bool = False,
                      defer_route_failure_audit: bool = False,
                      protocol_system_contract: str | None = None) -> str:
         node_key = f"{stage}{suffix}"
@@ -24171,12 +24943,6 @@ class WorkflowService:
         if primary_only and prefer_configured_fallback:
             raise ValueError(
                 "a route-isolated model call cannot select primary and fallback together"
-            )
-        if structured_contract is not None and (
-            primary_only or prefer_configured_fallback
-        ):
-            raise ValueError(
-                "structured route selection must be owned by its contract executor"
             )
         if (
             route_capacity_guard
@@ -24695,10 +25461,20 @@ class WorkflowService:
                             "role": gateway_role,
                         },
                     )
+            requested_routes = (
+                ("configured_fallback",) if prefer_configured_fallback
+                else ("primary",) if primary_only
+                else None
+            )
             selected_route = (
-                "configured_fallback" if prefer_configured_fallback
-                else "primary" if primary_only
-                else "auto"
+                requested_routes[0] if requested_routes else "primary"
+            )
+            route_toolbox = (
+                StoryToolbox(project, self.memory)
+                if allow_tools and structured_contract is None and callable(
+                    getattr(self.gateway, "complete_with_tools_route", None)
+                )
+                else None
             )
 
             async def execute_route(
@@ -24707,60 +25483,95 @@ class WorkflowService:
             ):
                 """Execute one Runtime-selected route for every retry topology."""
 
-                if route == "primary":
-                    if not hasattr(self.gateway, "complete_primary"):
-                        raise RuntimeError("primary route interface unavailable")
-                    return await self.gateway.complete_primary(
-                        gateway_role, route_system, route_user,
-                        max_output_tokens=route_budget,
-                    )
-                if route == "configured_fallback":
-                    if not hasattr(self.gateway, "complete_configured_fallback"):
-                        raise RuntimeError(
-                            "configured fallback route interface unavailable"
-                        )
-                    return await self.gateway.complete_configured_fallback(
-                        gateway_role, route_system, route_user,
-                        max_output_tokens=route_budget,
-                    )
-                if route != "auto":
+                if route not in {"primary", "configured_fallback"}:
                     raise RuntimeError(f"unknown model route: {route}")
-                if structured_route_available:
-                    return await self.gateway.complete_structured(
-                        gateway_role,
-                        route_system,
-                        route_user,
-                        structured_contract,
-                        max_output_tokens=route_budget,
-                        fallback_max_output_tokens=fallback_budget,
-                        allow_capability_roster=True,
-                    )
-                if allow_tools and hasattr(self.gateway, "complete_with_tools"):
-                    toolbox = StoryToolbox(project, self.memory)
-                    return await self.gateway.complete_with_tools(
-                        gateway_role, route_system, route_user, toolbox,
-                        fallback_context=lambda: json.dumps(
-                            self.memory.context(project.id, route_user[:500]),
-                            ensure_ascii=False,
-                        ),
-                        run_id=run_id,
-                        max_output_tokens=route_budget,
-                    )
-                if isinstance(self.gateway, ModelGateway):
-                    return await self.gateway.complete(
-                        gateway_role, route_system, route_user,
-                        max_output_tokens=route_budget,
-                        fallback_max_output_tokens=fallback_budget,
-                    )
-                return await self.gateway.complete(
-                    gateway_role, route_system, route_user,
+                return await dispatch_explicit_model_route(
+                    self.gateway,
+                    route,
+                    role=gateway_role,
+                    system=route_system,
+                    user=route_user,
                     max_output_tokens=route_budget,
+                    structured_contract=structured_contract,
+                    allow_implicit_primary=not primary_only,
+                    toolbox=route_toolbox,
+                    fallback_context=lambda: json.dumps(
+                        self.memory.context(project.id, route_user[:500]),
+                        ensure_ascii=False,
+                    ),
+                    run_id=run_id,
                 )
             provider_capacity_split: dict | None = None
             try:
-                result = await execute_route(
-                    selected_route, system, user, output_budget,
-                )
+                if (
+                    structured_contract is not None
+                    and structured_semantic_normalizer is not None
+                ):
+                    async def contract_attempt_executor(
+                        attempt, attempt_role, attempt_system, attempt_user,
+                        _attempt_budget, attempt_contract,
+                    ):
+                        route_budget = (
+                            fallback_budget
+                            if attempt.route == "configured_fallback"
+                            else output_budget
+                        )
+                        return await dispatch_explicit_model_route(
+                            self.gateway, attempt.route,
+                            role=attempt_role, system=attempt_system,
+                            user=attempt_user,
+                            max_output_tokens=route_budget,
+                            structured_contract=attempt_contract,
+                            allow_implicit_primary=not primary_only,
+                        )
+
+                    contract_runtime = await execute_contract_runtime(
+                        self.gateway,
+                        role=gateway_role, system=system, user=user,
+                        contract_name=structured_contract.name,
+                        structured_contract=structured_contract,
+                        semantic_normalizer=structured_semantic_normalizer,
+                        domain_validator=structured_domain_validator,
+                        max_output_tokens=output_budget,
+                        same_route_attempts=2, fallback_attempts=2,
+                        attempt_routes=requested_routes,
+                        retry_domain_failures=retry_structured_domain_failures,
+                        audit_sink=lambda audit: write_conversion_audit(
+                            run_path / "outputs" / "conversion-audits", audit,
+                        ),
+                        attempt_executor=contract_attempt_executor,
+                    )
+                    result = contract_runtime.model_response
+                    selected_route = contract_runtime.attempt.route
+                else:
+                    route_runtime = await execute_model_route_runtime(
+                        self.gateway,
+                        role=gateway_role,
+                        system=system,
+                        user=user,
+                        max_output_tokens=output_budget,
+                        route_max_output_tokens={
+                            "primary": output_budget,
+                            "configured_fallback": fallback_budget,
+                        },
+                        same_route_attempts=(
+                            1 if route_toolbox is not None else 2
+                        ),
+                        fallback_attempts=(
+                            1 if route_toolbox is not None else 2
+                        ),
+                        attempt_routes=requested_routes,
+                        structured_contract=structured_contract,
+                        allow_implicit_primary=not primary_only,
+                        toolbox=route_toolbox,
+                        fallback_context=lambda: json.dumps(
+                            self.memory.context(project.id, user[:500]),
+                            ensure_ascii=False,
+                        ),
+                        run_id=run_id,
+                    )
+                    result = route_runtime.model_response
+                    selected_route = route_runtime.attempt.route
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -24788,38 +25599,11 @@ class WorkflowService:
                 elif not targeted_retry:
                     raise
                 else:
-                    execution_attempt = (
-                        2 if isinstance(exc, ModelRoutesExhaustedError) else 1
-                    )
-                    decision = next_retry_action(
-                        failure_kind="execution", attempt=execution_attempt,
-                        current_limit=output_budget or 1,
-                        provider_limit=effective_ceiling or output_budget or 1,
-                    )
-                    if (decision["action"] == "fallback"
-                            and selected_route == "auto"
-                            and hasattr(self.gateway, "complete_configured_fallback")):
-                        try:
-                            result = await execute_route(
-                                "configured_fallback", system, user,
-                                fallback_budget,
-                            )
-                        except asyncio.CancelledError:
-                            raise
-                        except Exception as fallback_exc:
-                            stop = next_retry_action(
-                                failure_kind="execution", attempt=2,
-                                current_limit=fallback_budget or 1,
-                                provider_limit=(
-                                    fallback_effective_ceiling or fallback_budget or 1
-                                ),
-                            )
-                            assert stop["action"] == "stop"
-                            raise TargetedGroupError(
-                                str(fallback_exc)
-                            ) from fallback_exc
-                    else:
-                        raise TargetedGroupError(str(exc)) from exc
+                    # The shared route runtime has already exhausted the exact
+                    # primary/fallback schedule. Domain-specific targeted
+                    # recovery may classify the unit, but cannot choose a
+                    # hidden model route of its own.
+                    raise TargetedGroupError(str(exc)) from exc
             if provider_capacity_split is not None:
                 return await complete_capacity_split(provider_capacity_split)
             result.receipt.setdefault("requested_max_output_tokens", output_budget)
@@ -24852,8 +25636,13 @@ class WorkflowService:
                     "requested_max_output_tokens", review_retry_budget,
                 )
                 output_limit_expanded_once = True
-                if (not result.text.strip() and selected_route == "auto"
-                        and hasattr(self.gateway, "complete_configured_fallback")):
+                if (
+                    not result.text.strip()
+                    and selected_route == "primary"
+                    and self._protocol_receipt_attempt_plan(
+                        gateway_role, same_route_attempts=1,
+                    )[-1].route == "configured_fallback"
+                ):
                     self.db.add_run_event(
                         run_id, "warning", "review_configured_fallback",
                         "Review retry remained empty; using the review role configured fallback",
@@ -24863,6 +25652,7 @@ class WorkflowService:
                         "configured_fallback", retry_system, user,
                         min(8192, fallback_ceiling or 8192),
                     )
+                    selected_route = "configured_fallback"
                     result.receipt.setdefault(
                         "requested_max_output_tokens", min(8192, fallback_ceiling or 8192),
                     )
@@ -24917,15 +25707,6 @@ class WorkflowService:
                         selected_key = (
                             "fallback_model_id"
                             if selected_route == "configured_fallback"
-                            or (
-                                selected_route == "auto"
-                                and (
-                                    result.receipt.get("fallback_used")
-                                    or result.receipt.get(
-                                        "configured_fallback_direct"
-                                    )
-                                )
-                            )
                             else "primary_model_id"
                         )
                         actual_model = self.db.get_model(
@@ -25192,15 +25973,10 @@ class WorkflowService:
     ) -> tuple[ProtocolReceiptAttempt, ...]:
         """Resolve one bounded route schedule for any immutable receipt."""
 
-        binding = self.db.get_role_binding(role) or {}
-        configured_fallback_available = bool(
-            binding.get("fallback_provider_id")
-            and binding.get("fallback_model_id")
-            and hasattr(self.gateway, "complete_configured_fallback")
-        )
-        return protocol_receipt_attempts(
+        return model_route_attempts(
+            self.gateway,
+            role=role,
             same_route_attempts=same_route_attempts,
-            configured_fallback_available=configured_fallback_available,
             fallback_attempts=2,
         )
 
@@ -25450,6 +26226,17 @@ class WorkflowService:
         return run_id, run_path
 
     @staticmethod
+    def _project_mutation_recovery_pending(
+        project: Project, run_id: str,
+    ) -> bool:
+        try:
+            return load_project_mutation_journal(
+                project_mutation_journal_path(project.path, run_id),
+            ).status in {"artifacts_committed", "committed"}
+        except Exception:
+            return False
+
+    @staticmethod
     def _load_polish_checkpoint(root: Path, index: int, source: str,
                                  retry_signature: str | None = None,
                                  authority_hash: str | None = None) -> str | None:
@@ -25560,6 +26347,36 @@ class WorkflowService:
         if not audit.is_file() or json.loads(audit.read_text(encoding="utf-8")).get("status") != "passed":
             raise RuntimeError(f"Previous volume audit is not passed: volume {previous}")
 
+    def _bind_long_chapter_volume_gate_receipt(
+        self, project: Project, run_id: str, chapter_number: int,
+    ) -> str | None:
+        volume = self._volume_for_chapter(project, chapter_number)
+        if not volume:
+            return None
+        audit = (
+            project.path / "memory" / "audits"
+            / f"volume-{int(volume['number']):02d}.json"
+        )
+        try:
+            report = json.loads(audit.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            return None
+        status = str(report.get("status") or "")
+        if (
+            report.get("run_id") != run_id
+            or int(report.get("chapter_number") or 0) != chapter_number
+            or int(report.get("volume") or 0) != int(volume["number"])
+            or status not in {"passed", "blocked"}
+            or not re.fullmatch(
+                r"[0-9a-f]{64}", str(report.get("audit_input_sha256") or ""),
+            )
+        ):
+            return None
+        record_project_mutation_gate_result(
+            self.projects, run_id, status=status, receipt_path=audit,
+        )
+        return status
+
     async def _audit_volume_boundary(self, run_id: str, run_path: Path, project: Project,
                                      chapter_number: int, constraints: str) -> None:
         volume = self._volume_for_chapter(project, chapter_number)
@@ -25576,6 +26393,10 @@ class WorkflowService:
         review = self._review(text)
         passed, _ = quality_gate(review)
         report = {**review, "volume": int(volume["number"]),
+                  "run_id": run_id, "chapter_number": chapter_number,
+                  "audit_input_sha256": hashlib.sha256(
+                      evidence.encode("utf-8")
+                  ).hexdigest(),
                   "status": "passed" if passed else "blocked"}
         audit = project.path / "memory" / "audits" / f"volume-{int(volume['number']):02d}.json"
         atomic_write(audit, json.dumps(report, ensure_ascii=False, indent=2))
@@ -25615,12 +26436,6 @@ class WorkflowService:
             raise
 
     @staticmethod
-    def _json_object(text: str) -> dict:
-        return GeneratedArtifactGateway().convert_object(
-            text, contract_name="generated_narrative_artifact",
-        ).payload
-
-    @staticmethod
     def _normalized_revision_plan(value: dict, segment_count: int, **kwargs) -> dict:
         def normalized_issue_ids(raw) -> list[str]:
             values = [raw] if isinstance(raw, str) else raw if isinstance(raw, list) else []
@@ -25652,28 +26467,6 @@ class WorkflowService:
                     task.pop("issue_ids", None)
         return plan
 
-    @staticmethod
-    def _reader_json_object(text: str) -> dict:
-        cleaned = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip(), flags=re.IGNORECASE)
-        start, end = cleaned.find("{"), cleaned.rfind("}")
-        if start < 0 or end <= start:
-            raise ValueError("Reader model output does not contain a JSON object")
-        candidate = cleaned[start:end + 1]
-        field_names = (
-            "category|severity|evidence|action|commercial|story|prose|hard_fail|decision|"
-            "issues|dimensions|reader_signals|would_continue|would_pay|abandonment_point|"
-            "payoff_felt"
-        )
-        candidate = re.sub(
-            rf"['’]\s*,\s*['’]({field_names})['’]\s*:",
-            lambda match: f'", "{match.group(1)}":',
-            candidate,
-        )
-        value = json.loads(candidate)
-        if not isinstance(value, dict):
-            raise ValueError("Reader model output must be a JSON object")
-        return value
-
     @classmethod
     def _review(cls, text: str) -> dict:
         payload = GeneratedArtifactGateway().convert_object(
@@ -25683,9 +26476,10 @@ class WorkflowService:
 
     @classmethod
     def _review_for_project(
-        cls, value: str | dict, project: Project, receipt: dict | None = None,
+        cls, value: Mapping[str, object], project: Project,
+        receipt: dict | None = None,
     ) -> dict:
-        payload = cls._json_object(value) if isinstance(value, str) else value
+        payload = dict(value)
         profile_id = profile_for_project(project)
         criteria = payload.get("criteria") if isinstance(payload.get("criteria"), dict) else {}
         if (profile_id == ZHihu_SHORT_V2.id

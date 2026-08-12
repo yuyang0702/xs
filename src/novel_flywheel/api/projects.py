@@ -31,6 +31,21 @@ from novel_flywheel.quality_summary import build_quality_summary, effective_han_
 from novel_flywheel.quality_profiles import profile_for_project
 from novel_flywheel.passage_protection import PassageProtectionService
 from novel_flywheel.outlines import local_outline_manifest, normalize_outline_manifest
+from novel_flywheel.learning_artifacts import (
+    plan_learning_artifact_invalidations,
+    write_learning_artifact_sidecar_targets,
+)
+from novel_flywheel.project_transactions import (
+    ProjectMutationJournalV1,
+    ProjectMutationStoryStateV1,
+    abort_project_mutation_request,
+    canonical_json_sha256,
+    complete_project_mutation,
+    project_mutation_journal_path,
+    recover_project_mutations,
+    stage_project_mutation_targets,
+    write_project_mutation_journal,
+)
 from novel_flywheel.revision import normalize_chinese_prose
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StaleStoryState, StoryStateStore
@@ -565,6 +580,21 @@ def recover_candidate_publications(store: ProjectStore) -> list[str]:
     return recovered
 
 
+def recover_project_file_state_mutations(store: ProjectStore) -> list[str]:
+    """Resume or roll back durable project-file/StoryState Sagas at startup."""
+
+    with WIZARD_MUTATION_LOCK:
+        recovered = []
+        for workflow in (
+            "material-impact-apply", "material-edit", "outline-apply",
+            "materials-audit", "long-setup",
+        ):
+            recovered.extend(
+                recover_project_mutations(store, workflow=workflow),
+            )
+        return recovered
+
+
 @router.get("/projects")
 def list_projects(request: Request) -> list[dict]:
     return [_public(project) for project in get_store(request).list()]
@@ -944,48 +974,170 @@ def get_project_materials(project_id: str, request: Request) -> dict:
 @router.put("/projects/{project_id}/materials/{relative_path:path}")
 def update_project_material(project_id: str, relative_path: str,
                             payload: MaterialEditPayload, request: Request) -> dict:
+    project_store = get_store(request)
     try:
-        project = get_store(request).get(project_id)
+        project = project_store.get(project_id)
         group_id, path = _material_lookup(project, relative_path)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "material_not_found"}) from exc
-    if get_store(request).db.has_active_runs(project_id):
-        raise HTTPException(status_code=409, detail={"code": "project_run_active"})
-    previous = path.read_text(encoding="utf-8")
-    if hashlib.sha256(previous.encode("utf-8")).hexdigest() != payload.expected_hash:
-        raise HTTPException(status_code=409, detail={"code": "material_stale"})
-    content = payload.content.replace("\r\n", "\n").rstrip() + "\n"
-    atomic_write(path, content)
-    store = StoryStateStore(get_store(request).db)
-    current = store.ensure(project.id, project.path)
-    next_data = _synced_material_state(project, group_id, current.data)
-    revision = current.revision
-    if next_data != current.data:
-        candidate = store.create_candidate(
-            project.id, None, current.revision, "material_edit",
-            hashlib.sha256(content.encode("utf-8")).hexdigest(),
-            {"path": relative_path, "group": group_id},
+    run_id = f"med-{uuid.uuid4().hex}"
+    if not project_store.db.create_run_if_idle(
+        run_id, project_id, "material-edit", status="running",
+    ):
+        raise HTTPException(
+            status_code=409, detail={"code": "project_run_active"},
         )
-        try:
-            revision = store.commit(candidate.id, current.revision, next_data).revision
-        except Exception:
-            atomic_write(path, previous)
-            raise
+    snapshot: ProjectSnapshot | None = None
+    journal_path: Path | None = None
+    journal: ProjectMutationJournalV1 | None = None
     try:
-        impact = request.app.state.material_impacts.record(
-            project.id, project.path, relative_path, previous, content,
-            retire_removed_settings=payload.retire_removed_settings,
+        with WIZARD_MUTATION_LOCK:
+            project = project_store.get(project_id)
+            try:
+                group_id, path = _material_lookup(project, relative_path)
+            except LookupError as exc:
+                raise HTTPException(
+                    status_code=404, detail={"code": "material_not_found"},
+                ) from exc
+            previous = path.read_text(encoding="utf-8")
+            previous_hash = hashlib.sha256(previous.encode("utf-8")).hexdigest()
+            if previous_hash != payload.expected_hash:
+                raise HTTPException(
+                    status_code=409, detail={"code": "material_stale"},
+                )
+            content = payload.content.replace("\r\n", "\n").rstrip() + "\n"
+            content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            state_store = StoryStateStore(project_store.db)
+            current = state_store.ensure(project.id, project.path)
+            invalidations = plan_learning_artifact_invalidations(
+                project_store.db, project.id,
+            )
+            impact_record = request.app.state.material_impacts.prepare_record(
+                project.id, relative_path, previous, content,
+                retire_removed_settings=payload.retire_removed_settings,
+            )
+            sidecar_paths = [
+                project.path / "learning" / f"{artifact_type}.json"
+                for artifact_type in sorted(invalidations.sidecars)
+            ]
+            impact_path = (
+                request.app.state.material_impacts.impact_path(
+                    project.path, str(impact_record["id"]),
+                )
+                if impact_record is not None else None
+            )
+            managed_paths = [
+                path, *sidecar_paths,
+                *([impact_path] if impact_path is not None else []),
+            ]
+            snapshot_root = project.path / "snapshots" / run_id
+            snapshot = ProjectSnapshot.create(
+                project.path, snapshot_root, managed_paths,
+            )
+            changed_lines = sorted({
+                line.strip()
+                for line in (previous + "\n" + content).splitlines()
+                if line.strip()
+                and ((line in previous) != (line in content))
+            })
+            source_authority = canonical_json_sha256({
+                "path": relative_path,
+                "group": group_id,
+                "before_sha256": previous_hash,
+                "after_sha256": content_hash,
+                "retire_removed_settings": payload.retire_removed_settings,
+                "changed_lines": changed_lines,
+            })
+            journal_path = project_mutation_journal_path(project.path, run_id)
+            journal = ProjectMutationJournalV1(
+                status="prepared",
+                operation="material-edit",
+                run_id=run_id,
+                project_id=project.id,
+                snapshot_path=snapshot_root.relative_to(
+                    project.path,
+                ).as_posix(),
+                source_authority_sha256=source_authority,
+                expected_story_state_revision=current.revision,
+                managed_paths=tuple(
+                    item.relative_to(project.path).as_posix()
+                    for item in managed_paths
+                ),
+                learning_artifact_invalidations=invalidations.effects,
+            )
+            write_project_mutation_journal(journal_path, journal)
+
+            atomic_write(path, content)
+            write_learning_artifact_sidecar_targets(
+                project.path, invalidations,
+            )
+            if impact_record is not None:
+                request.app.state.material_impacts.save(
+                    project.path, impact_record,
+                )
+            next_data = _synced_material_state(
+                project, group_id, current.data,
+            )
+            story_state_target = None
+            if next_data != current.data:
+                candidate = state_store.create_candidate(
+                    project.id, run_id, current.revision, "material_edit",
+                    content_hash, {"path": relative_path, "group": group_id},
+                )
+                story_state_target = ProjectMutationStoryStateV1(
+                    candidate_id=candidate.id,
+                    expected_revision=current.revision,
+                    target_revision=current.revision + 1,
+                    state_sha256=canonical_json_sha256(next_data),
+                    data=next_data,
+                )
+            artifacts = stage_project_mutation_targets(
+                project.path, snapshot, managed_paths,
+            )
+            journal = ProjectMutationJournalV1.model_validate(
+                journal.model_copy(update={
+                    "status": "artifacts_committed",
+                    "artifacts": artifacts,
+                    "story_state": story_state_target,
+                }).model_dump(mode="python"),
+            )
+            write_project_mutation_journal(journal_path, journal)
+            completed = complete_project_mutation(project_store, run_id)
+            revision = (
+                completed.story_state.target_revision
+                if completed.story_state is not None
+                else completed.expected_story_state_revision
+            )
+            impact = (
+                request.app.state.material_impacts.public(impact_record)
+                if impact_record is not None else None
+            )
+            learning_impact = {
+                "source_path": relative_path,
+                "changes": changed_lines or ["项目资料内容已修改"],
+                "affected": [{
+                    "artifact_type": item.artifact_type,
+                    "version": item.artifact_version,
+                    "severity": "review",
+                } for item in invalidations.effects],
+                "formal_files_changed": False,
+            }
+    except HTTPException:
+        abort_project_mutation_request(
+            project_store, run_id, snapshot, journal_path, journal,
+            error="Material edit was rejected.",
         )
-    except OSError:
-        impact = None
-    changed_lines = sorted({line.strip() for line in (previous + "\n" + content).splitlines()
-                            if line.strip() and ((line in previous) != (line in content))})
-    learning_impact = request.app.state.learning.mark_material_change(
-        project.id, relative_path, changed_lines or ["项目资料内容已修改"],
-    )
+        raise
+    except Exception:
+        abort_project_mutation_request(
+            project_store, run_id, snapshot, journal_path, journal,
+            error="Material edit failed and was rolled back.",
+        )
+        raise
     return {
-        "path": relative_path, "group": group_id,
-        "hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        "path": relative_path,
+        "group": group_id,
+        "hash": content_hash,
         "story_state_revision": revision,
         "material_impact": impact,
         "learning_impact": learning_impact,
@@ -1024,44 +1176,134 @@ def dismiss_material_impact(project_id: str, impact_id: str, request: Request) -
 def apply_material_impact(
     project_id: str, impact_id: str, payload: MaterialImpactApplyPayload, request: Request,
 ) -> dict:
+    project_store = get_store(request)
     try:
-        project = get_store(request).get(project_id)
+        project = project_store.get(project_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
-    if get_store(request).db.has_active_runs(project_id):
-        raise HTTPException(status_code=409, detail={"code": "project_run_active"})
-    try:
-        impact, updates = request.app.state.material_impacts.prepare_apply(
-            project.path, impact_id, payload.proposal_ids,
+    # Keep filesystem-backed Saga paths below legacy Windows MAX_PATH while
+    # the run's workflow column retains the descriptive operation name.
+    run_id = f"mia-{uuid.uuid4().hex}"
+    if not project_store.db.create_run_if_idle(
+        run_id, project_id, "material-impact-apply", status="running",
+    ):
+        raise HTTPException(
+            status_code=409, detail={"code": "project_run_active"},
         )
-    except LookupError as exc:
-        raise HTTPException(status_code=404, detail={"code": str(exc)}) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail={"code": str(exc)}) from exc
-    snapshot = ProjectSnapshot.create(
-        project.path, project.path / "snapshots" / f"material-impact-{impact_id}-{uuid.uuid4().hex[:8]}",
-        list(updates),
-    )
-    store = StoryStateStore(get_store(request).db)
-    current = store.ensure(project.id, project.path)
+    snapshot: ProjectSnapshot | None = None
+    journal_path: Path | None = None
+    journal: ProjectMutationJournalV1 | None = None
     try:
-        for path, content in updates.items():
-            atomic_write(path, content)
-        next_data = current.data
-        for path in updates:
-            group_id, _ = _material_lookup(project, path.relative_to(project.path).as_posix())
-            next_data = _synced_material_state(project, group_id, next_data)
-        revision = current.revision
-        if next_data != current.data:
-            candidate = store.create_candidate(
-                project.id, None, current.revision, "material_impact",
-                hashlib.sha256(json.dumps(impact, ensure_ascii=False).encode()).hexdigest(),
-                {"impact_id": impact_id, "proposal_ids": payload.proposal_ids},
+        with WIZARD_MUTATION_LOCK:
+            project = project_store.get(project_id)
+            try:
+                impact, updates = request.app.state.material_impacts.prepare_apply(
+                    project.path, impact_id, payload.proposal_ids,
+                )
+            except LookupError as exc:
+                raise HTTPException(
+                    status_code=404, detail={"code": str(exc)},
+                ) from exc
+            except ValueError as exc:
+                raise HTTPException(
+                    status_code=409, detail={"code": str(exc)},
+                ) from exc
+            impact_path = request.app.state.material_impacts.impact_path(
+                project.path, impact_id,
             )
-            revision = store.commit(candidate.id, current.revision, next_data).revision
-        resolved = request.app.state.material_impacts.resolve(project.path, impact_id, "applied")
+            managed_paths = sorted(
+                [*updates, impact_path], key=lambda path: path.as_posix(),
+            )
+            snapshot_root = project.path / "snapshots" / run_id
+            snapshot = ProjectSnapshot.create(
+                project.path, snapshot_root, managed_paths,
+            )
+            state_store = StoryStateStore(project_store.db)
+            current = state_store.ensure(project.id, project.path)
+            journal_path = project_mutation_journal_path(project.path, run_id)
+            source_authority = canonical_json_sha256({
+                "impact": impact,
+                "proposal_ids": sorted(payload.proposal_ids),
+            })
+            journal = ProjectMutationJournalV1(
+                status="prepared",
+                operation="material-impact-apply",
+                run_id=run_id,
+                project_id=project.id,
+                snapshot_path=snapshot_root.relative_to(
+                    project.path,
+                ).as_posix(),
+                source_authority_sha256=source_authority,
+                expected_story_state_revision=current.revision,
+                managed_paths=tuple(
+                    path.resolve().relative_to(
+                        project.path.resolve(),
+                    ).as_posix()
+                    for path in managed_paths
+                ),
+            )
+            write_project_mutation_journal(journal_path, journal)
+
+            for path, content in updates.items():
+                atomic_write(path, content)
+            next_data = current.data
+            for path in updates:
+                group_id, _ = _material_lookup(
+                    project, path.relative_to(project.path).as_posix(),
+                )
+                next_data = _synced_material_state(project, group_id, next_data)
+            resolved = request.app.state.material_impacts.resolve(
+                project.path, impact_id, "applied",
+            )
+            story_state_target = None
+            if next_data != current.data:
+                candidate = state_store.create_candidate(
+                    project.id, run_id, current.revision, "material_impact",
+                    source_authority,
+                    {
+                        "impact_id": impact_id,
+                        "proposal_ids": payload.proposal_ids,
+                    },
+                )
+                story_state_target = ProjectMutationStoryStateV1(
+                    candidate_id=candidate.id,
+                    expected_revision=current.revision,
+                    target_revision=current.revision + 1,
+                    state_sha256=canonical_json_sha256(next_data),
+                    data=next_data,
+                )
+            artifacts = stage_project_mutation_targets(
+                project.path, snapshot, managed_paths,
+            )
+            journal = journal.model_copy(update={
+                "status": "artifacts_committed",
+                "artifacts": artifacts,
+                "story_state": story_state_target,
+            })
+            journal = ProjectMutationJournalV1.model_validate(
+                journal.model_dump(mode="python"),
+            )
+            write_project_mutation_journal(journal_path, journal)
+            journal = complete_project_mutation(project_store, run_id)
+            revision = (
+                journal.story_state.target_revision
+                if journal.story_state is not None
+                else journal.expected_story_state_revision
+            )
+            resolved = request.app.state.material_impacts.public(
+                request.app.state.material_impacts.get(project.path, impact_id),
+            )
+    except HTTPException:
+        abort_project_mutation_request(
+            project_store, run_id, snapshot, journal_path, journal,
+            error="Material impact application was rejected.",
+        )
+        raise
     except Exception:
-        snapshot.restore()
+        abort_project_mutation_request(
+            project_store, run_id, snapshot, journal_path, journal,
+            error="Material impact application failed and was rolled back.",
+        )
         raise
     return {"material_impact": resolved, "story_state_revision": revision}
 
@@ -1380,9 +1622,16 @@ def get_project_rollout_flags(project_id: str, request: Request) -> dict:
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
     return {
-        "planning_ir_first": get_store(request).db.feature_flag(
-            "planning_ir_first", project_id=project_id, default=False,
-        ),
+        "planning_ir_first": {
+            "key": "planning_ir_first",
+            "enabled": True,
+            "scope_type": "system",
+            "scope_id": None,
+            "config": {
+                "reason": "rollout_complete",
+                "immutable": True,
+            },
+        },
     }
 
 
@@ -1394,18 +1643,12 @@ def set_project_planning_rollout(
         get_store(request).get(project_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "project_not_found"}) from exc
-    updated = get_store(request).db.set_project_feature_flag_if_idle(
-        project_id, "planning_ir_first", payload.enabled,
-        config={"reason": payload.reason.strip(), "managed_by": "project_api"},
-    )
-    if not updated:
+    if not payload.enabled:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"code": "project_run_active"},
+            detail={"code": "planning_ir_rollout_complete"},
         )
-    return get_store(request).db.feature_flag(
-        "planning_ir_first", project_id=project_id,
-    )
+    return get_project_rollout_flags(project_id, request)["planning_ir_first"]
 
 
 @router.get("/projects/{project_id}/narrative-contract")

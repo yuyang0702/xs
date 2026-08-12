@@ -142,22 +142,6 @@ async def test_interview_rejects_invalid_model_output(tmp_path) -> None:
         await service.turn("wizard", "继续")
 
 
-def test_interview_extracts_json_surrounded_by_model_commentary() -> None:
-    output = WizardInterviewService._parse_output(
-        '下面是整理结果：\n{"message":"继续说说主角。","suggestions":[]}\n以上。'
-    )
-
-    assert output.message == "继续说说主角。"
-
-
-def test_interview_rejects_multiple_valid_json_objects() -> None:
-    with pytest.raises(ValueError, match="one valid JSON object"):
-        WizardInterviewService._parse_output(
-            '示例：{"message":"示例问题","suggestions":[]}\n'
-            '最终：{"message":"真实问题","suggestions":[]}'
-        )
-
-
 @pytest.mark.asyncio
 async def test_interview_repairs_non_json_model_response_once(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -193,18 +177,17 @@ async def test_interview_allows_reasoning_model_enough_output_budget(tmp_path) -
 
 
 @pytest.mark.asyncio
-async def test_interview_retry_does_not_duplicate_orphaned_user_message(tmp_path) -> None:
+async def test_interview_transport_recovery_does_not_duplicate_user_message(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     db.save_wizard("wizard", "draft", "long", SCHEMA, {})
     gateway = DisconnectOnceGateway('{"message":"Continue.","suggestions":[]}')
     service = WizardInterviewService(db, gateway)
 
-    with pytest.raises(ConnectionError):
-        await service.turn("wizard", "A long outline")
     result = await service.turn("wizard", "A long outline")
 
     assert result["content"] == "Continue."
+    assert len(gateway.calls) == 2
     assert [item["role"] for item in service.history("wizard")] == ["user", "assistant"]
 
 

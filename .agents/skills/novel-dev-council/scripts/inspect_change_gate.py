@@ -413,6 +413,87 @@ def _load_split_review_report(
     }
 
 
+def _load_single_review_report(
+    path: Path, repository: Path, expected_core_paths: list[str],
+) -> dict[str, object]:
+    """Validate a user-authorized clean-room review without faking independence."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or payload.get("version") != 1:
+        raise RuntimeError("single-review report must be a version 1 JSON object")
+    if payload.get("mode") != "single_agent_clean_room":
+        raise RuntimeError("single-review report mode must be single_agent_clean_room")
+    if payload.get("independence_claimed") is not False:
+        raise RuntimeError("single-review report must not claim independent review")
+    authorization = payload.get("user_authorization")
+    if not isinstance(authorization, str) or not authorization.strip():
+        raise RuntimeError("single-review report requires explicit user_authorization")
+
+    expected = sorted(set(expected_core_paths))
+    if len(expected) <= 2:
+        raise RuntimeError("single-review report is only valid for more than two core paths")
+    expected_sha256 = _core_review_sha256(repository, expected)
+    if payload.get("core_tree_sha256") != expected_sha256:
+        raise RuntimeError("single-review report does not match the current core file snapshot")
+
+    review_id = payload.get("review_id")
+    reviewer = payload.get("reviewer")
+    evidence = payload.get("evidence")
+    if not isinstance(review_id, str) or not review_id.strip():
+        raise RuntimeError("single-review report requires review_id")
+    if not isinstance(reviewer, str) or not reviewer.strip():
+        raise RuntimeError("single-review report requires reviewer")
+    if payload.get("status") != "passed":
+        raise RuntimeError("single-review report status must be passed")
+    if not isinstance(evidence, str) or not evidence.strip():
+        raise RuntimeError("single-review report requires evidence")
+
+    paths = payload.get("core_paths")
+    if not isinstance(paths, list) or any(
+        not isinstance(value, str) or not value.strip() for value in paths
+    ):
+        raise RuntimeError("single-review report requires non-empty core_paths")
+    normalized_paths = sorted({
+        str(value).strip().replace("\\", "/") for value in paths
+    })
+    if normalized_paths != expected:
+        raise RuntimeError("single-review report must cover every core path exactly once")
+
+    tests = payload.get("test_paths")
+    if not isinstance(tests, list) or not tests:
+        raise RuntimeError("single-review report requires non-empty test_paths")
+    normalized_tests = [
+        _repository_test_path(repository, value, field="single-review test_paths")
+        for value in tests
+    ]
+    context_sources = payload.get("context_sources")
+    required_sources = {
+        "raw_user_request", "task_baseline", "final_diff",
+        "raw_test_output", "forward_risk_report",
+    }
+    if not isinstance(context_sources, list) or {
+        str(value).strip() for value in context_sources
+        if isinstance(value, str)
+    } != required_sources:
+        raise RuntimeError(
+            "single-review report requires the complete clean-room context_sources set"
+        )
+    return {
+        "version": 1,
+        "mode": "single_agent_clean_room",
+        "independence_claimed": False,
+        "user_authorization": authorization.strip(),
+        "core_tree_sha256": expected_sha256,
+        "review_id": review_id.strip(),
+        "reviewer": reviewer.strip(),
+        "status": "passed",
+        "core_paths": normalized_paths,
+        "test_paths": sorted(set(normalized_tests)),
+        "context_sources": sorted(required_sources),
+        "evidence": evidence.strip(),
+    }
+
+
 def _non_empty_strings(payload: dict[str, object], field: str) -> list[str]:
     values = payload.get(field)
     if not isinstance(values, list) or not values:
@@ -692,6 +773,15 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--single-review-report",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "Versioned current-tree-bound clean-room review used only when the user "
+            "explicitly requested single-agent review; it may not claim independence."
+        ),
+    )
+    parser.add_argument(
         "--related-test",
         action="append",
         default=[],
@@ -705,6 +795,10 @@ def main() -> int:
 
     if args.save_baseline and args.baseline:
         parser.error("--save-baseline and --baseline are mutually exclusive")
+    if args.split_review_report and args.single_review_report:
+        parser.error(
+            "--split-review-report and --single-review-report are mutually exclusive"
+        )
 
     repository = Path(__file__).resolve().parents[4]
     if args.save_baseline:
@@ -745,13 +839,21 @@ def main() -> int:
             )
             if args.split_review_report else None
         )
+        single_review_report = (
+            _load_single_review_report(
+                args.single_review_report.resolve(),
+                repository,
+                list(report["core_paths"]),
+            )
+            if args.single_review_report else None
+        )
     except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps({"ok": False, "blockers": [str(exc)]}, ensure_ascii=False))
         return 2
 
     warnings = list(report["warnings"])
     blockers = list(report["blockers"])
-    if split_review_report is not None:
+    if split_review_report is not None or single_review_report is not None:
         warnings = [warning for warning in warnings if warning != SPLIT_REVIEW_WARNING]
     if args.strict and not baseline_used and (
         report["source_paths"] or report["user_visible_paths"]
@@ -780,6 +882,7 @@ def main() -> int:
         "baseline_used": baseline_used,
         "forward_risk_report": forward_risk_report,
         "split_review_report": split_review_report,
+        "single_review_report": single_review_report,
         **report,
         "warnings": warnings,
         "blockers": blockers,

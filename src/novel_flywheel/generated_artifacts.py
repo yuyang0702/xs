@@ -20,6 +20,27 @@ from novel_flywheel.storage import atomic_write
 
 ParserStrategy = Literal["json", "baml_sap"]
 ArtifactPhase = Literal["planning", "writing", "quality", "runtime"]
+RecoveryStep = Literal[
+    "exact_json",
+    "local_syntax_repair",
+    "baml_sap",
+    "semantic_protocol_retry",
+    "model_fallback",
+    "minimal_regeneration",
+    "semantic_split",
+    "checkpoint_resume",
+]
+
+EXECUTABLE_RECOVERY_STEP_OWNERS: Mapping[str, str] = {
+    "exact_json": "GeneratedArtifactGateway",
+    "local_syntax_repair": "GeneratedArtifactGateway",
+    "baml_sap": "GeneratedArtifactGateway",
+    "semantic_protocol_retry": "contract_runtime.execute_contract_runtime",
+    "model_fallback": "contract_runtime.dispatch_explicit_model_route",
+    "minimal_regeneration": "contract_runtime.domain_validator",
+    "semantic_split": "semantic_packets.semantic_bisect",
+    "checkpoint_resume": "Database.workflow_node_checkpoints",
+}
 
 
 class ArtifactContractRegistration(BaseModel):
@@ -36,7 +57,7 @@ class ArtifactContractRegistration(BaseModel):
     machine_control_fields: Literal["closed"] = "closed"
     narrative_invariants: Literal["runtime_authoritative"] = "runtime_authoritative"
     legacy_labels: tuple[str, ...] = ()
-    recovery_ladder: tuple[str, ...] = (
+    recovery_ladder: tuple[RecoveryStep, ...] = (
         "exact_json",
         "local_syntax_repair",
         "semantic_protocol_retry",
@@ -126,8 +147,34 @@ _REGISTRATIONS = (
         legacy_labels=("structured narrative payload",),
     ),
     ArtifactContractRegistration(
-        name="draft_semantic_receipt", phase="writing",
-        semantic_authority="atomic semantic receipt verifier",
+        name="draft_atomic_semantic_receipt", phase="writing",
+        semantic_authority=(
+            "atomic beat semantic receipt verifier with task and beat ownership"
+        ),
+    ),
+    ArtifactContractRegistration(
+        name="draft_segment_semantic_receipt", phase="writing",
+        semantic_authority=(
+            "segment event semantic receipt verifier with task ownership"
+        ),
+    ),
+    ArtifactContractRegistration(
+        name="draft_whole_semantic_receipt", phase="writing",
+        semantic_authority=(
+            "whole-story semantic receipt verifier over ordered segment evidence"
+        ),
+    ),
+    ArtifactContractRegistration(
+        name="draft_whole_window_receipt", phase="writing",
+        semantic_authority=(
+            "capacity-window semantic receipt verifier with obligation deltas"
+        ),
+    ),
+    ArtifactContractRegistration(
+        name="draft_whole_reducer_receipt", phase="writing",
+        semantic_authority=(
+            "global whole-story reducer over validated semantic windows"
+        ),
     ),
     ArtifactContractRegistration(
         name="polish_assessment", phase="quality",
@@ -135,19 +182,55 @@ _REGISTRATIONS = (
     ),
     ArtifactContractRegistration(
         name="revision_plan", phase="quality",
-        semantic_authority="normalize_revision_plan",
+        semantic_authority="normalize_revision_plan for structural scene tasks",
+    ),
+    ArtifactContractRegistration(
+        name="revision_patch_contract", phase="quality",
+        semantic_authority=(
+            "normalize_repair_contract for one Runtime-authorized semantic issue group"
+        ),
     ),
     ArtifactContractRegistration(
         name="final_review", phase="quality",
-        semantic_authority="review ledger and final review gate",
+        semantic_authority="typed final-review verdict and authoritative issue ledger",
     ),
     ArtifactContractRegistration(
-        name="maintenance_facts", phase="runtime",
+        name="final_review_window", phase="quality",
+        semantic_authority="typed manuscript-window evidence and descriptive issues",
+    ),
+    ArtifactContractRegistration(
+        name="final_review_regional", phase="quality",
+        semantic_authority="typed regional issue reduction semantic body",
+    ),
+    ArtifactContractRegistration(
+        name="final_review_detail", phase="quality",
+        semantic_authority="typed detailed ending, causality, and promise evidence",
+    ),
+    ArtifactContractRegistration(
+        name="reader_review", phase="quality",
+        semantic_authority="target-reader quality verdict plus reader signals",
+    ),
+    ArtifactContractRegistration(
+        name="short_maintenance_facts", phase="runtime",
         semantic_authority=(
             "Runtime incremental StoryState adapter with stable fact keys, "
             "typed state transitions, and audited singleton normalization"
         ),
-        legacy_labels=("maintenance facts",),
+        legacy_labels=("short-story maintenance facts",),
+    ),
+    ArtifactContractRegistration(
+        name="long_setup_maintenance", phase="runtime",
+        semantic_authority=(
+            "long-form setup facts, volume plan, and initial memory projection"
+        ),
+        legacy_labels=("book setup maintenance facts",),
+    ),
+    ArtifactContractRegistration(
+        name="long_chapter_maintenance", phase="runtime",
+        semantic_authority=(
+            "long-form chapter fact and character-state delta projection"
+        ),
+        legacy_labels=("chapter maintenance facts",),
     ),
     ArtifactContractRegistration(
         name="maintenance_window_receipt", phase="runtime",
@@ -159,13 +242,36 @@ _REGISTRATIONS = (
     ),
     ArtifactContractRegistration(
         name="material_audit", phase="quality",
-        semantic_authority="material impact and evidence validator",
-        legacy_labels=("material impact", "materials audit"),
+        semantic_authority=(
+            "MaterialAuditReceiptV1 over Runtime-owned complete manuscript-window "
+            "and project-reference packet spans, with descriptive issue semantics "
+            "preserved and deterministic exact-object reduction"
+        ),
+        legacy_labels=("materials audit",),
     ),
     ArtifactContractRegistration(
-        name="outline_analysis", phase="planning",
-        semantic_authority="outline change and source evidence validator",
-        legacy_labels=("资料清单", "大纲变化判断"),
+        name="material_impact_analysis", phase="runtime",
+        semantic_authority=(
+            "MaterialImpactOutput plus Runtime-owned project-document paths, "
+            "exact old-text containment, and target content hashes"
+        ),
+        legacy_labels=("character material impact",),
+    ),
+    ArtifactContractRegistration(
+        name="outline_material_manifest", phase="planning",
+        semantic_authority=(
+            "complete outline-material manifest plus Runtime exact-substring "
+            "source-evidence validation"
+        ),
+        legacy_labels=("资料清单",),
+    ),
+    ArtifactContractRegistration(
+        name="outline_semantic_review", phase="planning",
+        semantic_authority=(
+            "complete Runtime-owned outline change-ID decisions plus locked-fact "
+            "and allowed-ID validation"
+        ),
+        legacy_labels=("大纲变化判断",),
     ),
     ArtifactContractRegistration(
         name="interview_planning", phase="planning",
@@ -181,6 +287,14 @@ _REGISTRATIONS = (
         name="learning_artifact", phase="runtime",
         semantic_authority="learning artifact domain validator",
         legacy_labels=("模型返回内容",),
+    ),
+    ArtifactContractRegistration(
+        name="reference_analysis_window", version=2, phase="runtime",
+        semantic_authority=(
+            "exact Runtime-owned source-window offsets plus evidenced reference "
+            "fact and interpretation lists validated by LearningSystem._window_result"
+        ),
+        legacy_labels=("reference window model claim",),
     ),
     ArtifactContractRegistration(
         name="capability_probe", phase="runtime",
@@ -200,6 +314,48 @@ _REGISTRATIONS = (
 ARTIFACT_CONTRACT_REGISTRY: Mapping[str, ArtifactContractRegistration] = {
     item.name: item for item in _REGISTRATIONS
 }
+
+
+def validate_executable_contract_registry() -> None:
+    """Fail when a declared recovery step has no single implementation owner."""
+
+    missing = {
+        step
+        for registration in ARTIFACT_CONTRACT_REGISTRY.values()
+        for step in registration.recovery_ladder
+        if step not in EXECUTABLE_RECOVERY_STEP_OWNERS
+    }
+    if missing:
+        raise RuntimeError(
+            "artifact recovery steps are not executable: "
+            + ", ".join(sorted(missing))
+        )
+    invalid: list[str] = []
+    for registration in ARTIFACT_CONTRACT_REGISTRY.values():
+        ladder = registration.recovery_ladder
+        if not ladder or ladder[0] != "exact_json":
+            invalid.append(f"{registration.name}:exact_json_must_be_first")
+        if len(ladder) != len(set(ladder)):
+            invalid.append(f"{registration.name}:duplicate_recovery_step")
+        if registration.parser_strategy == "baml_sap" and "baml_sap" not in ladder:
+            invalid.append(f"{registration.name}:baml_sap_step_missing")
+        ordered = [
+            step for step in (
+                "semantic_protocol_retry", "model_fallback",
+                "minimal_regeneration", "semantic_split", "checkpoint_resume",
+            ) if step in ladder
+        ]
+        indices = [ladder.index(step) for step in ordered]
+        if indices != sorted(indices):
+            invalid.append(f"{registration.name}:recovery_order_invalid")
+    if invalid:
+        raise RuntimeError(
+            "artifact recovery ladders are invalid: "
+            + ", ".join(sorted(invalid))
+        )
+
+
+validate_executable_contract_registry()
 
 
 class ArtifactConversionAudit(BaseModel):
@@ -246,6 +402,7 @@ class ContractAdapterRegistration(BaseModel):
     proof_obligation: str = Field(min_length=1)
     provider_agnostic: Literal[True] = True
     narrative_agnostic: Literal[True] = True
+    automatic_conversion: bool = False
 
 
 class ContractAdapterAudit(BaseModel):
@@ -362,6 +519,46 @@ PLANNING_SEMANTIC_ENVELOPE_ADAPTER = ContractAdapterRegistration(
         "no second candidate or machine-control field exists. Wrapper scalars "
         "are descriptive only and Runtime authority is injected afterwards."
     ),
+    automatic_conversion=True,
+)
+
+
+PLANNING_SEMANTIC_ROOT_PROJECTION_ADAPTER = ContractAdapterRegistration(
+    name="planning_semantic_root_projection",
+    version=1,
+    contract_name="planning_semantic_v2",
+    source_shapes=(
+        "complete canonical semantic core plus descriptive packet-root echoes",
+    ),
+    canonical_shape="PlanningSemanticDraftV2 object",
+    proof_obligation=(
+        "After removing only non-control packet-root fields, the complete canonical "
+        "semantic core validates exactly once. No removed subtree may contain a second "
+        "complete semantic candidate and no machine-control field may occur anywhere."
+    ),
+    automatic_conversion=True,
+)
+
+
+REFERENCE_DISTILLATION_LEDGER_ADAPTER = ContractAdapterRegistration(
+    name="reference_distillation_v2_ledger_alignment",
+    version=1,
+    contract_name="reference_distillation_region",
+    source_shapes=(
+        "V2 promoted disposition without descriptive reason",
+        "V2 merged disposition carrying related child identities",
+        "V2 attribution_type alias and semantic-root JSON pointer",
+    ),
+    canonical_shape=(
+        "DistillationReceiptV2 exact dispositions and typed child attribution graph"
+    ),
+    proof_obligation=(
+        "Every transformed child identity is unique and unchanged; merged ownership "
+        "declares a non-empty unique related-child set and cannot conflict with a direct "
+        "claim. Only the redundant semantic JSON-pointer root is removed. Runtime later "
+        "proves exact child coverage, graph reachability, and referenced semantic values."
+    ),
+    automatic_conversion=True,
 )
 
 
@@ -398,11 +595,27 @@ CONTRACT_ADAPTER_REGISTRY: Mapping[str, tuple[ContractAdapterRegistration, ...]]
     ),
     "planning_semantic_v2": (
         PLANNING_SEMANTIC_ENVELOPE_ADAPTER,
+        PLANNING_SEMANTIC_ROOT_PROJECTION_ADAPTER,
     ),
     "execution_manifest": (
         EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER,
     ),
+    "reference_distillation_region": (
+        REFERENCE_DISTILLATION_LEDGER_ADAPTER,
+    ),
 }
+
+
+def _try_semantic_normalizer(
+    semantic_normalizer: SemanticNormalizer, value: object,
+) -> dict[str, Any] | None:
+    """Treat domain validation errors as a representation miss, not a crash."""
+
+    try:
+        normalized = semantic_normalizer(value)
+    except (TypeError, ValueError):
+        return None
+    return normalized if isinstance(normalized, dict) else None
 
 
 def _unique_semantic_envelope(
@@ -410,7 +623,7 @@ def _unique_semantic_envelope(
 ) -> tuple[dict[str, Any], tuple[str, ...], int] | None:
     """Prove a single complete semantic object inside descriptive wrappers."""
 
-    if isinstance(semantic_normalizer(payload), dict):
+    if _try_semantic_normalizer(semantic_normalizer, payload) is not None:
         return None
     unsafe = _unsafe_machine_control_keys(payload)
     if unsafe:
@@ -422,8 +635,8 @@ def _unique_semantic_envelope(
     for path, child in _walk(payload):
         if path == "$" or not isinstance(child, dict):
             continue
-        normalized = semantic_normalizer(child)
-        if isinstance(normalized, dict):
+        normalized = _try_semantic_normalizer(semantic_normalizer, child)
+        if normalized is not None:
             candidates.append((path, normalized))
     if len(candidates) > 1:
         raise ValueError("semantic envelope contains multiple complete candidates")
@@ -431,6 +644,210 @@ def _unique_semantic_envelope(
         return None
     path, canonical = candidates[0]
     return canonical, ("planning_semantic_unique_envelope", f"source:{path}"), 1
+
+
+def _adapt_planning_semantic_root_projection(
+    payload: dict[str, Any], *, semantic_normalizer: SemanticNormalizer | None,
+) -> tuple[dict[str, Any], ContractAdapterAudit] | None:
+    """Project a complete semantic core away from packet-level descriptions."""
+
+    if semantic_normalizer is None:
+        return None
+    if _try_semantic_normalizer(semantic_normalizer, payload) is not None:
+        return None
+    canonical_keys = ("version", "initial_state", "segments")
+    if any(key not in payload for key in canonical_keys):
+        return None
+    extra_keys = [key for key in payload if key not in canonical_keys]
+    if not extra_keys:
+        return None
+    unsafe = _unsafe_machine_control_keys(payload)
+    if unsafe:
+        raise ValueError(
+            "planning semantic root projection contains unknown machine controls: "
+            + ", ".join(sorted(set(unsafe)))
+        )
+    canonical_input = {key: payload[key] for key in canonical_keys}
+    canonical = _try_semantic_normalizer(semantic_normalizer, canonical_input)
+    if canonical is None:
+        return None
+    nested_candidates: list[str] = []
+    for key in extra_keys:
+        for path, child in _walk(payload[key], f"$.{key}"):
+            if not isinstance(child, dict):
+                continue
+            if _try_semantic_normalizer(semantic_normalizer, child) is not None:
+                nested_candidates.append(path)
+    if nested_candidates:
+        raise ValueError(
+            "planning semantic root projection contains a second complete candidate"
+        )
+    descriptor = PLANNING_SEMANTIC_ROOT_PROJECTION_ADAPTER
+    return canonical, ContractAdapterAudit(
+        adapter_name=descriptor.name,
+        adapter_version=descriptor.version,
+        contract_name=descriptor.contract_name,
+        source_shape=descriptor.source_shapes[0],
+        canonical_shape=descriptor.canonical_shape,
+        transformations=(descriptor.name,),
+        input_sha256=canonical_sha256(payload),
+        output_sha256=canonical_sha256(canonical),
+        proof_sha256=canonical_sha256({
+            "canonical_keys": canonical_keys,
+            "quarantined_root_keys": sorted(extra_keys),
+            "candidate_count": 1,
+        }),
+    )
+
+
+def _adapt_reference_distillation_v2_ledger(
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], ContractAdapterAudit] | None:
+    """Align one provably equivalent V2 disposition/attribution ledger."""
+
+    dispositions_value = payload.get("child_dispositions")
+    attributions_value = payload.get("child_attributions", [])
+    if not isinstance(dispositions_value, list) or not isinstance(
+        attributions_value, list,
+    ):
+        return None
+    alternate = any(
+        isinstance(item, dict)
+        and (
+            item.get("disposition") == "merged"
+            or "related_child_ids" in item
+            or (
+                item.get("disposition") == "promoted"
+                and not isinstance(item.get("reason"), str)
+            )
+        )
+        for item in dispositions_value
+    ) or any(
+        isinstance(item, dict)
+        and (
+            "attribution_type" in item
+            or str(item.get("semantic_path") or "").startswith("/semantic/")
+        )
+        for item in attributions_value
+    )
+    if not alternate:
+        return None
+
+    canonical = dict(payload)
+    canonical_dispositions: list[dict[str, Any]] = []
+    canonical_attributions: list[dict[str, Any]] = []
+    child_ids: set[str] = set()
+    attribution_by_child: dict[str, dict[str, Any]] = {}
+    transformations: set[str] = set()
+
+    for raw in attributions_value:
+        if not isinstance(raw, dict):
+            raise ValueError("distillation attribution must be an object")
+        item = dict(raw)
+        child_id = item.get("child_id")
+        if not isinstance(child_id, str) or not child_id.strip():
+            raise ValueError("distillation attribution has no child identity")
+        child_id = child_id.strip()
+        relation = item.get("relation")
+        alias = item.pop("attribution_type", None)
+        if alias is not None:
+            if relation is not None and relation != alias:
+                raise ValueError("distillation attribution aliases conflict")
+            relation = alias
+            item["relation"] = relation
+            transformations.add("attribution_type_renamed")
+        path = item.get("semantic_path")
+        if isinstance(path, str) and path.startswith("/semantic/"):
+            item["semantic_path"] = path[len("/semantic"):]
+            transformations.add("semantic_pointer_root_removed")
+        if child_id in attribution_by_child:
+            raise ValueError("distillation attribution repeats a child identity")
+        item["child_id"] = child_id
+        attribution_by_child[child_id] = item
+        canonical_attributions.append(item)
+
+    for raw in dispositions_value:
+        if not isinstance(raw, dict):
+            raise ValueError("distillation disposition must be an object")
+        item = dict(raw)
+        child_id = item.get("child_id")
+        if not isinstance(child_id, str) or not child_id.strip():
+            raise ValueError("distillation disposition has no child identity")
+        child_id = child_id.strip()
+        if child_id in child_ids:
+            raise ValueError("distillation disposition repeats a child identity")
+        child_ids.add(child_id)
+        disposition = item.get("disposition")
+        related = item.pop("related_child_ids", None)
+        if disposition == "merged":
+            if not (
+                isinstance(related, list)
+                and related
+                and all(isinstance(value, str) and value.strip() for value in related)
+            ):
+                raise ValueError("merged disposition lacks related child identities")
+            related_ids = [value.strip() for value in related]
+            if len(related_ids) != len(set(related_ids)) or child_id in related_ids:
+                raise ValueError("merged disposition has ambiguous child ownership")
+            existing = attribution_by_child.get(child_id)
+            if existing is not None:
+                if not (
+                    existing.get("relation") == "merged"
+                    and existing.get("related_child_ids") == related_ids
+                    and existing.get("semantic_path") is None
+                ):
+                    raise ValueError("merged disposition conflicts with child attribution")
+            else:
+                merged_attribution = {
+                    "child_id": child_id,
+                    "relation": "merged",
+                    "semantic_path": None,
+                    "related_child_ids": related_ids,
+                }
+                attribution_by_child[child_id] = merged_attribution
+                canonical_attributions.append(merged_attribution)
+            item["disposition"] = "promoted"
+            item["reason"] = "Runtime proved the declared merged-child attribution."
+            transformations.add("merged_disposition_projected")
+        elif disposition == "promoted":
+            if related is not None:
+                raise ValueError("promoted disposition carries ambiguous related children")
+            if not isinstance(item.get("reason"), str):
+                item["reason"] = "Runtime proved the declared promoted-child attribution."
+                transformations.add("promoted_reason_derived_from_structure")
+        elif disposition == "no_transferable_claim":
+            if related is not None or not isinstance(item.get("reason"), str):
+                return None
+        else:
+            return None
+        item["child_id"] = child_id
+        canonical_dispositions.append(item)
+
+    canonical["child_dispositions"] = canonical_dispositions
+    canonical["child_attributions"] = canonical_attributions
+    descriptor = REFERENCE_DISTILLATION_LEDGER_ADAPTER
+    transformations.add(descriptor.name)
+    return canonical, ContractAdapterAudit(
+        adapter_name=descriptor.name,
+        adapter_version=descriptor.version,
+        contract_name=descriptor.contract_name,
+        source_shape="; ".join(descriptor.source_shapes),
+        canonical_shape=descriptor.canonical_shape,
+        transformations=tuple(sorted(transformations)),
+        input_sha256=canonical_sha256(payload),
+        output_sha256=canonical_sha256(canonical),
+        proof_sha256=canonical_sha256({
+            "covered_child_sha256": canonical_sha256(
+                canonical.get("covered_child_ids") or [],
+            ),
+            "disposition_child_sha256": canonical_sha256(
+                [item["child_id"] for item in canonical_dispositions],
+            ),
+            "attribution_child_sha256": canonical_sha256(
+                [item["child_id"] for item in canonical_attributions],
+            ),
+        }),
+    )
 
 
 def _closed_name(value: object) -> str:
@@ -984,9 +1401,75 @@ def _adapt_execution_manifest_evidence_references(
     )
 
 
+def _apply_registered_adapter(
+    payload: dict[str, Any], descriptor: ContractAdapterRegistration,
+    *, context: Mapping[str, Any],
+) -> tuple[dict[str, Any], ContractAdapterAudit] | None:
+    """Dispatch one registry descriptor; the registry is executable authority."""
+
+    if descriptor.name == PLANNING_FACET_CLOSED_TRUTH_ADAPTER.name:
+        return _adapt_planning_facet_closed_truth(
+            payload,
+            invariant_fields=tuple(context.get("invariant_fields") or ()),
+        )
+    if descriptor.name == PLANNING_FACET_UNIQUE_EVIDENCE_ADAPTER.name:
+        return _adapt_planning_facet_unique_evidence(
+            payload,
+            invariant_fields=tuple(context.get("invariant_fields") or ()),
+            evidence_candidates=dict(context.get("evidence_candidates") or {}),
+        )
+    if descriptor.name == PLANNING_EVENT_TOPOLOGY_ADAPTER.name:
+        return _adapt_planning_event_topology(
+            payload,
+            expected_event_ids=tuple(context.get("expected_event_ids") or ()),
+        )
+    if descriptor.name == PLANNING_SEMANTIC_ENVELOPE_ADAPTER.name:
+        semantic_normalizer = context.get("semantic_normalizer")
+        if not callable(semantic_normalizer):
+            return None
+        adapted = _unique_semantic_envelope(payload, semantic_normalizer)
+        if adapted is None:
+            return None
+        canonical, transformations, candidate_count = adapted
+        return canonical, ContractAdapterAudit(
+            adapter_name=descriptor.name,
+            adapter_version=descriptor.version,
+            contract_name=descriptor.contract_name,
+            source_shape=descriptor.source_shapes[-1],
+            canonical_shape=descriptor.canonical_shape,
+            transformations=transformations,
+            input_sha256=canonical_sha256(payload),
+            output_sha256=canonical_sha256(canonical),
+            proof_sha256=canonical_sha256({
+                "candidate_count": candidate_count,
+                "source_path_sha256": canonical_sha256(transformations[1:]),
+            }),
+        )
+    if descriptor.name == PLANNING_SEMANTIC_ROOT_PROJECTION_ADAPTER.name:
+        semantic_normalizer = context.get("semantic_normalizer")
+        return _adapt_planning_semantic_root_projection(
+            payload,
+            semantic_normalizer=(
+                semantic_normalizer if callable(semantic_normalizer) else None
+            ),
+        )
+    if descriptor.name == EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER.name:
+        expected_events = tuple(
+            item for item in context.get("expected_events", ())
+            if isinstance(item, Mapping)
+        )
+        return _adapt_execution_manifest_evidence_references(
+            payload, expected_events=expected_events,
+        )
+    if descriptor.name == REFERENCE_DISTILLATION_LEDGER_ADAPTER.name:
+        return _adapt_reference_distillation_v2_ledger(payload)
+    raise RuntimeError(f"contract adapter has no implementation: {descriptor.name}")
+
+
 def adapt_registered_contract(
     payload: Mapping[str, Any], *, contract_name: str,
     context: Mapping[str, Any] | None = None,
+    automatic_only: bool = False,
 ) -> ContractAdaptationResult:
     """Apply registered, proved adapters before authoritative domain validation."""
 
@@ -994,39 +1477,13 @@ def adapt_registered_contract(
         raise KeyError(f"unregistered generated artifact contract: {contract_name}")
     current = dict(payload)
     audits: list[ContractAdapterAudit] = []
+    adapter_context = dict(context or {})
     for descriptor in CONTRACT_ADAPTER_REGISTRY.get(contract_name, ()):
-        if descriptor.name == PLANNING_FACET_CLOSED_TRUTH_ADAPTER.name:
-            invariant_fields = tuple((context or {}).get("invariant_fields") or ())
-            adapted = _adapt_planning_facet_closed_truth(
-                current, invariant_fields=invariant_fields,
-            )
-        elif descriptor.name == PLANNING_FACET_UNIQUE_EVIDENCE_ADAPTER.name:
-            invariant_fields = tuple((context or {}).get("invariant_fields") or ())
-            evidence_candidates = dict(
-                (context or {}).get("evidence_candidates") or {},
-            )
-            adapted = _adapt_planning_facet_unique_evidence(
-                current,
-                invariant_fields=invariant_fields,
-                evidence_candidates=evidence_candidates,
-            )
-        elif descriptor.name == PLANNING_EVENT_TOPOLOGY_ADAPTER.name:
-            expected_event_ids = tuple(
-                (context or {}).get("expected_event_ids") or ()
-            )
-            adapted = _adapt_planning_event_topology(
-                current, expected_event_ids=expected_event_ids,
-            )
-        elif descriptor.name == EXECUTION_MANIFEST_EVIDENCE_REFERENCE_ADAPTER.name:
-            expected_events = tuple(
-                item for item in (context or {}).get("expected_events", ())
-                if isinstance(item, Mapping)
-            )
-            adapted = _adapt_execution_manifest_evidence_references(
-                current, expected_events=expected_events,
-            )
-        else:  # pragma: no cover - registry construction rejects unowned adapters
-            raise RuntimeError(f"contract adapter has no implementation: {descriptor.name}")
+        if automatic_only and not descriptor.automatic_conversion:
+            continue
+        adapted = _apply_registered_adapter(
+            current, descriptor, context=adapter_context,
+        )
         if adapted is None:
             continue
         current, audit = adapted
@@ -1046,8 +1503,6 @@ class ArtifactConversionError(ValueError):
             if audit.failure_code in {
                 "event_ownership_mismatch", "unknown_machine_control",
             }
-            else FailureClass.SEMANTIC_INVARIANT
-            if audit.failure_code == "semantic_validation_failed"
             else FailureClass.SYNTAX_PROTOCOL
         )
         self.reliability_failure = ReliabilityFailure(
@@ -1133,7 +1588,9 @@ def _has_closed_json_object(raw: str) -> bool:
     return started and not stack and not in_string
 
 
-def _json_candidate(raw: str) -> tuple[dict[str, Any], str, tuple[str, ...]]:
+def _json_candidate(
+    raw: str, *, allow_syntax_repair: bool,
+) -> tuple[dict[str, Any], str, tuple[str, ...]]:
     try:
         return parse_json_object(raw, label="Generated artifact"), "exact_json", ()
     except (TypeError, ValueError, json.JSONDecodeError) as exact_error:
@@ -1141,6 +1598,8 @@ def _json_candidate(raw: str) -> tuple[dict[str, Any], str, tuple[str, ...]]:
             "multiple JSON objects" in str(exact_error)
             or "additional malformed JSON value" in str(exact_error)
         ):
+            raise ValueError(str(exact_error)) from exact_error
+        if not allow_syntax_repair:
             raise ValueError(str(exact_error)) from exact_error
         if not _has_closed_json_object(raw):
             raise ValueError("generated artifact is structurally truncated") from exact_error
@@ -1213,7 +1672,12 @@ class GeneratedArtifactGateway:
             raise KeyError(f"unregistered generated artifact contract: {contract_name}")
         raw_digest = _raw_sha256(raw)
         try:
-            payload, method, transformations = _json_candidate(raw)
+            payload, method, transformations = _json_candidate(
+                raw,
+                allow_syntax_repair=(
+                    "local_syntax_repair" in registration.recovery_ladder
+                ),
+            )
         except ValueError as exc:
             failure_code = (
                 "output_truncated"
@@ -1231,7 +1695,10 @@ class GeneratedArtifactGateway:
 
         quarantined: list[str] = []
         candidate_count = 1
-        if registration.parser_strategy == "baml_sap":
+        if (
+            registration.parser_strategy == "baml_sap"
+            and "baml_sap" in registration.recovery_ladder
+        ):
             canonical_fast_path = isinstance(payload.get("cycles"), list)
             candidates = (
                 [("$.cycles", payload["cycles"])]
@@ -1318,34 +1785,54 @@ class GeneratedArtifactGateway:
                 audit=audit,
             )
 
-        normalized = semantic_normalizer(payload) if semantic_normalizer else payload
-        if (
-            not isinstance(normalized, dict)
-            and semantic_normalizer is not None
-            and PLANNING_SEMANTIC_ENVELOPE_ADAPTER
-            in CONTRACT_ADAPTER_REGISTRY.get(contract_name, ())
-        ):
-            try:
-                adapted = _unique_semantic_envelope(payload, semantic_normalizer)
-            except ValueError as exc:
-                ambiguous = "multiple complete candidates" in str(exc)
-                audit = ArtifactConversionAudit(
-                    contract_name=contract_name,
-                    contract_version=registration.version,
-                    raw_sha256=raw_digest,
-                    method="rejected",
-                    transformations=transformations,
-                    candidate_count=(2 if ambiguous else 0),
-                    failure_code=(
-                        "ambiguous_semantic_candidates"
-                        if ambiguous else "unknown_machine_control"
-                    ),
-                )
-                raise ArtifactConversionError(str(exc), audit=audit) from exc
-            if adapted is not None:
-                normalized, adapter_transformations, candidate_count = adapted
-                transformations += adapter_transformations
-                method = "baml_sap"
+        source_root_keys = set(payload)
+        try:
+            adaptation = adapt_registered_contract(
+                payload,
+                contract_name=contract_name,
+                context={
+                    "semantic_normalizer": semantic_normalizer,
+                    "expected_event_ids": tuple(expected_event_ids),
+                },
+                automatic_only=True,
+            )
+        except ValueError as exc:
+            ambiguous = "second complete candidate" in str(exc) or "multiple" in str(exc)
+            audit = ArtifactConversionAudit(
+                contract_name=contract_name,
+                contract_version=registration.version,
+                raw_sha256=raw_digest,
+                method="rejected",
+                transformations=transformations,
+                quarantined_paths=tuple(sorted(set(quarantined))),
+                candidate_count=(2 if ambiguous else candidate_count),
+                failure_code=(
+                    "ambiguous_semantic_candidates"
+                    if ambiguous else "contract_adaptation_failed"
+                ),
+            )
+            raise ArtifactConversionError(str(exc), audit=audit) from exc
+        if adaptation.audits:
+            payload = adaptation.payload
+            transformations += tuple(
+                transformation
+                for adapter_audit in adaptation.audits
+                for transformation in adapter_audit.transformations
+            )
+            quarantined.extend(
+                f"$.{key}" for key in sorted(source_root_keys - set(payload))
+            )
+            if any(
+                audit.adapter_name == PLANNING_SEMANTIC_ENVELOPE_ADAPTER.name
+                for audit in adaptation.audits
+            ):
+                candidate_count = 1
+            method = "baml_sap"
+
+        normalized = (
+            _try_semantic_normalizer(semantic_normalizer, payload)
+            if semantic_normalizer is not None else payload
+        )
         if not isinstance(normalized, dict):
             audit = ArtifactConversionAudit(
                 contract_name=contract_name,

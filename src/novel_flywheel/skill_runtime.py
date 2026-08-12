@@ -10,6 +10,7 @@ from pathlib import Path, PurePosixPath
 from typing import Callable
 
 from novel_flywheel.db import Database
+from novel_flywheel.contract_runtime import execute_model_route_runtime
 from novel_flywheel.domain.models import ToolDefinition
 from novel_flywheel.projects import Project
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
@@ -1275,10 +1276,22 @@ class SkillRuntimeService:
             + skill.instructions + self._reference_context(skill)
         )
         try:
-            result = await self.gateway.complete_with_tools(
-                "planning", system, json.dumps(answers, ensure_ascii=False), toolbox,
-                fallback_context=lambda: json.dumps(answers, ensure_ascii=False), run_id=execution_id,
+            runtime = await execute_model_route_runtime(
+                self.gateway,
+                role="planning",
+                system=system,
+                user=json.dumps(answers, ensure_ascii=False),
+                toolbox=toolbox,
+                fallback_context=lambda: json.dumps(answers, ensure_ascii=False),
+                run_id=execution_id,
+                # Tool calls persist candidate side effects. One exact call
+                # per route avoids replaying proposals; toolbox recovery owns
+                # continuation inside that route.
+                same_route_attempts=1,
+                fallback_attempts=1,
+                allow_implicit_primary=False,
             )
+            result = runtime.model_response
             if result.receipt.get("execution_mode") != "native_tools":
                 raise RuntimeError("Skill Runtime requires native Tool Calling; prompt fallback cannot write files")
             if toolbox.awaiting_question and not self.db.list_file_proposals(execution_id):

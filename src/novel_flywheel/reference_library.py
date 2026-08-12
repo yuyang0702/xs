@@ -309,7 +309,7 @@ class ReferenceLibrary:
                 continue
             result.append({
                 "id": source["id"], "title": source["title"],
-                "text": self.read_text(source["id"])[:20_000],
+                "text": self.read_text(source["id"]),
             })
         return result
 

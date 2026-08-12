@@ -114,21 +114,221 @@ def planning_semantic_schema_v2() -> dict[str, Any]:
     return PlanningSemanticDraftV2.model_json_schema()
 
 
+def planning_semantic_packet_ownership_v2(
+    *, segment_count: int, formal_event_count: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Assign every Runtime event ordinal to contiguous semantic packets.
+
+    When there are fewer formal events than requested writing segments, an
+    event may be shared only by adjacent segments.  The document compiler
+    later collapses that adjacent ownership and proves exact global coverage.
+    """
+
+    if segment_count < 1:
+        raise ValueError("planning semantic packet count must be positive")
+    if formal_event_count < 1:
+        raise ValueError("planning semantic packets require formal events")
+    if formal_event_count >= segment_count:
+        groups = tuple(
+            tuple(range(
+                (index * formal_event_count) // segment_count + 1,
+                ((index + 1) * formal_event_count) // segment_count + 1,
+            ))
+            for index in range(segment_count)
+        )
+    else:
+        groups = tuple(
+            (min(
+                formal_event_count,
+                (index * formal_event_count) // segment_count + 1,
+            ),)
+            for index in range(segment_count)
+        )
+    if any(not group for group in groups):
+        raise ValueError("planning semantic packet ownership cannot be empty")
+    collapsed: list[int] = []
+    for group in groups:
+        for ordinal in group:
+            if not collapsed or collapsed[-1] != ordinal:
+                collapsed.append(ordinal)
+    if tuple(collapsed) != tuple(range(1, formal_event_count + 1)):
+        raise ValueError("planning semantic packet ownership is not lossless")
+    return groups
+
+
+def _validated_packet_segment(
+    packet: PlanningSemanticDraftV2, owned_ordinals: tuple[int, ...],
+) -> TerminalPlanningSegmentV2:
+    if len(packet.segments) != 1 or not isinstance(
+        packet.segments[0], TerminalPlanningSegmentV2,
+    ):
+        raise ValueError("planning semantic packet must be one terminal local segment")
+    if packet.segments[0].segment != 1:
+        raise ValueError("planning semantic packet segment identity must be local")
+    local_ordinals = tuple(
+        item.formal_event_ordinal for item in packet.segments[0].events
+    )
+    if local_ordinals != tuple(range(1, len(owned_ordinals) + 1)):
+        raise ValueError("planning semantic packet does not exactly cover its ownership")
+    if any(ordinal < 1 for ordinal in owned_ordinals):
+        raise ValueError("planning semantic packet ownership contains an invalid ordinal")
+    return packet.segments[0]
+
+
+def merge_planning_semantic_event_packets_v2(
+    packets: Iterable[PlanningSemanticDraftV2],
+    owned_ordinal_groups: Iterable[Iterable[int]],
+) -> PlanningSemanticDraftV2:
+    """Merge recursively split event packets back into one local segment."""
+
+    packet_values = tuple(packets)
+    groups = tuple(tuple(item) for item in owned_ordinal_groups)
+    if not packet_values or len(packet_values) != len(groups):
+        raise ValueError("planning semantic event packet merge is incomplete")
+    flattened = tuple(ordinal for group in groups for ordinal in group)
+    if flattened != tuple(range(1, len(flattened) + 1)):
+        raise ValueError("planning semantic event packets must form one exact local range")
+    merged_events: list[PlanningSemanticEventV2] = []
+    for packet, group in zip(packet_values, groups, strict=True):
+        segment = _validated_packet_segment(packet, group)
+        merged_events.extend(
+            event.model_copy(update={
+                "formal_event_ordinal": group[event.formal_event_ordinal - 1],
+            })
+            for event in segment.events
+        )
+    return PlanningSemanticDraftV2(
+        initial_state=packet_values[0].initial_state,
+        segments=[TerminalPlanningSegmentV2(
+            segment=1,
+            title=packet_values[0].segments[0].title,
+            events=merged_events,
+        )],
+    )
+
+
+def merge_planning_semantic_document_packets_v2(
+    packets: Iterable[PlanningSemanticDraftV2],
+    owned_ordinal_groups: Iterable[Iterable[int]],
+    *, formal_event_count: int,
+) -> PlanningSemanticDraftV2:
+    """Reduce segment-local canonical documents into one canonical document."""
+
+    packet_values = tuple(packets)
+    groups = tuple(tuple(item) for item in owned_ordinal_groups)
+    if not packet_values or len(packet_values) != len(groups):
+        raise ValueError("planning semantic document packet merge is incomplete")
+    collapsed: list[int] = []
+    seen: set[int] = set()
+    for group in groups:
+        for ordinal in group:
+            if collapsed and collapsed[-1] == ordinal:
+                continue
+            if ordinal in seen:
+                raise ValueError(
+                    "planning semantic document packet ownership re-enters non-contiguously"
+                )
+            collapsed.append(ordinal)
+            seen.add(ordinal)
+    if tuple(collapsed) != tuple(range(1, formal_event_count + 1)):
+        raise ValueError("planning semantic document packets do not exactly cover authority")
+
+    segments: list[PlanningSemanticSegmentV2] = []
+    for index, (packet, group) in enumerate(
+        zip(packet_values, groups, strict=True), 1,
+    ):
+        packet_segment = _validated_packet_segment(packet, group)
+        events = [
+            event.model_copy(update={
+                "formal_event_ordinal": group[event.formal_event_ordinal - 1],
+            })
+            for event in packet_segment.events
+        ]
+        if index < len(packet_values):
+            segments.append(ContinuationPlanningSegmentV2(
+                segment=index,
+                title=packet_segment.title,
+                events=events,
+                exit_state=packet_values[index].initial_state,
+            ))
+        else:
+            segments.append(TerminalPlanningSegmentV2(
+                segment=index,
+                title=packet_segment.title,
+                events=events,
+            ))
+    return PlanningSemanticDraftV2(
+        initial_state=packet_values[0].initial_state,
+        segments=segments,
+    )
+
+
+def semantic_planning_packet_prompt_v2(
+    *, global_segment: int, segment_count: int,
+    global_event_ordinals: Iterable[int], formal_events: Iterable[dict[str, Any]],
+    story_brief_projection: str, parent_brief_sha256: str,
+    predecessor_semantic_sha256: str = "",
+    predecessor_projection: str = "",
+) -> str:
+    """Render one ownership-bounded request using the canonical v2 schema."""
+
+    ordinals = tuple(global_event_ordinals)
+    events = tuple(dict(item) for item in formal_events)
+    if not ordinals or len(ordinals) != len(events):
+        raise ValueError("planning semantic packet event authority is incomplete")
+    packet_contract = {
+        "version": 2,
+        "global_segment": global_segment,
+        "segment_count": segment_count,
+        "global_event_ordinals": list(ordinals),
+        "parent_brief_sha256": parent_brief_sha256,
+        "predecessor_semantic_sha256": predecessor_semantic_sha256,
+    }
+    event_catalog = [{
+        "formal_event_ordinal": index,
+        "label": str(event.get("label") or ""),
+        "evidence": str(event.get("evidence") or ""),
+    } for index, event in enumerate(events, 1)]
+    return (
+        "IR_FIRST_SHORT_PLANNING_PACKET_V2\n"
+        "This is one Runtime-owned semantic packet of the complete short-story plan. "
+        "Return one canonical PlanningSemanticDraftV2 JSON object with exactly one local "
+        "segment: kind=terminal, segment=1. Use the packet-local formal_event_ordinal "
+        "values 1..N exactly once and in order. Do not return global event IDs, hashes, "
+        "packet controls, Markdown, tools, or a next-handoff field. The Runtime injects "
+        "global segment identity, adjacent exit topology, and terminal authority, then "
+        "revalidates the complete merged plan. Preserve actor agency, chronology, knowledge, "
+        "relationships, promises, setup/payoff, genre voice, and confirmed ending logic.\n"
+        "PACKET CONTRACT:\n"
+        + json.dumps(packet_contract, ensure_ascii=False, sort_keys=True)
+        + "\n\nSTORY BRIEF PROJECTION:\n" + story_brief_projection
+        + "\n\nPACKET FORMAL EVENT CATALOG:\n"
+        + json.dumps(event_catalog, ensure_ascii=False, indent=2)
+        + ("\n\nACCEPTED PREDECESSOR PROJECTION:\n" + predecessor_projection
+           if predecessor_projection else "")
+    )
+
+
+def normalize_planning_semantic_v2_payload(
+    payload: object,
+) -> dict[str, Any] | None:
+    """Canonical Pydantic boundary shared by parsing and model recovery."""
+
+    try:
+        semantic = PlanningSemanticDraftV2.model_validate(payload)
+    except ValueError:
+        return None
+    return semantic.model_dump(mode="json")
+
+
 def parse_planning_semantic_v2(
     raw: str,
 ) -> tuple[PlanningSemanticDraftV2, ArtifactConversionAudit]:
     """Use the shared tolerant syntax boundary, then strict Pydantic semantics."""
 
-    def normalize(payload: object) -> dict[str, Any] | None:
-        try:
-            semantic = PlanningSemanticDraftV2.model_validate(payload)
-        except ValueError:
-            return None
-        return semantic.model_dump(mode="json")
-
     result = GeneratedArtifactGateway().convert_object(
         raw, contract_name="planning_semantic_v2",
-        semantic_normalizer=normalize,
+        semantic_normalizer=normalize_planning_semantic_v2_payload,
     )
     return PlanningSemanticDraftV2.model_validate(result.payload), result.audit
 

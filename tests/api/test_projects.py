@@ -12,6 +12,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.storage import ProjectSnapshot
+from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.project_transactions import complete_project_mutation
 
 
 class FakeStyleSamples:
@@ -47,7 +49,7 @@ def test_create_and_list_projects(tmp_path) -> None:
     assert client.get("/api/projects").json()[0]["title"] == "Night Train"
 
 
-def test_project_rollout_flag_is_scoped_and_reversible(tmp_path) -> None:
+def test_planning_ir_rollout_is_complete_and_cannot_be_disabled(tmp_path) -> None:
     client = TestClient(create_app(
         Database(tmp_path / "app.db"), MemorySecretStore(),
         skill_roots=[tmp_path / "skills"], workspace_root=tmp_path / "workspace",
@@ -59,29 +61,22 @@ def test_project_rollout_flag_is_scoped_and_reversible(tmp_path) -> None:
     path = f"/api/projects/{project['id']}/rollout-flags/planning-ir-first"
 
     enabled = client.put(path, json={
-        "enabled": True, "reason": "R6 controlled canary",
+        "enabled": True, "reason": "compatibility acknowledgement",
     })
     assert enabled.status_code == 200
     assert enabled.json()["enabled"] is True
-    assert enabled.json()["scope_type"] == "project"
+    assert enabled.json()["scope_type"] == "system"
     flags = client.get(f"/api/projects/{project['id']}/rollout-flags").json()
-    assert flags["planning_ir_first"]["config"]["reason"] == "R6 controlled canary"
+    assert flags["planning_ir_first"]["config"] == {
+        "reason": "rollout_complete", "immutable": True,
+    }
 
     disabled = client.put(path, json={"enabled": False, "reason": "rollback"})
-    assert disabled.status_code == 200
-    assert disabled.json()["enabled"] is False
-
-    client.app.state.registry.db.create_run(
-        "active-canary", project["id"], "short-story", status="running",
-    )
-    blocked = client.put(path, json={
-        "enabled": True, "reason": "must not race an active writer",
-    })
-    assert blocked.status_code == 409
-    assert blocked.json()["detail"]["code"] == "project_run_active"
+    assert disabled.status_code == 409
+    assert disabled.json()["detail"]["code"] == "planning_ir_rollout_complete"
     assert client.get(f"/api/projects/{project['id']}/rollout-flags").json()[
         "planning_ir_first"
-    ]["enabled"] is False
+    ]["enabled"] is True
 
 
 def test_zhihu_publication_preview_and_create_api(tmp_path) -> None:
@@ -1185,6 +1180,151 @@ def test_character_material_edit_creates_linked_material_impact(tmp_path) -> Non
     assert refreshed["material_impacts"][0]["id"] == response.json()["material_impact"]["id"]
 
 
+def test_material_edit_precommit_failure_restores_every_business_authority(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    project_data = client.post("/api/projects", json={
+        "title": "Material rollback", "mode": "short", "genre": "test",
+        "premise": "The edit is one transaction.", "target_words": 13_000,
+    }).json()
+    project = app.state.projects.get(project_data["id"])
+    profile = project.path / "characters" / "lin.md"
+    profile.write_text(
+        "---\nname: Lin\nrole: protagonist\n---\n\nCarries a notebook.\n",
+        encoding="utf-8",
+    )
+    app.state.learning.save_artifact(
+        project.id, "voice_profiles", {"Lin": {"rule": "writes notes"}},
+    )
+    document = next(
+        item
+        for item in client.get(
+            f"/api/projects/{project.id}/materials",
+        ).json()["groups"][0]["documents"]
+        if item["path"] == "characters/lin.md"
+    )
+    before_bytes = profile.read_bytes()
+    before_state = StoryStateStore(db).get(project.id)
+
+    monkeypatch.setattr(
+        projects_api, "stage_project_mutation_targets",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("injected staging failure"),
+        ),
+    )
+    with pytest.raises(OSError, match="injected staging failure"):
+        client.put(
+            f"/api/projects/{project.id}/materials/characters/lin.md",
+            json={
+                "content": (
+                    "---\nname: Lin\nrole: protagonist\n---\n\n"
+                    "Trusts her memory.\n"
+                ),
+                "expected_hash": document["hash"],
+                "retire_removed_settings": True,
+            },
+        )
+
+    after_state = StoryStateStore(db).get(project.id)
+    assert profile.read_bytes() == before_bytes
+    assert after_state.revision == before_state.revision
+    assert after_state.data == before_state.data
+    assert app.state.learning.get_artifact(
+        project.id, "voice_profiles",
+    )["status"] == "active"
+    assert app.state.material_impacts.list(project.path) == []
+    run = next(
+        item for item in db.list_runs(project.id)
+        if item["workflow"] == "material-edit"
+    )
+    assert run["status"] == "failed"
+    assert not (project.path / "snapshots" / run["id"]).exists()
+
+
+def test_material_edit_restart_finishes_same_files_state_and_side_effects(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app)
+    project_data = client.post("/api/projects", json={
+        "title": "Material resume", "mode": "short", "genre": "test",
+        "premise": "The accepted edit survives interruption.",
+        "target_words": 13_000,
+    }).json()
+    project = app.state.projects.get(project_data["id"])
+    profile = project.path / "characters" / "lin.md"
+    profile.write_text(
+        "---\nname: Lin\nrole: protagonist\n---\n\nCarries a notebook.\n",
+        encoding="utf-8",
+    )
+    app.state.learning.save_artifact(
+        project.id, "voice_profiles", {"Lin": {"rule": "writes notes"}},
+    )
+    document = next(
+        item
+        for item in client.get(
+            f"/api/projects/{project.id}/materials",
+        ).json()["groups"][0]["documents"]
+        if item["path"] == "characters/lin.md"
+    )
+    before_state = StoryStateStore(db).get(project.id)
+
+    monkeypatch.setattr(
+        projects_api, "complete_project_mutation",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("injected process interruption"),
+        ),
+    )
+    with pytest.raises(OSError, match="injected process interruption"):
+        client.put(
+            f"/api/projects/{project.id}/materials/characters/lin.md",
+            json={
+                "content": (
+                    "---\nname: Lin\nrole: protagonist\n---\n\n"
+                    "Trusts her memory.\n"
+                ),
+                "expected_hash": document["hash"],
+                "retire_removed_settings": True,
+            },
+        )
+
+    run = next(
+        item for item in db.list_runs(project.id)
+        if item["workflow"] == "material-edit"
+    )
+    assert run["status"] == "running"
+    assert "Trusts her memory" in profile.read_text(encoding="utf-8")
+    assert StoryStateStore(db).get(project.id).revision == before_state.revision
+    assert app.state.learning.get_artifact(
+        project.id, "voice_profiles",
+    )["status"] == "active"
+    assert len(app.state.material_impacts.list(project.path)) == 1
+
+    completed = complete_project_mutation(app.state.projects, run["id"])
+    completed_again = complete_project_mutation(
+        app.state.projects, run["id"],
+    )
+
+    assert completed.status == completed_again.status == "committed"
+    # Character profile prose is not projected into continuity/state.md, so
+    # the pre-refactor business rule intentionally leaves StoryState unchanged.
+    assert StoryStateStore(db).get(project.id).revision == before_state.revision
+    assert app.state.learning.get_artifact(
+        project.id, "voice_profiles",
+    )["status"] == "stale"
+    assert len(app.state.material_impacts.list(project.path)) == 1
+    assert db.get_run(run["id"])["status"] == "completed"
+    assert not (project.path / "snapshots" / run["id"]).exists()
+
+
 def test_confirmed_material_impact_updates_only_selected_project_material(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     client = TestClient(create_app(db, MemorySecretStore(), workspace_root=tmp_path / "workspace"))
@@ -1221,6 +1361,187 @@ def test_confirmed_material_impact_updates_only_selected_project_material(tmp_pa
     assert response.status_code == 200
     assert plot.read_text(encoding="utf-8") == "She recognizes the handwriting."
     assert client.get(f"/api/projects/{project['id']}/materials").json()["material_impacts"] == []
+
+
+def _ready_character_material_impact(app, project: dict) -> tuple[Path, dict, str, str]:
+    root = app.state.projects.get(project["id"]).path
+    profile = root / "characters" / "lin.md"
+    profile.parent.mkdir(parents=True, exist_ok=True)
+    before = "---\nname: Lin\nrole: protagonist\nstatus: hidden\n---\n\nKeeps the truth private.\n"
+    after = "---\nname: Lin\nrole: protagonist\nstatus: known\n---\n\nShares the truth.\n"
+    profile.write_text(before, encoding="utf-8")
+    service = app.state.material_impacts
+    impact = service.record(
+        project["id"], root, "characters/source.md", "Old setting.",
+        "New setting.", retire_removed_settings=True,
+    )
+    stored = service.get(root, impact["id"])
+    stored.update({
+        "status": "ready",
+        "proposals": [{
+            "id": "character-patch", "path": "characters/lin.md",
+            "reason": "Keep the character authority synchronized.",
+            "old_text": before, "new_text": after,
+            "target_hash": service.content_hash(before),
+        }],
+    })
+    service.save(root, stored)
+    return profile, impact, before, after
+
+
+def test_material_impact_resolve_failure_rolls_back_files_and_story_state(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    app = create_app(
+        db, MemorySecretStore(), workspace_root=tmp_path / "workspace",
+    )
+    client = TestClient(app, raise_server_exceptions=False)
+    project = client.post("/api/projects", json={
+        "title": "Impact rollback", "mode": "short", "genre": "test",
+        "premise": "File and StoryState authority move together.",
+        "target_words": 1000,
+    }).json()
+    profile, impact, before, _after = _ready_character_material_impact(
+        app, project,
+    )
+    root = app.state.projects.get(project["id"]).path
+    state_store = StoryStateStore(db)
+    original_state = state_store.ensure(project["id"], root)
+
+    def fail_resolve(*args, **kwargs):
+        raise OSError("injected material impact status failure")
+
+    monkeypatch.setattr(app.state.material_impacts, "resolve", fail_resolve)
+    response = client.post(
+        f"/api/projects/{project['id']}/material-impacts/{impact['id']}/apply",
+        json={"proposal_ids": ["character-patch"]},
+    )
+
+    assert response.status_code == 500
+    assert profile.read_text(encoding="utf-8") == before
+    current_state = state_store.get(project["id"])
+    assert current_state is not None
+    assert current_state.revision == original_state.revision
+    assert current_state.data == original_state.data
+    assert app.state.material_impacts.get(root, impact["id"])["status"] == "ready"
+    run = next(
+        item for item in db.list_runs(project["id"])
+        if item["workflow"] == "material-impact-apply"
+    )
+    assert run["status"] == "failed"
+    assert not (root / "snapshots" / run["id"]).exists()
+
+
+def test_material_impact_restart_completes_durable_artifacts_and_story_state(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    workspace = tmp_path / "workspace"
+    app = create_app(db, MemorySecretStore(), workspace_root=workspace)
+    client = TestClient(app, raise_server_exceptions=False)
+    project = client.post("/api/projects", json={
+        "title": "Impact resume", "mode": "short", "genre": "test",
+        "premise": "A durable mutation resumes after interruption.",
+        "target_words": 1000,
+    }).json()
+    profile, impact, _before, after = _ready_character_material_impact(
+        app, project,
+    )
+    root = app.state.projects.get(project["id"]).path
+    state_store = StoryStateStore(db)
+    original_state = state_store.ensure(project["id"], root)
+
+    def interrupt_after_artifact_commit(*args, **kwargs):
+        raise OSError("injected interruption after artifact commit")
+
+    monkeypatch.setattr(
+        projects_api, "complete_project_mutation",
+        interrupt_after_artifact_commit,
+    )
+    response = client.post(
+        f"/api/projects/{project['id']}/material-impacts/{impact['id']}/apply",
+        json={"proposal_ids": ["character-patch"]},
+    )
+
+    assert response.status_code == 500
+    run = next(
+        item for item in db.list_runs(project["id"])
+        if item["workflow"] == "material-impact-apply"
+    )
+    assert run["status"] == "running"
+    assert profile.read_text(encoding="utf-8") == after
+    assert state_store.get(project["id"]).revision == original_state.revision
+    assert (root / "snapshots" / run["id"]).is_dir()
+
+    create_app(db, MemorySecretStore(), workspace_root=workspace)
+
+    recovered_state = state_store.get(project["id"])
+    assert recovered_state is not None
+    assert recovered_state.revision == original_state.revision + 1
+    assert recovered_state.data["character_states"]["Lin"]["status"] == "known"
+    assert db.get_run(run["id"])["status"] == "completed"
+    assert not (root / "snapshots" / run["id"]).exists()
+    assert app.state.material_impacts.get(root, impact["id"])["status"] == "applied"
+
+
+def test_material_impact_committed_authority_survives_terminal_db_failure(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    workspace = tmp_path / "workspace"
+    app = create_app(db, MemorySecretStore(), workspace_root=workspace)
+    client = TestClient(app, raise_server_exceptions=False)
+    project = client.post("/api/projects", json={
+        "title": "Impact terminal retry", "mode": "short", "genre": "test",
+        "premise": "Committed authority is never rolled back by audit failure.",
+        "target_words": 1000,
+    }).json()
+    profile, impact, _before, after = _ready_character_material_impact(
+        app, project,
+    )
+    root = app.state.projects.get(project["id"]).path
+    state_store = StoryStateStore(db)
+    original_state = state_store.ensure(project["id"], root)
+    real_update_run = db.update_run
+    failed_once = False
+
+    def fail_first_terminal(run_id, status, current_stage=None, error=None):
+        nonlocal failed_once
+        if (
+            status == "completed" and str(run_id).startswith("mia-")
+            and not failed_once
+        ):
+            failed_once = True
+            raise OSError("injected material terminal persistence failure")
+        return real_update_run(run_id, status, current_stage, error)
+
+    monkeypatch.setattr(db, "update_run", fail_first_terminal)
+    response = client.post(
+        f"/api/projects/{project['id']}/material-impacts/{impact['id']}/apply",
+        json={"proposal_ids": ["character-patch"]},
+    )
+
+    assert response.status_code == 500
+    run = next(
+        item for item in db.list_runs(project["id"])
+        if item["workflow"] == "material-impact-apply"
+    )
+    committed_state = state_store.get(project["id"])
+    assert failed_once is True
+    assert committed_state is not None
+    assert committed_state.revision == original_state.revision + 1
+    assert profile.read_text(encoding="utf-8") == after
+    assert db.get_run(run["id"])["status"] == "running"
+    assert (root / "snapshots" / run["id"]).is_dir()
+
+    monkeypatch.setattr(db, "update_run", real_update_run)
+    create_app(db, MemorySecretStore(), workspace_root=workspace)
+
+    assert db.get_run(run["id"])["status"] == "completed"
+    assert state_store.get(project["id"]).revision == committed_state.revision
+    assert profile.read_text(encoding="utf-8") == after
+    assert not (root / "snapshots" / run["id"]).exists()
 
 
 def test_material_documents_expose_localized_structured_display(tmp_path) -> None:

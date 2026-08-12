@@ -2,10 +2,14 @@ import json
 import uuid
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field
 
+from novel_flywheel.contract_runtime import execute_contract_runtime
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
-from novel_flywheel.generated_artifacts import GeneratedArtifactGateway
+from novel_flywheel.generated_artifacts import (
+    ArtifactConversionError,
+)
+from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
 class InterviewSuggestion(BaseModel):
@@ -17,6 +21,14 @@ class InterviewSuggestion(BaseModel):
 class InterviewModelOutput(BaseModel):
     message: str = Field(min_length=1)
     suggestions: list[InterviewSuggestion] = Field(default_factory=list)
+
+
+INTERVIEW_STRUCTURED_CONTRACT = StructuredArtifactContract(
+    name="planning_interview_output",
+    version=1,
+    schema=InterviewModelOutput.model_json_schema(),
+    runtime_authority={"allowed_fields": "wizard_runtime"},
+)
 
 
 class WizardInterviewService:
@@ -51,26 +63,27 @@ class WizardInterviewService:
             context = self._context(wizard_id, wizard)
 
         try:
-            result = await self.gateway.complete(
-                "planning", self.SYSTEM, context,
+            runtime = await execute_contract_runtime(
+                self.gateway,
+                role="planning",
+                system=self.SYSTEM,
+                user=context,
+                contract_name="interview_planning",
+                structured_contract=INTERVIEW_STRUCTURED_CONTRACT,
+                semantic_normalizer=lambda value: (
+                    InterviewModelOutput.model_validate(value).model_dump(
+                        mode="json",
+                    )
+                ),
                 max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )
         except LookupError as exc:
             raise RuntimeError(str(exc)) from exc
-        try:
-            output = self._parse_output(result.text)
-        except ValueError:
-            repaired = await self.gateway.complete(
-                "planning",
-                "把给定的模型回复整理为指定 JSON，不增加新剧情。只输出 "
-                '{"message":"回复","suggestions":[{"field_id":"字段ID","value":"值","reason":"理由"}]}。',
-                json.dumps({
-                    "allowed_field_ids": list(self._field_map(wizard)),
-                    "model_response": result.text[:12000],
-                }, ensure_ascii=False),
-                max_output_tokens=self.MAX_OUTPUT_TOKENS,
-            )
-            output = self._parse_output(repaired.text)
+        except ArtifactConversionError as exc:
+            raise ValueError(
+                "Planning model did not return one valid JSON object"
+            ) from exc
+        output = InterviewModelOutput.model_validate(runtime.payload)
         with WIZARD_MUTATION_LOCK:
             wizard = self._editable_wizard(wizard_id)
             suggestions = self._valid_suggestions(wizard, output.suggestions)
@@ -127,16 +140,6 @@ class WizardInterviewService:
             "mode": wizard["mode"], "fields": fields,
             "answers": wizard["answers"], "conversation": history,
         }, ensure_ascii=False)
-
-    @staticmethod
-    def _parse_output(text: str) -> InterviewModelOutput:
-        try:
-            value = GeneratedArtifactGateway().convert_object(
-                text, contract_name="interview_planning",
-            ).payload
-            return InterviewModelOutput.model_validate(value)
-        except (json.JSONDecodeError, ValueError, ValidationError) as exc:
-            raise ValueError("Planning model did not return one valid JSON object") from exc
 
     def _valid_suggestions(self, wizard: dict,
                            suggestions: list[InterviewSuggestion]) -> list[InterviewSuggestion]:

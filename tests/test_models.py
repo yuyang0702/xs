@@ -276,6 +276,43 @@ async def test_gateway_can_fallback_to_explicit_strict_schema_route(tmp_path) ->
 
 
 @pytest.mark.asyncio
+async def test_explicit_route_keeps_schema_and_never_hides_route_selection(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-relay", "primary-model",
+        "schema-relay", "schema-model",
+    )
+    primary = StructuredRecordingAdapter()
+    fallback = StructuredRecordingAdapter()
+
+    class Registry:
+        def resolve(self, provider_id, model_id):
+            if provider_id == "primary-relay":
+                return ResolvedModel(
+                    provider_id, model_id, "primary", primary,
+                    {"structured_output": "strict_json_schema"},
+                )
+            return ResolvedModel(
+                provider_id, model_id, "fallback", fallback,
+                {"structured_output": "strict_json_schema"},
+            )
+
+    result = await ModelGateway(db, Registry()).complete_route(
+        "configured_fallback",
+        "planning",
+        "rules",
+        "return an artifact",
+        contract=planning_contract(),
+    )
+
+    assert primary.requests == []
+    assert fallback.requests[0].response_schema["name"] == "planning_packet"
+    assert result.receipt["configured_fallback_direct"] is True
+    assert result.receipt["execution_mode"] == "strict_json_schema"
+
+
+@pytest.mark.asyncio
 async def test_gateway_projects_one_strict_tool_call_to_json_text(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

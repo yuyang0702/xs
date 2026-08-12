@@ -25,6 +25,13 @@ from novel_flywheel.execution_manifest import (
 )
 from novel_flywheel.execution_authority import canonical_sha256
 from novel_flywheel.learning import LearningSystem
+from novel_flywheel.legacy_short_promotion import (
+    recover_legacy_short_formal_promotions,
+)
+from novel_flywheel.material_audit_authority import (
+    build_material_audit_packets,
+    build_material_reference_authority,
+)
 from novel_flywheel.models import (
     ModelResult,
     ModelRoutesExhaustedError,
@@ -38,12 +45,16 @@ from novel_flywheel.planning_adaptation import (
     planning_adaptation_segment_authority_sha256,
     planning_adaptation_whole_authority_sha256,
     planning_event_body_issues,
+    planning_event_id_occurrences,
+    remove_planning_event_ids,
 )
 from novel_flywheel.planning_compiler import (
     PLAN_FIELD_ALIASES,
     PlanningDocumentIR,
     PlanningSegmentIR,
+    compile_planning_event_artifact,
     compile_planning_segment,
+    compile_planning_segment_ir,
     render_planning_segment_ir,
 )
 from novel_flywheel.planning_recovery import (
@@ -52,6 +63,9 @@ from novel_flywheel.planning_recovery import (
     read_planning_recovery,
     record_planning_candidate,
     write_planning_recovery,
+)
+from novel_flywheel.planning_semantics import (
+    planning_semantic_packet_ownership_v2,
 )
 from novel_flywheel.prompts import IMMUTABLE_RECEIPT_SYSTEM
 from novel_flywheel.projects import ProjectCreate, ProjectStore
@@ -88,6 +102,48 @@ REQUIRED_SKILLS = {
     "chapter-writing", "novel-writing", "dialogue", "revision-continuity",
     "humanizer-zh", "story-maintenance",
 }
+
+
+def planning_semantic_body_from_prompt(prompt: str) -> dict:
+    """Build one schema-valid IR-first response from Runtime-visible authority."""
+
+    match = re.search(r"Return exactly (\d+) contiguous segments", prompt)
+    if match is None:
+        raise AssertionError("planning semantic prompt did not declare segment count")
+    segment_count = int(match.group(1))
+    event_catalog = json.loads(
+        prompt.split("FORMAL EVENT CATALOG:\n", 1)[1]
+    )
+    ownership = planning_semantic_packet_ownership_v2(
+        segment_count=segment_count,
+        formal_event_count=len(event_catalog),
+    )
+    segments = []
+    for index, ordinals in enumerate(ownership, 1):
+        segment = {
+            "kind": (
+                "terminal" if index == segment_count else "continuation"
+            ),
+            "segment": index,
+            "title": f"Verified semantic segment {index}",
+            "events": [{
+                "formal_event_ordinal": ordinal,
+                "narrative": (
+                    f"The protagonist executes formal event {ordinal}, meets "
+                    f"resistance, produces a causal result, and updates story state."
+                ),
+            } for ordinal in ordinals],
+        }
+        if index < segment_count:
+            segment["exit_state"] = (
+                f"Segment {index} leaves a verified state for its successor."
+            )
+        segments.append(segment)
+    return {
+        "version": 2,
+        "initial_state": "The accepted story authority defines the opening state.",
+        "segments": segments,
+    }
 
 
 def test_compact_polish_prompt_keeps_lossless_authority_and_one_source_copy() -> None:
@@ -664,6 +720,26 @@ class FakeGateway:
         self.roles.append(role)
         self.systems.append(system)
         assert "Skill instructions" in system
+        if "IR_FIRST_SHORT_PLANNING_V2" in user:
+            # Discard the legacy planning fixture retained below for tests that
+            # still exercise persisted Markdown migration directly.
+            next(self.responses)
+            return ModelResult(json.dumps({
+                "version": 2,
+                "initial_state": "The protagonist starts at the formal event boundary.",
+                "segments": [{
+                    "kind": "terminal", "segment": 1,
+                    "title": "Complete the formal event",
+                    "events": [{
+                        "formal_event_ordinal": 1,
+                        "narrative": (
+                            "The protagonist actively investigates the obstacle, makes "
+                            "the decisive choice, completes the formal goal, and accepts "
+                            "the resulting cost without changing the confirmed ending."
+                        ),
+                    }],
+                }],
+            }), {"role": role, "model_name": f"fake-{role}"})
         if (
             "SHORT_EXECUTION_MANIFEST_V2" in user
             or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
@@ -741,6 +817,488 @@ class FakeGateway:
             } for item in ledger]
             text = json.dumps(payload, ensure_ascii=False)
         return ModelResult(text, {"role": role, "model_name": f"fake-{role}"})
+
+    async def complete_primary(
+        self, role, system, user, max_output_tokens=None,
+    ):
+        return await self.complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+
+class ProductionSizedShortGateway:
+    """Deterministic paid-boundary replacement for 13K/20K/30K acceptance."""
+
+    def __init__(self) -> None:
+        self.roles: list[str] = []
+        self.systems: list[str] = []
+        self.packet_calls: list[dict] = []
+        self.draft_segments: list[str] = []
+        self.formal_event_count = 0
+
+    @staticmethod
+    def _result(role: str, text: str) -> ModelResult:
+        return ModelResult(text, {
+            "role": role, "provider_id": "offline", "model_id": "offline-model",
+            "model_name": f"offline-{role}", "finish_reason": "stop",
+            "input_tokens": 2400, "output_tokens": 1200,
+        })
+
+    @staticmethod
+    def _planning_packet(user: str) -> str:
+        contract = json.loads(
+            user.split("PACKET CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
+        )
+        local_count = len(contract["global_event_ordinals"])
+        segment = int(contract["global_segment"])
+        return json.dumps({
+            "version": 2,
+            "initial_state": (
+                f"第{segment}段开始时，调查员已承接前段证据、人物知识与关系状态。"
+            ),
+            "segments": [{
+                "kind": "terminal", "segment": 1,
+                "title": f"档案链第{segment}次转折",
+                "events": [{
+                    "formal_event_ordinal": ordinal,
+                    "narrative": (
+                        f"调查员主动核验本包第{ordinal}项档案，遭遇证人阻拦后调整关系策略，"
+                        f"取得可复核结果，更新人物知识，并把因果压力交给第{segment}段后续行动。"
+                    ),
+                } for ordinal in range(1, local_count + 1)],
+            }],
+        }, ensure_ascii=False)
+
+    @staticmethod
+    def _plan_segment_receipt(user: str) -> str:
+        authority = user.split(
+            "EXPECTED AUTHORITY SHA256: ", 1,
+        )[1].splitlines()[0]
+        planning_sha = user.split(
+            "EXPECTED PLANNING SHA256: ", 1,
+        )[1].splitlines()[0]
+        segment = int(user.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
+        expected = json.loads(
+            user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+        )
+        candidates_text = user.split("PLAN EVIDENCE CANDIDATES:\n", 1)[1]
+        candidates_text = candidates_text.split(
+            "\n\nCURRENT ACCEPTED PLAN SEGMENT:", 1,
+        )[0].split("\n\nRECEIPT PROTOCOL ISSUES:", 1)[0]
+        candidates = json.loads(candidates_text)
+        evidence_ids = list(candidates)
+        return json.dumps({
+            "authority_sha256": authority,
+            "planning_sha256": planning_sha,
+            "segment": segment,
+            "event_reviews": [{
+                "event_id": event_id,
+                "classification": "equivalent",
+                "changed_dimensions": ["场景实现"],
+                "invariants": {field: True for field in INVARIANT_FIELDS},
+                "plan_evidence_ids": [
+                    evidence_ids[min(index, len(evidence_ids) - 1)]
+                ],
+                "plan_evidence_quote": "",
+                "reason": "当前计划保持正式事件功能、人物主动性与因果方向。",
+            } for index, event_id in enumerate(expected)],
+            "segment_order_preserved": True,
+            "formal_direction_preserved": True,
+            "summary": "当前分段完整保持正式事件权威。",
+        }, ensure_ascii=False)
+
+    @staticmethod
+    def _plan_whole_receipt(user: str) -> str:
+        authority = user.split(
+            "EXPECTED AUTHORITY SHA256: ", 1,
+        )[1].splitlines()[0]
+        planning_sha = user.split(
+            "EXPECTED PLANNING SHA256: ", 1,
+        )[1].splitlines()[0]
+        segments = json.loads(
+            user.split("EXPECTED SEGMENTS:\n", 1)[1].splitlines()[0]
+        )
+        expected = json.loads(
+            user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+        )
+        return json.dumps({
+            "authority_sha256": authority,
+            "planning_sha256": planning_sha,
+            "segment_numbers": segments,
+            "event_ids": expected,
+            "causal_order_preserved": True,
+            "adjacent_handoffs_preserved": True,
+            "knowledge_progression_preserved": True,
+            "relationship_progression_preserved": True,
+            "viewpoint_timeline_preserved": True,
+            "promises_ending_preserved": True,
+            "formal_direction_preserved": True,
+            "affected_segments": [],
+            "affected_event_ids": [],
+            "reason": "",
+            "summary": "整篇计划保持事件顺序、关系推进、承诺兑现与结局。",
+        }, ensure_ascii=False)
+
+    @staticmethod
+    def _planning_repair_patch(user: str) -> str:
+        """Return a bounded patch for Runtime-selected planning anchors.
+
+        Production-shaped acceptance must exercise the same targeted repair
+        contract used by real projects whose outline evidence is too terse to
+        form an independently executable event body.  The test gateway does
+        not choose the mutation scope: it only expands the exact anchors that
+        Runtime already authorized and hash-bound in the prompt.
+        """
+
+        authority = user.split(
+            "EXPECTED PATCH AUTHORITY SHA256: ", 1,
+        )[1].splitlines()[0]
+        segment = int(user.split("EXPECTED SEGMENT: ", 1)[1].splitlines()[0])
+        anchors_source = user.split(
+            "AUTHORIZED ORIGINAL ANCHORS:\n", 1,
+        )[1]
+        anchors, _end = json.JSONDecoder().raw_decode(anchors_source)
+        replacements = []
+        for anchor in anchors:
+            source = str(anchor["text"])
+            replacements.append({
+                "evidence_id": str(anchor["evidence_id"]),
+                "source_sha256": str(anchor["source_sha256"]),
+                "replacement": (
+                    source
+                    + " The responsible character performs the stated action, "
+                    "meets concrete resistance, obtains a verifiable result, "
+                    "and passes the resulting state to the next owned event."
+                ),
+            })
+        return json.dumps({
+            "authority_sha256": authority,
+            "segment": segment,
+            "replacements": replacements,
+            "summary": "Expanded only the Runtime-authorized incomplete event anchors.",
+        }, ensure_ascii=False)
+
+    @staticmethod
+    def _planning_event_realizations(user: str) -> str:
+        expected = json.loads(
+            user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+        )
+        return json.dumps({
+            "events": [{
+                "event_id": event_id,
+                "narrative": (
+                    "The responsible character performs the formal action, "
+                    "meets a concrete response, obtains a verifiable result, and updates "
+                    "the knowledge, relationship, and causal state owned by this event."
+                ),
+            } for event_id in expected],
+        }, ensure_ascii=False)
+
+    @staticmethod
+    def _planning_targeted_segment(user: str) -> str:
+        current = user.rsplit("CURRENT PLAN SEGMENT:\n", 1)[1]
+        expected = json.loads(
+            user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+        )
+        issues_source = user.split("STRUCTURAL DRIFT ISSUES:\n", 1)[1]
+        issues, _end = json.JSONDecoder().raw_decode(issues_source)
+        target_ids = {
+            str(item.get("event_id") or "").strip().upper()
+            for item in issues if isinstance(item, dict)
+        }
+        contracts_source = user.split("FORMAL EVENT CONTRACTS:\n", 1)[1]
+        contracts, _end = json.JSONDecoder().raw_decode(contracts_source)
+        obligations_source = user.split(
+            "FORMAL EVENT COMPLETION CHECKLIST:\n", 1,
+        )[1]
+        obligations, _end = json.JSONDecoder().raw_decode(obligations_source)
+        contract_by_id = {
+            str(item.get("id") or "").strip().upper(): item
+            for item in contracts if isinstance(item, dict)
+        }
+        obligation_by_id = {
+            str(item.get("event_id") or "").strip().upper(): item
+            for item in obligations if isinstance(item, dict)
+        }
+        segment = int(user.split("EXPECTED SEGMENT: ", 1)[1].splitlines()[0])
+        planning_ir = compile_planning_segment_ir(current, segment=segment)
+        body = planning_ir.event_body
+        occurrences = planning_event_id_occurrences(body)
+        by_event = {}
+        for index, (event_id, _start, marker_end) in enumerate(occurrences):
+            end = occurrences[index + 1][1] if index + 1 < len(occurrences) else len(body)
+            narrative = remove_planning_event_ids(
+                body[marker_end:end], formal_only=True,
+            ).strip(" \t\r\n:：.-、）)")
+            if narrative:
+                by_event[event_id] = narrative
+        return json.dumps({
+            "events": [{
+                "event_id": event_id,
+                "narrative": " ".join(dict.fromkeys(filter(None, [
+                    by_event.get(event_id, ""),
+                    str(contract_by_id.get(event_id, {}).get("evidence") or "")
+                    if event_id in target_ids else "",
+                    *(
+                        [
+                            str(item.get("source_excerpt") or "")
+                            for item in obligation_by_id.get(event_id, {}).get(
+                                "obligations", []
+                            ) if isinstance(item, dict)
+                        ] if event_id in target_ids else []
+                    ),
+                    (
+                        "The responsible character performs the formal action, meets "
+                        "a concrete response, obtains a verifiable result, and updates "
+                        "the causal state owned by this event."
+                        if event_id in target_ids else ""
+                    ),
+                ]))),
+            } for event_id in expected],
+        }, ensure_ascii=False)
+
+    @staticmethod
+    def _causal_chain(user: str) -> str:
+        event_ids = list(dict.fromkeys(
+            re.findall(r"EV-[0-9A-F]{8}", user.upper())
+        ))
+        return json.dumps({
+            "core_goal": "调查员公开完整档案链并承担关系代价",
+            "opening": {
+                "pressure": "档案员失踪", "anomaly": "记录互相矛盾",
+                "reader_question": "谁改写了档案", "future_promise": "底账将在天亮前公开",
+            },
+            "cycles": [{
+                "obstacle": f"事件{index}的证据遭到阻拦",
+                "effort": f"调查员核验事件{index}并争取证人",
+                "result": f"事件{index}形成可复核结论",
+                "state_change": f"人物知识与信任推进到状态{index}",
+            } for index in range(1, max(2, len(event_ids) // 2) + 1)],
+            "accidents": ["证人临时改口"],
+            "reversal": {"content": "失踪者主动留下了矛盾索引"},
+            "ending": {
+                "surface_goal": "完整底账公开", "inner_goal": "调查员接受信任代价",
+                "cost": "与旧同盟公开决裂",
+            },
+            "question_chain": [], "relationship_arc": [],
+            "covered_event_ids": event_ids,
+        }, ensure_ascii=False)
+
+    def _causal_packet(self, user: str) -> str:
+        contract = json.loads(
+            user.split("PACKET CONTRACT:\n", 1)[1].splitlines()[0]
+        )
+        owned = [str(item).upper() for item in contract["owned_event_ids"]]
+        owns_opening = user.split("OWNS OPENING: ", 1)[1].splitlines()[0] == "true"
+        owns_ending = user.split("OWNS ENDING: ", 1)[1].splitlines()[0] == "true"
+        return json.dumps({
+            "core_goal": "公开完整底账" if owns_opening else "",
+            "opening": {
+                "pressure": "档案员失踪", "anomaly": "记录互相矛盾",
+                "reader_question": "谁改写了档案", "future_promise": "底账将在天亮前公开",
+            } if owns_opening else {},
+            "cycles": [{
+                "obstacle": f"{owned[0]}证据被阻拦",
+                "effort": f"调查员核验{owned[0]}",
+                "result": f"{owned[-1]}形成可复核结论",
+                "state_change": f"知识推进到{owned[-1]}",
+            }],
+            "accidents": [], "reversal": {},
+            "ending": {
+                "surface_goal": "完整底账公开", "inner_goal": "接受关系代价",
+                "cost": "与旧同盟决裂",
+            } if owns_ending else "",
+            "question_chain": [], "relationship_arc": [],
+            "covered_event_ids": owned,
+        }, ensure_ascii=False)
+
+    def _draft_prose(self, user: str) -> str:
+        contract = json.loads(
+            user.split("CURRENT_TASK_CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
+        )
+        target = int(contract["target_han"])
+        match = re.search(r"segment-(\d+)", str(contract["task_id"]))
+        segment = int(match.group(1)) if match else len(contract.get("event_ids", []))
+        actors = ("沈砚", "顾岚", "程未", "叶衡", "陆宁", "周桥")
+        places = ("旧档案馆", "河堤仓库", "夜班车站", "市政听证室", "钟楼夹层")
+        actions = ("核验签章", "比对时序", "追问见证", "封存副本", "公开底账", "修正关系判断")
+        themes = (
+            "雨水沿档案馆铜窗向下爬，失踪者留下的蓝线目录把第一轮调查引向封存柜。",
+            "河堤仓库的潮气改变纸张卷曲方向，搬运记录与守夜人口供第一次正面冲突。",
+            "夜班车站只亮着售票口的白灯，错位的时刻表迫使调查员重新排列见证顺序。",
+            "市政听证室座次森严，公开质询让旧同盟无法继续用私下默契掩盖账目缺口。",
+            "钟楼夹层积着多年灰尘，一枚新鞋印把关系判断从怀疑推进到有限信任。",
+            "医院走廊的消毒水味压住低声争执，伤情记录证明证人改口并非单纯恐惧。",
+            "凌晨印刷厂仍在震动，铅字排列暴露出伪造副本与原件之间不可逆的时间差。",
+            "旧学校礼堂回声空旷，毕业名册让隐藏身份与失踪档案员的选择彼此扣合。",
+            "山城索道悬在雾里，运输票据把零散地点压成一条可复核的行动路线。",
+            "停用法院的木门受潮变形，封条纤维说明关键证物曾在判决之后被人替换。",
+            "广播塔下风声尖利，录音底噪把匿名威胁与一场被忽略的公开会议连在一起。",
+            "晨光越过河面落进档案大厅，全部索引终于汇成能公开、能追责的完整底账。",
+        )
+        paragraphs: list[str] = []
+        turn = 1
+        while effective_han_characters("\n\n".join(paragraphs)) < target:
+            actor = actors[(segment + turn) % len(actors)]
+            partner = actors[(segment + turn + 2) % len(actors)]
+            place = places[(segment * 3 + turn) % len(places)]
+            action = actions[(segment + turn * 2) % len(actions)]
+            promise = (
+                "沈砚与顾岚约定在天亮前公开底账，这项约定仍需后续证据兑现。"
+                if segment == 1 and turn == 1 else ""
+            )
+            exit_requirement = contract.get("exit_requirement")
+            terminal_scope = (
+                isinstance(exit_requirement, dict)
+                and exit_requirement.get("kind") == "terminal_closure"
+            ) or "terminal" in str(exit_requirement).casefold() or segment == max(
+                int(item["global_segment"]) for item in self.packet_calls
+            )
+            payoff = (
+                "天亮前，沈砚公开完整底账，完成先前约定并确认失踪者安全归来。"
+                if terminal_scope and turn == 1 else ""
+            )
+            paragraphs.append(
+                themes[(segment - 1) % len(themes)]
+                + f"第{segment}段第{turn}轮发生在{place}。{actor}先{action}，没有让{partner}"
+                f"替自己完成决定；他依据编号{segment:02d}-{turn:03d}的纸张纤维、墨迹深浅"
+                f"和门禁时间，排除一条看似合理的说法。{partner}从戒备转为有限合作，"
+                f"人物知识由猜测推进为可复核事实，关系变化由现场行动直接支撑。{promise}{payoff}"
+                f"这一轮留下的结果只服务当前正式事件，并把尚未完成的因果压力交给下一轮。"
+            )
+            turn += 1
+        return "\n\n".join(paragraphs)
+
+    @staticmethod
+    def _whole_receipt(user: str) -> str:
+        authority = re.search(r"AUTHORITY SHA256: ([0-9a-f]{64})", user).group(1)
+        draft_sha = re.search(r"DRAFT SHA256: ([0-9a-f]{64})", user).group(1)
+        segment_hashes = json.loads(re.search(
+            r"SEGMENT SHA256: (\[[^\n]+\])", user,
+        ).group(1))
+        expected = json.loads(re.search(
+            r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+        ).group(1))
+        opening = user.split("OPENING EXCERPT: ", 1)[1].split(
+            "\nENDING EXCERPT:", 1,
+        )[0]
+        ending = user.split("ENDING EXCERPT: ", 1)[1]
+        return json.dumps({
+            "authority_sha256": authority, "draft_sha256": draft_sha,
+            "segment_sha256": segment_hashes, "event_ids": expected,
+            "missing_event_ids": [], "duplicate_event_ids": [],
+            "out_of_order_event_ids": [], "causal_order_valid": True,
+            "continuity_valid": True, "ending_valid": True,
+            "commitments_valid": True,
+            "evidence": [
+                {"kind": "opening", "excerpt": opening[:20]},
+                {"kind": "ending", "excerpt": ending[-20:]},
+            ],
+            "summary": "整篇正文保持事件顺序、知识关系推进、承诺兑现与确认结局。",
+        }, ensure_ascii=False)
+
+    async def complete(self, role, system, user, max_output_tokens=None):
+        self.roles.append(role)
+        self.systems.append(system)
+        if "IR_FIRST_SHORT_PLANNING_PACKET_V2" in user:
+            contract = json.loads(
+                user.split("PACKET CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
+            )
+            self.packet_calls.append(contract)
+            self.formal_event_count = max(
+                self.formal_event_count,
+                max(contract["global_event_ordinals"]),
+            )
+            return self._result(role, self._planning_packet(user))
+        if "IR_FIRST_SHORT_PLANNING_V2" in user:
+            raise AssertionError("production-sized whole planning bypassed the splitter")
+        if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
+            return self._result(role, self._plan_segment_receipt(user))
+        if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in user:
+            return self._result(role, self._plan_whole_receipt(user))
+        if "SHORT_PLAN_EVIDENCE_PATCH_V3" in user:
+            return self._result(role, self._planning_repair_patch(user))
+        if (
+            "SHORT_PLAN_EQUIVALENCE_TARGETED_REPAIR_V2" in user
+            or "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_V2" in user
+        ):
+            return self._result(role, self._planning_targeted_segment(user))
+        if "SHORT_PLAN_EVENT_REALIZATION_RECOVERY_V3" in user:
+            return self._result(role, self._planning_event_realizations(user))
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+            return self._result(role, self._causal_chain(user))
+        if "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V2" in user:
+            return self._result(role, self._causal_packet(user))
+        if (
+            "SHORT_EXECUTION_MANIFEST_V2" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V4" in user
+        ):
+            return self._result(
+                role, json.dumps(execution_manifest_body_from_prompt(user), ensure_ascii=False),
+            )
+        if (
+            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3" in user
+            or "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4" in user
+        ):
+            return self._result(role, execution_manifest_receipt_from_prompt(user))
+        if "DRAFT_SEMANTIC_VALIDATION" in user:
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            return self._result(
+                role, json.dumps(draft_semantic_receipt(contract, prose), ensure_ascii=False),
+            )
+        if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+            return self._result(role, self._whole_receipt(user))
+        if role == "draft":
+            prose = self._draft_prose(user)
+            self.draft_segments.append(prose)
+            return self._result(role, prose)
+        if role == "polish":
+            source = user.rsplit("MANUSCRIPT SEGMENT:\n", 1)[1]
+            return self._result(role, source)
+        if role == "final_review" and "FULL MANUSCRIPT WINDOW SUMMARY" in user:
+            return self._result(role, json.dumps({
+                "summary": "当前窗口保持事件、人物知识、关系与时间线连续。",
+                "issues": [],
+            }, ensure_ascii=False))
+        if role == "final_review" and "终审详细事件和伏笔单独分析" in user:
+            return self._result(role, json.dumps({
+                "events": ["正式事件依次完成"],
+                "promises": ["天亮前公开底账的约定在结局兑现"],
+                "character_states": ["调查员知识与关系逐段推进"],
+                "timeline": ["全部分段按正式顺序展开"],
+            }, ensure_ascii=False))
+        if role == "final_review" and "REGIONAL EVIDENCE REDUCTION" in user:
+            return self._result(role, json.dumps({
+                "summary": "区域证据保持跨窗因果、关系与承诺连续。", "issues": [],
+            }, ensure_ascii=False))
+        if role == "final_review" and "FULL MANUSCRIPT FINAL ADJUDICATION" in user:
+            ledger = json.loads(user.split(
+                "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
+            )[1].split("\n\n", 1)[0])
+            payload = json.loads(quality_review(93, 94, 92, issues=[]))
+            payload["reconciliations"] = [{
+                "issue_id": item["issue_id"], "status": "resolved",
+                "severity": item.get("severity", "medium"),
+                "evidence": "正文保持正式事件与结局。",
+            } for item in ledger]
+            return self._result(role, json.dumps(payload, ensure_ascii=False))
+        if role == "review":
+            return self._result(role, quality_review(91, 92, 90, issues=[]))
+        if role == "maintenance":
+            return self._result(role, json.dumps({
+                "facts": [{
+                    "fact_key": "ending.public_ledger",
+                    "value": "调查员在天亮前公开完整底账并承担关系代价",
+                }],
+                "state": {"沈砚": {"knowledge": "已确认全部档案链"}},
+                "world_rules": [], "timeline": ["底账在天亮前公开"],
+            }, ensure_ascii=False))
+        raise AssertionError(f"unexpected offline model call: {role}: {user[:160]}")
 
     async def complete_primary(
         self, role, system, user, max_output_tokens=None,
@@ -1181,6 +1739,25 @@ class VolumeGateway(FakeGateway):
         ])
 
 
+class BlockedVolumeGateway(FakeGateway):
+    def __init__(self) -> None:
+        self.roles = []
+        self.systems = []
+        self.responses = iter([
+            "# Chapter Plan",
+            "# Draft",
+            json.dumps({"score": 90, "hard_fail": False, "issues": []}),
+            json.dumps({"score": 88, "hard_fail": False, "issues": []}),
+            "# Polished",
+            json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+            json.dumps({"facts": [], "state": {"hero": {"location": "gate"}}}),
+            json.dumps({
+                "score": 40, "hard_fail": True,
+                "issues": ["The volume promise is unresolved."],
+            }),
+        ])
+
+
 def make_prompt_skills(root) -> None:
     for name in REQUIRED_SKILLS:
         folder = root / name
@@ -1587,6 +2164,200 @@ async def test_material_audit_records_evidenced_conflicts(tmp_path) -> None:
     state = StoryStateStore(db).get(project.id)
     assert state is not None
     assert state.data["issue_ledger"][0]["source"] == "materials_audit"
+    from novel_flywheel.project_transactions import (
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+    )
+
+    journal = load_project_mutation_journal(
+        project_mutation_journal_path(project.path, result["id"]),
+    )
+    assert journal.status == "committed"
+    assert journal.story_state is not None
+    assert not (project.path / journal.snapshot_path).exists()
+
+
+@pytest.mark.asyncio
+async def test_material_audit_durable_report_resumes_exact_story_state_commit(
+    tmp_path, monkeypatch,
+) -> None:
+    import novel_flywheel.workflows as workflows_module
+    from novel_flywheel.project_transactions import (
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+        recover_project_mutations,
+    )
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Audit forward recovery", mode="short", genre="suspense",
+        premise="The report and issue ledger commit together.",
+        target_words=1000,
+    ))
+    manuscript = project.path / "manuscript" / "story.md"
+    manuscript.parent.mkdir(parents=True, exist_ok=True)
+    manuscript.write_text("沈砚拒绝酒杯。" * 400, encoding="utf-8")
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+
+    async def fake_stage(*args, **kwargs):
+        return StageText(json.dumps({"issues": [{
+            "category": "character_habit", "severity": "high",
+            "evidence": "沈砚拒绝酒杯", "location": "开篇",
+            "old_setting": "拒绝饮酒", "new_setting": "主动饮酒",
+            "action": "保留正式人物习惯",
+        }]}, ensure_ascii=False), {})
+
+    service._stage = fake_stage
+    real_complete = workflows_module.complete_project_mutation
+
+    def interrupt_after_artifacts(*_args, **_kwargs):
+        raise OSError("terminal DB write interrupted")
+
+    monkeypatch.setattr(
+        workflows_module, "complete_project_mutation",
+        interrupt_after_artifacts,
+    )
+    with pytest.raises(OSError, match="terminal DB write interrupted"):
+        await service.run_materials_audit(
+            project.id, use_crewai=False, run_id="audit-forward-recovery",
+        )
+
+    journal_path = project_mutation_journal_path(
+        project.path, "audit-forward-recovery",
+    )
+    pending = load_project_mutation_journal(journal_path)
+    assert pending.status == "artifacts_committed"
+    assert db.get_run("audit-forward-recovery")["status"] == "running"
+    assert StoryStateStore(db).get(project.id).revision == 1
+
+    monkeypatch.setattr(
+        workflows_module, "complete_project_mutation", real_complete,
+    )
+    assert recover_project_mutations(
+        store, workflow="materials-audit",
+    ) == ["audit-forward-recovery"]
+    assert db.get_run("audit-forward-recovery")["status"] == "completed"
+    state = StoryStateStore(db).get(project.id)
+    assert state.revision == 2
+    assert state.data["issue_ledger"][0]["source"] == "materials_audit"
+    assert load_project_mutation_journal(journal_path).status == "committed"
+
+
+@pytest.mark.asyncio
+async def test_material_audit_report_write_failure_rolls_back_without_state_drift(
+    tmp_path, monkeypatch,
+) -> None:
+    import novel_flywheel.workflows as workflows_module
+    from novel_flywheel.project_transactions import (
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+    )
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Audit rollback", mode="short", genre="suspense",
+        premise="A failed report cannot advance story authority.",
+        target_words=1000,
+    ))
+    manuscript = project.path / "manuscript" / "story.md"
+    manuscript.parent.mkdir(parents=True, exist_ok=True)
+    manuscript.write_text("沈砚拒绝酒杯。" * 400, encoding="utf-8")
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+
+    async def fake_stage(*args, **kwargs):
+        return StageText('{"issues": []}', {})
+
+    service._stage = fake_stage
+    real_atomic_write = workflows_module.atomic_write
+
+    def fail_report(path, text, *args, **kwargs):
+        if Path(path).name == "conflict-report.json":
+            raise OSError("private filesystem detail")
+        return real_atomic_write(path, text, *args, **kwargs)
+
+    monkeypatch.setattr(workflows_module, "atomic_write", fail_report)
+    with pytest.raises(OSError, match="private filesystem detail"):
+        await service.run_materials_audit(
+            project.id, use_crewai=False, run_id="audit-rollback",
+        )
+
+    journal = load_project_mutation_journal(
+        project_mutation_journal_path(project.path, "audit-rollback"),
+    )
+    assert journal.status == "rolled_back"
+    assert not (project.path / journal.snapshot_path).exists()
+    assert not (
+        project.path / "runs" / "audit-rollback" / "outputs"
+        / "conflict-report.json"
+    ).exists()
+    assert StoryStateStore(db).get(project.id).revision == 1
+    run = db.get_run("audit-rollback")
+    assert run["status"] == "failed"
+    assert "private filesystem detail" not in str(run.get("error") or "")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("target_characters", [13_000, 20_000, 30_000])
+async def test_material_audit_production_lengths_cover_full_reference_tail(
+    tmp_path, target_characters,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title=f"Audit {target_characters}", mode="short", genre="suspense",
+        premise="Every manuscript and reference span must be audited.",
+        target_words=target_characters,
+    ))
+    paragraphs = []
+    cursor = 0
+    while cursor < target_characters:
+        paragraph = f"第{len(paragraphs) + 1}段，人物推进线索并更新认知。"
+        paragraphs.append(paragraph)
+        cursor += len(paragraph)
+    manuscript_text = "\n\n".join(paragraphs)
+    manuscript = project.path / "manuscript" / "story.md"
+    manuscript.parent.mkdir(parents=True, exist_ok=True)
+    manuscript.write_text(manuscript_text, encoding="utf-8")
+    reference_tail = "REFERENCE-TAIL-UNIQUE-65000"
+    character_path = project.path / "characters" / "hero.md"
+    character_path.write_text(
+        ("人物已确认事实。\n\n" * 7_500) + reference_tail,
+        encoding="utf-8",
+    )
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+    prompts = []
+
+    async def fake_stage(*args, **kwargs):
+        prompts.append(args[5])
+        return StageText('{"issues": []}', {})
+
+    service._stage = fake_stage
+    result = await service.run_materials_audit(
+        project.id, use_crewai=False,
+    )
+
+    assert result["status"] == "completed"
+    assert any(reference_tail in prompt for prompt in prompts)
+    assert StoryStateStore(db).get(project.id).revision == 1
+    with db.connect() as connection:
+        checkpoints = connection.execute(
+            "SELECT * FROM workflow_node_checkpoints WHERE run_id=? "
+            "AND node_key LIKE 'materials-audit-packet-%' "
+            "AND status='validated'",
+            (result["id"],),
+        ).fetchall()
+    assert len(checkpoints) == len(prompts)
 
 
 @pytest.mark.asyncio
@@ -1640,7 +2411,9 @@ async def test_material_audit_resume_reuses_completed_window_checkpoints(tmp_pat
     async def interrupted_stage(*args, **kwargs):
         nonlocal first_calls
         first_calls += 1
-        if first_calls == 3:
+        # The shared contract runtime owns two bounded same-route attempts;
+        # fail both for the third packet so restart recovery is exercised.
+        if first_calls in {3, 4}:
             raise RuntimeError("Server disconnected without sending a response")
         return StageText('{"issues": []}', {})
 
@@ -1663,7 +2436,19 @@ async def test_material_audit_resume_reuses_completed_window_checkpoints(tmp_pat
     )
 
     assert result["status"] == "completed"
-    assert first_calls + resumed_calls - 1 == len(review_windows(manuscript.read_text(encoding="utf-8")))
+    source = manuscript.read_text(encoding="utf-8")
+    target = service._material_audit_packet_target()
+    expected_packets = build_material_audit_packets(
+        build_material_reference_authority(
+            project.path, target_characters=target,
+        ),
+        source,
+        review_windows(
+            source, target=target,
+            overlap=min(400, max(0, target // 8)),
+        ),
+    )
+    assert first_calls + resumed_calls - 2 == len(expected_packets)
     events = db.list_run_events("resumable-audit")
     assert sum(event["event_type"] == "materials_audit_checkpoint_reused"
                for event in events) == 2
@@ -1767,6 +2552,19 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert (project.path / "chapters" / "chapter-01.md").is_file()
     assert json.loads((project.path / "memory" / "canon.json").read_text(encoding="utf-8"))["facts"]
     run_path = project.path / "runs" / result["id"]
+    promotion_journal = json.loads(
+        (run_path / "outputs" / "project-mutation-journal.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert promotion_journal["operation"] == "short-story"
+    assert promotion_journal["status"] == "committed"
+    assert {
+        item["path"] for item in promotion_journal["artifacts"]
+    } == {
+        "manuscript/story.md", "chapters/chapter-01.md", "memory/canon.json",
+    }
+    assert not (run_path / "outputs" / "formal-promotion-journal.json").exists()
     assert (run_path / "outputs" / "planning.md").is_file()
     assert (run_path / "outputs" / "short-causal-chain.json").is_file()
     execution_index = json.loads(
@@ -1929,10 +2727,6 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
         candidate.id, state.revision,
         {**state.data, "outline": {"content": outline, "events": []}},
     )
-    db.set_feature_flag(
-        "planning_ir_first", True, scope_type="project", scope_id=project.id,
-    )
-
     result = await service.run_short(project.id, use_crewai=False)
     run_path = project.path / "runs" / result["id"]
 
@@ -1947,6 +2741,306 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
         item["event_type"] == "planning_ir_first_compiled"
         for item in db.list_run_events(result["id"])
     )
+
+
+@pytest.mark.asyncio
+async def test_ir_first_initial_capacity_preflight_uses_event_owned_semantic_packets(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="primary", name="Primary", protocol="openai",
+        base_url="https://primary.invalid/v1", auth_type="bearer",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="planning-model", provider_id="primary",
+        display_name="Planning", model_name="planning-model",
+        context_window=6_144, max_output_tokens=None,
+    )
+    db.save_role_binding("planning", "primary", "planning-model", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Production-sized IR planning", mode="short", genre="mystery",
+        premise="A missing archivist leaves a sequence of contradictory records.",
+        target_words=13_000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class PacketOnlyGateway:
+        def __init__(self) -> None:
+            self.packet_calls: list[dict] = []
+            self.failed_once = False
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            if "IR_FIRST_SHORT_PLANNING_PACKET_V2" not in user:
+                raise AssertionError(
+                    "the over-capacity whole semantic request reached the provider"
+                )
+            contract = json.loads(
+                user.split("PACKET CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
+            )
+            self.packet_calls.append(contract)
+            local_count = len(contract["global_event_ordinals"])
+            segment = contract["global_segment"]
+            if segment == 3 and not self.failed_once:
+                self.failed_once = True
+                raise RuntimeError("server disconnected before terminal response")
+            return ModelResult(json.dumps({
+                "version": 2,
+                "initial_state": (
+                    f"Segment {segment} opens from the accepted predecessor state."
+                ),
+                "segments": [{
+                    "kind": "terminal", "segment": 1,
+                    "title": f"Archive turn {segment}",
+                    "events": [{
+                        "formal_event_ordinal": ordinal,
+                        "narrative": (
+                            f"The investigator executes packet event {ordinal}, meets "
+                            f"specific resistance, updates knowledge, and leaves a proved "
+                            f"causal result for segment {segment}."
+                        ),
+                    } for ordinal in range(1, local_count + 1)],
+                }],
+            }), {
+                "finish_reason": "stop", "provider_id": "primary",
+                "model_id": "planning-model", "model_name": "planning-model",
+                "input_tokens": 2400, "output_tokens": 900,
+            })
+
+    gateway = PacketOnlyGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id = "ir-first-initial-capacity"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    formal_events = [{
+        "id": f"EV-{index:08X}",
+        "label": f"Formal event {index}",
+        "evidence": (
+            f"The investigator follows record {index}, confronts witness {index}, "
+            f"changes the trust ledger, and preserves clue {index} for the ending."
+        ),
+    } for index in range(1, 19)]
+    production_facts = [{
+        "key": f"archive.fact.{index:04d}",
+        "value": (
+            f"第{index}份档案记录人物{index % 17}在第{index % 23}个时间点的知识、"
+            f"关系、承诺与限制；该记录只能由事件{index % 18 + 1}改变。"
+        ),
+    } for index in range(1, 901)]
+    brief = json.dumps({
+        **project.metadata,
+        "formal_story_facts": production_facts,
+        "formal_outline_events": formal_events,
+        "generation_contract": {
+            "target_total_words": 13_000,
+            "segment_count": 6,
+        },
+    }, ensure_ascii=False, indent=2)
+    state = service.story_states.ensure(project.id, project.path)
+
+    plan = await service._plan_short_ir_first(
+        run_id, run_path, project,
+        "必须保持人物知识、关系、承诺、事件顺序与最终结局。",
+        brief, state.data, formal_events, 6, 7_200,
+    )
+
+    assert plan.count("### Segment ") == 6
+    assert all(event["id"] in plan for event in formal_events)
+    called_segments = [
+        item["global_segment"] for item in gateway.packet_calls
+    ]
+    assert called_segments == sorted(called_segments)
+    assert set(called_segments) == set(range(1, 7))
+    assert called_segments.count(3) >= 2
+    unique_packets = {
+        (
+            item["global_segment"],
+            tuple(item["global_event_ordinals"]),
+        ): item
+        for item in gateway.packet_calls
+    }
+    assert sum(
+        len(item["global_event_ordinals"])
+        for item in unique_packets.values()
+    ) == len(formal_events)
+    events = db.list_run_events(run_id)
+    assert any(
+        item["event_type"] == "stage_capacity_split_requested" for item in events
+    )
+    assert any(
+        item["event_type"] == "stage_capacity_split_completed" for item in events
+    )
+
+    calls_before_resume = len(gateway.packet_calls)
+    resumed = await service._plan_short_ir_first(
+        run_id, run_path, project,
+        "必须保持人物知识、关系、承诺、事件顺序与最终结局。",
+        brief, state.data, formal_events, 6, 7_200,
+    )
+    assert resumed == plan
+    assert len(gateway.packet_calls) == calls_before_resume
+    assert any(
+        item["event_type"] == "planning_semantic_packet_reused"
+        for item in db.list_run_events(run_id)
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("target_words", [13_000, 20_000, 30_000])
+async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript(
+    tmp_path, target_words,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="offline", name="Offline", protocol="openai",
+        base_url="https://offline.invalid/v1", auth_type="bearer",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="planning-small", provider_id="offline",
+        display_name="Planning Small", model_name="planning-small",
+        context_window=32_768, max_output_tokens=None,
+    )
+    db.save_model(
+        model_id="offline-large", provider_id="offline",
+        display_name="Offline Large", model_name="offline-large",
+        context_window=262_144, max_output_tokens=32_768,
+    )
+    db.save_role_binding(
+        "planning", "offline", "planning-small", None, None,
+    )
+    for role in (
+        "review", "draft", "polish", "final_review", "maintenance",
+        "reader_review", "revision_plan",
+    ):
+        db.save_role_binding(
+            role, "offline", "offline-large", None, None,
+        )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title=f"Production short {target_words}", mode="short", genre="mystery",
+        premise="A missing archivist leaves a complete but contradictory evidence chain.",
+        target_words=target_words,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = ProductionSizedShortGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    segment_count = service._short_segment_count(target_words)
+    formal_events = []
+    for event_index in range(1, segment_count * 2 + 1):
+        evidence_units = [
+            (
+                f"事件{event_index}证据单元{unit}：沈砚在地点{(event_index + unit) % 11}"
+                f"核验编号{event_index:02d}-{unit:02d}的签章与时间，顾岚依据现场行动"
+                f"把信任状态推进到层级{(event_index * unit) % 19}，并保留结局所需线索。"
+            )
+            for unit in range(1, 13)
+        ]
+        formal_events.append({
+            "id": f"EV-{event_index:08X}",
+            "label": f"档案链正式事件 {event_index}",
+            "evidence": "".join(evidence_units),
+        })
+    initial_state = service.story_states.ensure(project.id, project.path)
+    outline_authority = json.dumps(formal_events, ensure_ascii=False)
+    state_candidate = service.story_states.create_candidate(
+        project.id, None, initial_state.revision, "outline",
+        hashlib.sha256(outline_authority.encode("utf-8")).hexdigest(),
+    )
+    service.story_states.commit(
+        state_candidate.id, initial_state.revision,
+        {
+            **initial_state.data,
+            "outline": {"content": "", "events": formal_events},
+            "ending": {
+                "surface_goal": "天亮前公开完整底账并找到失踪档案员",
+                "inner_goal": "调查员接受公开真相造成的关系代价",
+                "cost": "与旧同盟公开决裂",
+                "final_image": "晨光照在已公开的完整底账上",
+            },
+            "confirmed_facts": [{
+                "fact_key": "archive.deadline",
+                "value": "完整底账必须在天亮前公开",
+            }],
+        },
+    )
+    result = await service.run_short(project.id, use_crewai=False)
+    run_path = project.path / "runs" / result["id"]
+    formal = (project.path / "manuscript" / "story.md").read_text(
+        encoding="utf-8",
+    )
+    report = json.loads(
+        (run_path / "outputs" / "quality-report.json").read_text(encoding="utf-8")
+    )
+
+    assert result["status"] == "completed"
+    assert target_words <= effective_han_characters(formal) <= int(
+        target_words * 1.20
+    )
+    assert report["status"] == "passed"
+    assert report["terminal_reviewed_hash"] == hashlib.sha256(
+        formal.encode("utf-8")
+    ).hexdigest()
+    assert len(gateway.packet_calls) == segment_count
+    assert len(gateway.draft_segments) == segment_count
+    paragraphs = [item.strip() for item in formal.split("\n\n") if item.strip()]
+    assert len(paragraphs) == len(set(paragraphs))
+    assert "约定在天亮前公开底账" in formal
+    assert "完成先前约定" in formal
+    for artifact in (
+        "planning-semantic-v2.json", "short-causal-chain.json",
+        "short-execution-index.json", "draft.md", "polish.md",
+        "final-review-evidence.json", "quality-report.json",
+    ):
+        assert (run_path / "outputs" / artifact).is_file(), artifact
+    event_types = [
+        item["event_type"] for item in db.list_run_events(result["id"])
+    ]
+    assert "stage_capacity_split_requested" in event_types
+    assert "planning_semantic_packets_reduced" in event_types
+    assert "draft_integrity_passed" in event_types
+    assert "story_state_committed" in event_types
+
+
+def test_new_short_project_uses_stable_project_brief_event_authority(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Brief authority", mode="short", genre="mystery",
+        premise="A witness disappears after naming the wrong suspect.",
+        target_words=13_000,
+    ))
+    state = StoryStateStore(db).ensure(project.id, project.path).data
+
+    first = WorkflowService._short_formal_event_authority(project, state)
+    second = WorkflowService._short_formal_event_authority(project, state)
+
+    assert first == second
+    assert len(first) == 1
+    assert first[0]["id"].startswith("EV-")
+    assert first[0]["source"] == "project_brief"
+    assert first[0]["evidence"] == project.metadata["premise"]
+
+    changed = replace(project, metadata={
+        **project.metadata,
+        "premise": "A witness returns with proof that changes the accusation.",
+    })
+    assert WorkflowService._short_formal_event_authority(
+        changed, state,
+    )[0]["id"] != first[0]["id"]
 
 
 @pytest.mark.asyncio
@@ -1987,6 +3081,53 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
             self.roles.append(role)
             self.systems.append(system)
             self.users.append(user)
+            if "IR_FIRST_SHORT_PLANNING_V2" in user:
+                # New production planning is typed IR.  Consume the retained
+                # historical Markdown fixture, then return the same semantic
+                # intent through the sole current contract.
+                next(self.responses)
+                return ModelResult(json.dumps({
+                    "version": 2,
+                    "initial_state": "The friend is dead at the scene.",
+                    "segments": [{
+                        "kind": "terminal", "segment": 1,
+                        "title": "Investigate the death scene",
+                        "events": [{
+                            "formal_event_ordinal": 1,
+                            "narrative": (
+                                "The protagonist investigates the death scene, "
+                                "finds the damaged memory, proves the ritual cost, "
+                                "and accepts the confirmed final loss."
+                            ),
+                        }],
+                    }],
+                }), {
+                    "role": role, "model_name": f"fake-{role}",
+                })
+            if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+                covered = list(dict.fromkeys(
+                    re.findall(r"EV-[0-9A-F]{8}", user.upper())
+                ))
+                return ModelResult(json.dumps({
+                    "core_goal": "Revive the dead friend",
+                    "opening": {"pressure": "The friend is dead"},
+                    "cycles": [{
+                        "obstacle": "The soul medium is missing",
+                        "effort": "Investigate the death scene",
+                        "result": "Recover a damaged memory",
+                        "state_change": "Prove the ritual cost",
+                    }],
+                    "accidents": [], "reversal": {},
+                    "ending": {
+                        "surface_goal": "Permanent revival is impossible",
+                        "inner_goal": "The protagonist releases the guilt",
+                        "cost": "Accept the loss",
+                    },
+                    "question_chain": [], "relationship_arc": [],
+                    "covered_event_ids": covered,
+                }), {
+                    "role": role, "model_name": f"fake-{role}",
+                })
             if (
                 "SHORT_EXECUTION_MANIFEST_V2" in user
                 or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
@@ -2058,15 +3199,17 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
 
     assert result["status"] == "completed"
     artifact = (project.path / "learning" / "short_causal_chain.json").read_text(encoding="utf-8")
-    assert "复活死去的朋友" in artifact
+    assert "Revive the dead friend" in artifact
     planning = project.path / "runs" / result["id"] / "outputs" / "planning.md"
     assert "SHORT_CAUSAL_CHAIN_JSON_START" not in planning.read_text(encoding="utf-8")
-    assert "SHORT_CAUSAL_CHAIN_JSON_START" in gateway.users[0]
-    assert '"opening"' in gateway.users[0]
-    assert '"question_chain"' in gateway.users[0]
-    assert '"relationship_arc"' in gateway.users[0]
-    assert '"next_question"' in gateway.users[0]
-    assert any("Short Story Causal Chain" in system and "复活死去的朋友" in system
+    causal_prompt = next(
+        item for item in gateway.users
+        if "SHORT_CAUSAL_CHAIN_STANDALONE" in item
+    )
+    assert "opening" in causal_prompt
+    assert "question_chain" in causal_prompt
+    assert "relationship_arc" in causal_prompt
+    assert any("Short Story Causal Chain" in system and "Revive the dead friend" in system
                for system in gateway.systems[1:])
     final_prompts = [user for role, user in zip(gateway.roles, gateway.users) if role == "final_review"]
     assert any("CAUSAL CHAIN CHECKS" in prompt for prompt in final_prompts)
@@ -2170,6 +3313,18 @@ async def test_long_chapter_uses_memory_and_writes_next_number(tmp_path) -> None
     assert result["status"] == "completed"
     assert (project.path / "chapters" / "chapter-01.md").is_file()
     assert db.get_run(result["id"])["workflow"] == "long-chapter"
+    from novel_flywheel.project_transactions import (
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+    )
+
+    journal = load_project_mutation_journal(
+        project_mutation_journal_path(project.path, result["id"]),
+    )
+    assert journal.status == "committed"
+    assert [effect.kind for effect in journal.memory_effects] == [
+        "chapter_index",
+    ]
 
 
 @pytest.mark.asyncio
@@ -2189,6 +3344,83 @@ async def test_long_setup_writes_book_bible_and_canon(tmp_path) -> None:
     assert result["status"] == "completed"
     assert "Book Bible" in (project.path / "memory" / "book-plan.md").read_text(encoding="utf-8")
     assert not (project.path / "outline.md").exists()
+    from novel_flywheel.project_transactions import (
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+    )
+
+    journal = load_project_mutation_journal(
+        project_mutation_journal_path(project.path, result["id"]),
+    )
+    assert journal.status == "committed"
+    assert [effect.kind for effect in journal.memory_effects] == ["canon_fact"]
+    with db.connect() as connection:
+        fact = connection.execute(
+            "SELECT value, source FROM canon_facts WHERE project_id=? "
+            "AND fact_key='ending' AND confirmed=1",
+            (project.id,),
+        ).fetchone()
+    assert dict(fact) == {
+        "value": "the oath is fulfilled", "source": "book-setup",
+    }
+
+
+@pytest.mark.asyncio
+async def test_long_setup_resumes_exact_memory_projection_after_artifact_stage(
+    tmp_path, monkeypatch,
+) -> None:
+    import novel_flywheel.workflows as workflows_module
+    from novel_flywheel.project_transactions import recover_project_mutations
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Long recovery", mode="long", genre="fantasy",
+        premise="A durable book setup resumes exactly once.",
+        target_words=100000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, SetupGateway(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    real_complete = workflows_module.complete_project_mutation
+
+    def interrupt_after_artifacts(*_args, **_kwargs):
+        raise OSError("terminal write interrupted")
+
+    monkeypatch.setattr(
+        workflows_module, "complete_project_mutation",
+        interrupt_after_artifacts,
+    )
+    with pytest.raises(OSError, match="terminal write interrupted"):
+        await service.run_long_setup(
+            project.id, use_crewai=False, run_id="long-setup-recovery",
+        )
+    with db.connect() as connection:
+        before = connection.execute(
+            "SELECT value FROM canon_facts WHERE project_id=? "
+            "AND fact_key='ending' AND confirmed=1",
+            (project.id,),
+        ).fetchone()
+    assert before is None
+    assert db.get_run("long-setup-recovery")["status"] == "running"
+
+    monkeypatch.setattr(
+        workflows_module, "complete_project_mutation", real_complete,
+    )
+    assert recover_project_mutations(
+        store, workflow="long-setup",
+    ) == ["long-setup-recovery"]
+    assert db.get_run("long-setup-recovery")["status"] == "completed"
+    with db.connect() as connection:
+        facts = connection.execute(
+            "SELECT value FROM canon_facts WHERE project_id=? "
+            "AND fact_key='ending' AND confirmed=1",
+            (project.id,),
+        ).fetchall()
+    assert [row["value"] for row in facts] == ["the oath is fulfilled"]
 
 
 @pytest.mark.asyncio
@@ -2212,6 +3444,193 @@ async def test_volume_boundary_runs_audit_and_persists_result(tmp_path) -> None:
     assert audit["status"] == "passed"
 
 
+@pytest.mark.asyncio
+async def test_blocked_volume_preserves_published_chapter_and_memory(
+    tmp_path,
+) -> None:
+    """Freeze the existing post-publication volume-gate business behavior."""
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Blocked volume", mode="long", genre="fantasy",
+        premise="A published volume remains available for repair.",
+        target_words=100_000,
+    ))
+    (project.path / "memory" / "volumes.json").write_text(json.dumps({
+        "volumes": [{
+            "number": 1, "start_chapter": 1, "end_chapter": 1,
+            "goal": "Reach the gate",
+        }],
+    }), encoding="utf-8")
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, BlockedVolumeGateway(),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+
+    with pytest.raises(RuntimeError, match="Volume audit blocked"):
+        await service.run_chapter(
+            project.id, "Reach the gate", use_crewai=False,
+            run_id="blocked-volume",
+        )
+
+    assert (project.path / "chapters" / "chapter-01.md").is_file()
+    assert (project.path / "memory" / "canon.json").is_file()
+    audit = json.loads(
+        (project.path / "memory" / "audits" / "volume-01.json").read_text(
+            encoding="utf-8",
+        )
+    )
+    assert audit["status"] == "blocked"
+    assert db.get_run("blocked-volume")["status"] == "failed"
+    with db.connect() as connection:
+        indexed = connection.execute(
+            "SELECT content FROM chapter_search WHERE project_id=? "
+            "AND chapter_id='chapter-01'",
+            (project.id,),
+        ).fetchall()
+        state = connection.execute(
+            "SELECT state_json FROM chapter_states WHERE project_id=? "
+            "AND chapter_id='chapter-01'",
+            (project.id,),
+        ).fetchone()
+    assert len(indexed) == 1
+    assert json.loads(state["state_json"])["hero"]["location"] == "gate"
+
+
+@pytest.mark.asyncio
+async def test_long_chapter_resumes_post_commit_volume_gate_without_regeneration(
+    tmp_path, monkeypatch,
+) -> None:
+    import novel_flywheel.workflows as workflows_module
+    from novel_flywheel.project_transactions import (
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+    )
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Volume resume", mode="long", genre="fantasy",
+        premise="A staged chapter resumes only its pending volume audit.",
+        target_words=100_000,
+    ))
+    (project.path / "memory" / "volumes.json").write_text(json.dumps({
+        "volumes": [{
+            "number": 1, "start_chapter": 1, "end_chapter": 1,
+            "goal": "Reach the gate",
+        }],
+    }), encoding="utf-8")
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = VolumeGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    real_commit = workflows_module.commit_project_mutation_authority
+
+    def interrupt_before_memory_projection(*_args, **_kwargs):
+        raise OSError("authority commit interrupted")
+
+    monkeypatch.setattr(
+        workflows_module, "commit_project_mutation_authority",
+        interrupt_before_memory_projection,
+    )
+    with pytest.raises(OSError, match="authority commit interrupted"):
+        await service.run_chapter(
+            project.id, "Reach the gate", use_crewai=False,
+            run_id="volume-resume",
+        )
+
+    journal_path = project_mutation_journal_path(
+        project.path, "volume-resume",
+    )
+    assert load_project_mutation_journal(journal_path).status == (
+        "artifacts_committed"
+    )
+    assert db.get_run("volume-resume")["status"] == "running"
+    calls_before_resume = len(gateway.roles)
+
+    monkeypatch.setattr(
+        workflows_module, "commit_project_mutation_authority", real_commit,
+    )
+    result = await service.run_chapter(
+        project.id, "Reach the gate", use_crewai=False,
+        run_id="volume-resume",
+    )
+
+    assert result["status"] == "completed"
+    assert len(gateway.roles) == calls_before_resume + 1
+    assert gateway.roles[-1] == "final_review"
+    assert load_project_mutation_journal(journal_path).status == "committed"
+    with db.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) AS count FROM chapter_search WHERE project_id=? "
+            "AND chapter_id='chapter-01'",
+            (project.id,),
+        ).fetchone()["count"] == 1
+        assert connection.execute(
+            "SELECT COUNT(*) AS count FROM chapter_states WHERE project_id=? "
+            "AND chapter_id='chapter-01'",
+            (project.id,),
+        ).fetchone()["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_prepublication_chapter_failure_restores_files_and_memory(
+    tmp_path,
+) -> None:
+    """A maintenance contract failure must remain pre-publication."""
+
+    class InvalidMaintenanceGateway(VolumeGateway):
+        def __init__(self) -> None:
+            super().__init__()
+            responses = list(self.responses)
+            responses[6] = json.dumps({"state": {"hero": {"location": "gate"}}})
+            self.responses = iter(responses)
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Pre-publication failure", mode="long", genre="fantasy",
+        premise="Invalid maintenance cannot publish the chapter.",
+        target_words=100_000,
+    ))
+    canon_path = project.path / "memory" / "canon.json"
+    canon_before = canon_path.read_bytes() if canon_path.is_file() else None
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, InvalidMaintenanceGateway(),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+
+    with pytest.raises(ValueError, match="facts array"):
+        await service.run_chapter(
+            project.id, "Reach the gate", use_crewai=False,
+            run_id="invalid-maintenance",
+        )
+
+    assert not (project.path / "chapters" / "chapter-01.md").exists()
+    assert (
+        canon_path.read_bytes() if canon_path.is_file() else None
+    ) == canon_before
+    with db.connect() as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) AS count FROM chapter_search WHERE project_id=?",
+            (project.id,),
+        ).fetchone()["count"] == 0
+        assert connection.execute(
+            "SELECT COUNT(*) AS count FROM chapter_states WHERE project_id=?",
+            (project.id,),
+        ).fetchone()["count"] == 0
+
+
 class RecordingGateway:
     def __init__(self, responses) -> None:
         self.roles = []
@@ -2221,6 +3640,47 @@ class RecordingGateway:
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
         self.calls.append({"role": role, "system": system, "user": user})
+        if "IR_FIRST_SHORT_PLANNING_V2" in user:
+            legacy = next(self.responses)
+            if str(legacy).strip() != "# Plan":
+                return ModelResult(
+                    str(legacy),
+                    {"role": role, "model_name": f"fake-{role}"},
+                )
+            count_match = re.search(r"SEGMENT COUNT:\s*(\d+)", user)
+            count = int(count_match.group(1)) if count_match else 1
+            event_ids = list(dict.fromkeys(
+                re.findall(r"EV-[0-9A-F]{8}", user.upper())
+            ))
+            event_count = max(1, len(event_ids))
+            segments = []
+            for index in range(count):
+                ordinal = min(
+                    event_count,
+                    (index * event_count) // count + 1,
+                )
+                segments.append({
+                    "kind": "terminal" if index + 1 == count else "continuation",
+                    "segment": index + 1,
+                    "title": f"验收事件组 {index + 1}",
+                    "events": [{
+                        "formal_event_ordinal": ordinal,
+                        "narrative": (
+                            "执行者完成当前正式事件中的受阻行动，形成可验证结果，"
+                            "推进人物状态并保留既定因果与结局。"
+                        ),
+                    }],
+                    **({
+                        "exit_state": "当前事件已完成，人物位置、行动、关系和知识均可承接。",
+                    } if index + 1 < count else {}),
+                })
+            return ModelResult(json.dumps({
+                "version": 2,
+                "initial_state": "故事在正式事件入口开始，人物与已知信息保持既定状态。",
+                "segments": segments,
+            }, ensure_ascii=False), {
+                "role": role, "model_name": f"fake-{role}",
+            })
         if (
             "SHORT_EXECUTION_MANIFEST_V2" in user
             or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
@@ -2522,7 +3982,7 @@ def test_interrupted_formal_promotion_rolls_back_when_story_state_not_committed(
         } for path, value in zip(formal, new_values, strict=True)],
     }, ensure_ascii=False))
 
-    service._recover_short_formal_promotions(project)
+    recover_legacy_short_formal_promotions(db, service.story_states, project)
 
     assert [path.read_text(encoding="utf-8") for path in formal] == old_values
     assert service.story_states.get_candidate(candidate.id).status == "rejected"
@@ -2586,7 +4046,7 @@ def test_interrupted_formal_promotion_finalizes_when_story_state_committed(
         } for path, value in zip(formal, new_values, strict=True)],
     }, ensure_ascii=False))
 
-    service._recover_short_formal_promotions(project)
+    recover_legacy_short_formal_promotions(db, service.story_states, project)
 
     assert [path.read_text(encoding="utf-8") for path in formal] == new_values
     assert json.loads(journal_path.read_text(encoding="utf-8"))["status"] \
@@ -2656,7 +4116,7 @@ def test_interrupted_formal_promotion_repairs_files_when_story_state_committed(
         "files": files,
     }, ensure_ascii=False))
 
-    service._recover_short_formal_promotions(project)
+    recover_legacy_short_formal_promotions(db, service.story_states, project)
 
     assert [path.read_text(encoding="utf-8") for path in formal] == new_values
     assert json.loads(journal_path.read_text(encoding="utf-8"))["status"] \
@@ -2723,7 +4183,9 @@ def test_interrupted_legacy_formal_promotion_preserves_evidence_on_hash_mismatch
     }, ensure_ascii=False))
 
     with pytest.raises(RuntimeError, match="缺少确定性恢复载荷"):
-        service._recover_short_formal_promotions(project)
+        recover_legacy_short_formal_promotions(
+            db, service.story_states, project,
+        )
 
     assert formal[1].read_text(encoding="utf-8") == "partial chapter"
     assert json.loads(journal_path.read_text(encoding="utf-8"))["status"] \
@@ -2893,7 +4355,7 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
     result = await service.run_short(project.id, use_crewai=False)
 
     assert result["status"] == "completed"
-    assert gateway.roles.count("reader_review") == 1
+    assert gateway.roles.count("reader_review") == 2
     assert gateway.roles.count("review") == 6
     events = db.list_run_events(result["id"])
     fallback = next(item for item in events if item["event_type"] == "reader_fallback")
@@ -2902,7 +4364,7 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
 
 
 @pytest.mark.asyncio
-async def test_short_story_repairs_reader_review_with_single_quoted_field_boundary(tmp_path) -> None:
+async def test_short_story_retries_reader_review_without_trusting_semantic_rewrap(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
     store = ProjectStore(db, tmp_path / "workspace")
@@ -2933,7 +4395,8 @@ async def test_short_story_repairs_reader_review_with_single_quoted_field_bounda
     }"""
     gateway = RecordingGateway([
         "# Plan", "# Draft", quality_review(), malformed_reader_review,
-        "# Polish", quality_review(), json.dumps({"facts": []}),
+        quality_review(), "# Polish", quality_review(),
+        json.dumps({"facts": []}),
     ])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
 
@@ -2943,7 +4406,7 @@ async def test_short_story_repairs_reader_review_with_single_quoted_field_bounda
     events = db.list_run_events(result["id"])
     assert not any(item["event_type"] == "reader_fallback" for item in events)
     repaired = next(item for item in events if item["event_type"] == "reader_review_repaired")
-    assert repaired["metadata"]["strategy"] == "conservative_json_repair"
+    assert repaired["metadata"]["strategy"] == "shared_same_task_contract_retry"
 
 
 def test_whole_story_obligation_catalog_binds_beats_and_planning_events(tmp_path) -> None:
@@ -3031,11 +4494,23 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     plan = complete_plan_for_event_groups([
         [f"EV-{index:08X}"] for index in range(1, 9)
     ])
+    base_constraints = (
+        "confirmed constraints\n\n# Short Story Causal Chain\n\n"
+        "a historical accepted chain is already part of the project authority"
+    )
+    constraints = (
+        base_constraints
+        + "\n\n# Short Story Causal Chain\n\ncurrent run causal authority"
+    )
+    base_constraints_sha256 = hashlib.sha256(
+        base_constraints.encode("utf-8")
+    ).hexdigest()
     manifest = write_test_execution_manifest(
-        service, project, run_path, "constraints", plan, 8,
+        service, project, run_path, constraints, plan, 8,
     )
     draft = await service._draft_short_in_segments(
-        "segmented", run_path, project, "constraints", plan,
+        "segmented", run_path, project, constraints, plan,
+        base_constraints_sha256=base_constraints_sha256,
     )
 
     assert WorkflowService._short_segment_count(20000) == 8
@@ -3059,8 +4534,9 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     assert integrity["authority_sha256"]
     assert integrity["plan_sha256"] == hashlib.sha256(plan.encode("utf-8")).hexdigest()
     assert integrity["constraints_sha256"] == hashlib.sha256(
-        "constraints".encode("utf-8")
+        constraints.encode("utf-8")
     ).hexdigest()
+    assert integrity["base_constraints_sha256"] == base_constraints_sha256
     assert integrity["story_state_sha256"]
     assert integrity["draft_sha256"] == hashlib.sha256(draft.encode("utf-8")).hexdigest()
     assert integrity["expected_event_ids"] == [
@@ -3703,54 +5179,6 @@ async def test_zero_event_scope_retries_in_place_instead_of_creating_empty_child
 
 
 @pytest.mark.asyncio
-async def test_short_planning_batches_are_internal_and_checkpointed(tmp_path) -> None:
-    db = Database(tmp_path / "app.db")
-    db.migrate()
-    store = ProjectStore(db, tmp_path / "workspace")
-    project = store.create(ProjectCreate(
-        title="Batched plan", mode="short", genre="suspense",
-        premise="A long plan is split safely.", target_words=10000,
-    ))
-    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
-    db.create_run("batched-plan", project.id, "short-story", status="running")
-    run_path = project.path / "runs" / "batched-plan"
-    (run_path / "outputs").mkdir(parents=True)
-    (run_path / "receipts").mkdir()
-    calls = []
-
-    async def fake_stage(*args, **kwargs):
-        user = args[5]
-        calls.append(user)
-        match = __import__("re").search(r"第 (\d+) 段到第 (\d+) 段", user)
-        assert match
-        start, end = map(int, match.groups())
-        return "\n\n".join(
-            f"### 第 {number} 段：事件{number}\n"
-            f"事件ID：EV-{number:08x}\n大纲依据：事件{number}\n"
-            f"段首承接：承接状态{number}\n本段事件：推进事件{number}\n"
-            f"段末交接：留下状态{number}\n" + chr(0x4e00 + number) * 100
-            for number in range(start, end + 1)
-        )
-
-    service._stage = fake_stage
-    plan = await service._plan_short_in_batches(
-        "batched-plan", run_path, project, "constraints", "brief", {}, 4,
-    )
-
-    assert len(calls) == 2
-    assert len(service._short_plan_segments(plan, 4)) == 4
-    assert len(list((run_path / "outputs" / "planning-checkpoints").glob("*.json"))) == 2
-
-    async def should_not_call(*args, **kwargs):
-        raise AssertionError("validated planning batch was not reused")
-
-    service._stage = should_not_call
-    assert await service._plan_short_in_batches(
-        "batched-plan", run_path, project, "constraints", "brief", {}, 4,
-    ) == plan
-
-
-@pytest.mark.asyncio
 async def test_invalid_causal_chain_keeps_execution_index_pending(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -3814,6 +5242,7 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
         for index, event_id in enumerate(event_ids, 1)
     )
     packet_calls: list[list[str]] = []
+    packet_topology: list[tuple[bool, bool]] = []
     root_calls = 0
 
     async def fake_stage(*args, **kwargs):
@@ -3835,6 +5264,10 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
             )[0]
         )
         packet_calls.append(expected)
+        packet_topology.append((
+            prompt.split("OWNS OPENING: ", 1)[1].splitlines()[0] == "true",
+            prompt.split("OWNS ENDING: ", 1)[1].splitlines()[0] == "true",
+        ))
         packet_number = len(packet_calls)
         return json.dumps({
             "core_goal": "完成全部调查" if packet_number == 1 else "",
@@ -3862,6 +5295,7 @@ async def test_causal_chain_capacity_split_merges_event_owned_packets_and_reuses
     assert chain["covered_event_ids"] == event_ids
     assert len(chain["cycles"]) == 2
     assert packet_calls == [event_ids[:2], event_ids[2:]]
+    assert packet_topology == [(True, False), (False, True)]
     # Two validated leaves plus one validated deterministic reduction checkpoint.
     assert len(list((run_path / "outputs" / "causal-chain-packets").glob("*.json"))) == 3
 
@@ -4093,6 +5527,10 @@ async def test_causal_chain_real_stage_recovers_repeated_output_limits_and_cross
             )
 
         async def complete_primary(self, role, system, user, max_output_tokens=None):
+            if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+                raise RuntimeError(
+                    "maximum context length exceeded at provider"
+                )
             expected = self.expected(user)
             self.primary_calls.append(expected)
             if len(expected) > 4:
@@ -4212,6 +5650,10 @@ async def test_indivisible_causal_packet_uses_configured_fallback_without_losing
 
         async def complete_primary(self, role, system, user, max_output_tokens=None):
             self.primary_calls += 1
+            if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
+                raise RuntimeError(
+                    "maximum context length exceeded at provider"
+                )
             if failure_mode == "disconnect":
                 raise RuntimeError("server disconnected before terminal response")
             return ModelResult('{"cycles":[', {
@@ -7216,6 +8658,90 @@ async def test_table_plan_repairs_event_ownership_per_segment_without_whole_rewr
     assert (run_path / "outputs" / "short-causal-chain.json").is_file()
 
 
+@pytest.mark.asyncio
+async def test_planning_adaptation_repair_returns_only_event_realizations_and_preserves_controls(
+    tmp_path,
+) -> None:
+    """A semantic repair must not let the model rewrite Runtime-owned controls."""
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="IR-only planning repair", mode="short", genre="mystery",
+        premise="A formal event needs an executable realization.", target_words=13_000,
+    ))
+    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
+    run_path = project.path / "runs" / "ir-only-planning-repair"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_id = "EV-A1B2C3D4"
+    current = render_planning_segment_ir(PlanningSegmentIR(
+        segment=1,
+        heading="### Segment 1: Confirm the sealed record",
+        event_ids=(event_id,),
+        outline="The investigator must authenticate the sealed record.",
+        opening="The record is sealed and its origin remains disputed.",
+        event_body=f"{event_id}\nThe investigator notices the record.",
+        handoff="The authenticated record establishes the confirmed ending state.",
+        source_sha256="1" * 64,
+    ))
+    formal_events = [{
+        "id": event_id,
+        "order": 1,
+        "label": "Authenticate the sealed record",
+        "evidence": (
+            "The investigator actively authenticates the sealed record, overcomes a "
+            "challenge to its origin, obtains a verifiable result, and accepts the cost."
+        ),
+        "kind": "narrative",
+    }]
+    state = {"outline": {"events": formal_events}}
+    prompts: list[str] = []
+
+    async def event_only_stage(*args, **kwargs):
+        prompt = args[5]
+        prompts.append(prompt)
+        expected = json.loads(
+            prompt.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
+        )
+        return json.dumps({"events": [{
+            "event_id": owned,
+            "narrative": (
+                "The investigator actively performs the formal authentication, meets "
+                "a concrete challenge, obtains a verifiable result, and updates the "
+                "knowledge, relationship, and causal state owned by this event."
+            ),
+        } for owned in expected]}, ensure_ascii=False)
+
+    service._stage = event_only_stage
+    repaired = await service._repair_short_plan_adaptation_segments(
+        "ir-only-planning-repair", run_path, project, "constraints", state,
+        current, formal_events, 1,
+        issues=[{
+            "code": "event_realization_incomplete",
+            "segment": 1,
+            "event_id": event_id,
+            "message": "The formal event lacks executable resistance and result.",
+        }],
+        mode="targeted",
+    )
+
+    assert len(prompts) == 1
+    assert "SHORT_PLAN_EVENT_REALIZATION_REPAIR_V3" in prompts[0]
+    assert "Return exactly one JSON object with one field named events" in prompts[0]
+    assert WorkflowService._short_plan_segments(repaired, 1)[0].splitlines()[0] == (
+        WorkflowService._short_plan_segments(current, 1)[0].splitlines()[0]
+    )
+    for field in ("event_id", "outline", "opening", "handoff"):
+        assert WorkflowService._short_plan_field(repaired, field) == (
+            WorkflowService._short_plan_field(current, field)
+        )
+    assert "obtains a verifiable result" in WorkflowService._short_plan_field(
+        repaired, "event",
+    )
+
+
 def test_real_terminal_events_only_shape_binds_typed_closure_without_retry() -> None:
     outline = (
         "# Outline\n\n## Opening beat\nThe lead receives a sealed letter.\n\n"
@@ -7549,6 +9075,14 @@ async def test_structural_polish_hard_reject_preserves_source_without_rewrite_re
         async def complete(self, role, system, user, max_output_tokens=None):
             self.routes.append("primary")
             return ModelResult("too short", {"model_name": "claude"})
+
+        async def complete_primary(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            return await self.complete(
+                role, system, user,
+                max_output_tokens=max_output_tokens,
+            )
 
         async def complete_configured_fallback(
             self, role, system, user, max_output_tokens=None,
@@ -8139,7 +9673,9 @@ async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path
             suffix="-2", structural=True,
         )
 
-    assert gateway.roles == ["planning", "planning", "review"]
+    assert 2 <= gateway.roles.count("planning") <= 3
+    assert 1 <= gateway.roles.count("review") <= 2
+    assert "polish" not in gateway.roles
     event = next(item for item in db.list_run_events("blocked")
                  if item["event_type"] == "revision_plan_blocked")
     assert event["severity"] == "error"
@@ -10607,6 +12143,14 @@ async def test_review_retries_empty_max_token_response_then_uses_review_fallback
                 "output_tokens": max_output_tokens, "finish_reason": "max_tokens",
             })
 
+        async def complete_primary(
+            self, role, system, user, max_output_tokens=None,
+        ):
+            return await self.complete(
+                role, system, user,
+                max_output_tokens=max_output_tokens,
+            )
+
         async def complete_configured_fallback(self, role, system, user,
                                                max_output_tokens=None):
             self.fallback_budgets.append(max_output_tokens)
@@ -11644,13 +13188,17 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
                 "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
                 "ending": "完成结局", "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False)
+        if "IR_FIRST_SHORT_PLANNING_V2" in user:
+            return json.dumps(
+                planning_semantic_body_from_prompt(user), ensure_ascii=False,
+            )
         if stage == "planning":
-            return plan
+            raise AssertionError(f"unexpected planning prompt: {user[:120]}")
         if stage == "review":
             raise RuntimeError("fresh review requested")
         raise AssertionError(f"unexpected stage: {stage}")
 
-    async def fake_draft(run_id, run_path, *args):
+    async def fake_draft(run_id, run_path, *args, **kwargs):
         draft = WorkflowService.SHORT_SEGMENT_SEPARATOR.join(
             ["甲" * 500, "乙" * 500, "丙" * 500, "丁" * 500]
         )
@@ -11671,11 +13219,7 @@ async def test_fresh_draft_does_not_reuse_same_run_review_without_checkpoint(tmp
                 "plan_sha256": hashlib.sha256(
                     current_plan.encode("utf-8"),
                 ).hexdigest(),
-                "base_constraints_sha256": hashlib.sha256(
-                    current_constraints.split(
-                        "\n\n# Short Story Causal Chain\n\n", 1,
-                    )[0].encode("utf-8"),
-                ).hexdigest(),
+                "base_constraints_sha256": kwargs["base_constraints_sha256"],
                 "story_state_sha256": hashlib.sha256(json.dumps(
                     current_state, ensure_ascii=False, sort_keys=True, default=str,
                 ).encode("utf-8")).hexdigest(),
@@ -11718,14 +13262,6 @@ async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_ch
         premise="A repaired plan remains resumable.", target_words=10000,
     ))
     service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
-    numerals = ["一", "二", "三", "四"]
-    repaired = "\n\n".join(
-        f"### 第{numeral}段：事件{index}\n"
-        f"事件ID：EV-{index:08x}\n大纲依据：事件{index}\n"
-        f"段首承接：承接状态{index}。\n本段事件：推进事件{index}。\n"
-        f"段末交接：留下状态{index}。\n" + chr(0x4e00 + index) * 120
-        for index, numeral in enumerate(numerals, 1)
-    )
     prompts = []
 
     async def fake_stage(run_id, run_path, current_project, stage, constraints, user, **kwargs):
@@ -11754,19 +13290,12 @@ async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_ch
                 "ending": "完成结局",
                 "covered_event_ids": [item["id"] for item in causal_events],
             }, ensure_ascii=False)
-        prompts.append(user)
-        return "没有分段标题的初稿" if len(prompts) == 1 else repaired
-
-    extract_calls = 0
-
-    def fake_extract(run_id, plan):
-        nonlocal extract_calls
-        extract_calls += 1
-        return (plan, {
-            "core_goal": "保留最初因果链",
-            "cycles": [{"obstacle": "阻碍", "effort": "行动", "result": "推进"}],
-            "ending": "完成结局",
-        }) if extract_calls == 1 else (plan, None)
+        if "IR_FIRST_SHORT_PLANNING_V2" in user:
+            prompts.append(user)
+            return json.dumps(
+                planning_semantic_body_from_prompt(user), ensure_ascii=False,
+            )
+        raise AssertionError(f"unexpected planning prompt: {user[:120]}")
 
     saved_chains = []
 
@@ -11775,13 +13304,15 @@ async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_ch
 
     captured = {}
 
-    async def stop_after_planning(run_id, run_path, current_project, constraints, plan):
+    async def stop_after_planning(
+        run_id, run_path, current_project, constraints, plan, **kwargs,
+    ):
         captured["constraints"] = constraints
         captured["plan"] = plan
+        captured["base_constraints_sha256"] = kwargs["base_constraints_sha256"]
         raise RuntimeError("stop after planning")
 
     service._stage = fake_stage
-    service._extract_short_causal_chain = fake_extract
     service._save_short_causal_chain = fake_save
     service._draft_short_in_segments = stop_after_planning
 
@@ -11789,21 +13320,18 @@ async def test_planning_repair_becomes_checkpoint_plan_and_regenerates_causal_ch
         await service.run_short(project.id, use_crewai=False, run_id="repair-plan")
 
     saved = project.path / "runs" / "repair-plan" / "outputs" / "planning.md"
-    assert saved.read_text(encoding="utf-8") == repaired
-    assert captured["plan"] == repaired
+    accepted_plan = saved.read_text(encoding="utf-8")
+    assert captured["plan"] == accepted_plan
+    assert accepted_plan.count("### Segment ") == 4
+    assert re.fullmatch(r"[0-9a-f]{64}", captured["base_constraints_sha256"])
     assert "按修正后的规划重建因果链" in captured["constraints"]
-    assert "保留最初因果链" not in captured["constraints"]
-    assert saved_chains == [{
-        "core_goal": "按修正后的规划重建因果链",
-        "cycles": [{
-            "obstacle": "阻碍", "effort": "行动", "result": "推进",
-            "state_change": "修正后的规划状态成立",
-        }],
-        "ending": "完成结局",
-        "covered_event_ids": [f"EV-{index:08X}" for index in range(1, 5)],
-    }]
-    assert "segment_heading_format" in prompts[0]
-    assert "### 第 1 段" in prompts[1]
+    assert len(saved_chains) == 1
+    assert saved_chains[0]["core_goal"] == "按修正后的规划重建因果链"
+    assert saved_chains[0]["covered_event_ids"] == list(dict.fromkeys(
+        re.findall(r"EV-[0-9A-F]{8}", accepted_plan.upper())
+    ))
+    assert len(prompts) == 1
+    assert "IR_FIRST_SHORT_PLANNING_V2" in prompts[0]
 
 
 @pytest.mark.asyncio
@@ -11834,10 +13362,10 @@ async def test_failed_planning_repair_does_not_persist_causal_chain(tmp_path) ->
     service._extract_short_causal_chain = fake_extract
     service._save_short_causal_chain = fake_save
 
-    with pytest.raises(ValueError, match="规划稿未通过"):
+    with pytest.raises(ValueError, match="structurally truncated"):
         await service.run_short(project.id, use_crewai=False, run_id="rejected-chain")
 
-    assert extract_calls == 3
+    assert extract_calls == 0
     assert saved_chains == []
 
 
@@ -11847,99 +13375,86 @@ async def test_planning_second_monotonic_repair_recovers_after_no_progress_candi
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    db.save_provider(
+        provider_id="primary", name="Primary", protocol="openai",
+        base_url="https://primary.invalid/v1", auth_type="bearer",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="planning-model", provider_id="primary",
+        display_name="Planning", model_name="planning-model",
+        context_window=32_768, max_output_tokens=8_192,
+    )
+    db.save_role_binding("planning", "primary", "planning-model", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Rebuild plan", mode="short", genre="suspense",
         premise="A second monotonic repair recovers the plan.", target_words=10000,
     ))
-    service = WorkflowService(db, store, FakeGateway(), SimpleNamespace())
-    rebuilt = "\n\n".join(
-        f"### 第{numeral}段：核对{number}\n"
-        f"事件ID：EV-{number:08x}\n大纲依据：事件{number}\n"
-        f"段首承接：承接状态{number}。\n"
-        f"本段事件：推进事件{number}。\n"
-        f"段末交接：留下状态{number}。\n" + chr(0x4e00 + number) * 120
-        for number, numeral in enumerate(["一", "二", "三", "四"], 1)
-    )
-    planning_calls = 0
-    extract_calls = 0
-    captured_constraints = ""
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
 
-    async def fake_stage(*args, **kwargs):
-        nonlocal planning_calls
-        prompt = args[5]
-        if (
-            "SHORT_EXECUTION_MANIFEST_FRAGMENT_V4" in prompt
-            or "SHORT_EXECUTION_MANIFEST_V2" in prompt
+    class ContractRetryGateway:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def complete_primary(
+            self, role, system, user, max_output_tokens=None,
         ):
-            return json.dumps(
-                execution_manifest_body_from_prompt(prompt), ensure_ascii=False,
+            self.calls += 1
+            payload = (
+                {
+                    "version": 2,
+                    "initial_state": "The opening authority remains accepted.",
+                    "segments": [],
+                }
+                if self.calls == 1
+                else planning_semantic_body_from_prompt(user)
             )
-        if "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4" in prompt:
-            return execution_manifest_receipt_from_prompt(prompt)
-        if "SHORT_CAUSAL_CHAIN_STANDALONE" in prompt:
-            covered_event_ids = list(dict.fromkeys(
-                re.findall(r"EV-[0-9A-F]{8}", prompt.upper())
-            ))
-            return json.dumps({
-                "core_goal": "完成核对",
-                "cycles": [{
-                    "obstacle": "记录不全", "effort": "核对身份",
-                    "result": "找到记录",
-                }],
-                "ending": "确认记录", "covered_event_ids": covered_event_ids,
-            }, ensure_ascii=False)
-        planning_calls += 1
-        return (
-            rebuilt
-            if "LOCAL RECOVERY ATTEMPT: 2" in prompt
-            else "没有分段标题"
-        )
+            return ModelResult(json.dumps(payload), {
+                "finish_reason": "stop", "provider_id": "primary",
+                "model_id": "planning-model", "model_name": "planning-model",
+                "input_tokens": 1200, "output_tokens": 700,
+            })
 
-    async def stop_after_planning(*args, **kwargs):
-        nonlocal captured_constraints
-        captured_constraints = args[3]
-        raise RuntimeError("stop after recovered planning")
-
-    def fake_extract(run_id, plan):
-        nonlocal extract_calls
-        extract_calls += 1
-        if extract_calls == 1:
-            return plan, {
-                "core_goal": "被丢弃旧规划的因果链",
-                "cycles": [{
-                    "obstacle": "旧阻碍", "effort": "旧行动",
-                    "result": "旧结果",
-                }],
-                "ending": "旧结局",
-            }
-        return plan, None
-
-    service._stage = fake_stage
-    service._extract_short_causal_chain = fake_extract
-    service._draft_short_in_segments = stop_after_planning
-
-    with pytest.raises(RuntimeError, match="stop after recovered planning"):
-        await service.run_short(
-            project.id, use_crewai=False, run_id="planning-full-rebuild",
-        )
-
-    saved = (
-        project.path / "runs" / "planning-full-rebuild"
-        / "outputs" / "planning.md"
+    gateway = ContractRetryGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     )
-    assert saved.read_text(encoding="utf-8") == rebuilt
-    assert planning_calls == 3
-    assert "完成核对" in captured_constraints
-    assert "被丢弃旧规划的因果链" not in captured_constraints
-    assert any(
-        event["event_type"] == "planning_gate_candidate_rejected_regression"
-        for event in db.list_run_events("planning-full-rebuild")
+    run_id = "planning-contract-retry"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    formal_events = [{
+        "id": f"EV-{index:08X}",
+        "label": f"Formal event {index}",
+        "evidence": f"Formal event {index} changes the accepted story state.",
+    } for index in range(1, 5)]
+    state = service.story_states.ensure(project.id, project.path)
+    brief = json.dumps({
+        **project.metadata,
+        "formal_outline_events": formal_events,
+        "generation_contract": {"segment_count": 4},
+    }, ensure_ascii=False)
+
+    plan = await service._plan_short_ir_first(
+        run_id, run_path, project, "Preserve every formal event.", brief,
+        state.data, formal_events, 4, 4_800,
     )
-    assert any(
-        event["event_type"] == "planning_gate_candidate_improved"
-        for event in db.list_run_events("planning-full-rebuild")
+
+    assert gateway.calls == 2
+    assert plan.count("### Segment ") == 4
+    assert all(item["id"] in plan for item in formal_events)
+    audit_files = list(
+        (run_path / "outputs" / "conversion-audits").glob("*.json")
     )
+    assert len(audit_files) >= 2
+    audit_methods = {
+        json.loads(path.read_text(encoding="utf-8"))["method"]
+        for path in audit_files
+    }
+    assert {"rejected", "exact_json"} <= audit_methods
 
 
 @pytest.mark.asyncio

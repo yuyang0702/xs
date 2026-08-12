@@ -3,9 +3,10 @@ import json
 import os
 import shutil
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
 
 
 def atomic_write(path: Path, content: str,
@@ -17,6 +18,30 @@ def atomic_write(path: Path, content: str,
         with tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", newline="" if preserve_newlines else None,
             dir=path.parent, suffix=".tmp", delete=False,
+        ) as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+            temporary = Path(handle.name)
+        replace(temporary, path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def atomic_write_bytes(
+    path: Path,
+    content: bytes,
+    replace: Callable[[Path, Path], None] = os.replace,
+) -> None:
+    """Atomically replace one file without newline or encoding translation."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb", dir=path.parent, suffix=".tmp", delete=False,
         ) as handle:
             handle.write(content)
             handle.flush()
@@ -108,3 +133,33 @@ class ProjectSnapshot:
 
     def discard(self) -> None:
         shutil.rmtree(self.snapshot_root, ignore_errors=True)
+
+
+@contextmanager
+def project_snapshot_transaction(
+    project_root: Path,
+    snapshot_root: Path,
+    files: list[Path],
+) -> Iterator[ProjectSnapshot]:
+    """Rollback one managed file set unless its complete mutation succeeds.
+
+    The caller still owns its business validation and any cross-process lock.
+    This helper owns only the common file-transaction lifecycle, including
+    cancellation and other ``BaseException`` exits.
+    """
+
+    snapshot = ProjectSnapshot.create(project_root, snapshot_root, files)
+    safe_to_discard = False
+    try:
+        yield snapshot
+        safe_to_discard = True
+    except BaseException:
+        snapshot.restore()
+        safe_to_discard = True
+        raise
+    finally:
+        # A failed rollback is not cleanup success.  Preserve the last known
+        # good bytes so startup/manual recovery can still diagnose or restore
+        # them instead of deleting the only recovery authority in ``finally``.
+        if safe_to_discard:
+            snapshot.discard()

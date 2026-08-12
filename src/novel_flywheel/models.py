@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import json
 import time
+from typing import Literal
 
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
@@ -65,6 +66,13 @@ class ModelGateway:
     def __init__(self, db: Database, registry: ProviderRegistry) -> None:
         self.db = db
         self.registry = registry
+
+    def has_configured_fallback(self, role: str) -> bool:
+        binding = self.db.get_role_binding(role) or {}
+        return bool(
+            binding.get("fallback_provider_id")
+            and binding.get("fallback_model_id")
+        )
 
     async def complete(self, role: str, system: str, user: str,
                        max_output_tokens: int | None = None,
@@ -308,6 +316,10 @@ class ModelGateway:
     async def complete_primary(
         self, role: str, system: str, user: str,
         max_output_tokens: int | None = None,
+        response_schema: dict | None = None,
+        structured_requirement: StructuredOutputRequirement = (
+            StructuredOutputRequirement.PLAIN_TEXT
+        ),
     ) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
@@ -318,11 +330,17 @@ class ModelGateway:
         return await self._complete_resolved(
             role, system, user, resolved,
             self._route_output_limit(binding.get("primary_model_id"), max_output_tokens),
+            response_schema=response_schema,
+            structured_requirement=structured_requirement,
         )
 
     async def complete_configured_fallback(
         self, role: str, system: str, user: str,
         max_output_tokens: int | None = None,
+        response_schema: dict | None = None,
+        structured_requirement: StructuredOutputRequirement = (
+            StructuredOutputRequirement.PLAIN_TEXT
+        ),
     ) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
@@ -333,10 +351,48 @@ class ModelGateway:
         result = await self._complete_resolved(
             role, system, user, fallback,
             self._route_output_limit(binding.get("fallback_model_id"), max_output_tokens),
+            response_schema=response_schema,
+            structured_requirement=structured_requirement,
         )
         return ModelResult(result.text, {
             **result.receipt, "configured_fallback_direct": True,
         })
+
+    async def complete_route(
+        self,
+        route: Literal["primary", "configured_fallback"],
+        role: str,
+        system: str,
+        user: str,
+        *,
+        max_output_tokens: int | None = None,
+        contract: StructuredArtifactContract | None = None,
+        structured_requirement: StructuredOutputRequirement = (
+            StructuredOutputRequirement.PLAIN_TEXT
+        ),
+    ) -> ModelResult:
+        """Execute exactly one Runtime-selected route, with no hidden fallback."""
+
+        response_schema = contract.provider_schema() if contract is not None else None
+        if route == "primary":
+            return await self.complete_primary(
+                role,
+                system,
+                user,
+                max_output_tokens=max_output_tokens,
+                response_schema=response_schema,
+                structured_requirement=structured_requirement,
+            )
+        if route == "configured_fallback":
+            return await self.complete_configured_fallback(
+                role,
+                system,
+                user,
+                max_output_tokens=max_output_tokens,
+                response_schema=response_schema,
+                structured_requirement=structured_requirement,
+            )
+        raise ValueError(f"unknown explicit model route: {route}")
 
     @staticmethod
     def _is_transient_connect_error(exc: Exception) -> bool:
@@ -510,6 +566,52 @@ class ModelGateway:
             return self._mark_fallback(
                 result, binding["primary_provider_id"], binding["primary_model_id"], exc,
             )
+
+    async def complete_with_tools_route(
+        self,
+        route: Literal["primary", "configured_fallback"],
+        role: str,
+        system: str,
+        user: str,
+        toolbox,
+        fallback_context,
+        run_id: str | None = None,
+        max_output_tokens: int | None = None,
+    ) -> ModelResult:
+        """Execute one exact native-tool route without hidden route switching.
+
+        Retry and fallback ownership belongs to ``contract_runtime``. Local
+        toolbox proposal recovery remains safe here because it does not select
+        another provider/model and cannot fabricate a tool result.
+        """
+
+        binding = self.db.get_role_binding(role)
+        if binding is None:
+            raise LookupError(f"Model role is not configured: {role}")
+        if route == "primary":
+            resolved = self.registry.resolve(
+                binding["primary_provider_id"], binding["primary_model_id"],
+            )
+        elif route == "configured_fallback":
+            resolved = self._resolve_configured_fallback(binding)
+            if resolved is None:
+                raise LookupError(f"Model role has no configured fallback: {role}")
+        else:  # pragma: no cover - Literal plus shared dispatcher validates it
+            raise ValueError(f"unknown explicit model route: {route}")
+        try:
+            return await self._complete_with_tools_resolved(
+                role, system, user, toolbox, fallback_context, run_id,
+                max_output_tokens, resolved,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            recovered = self._recover_toolbox_proposals(
+                role, resolved, toolbox, exc,
+            )
+            if recovered is not None:
+                return recovered
+            raise
 
     @staticmethod
     def _prepare_toolbox_fallback(toolbox, error: Exception) -> str:

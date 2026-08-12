@@ -593,6 +593,44 @@ def test_current_confirmed_outline_is_loaded_as_a_creation_constraint(tmp_path) 
     assert "主角收到死者来信" in constraints
 
 
+def test_creation_constraints_preserve_complete_outline_plan_and_active_learning(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Complete Authority", mode="short", genre="suspense",
+        premise="Late evidence must remain visible.", target_words=30_000,
+    ))
+    outlines = OutlineService(db, store)
+    outline_tail = "OUTLINE-AUTHORITY-AFTER-THIRTY-THOUSAND"
+    candidate = outlines.create_candidate(
+        project.id, "# Confirmed outline\n\n" + ("x" * 30_100) + outline_tail,
+    )
+    outlines.apply_candidate(project.id, candidate["id"])
+
+    plan_tail = "PLAN-AUTHORITY-AFTER-THIRTY-THOUSAND"
+    (project.path / "memory" / "book-plan.md").write_text(
+        "# Plan\n\n" + ("y" * 30_100) + plan_tail, encoding="utf-8",
+    )
+    learning_root = project.path / "learning"
+    learning_root.mkdir(exist_ok=True)
+    (learning_root / "creative_blueprint.json").write_text(json.dumps({
+        "status": "active", "data": {"body": "a" * 25_000},
+    }), encoding="utf-8")
+    learning_tail = "SECOND-ACTIVE-LEARNING-AUTHORITY"
+    (learning_root / "market_baseline.json").write_text(json.dumps({
+        "status": "active", "data": {"body": ("b" * 25_000) + learning_tail},
+    }), encoding="utf-8")
+
+    constraints = store.load_constraints(project.id)
+
+    assert outline_tail in constraints
+    assert plan_tail in constraints
+    assert learning_tail in constraints
+
+
 def test_creation_constraints_rebuild_legacy_event_cache_from_outline_content(
     tmp_path,
 ) -> None:

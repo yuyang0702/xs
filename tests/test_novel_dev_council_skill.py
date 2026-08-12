@@ -5,6 +5,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILL = ROOT / ".agents" / "skills" / "novel-dev-council"
@@ -296,6 +298,65 @@ def test_change_gate_rejects_stale_or_incomplete_split_review(tmp_path) -> None:
         raise AssertionError("overlapping split review was accepted")
 
 
+def test_change_gate_accepts_user_authorized_single_agent_clean_room_review(
+    tmp_path,
+) -> None:
+    gate = _load_script("inspect_change_gate.py")
+    core_paths = [
+        "src/novel_flywheel/workflows.py",
+        "src/novel_flywheel/planning_compiler.py",
+        "src/novel_flywheel/quality.py",
+    ]
+    payload = {
+        "version": 1,
+        "mode": "single_agent_clean_room",
+        "independence_claimed": False,
+        "user_authorization": "The user explicitly requested self-review only.",
+        "core_tree_sha256": gate._core_review_sha256(ROOT, core_paths),
+        "review_id": "single-clean-room-final",
+        "reviewer": "primary-agent",
+        "status": "passed",
+        "core_paths": core_paths,
+        "test_paths": ["tests/test_workflows.py", "tests/test_quality.py"],
+        "context_sources": [
+            "raw_user_request", "task_baseline", "final_diff",
+            "raw_test_output", "forward_risk_report",
+        ],
+        "evidence": "The final diff, full suite, and authority boundaries were reviewed.",
+    }
+    report_path = tmp_path / "single-review.json"
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    report = gate._load_single_review_report(report_path, ROOT, core_paths)
+
+    assert report["mode"] == "single_agent_clean_room"
+    assert report["independence_claimed"] is False
+    assert report["core_paths"] == sorted(core_paths)
+
+
+def test_change_gate_rejects_single_agent_report_that_claims_independence(
+    tmp_path,
+) -> None:
+    gate = _load_script("inspect_change_gate.py")
+    core_paths = [
+        "src/novel_flywheel/workflows.py",
+        "src/novel_flywheel/planning_compiler.py",
+        "src/novel_flywheel/quality.py",
+    ]
+    payload = {
+        "version": 1,
+        "mode": "single_agent_clean_room",
+        "independence_claimed": True,
+        "user_authorization": "single agent",
+        "core_tree_sha256": gate._core_review_sha256(ROOT, core_paths),
+    }
+    report_path = tmp_path / "single-review.json"
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(RuntimeError, match="must not claim independent"):
+        gate._load_single_review_report(report_path, ROOT, core_paths)
+
+
 def test_change_gate_allows_explicit_ui_test_mapping() -> None:
     gate = _load_script("inspect_change_gate.py")
     report = gate._classify(
@@ -571,3 +632,78 @@ def test_repository_policy_requires_durable_systemic_end_to_end_acceptance() -> 
     assert "complete draft candidate" in maintenance
     assert "independent forward-looking gate" in maintenance
     assert "cannot be bypassed by opening a new task" in maintenance
+
+
+def test_repository_policy_requires_production_sized_short_fiction_acceptance() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    maintenance = (ROOT / "docs" / "maintenance.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Short-Fiction Production-Length Acceptance Gate" in agents
+    assert "13,000, 20,000, and 30,000 effective Han characters" in agents
+    assert "guidance rather than a hard creation or validation limit" in agents
+    assert "Repeated filler" in agents
+    assert "Only the paid provider boundary" in agents
+    assert "final review" in agents
+    assert "applicable formal-promotion gates" in agents
+
+    assert "short-fiction production-length gate" in skill
+    assert "13,000, 20,000, and 30,000 effective Han characters" in skill
+    assert "not a Runtime or API hard limit" in skill
+    assert "real workflow orchestration" in skill
+
+    assert "### Short-fiction production-length acceptance" in maintenance
+    assert "not a hard input or validation limit" in maintenance
+    assert "13,000, 20,000, and 30,000 effective Han characters" in maintenance
+    assert "production stage assembly" in maintenance
+    assert "Repeated filler" in maintenance
+
+
+def test_repository_policy_requires_current_project_real_data_snapshot_acceptance() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    maintenance = (ROOT / "docs" / "maintenance.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Current-Project Real-Data Snapshot Acceptance Gate" in agents
+    assert "fresh read-only snapshot" in agents
+    assert "isolated temporary project and database copy" in agents
+    assert "MUST NOT mutate the live project's formal manuscript" in agents
+    assert "sanitized, structurally isomorphic fixture" in agents
+    assert "both required and neither may substitute" in agents
+    assert "hash-only manifest" in agents
+    assert "clean new-project fixture" in agents
+    assert "do not claim `systemically_resolved`" in agents
+
+    assert "current-project real-data snapshot gate" in skill
+    assert "private current-project snapshot" in skill
+    assert "committed sanitized isomorphic fixture" in skill
+    assert "never write the live formal manuscript" in skill
+    assert "paid-provider calls separately authorized" in skill
+
+    assert "### Current-project real-data snapshot acceptance" in maintenance
+    assert "two independent offline data layers" in maintenance
+    assert "content-addressed manifest" in maintenance
+    assert "non-substitutable" in maintenance
+    assert "protects private story material" in maintenance
+
+
+def test_repository_policy_requires_business_preserving_refactor_parity() -> None:
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    skill = (SKILL / "SKILL.md").read_text(encoding="utf-8")
+    maintenance = (ROOT / "docs" / "maintenance.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "## Business Behavior Preservation Gate" in agents
+    assert "wrap -> shadow/parity -> switch -> delete" in agents
+    assert "MUST NOT silently change novel semantics" in agents
+    assert "Code-count reduction alone is never acceptance evidence" in agents
+    assert "business invariant oracles" in skill
+    assert "old authority path whenever parity disagrees" in skill
+    assert "### Project-level refactor business preservation" in maintenance
+    assert "same canonical business result" in maintenance
+    assert "never experimental parity outputs" in maintenance

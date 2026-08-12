@@ -422,9 +422,9 @@ Rollback does not require deleting project data. Disable the Zhihu platform prof
 
 The `outline` object inside StoryState is the authoritative formal outline. It contains content, outline version, source, candidate ID, timestamp, and content hash. `<project>/plot/outline.md` is an atomic readable copy, not a second authority. Existing projects without a StoryState outline expose the latest completed run's `outputs/planning.md` read-only as version 0; it is not migrated or rewritten until the user applies a candidate.
 
-Outline candidates use the existing `story_candidates` table with kind `outline` and content files under `<project>/learning/candidates/`. Editing updates the candidate hash and metadata. Local comparison uses heading or paragraph blocks and standard-library sequence matching. It reports additions, removals, edits, moves, and uncertain matches without calling a model. Semantic review is explicit, uses only the configured `planning` role, sends only uncertain items and locked-fact summaries, limits the request to 30,000 characters and output to 2,048 tokens, and validates returned JSON before displaying it.
+Outline candidates use the existing `story_candidates` table with kind `outline` and content files under `<project>/learning/candidates/`. Editing updates the candidate hash and metadata. Local comparison uses heading or paragraph blocks and standard-library sequence matching. It reports additions, removals, edits, moves, and uncertain matches without calling a model. Semantic review is explicit, uses only the configured `planning` role, sends only uncertain complete change units plus the complete locked-fact authority, and validates exact returned ID coverage before displaying it. Runtime packs at most ten changes per request and lowers that count when the shared route-capacity plan requires it. It never keeps only a text prefix or the first N locked facts; an indivisible change that exceeds every configured route is retained and rejected before a lossy request is made.
 
-Applying selected changes or a whole candidate validates the current StoryState revision and locked facts, commits a new revision, and writes the readable outline copy. Whole-version application requires a second confirmation after a manuscript exists. Neither application nor history restoration writes `manuscript/story.md`; restoration creates a new candidate and revision instead of deleting later history. The latest active `scene_briefs` and `short_causal_chain` artifacts become stale because they depend on the previous outline, while prose and character voice artifacts remain active. `ProjectStore.load_constraints()` includes the current confirmed outline with a 30,000-character cap.
+Applying selected changes or a whole candidate validates the current StoryState revision and locked facts, commits a new revision, and writes the readable outline copy. Whole-version application requires a second confirmation after a manuscript exists. Neither application nor history restoration writes `manuscript/story.md`; restoration creates a new candidate and revision instead of deleting later history. The latest active `scene_briefs` and `short_causal_chain` artifacts become stale because they depend on the previous outline, while prose and character voice artifacts remain active. `ProjectStore.load_constraints()` is now an authority loader rather than a prompt compactor: it returns the complete confirmed outline, execution plan, confirmed facts, and every active learning artifact. Semantic packet builders own capacity projection; the authority layer no longer truncates at 30,000/40,000 characters or silently skips a later active artifact.
 
 The new-project wizard lists no more than 12 confirmed learning mechanisms. Rejected, unconfirmed, missing-source, and `competitor_work` mechanisms are excluded. Reference-scoped methods are grouped by source; the user must explicitly confirm the checked set, and the confirm API revalidates selected IDs before creating project adoptions. Unfinished wizard drafts (`draft`, `gathering_input`, `ready`) can be resumed or deleted; deletion is refused after a project exists and never removes a project.
 
@@ -784,6 +784,22 @@ An independent forward-looking gate projects the changed mechanism through the c
 
 This is persisted repository policy and cannot be bypassed by opening a new task, window, process, or by compacting conversational context. Localized closed-world maintenance remains risk-proportionate and does not automatically require a full paid-provider run; the complete-draft requirement applies to user-authorized systemic workflow repairs.
 
+### Current-project real-data snapshot acceptance
+
+Production incidents and systemic workflow changes now require two independent offline data layers. The first is a fresh private, read-only snapshot of the user-designated current project or the project that produced the incident. It retains the actual StoryState revision, locked and confirmed facts, outline and ending authority, required character/world material, affected run artifacts, receipts, checkpoints, route-capability metadata, hashes, event ownership, counts, and payload proportions. The snapshot is copied into an isolated temporary project and database before execution. Tests may mutate only that copy; they must not change the live formal manuscript, chapters, Canon, StoryState, candidates, history, references, credentials, or checkpoints.
+
+Snapshot construction excludes credentials, secret values, raw provider errors, machine-specific absolute paths, and unrelated private sources. Its report contains only a content-addressed manifest: source revision, applicable authority/artifact hashes, snapshot time, tested boundaries, and fixture-derivation version. Reports remain outside Git or in an ignored test-artifact directory, and stale snapshots are rebuilt when the source authority changes. Automated validation still replaces only the paid network boundary; it keeps the production workflow, validators, capacity and routing decisions, checkpoint recovery, and required downstream acceptance boundaries.
+
+The second layer is a committed sanitized isomorphic fixture. It replaces real prose and volatile identifiers while preserving schema and topology classes, ordered ownership, counts, length/token-pressure ratios, failure shape, and stable invariant assertions. This keeps CI reproducible and protects private story material. The two layers are intentionally non-substitutable: a synthetic fixture cannot prove compatibility with the user's accumulated project authority, while a private snapshot cannot provide durable, shareable regression coverage. Changes that can affect new-book initialization or first generation also require a clean new-project fixture. Failure to obtain or safely complete the current-project replay limits the result to containment or unresolved status; a separately authorized real-provider canary cannot replace either offline proof.
+
+### Short-fiction production-length acceptance
+
+The console recommends at most 30,000 effective Han characters for the current short-fiction workflow, but the recommendation is not a hard input or validation limit. A request above that value is not rejected solely for length; it is outside the production-length acceptance matrix until separately measured.
+
+Offline acceptance for changes to short-fiction planning, context capacity, semantic packets, drafting, polish, review, checkpoints, resume, or formal promotion now runs complete production-shaped workflows at 13,000, 20,000, and 30,000 effective Han characters. Small fixtures still test isolated invariants, but they cannot be reported as workflow capacity evidence. Each length must use the production stage assembly, route-capacity policy, semantic ownership splitter, hash-bound packet/checkpoint merge, semantic receipts, integrity checks, polish, final review, and applicable promotion gates; only the paid provider call is replaced by a deterministic offline gateway.
+
+The fixture prose must contain distinct ordered events, character and knowledge changes, relationship progression, promises and payoff, and a confirmed ending. Repeated filler, copied padding, an oversized irrelevant appendix, or direct writes of a finished manuscript do not satisfy this gate. Success is a complete candidate at the requested length crossing the downstream quality and narrative-authority boundaries; a preflight stop or retained checkpoint is containment only. The 13K/20K/30K rule is persisted in `AGENTS.md` and the project Skill so it remains active after a new task or compacted context.
+
 ## Historical incident business acceptance
 
 The following matrix is the minimum end-to-end acceptance boundary for previously observed production failures. “Recovered” means the corrected artifact crossed its next authoritative boundary; a logged rejection or rollback alone is containment, not resolution.
@@ -813,6 +829,8 @@ The production-shaped planning replay also exposed an event-body boundary false 
 Every terminal task failure now receives a stable production-incident identity in the existing `run_events.metadata_json`; no SQLite schema migration or second error store is introduced. The identity contains `incident_key` (workflow + stage + root-cause family), `incident_family`, a user-readable title, the implementable known resolution, same-boundary occurrence count, cross-boundary family count, and first/last-seen timestamps. Volatile run IDs, absolute paths, segment numbers, and character/token/error counts are normalized only for unknown-message fingerprinting. Known families use explicit root-cause matchers, so different novel names or error counts do not create false new incidents.
 
 `model.context_capacity_preflight` records requests that reached the input-capacity safety boundary before a usable model result. Its recovery is not "stop safely": Runtime must retain the current complete authority, execute the applicable semantic packet topology, persist completed packets, merge them losslessly, and cross the next authoritative review boundary. The production-shaped fixture for run `dd0d6d2d981b4316a0c81d901bd38dc1` covers a 32K unknown Review route, six planning segments, 29 formal events, and a seven-event first segment whose original request required 31,537 input-plus-output-reserve tokens. Run `d785dd5c711c4bc785caec10977cf6bb` exposed a later boundary in the same family: review splitting succeeded, but a targeted planning repair inherited the complete planning stage's 12,288-token creative reserve, so 20,407 input tokens were incorrectly preflighted as 32,695 tokens. Targeted closed-JSON patches now use a bounded protocol reserve; complete formal-segment rebuilds use a scope-aware creative reserve based on that segment's expected size. Primary and configured fallback routes compute the same contract independently, and a residual preflight or incomplete candidate is recorded in the monotonic recovery ledger instead of terminating the entire task. The best complete plan remains authoritative, and any repaired candidate must pass local, adjacent, and whole-plan checks before causal-chain generation. `model.context_capacity_indivisible_scope`, based on run `e86225d9d6664243b4d8c4e45295144f`, is a distinct root cause: the seven-event input was 24,143 tokens, but the prior singleton still carried 23,146 tokens and 20,581 authority tokens. It now recovers through exact event projection, three facet receipts, complete overlapping evidence windows when needed, bounded JSON output reserve, and final parent/whole-plan revalidation. Legacy rows stored under the generic preflight family are refined lazily from their terminal evidence without rewriting history.
+
+Run `cde98e16c1334f3c95def6e67d0740eb` exposed the same capacity family at an earlier and previously untested boundary: the initial IR-first `PlanningSemanticDraftV2` request exceeded the configured 32K planning route before any provider call, while the stage had no semantic capacity splitter. Review and repair splitters therefore could not help because the workflow had not yet produced a plan to review. Initial semantic planning now uses one Runtime-owned, event-contiguous packet topology; every packet retains the same registered `planning_semantic_v2` contract, binds its parent/input/event authority hashes, persists a reusable checkpoint, and may recursively split only at a formal-event boundary. Runtime merges validated packets into one canonical semantic document, recompiles it to prove exact collapsed event coverage and continuation/terminal topology, and only then enters causal-chain generation. It never falls back to legacy Markdown planning or truncates story authority. Production-length acceptance now runs the complete short-fiction pipeline at 13,000, 20,000, and 30,000 effective Han characters on a 32K planning route, including a forced mid-packet transport interruption and checkpoint reuse; all three cases must reach a hash-bound formal manuscript and committed StoryState. This distinguishes the product's non-binding 30,000-character recommendation from the test obligation: shorter fixtures remain useful for local units, but they cannot authorize a workflow/capacity change.
 
 Run `155ea4c5db31421587505dd4a00b6819` exposed this family after the first draft segment: the initial semantic receipt covered 15 atomic beats but contained nine non-contiguous evidence strings and no summary. Receipt-only retry then required 24,679 input-plus-output-reserve tokens on the conservative 32K route and crossed the 75% safety line. The production fixture `tests/fixtures/semantic_receipt_context_capacity_24679.json` requires three successive behaviors: safe local alignment of unique reviewer-selected spans, lossless shedding of only the advisory context layer, and whole-draft adjacent-window Map/Reduce if a complete global receipt still does not fit. The regression crosses the next authoritative boundary by producing a validated segment receipt and a validated global receipt; merely classifying the preflight incident is insufficient.
 
@@ -1091,16 +1109,26 @@ Startup also idempotently reconciles legacy split terminal pairs created before
 this boundary existed. Provider retry is scheduled only after the durable
 `waiting_provider` pair and its attempt/event ledger have committed.
 
-IR-first short planning is a project-scoped canary and defaults off until
-controlled R6 validation completes. Operators use
-`GET /api/projects/{project_id}/rollout-flags` and
-`PUT /api/projects/{project_id}/rollout-flags/planning-ir-first`; changes are
-rejected while a project run is active. Enabled projects generate
-`PlanningSemanticDraftV2`, inject Runtime-owned event identity and terminal
-topology, and render the legacy five-field Markdown only for downstream
-compatibility. The only tolerant wrapper conversion is the registered,
-versioned unique-envelope adapter; ambiguous candidates and machine controls
-fail closed.
+New short-story planning is IR-first for every project. It generates
+`PlanningSemanticDraftV2`, injects Runtime-owned event identity and terminal
+topology, and renders the legacy five-field Markdown only as a compatibility
+projection for downstream readers and resumable historical artifacts. The
+rollout-flag API remains readable for older clients, but it cannot switch a new
+production run back to provider-authored Markdown. Legacy Markdown is accepted
+only through the explicit read/migration boundary. The only tolerant wrapper
+conversion is the registered, versioned unique-envelope adapter; ambiguous
+candidates and machine controls fail closed.
+
+Planning adaptation and recovery also keep machine controls outside model
+output. A model returns only ordered `{event_id,narrative}` realizations;
+Runtime reattaches the accepted heading, ownership, outline basis, opening, and
+handoff byte-for-byte. Causal packets receive explicit Runtime topology flags
+for opening and ending ownership instead of inferring those roles from event-ID
+shape. Execution-manifest fragments use compact, event-owned story indexes and
+a protocol-sized output reserve before the provider call. Draft integrity binds
+the immutable pre-run constraints hash passed by the pipeline; it never locates
+that authority by splitting on a prose heading that may already exist in an old
+project.
 
 Every accepted draft segment is sealed with authority, input, output, entry,
 exit, quality, and dependency hashes. Exact repeats are idempotent, and a
@@ -1258,3 +1286,149 @@ commitment, or ending verdict is restored to the frozen projection and records
 authorize manifest/prose regeneration. An explicit semantic-negative receipt
 that was valid on its first authoritative attempt is still a semantic failure
 and follows the normal smallest-scope repair ladder.
+### Project-level refactor business preservation
+
+Infrastructure convergence uses `wrap -> shadow/parity -> switch -> delete`.
+Before a parser, route selector, retry loop, checkpoint reader, reducer, or task
+lifecycle is replaced, the existing path supplies invariant oracles for event
+ownership, character and knowledge state, causal and relationship progression,
+promise/payoff and ending authority, quality outcome, recovery behavior, and
+formal-promotion eligibility. The shared Runtime may improve representation,
+auditing, or recovery topology, but it does not replace those business
+validators.
+
+The new path first runs against the same production-shaped input and must yield
+the same canonical business result. A mismatch preserves the last accepted
+artifact and old authority path, records only content hashes and a stable
+failure code, and prevents the old implementation from being deleted. A change
+to novel policy is handled as a separate, explicitly authorized change contract;
+it is never hidden inside a refactor. Deletion requires reachability evidence,
+focused parity tests, the applicable private current-project replay and sanitized
+fixture, the 13K/20K/30K matrix when the complete short-fiction workflow is
+reachable, and the full test suite. Formal manuscripts, Canon, StoryState, and
+accepted checkpoints are never experimental parity outputs.
+
+### Structured-output Runtime V3 rollout status
+
+The shared Runtime now owns exact JSON parsing, syntax-only repair, registered
+representation adapters, explicit primary/fallback routing, bounded
+same-task protocol retry, contract-version matching, and hash-only conversion
+audit. The generic Runtime never asks a model to rewrap an invalid raw candidate
+and then assumes semantics stayed unchanged. Registered local adapters must
+prove a unique canonical projection; otherwise the immutable original task is
+rerun and revalidated. Specialized receipt repair may freeze semantics only
+when Runtime already owns and compares the semantic hash.
+Business modules still own their typed domain validators: moving a call into the
+Runtime does not replace event ownership, source offsets, locked fields,
+Chinese-output requirements, causal validation, quality gates, or promotion
+eligibility. `learning_artifact` remains a read-only compatibility identity;
+new reference-window model calls use the specific version-2
+`reference_analysis_window` contract, while final and hierarchical distillation
+use `reference_distillation_region`.
+
+### Material-audit full authority and atomic issue-ledger commit
+
+Material consistency auditing no longer truncates the project reference at a
+fixed prefix. `MaterialAuditReferenceAuthorityV1` inventories every eligible
+reference file and divides it into exact, contiguous, content-addressed spans.
+Every manuscript window is compared with every reference span through the
+registered `material_audit` contract. Validated packet receipts use the common
+workflow-node checkpoint envelope, so restart reuses completed pairs and never
+claims a partially scanned reference as complete.
+
+This infrastructure migration intentionally preserves the existing business
+meaning of each issue (`category`, `severity`, descriptive `evidence`,
+`location`, old/new setting, and action). Runtime reduction removes only fully
+identical issue objects; it does not reinterpret, weaken, or merge distinct
+story conflicts. The final `conflict-report.json` and optional
+`StoryState.issue_ledger` transition commit through `ProjectMutationJournalV1`.
+A failure before durable artifact staging rolls both back; an interruption
+after staging resumes the exact report/StoryState transition at startup.
+
+Managed style analysis writes `style-samples/reference.txt`,
+`style-samples/profile.json`, and `style-profile.md` under one project lock and
+`ProjectSnapshot`. Analysis or deletion failure restores all pre-operation bytes
+and discards the temporary snapshot. This is a transaction-safety change only;
+the style extraction schema, managed block, source-length rules, and project
+style scope are unchanged.
+
+The private current-project replay remains outside the repository. Its report
+contains only hashes, counts, topology, ranges, and conversion codes. On the
+2026-08-12 fresh isolated copy, the 13,000-character current project completed
+IR-first planning, planning adaptation, causal-chain reduction, execution
+manifest generation, segmented drafting, segment and whole semantic receipts,
+polish, final review, formal-promotion Saga, and StoryState commit. Ten required
+authority artifacts were present, the cloned formal manuscript was 45,271
+bytes, paid API calls were zero, and a complete pre/post tree-authority check
+proved that the source project did not change. The replay report is stored in
+the operating-system temporary directory and contains no raw prose or project
+identifier. This is verified production-shaped compatibility evidence, not
+permission to alter the live project and not a substitute for the committed
+sanitized fixtures, the 13K/20K/30K matrix, or the frozen full suite.
+
+The offline complete-flow matrix currently passes at 13,000, 20,000, and 30,000
+effective Han characters. Each case reaches a formal manuscript and checks target
+length, unique paragraphs, ending commitments, quality status, terminal-review
+hash equality, planning/causal/manifest/draft/polish/final artifacts, and
+StoryState commit. This evidence is rerun after later authority-critical changes;
+it is not used to justify skipping the private replay or full suite.
+
+### Mixed project-file, StoryState, and StoryMemory transactions
+
+Project files and SQLite StoryState cannot share one database transaction, so a
+plain file snapshot is not a complete rollback boundary. New mixed-authority
+mutations use the versioned `ProjectMutationJournalV1` Saga: `prepared` binds the
+rollback snapshot and expected StoryState revision; `artifacts_committed` binds
+exact staged target bytes and the optional candidate state; `committed` proves
+both authorities and leaves only idempotent terminal bookkeeping. Normal
+execution and startup recovery use the same completion function.
+
+The journal may also carry typed, idempotent StoryMemory projections. Canon
+facts retain the old `INSERT OR IGNORE` behavior, while chapter-index and
+chapter-state projections are content-hash bound and replayable. Long-form book
+setup now commits its book plan, Canon, optional volume map, and Canon-memory
+facts through this boundary. Long-chapter publication now uses the same Saga
+for the chapter, Canon, voice metrics, chapter index, and chapter state. Its
+existing post-publication volume audit remains a separate domain-owned second
+phase: a blocked audit preserves the published chapter for repair, while a
+restart after artifact staging resumes the exact memory projection and volume
+audit without regenerating another chapter. The generic transaction kernel
+cannot finalize a journal that declares this gate; only the long-chapter domain
+owner may do so after the original audit passes.
+
+Recovery may roll a target forward only from the snapshotted old hash or the
+already-committed target hash. A third hash is an unknown concurrent edit and is
+never overwritten. Failure before the target bundle is durable restores the
+old files and rejects the operation-owned pending candidate. Interruption after
+that point keeps the bundle and finishes the exact StoryState transition;
+failure to write the terminal run status cannot roll back an accepted business
+result.
+
+Material-impact application, manual material editing, formal outline
+application, material-audit report/issue-ledger publication, and long-form book
+setup/chapter publication are switched consumers. The material edit additionally stages its
+optional material-impact artifact, while material and outline paths both carry
+an exact `LearningArtifactInvalidationV1` ledger. The ledger freezes row ID,
+artifact type, version, source hash, and active-to-stale transition; its DB
+update validates the entire set before changing one row and is idempotent on
+restart. Readable learning sidecars are content-addressed target files, not a
+second source of truth.
+
+Proposal selection, exact excerpt checks, target hashes, material projection,
+outline conflict choices, locked-fact validation, narrative graph validation,
+and API success payloads remain in their original business services. A path is
+switched only after normal, rollback, and restart parity tests; partial
+infrastructure migration is rejected rather than silently dropping business
+behavior. The detailed state machine and rollback proof are recorded in
+`docs/superpowers/specs/2026-08-12-project-authority-transaction-design.md`.
+
+The shared structured-output Runtime follows the same rule: infrastructure may
+be shared, business contracts may not be collapsed. Atomic-beat, segment,
+whole-story, capacity-window, and global-reducer draft receipts now have
+separate registered identities. Final verdict, final-review window, regional
+reduction, detail evidence, and reader simulation are separate contracts as
+well. Structural revision plans are distinct from one-issue revision patches;
+short StoryState maintenance is distinct from long-book setup and long-chapter
+memory maintenance. Their existing prompts, domain validators, quality gates,
+and promotion behavior remain authoritative while parser, route, protocol
+repair, and audit mechanics converge underneath them.

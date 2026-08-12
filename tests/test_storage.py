@@ -2,7 +2,12 @@ import hashlib
 
 import pytest
 
-from novel_flywheel.storage import ProjectSnapshot, atomic_write
+from novel_flywheel.storage import (
+    ProjectSnapshot,
+    atomic_write,
+    atomic_write_bytes,
+    project_snapshot_transaction,
+)
 
 
 def digest(path):
@@ -20,6 +25,23 @@ def test_atomic_write_preserves_original_when_replace_fails(tmp_path) -> None:
         atomic_write(target, "new text", replace=fail_replace)
 
     assert target.read_text(encoding="utf-8") == "original"
+    assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_atomic_write_bytes_preserves_exact_newlines_and_rolls_back_replace_failure(
+    tmp_path,
+) -> None:
+    target = tmp_path / "authority.bin"
+    target.write_bytes(b"old\r\nbytes")
+    atomic_write_bytes(target, b"new\nbytes\x00")
+    assert target.read_bytes() == b"new\nbytes\x00"
+
+    def fail_replace(source, destination):
+        raise OSError("byte replace failure")
+
+    with pytest.raises(OSError, match="byte replace failure"):
+        atomic_write_bytes(target, b"uncommitted", replace=fail_replace)
+    assert target.read_bytes() == b"new\nbytes\x00"
     assert list(tmp_path.glob("*.tmp")) == []
 
 
@@ -94,3 +116,60 @@ def test_snapshot_discard_is_idempotent(tmp_path) -> None:
     snapshot.discard()
 
     assert not snapshot.snapshot_root.exists()
+
+
+def test_project_snapshot_transaction_commits_and_discards_snapshot(tmp_path) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    chapter = project / "chapter.md"
+    chapter.write_text("before", encoding="utf-8")
+    snapshot_root = project / "snapshots" / "transaction-success"
+
+    with project_snapshot_transaction(project, snapshot_root, [chapter]):
+        chapter.write_text("after", encoding="utf-8")
+
+    assert chapter.read_text(encoding="utf-8") == "after"
+    assert not snapshot_root.exists()
+
+
+def test_project_snapshot_transaction_rolls_back_base_exception(tmp_path) -> None:
+    class SimulatedCancellation(BaseException):
+        pass
+
+    project = tmp_path / "project"
+    project.mkdir()
+    chapter = project / "chapter.md"
+    chapter.write_text("before", encoding="utf-8")
+    snapshot_root = project / "snapshots" / "transaction-cancelled"
+
+    with pytest.raises(SimulatedCancellation):
+        with project_snapshot_transaction(project, snapshot_root, [chapter]):
+            chapter.write_text("partial", encoding="utf-8")
+            raise SimulatedCancellation
+
+    assert chapter.read_text(encoding="utf-8") == "before"
+    assert not snapshot_root.exists()
+
+
+def test_project_snapshot_transaction_preserves_snapshot_when_rollback_fails(
+    tmp_path, monkeypatch,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    chapter = project / "chapter.md"
+    chapter.write_text("before", encoding="utf-8")
+    snapshot_root = project / "snapshots" / "transaction-rollback-failed"
+
+    def fail_restore(_snapshot):
+        raise RuntimeError("simulated rollback failure")
+
+    monkeypatch.setattr(ProjectSnapshot, "restore", fail_restore)
+
+    with pytest.raises(RuntimeError, match="simulated rollback failure"):
+        with project_snapshot_transaction(project, snapshot_root, [chapter]):
+            chapter.write_text("partial", encoding="utf-8")
+            raise ValueError("mutation failed")
+
+    assert chapter.read_text(encoding="utf-8") == "partial"
+    assert snapshot_root.is_dir()
+    assert (snapshot_root / "manifest.json").is_file()

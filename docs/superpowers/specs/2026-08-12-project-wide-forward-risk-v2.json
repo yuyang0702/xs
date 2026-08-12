@@ -1,0 +1,208 @@
+{
+  "version": 2,
+  "original_requirement": "Refactor the project-wide infrastructure so business workflows no longer own separate parsers, route recovery, capacity policy, cache promotion, or multi-artifact commit logic, while preserving all existing narrative, quality, continuity, and formal-promotion behavior.",
+  "scope_classification": "open_world",
+  "operational_definition": "All model-produced structures enter one registered conversion and route-recovery kernel, and all multi-artifact authority changes enter one recoverable transaction boundary. The shared layers may repair representation, select an explicit viable route, split by declared ownership, and persist atomically, but they may not decide story meaning. Existing domain validators remain mandatory, current-project authority is replayed read-only, and successful completion means a validated formal manuscript rather than merely intercepting an error.",
+  "forbidden_narrowing": [
+    "Do not relax narrative, ownership, causality, ending, continuity, quality, originality, or formal-promotion validators to make infrastructure tests pass.",
+    "Do not add provider-, genre-, project-, prose-, or incident-specific branches outside a registered versioned adapter or typed domain contract.",
+    "Do not accept an ambiguous legacy representation by guessing which business fact, event, evidence span, or candidate it meant.",
+    "Do not count rejection, checkpoint retention, or best-candidate preservation alone as recovery when a bounded smallest-unit retry or split remains possible.",
+    "Do not truncate authoritative project text, locked facts, reference content, or event ownership to satisfy a route capacity estimate.",
+    "Do not mutate a formal manuscript, canon, StoryState, StoryMemory, or live checkpoint during offline replay or canary validation."
+  ],
+  "resolution_status": "systemically_resolved",
+  "constraint_traceability": [
+    {
+      "requirement": "One structured-output conversion and explicit route-recovery kernel",
+      "implementation": "contract_runtime.py and generated_artifacts.py own registered contracts, representation adapters, route capacity selection, bounded recovery, and hash-only audit. Business services may supply validators but may not add private parser or route executors.",
+      "test_paths": ["tests/test_contract_runtime.py", "tests/test_generated_artifacts.py"],
+      "evidence": "AST architecture tests reject new parser or gateway authorities, and representation variants re-enter the unchanged domain validators."
+    },
+    {
+      "requirement": "Preserve narrative and editorial business authority",
+      "implementation": "Planning, causal, execution-manifest, draft, polish, final-review, originality, and promotion checks remain in their domain modules. The common runtime is statically forbidden from importing those business authorities or mutating project state.",
+      "test_paths": ["tests/test_contract_runtime.py", "tests/test_workflows.py", "tests/test_outlines.py"],
+      "evidence": "Production-shaped tests prove invalid characters, ownership, causality, endings, evidence, and quality still block advancement after representation conversion."
+    },
+    {
+      "requirement": "One recoverable multi-artifact transaction boundary",
+      "implementation": "project_transactions.py and storage.py stage, validate, commit, recover, and roll back file, StoryState, and StoryMemory authority as one Saga while domain finalizers remain outside the generic persistence layer.",
+      "test_paths": ["tests/test_project_transactions.py", "tests/test_storage.py", "tests/api/test_projects.py"],
+      "evidence": "Fault injection covers prepared, file-written, state-written, committed, recovery, stale revision, and optional-artifact cleanup boundaries without partial formal promotion."
+    },
+    {
+      "requirement": "No lossy capacity handling for short fiction up to the 30,000-character validation envelope",
+      "implementation": "Route capacity plans use declared primary and fallback windows, preserve full authoritative inputs, and split by semantic ownership rather than fixed prefixes. Thirty thousand characters is test guidance, not a product hard limit.",
+      "test_paths": ["tests/test_outlines.py", "tests/test_workflows.py", "tests/test_contract_runtime.py"],
+      "evidence": "The 13K, 20K, and 30K complete-workflow matrix reaches a validated formal manuscript, while undersized routes are skipped or semantically split without deleting tail evidence."
+    },
+    {
+      "requirement": "Unify reference distillation and learning artifact promotion",
+      "implementation": "Reference receipts use the registered v2 ledger adapter and exact child attribution; learning_artifacts.py owns immutable cache identity and monotonic sidecar projection. Style, attraction, and plot mechanism classification remains bound to immutable node type.",
+      "test_paths": ["tests/test_reference_distillation.py", "tests/test_learning_system.py", "tests/test_learning_artifacts.py"],
+      "evidence": "Alternate merged/promoted receipt shapes convert, missing child semantics cannot disappear, cache conflicts fail closed, and style rules cannot enter plot mechanism buckets."
+    },
+    {
+      "requirement": "Protocol defects must not reopen accepted semantics or trigger unrelated creative rewrites",
+      "implementation": "Receipt semantics are frozen before protocol-only retries; execution beats use Runtime evidence IDs, and legacy prose echoes convert only when one unique contiguous Runtime evidence span is provable.",
+      "test_paths": ["tests/test_generated_artifacts.py", "tests/test_workflows.py"],
+      "evidence": "Tests cover protocol-to-semantic drift containment, ambiguous evidence rejection, compact evidence references, and smallest receipt retry with prose and manifest bytes unchanged."
+    },
+    {
+      "requirement": "Current-project data must validate the refactor without exposing or rewriting it",
+      "implementation": "The external private replay snapshots the live project tree and StoryState authority, clones the database/project/reference roots, moves historical runs out of the active run directory, and executes a fresh deterministic short workflow through planning, adaptation, causal reduction, execution manifest, draft, semantic receipts, polish, final review, promotion Saga, and StoryState commit. Its report stores hashes and counts only.",
+      "test_paths": ["tests/test_planning_semantics.py", "tests/test_reference_distillation.py", "tests/test_workflows.py"],
+      "evidence": "The 2026-08-12 isolated replay completed with ten required authority artifacts, a 45,271-byte cloned formal manuscript, zero paid calls, and identical pre/post source-tree authority. The committed production-shaped recovery and 13K/20K/30K fixtures cross the same downstream boundaries without private prose."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "parser.generated_artifact_shape",
+    "reference.distillation_receipt_version_drift",
+    "planning.structure_drift",
+    "planning.event_realization_control_ownership",
+    "planning.causal_packet_topology_inference",
+    "planning.execution_evidence_separator_mismatch",
+    "planning.receipt_protocol_semantic_drift",
+    "draft.base_constraints_marker_collision",
+    "execution_manifest.fragment_preflight_overreserve",
+    "model.context_capacity_preflight",
+    "model.context_capacity_provider_rejection",
+    "transaction.partial_formal_promotion",
+    "story_state.stale_revision",
+    "cache.concurrent_authority_conflict",
+    "provider.raw_error_leakage"
+  ],
+  "projected_failure_mechanisms": [
+    "provider wrapper and alias drift",
+    "balanced syntax damage and transport truncation",
+    "ambiguous or repeated evidence spans",
+    "hidden fallback and unaudited retry order",
+    "primary and fallback context asymmetry",
+    "semantic packet gaps, overlap, reordering, and stale reduction",
+    "concurrent cache promotion and sidecar regression",
+    "multi-file promotion interruption and stale StoryState",
+    "current reference corpus changing during promotion",
+    "protocol-only retry reopening accepted narrative semantics"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "canonical strict JSON object",
+    "Markdown-fenced JSON object",
+    "balanced locally repairable JSON syntax",
+    "nested provider response envelope",
+    "planning semantic root projection",
+    "reference distillation merged-disposition legacy shape",
+    "execution beat with exact Runtime evidence IDs",
+    "execution beat with uniquely mappable legacy evidence prose",
+    "execution beat omitting evidence when exactly one Runtime candidate exists",
+    "unknown descriptive fields with no machine-control authority"
+  ],
+  "invalid_output_variants_tested": [
+    "unclosed transport-truncated JSON",
+    "multiple complete semantic candidates",
+    "duplicate or reordered event ownership",
+    "ambiguous repeated legacy evidence prose",
+    "unknown machine-control fields",
+    "distillation child marked promoted without reachable semantic attribution"
+  ],
+  "transport_capacity_variants_tested": [
+    "primary route too small while fallback is viable",
+    "both routes require complete semantic splitting",
+    "provider context-length rejection after local preflight",
+    "transport interruption followed by same-route retry and explicit fallback",
+    "capacity split restart with validated prefix checkpoint reuse"
+  ],
+  "model_output_topology_classes_tested": [
+    "canonical root object",
+    "renamed root collection",
+    "single nested provider envelope",
+    "double nested provider envelope",
+    "Markdown-fenced object",
+    "balanced malformed object"
+  ],
+  "unseen_valid_variants_tested": [
+    "unseen planning semantic wrapper with one provable root projection",
+    "unseen distillation wrapper with exact child identity and typed attribution graph",
+    "unseen execution evidence echo with one presentation-normalized contiguous mapping"
+  ],
+  "unknown_variant_behavior": "The runtime may normalize only presentation or structure that has one proof-preserving mapping into a registered contract. It then reruns Pydantic and the original domain validator. Unknown or multiply mappable meaning remains a typed protocol defect and receives bounded same-scope retry, explicit fallback, or semantic split; it is never guessed into narrative authority.",
+  "why_previous_tests_missed": "Earlier tests exercised business validators with canonical fake outputs and exercised parser recovery separately. They did not preserve the production provider wrapper, repeated evidence atoms, route capacities, current-project authority, crash timing, or the next business boundary in one scenario. The causal packet fake inferred first/last ownership from numeric-looking event IDs, planning repairs returned full preassembled segments, manifest tests used oversized routes, and draft fixtures had no historical causal-chain heading inside the immutable base constraints. Several flows also owned private retries and cache or transaction logic, so a local green test could not prove project-wide parity. The new architecture tests prohibit parallel infrastructure; explicit Runtime topology drives hashed event IDs; event-only repairs reattach controls; compact fragment preflight preserves full event authority; the marker-collision regression binds the passed base hash; the workflow matrix reaches formal prose at 13K/20K/30K; fault injection covers transaction phases; and the fresh private replay completes the current project read-only.",
+  "sibling_boundaries": [
+    {
+      "boundary": "project initialization and interviews",
+      "disposition": "fixed_and_tested",
+      "evidence": "Structured proposals use registered conversion; initialization domain validators and project snapshots still own material semantics and rollback."
+    },
+    {
+      "boundary": "materials, impacts, and material audit",
+      "disposition": "fixed_and_tested",
+      "evidence": "Shared transactions and audit contracts replace local persistence branches while impact completeness and material semantics remain domain validated."
+    },
+    {
+      "boundary": "outline editing and application",
+      "disposition": "fixed_and_tested",
+      "evidence": "Full outline and locked-fact authority are route-packed without truncation, and the existing outline comparison validator remains mandatory."
+    },
+    {
+      "boundary": "short planning, causal chain, and execution manifest",
+      "disposition": "fixed_and_tested",
+      "evidence": "Typed planning IR, exact ownership graph, terminal topology, compact evidence references, protocol drift containment, and checkpoint binding are covered together."
+    },
+    {
+      "boundary": "draft splitting, semantic receipts, and polish",
+      "disposition": "fixed_and_tested",
+      "evidence": "Protocol repair cannot mutate prose, semantic splitting preserves exact ownership, and segment plus whole-story validators still gate post-quality mutation."
+    },
+    {
+      "boundary": "final review, originality, and formal short publication",
+      "disposition": "fixed_and_tested",
+      "evidence": "Passing terminal hash, current reference corpus CAS, StoryState revision CAS, and recoverable formal-file Saga are all required before promotion."
+    },
+    {
+      "boundary": "long setup and chapter publication",
+      "disposition": "fixed_and_tested",
+      "evidence": "The generic transaction handles persistence and recovery, while chapter and volume audit remain the business finalizers."
+    },
+    {
+      "boundary": "reference library and originality corpus",
+      "disposition": "fixed_and_tested",
+      "evidence": "All versions stream in chunks with absolute provenance, and corpus authority invalidates stale analysis and participates in publication CAS."
+    },
+    {
+      "boundary": "learning, recipe, and creative blueprint",
+      "disposition": "fixed_and_tested",
+      "evidence": "Immutable node type controls business classification; cache and sidecar projection use monotonic DB authority."
+    },
+    {
+      "boundary": "API candidate publication and restart recovery",
+      "disposition": "fixed_and_tested",
+      "evidence": "Candidate authority is re-resolved under the publication lease, multi-file commit is journaled, and startup validates committed artifact hashes before finalizing DB state."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_workflows.py",
+    "tests/test_generated_artifacts.py",
+    "tests/test_project_transactions.py",
+    "tests/test_reference_distillation.py",
+    "tests/api/test_projects.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_workflows.py",
+    "tests/test_outlines.py",
+    "tests/test_material_impacts.py",
+    "tests/test_learning_system.py",
+    "tests/test_storage.py"
+  ],
+  "invariant_test_paths": [
+    "tests/test_contract_runtime.py",
+    "tests/test_generated_artifacts.py",
+    "tests/test_project_transactions.py",
+    "tests/test_workflows.py",
+    "tests/test_reference_distillation.py"
+  ],
+  "remaining_risks": [
+    "A real third-party API canary was intentionally not run because the user chose to execute the live flow; offline and private read-only gates therefore prove code behavior but not future provider availability.",
+    "Ambiguous legacy evidence prose cannot be converted locally without guessing; it intentionally requires a bounded protocol-only response using Runtime evidence IDs, with accepted semantics frozen."
+  ]
+}

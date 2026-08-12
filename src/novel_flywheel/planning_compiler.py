@@ -58,6 +58,47 @@ def _owned_field_envelope(role: str, value: object) -> str:
     )
 
 
+def rebind_runtime_repaired_planning_field(
+    value: object, *, role: str,
+) -> str:
+    """Re-seal one complete envelope after a Runtime-proven local repair.
+
+    This is deliberately narrower than tolerant parsing.  Exactly one complete
+    envelope may be re-sealed, every sibling envelope must still match its
+    original hash, and unmatched or ambiguous controls remain invalid.  Model
+    output must never call this boundary; it exists for deterministic repairs
+    whose evidence and mutation scope are already owned by Runtime.
+    """
+
+    if role not in PLAN_FIELD_ALIASES:
+        raise KeyError(f"unknown planning field role: {role}")
+    source = str(value or "").replace("\r\n", "\n").replace("\r", "\n")
+    matches = list(_OWNED_FIELD_BLOCK.finditer(source))
+    selected = [match for match in matches if match.group("role") == role]
+    if len(selected) != 1:
+        raise ValueError(
+            "Runtime planning repair requires exactly one complete owned field"
+        )
+    for match in matches:
+        if match is selected[0]:
+            continue
+        body = match.group("body")
+        digest = hashlib.sha256(body.encode("utf-8")).hexdigest()
+        if digest != match.group("sha256") or digest[:24] != match.group("token"):
+            raise ValueError(
+                "Runtime planning repair cannot re-seal a stale sibling field"
+            )
+    target = selected[0]
+    rebound = _owned_field_envelope(role, target.group("body"))
+    candidate = source[:target.start()] + rebound + source[target.end():]
+    compiled = compile_planning_segment(candidate)
+    if compiled.protocol_issues or compiled.field(role) != _canonical_owned_value(
+        target.group("body")
+    ):
+        raise ValueError("Runtime planning repair failed to re-seal its owned field")
+    return candidate
+
+
 def _normalize_label(value: object) -> str:
     normalized = unicodedata.normalize("NFKC", str(value or "")).casefold()
     normalized = re.sub(r"</?(?:strong|b|em|i)>|[*_`#]", "", normalized)

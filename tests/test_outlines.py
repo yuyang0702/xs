@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+import novel_flywheel.outlines as outlines_module
 
 from novel_flywheel.db import Database
 from novel_flywheel.learning import LearningSystem
@@ -13,6 +14,7 @@ from novel_flywheel.outlines import (
 )
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.reference_library import ReferenceLibrary
+from novel_flywheel.project_transactions import complete_project_mutation
 
 
 def setup_outline_service(tmp_path) -> tuple[Database, ProjectStore, object, OutlineService]:
@@ -152,6 +154,181 @@ def test_semantic_outline_decisions_normalize_aliases_and_degrade_unknown_labels
     assert decisions[0]["raw_type"] == "顺序变化"
     assert decisions[1]["type"] == "uncertain"
     assert decisions[1]["raw_type"] == "局部重组"
+
+
+def test_semantic_outline_contract_requires_exact_requested_id_coverage() -> None:
+    with pytest.raises(ValueError, match="cover every requested change"):
+        OutlineService._complete_semantic_decisions_payload({
+            "decisions": [{"id": "change-1", "type": "changed"}],
+        }, {"change-1", "change-2"})
+
+
+@pytest.mark.asyncio
+async def test_semantic_outline_review_partitions_more_than_ten_changes(
+    tmp_path, monkeypatch,
+) -> None:
+    _db, _projects, project, service = setup_outline_service(tmp_path)
+    changes = [{
+        "id": f"change-{index:02d}",
+        "type": "uncertain",
+        "label": f"story unit {index}",
+        "current_text": f"current {index}",
+        "candidate_text": f"candidate {index}",
+    } for index in range(12)]
+    monkeypatch.setattr(service, "compare_candidate", lambda *_args: {
+        "changes": [dict(item) for item in changes],
+        "summary": {"uncertain": len(changes)},
+        "model_called": False,
+    })
+
+    class Gateway:
+        def __init__(self):
+            self.packet_ids = []
+
+        async def complete(self, role, system, user, **kwargs):
+            request = json.loads(user)
+            identities = [item["id"] for item in request["changes"]]
+            self.packet_ids.append(identities)
+            return type("Result", (), {
+                "text": json.dumps({
+                    "decisions": [{
+                        "id": identity,
+                        "type": "changed",
+                        "explanation": "verified",
+                        "impact": "causal detail",
+                    } for identity in identities],
+                }),
+                "receipt": {"packet_size": len(identities)},
+            })()
+
+    gateway = Gateway()
+    service.gateway = gateway
+    report = await service.semantic_review(project.id, "candidate")
+
+    assert [len(item) for item in gateway.packet_ids] == [10, 2]
+    assert [item for packet in gateway.packet_ids for item in packet] == [
+        item["id"] for item in changes
+    ]
+    assert all(item["type"] == "changed" for item in report["changes"])
+    assert report["summary"]["uncertain"] == 0
+
+
+@pytest.mark.asyncio
+async def test_semantic_outline_review_preserves_tail_evidence_and_all_locked_facts(
+    tmp_path, monkeypatch,
+) -> None:
+    _db, _projects, project, service = setup_outline_service(tmp_path)
+    current_tail = "CURRENT-EVIDENCE-AFTER-ONE-THOUSAND"
+    candidate_tail = "CANDIDATE-EVIDENCE-AFTER-ONE-THOUSAND"
+    change = {
+        "id": "change-tail",
+        "type": "uncertain",
+        "label": "late causal turn",
+        "current_text": ("old context " * 150) + current_tail,
+        "candidate_text": ("new context " * 150) + candidate_tail,
+    }
+    locked_facts = [
+        {"key": f"locked-{index:02d}", "value": f"fact-{index:02d}"}
+        for index in range(25)
+    ]
+    monkeypatch.setattr(service, "compare_candidate", lambda *_args: {
+        "changes": [dict(change)],
+        "summary": {"uncertain": 1},
+        "model_called": False,
+    })
+    monkeypatch.setattr(service.states, "get", lambda *_args: type(
+        "State", (), {"data": {"locked_facts": locked_facts}},
+    )())
+
+    class Gateway:
+        def __init__(self):
+            self.request = None
+
+        async def complete(self, role, system, user, **kwargs):
+            self.request = json.loads(user)
+            return type("Result", (), {
+                "text": json.dumps({
+                    "decisions": [{
+                        "id": "change-tail",
+                        "type": "changed",
+                        "explanation": "verified from complete evidence",
+                        "impact": "late causal turn remains visible",
+                    }],
+                }),
+                "receipt": {},
+            })()
+
+    gateway = Gateway()
+    service.gateway = gateway
+    report = await service.semantic_review(project.id, "candidate")
+
+    assert gateway.request is not None
+    assert gateway.request["changes"][0]["current_text"].endswith(current_tail)
+    assert gateway.request["changes"][0]["candidate_text"].endswith(candidate_tail)
+    assert gateway.request["locked_facts"] == locked_facts
+    assert report["changes"][0]["type"] == "changed"
+
+
+@pytest.mark.asyncio
+async def test_semantic_outline_review_skips_route_that_cannot_fit_complete_change(
+    tmp_path, monkeypatch,
+) -> None:
+    db, _projects, project, service = setup_outline_service(tmp_path)
+    for provider_id in ("small-provider", "large-provider"):
+        db.save_provider(
+            provider_id=provider_id, name=provider_id, protocol="openai",
+            base_url="https://offline.invalid/v1", auth_type="bearer",
+            timeout_seconds=30, extra_headers={},
+        )
+    db.save_model(
+        model_id="small", provider_id="small-provider", display_name="small",
+        model_name="small", context_window=4_096, max_output_tokens=2_048,
+    )
+    db.save_model(
+        model_id="large", provider_id="large-provider", display_name="large",
+        model_name="large", context_window=32_768, max_output_tokens=2_048,
+    )
+    db.save_role_binding(
+        "planning", "small-provider", "small", "large-provider", "large",
+    )
+    change = {
+        "id": "change-large", "type": "uncertain", "label": "complete unit",
+        "current_text": "old " * 800, "candidate_text": "new " * 800,
+    }
+    monkeypatch.setattr(service, "compare_candidate", lambda *_args: {
+        "changes": [dict(change)], "summary": {"uncertain": 1},
+        "model_called": False,
+    })
+
+    class Gateway:
+        def __init__(self):
+            self.primary_calls = 0
+            self.fallback_calls = 0
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.primary_calls += 1
+            raise AssertionError("undersized primary route must not be called")
+
+        async def complete_configured_fallback(self, role, system, user, **kwargs):
+            self.fallback_calls += 1
+            request = json.loads(user)
+            assert request["changes"][0]["candidate_text"].endswith("new ")
+            return type("Result", (), {
+                "text": json.dumps({"decisions": [{
+                    "id": "change-large", "type": "changed",
+                    "explanation": "complete", "impact": "complete",
+                }]}),
+                "receipt": {},
+            })()
+
+    gateway = Gateway()
+    service.gateway = gateway
+
+    report = await service.semantic_review(project.id, "candidate")
+
+    assert report["changes"][0]["type"] == "changed"
+    assert gateway.primary_calls == 0
+    assert gateway.fallback_calls == 1
 
 
 def test_canon_conflicts_require_a_choice_and_can_keep_project_facts(tmp_path) -> None:
@@ -769,3 +946,87 @@ def test_applying_outline_marks_only_outline_derived_artifacts_stale(tmp_path) -
     assert manuscript.read_bytes() == before
     saved = json.loads((project.path / "learning" / "scene_briefs.json").read_text(encoding="utf-8"))
     assert saved["status"] == "stale"
+
+
+def test_outline_apply_rolls_back_files_and_state_before_durable_commit(
+    tmp_path, monkeypatch,
+) -> None:
+    db, projects, project, service = setup_outline_service(tmp_path)
+    learning = LearningSystem(
+        db, ReferenceLibrary(db, tmp_path / "references"), projects,
+    )
+    learning.save_artifact(project.id, "scene_briefs", {"briefs": []})
+    outline_path = project.path / "plot" / "outline.md"
+    before_outline = (
+        outline_path.read_bytes() if outline_path.is_file() else None
+    )
+    before_state = service.states.get(project.id)
+    candidate = service.create_candidate(project.id, "# 新大纲\n\n仍需完整提交。\n")
+
+    def fail_stage(*_args, **_kwargs):
+        raise OSError("injected target staging failure")
+
+    monkeypatch.setattr(
+        outlines_module, "stage_project_mutation_targets", fail_stage,
+    )
+    with pytest.raises(OSError, match="injected target staging failure"):
+        service.apply_candidate(project.id, candidate["id"])
+
+    after_state = service.states.get(project.id)
+    if before_outline is None:
+        assert not outline_path.exists()
+    else:
+        assert outline_path.read_bytes() == before_outline
+    assert after_state.revision == before_state.revision
+    assert after_state.data == before_state.data
+    assert learning.get_artifact(project.id, "scene_briefs")["status"] == "active"
+    assert service.states.get_candidate(candidate["id"]).status == "pending"
+    run = next(
+        item for item in db.list_runs(project.id)
+        if item["workflow"] == "outline-apply"
+    )
+    assert run["status"] == "failed"
+    assert not (project.path / "snapshots" / run["id"]).exists()
+
+
+def test_outline_apply_resumes_exact_authority_after_artifact_commit(
+    tmp_path, monkeypatch,
+) -> None:
+    db, projects, project, service = setup_outline_service(tmp_path)
+    learning = LearningSystem(
+        db, ReferenceLibrary(db, tmp_path / "references"), projects,
+    )
+    learning.save_artifact(project.id, "scene_briefs", {"briefs": []})
+    before_state = service.states.get(project.id)
+    candidate = service.create_candidate(
+        project.id, "# 新大纲\n\n恢复后仍是这一份。\n",
+    )
+
+    monkeypatch.setattr(
+        outlines_module, "complete_project_mutation",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("injected process interruption"),
+        ),
+    )
+    with pytest.raises(OSError, match="injected process interruption"):
+        service.apply_candidate(project.id, candidate["id"])
+
+    pending = next(
+        item for item in db.list_runs(project.id)
+        if item["workflow"] == "outline-apply"
+    )
+    assert pending["status"] == "running"
+    assert service.states.get(project.id).revision == before_state.revision
+    assert learning.get_artifact(project.id, "scene_briefs")["status"] == "active"
+    assert "恢复后仍是这一份" in (
+        project.path / "plot" / "outline.md"
+    ).read_text(encoding="utf-8")
+
+    completed = complete_project_mutation(projects, pending["id"])
+    completed_again = complete_project_mutation(projects, pending["id"])
+
+    assert completed.status == completed_again.status == "committed"
+    assert service.states.get(project.id).revision == before_state.revision + 1
+    assert learning.get_artifact(project.id, "scene_briefs")["status"] == "stale"
+    assert db.get_run(pending["id"])["status"] == "completed"
+    assert not (project.path / "snapshots" / pending["id"]).exists()
