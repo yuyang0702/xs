@@ -7,7 +7,10 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from novel_flywheel.contract_runtime import execute_contract_runtime
+from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
+    execute_contract_runtime,
+)
 from novel_flywheel.db import WIZARD_MUTATION_LOCK
 from novel_flywheel.storage import atomic_write, project_snapshot_transaction
 from novel_flywheel.style_context import ensure_style_profile
@@ -23,7 +26,7 @@ FIELDS = (
 
 
 STYLE_ANALYSIS_STRUCTURED_CONTRACT = StructuredArtifactContract(
-    name="style_analysis_output",
+    name="style_analysis",
     version=1,
     schema={
         "type": "object",
@@ -104,9 +107,12 @@ class StyleSampleService:
             role="planning",
             system=runtime_system,
             user=runtime_user,
-            contract_name="style_analysis",
-            structured_contract=STYLE_ANALYSIS_STRUCTURED_CONTRACT,
-            semantic_normalizer=self._normalize_profile_payload,
+            execution_spec=ExecutableContractSpec(
+                contract_name="style_analysis",
+                structured_contract=STYLE_ANALYSIS_STRUCTURED_CONTRACT,
+                semantic_normalizer=self._normalize_profile_payload,
+                domain_validator=lambda payload: dict(payload),
+            ),
             max_output_tokens=1200,
         )
         profile = dict(runtime.domain_value)

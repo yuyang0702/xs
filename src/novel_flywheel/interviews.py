@@ -4,7 +4,10 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from novel_flywheel.contract_runtime import execute_contract_runtime
+from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
+    execute_contract_runtime,
+)
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.generated_artifacts import (
     ArtifactConversionError,
@@ -36,7 +39,7 @@ class InterviewModelOutput(BaseModel):
 
 
 INTERVIEW_STRUCTURED_CONTRACT = StructuredArtifactContract(
-    name="planning_interview_output",
+    name="interview_planning",
     version=1,
     schema=InterviewModelOutput.model_json_schema(),
     runtime_authority={"allowed_fields": "wizard_runtime"},
@@ -80,12 +83,15 @@ class WizardInterviewService:
                 role="planning",
                 system=self.SYSTEM,
                 user=context,
-                contract_name="interview_planning",
-                structured_contract=INTERVIEW_STRUCTURED_CONTRACT,
-                semantic_normalizer=lambda value: (
-                    InterviewModelOutput.model_validate(value).model_dump(
-                        mode="json",
-                    )
+                execution_spec=ExecutableContractSpec(
+                    contract_name="interview_planning",
+                    structured_contract=INTERVIEW_STRUCTURED_CONTRACT,
+                    semantic_normalizer=lambda value: (
+                        InterviewModelOutput.model_validate(value).model_dump(
+                            mode="json",
+                        )
+                    ),
+                    domain_validator=InterviewModelOutput.model_validate,
                 ),
                 max_output_tokens=self.MAX_OUTPUT_TOKENS,
             )

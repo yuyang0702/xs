@@ -4147,9 +4147,11 @@ def test_every_planning_protocol_schedule_owns_explicit_route_selection() -> Non
         and isinstance(node.value.func, ast.Attribute)
         and node.value.func.attr == "_execute_protocol_receipt_attempt"
     ]
-    # The tenth schedule is the hash-bound global obligation reducer. Local
-    # adjacent windows cannot prove remote setup/payoff or ending obligations.
-    assert len(executions) == 10
+    # Eight specialized semantic-freeze schedules remain. Whole-draft capacity
+    # windows and the hash-bound global obligation reducer moved into the
+    # shared executable-contract Runtime, so they must not add parallel
+    # business-owned protocol retry loops here.
+    assert len(executions) == 8
     for execution in executions:
         keywords = {item.arg: item.value for item in execution.keywords}
         operation = keywords["operation"]
@@ -4162,6 +4164,22 @@ def test_every_planning_protocol_schedule_owns_explicit_route_selection() -> Non
             "primary_only", "prefer_configured_fallback",
             "defer_route_failure_audit", "protocol_system_contract",
         } <= route_keywords
+
+    executable_names = {
+        keyword.value.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "ExecutableContractSpec"
+        for keyword in node.keywords
+        if keyword.arg == "contract_name"
+        and isinstance(keyword.value, ast.Constant)
+        and isinstance(keyword.value.value, str)
+    }
+    assert {
+        "draft_whole_window_receipt",
+        "draft_whole_reducer_receipt",
+    } <= executable_names
 
 
 @pytest.mark.asyncio

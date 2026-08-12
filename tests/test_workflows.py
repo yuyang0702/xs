@@ -2777,7 +2777,9 @@ async def test_ir_first_initial_capacity_preflight_uses_event_owned_semantic_pac
     class PacketOnlyGateway:
         def __init__(self) -> None:
             self.packet_calls: list[dict] = []
+            self.packet_systems: list[str] = []
             self.failed_once = False
+            self.noncanonical_once = False
 
         async def complete(self, role, system, user, max_output_tokens=None):
             if "IR_FIRST_SHORT_PLANNING_PACKET_V2" not in user:
@@ -2788,8 +2790,22 @@ async def test_ir_first_initial_capacity_preflight_uses_event_owned_semantic_pac
                 user.split("PACKET CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
             )
             self.packet_calls.append(contract)
+            self.packet_systems.append(system)
             local_count = len(contract["global_event_ordinals"])
             segment = contract["global_segment"]
+            if segment == 1 and not self.noncanonical_once:
+                self.noncanonical_once = True
+                return ModelResult(json.dumps({
+                    "segment": 1,
+                    "segment_map": [{
+                        "segment": 1,
+                        "events": contract["global_event_ordinals"],
+                    }],
+                }), {
+                    "finish_reason": "stop", "provider_id": "primary",
+                    "model_id": "planning-model", "model_name": "planning-model",
+                    "input_tokens": 2400, "output_tokens": 300,
+                })
             if segment == 3 and not self.failed_once:
                 self.failed_once = True
                 raise RuntimeError("server disconnected before terminal response")
@@ -2864,6 +2880,11 @@ async def test_ir_first_initial_capacity_preflight_uses_event_owned_semantic_pac
     ]
     assert called_segments == sorted(called_segments)
     assert set(called_segments) == set(range(1, 7))
+    assert called_segments.count(1) >= 2
+    assert any(
+        "previous response could not be deterministically converted" in system.lower()
+        for system in gateway.packet_systems
+    )
     assert called_segments.count(3) >= 2
     unique_packets = {
         (
@@ -3595,7 +3616,8 @@ async def test_prepublication_chapter_failure_restores_files_and_memory(
         def __init__(self) -> None:
             super().__init__()
             responses = list(self.responses)
-            responses[6] = json.dumps({"state": {"hero": {"location": "gate"}}})
+            invalid = json.dumps({"state": {"hero": {"location": "gate"}}})
+            responses[6:] = [invalid] * 4
             self.responses = iter(responses)
 
     db = Database(tmp_path / "app.db")
@@ -3615,7 +3637,7 @@ async def test_prepublication_chapter_failure_restores_files_and_memory(
         SkillGate(db, SkillScanner([skill_root])),
     )
 
-    with pytest.raises(ValueError, match="facts array"):
+    with pytest.raises(ValueError, match="authoritative domain contract"):
         await service.run_chapter(
             project.id, "Reach the gate", use_crewai=False,
             run_id="invalid-maintenance",
@@ -8518,14 +8540,14 @@ async def test_local_planning_recovery_resumes_the_lowest_issue_candidate(
     )
     calls = 0
 
-    async def interrupted_stage(*args, **kwargs):
+    async def interrupted_ir_first(*args, **kwargs):
         nonlocal calls
         calls += 1
         if calls == 1:
             return partial
         raise ConnectionError("local planning repair interrupted")
 
-    service._stage = interrupted_stage
+    service._plan_short_ir_first = interrupted_ir_first
     with pytest.raises(ConnectionError, match="interrupted"):
         await service._recover_short_plan_local_gate(
             "local-resume", run_path, project, "constraints", "brief", {},
@@ -8537,10 +8559,10 @@ async def test_local_planning_recovery_resumes_the_lowest_issue_candidate(
     )
     assert resumed == (partial, None, False)
 
-    async def completing_stage(*args, **kwargs):
+    async def completing_ir_first(*args, **kwargs):
         return complete
 
-    service._stage = completing_stage
+    service._plan_short_ir_first = completing_ir_first
     accepted = await service._recover_short_plan_local_gate(
         "local-resume", run_path, project, "constraints", "brief", {},
         partial, 4, 4800, generation_context_sha256="context-v2",
@@ -10180,10 +10202,10 @@ async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(
     assert result["target_segments"] == [2]
     assert [call["role"] for call in gateway.calls] == ["planning", "planning"]
     repair_prompt = gateway.calls[1]["user"]
-    assert malformed in repair_prompt
-    assert "repair_revision_plan_v1" in repair_prompt
-    assert "COMPACT SEGMENT MAP" not in repair_prompt
-    assert "UNIQUE MANUSCRIPT MATERIAL" not in repair_prompt
+    assert repair_prompt == gateway.calls[0]["user"]
+    assert malformed not in repair_prompt
+    assert "COMPACT SEGMENT MAP" in repair_prompt
+    assert "UNIQUE MANUSCRIPT MATERIAL" in repair_prompt
 
 
 @pytest.mark.asyncio
@@ -13724,18 +13746,25 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 )
                 return self.result(role, repaired)
             if "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_V2" in user:
-                current = user.split("CURRENT PLAN SEGMENT:\n", 1)[1]
-                repaired = current.replace(
-                    "又确认冯管事经手旧账",
-                    "沿用已确认的账目结论",
-                ).replace(
-                    "暗中继续追查",
-                    "只盯住眼下的毒羹风险",
-                ).replace(
-                    "老仆口中关于三小姐的线索",
-                    "已记录的旧线索",
+                # Rebuild is a planning-event-realization contract. Runtime,
+                # not the model, owns the Markdown envelope and its controls.
+                payload = json.loads(
+                    ProductionSizedShortGateway._planning_targeted_segment(user)
                 )
-                return self.result(role, repaired)
+                for event in payload["events"]:
+                    event["narrative"] = event["narrative"].replace(
+                        "又确认冯管事经手旧账",
+                        "沿用已确认的账目结论",
+                    ).replace(
+                        "暗中继续追查",
+                        "只盯住眼下的毒羹风险",
+                    ).replace(
+                        "老仆口中关于三小姐的线索",
+                        "已记录的旧线索",
+                    )
+                return self.result(role, json.dumps(
+                    payload, ensure_ascii=False,
+                ))
             if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
                 authority = user.split("EXPECTED AUTHORITY SHA256: ", 1)[1].splitlines()[0]
                 planning_sha = user.split("EXPECTED PLANNING SHA256: ", 1)[1].splitlines()[0]
@@ -13910,12 +13939,14 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                             "；随后又确认冯管事经手旧账，再向老仆套出三小姐走失当日后门有人出入",
                             "",
                         )
-                    if replacement != source:
-                        replacements.append({
-                            "evidence_id": anchor["evidence_id"],
-                            "source_sha256": anchor["source_sha256"],
-                            "replacement": replacement,
-                        })
+                    # V3 is a complete Runtime-selected anchor ledger. An
+                    # unchanged value is an explicit no-op, not an omitted
+                    # authority unit.
+                    replacements.append({
+                        "evidence_id": anchor["evidence_id"],
+                        "source_sha256": anchor["source_sha256"],
+                        "replacement": replacement,
+                    })
                 return self.result(role, json.dumps({
                     "authority_sha256": authority,
                     "segment": segment,
@@ -17300,6 +17331,84 @@ async def test_maintenance_capacity_windows_cover_middle_facts_and_reduce_determ
         event["event_type"] == "maintenance_window_checkpoint_reused"
         for event in service.db.list_run_events("quality-source")
     )
+
+
+@pytest.mark.asyncio
+async def test_maintenance_window_compacts_fixed_context_before_recursive_split(
+    tmp_path,
+) -> None:
+    """A smallest semantic window must not inherit an unsplittable prompt layer."""
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="offline", name="Offline", protocol="openai",
+        base_url="https://offline.invalid/v1", auth_type="bearer",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="maintenance-small", provider_id="offline",
+        display_name="Maintenance Small", model_name="maintenance-small",
+        context_window=8_192, max_output_tokens=2_048,
+    )
+    db.save_role_binding(
+        "maintenance", "offline", "maintenance-small", None, None,
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Maintenance fixed context", mode="short", genre="mystery",
+        premise="A clerk verifies one surviving fact.", target_words=13_000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = RecordingGateway([json.dumps({
+        "version": "maintenance-window-receipt-v1",
+        "facts": [], "state_deltas": [], "state_transitions": [],
+        "world_rules": [], "timeline": [],
+    })])
+    service = WorkflowService(
+        db, store, expose_test_primary_route(gateway),
+        SkillGate(db, SkillScanner([skill_root])),
+    )
+    project_constraints = project.path / "constraints.md"
+    project_constraints.write_text(
+        "# Project Constraints\n\n## Must Include\n" + "\n".join(
+            f"Advisory archive note {index}: preserve verified authority."
+            for index in range(4_000)
+        ) + "\n\n## Must Avoid\nNone\n",
+        encoding="utf-8",
+    )
+    run_id = "maintenance-fixed-context"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    splitter_calls = 0
+
+    async def reject_split(_details):
+        nonlocal splitter_calls
+        splitter_calls += 1
+        raise AssertionError("bounded fixed context should fit before splitting prose")
+
+    raw = await service._stage(
+        run_id, run_path, project, "maintenance",
+        service.projects.load_constraints(project.id),
+        json.dumps({
+            "schema": "maintenance-window-request-v1",
+            "window_text": "One exact sentence.",
+        }),
+        allow_tools=False,
+        route_capacity_guard=True,
+        capacity_splitter=reject_split,
+        completion_check=lambda value: bool(str(value).strip()),
+        bounded_protocol_output=True,
+        compact_input=True,
+    )
+
+    assert splitter_calls == 0
+    assert json.loads(str(raw))["version"] == "maintenance-window-receipt-v1"
+    assert len(gateway.calls) == 1
+    assert len(gateway.calls[0]["system"]) < 20_000
 
 
 @pytest.mark.asyncio

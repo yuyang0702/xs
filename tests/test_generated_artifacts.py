@@ -183,6 +183,7 @@ def test_contract_adapter_architecture_budget_has_declared_single_owners() -> No
         for item in registrations
         if item.automatic_conversion
     } == {
+        "planning_event_topology",
         "planning_semantic_unique_envelope",
         "planning_semantic_root_projection",
         "reference_distillation_v2_ledger_alignment",
@@ -584,6 +585,11 @@ def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> N
             left = static_contract_names(value.body)
             right = static_contract_names(value.orelse)
             return None if left is None or right is None else left | right
+        if isinstance(value, ast.Name) and value.id == "receipt_contract_name":
+            return {
+                "draft_atomic_semantic_receipt",
+                "draft_segment_semantic_receipt",
+            }
         return None
 
     source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
@@ -605,8 +611,7 @@ def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> N
                 else node.func.attr if isinstance(node.func, ast.Attribute) else ""
             )
             if name not in {
-                "convert_object", "execute_contract_runtime",
-                "_convert_generated_object",
+                "convert_object", "_convert_generated_object",
             }:
                 continue
             keyword = next(
@@ -621,7 +626,10 @@ def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> N
                     and isinstance(keyword.value, ast.Name)
                     and keyword.value.id == "contract_name"
                     and any(
-                        function.name == "_convert_generated_object"
+                        function.name in {
+                            "_convert_generated_object",
+                            "_convert_draft_receipt_object",
+                        }
                         and node in ast.walk(function)
                         for function in ast.walk(tree)
                         if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
@@ -661,78 +669,139 @@ def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> N
     assert unknown == []
 
 
-def test_static_runtime_wire_contract_versions_match_registered_business_contracts() -> None:
-    """Catch a wrong contract/wire pairing before a long-running task starts."""
+def test_p0_contract_runtime_calls_use_one_indivisible_execution_spec() -> None:
+    """A schema cannot reach a provider without its normalizer and validator."""
 
     source_root = Path(__file__).parents[1] / "src" / "novel_flywheel"
-    checked = []
+    discovered = []
+    legacy_keywords = {
+        "contract_name", "structured_contract", "semantic_normalizer",
+        "domain_validator", "retry_domain_failures",
+    }
     for path in source_root.rglob("*.py"):
+        if path.name == "contract_runtime.py" or "baml_client" in path.parts:
+            continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        wire_versions = {}
-        for node in tree.body:
-            if not (
-                isinstance(node, (ast.Assign, ast.AnnAssign))
-                and isinstance(node.value, ast.Call)
-                and (
-                    (isinstance(node.value.func, ast.Name)
-                     and node.value.func.id == "StructuredArtifactContract")
-                    or (isinstance(node.value.func, ast.Attribute)
-                        and node.value.func.attr == "StructuredArtifactContract")
-                )
-            ):
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
                 continue
-            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-            version = next(
-                (
-                    keyword.value.value
-                    for keyword in node.value.keywords
-                    if keyword.arg == "version"
-                    and isinstance(keyword.value, ast.Constant)
-                    and isinstance(keyword.value.value, int)
-                ),
-                None,
+            name = (
+                node.func.id if isinstance(node.func, ast.Name)
+                else node.func.attr if isinstance(node.func, ast.Attribute) else ""
             )
-            for target in targets:
-                if isinstance(target, ast.Name) and version is not None:
-                    wire_versions[target.id] = version
+            if name != "execute_contract_runtime":
+                continue
+            keywords = {item.arg: item.value for item in node.keywords if item.arg}
+            assert not legacy_keywords.intersection(keywords), (
+                f"{path}:{node.lineno} uses the split contract API"
+            )
+            spec = keywords.get("execution_spec")
+            if isinstance(spec, ast.Name) and spec.id == "execution_spec":
+                assert path.name == "workflows.py" and any(
+                    isinstance(function, ast.AsyncFunctionDef)
+                    and function.name == "_stage"
+                    and node in ast.walk(function)
+                    for function in ast.walk(tree)
+                ), f"{path}:{node.lineno} has an unauthorized dynamic spec"
+                discovered.append((path.name, node.lineno, "dynamic_stage_owner"))
+                continue
+            assert isinstance(spec, ast.Call), (
+                f"{path}:{node.lineno} has no executable contract spec"
+            )
+            spec_name = (
+                spec.func.id if isinstance(spec.func, ast.Name)
+                else spec.func.attr if isinstance(spec.func, ast.Attribute) else ""
+            )
+            assert spec_name == "ExecutableContractSpec"
+            contract = next(
+                (item.value for item in spec.keywords
+                 if item.arg == "contract_name"), None,
+            )
+            assert isinstance(contract, ast.Constant) and isinstance(
+                contract.value, str,
+            )
+            discovered.append((path.name, node.lineno, contract.value))
 
-        for call in ast.walk(tree):
-            if not (
-                isinstance(call, ast.Call)
-                and (
-                    (isinstance(call.func, ast.Name)
-                     and call.func.id == "execute_contract_runtime")
-                    or (isinstance(call.func, ast.Attribute)
-                        and call.func.attr == "execute_contract_runtime")
-                )
-            ):
-                continue
-            contract_keyword = next(
-                (item for item in call.keywords if item.arg == "contract_name"),
-                None,
-            )
-            wire_keyword = next(
-                (item for item in call.keywords if item.arg == "structured_contract"),
-                None,
-            )
-            if not (
-                contract_keyword is not None
-                and isinstance(contract_keyword.value, ast.Constant)
-                and isinstance(contract_keyword.value.value, str)
-                and wire_keyword is not None
-                and isinstance(wire_keyword.value, ast.Name)
-                and wire_keyword.value.id in wire_versions
-            ):
-                continue
-            contract_name = contract_keyword.value.value
-            wire_version = wire_versions[wire_keyword.value.id]
-            checked.append((
-                path.relative_to(source_root).as_posix(), call.lineno,
-                contract_name, wire_version,
-            ))
-            assert ARTIFACT_CONTRACT_REGISTRY[contract_name].version == wire_version
+    assert discovered
+    assert all(
+        name == "dynamic_stage_owner" or name in ARTIFACT_CONTRACT_REGISTRY
+        for _, _, name in discovered
+    )
 
-    assert checked
+
+def test_p0_workflow_stage_cannot_accept_a_partial_structured_contract() -> None:
+    path = Path(__file__).parents[1] / "src" / "novel_flywheel" / "workflows.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    calls = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = (
+            node.func.id if isinstance(node.func, ast.Name)
+            else node.func.attr if isinstance(node.func, ast.Attribute) else ""
+        )
+        if name != "_stage":
+            continue
+        keywords = {item.arg: item.value for item in node.keywords if item.arg}
+        assert "structured_contract" not in keywords, (
+            f"{path}:{node.lineno} uses the removed partial contract input"
+        )
+        if "execution_spec" in keywords:
+            calls.append("execution")
+        if "structured_transport_contract" in keywords:
+            calls.append("transport")
+            assert any(
+                isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and function.name == "execute_attempt"
+                and node in ast.walk(function)
+                for function in ast.walk(tree)
+            ), "transport-only contracts require an outer Runtime owner"
+
+    assert calls.count("execution") >= 25
+    assert calls.count("transport") == 1
+
+
+def test_p0_every_workflow_model_stage_is_explicitly_text_or_contract_owned() -> None:
+    """New workflow calls cannot silently invent a private parser/retry path."""
+
+    path = Path(__file__).parents[1] / "src" / "novel_flywheel" / "workflows.py"
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    text_only_owners = {
+            "_ordinary_polish_segment",
+        "_repair_polish_semantic_segment", "_draft_short_segment_task",
+        "_polish_short_segments", "_stage_with_role_fallback",
+        "request",
+    }
+    missing = []
+    for function in ast.walk(tree):
+        if not isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        for node in ast.walk(function):
+            if not isinstance(node, ast.Call):
+                continue
+            name = (
+                node.func.id if isinstance(node.func, ast.Name)
+                else node.func.attr if isinstance(node.func, ast.Attribute) else ""
+            )
+            if name != "_stage":
+                continue
+            keywords = {item.arg for item in node.keywords if item.arg}
+            if {
+                "execution_spec", "structured_transport_contract",
+            }.intersection(keywords):
+                continue
+            if function.name not in text_only_owners:
+                missing.append((function.name, node.lineno))
+
+    assert missing == []
+
+
+def test_static_runtime_wire_contract_versions_match_registered_business_contracts() -> None:
+    """Executable specs bind wire name and version before any provider call."""
+
+    for name, registration in ARTIFACT_CONTRACT_REGISTRY.items():
+        assert name == registration.name
+        assert registration.version >= 1
 
 
 def test_reference_window_model_calls_have_one_specific_executable_contract() -> None:
@@ -753,7 +822,7 @@ def test_reference_window_model_calls_have_one_specific_executable_contract() ->
             node.func.id if isinstance(node.func, ast.Name)
             else node.func.attr if isinstance(node.func, ast.Attribute) else ""
         )
-        if name != "execute_contract_runtime":
+        if name != "ExecutableContractSpec":
             continue
         keyword = next(item for item in node.keywords if item.arg == "contract_name")
         assert isinstance(keyword.value, ast.Constant)

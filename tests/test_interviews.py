@@ -157,7 +157,8 @@ async def test_interview_repairs_non_json_model_response_once(tmp_path) -> None:
 
     assert result["content"] == "主角最害怕承认什么？"
     assert len(gateway.calls) == 2
-    assert "整理为指定 JSON" in gateway.calls[1]["system"]
+    assert "return the specified JSON" in gateway.calls[1]["system"]
+    assert "我建议先明确主角的内在缺陷" not in gateway.calls[1]["system"]
 
 
 @pytest.mark.asyncio

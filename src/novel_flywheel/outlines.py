@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
     contract_route_capacity_plan,
     execute_contract_runtime,
 )
@@ -971,13 +972,15 @@ class OutlineService:
             role=role,
             system=system,
             user=user,
-            contract_name="outline_material_manifest",
-            structured_contract=OUTLINE_MANIFEST_STRUCTURED_CONTRACT,
-            semantic_normalizer=lambda value: (
-                dict(value) if isinstance(value, dict) else None
-            ),
-            domain_validator=lambda payload: _validated_manifest(
-                dict(payload), content,
+            execution_spec=ExecutableContractSpec(
+                contract_name="outline_material_manifest",
+                structured_contract=OUTLINE_MANIFEST_STRUCTURED_CONTRACT,
+                semantic_normalizer=lambda value: (
+                    dict(value) if isinstance(value, dict) else None
+                ),
+                domain_validator=lambda payload: _validated_manifest(
+                    dict(payload), content,
+                ),
             ),
             max_output_tokens=max_output_tokens,
         )
@@ -998,16 +1001,20 @@ class OutlineService:
             role=role,
             system=system,
             user=user,
-            contract_name="outline_semantic_review",
-            structured_contract=OUTLINE_SEMANTIC_REVIEW_STRUCTURED_CONTRACT,
-            semantic_normalizer=lambda value: (
-                dict(value) if isinstance(value, dict) else None
-            ),
-            domain_validator=lambda payload: self._complete_semantic_decisions_payload(
-                dict(payload), allowed_ids,
+            execution_spec=ExecutableContractSpec(
+                contract_name="outline_semantic_review",
+                structured_contract=OUTLINE_SEMANTIC_REVIEW_STRUCTURED_CONTRACT,
+                semantic_normalizer=lambda value: (
+                    dict(value) if isinstance(value, dict) else None
+                ),
+                domain_validator=lambda payload: (
+                    self._complete_semantic_decisions_payload(
+                        dict(payload), allowed_ids,
+                    )
+                ),
+                retry_domain_failures=True,
             ),
             max_output_tokens=max_output_tokens,
-            retry_domain_failures=True,
             attempt_routes=capacity.attempt_routes(
                 estimate_input_tokens(user),
             ),

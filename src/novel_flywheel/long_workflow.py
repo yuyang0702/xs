@@ -63,9 +63,27 @@ async def run_long_setup(
         ))
         if review["score"] < 80 or review["hard_fail"]:
             raise RuntimeError("Book setup review did not pass")
+        canon_complete = lambda value: isinstance(
+            service._convert_generated_object(
+                value, run_path, contract_name="long_setup_maintenance",
+            ).get("facts"),
+            list,
+        )
         canon = service._convert_generated_object(
             await service._stage(
                 run_id, run_path, project, "maintenance", constraints, outline,
+                execution_spec=service._structured_stage_spec(
+                    "long_setup_maintenance",
+                    completion_check=canon_complete,
+                    runtime_authority={
+                        "outline_sha256": hashlib.sha256(
+                            outline.encode("utf-8"),
+                        ).hexdigest(),
+                        "state_revision": service.story_states.ensure(
+                            project.id, project.path,
+                        ).revision,
+                    },
+                ),
             ),
             run_path, contract_name="long_setup_maintenance",
         )
@@ -232,9 +250,28 @@ async def run_chapter(
             chapter_goal=chapter_goal,
             volume_end=service._is_volume_end(project, chapter_number),
         )
+        canon_complete = lambda value: isinstance(
+            service._convert_generated_object(
+                value, run_path, contract_name="long_chapter_maintenance",
+            ).get("facts"),
+            list,
+        )
         canon = service._convert_generated_object(
             await service._stage(
                 run_id, run_path, project, "maintenance", constraints, polished,
+                execution_spec=service._structured_stage_spec(
+                    "long_chapter_maintenance",
+                    completion_check=canon_complete,
+                    runtime_authority={
+                        "chapter_number": chapter_number,
+                        "chapter_sha256": hashlib.sha256(
+                            polished.encode("utf-8"),
+                        ).hexdigest(),
+                        "state_revision": service.story_states.ensure(
+                            project.id, project.path,
+                        ).revision,
+                    },
+                ),
             ),
             run_path, contract_name="long_chapter_maintenance",
         )

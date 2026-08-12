@@ -166,7 +166,7 @@ class MaterialAuditReceiptV1(BaseModel):
 
 
 MATERIAL_AUDIT_STRUCTURED_CONTRACT = StructuredArtifactContract(
-    name="material_audit_receipt_v1",
+    name="material_audit",
     version=MATERIAL_AUDIT_PROTOCOL_VERSION,
     schema=MaterialAuditReceiptV1.model_json_schema(),
     runtime_authority={

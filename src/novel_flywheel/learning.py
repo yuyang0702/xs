@@ -13,6 +13,7 @@ from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
 from novel_flywheel.context_policy import estimate_input_tokens
 from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
     contract_route_capacity_plan,
     execute_contract_runtime,
     execute_text_runtime,
@@ -103,7 +104,7 @@ OUTLINE_ATTRACTION_RULE_FIELDS = (
 
 
 REFERENCE_DISTILLATION_STRUCTURED_CONTRACT = StructuredArtifactContract(
-    name="reference_distillation_receipt_v2",
+    name="reference_distillation_region",
     version=2,
     schema=DistillationReceiptV2.model_json_schema(),
     runtime_authority={
@@ -127,7 +128,7 @@ REFERENCE_WINDOW_ITEM_SCHEMA = {
     "additionalProperties": True,
 }
 REFERENCE_WINDOW_STRUCTURED_CONTRACT = StructuredArtifactContract(
-    name="reference_window_claims",
+    name="reference_analysis_window",
     version=2,
     schema={
         "type": "object",
@@ -304,21 +305,23 @@ class LearningSystem:
                             "distillation."
                         ),
                         user=prompt,
-                        contract_name="reference_distillation_region",
-                        structured_contract=(
-                            REFERENCE_DISTILLATION_STRUCTURED_CONTRACT
-                        ),
-                        semantic_normalizer=lambda value: (
-                            self._normalize_distillation_receipt(region, value)
-                        ),
-                        domain_validator=lambda payload: (
-                            validate_distillation_receipt(region, dict(payload))
+                        execution_spec=ExecutableContractSpec(
+                            contract_name="reference_distillation_region",
+                            structured_contract=(
+                                REFERENCE_DISTILLATION_STRUCTURED_CONTRACT
+                            ),
+                            semantic_normalizer=lambda value: (
+                                self._normalize_distillation_receipt(region, value)
+                            ),
+                            domain_validator=lambda payload: (
+                                validate_distillation_receipt(region, dict(payload))
+                            ),
+                            retry_domain_failures=True,
                         ),
                         max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
                         attempt_routes=self._reference_synthesis_attempt_routes(
                             route_plan,
                         ),
-                        retry_domain_failures=True,
                     )
                     receipt = runtime.payload
                     result = validate_distillation_receipt(region, receipt)
@@ -419,15 +422,19 @@ class LearningSystem:
             role="reference_synthesis",
             system=system,
             user=user,
-            contract_name="reference_distillation_region",
-            structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
-            semantic_normalizer=lambda value: value if isinstance(value, dict) else None,
-            domain_validator=lambda payload: validator(json.dumps(
-                dict(payload), ensure_ascii=False,
-            )),
+            execution_spec=ExecutableContractSpec(
+                contract_name="reference_distillation_region",
+                structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
+                semantic_normalizer=lambda value: (
+                    value if isinstance(value, dict) else None
+                ),
+                domain_validator=lambda payload: validator(json.dumps(
+                    dict(payload), ensure_ascii=False,
+                )),
+                retry_domain_failures=True,
+            ),
             max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
             attempt_routes=self._reference_synthesis_attempt_routes(route_plan),
-            retry_domain_failures=True,
         )
         return runtime.model_response, runtime.domain_value
 
@@ -654,17 +661,19 @@ class LearningSystem:
                 role="reference_analysis",
                 system=f"You extract evidenced reference facts. {focus}",
                 user=prompt,
-                contract_name="reference_analysis_window",
-                structured_contract=REFERENCE_WINDOW_STRUCTURED_CONTRACT,
-                semantic_normalizer=self._window_result,
-                domain_validator=lambda payload: (
-                    self._require_chinese_window(dict(payload)) or dict(payload)
+                execution_spec=ExecutableContractSpec(
+                    contract_name="reference_analysis_window",
+                    structured_contract=REFERENCE_WINDOW_STRUCTURED_CONTRACT,
+                    semantic_normalizer=self._window_result,
+                    domain_validator=lambda payload: (
+                        self._require_chinese_window(dict(payload)) or dict(payload)
+                    ),
+                    retry_domain_failures=True,
                 ),
                 max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
                 attempt_routes=(
                     "configured_fallback", "configured_fallback",
                 ),
-                retry_domain_failures=True,
             )
             return runtime.model_response, runtime.domain_value
 
@@ -730,12 +739,15 @@ class LearningSystem:
                         role="reference_analysis",
                         system=f"You extract evidenced reference facts. {focus}",
                         user=prompt,
-                        contract_name="reference_analysis_window",
-                        structured_contract=REFERENCE_WINDOW_STRUCTURED_CONTRACT,
-                        semantic_normalizer=self._window_result,
-                        domain_validator=lambda payload: (
-                            self._require_chinese_window(dict(payload))
-                            or dict(payload)
+                        execution_spec=ExecutableContractSpec(
+                            contract_name="reference_analysis_window",
+                            structured_contract=REFERENCE_WINDOW_STRUCTURED_CONTRACT,
+                            semantic_normalizer=self._window_result,
+                            domain_validator=lambda payload: (
+                                self._require_chinese_window(dict(payload))
+                                or dict(payload)
+                            ),
+                            retry_domain_failures=True,
                         ),
                         max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
                         attempt_routes=(
@@ -745,7 +757,6 @@ class LearningSystem:
                             )
                             if callable(fallback) else ("primary", "primary")
                         ),
-                        retry_domain_failures=True,
                     )
                 except (ArtifactConversionError, ValueError) as exc:
                     detail = (
@@ -888,15 +899,17 @@ class LearningSystem:
             role="reference_synthesis",
             system=synthesis_system,
             user=synthesis_prompt,
-            contract_name="reference_distillation_region",
-            structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
-            semantic_normalizer=lambda value: (
-                DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+            execution_spec=ExecutableContractSpec(
+                contract_name="reference_distillation_region",
+                structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
+                semantic_normalizer=lambda value: (
+                    DistillationReceiptV2.model_validate(value).model_dump(mode="json")
+                ),
+                domain_validator=validate_synthesis,
+                retry_domain_failures=True,
             ),
-            domain_validator=validate_synthesis,
             max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
             attempt_routes=self._reference_synthesis_attempt_routes(route_plan),
-            retry_domain_failures=True,
         )
         used_synthesis = synthesis_runtime.model_response
         result = synthesis_runtime.domain_value

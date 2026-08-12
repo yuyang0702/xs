@@ -11,7 +11,11 @@ from novel_flywheel.generated_artifacts import (
     GeneratedArtifactGateway,
     SemanticNormalizer,
 )
-from novel_flywheel.context_policy import classify_model_failure
+from novel_flywheel.context_policy import (
+    classify_model_failure,
+    expanded_output_budget,
+    output_limited,
+)
 from novel_flywheel.recovery_engine import (
     ProtocolReceiptAttempt,
     RecoveryAction,
@@ -31,6 +35,65 @@ ContractAttemptExecutor = Callable[
     ],
     Awaitable[Any],
 ]
+
+
+class ContractOutputLimitExhaustedError(RuntimeError):
+    """Every permitted route returned a structurally incomplete artifact."""
+
+    def __init__(self, message: str, *, receipt: Mapping[str, Any]) -> None:
+        super().__init__(message)
+        self.receipt = dict(receipt)
+
+
+@dataclass(frozen=True)
+class ExecutableContractSpec:
+    """An indivisible model-output contract execution boundary.
+
+    Business callers may construct the Runtime-owned wire authority dynamically,
+    but they cannot select a schema without also selecting the canonical
+    normalizer and the domain validator that proves the artifact is usable.
+    This prevents a provider response from falling back to a raw-text workflow
+    parser merely because one optional callback was omitted.
+    """
+
+    contract_name: str
+    structured_contract: StructuredArtifactContract
+    semantic_normalizer: SemanticNormalizer
+    domain_validator: DomainValidator
+    retry_domain_failures: bool = False
+    expected_event_ids: tuple[str, ...] = ()
+    owns_opening: bool = True
+    owns_ending: bool = True
+
+    def __post_init__(self) -> None:
+        registration = ARTIFACT_CONTRACT_REGISTRY.get(self.contract_name)
+        if registration is None:
+            raise KeyError(
+                "unregistered generated artifact contract: "
+                f"{self.contract_name}"
+            )
+        if self.structured_contract.name != self.contract_name:
+            raise ValueError(
+                "structured wire contract name does not match the registered "
+                f"artifact contract: {self.contract_name}"
+            )
+        if self.structured_contract.version != registration.version:
+            raise ValueError(
+                "structured wire contract version does not match the registered "
+                f"artifact contract: {self.structured_contract.name}"
+            )
+        if not callable(self.semantic_normalizer):
+            raise TypeError("executable contract semantic normalizer must be callable")
+        if not callable(self.domain_validator):
+            raise TypeError("executable contract domain validator must be callable")
+        if (
+            self.retry_domain_failures
+            and "minimal_regeneration" not in registration.recovery_ladder
+        ):
+            raise ValueError(
+                "contract recovery ladder does not authorize domain regeneration"
+            )
+
 
 
 @dataclass(frozen=True)
@@ -590,7 +653,8 @@ def _protocol_regeneration_system(system: str) -> str:
         system
         + "\n\nThe previous response could not be deterministically converted into "
         "the registered JSON contract. Re-run the same task against the exact same "
-        "authority and 整理为指定 JSON. Do not weaken, omit, or invent business facts."
+        "authority and return the specified JSON. Do not weaken, omit, or invent "
+        "business facts."
     )
 
 
@@ -600,17 +664,13 @@ async def execute_contract_runtime(
     role: str,
     system: str,
     user: str,
-    contract_name: str,
-    structured_contract: StructuredArtifactContract,
-    semantic_normalizer: SemanticNormalizer,
-    domain_validator: DomainValidator | None = None,
+    execution_spec: ExecutableContractSpec,
     max_output_tokens: int | None = None,
     same_route_attempts: int = 2,
     fallback_attempts: int = 2,
     attempt_routes: tuple[
         Literal["primary", "configured_fallback"], ...
     ] | None = None,
-    retry_domain_failures: bool = False,
     audit_sink: AuditSink | None = None,
     attempt_executor: ContractAttemptExecutor | None = None,
 ) -> ContractRuntimeResult:
@@ -621,18 +681,16 @@ async def execute_contract_runtime(
     failure and is never silently rewritten by this layer.
     """
 
+    contract_name = execution_spec.contract_name
+    structured_contract = execution_spec.structured_contract
     policy = _contract_recovery_policy(contract_name)
-    if structured_contract.version != policy.contract_version:
-        raise ValueError(
-            "structured wire contract version does not match the registered "
-            f"artifact contract: {contract_name}"
-        )
-    if retry_domain_failures and not policy.minimal_regeneration:
-        raise ValueError(
-            "contract recovery ladder does not authorize domain regeneration"
-        )
     converter = GeneratedArtifactGateway()
     last_error: Exception | None = None
+    primary_error: Exception | None = None
+    fallback_error: Exception | None = None
+    last_receipt: Mapping[str, Any] = {}
+    output_limit_seen = False
+    attempt_output_tokens = max_output_tokens
 
     attempts = _contract_attempts(
         gateway,
@@ -651,7 +709,7 @@ async def execute_contract_runtime(
             response = (
                 await attempt_executor(
                     attempt, role, route_system, route_user,
-                    max_output_tokens, structured_contract,
+                    attempt_output_tokens, structured_contract,
                 )
                 if attempt_executor is not None
                 else await _dispatch_explicit_route(
@@ -660,12 +718,22 @@ async def execute_contract_runtime(
                     role=role,
                     system=route_system,
                     user=route_user,
-                    max_output_tokens=max_output_tokens,
+                    max_output_tokens=attempt_output_tokens,
                     structured_contract=structured_contract,
                 )
             )
+            receipt = getattr(response, "receipt", None)
+            if isinstance(receipt, Mapping):
+                last_receipt = dict(receipt)
+                output_limit_seen = output_limit_seen or output_limited(
+                    last_receipt,
+                )
         except Exception as exc:
             last_error = exc
+            if attempt.route == "configured_fallback":
+                fallback_error = exc
+            else:
+                primary_error = exc
             if classify_model_failure(exc) == "input_context_overflow":
                 raise
             continue
@@ -673,24 +741,34 @@ async def execute_contract_runtime(
             conversion = converter.convert_object(
                 str(getattr(response, "text", response)),
                 contract_name=contract_name,
-                semantic_normalizer=semantic_normalizer,
+                semantic_normalizer=execution_spec.semantic_normalizer,
+                expected_event_ids=execution_spec.expected_event_ids,
+                owns_opening=execution_spec.owns_opening,
+                owns_ending=execution_spec.owns_ending,
             )
         except ArtifactConversionError as exc:
             if audit_sink is not None:
                 audit_sink(exc.audit)
             last_error = exc
+            receipt = getattr(response, "receipt", None)
+            if output_limited(receipt if isinstance(receipt, dict) else None):
+                attempt_output_tokens = expanded_output_budget(
+                    attempt_output_tokens,
+                )
             continue
         if audit_sink is not None:
             audit_sink(conversion.audit)
         try:
-            domain_value = (
-                domain_validator(conversion.payload)
-                if domain_validator is not None else conversion.payload
-            )
+            domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
-            if not retry_domain_failures:
+            if not execution_spec.retry_domain_failures:
                 raise
             last_error = exc
+            receipt = getattr(response, "receipt", None)
+            if output_limited(receipt if isinstance(receipt, dict) else None):
+                attempt_output_tokens = expanded_output_budget(
+                    attempt_output_tokens,
+                )
             continue
         return ContractRuntimeResult(
             payload=conversion.payload,
@@ -701,4 +779,14 @@ async def execute_contract_runtime(
         )
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("structured contract runtime had no executable attempt")
+    if output_limit_seen and isinstance(last_error, ArtifactConversionError):
+        raise ContractOutputLimitExhaustedError(
+            "structured output remained incomplete after every permitted route",
+            receipt=last_receipt,
+        ) from last_error
+    if primary_error is not None and fallback_error is not None:
+        from novel_flywheel.models import ModelRoutesExhaustedError
+        raise ModelRoutesExhaustedError(
+            primary_error, fallback_error,
+        ) from fallback_error
     raise last_error

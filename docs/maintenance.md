@@ -1433,6 +1433,46 @@ memory maintenance. Their existing prompts, domain validators, quality gates,
 and promotion behavior remain authoritative while parser, route, protocol
 repair, and audit mechanics converge underneath them.
 
+### Executable structured-output Runtime V3
+
+All reachable machine-readable model boundaries now select an immutable
+`ExecutableContractSpec`. The spec couples the registered wire contract,
+deterministic representation adapter, semantic normalizer, business/domain
+validator, Runtime authority, explicit route schedule and bounded retry policy.
+A caller cannot select a JSON schema while omitting its domain proof, and a
+protocol retry cannot silently become a story-semantic rewrite. Exact JSON,
+syntax-only repair and registered proof-bound adapters run before a same-task
+model retry; only a canonical artifact that fails its business validator may
+spend the smallest semantic regeneration budget.
+
+Short planning, planning repair, causal packets, execution manifests, draft
+receipts, revision/polish receipts, final review, reader simulation and short
+maintenance use this boundary. Reference analysis and distillation, interview,
+material audit/impact, outline, style and long maintenance use the same Runtime
+without sharing or weakening their business validators. Whole-Markdown planning
+repair and the separate reader JSON parser are no longer live acceptance paths.
+A static source gate rejects new structured `_stage` calls that omit a complete
+execution spec, except for a small explicit prose-only transport allowlist.
+
+Maintenance capacity handling follows the same ownership rule. Before recursive
+window splitting, duplicated Skill and constraint prose is compacted while the
+complete Runtime window text, authority hashes and StoryState entry authority
+remain intact. This prevents a large fixed prompt layer from making every child
+packet overflow until the splitter reaches one character; no story fact is
+truncated to obtain capacity.
+
+Final offline evidence on 2026-08-12 includes a 599-test cross-business matrix
+with zero failures. The isolated current-project replay began with the actual
+noncanonical planning packet, completed planning adaptation, causal chain,
+execution manifest, segmented draft, polish, final review and maintenance, and
+created all ten required authority artifacts plus a 45,271-byte formal
+candidate. It used seven bounded planning packet attempts. The live project
+remained exactly 2,891 files with the same whole-tree SHA-256, and the source
+database hash remained unchanged. The report contains only hashes/counts and
+lives outside the repository; it stores no prose, credentials or provider
+errors. This evidence supplements, rather than replaces, the mandatory complete
+13K/20K/30K short-fiction flow matrix and the frozen full-suite gate.
+
 ## Residual architecture convergence
 
 The final residual-convergence pass keeps business authority where it already

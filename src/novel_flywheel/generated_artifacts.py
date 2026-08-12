@@ -505,6 +505,7 @@ PLANNING_EVENT_TOPOLOGY_ADAPTER = ContractAdapterRegistration(
         "the same order; no duplicate identity, conflicting candidate, partial "
         "coverage, or machine-control field exists. Narrative bytes remain opaque."
     ),
+    automatic_conversion=True,
 )
 
 

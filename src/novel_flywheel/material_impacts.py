@@ -10,7 +10,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from novel_flywheel.contract_runtime import execute_contract_runtime
+from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
+    execute_contract_runtime,
+)
 from novel_flywheel.storage import atomic_write
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
@@ -32,7 +35,7 @@ class MaterialImpactOutput(BaseModel):
 
 
 MATERIAL_IMPACT_STRUCTURED_CONTRACT = StructuredArtifactContract(
-    name="material_impact_output",
+    name="material_impact_analysis",
     version=1,
     schema=MaterialImpactOutput.model_json_schema(),
     runtime_authority={"document_paths": "runtime_owned"},
@@ -187,13 +190,15 @@ class MaterialImpactService:
                         "structured materials."
                     ),
                     user=prompt_prefix + "\n\n".join(references),
-                    contract_name="material_impact_analysis",
-                    structured_contract=MATERIAL_IMPACT_STRUCTURED_CONTRACT,
-                    semantic_normalizer=lambda value: (
-                        MaterialImpactOutput.model_validate(value).model_dump(mode="json")
-                    ),
-                    domain_validator=lambda payload: MaterialImpactOutput.model_validate(
-                        payload,
+                    execution_spec=ExecutableContractSpec(
+                        contract_name="material_impact_analysis",
+                        structured_contract=MATERIAL_IMPACT_STRUCTURED_CONTRACT,
+                        semantic_normalizer=lambda value: (
+                            MaterialImpactOutput.model_validate(value).model_dump(
+                                mode="json"
+                            )
+                        ),
+                        domain_validator=MaterialImpactOutput.model_validate,
                     ),
                     max_output_tokens=4096,
                 )

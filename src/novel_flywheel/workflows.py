@@ -84,6 +84,8 @@ from novel_flywheel.context_policy import (
     stage_output_budget,
 )
 from novel_flywheel.contract_runtime import (
+    ContractOutputLimitExhaustedError,
+    ExecutableContractSpec,
     dispatch_explicit_model_route,
     execute_contract_runtime,
     execute_model_route_runtime,
@@ -114,6 +116,7 @@ from novel_flywheel.models import (
     TransportInterruptedError,
 )
 from novel_flywheel.generated_artifacts import (
+    ARTIFACT_CONTRACT_REGISTRY,
     ArtifactConversionError,
     GeneratedArtifactGateway,
     adapt_registered_contract,
@@ -671,6 +674,86 @@ class WorkflowService:
             raise
         write_conversion_audit(audit_root, result.audit)
         return result.payload
+
+    def _convert_draft_receipt_object(
+        self, raw: str, run_path: Path, *, contract_name: str, task_id: str,
+    ) -> dict:
+        """Project conversion failures as receipt protocol failures.
+
+        `_stage` normally proves an executable structured contract before it
+        returns. Capacity splitters and injected recovery tests can still hand
+        this consumer raw text directly, so the final receipt boundary must
+        preserve the key invariant: malformed/truncated reviewer output is not
+        a prose-semantic failure and can never authorize a rewrite.
+        """
+
+        try:
+            return self._convert_generated_object(
+                raw, run_path, contract_name=contract_name,
+            )
+        except ArtifactConversionError as exc:
+            failure = exc.reliability_failure
+            raise DraftReceiptProtocolError(
+                task_id,
+                [{
+                    "code": exc.audit.failure_code or "receipt_schema",
+                    "message": "structured draft receipt is not recoverable",
+                }],
+                reliability_failure=ReliabilityFailure(
+                    failure.code,
+                    failure.failure_class,
+                    "draft_receipt_validation",
+                    unit_id=task_id,
+                    protocol_only=True,
+                    retryable=False,
+                ),
+            ) from exc
+
+    @staticmethod
+    def _structured_stage_spec(
+        contract_name: str,
+        *,
+        completion_check: Callable[[str], bool],
+        runtime_authority: Mapping[str, object],
+        schema: Mapping[str, object] | None = None,
+        retry_domain_failures: bool = True,
+        expected_event_ids: Sequence[str] = (),
+        owns_opening: bool = True,
+        owns_ending: bool = True,
+    ) -> ExecutableContractSpec:
+        """Compile a complete workflow structured-output boundary.
+
+        This is intentionally the only workflow helper allowed to turn a
+        completion predicate into an executable contract.  The wire schema,
+        canonical object normalizer, domain proof, Runtime authority and
+        recovery policy therefore cannot be supplied independently.
+        """
+
+        def validate(payload: Mapping[str, Any]) -> dict[str, Any]:
+            canonical = json.dumps(dict(payload), ensure_ascii=False)
+            if not completion_check(canonical):
+                raise ValueError(
+                    f"{contract_name} failed its authoritative domain contract"
+                )
+            return dict(payload)
+
+        return ExecutableContractSpec(
+            contract_name=contract_name,
+            structured_contract=StructuredArtifactContract(
+                name=contract_name,
+                version=ARTIFACT_CONTRACT_REGISTRY[contract_name].version,
+                schema=dict(schema or {"type": "object"}),
+                runtime_authority=dict(runtime_authority),
+            ),
+            semantic_normalizer=lambda value: (
+                dict(value) if isinstance(value, Mapping) else None
+            ),
+            domain_validator=validate,
+            retry_domain_failures=retry_domain_failures,
+            expected_event_ids=tuple(expected_event_ids),
+            owns_opening=owns_opening,
+            owns_ending=owns_ending,
+        )
 
     def _short_revision_lock(self, run_id: str) -> threading.Lock:
         return _SHORT_REVISION_LOCK
@@ -1826,6 +1909,28 @@ class WorkflowService:
                                     request.get("target_excerpt", ""),
                                 ),
                                 targeted_retry=True,
+                                execution_spec=self._structured_stage_spec(
+                                    "revision_patch_contract",
+                                    completion_check=lambda source: bool(
+                                        normalize_repair_contract(
+                                            self._convert_generated_object(
+                                                source, run_path,
+                                                contract_name=(
+                                                    "revision_patch_contract"
+                                                ),
+                                            ),
+                                            candidate,
+                                            {group_id},
+                                        )
+                                    ),
+                                    runtime_authority={
+                                        "group_id": group_id,
+                                        "candidate_sha256": self._text_hash(
+                                            candidate,
+                                        ),
+                                        "issue_ids": [group_id],
+                                    },
+                                ),
                             )
                             try:
                                 value = normalize_repair_contract(
@@ -2550,6 +2655,27 @@ class WorkflowService:
                     allow_tools=False,
                     output_source_characters=budget["deficit_han"],
                     targeted_retry=True,
+                    execution_spec=self._structured_stage_spec(
+                        "generated_narrative_artifact",
+                        completion_check=lambda source: bool(
+                            self._normalize_expansion_plan(
+                                self._convert_generated_object(
+                                    source, run_path,
+                                    contract_name=(
+                                        "generated_narrative_artifact"
+                                    ),
+                                ),
+                                candidate,
+                                budget["deficit_han"],
+                                allowed_anchors,
+                            )
+                        ),
+                        runtime_authority={
+                            "group_id": group_id,
+                            "candidate_sha256": self._text_hash(candidate),
+                            "deficit_han": budget["deficit_han"],
+                        },
+                    ),
                 )
                 try:
                     scenes = self._normalize_expansion_plan(
@@ -2648,6 +2774,25 @@ class WorkflowService:
                     allow_tools=False,
                     output_source_characters=scene["target_han"],
                     targeted_retry=True,
+                    execution_spec=self._structured_stage_spec(
+                        "generated_narrative_artifact",
+                        completion_check=lambda source, scene=scene: bool(
+                            self._validate_expansion_draft(
+                                self._convert_generated_object(
+                                    source, run_path,
+                                    contract_name=(
+                                        "generated_narrative_artifact"
+                                    ),
+                                ),
+                                scene,
+                            )
+                        ),
+                        runtime_authority={
+                            "group_id": group_id,
+                            "scene_index": index,
+                            "scene_contract_sha256": canonical_sha256(scene),
+                        },
+                    ),
                 )
                 try:
                     draft = self._convert_generated_object(
@@ -3152,7 +3297,7 @@ class WorkflowService:
                 expected_output_characters=1_800,
                 route_capacity_guard=True,
                 bounded_protocol_output=True,
-                structured_contract=contract,
+                structured_transport_contract=contract,
                 protocol_system_contract=system,
                 story_skeleton_override="",
                 compact_input=True,
@@ -3168,18 +3313,20 @@ class WorkflowService:
                 "fact; return only the registered receipt."
             ),
             user=prompt,
-            contract_name="material_audit",
-            structured_contract=MATERIAL_AUDIT_STRUCTURED_CONTRACT,
-            semantic_normalizer=lambda value: normalize_material_audit_receipt(
-                value, manuscript_text=manuscript_text,
+            execution_spec=ExecutableContractSpec(
+                contract_name="material_audit",
+                structured_contract=MATERIAL_AUDIT_STRUCTURED_CONTRACT,
+                semantic_normalizer=lambda value: normalize_material_audit_receipt(
+                    value, manuscript_text=manuscript_text,
+                ),
+                domain_validator=lambda payload: payload,
+                retry_domain_failures=True,
             ),
-            domain_validator=lambda payload: payload,
             max_output_tokens=2_048,
             attempt_routes=(
                 ("configured_fallback", "configured_fallback")
                 if fallback_circuit_open else None
             ),
-            retry_domain_failures=True,
             audit_sink=audits.append,
             attempt_executor=execute_attempt,
         )
@@ -3691,6 +3838,19 @@ class WorkflowService:
                 review_text = await self._stage(
                     run_id, run_path, project, "review", constraints, review_input,
                     allow_tools=False,
+                    execution_spec=self._structured_stage_spec(
+                        "final_review",
+                        completion_check=lambda value: bool(self._review(value)),
+                        runtime_authority={
+                            "draft_sha256": hashlib.sha256(
+                                draft.encode("utf-8"),
+                            ).hexdigest(),
+                            "analysis_sha256": canonical_sha256(
+                                compact_analysis(draft_analysis),
+                            ),
+                            "boundary": "short_initial_review",
+                        },
+                    ),
                 )
                 review = self._review(review_text)
             if checkpoint and checkpoint.parent.name == run_id:
@@ -4211,7 +4371,16 @@ class WorkflowService:
                     ),
                     value,
                 ),
-                structured_contract=packet_contract,
+                execution_spec=ExecutableContractSpec(
+                    contract_name="planning_semantic_v2",
+                    structured_contract=packet_contract,
+                    semantic_normalizer=normalize_planning_semantic_v2_payload,
+                    domain_validator=lambda payload: validate_packet(
+                        json.dumps(payload, ensure_ascii=False),
+                        len(global_ordinals),
+                    )[0],
+                    retry_domain_failures=True,
+                ),
                 compact_input=True,
                 route_capacity_guard=True,
                 capacity_splitter=(
@@ -4365,7 +4534,13 @@ class WorkflowService:
             completion_check=lambda value: self._completion_check_safe(
                 lambda candidate: bool(compile_raw(candidate).plan), value,
             ),
-            structured_contract=contract,
+            execution_spec=ExecutableContractSpec(
+                contract_name="planning_semantic_v2",
+                structured_contract=contract,
+                semantic_normalizer=normalize_planning_semantic_v2_payload,
+                domain_validator=validate_semantic_payload,
+                retry_domain_failures=True,
+            ),
             compact_input=True,
             route_capacity_guard=True,
             capacity_splitter=lambda details: (
@@ -4376,11 +4551,6 @@ class WorkflowService:
                 )
             ),
             scoped_creative_output=True,
-            structured_semantic_normalizer=(
-                normalize_planning_semantic_v2_payload
-            ),
-            structured_domain_validator=validate_semantic_payload,
-            retry_structured_domain_failures=True,
         )
         compiled = compile_raw(raw)
         outputs = run_path / "outputs"
@@ -4964,7 +5134,18 @@ class WorkflowService:
                 owner_event_ids=event_ids, index_only=True,
             ),
             bounded_protocol_output=True,
-            structured_contract=structured_contract,
+            execution_spec=ExecutableContractSpec(
+                contract_name="planning_event_realizations",
+                structured_contract=structured_contract,
+                semantic_normalizer=lambda value: (
+                    dict(value) if isinstance(value, dict) else None
+                ),
+                domain_validator=lambda payload: normalized(
+                    json.dumps(payload, ensure_ascii=False)
+                ),
+                retry_domain_failures=True,
+                expected_event_ids=tuple(event_ids),
+            ),
         )
         try:
             block = normalized(raw)
@@ -5303,30 +5484,18 @@ class WorkflowService:
                 f"剩余问题：{json.dumps(best_issues, ensure_ascii=False)}\n\n"
                 f"当前最佳规划稿：\n{best_plan}"
             )
-            try:
-                raw_candidate = await self._stage(
-                    run_id, run_path, project, "planning", constraints,
-                    repair_prompt,
-                    suffix="-gate-repair" if attempt == 1 else f"-gate-repair-{attempt}",
-                    allow_tools=False,
-                    expected_output_characters=expected_plan_characters,
-                    completion_check=lambda value: self._short_plan_output_complete(
-                        project, state, value, segment_count,
-                    ),
-                )
-            except IncompleteModelOutputError:
-                # Keep capacity recovery on the same typed PlanningSemanticV2
-                # entry. The retired Markdown batch planner created a second
-                # generation protocol and could not prove ownership/topology.
-                raw_candidate = await self._plan_short_ir_first(
-                    run_id, run_path, project, constraints,
-                    brief + "\n\nLOCAL RECOVERY REQUIREMENTS:\n" + repair_prompt,
-                    state,
-                    list(formal_events or self._short_formal_event_authority(
-                        project, state,
-                    )),
-                    segment_count, expected_plan_characters,
-                )
+            # Local recovery re-enters the same PlanningSemanticV2 contract.
+            # The retired Markdown repair generator was a second protocol with
+            # independent parsing and could not preserve IR ownership.
+            raw_candidate = await self._plan_short_ir_first(
+                run_id, run_path, project, constraints,
+                brief + "\n\nLOCAL RECOVERY REQUIREMENTS:\n" + repair_prompt,
+                state,
+                list(formal_events or self._short_formal_event_authority(
+                    project, state,
+                )),
+                segment_count, expected_plan_characters,
+            )
             candidate, _candidate_chain = self._extract_short_causal_chain(
                 run_id, raw_candidate,
             )
@@ -5827,6 +5996,30 @@ class WorkflowService:
                         previous_handoff=previous_handoff,
                         next_entry=next_entry,
                     )
+                ),
+                execution_spec=self._structured_stage_spec(
+                    "planning_adaptation_segment",
+                    completion_check=lambda value: (
+                        self._planning_adaptation_segment_receipt_complete(
+                            value,
+                            authority_sha256=authority_sha256,
+                            planning_sha256=planning_sha256,
+                            authority_version=authority_version,
+                            segment=segment,
+                            expected_event_ids=event_ids,
+                            evidence_candidates=candidates,
+                            authority_event_ids=authority_event_ids,
+                            plan_segment=plan_segment,
+                            previous_handoff=previous_handoff,
+                            next_entry=next_entry,
+                        )
+                    ),
+                    runtime_authority={
+                        "authority_sha256": authority_sha256,
+                        "planning_sha256": planning_sha256,
+                        "segment": segment,
+                        "event_ids": event_ids,
+                    },
                 ),
                 route_capacity_guard=True,
                 story_skeleton_override=_story_skeleton_override,
@@ -6825,6 +7018,24 @@ class WorkflowService:
                             evidence_candidates=window_candidates,
                         )
                     ),
+                    execution_spec=self._structured_stage_spec(
+                        "planning_adaptation_facet",
+                        completion_check=lambda value: not (
+                            self._converted_planning_adaptation_facet_semantic_issues(
+                                value, run_path,
+                                invariant_fields=invariant_fields,
+                                evidence_candidates=window_candidates,
+                            )
+                        ),
+                        runtime_authority={
+                            "authority_sha256": window_authority,
+                            "planning_sha256": planning_sha256,
+                            "segment": segment,
+                            "event_id": event_id,
+                            "facet": facet,
+                            "window_index": window_index,
+                        },
+                    ),
                     route_capacity_guard=True,
                     story_skeleton_override=index_skeleton,
                     bounded_protocol_output=True,
@@ -7140,6 +7351,23 @@ class WorkflowService:
                                 invariant_fields=fields,
                                 evidence_candidates=evidence_candidates,
                             )
+                        ),
+                        execution_spec=self._structured_stage_spec(
+                            "planning_adaptation_facet",
+                            completion_check=lambda value, fields=invariant_fields: not (
+                                self._converted_planning_adaptation_facet_semantic_issues(
+                                    value, run_path,
+                                    invariant_fields=fields,
+                                    evidence_candidates=evidence_candidates,
+                                )
+                            ),
+                            runtime_authority={
+                                "authority_sha256": facet_authority,
+                                "planning_sha256": planning_sha256,
+                                "segment": segment,
+                                "event_id": event_id,
+                                "facet": facet,
+                            },
                         ),
                         route_capacity_guard=True,
                         story_skeleton_override=story_skeleton_override,
@@ -8276,6 +8504,23 @@ class WorkflowService:
                                 expected_event_ids=expected_event_ids,
                             )
                         ),
+                        execution_spec=self._structured_stage_spec(
+                            "planning_adaptation_hierarchy",
+                            completion_check=lambda value: (
+                                self._planning_hierarchy_receipt_complete(
+                                    value,
+                                    source_sha256=source_sha256,
+                                    expected_segments=expected_segments,
+                                    expected_event_ids=expected_event_ids,
+                                )
+                            ),
+                            runtime_authority={
+                                "source_sha256": source_sha256,
+                                "segment_numbers": expected_segments,
+                                "event_ids": expected_event_ids,
+                                "level": "regional",
+                            },
+                        ),
                         route_capacity_guard=True,
                         story_skeleton_override=index_skeleton,
                         bounded_protocol_output=True,
@@ -8478,6 +8723,24 @@ class WorkflowService:
                                     expected_event_ids=expected_event_ids,
                                     inherited=batch,
                                 )
+                            ),
+                            execution_spec=self._structured_stage_spec(
+                                "planning_adaptation_hierarchy",
+                                completion_check=lambda value: (
+                                    self._planning_hierarchy_receipt_complete(
+                                        value,
+                                        source_sha256=source_sha256,
+                                        expected_segments=expected_segments,
+                                        expected_event_ids=expected_event_ids,
+                                        inherited=batch,
+                                    )
+                                ),
+                                runtime_authority={
+                                    "source_sha256": source_sha256,
+                                    "segment_numbers": expected_segments,
+                                    "event_ids": expected_event_ids,
+                                    "level": level,
+                                },
                             ),
                             route_capacity_guard=True,
                             story_skeleton_override=index_skeleton,
@@ -8687,6 +8950,27 @@ class WorkflowService:
                             segment_count=segment_count,
                             expected_event_ids=expected_event_ids,
                         )
+                    ),
+                    execution_spec=self._structured_stage_spec(
+                        "planning_adaptation_whole",
+                        completion_check=lambda value: (
+                            self._planning_adaptation_whole_receipt_complete(
+                                value,
+                                authority_sha256=authority_sha256,
+                                planning_sha256=planning_sha256,
+                                authority_version=authority_version,
+                                segment_count=segment_count,
+                                expected_event_ids=expected_event_ids,
+                            )
+                        ),
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "planning_sha256": planning_sha256,
+                            "segment_numbers": list(
+                                range(1, segment_count + 1)
+                            ),
+                            "event_ids": expected_event_ids,
+                        },
                     ),
                     route_capacity_guard=True,
                     story_skeleton_override=index_skeleton,
@@ -9599,7 +9883,7 @@ class WorkflowService:
             ).hexdigest(),
         }
         structured_contract = StructuredArtifactContract(
-            name="planning_packet",
+            name="planning_event_realizations",
             schema={
                 "type": "object",
                 "properties": {
@@ -9687,7 +9971,18 @@ class WorkflowService:
                 owner_event_ids=expected, index_only=True,
             ),
             bounded_protocol_output=True,
-            structured_contract=structured_contract,
+            execution_spec=ExecutableContractSpec(
+                contract_name="planning_event_realizations",
+                structured_contract=structured_contract,
+                semantic_normalizer=lambda candidate: (
+                    dict(candidate) if isinstance(candidate, dict) else None
+                ),
+                domain_validator=lambda payload: normalize_protocol_candidate(
+                    json.dumps(payload, ensure_ascii=False)
+                ),
+                retry_domain_failures=True,
+                expected_event_ids=tuple(expected),
+            ),
         )
         try:
             normalized = normalize_protocol_candidate(rewrapped)
@@ -9914,8 +10209,10 @@ class WorkflowService:
             packet_prompt = (
                 "SHORT_PLAN_EQUIVALENCE_SEGMENT_REBUILD_PACKET_V1\n"
                 "This is one event-owned transport packet of a complete formal segment rebuild. "
-                "Return only one complete segment-shaped planning block for the packet event IDs. "
-                "Do not write any parent or sibling event. The Runtime will merge every packet in "
+                "Return exactly one JSON object with one field named events. events must contain "
+                "exactly one object per packet event ID, in order, with only event_id and narrative. "
+                "Do not return segment controls or any parent or sibling event. Runtime rebuilds "
+                "the immutable segment envelope and will merge every packet in "
                 "the original formal order and then repeat complete-segment, adjacent-boundary, "
                 "and whole-plan validation.\n"
                 f"EXPECTED SEGMENT: {segment}\n"
@@ -9988,6 +10285,22 @@ class WorkflowService:
                         owner_event_ids=owned, index_only=True,
                     ),
                     scoped_creative_output=True,
+                    execution_spec=self._structured_stage_spec(
+                        "planning_event_realizations",
+                        completion_check=lambda value: packet_complete(
+                            value, owned, source,
+                        ),
+                        runtime_authority={
+                            "parent_authority_sha256": parent_authority_sha256,
+                            "packet_authority_sha256": packet_authority_sha256,
+                            "segment": segment,
+                            "event_ids": owned,
+                            "predecessor_sha256": predecessor_sha256,
+                        },
+                        expected_event_ids=owned,
+                        owns_opening=not bool(predecessor),
+                        owns_ending=False,
+                    ),
                 )
             except Exception as exc:
                 capacity_failure = (
@@ -10427,6 +10740,27 @@ class WorkflowService:
                         details=details,
                     ))
                     if not patch_authority else None
+                ),
+                execution_spec=self._structured_stage_spec(
+                    (
+                        "planning_repair_patch"
+                        if patch_authority else "planning_event_realizations"
+                    ),
+                    completion_check=complete,
+                    runtime_authority={
+                        "planning_sha256": hashlib.sha256(
+                            candidate.encode("utf-8"),
+                        ).hexdigest(),
+                        "segment": segment,
+                        "event_ids": event_ids,
+                        "issue_keys": issue_keys,
+                        "patch_authority_sha256": patch_authority,
+                    },
+                    expected_event_ids=(
+                        () if patch_authority else tuple(event_ids)
+                    ),
+                    owns_opening=segment == 1,
+                    owns_ending=segment == segment_count,
                 ),
             )
             if patch_authority and not complete(repaired):
@@ -13090,6 +13424,24 @@ class WorkflowService:
                     completion_check=lambda value: parse_packet(
                         value, contract,
                     ) is not None,
+                    execution_spec=self._structured_stage_spec(
+                        "short_causal_chain",
+                        completion_check=lambda value: parse_packet(
+                            value, contract,
+                        ) is not None,
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "packet_id": contract.packet_id,
+                            "event_ids": list(contract.owned_event_ids),
+                        },
+                        expected_event_ids=contract.owned_event_ids,
+                        owns_opening=(
+                            required_ids[0] in contract.owned_event_ids
+                        ),
+                        owns_ending=(
+                            required_ids[-1] in contract.owned_event_ids
+                        ),
+                    ),
                     route_capacity_guard=True,
                     capacity_splitter=(
                         split_again if len(contract.owned_event_ids) > 1 else None
@@ -13400,6 +13752,15 @@ class WorkflowService:
             suffix="-causal-chain", allow_tools=False,
             expected_output_characters=max(2500, len(plan) // 2),
             completion_check=complete,
+            execution_spec=self._structured_stage_spec(
+                "short_causal_chain",
+                completion_check=complete,
+                runtime_authority={
+                    "planning_ir_authority_sha256": planning_ir.authority_sha256,
+                    "event_ids": required_ids,
+                },
+                expected_event_ids=required_ids,
+            ),
             route_capacity_guard=True,
             capacity_splitter=split_causal_chain,
             bounded_protocol_output=True,
@@ -13449,6 +13810,18 @@ class WorkflowService:
                     suffix=f"-causal-chain-repair-{repair_attempt}", allow_tools=False,
                     expected_output_characters=max(2500, len(plan) // 2),
                     completion_check=complete,
+                    execution_spec=self._structured_stage_spec(
+                        "short_causal_chain",
+                        completion_check=complete,
+                        runtime_authority={
+                            "planning_ir_authority_sha256": (
+                                planning_ir.authority_sha256
+                            ),
+                            "event_ids": required_ids,
+                            "repair_attempt": repair_attempt,
+                        },
+                        expected_event_ids=required_ids,
+                    ),
                     route_capacity_guard=True,
                     capacity_splitter=split_causal_chain,
                     bounded_protocol_output=True,
@@ -13873,6 +14246,41 @@ class WorkflowService:
         call_number = 0
         last_issues: list[dict] = []
         last_body: dict = dict(previous_body or {})
+
+        def fragment_complete(value: str) -> bool:
+            """Prove one generated fragment through the full local boundary."""
+
+            try:
+                candidate = self._convert_generated_object(
+                    value, run_path, contract_name="execution_manifest",
+                )
+                candidate = adapt_registered_contract(
+                    candidate,
+                    contract_name="execution_manifest",
+                    context={"expected_events": event_contracts},
+                ).payload
+                candidate, _ = self._bind_short_execution_fragment_handoff(
+                    candidate, previous_exit=previous_exit,
+                )
+                fragment = parse_execution_manifest({
+                    **candidate,
+                    "version": 6,
+                    "status": "fragment_ready",
+                    **hashes,
+                    "semantic_receipt": {},
+                    "repair_attempts": 0,
+                })
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return False
+            return not execution_manifest_fragment_issues(
+                fragment,
+                owner_segment=segment,
+                expected_event_ids=expected_event_ids,
+                authority_hashes=hashes,
+                expected_events=event_contracts,
+                previous_exit_state=previous_exit,
+            )
+
         while True:
             call_number += 1
             prompt = base_prompt
@@ -13893,6 +14301,17 @@ class WorkflowService:
                 compact_input=True,
                 route_capacity_guard=True,
                 bounded_protocol_output=True,
+                execution_spec=self._structured_stage_spec(
+                    "execution_manifest",
+                    completion_check=fragment_complete,
+                    runtime_authority={
+                        "authority_sha256": hashes["authority_sha256"],
+                        "segment": segment,
+                        "event_ids": expected_event_ids,
+                        "previous_fragment_sha256": previous_fragment_sha256,
+                    },
+                    expected_event_ids=expected_event_ids,
+                ),
                 story_skeleton_override=self._stage_story_skeleton(
                     project, constraints, run_path,
                     owner_event_ids=expected_event_ids, index_only=True,
@@ -14074,6 +14493,35 @@ class WorkflowService:
                 semantic_paths=(("boundary_valid",),),
             ),
         )
+
+        def receipt_artifact_complete(value: str) -> bool:
+            """Accept a bound verdict; retry only representation defects."""
+
+            try:
+                candidate = self._convert_generated_object(
+                    value, run_path,
+                    contract_name="execution_manifest_receipt",
+                )
+                for item in candidate.get("beat_receipts") or []:
+                    if isinstance(item, dict):
+                        item.setdefault("field_verdicts", {})
+                        item.setdefault("invalid_fields", [])
+                candidate = bind_execution_manifest_receipt_evidence(
+                    fragment, fragment_authority, candidate,
+                    segment_evidence_candidates={segment: boundary_candidates},
+                )
+                issues = execution_manifest_receipt_issues(
+                    fragment, fragment_authority, candidate,
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return False
+            return (
+                not issues
+                or not execution_manifest_receipt_issues_are_protocol_only(
+                    issues,
+                )
+            )
+
         for receipt_attempt in range(3):
             prompt = (
                 "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4\n"
@@ -14120,6 +14568,18 @@ class WorkflowService:
                 suffix=f"-execution-segment-{segment:02d}-{suffix}-{receipt_attempt + 1}",
                 allow_tools=False,
                 expected_output_characters=max(1000, 260 * len(fragment.beats)),
+                execution_spec=self._structured_stage_spec(
+                    "execution_manifest_receipt",
+                    completion_check=receipt_artifact_complete,
+                    runtime_authority={
+                        "authority_sha256": fragment.authority_sha256,
+                        "manifest_sha256": expected_manifest_hash,
+                        "segment": segment,
+                        "beat_ids": [
+                            beat.beat_id for beat in fragment.beats
+                        ],
+                    },
+                ),
             )
             try:
                 receipt_payload = self._convert_generated_object(
@@ -15584,6 +16044,7 @@ class WorkflowService:
                 capacity_splitter=split_window,
                 completion_check=lambda value: bool(str(value).strip()),
                 bounded_protocol_output=True,
+                compact_input=True,
             )
             runtime_capacity_result = bool(
                 isinstance(raw, StageText)
@@ -16600,7 +17061,7 @@ class WorkflowService:
         prompt: str, suffix: str, recovery_kind: str = "review",
         payload_validator: Callable[[dict], None] | None = None,
     ) -> tuple[str, dict]:
-        stage_error: RuntimeError | None = None
+        stage_error: Exception | None = None
         index_skeleton = self._stage_story_skeleton(
             project, constraints, run_path, index_only=True,
         )
@@ -16628,6 +17089,32 @@ class WorkflowService:
                 payload_validator(payload)
             return payload
 
+        contract_name = (
+            "final_review_window" if recovery_kind == "window" else
+            "final_review_regional" if recovery_kind == "regional" else
+            "final_review_detail" if recovery_kind == "detail" else
+            "final_review"
+        )
+        review_authority = {
+            "recovery_kind": recovery_kind,
+            "prompt_sha256": hashlib.sha256(
+                prompt.encode("utf-8"),
+            ).hexdigest(),
+            "suffix": suffix,
+        }
+
+        def review_spec(source_prompt: str) -> ExecutableContractSpec:
+            return self._structured_stage_spec(
+                contract_name,
+                completion_check=lambda value: bool(convert(value)),
+                runtime_authority={
+                    **review_authority,
+                    "request_sha256": hashlib.sha256(
+                        source_prompt.encode("utf-8"),
+                    ).hexdigest(),
+                },
+            )
+
         try:
             raw = await self._stage(
                 run_id, run_path, project, "final_review", constraints, prompt,
@@ -16638,8 +17125,9 @@ class WorkflowService:
                 route_capacity_guard=True,
                 story_skeleton_override=index_skeleton,
                 bounded_protocol_output=True,
+                execution_spec=review_spec(prompt),
             )
-        except RuntimeError as exc:
+        except (RuntimeError, ValueError) as exc:
             stage_error = exc
             raw = ""
         try:
@@ -16671,6 +17159,7 @@ class WorkflowService:
                         route_capacity_guard=True,
                         story_skeleton_override=index_skeleton,
                         bounded_protocol_output=True,
+                        execution_spec=review_spec(prompt),
                     )
                     return fallback_raw, convert(fallback_raw)
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
@@ -16708,6 +17197,7 @@ class WorkflowService:
                         story_skeleton_override=index_skeleton,
                         bounded_protocol_output=True,
                         compact_input=True,
+                        execution_spec=review_spec(compact_prompt),
                     )
                     compact_payload = convert(compact_raw)
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
@@ -17504,44 +17994,41 @@ class WorkflowService:
         output = await self._stage(
             run_id, run_path, project, "review", constraints, prompt,
             suffix=f"-reader{suffix}", model_role=model_role or "review", allow_tools=False,
+            execution_spec=self._structured_stage_spec(
+                "reader_review",
+                completion_check=lambda value: bool(normalize_review(
+                    self._convert_generated_object(
+                        value, run_path, contract_name="reader_review",
+                    )
+                )),
+                runtime_authority={
+                    "profile_sha256": canonical_sha256(profile),
+                    "sample_sha256": hashlib.sha256(
+                        reader_sample(
+                            text, project.mode, limit=6000,
+                        ).encode("utf-8"),
+                    ).hexdigest(),
+                },
+            ),
         )
-        try:
-            payload = self._convert_generated_object(
-                output, run_path, contract_name="reader_review",
-            )
-            return normalize_review(payload)
-        except (json.JSONDecodeError, ArtifactConversionError):
-            repair_runtime = await execute_contract_runtime(
-                self.gateway,
-                role=model_role or "review",
-                system=constraints,
-                user=prompt,
-                contract_name="reader_review",
-                structured_contract=StructuredArtifactContract(
-                    name="reader_review_receipt",
-                    version=1,
-                    schema={"type": "object"},
-                    runtime_authority={"source": "frozen_reader_review"},
-                ),
-                semantic_normalizer=lambda value: (
-                    value if isinstance(value, dict) else None
-                ),
-                domain_validator=lambda payload: normalize_review(dict(payload)),
-                max_output_tokens=4096,
-                audit_sink=lambda audit: write_conversion_audit(
-                    run_path / "receipts" / "artifact-conversions", audit,
-                ),
-            )
-            repaired = repair_runtime.domain_value
+        runtime_receipt = getattr(output, "receipt", {})
+        if isinstance(runtime_receipt, dict) and int(
+            runtime_receipt.get("contract_attempt_index") or 1
+        ) > 1:
             self.db.add_run_event(
                 run_id, "warning", "reader_review_repaired",
                 "Reader review protocol was regenerated against the same authority",
                 stage="review", metadata={
                     "strategy": "shared_same_task_contract_retry",
-                    "attempt_route": repair_runtime.attempt.route,
+                    "attempt_route": runtime_receipt.get(
+                        "contract_attempt_route", "primary",
+                    ),
                 },
             )
-            return repaired
+        payload = self._convert_generated_object(
+            output, run_path, contract_name="reader_review",
+        )
+        return normalize_review(payload)
 
     async def _incremental_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
@@ -20157,6 +20644,29 @@ class WorkflowService:
                         for item in affected_segments
                     ) or len(str(issue.get("evidence") or "")),
                     targeted_retry=True,
+                    execution_spec=self._structured_stage_spec(
+                        "revision_patch_contract",
+                        completion_check=lambda source: bool(
+                            normalize_repair_contract(
+                                self._convert_generated_object(
+                                    source, run_path,
+                                    contract_name="revision_patch_contract",
+                                ),
+                                candidate_before,
+                                {group_id},
+                            )
+                        ),
+                        runtime_authority={
+                            "group_id": group_id,
+                            "candidate_sha256": self._text_hash(
+                                candidate_before,
+                            ),
+                            "authorized_segments": sorted(
+                                authorized_segments,
+                            ),
+                            "repair_mode": mode,
+                        },
+                    ),
                 )
                 value = normalize_repair_contract(
                     self._convert_generated_object(
@@ -20490,6 +21000,30 @@ class WorkflowService:
                 ),
             ),
         ) if atomic else ()
+        receipt_contract_name = (
+            "draft_atomic_semantic_receipt"
+            if atomic else "draft_segment_semantic_receipt"
+        )
+
+        def receipt_artifact_complete(value: str) -> bool:
+            """Prove shape/evidence, while returning semantic negatives."""
+
+            try:
+                candidate = self._convert_generated_object(
+                    value, run_path, contract_name=receipt_contract_name,
+                )
+                candidate, _ = align_semantic_receipt_evidence(
+                    contract, prose, candidate,
+                )
+                issues = semantic_receipt_issues(
+                    contract, prose, candidate,
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return False
+            return not issues or not all(
+                item.get("code") in protocol_codes for item in issues
+            )
+
         attempt_plan = self._protocol_receipt_attempt_plan(
             "review", same_route_attempts=2,
         )
@@ -20543,6 +21077,18 @@ class WorkflowService:
                     ),
                     bounded_protocol_output=True,
                     compact_input=True,
+                    execution_spec=self._structured_stage_spec(
+                        receipt_contract_name,
+                        completion_check=receipt_artifact_complete,
+                        runtime_authority={
+                            "authority_sha256": contract.authority_sha256,
+                            "execution_manifest_sha256": (
+                                contract.execution_manifest_sha256
+                            ),
+                            "task_id": contract.task_id,
+                            "prose_sha256": prose_sha256,
+                        },
+                    ),
                 ),
             )
             if route_failure is not None:
@@ -21002,6 +21548,29 @@ class WorkflowService:
                 "continuity_valid", "ending_valid", "commitments_valid",
             )
         )
+
+        def receipt_artifact_complete(value: str) -> bool:
+            """Prove whole-story protocol/evidence, not its semantic verdict."""
+
+            try:
+                candidate = self._convert_generated_object(
+                    value, run_path,
+                    contract_name="draft_whole_semantic_receipt",
+                )
+                candidate, _ = align_whole_draft_receipt_evidence(
+                    authority_sha256, draft, segments,
+                    expected_event_ids, candidate,
+                )
+                issues = whole_draft_receipt_issues(
+                    authority_sha256, draft, segments,
+                    expected_event_ids, candidate,
+                )
+            except (TypeError, ValueError, json.JSONDecodeError):
+                return False
+            return not issues or not all(
+                item.get("code") in protocol_codes for item in issues
+            )
+
         attempt_plan = self._protocol_receipt_attempt_plan(
             "review", same_route_attempts=2,
         )
@@ -21066,6 +21635,19 @@ class WorkflowService:
                     story_skeleton_override=whole_authority_index,
                     bounded_protocol_output=True,
                     compact_input=True,
+                    execution_spec=self._structured_stage_spec(
+                        "draft_whole_semantic_receipt",
+                        completion_check=receipt_artifact_complete,
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "draft_sha256": draft_sha256,
+                            "segment_sha256": segment_sha256,
+                            "event_ids": expected_event_ids,
+                            "obligation_catalog_sha256": (
+                                obligation_catalog["catalog_sha256"]
+                            ),
+                        },
+                    ),
                 ),
             )
             if route_failure is not None:
@@ -21520,108 +22102,82 @@ class WorkflowService:
                     == canonical_sha256(window_receipt)
                 )
             issues: list[dict] = []
-            last_route_failure: ReliabilityFailure | None = None
-            attempt_plan = (
-                [] if cached_valid else self._protocol_receipt_attempt_plan(
-                    "review", same_route_attempts=2,
-                )
-            )
-            for route_attempt in attempt_plan:
-                if route_attempt.use_configured_fallback:
-                    self._record_protocol_receipt_fallback(
-                        run_id, stage="review",
-                        boundary="whole_draft_semantic_window",
-                        unit_metadata={
-                            "draft_sha256": draft_sha256,
-                            "segment_numbers": expected_segments,
-                        },
-                        issues=issues,
-                    )
-                attempt_prompt = prompt
-                if issues:
-                    attempt_prompt += (
-                        "\n\nWINDOW RECEIPT PROTOCOL ISSUES. Keep the immutable "
-                        "evidence unchanged and correct only the receipt:\n"
-                        + json.dumps(issues, ensure_ascii=False)
-                    )
-                raw, route_failure = await self._execute_protocol_receipt_attempt(
-                    run_id, stage="review",
-                    boundary="whole_draft_semantic_window",
-                    attempt=route_attempt,
-                    unit_metadata={
+            if not cached_valid:
+                def validate_window_contract(
+                    payload: Mapping[str, Any],
+                ) -> dict[str, Any]:
+                    normalized, found = normalize_window_receipt(dict(payload))
+                    if found and all(
+                        item.get("code") in protocol_codes for item in found
+                    ):
+                        raise DraftReceiptProtocolError(
+                            f"whole-window-{start + 1}-{end + 1}", found,
+                        )
+                    return normalized
+
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=f"-draft-whole-window-{start + 1:02d}-{end + 1:02d}",
+                    allow_tools=False,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    expected_output_characters=max(
+                        900, 700 + len(window_event_ids) * 40,
+                    ),
+                    route_capacity_guard=True,
+                    story_skeleton_override=json.dumps({
+                        "schema": "whole-semantic-window-authority-v1",
+                        "authority_sha256": authority_sha256,
                         "draft_sha256": draft_sha256,
                         "segment_numbers": expected_segments,
-                    },
-                    operation=lambda: self._stage(
-                        run_id, run_path, project, "review", constraints,
-                        attempt_prompt,
-                        suffix=(
-                            f"-draft-whole-window-{start + 1:02d}-{end + 1:02d}"
-                            + ("-fallback" if route_attempt.use_configured_fallback else "")
-                            + ("-receipt-retry" if route_attempt.route_attempt > 1 else "")
-                        ),
-                        allow_tools=False,
-                        prefer_configured_fallback=(
-                            route_attempt.use_configured_fallback
-                        ),
-                        primary_only=not route_attempt.use_configured_fallback,
-                        defer_route_failure_audit=True,
-                        protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
-                        expected_output_characters=max(
-                            900, 700 + len(window_event_ids) * 40,
-                        ),
-                        route_capacity_guard=True,
-                        story_skeleton_override=json.dumps({
-                            "schema": "whole-semantic-window-authority-v1",
+                        "segment_sha256": expected_hashes,
+                        "event_ids": window_event_ids,
+                    }, separators=(",", ":")),
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    execution_spec=ExecutableContractSpec(
+                        contract_name="draft_whole_window_receipt",
+                        structured_contract=StructuredArtifactContract(
+                            name="draft_whole_window_receipt",
+                            version=ARTIFACT_CONTRACT_REGISTRY[
+                                "draft_whole_window_receipt"
+                            ].version,
+                            schema={"type": "object"},
+                            runtime_authority={
                             "authority_sha256": authority_sha256,
                             "draft_sha256": draft_sha256,
                             "segment_numbers": expected_segments,
                             "segment_sha256": expected_hashes,
                             "event_ids": window_event_ids,
-                        }, separators=(",", ":")),
-                        bounded_protocol_output=True,
-                        compact_input=True,
+                            "owns_ending": owns_ending,
+                            "open_obligation_ledger_sha256": canonical_sha256(
+                                ledger_before,
+                            ),
+                            },
+                        ),
+                        semantic_normalizer=lambda value: (
+                            dict(value) if isinstance(value, Mapping) else None
+                        ),
+                        domain_validator=validate_window_contract,
+                        retry_domain_failures=True,
+                        expected_event_ids=tuple(window_event_ids),
+                        owns_opening=start == 0,
+                        owns_ending=owns_ending,
                     ),
-                    capacity_can_use_fallback=True,
                 )
-                if route_failure is not None:
-                    last_route_failure = route_failure
-                    issues = [{
-                        "code": route_failure.code,
-                        "message": "whole semantic window route did not execute",
-                    }]
-                    if not route_attempt.is_last:
-                        continue
-                    break
-                last_route_failure = None
-                try:
-                    window_receipt = self._convert_generated_object(
-                        raw, run_path,
-                        contract_name="draft_whole_window_receipt",
-                    )
-                except (json.JSONDecodeError, ValueError) as exc:
-                    issues = [{
-                        "code": "receipt_schema",
-                        "message": safe_local_validation_message(exc),
-                    }]
-                else:
-                    window_receipt, issues = normalize_window_receipt(
-                        window_receipt,
-                    )
-                    if not issues:
-                        break
-                if all(
-                    item.get("code") in protocol_codes for item in issues
-                ) and not route_attempt.is_last:
-                    continue
-                break
+                window_receipt = self._convert_draft_receipt_object(
+                    raw, run_path,
+                    contract_name="draft_whole_window_receipt",
+                    task_id=f"whole-window-{start + 1}-{end + 1}",
+                )
+                window_receipt, issues = normalize_window_receipt(
+                    window_receipt,
+                )
             if issues:
-                if last_route_failure or all(
+                if all(
                     item.get("code") in protocol_codes for item in issues
                 ):
                     raise DraftReceiptProtocolError(
                         f"whole-window-{start + 1}-{end + 1}", issues,
-                        reliability_failure=last_route_failure,
                     )
                 raise DraftSemanticValidationError(
                     f"whole-window-{start + 1}-{end + 1}", issues,
@@ -21837,89 +22393,78 @@ class WorkflowService:
                 reducer_reused = True
 
         reducer_issues: list[dict] = []
-        last_route_failure: ReliabilityFailure | None = None
         if validated is None:
-            for attempt in self._protocol_receipt_attempt_plan(
-                "review", same_route_attempts=2,
-            ):
-                attempt_prompt = reducer_prompt
-                if reducer_issues:
-                    attempt_prompt += (
-                        "\n\nGLOBAL REDUCER RECEIPT ISSUES. Preserve all immutable "
-                        "window and obligation evidence; correct only the receipt:\n"
-                        + json.dumps(reducer_issues, ensure_ascii=False)
+            def validate_reducer_contract(
+                payload: Mapping[str, Any],
+            ) -> dict[str, Any]:
+                normalized, found = normalize_reducer_receipt(dict(payload))
+                if found and all(
+                    item.get("code") in protocol_codes for item in found
+                ):
+                    raise DraftReceiptProtocolError(
+                        "whole-window-reducer", found,
                     )
-                raw, route_failure = await self._execute_protocol_receipt_attempt(
-                    run_id, stage="review",
-                    boundary="whole_draft_semantic_global_reducer",
-                    attempt=attempt,
-                    unit_metadata={
+                return normalized
+
+            raw = await self._stage(
+                run_id, run_path, project, "review", constraints,
+                reducer_prompt,
+                suffix="-draft-whole-reduce",
+                allow_tools=False,
+                protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                expected_output_characters=max(
+                    1200, 900 + len(expected_event_ids) * 48,
+                ),
+                route_capacity_guard=True,
+                story_skeleton_override=whole_authority_index,
+                bounded_protocol_output=True,
+                compact_input=True,
+                execution_spec=ExecutableContractSpec(
+                    contract_name="draft_whole_reducer_receipt",
+                    structured_contract=StructuredArtifactContract(
+                        name="draft_whole_reducer_receipt",
+                        version=ARTIFACT_CONTRACT_REGISTRY[
+                            "draft_whole_reducer_receipt"
+                        ].version,
+                        schema={"type": "object"},
+                        runtime_authority={
+                        "reducer_authority_sha256": reducer_authority,
+                        "reducer_input_sha256": reducer_input,
+                        "authority_sha256": authority_sha256,
                         "draft_sha256": draft_sha256,
-                        "window_count": len(window_receipts),
+                        "event_ids": expected_event_ids,
+                        "window_receipt_sha256": [
+                            canonical_sha256(item) for item in window_receipts
+                        ],
                         "obligation_catalog_sha256": catalog["catalog_sha256"],
-                    },
-                    operation=lambda: self._stage(
-                        run_id, run_path, project, "review", constraints,
-                        attempt_prompt,
-                        suffix="-draft-whole-reduce"
-                        + ("-fallback" if attempt.use_configured_fallback else "")
-                        + ("-receipt-retry" if attempt.route_attempt > 1 else ""),
-                        allow_tools=False,
-                        prefer_configured_fallback=attempt.use_configured_fallback,
-                        primary_only=not attempt.use_configured_fallback,
-                        defer_route_failure_audit=True,
-                        protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
-                        expected_output_characters=max(
-                            1200, 900 + len(expected_event_ids) * 48,
-                        ),
-                        route_capacity_guard=True,
-                        story_skeleton_override=whole_authority_index,
-                        bounded_protocol_output=True,
-                        compact_input=True,
+                        },
                     ),
-                    capacity_can_use_fallback=True,
+                    semantic_normalizer=lambda value: (
+                        dict(value) if isinstance(value, Mapping) else None
+                    ),
+                    domain_validator=validate_reducer_contract,
+                    retry_domain_failures=True,
+                    expected_event_ids=tuple(expected_event_ids),
+                ),
+            )
+            candidate = self._convert_draft_receipt_object(
+                raw, run_path,
+                contract_name="draft_whole_reducer_receipt",
+                task_id="whole-window-reducer",
+            )
+            candidate, reducer_issues = normalize_reducer_receipt(candidate)
+            if not reducer_issues:
+                validated = validate_whole_draft_receipt(
+                    authority_sha256, draft, segments,
+                    expected_event_ids, candidate,
                 )
-                if route_failure is not None:
-                    last_route_failure = route_failure
-                    reducer_issues = [{
-                        "code": route_failure.code,
-                        "message": "global semantic reducer route did not execute",
-                    }]
-                    if not attempt.is_last:
-                        continue
-                    break
-                last_route_failure = None
-                try:
-                    candidate = self._convert_generated_object(
-                        raw, run_path,
-                        contract_name="draft_whole_reducer_receipt",
-                    )
-                except (json.JSONDecodeError, ValueError) as exc:
-                    reducer_issues = [{
-                        "code": "receipt_schema",
-                        "message": safe_local_validation_message(exc),
-                    }]
-                else:
-                    candidate, reducer_issues = normalize_reducer_receipt(candidate)
-                    if not reducer_issues:
-                        validated = validate_whole_draft_receipt(
-                            authority_sha256, draft, segments,
-                            expected_event_ids, candidate,
-                        )
-                        break
-                if all(
-                    item.get("code") in protocol_codes for item in reducer_issues
-                ) and not attempt.is_last:
-                    continue
-                break
             if validated is None:
-                protocol_only = bool(last_route_failure) or bool(reducer_issues) and all(
+                protocol_only = bool(reducer_issues) and all(
                     item.get("code") in protocol_codes for item in reducer_issues
                 )
                 if protocol_only:
                     raise DraftReceiptProtocolError(
                         "whole-window-reducer", reducer_issues,
-                        reliability_failure=last_route_failure,
                     )
                 raise DraftSemanticValidationError(
                     "whole-window-reducer", reducer_issues,
@@ -24068,12 +24613,35 @@ class WorkflowService:
             f"COMPLETE REVIEW FINDINGS:\n{json.dumps(review, ensure_ascii=False)}\n\n"
             f"COMPACT SEGMENT MAP:\n{json.dumps(story_map, ensure_ascii=False)}"
         )
+
+        def revision_plan_complete(value: str) -> bool:
+            payload = self._convert_generated_object(
+                value, run_path, contract_name="revision_plan",
+            )
+            return bool(self._normalized_revision_plan(
+                payload, len(story_map), max_target_ratio=0.4,
+                require_checks=require_checks, defer_excess_targets=True,
+            ))
+
+        revision_authority = {
+            "findings_sha256": hashlib.sha256(
+                findings.encode("utf-8"),
+            ).hexdigest(),
+            "story_map_sha256": canonical_sha256(story_map),
+            "segment_count": len(story_map),
+            "require_checks": require_checks,
+        }
         try:
             try:
                 output = await self._stage(
                     run_id, run_path, project, "revision_plan", constraints, prompt,
                     suffix=f"{suffix}-revision-plan", model_role="planning", allow_tools=False,
                     targeted_retry=True,
+                    execution_spec=self._structured_stage_spec(
+                        "revision_plan",
+                        completion_check=revision_plan_complete,
+                        runtime_authority=revision_authority,
+                    ),
                 )
                 try:
                     payload = self._convert_generated_object(
@@ -24089,6 +24657,14 @@ class WorkflowService:
                         run_id, run_path, project, "revision_plan", constraints, repair,
                         suffix=f"{suffix}-revision-plan-repair", model_role="planning",
                         allow_tools=False, targeted_retry=True,
+                        execution_spec=self._structured_stage_spec(
+                            "revision_plan",
+                            completion_check=revision_plan_complete,
+                            runtime_authority={
+                                **revision_authority,
+                                "repair": True,
+                            },
+                        ),
                     )
                     payload = self._convert_generated_object(
                         output, run_path, contract_name="revision_plan",
@@ -24115,6 +24691,14 @@ class WorkflowService:
                     run_id, run_path, project, "revision_plan", constraints, prompt,
                     suffix=f"{suffix}-revision-plan-fallback", model_role="review",
                     allow_tools=False, targeted_retry=True,
+                    execution_spec=self._structured_stage_spec(
+                        "revision_plan",
+                        completion_check=revision_plan_complete,
+                        runtime_authority={
+                            **revision_authority,
+                            "role_fallback": "review",
+                        },
+                    ),
                 )
                 plan = self._normalized_revision_plan(
                     self._convert_generated_object(
@@ -24528,17 +25112,22 @@ class WorkflowService:
                      story_skeleton_override: str | None = None,
                      bounded_protocol_output: bool = False,
                      scoped_creative_output: bool = False,
-                     structured_contract: StructuredArtifactContract | None = None,
-                     structured_semantic_normalizer: Callable[
-                         [object], dict[str, Any] | None
-                     ] | None = None,
-                     structured_domain_validator: Callable[
-                         [Mapping[str, Any]], Any
-                     ] | None = None,
-                     retry_structured_domain_failures: bool = False,
+                     execution_spec: ExecutableContractSpec | None = None,
+                     structured_transport_contract: (
+                         StructuredArtifactContract | None
+                     ) = None,
                      defer_route_failure_audit: bool = False,
                      protocol_system_contract: str | None = None) -> str:
         node_key = f"{stage}{suffix}"
+        if execution_spec is not None and structured_transport_contract is not None:
+            raise ValueError(
+                "a stage cannot own a structured execution spec and act as a "
+                "transport executor at the same time"
+            )
+        structured_contract = (
+            execution_spec.structured_contract
+            if execution_spec is not None else structured_transport_contract
+        )
         stage_system = protocol_system_contract or STAGE_SYSTEM[stage]
         current_state = self.story_states.get(project.id)
         node_authority_sha256 = hashlib.sha256(json.dumps({
@@ -24732,7 +25321,7 @@ class WorkflowService:
                     f"\n\n{model_skill_prompt}{style}"
                 )
             estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
-            if stage == "polish" and compact_input and not layered_context:
+            if compact_input and not layered_context:
                 model_constraints = ConstraintPromptCompactor(max_chars=4000).compact_for_stage(
                     source_constraints, stage=stage, focus=user,
                 )
@@ -25123,19 +25712,47 @@ class WorkflowService:
                 )
             provider_capacity_split: dict | None = None
             try:
-                if (
-                    structured_contract is not None
-                    and structured_semantic_normalizer is not None
-                ):
+                if execution_spec is not None:
+                    contract_output_expanded = False
+
                     async def contract_attempt_executor(
                         attempt, attempt_role, attempt_system, attempt_user,
                         _attempt_budget, attempt_contract,
                     ):
-                        route_budget = (
+                        nonlocal contract_output_expanded
+                        route_baseline = (
                             fallback_budget
                             if attempt.route == "configured_fallback"
                             else output_budget
                         )
+                        route_ceiling = (
+                            fallback_ceiling
+                            if attempt.route == "configured_fallback"
+                            else provider_ceiling
+                        )
+                        route_budget = max(
+                            int(route_baseline or 0), int(_attempt_budget or 0),
+                        ) or None
+                        if route_budget is not None and route_ceiling:
+                            route_budget = min(route_budget, int(route_ceiling))
+                        if (
+                            not contract_output_expanded
+                            and route_budget is not None
+                            and route_baseline is not None
+                            and route_budget > route_baseline
+                        ):
+                            contract_output_expanded = True
+                            self.db.add_run_event(
+                                run_id, "warning", "output_limit_expanded",
+                                f"{stage} structured output was truncated; retrying "
+                                "the same route with more headroom",
+                                stage=stage, metadata={
+                                    "previous_budget": route_baseline,
+                                    "retry_budget": route_budget,
+                                    "failure_class": "output_limit",
+                                    "contract_name": execution_spec.contract_name,
+                                },
+                            )
                         return await dispatch_explicit_model_route(
                             self.gateway, attempt.route,
                             role=attempt_role, system=attempt_system,
@@ -25148,20 +25765,27 @@ class WorkflowService:
                     contract_runtime = await execute_contract_runtime(
                         self.gateway,
                         role=gateway_role, system=system, user=user,
-                        contract_name=structured_contract.name,
-                        structured_contract=structured_contract,
-                        semantic_normalizer=structured_semantic_normalizer,
-                        domain_validator=structured_domain_validator,
+                        execution_spec=execution_spec,
                         max_output_tokens=output_budget,
                         same_route_attempts=2, fallback_attempts=2,
                         attempt_routes=requested_routes,
-                        retry_domain_failures=retry_structured_domain_failures,
                         audit_sink=lambda audit: write_conversion_audit(
                             run_path / "outputs" / "conversion-audits", audit,
                         ),
                         attempt_executor=contract_attempt_executor,
                     )
                     result = contract_runtime.model_response
+                    result.receipt.setdefault(
+                        "contract_attempt_index",
+                        contract_runtime.attempt.attempt_index,
+                    )
+                    result.receipt.setdefault(
+                        "contract_attempt_route",
+                        contract_runtime.attempt.route,
+                    )
+                    result.receipt.setdefault(
+                        "contract_validation_stage", "local_semantics",
+                    )
                     selected_route = contract_runtime.attempt.route
                 else:
                     route_runtime = await execute_model_route_runtime(
@@ -25198,7 +25822,12 @@ class WorkflowService:
                 if (
                     route_capacity_guard
                     and capacity_splitter is not None
-                    and classify_model_failure(exc) == "input_context_overflow"
+                    and (
+                        classify_model_failure(exc) == "input_context_overflow"
+                        or isinstance(
+                            exc, ContractOutputLimitExhaustedError,
+                        )
+                    )
                 ):
                     provider_capacity_split = {
                         "trigger": "provider",
@@ -25214,7 +25843,13 @@ class WorkflowService:
                         ),
                         "output_reserve": route_output_reserve,
                         "context_window": context_window,
-                        "provider_error": "input_context_overflow",
+                        "provider_error": (
+                            "output_limit"
+                            if isinstance(
+                                exc, ContractOutputLimitExhaustedError,
+                            )
+                            else "input_context_overflow"
+                        ),
                     }
                 elif not targeted_retry:
                     raise
@@ -25229,7 +25864,8 @@ class WorkflowService:
             if provider_capacity_split is not None:
                 return await complete_capacity_split(provider_capacity_split)
             result.receipt.setdefault("requested_max_output_tokens", output_budget)
-            if (stage == "review" and gateway_role == "review" and not allow_tools
+            if (execution_spec is None
+                    and stage == "review" and gateway_role == "review" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
                 review_retry_ceiling = (
@@ -25302,8 +25938,8 @@ class WorkflowService:
                 error.receipt = result.receipt
                 raise error
             if output_limited(result.receipt):
-                complete_at_limit = False
-                if completion_check is not None:
+                complete_at_limit = execution_spec is not None
+                if not complete_at_limit and completion_check is not None:
                     try:
                         complete_at_limit = bool(completion_check(result.text))
                     except (TypeError, ValueError, json.JSONDecodeError):
@@ -25366,7 +26002,9 @@ class WorkflowService:
                             "requested_max_output_tokens", retry_budget,
                         )
                     retry_complete = not output_limited(result.receipt)
-                    if not retry_complete and completion_check is not None:
+                    if (not retry_complete and execution_spec is not None):
+                        retry_complete = True
+                    elif not retry_complete and completion_check is not None:
                         try:
                             retry_complete = bool(completion_check(result.text))
                         except (TypeError, ValueError, json.JSONDecodeError):
@@ -25455,6 +26093,8 @@ class WorkflowService:
                 output_sha256=hashlib.sha256(result.text.encode("utf-8")).hexdigest(),
                 status="generated_complete",
                 validation_stage=(
+                    "local_semantics"
+                    if execution_spec is not None else
                     "syntax"
                     if completion_check is not None
                     and self._completion_check_safe(completion_check, result.text)
@@ -26022,8 +26662,21 @@ class WorkflowService:
             if path.is_file():
                 parts.append(f"CHAPTER {number}:\n{path.read_text(encoding='utf-8')[:4000]}")
         evidence = json.dumps(volume, ensure_ascii=False) + "\n\n" + "\n\n".join(parts)
-        text = await self._stage(run_id, run_path, project, "final_review", constraints, evidence,
-                                 suffix=f"-volume-{int(volume['number']):02d}")
+        text = await self._stage(
+            run_id, run_path, project, "final_review", constraints, evidence,
+            suffix=f"-volume-{int(volume['number']):02d}",
+            execution_spec=self._structured_stage_spec(
+                "final_review",
+                completion_check=lambda value: bool(self._review(value)),
+                runtime_authority={
+                    "volume": int(volume["number"]),
+                    "chapter_number": chapter_number,
+                    "audit_input_sha256": hashlib.sha256(
+                        evidence.encode("utf-8"),
+                    ).hexdigest(),
+                },
+            ),
+        )
         review = self._review(text)
         passed, _ = quality_gate(review)
         report = {**review, "volume": int(volume["number"]),

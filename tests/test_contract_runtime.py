@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+﻿from __future__ import annotations
 import ast
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,6 +7,7 @@ import pytest
 from pydantic import BaseModel, ConfigDict
 
 from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
     contract_route_capacity_plan,
     execute_contract_runtime,
     execute_model_route_runtime,
@@ -27,7 +27,7 @@ class MessageArtifact(BaseModel):
 
 
 CONTRACT = StructuredArtifactContract(
-    name="interview_message",
+    name="interview_planning",
     version=1,
     schema=MessageArtifact.model_json_schema(),
 )
@@ -75,6 +75,23 @@ def normalize(value):
         return MessageArtifact.model_validate(value).model_dump(mode="json")
     except ValueError:
         return None
+
+
+def execution_spec(
+    *, contract_name: str = "interview_planning",
+    contract: StructuredArtifactContract = CONTRACT,
+    domain_validator=lambda payload: payload,
+    retry_domain_failures: bool = False,
+) -> ExecutableContractSpec:
+    if contract.name != contract_name:
+        contract = contract.model_copy(update={"name": contract_name})
+    return ExecutableContractSpec(
+        contract_name=contract_name,
+        structured_contract=contract,
+        semantic_normalizer=normalize,
+        domain_validator=domain_validator,
+        retry_domain_failures=retry_domain_failures,
+    )
 
 
 def test_business_services_cannot_add_private_model_route_executors() -> None:
@@ -238,9 +255,7 @@ async def test_contract_runtime_retries_same_task_on_same_explicit_route() -> No
         role="planning",
         system="analyze once",
         user="private input",
-        contract_name="interview_planning",
-        structured_contract=CONTRACT,
-        semantic_normalizer=normalize,
+        execution_spec=execution_spec(),
         fallback_attempts=0,
     )
 
@@ -268,9 +283,7 @@ async def test_contract_runtime_retries_original_task_when_no_semantics_exist() 
         role="planning",
         system="original system",
         user="original task",
-        contract_name="interview_planning",
-        structured_contract=CONTRACT,
-        semantic_normalizer=normalize,
+        execution_spec=execution_spec(),
         fallback_attempts=0,
     )
 
@@ -278,7 +291,7 @@ async def test_contract_runtime_retries_original_task_when_no_semantics_exist() 
     assert gateway.calls[0] == ("original system", "original task")
     assert gateway.calls[1][1] == "original task"
     assert gateway.calls[1][0].startswith("original system")
-    assert "整理为指定 JSON" in gateway.calls[1][0]
+    assert "return the specified JSON" in gateway.calls[1][0]
 
 
 @pytest.mark.asyncio
@@ -303,9 +316,7 @@ async def test_contract_runtime_uses_declared_fallback_without_hidden_auto_route
         role="planning",
         system="system",
         user="input",
-        contract_name="interview_planning",
-        structured_contract=CONTRACT,
-        semantic_normalizer=normalize,
+        execution_spec=execution_spec(),
         same_route_attempts=2,
         fallback_attempts=1,
     )
@@ -332,11 +343,10 @@ async def test_contract_runtime_never_rewrites_domain_semantic_failure() -> None
             role="planning",
             system="system",
             user="input",
-            contract_name="interview_planning",
-            structured_contract=CONTRACT,
-            semantic_normalizer=normalize,
-            domain_validator=lambda _payload: (_ for _ in ()).throw(
-                ValueError("domain invariant")
+            execution_spec=execution_spec(
+                domain_validator=lambda _payload: (_ for _ in ()).throw(
+                    ValueError("domain invariant")
+                ),
             ),
             fallback_attempts=0,
         )
@@ -500,9 +510,7 @@ async def test_structured_runtime_cannot_exceed_registered_route_ladder(
             role="planning",
             system="system",
             user="input",
-            contract_name=contract_name,
-            structured_contract=CONTRACT,
-            semantic_normalizer=normalize,
+            execution_spec=execution_spec(contract_name=contract_name),
             same_route_attempts=2,
             fallback_attempts=2,
         )
@@ -531,9 +539,7 @@ async def test_contract_runtime_can_validate_workflow_owned_route_attempts() -> 
         role="planning",
         system="system",
         user="same immutable task",
-        contract_name="interview_planning",
-        structured_contract=CONTRACT,
-        semantic_normalizer=normalize,
+        execution_spec=execution_spec(),
         max_output_tokens=700,
         attempt_routes=("primary",),
         attempt_executor=execute,
@@ -542,7 +548,7 @@ async def test_contract_runtime_can_validate_workflow_owned_route_attempts() -> 
     assert result.payload == {"message": "preserved business value"}
     assert calls == [(
         "primary", "planning", "system", "same immutable task", 700,
-        "interview_message",
+        "interview_planning",
     )]
 
 
@@ -566,14 +572,8 @@ async def test_structured_runtime_rejects_undeclared_domain_regeneration(
     )
 
     with pytest.raises(ValueError, match="domain regeneration"):
-        await execute_contract_runtime(
-            SimpleNamespace(),
-            role="planning",
-            system="system",
-            user="input",
+        execution_spec(
             contract_name=contract_name,
-            structured_contract=CONTRACT,
-            semantic_normalizer=normalize,
             retry_domain_failures=True,
         )
 
@@ -596,14 +596,6 @@ async def test_runtime_rejects_wire_schema_version_drift_before_model_call() -> 
     )
 
     with pytest.raises(ValueError, match="version does not match"):
-        await execute_contract_runtime(
-            gateway,
-            role="planning",
-            system="system",
-            user="input",
-            contract_name="interview_planning",
-            structured_contract=wrong_version,
-            semantic_normalizer=normalize,
-        )
+        execution_spec(contract=wrong_version)
 
     assert gateway.calls == 0

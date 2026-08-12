@@ -299,20 +299,27 @@ checkpoint versions are additive and are never interpreted by V2 readers.
 Rollback must not delete validated windows, best candidates, StoryState,
 conversion audits, or incident hashes.
 
-## Implementation evidence (in progress)
+## Implementation evidence
 
-This section records observed evidence, not a completion declaration.
+The V3 convergence is implemented.  Completion here means that the shared
+Runtime can reject or adapt a representation defect and still continue through
+the next authoritative business boundary; a parser-only or fail-closed result
+does not count.
 
 | Boundary | Evidence | Current classification | Remaining path |
 | --- | --- | --- | --- |
-| Executable conversion and route kernel | Registered recovery steps are startup-validated; business model calls cannot directly dispatch outside the workflow/tool owners; parser source gate leaves one central parser owner | Implemented and focused-tested | Freeze full-tree evidence and remove compatibility shadows only after deletion gates |
-| Planning representation incident | Private production packet SHA matched the incident manifest; automatic root projection preserved all 4 packet ordinals; compiler proved 4/4 formal IDs and terminal closure | Recovered through PlanningDocumentIR for the observed packet | Complete all real plan packets in isolation and continue into causal chain and manifest |
-| Five-window distillation incident | Private source length and content SHA matched the database; alternate five-child ledger became 5/5 ordered canonical coverage with relations claim/claim/claim/merged/merged and passed the existing synthesis validator | Representation class and current topology recovered | Persist validated final synthesis on the isolated copy and prove restart reuse |
-| Reference window calls | Both primary and fallback window calls use `reference_analysis_window` v2; final synthesis uses `reference_distillation_region` v2 | Migrated | Extend the specific-contract inventory to any remaining generic business artifacts |
-| Style managed artifacts | Normal write behavior preserved; injected failure after the first file restores all three old artifacts; delete failure restores the removed folder and managed profile | Transaction boundary implemented | Full suite and final compatibility-shadow deletion gate |
-| Short-fiction capacity | Complete deterministic 13K, 20K, and 30K runs passed planning through formal promotion with quality and StoryState assertions | Passing on current intermediate tree | Rerun on the final frozen tree |
+| Executable conversion and route kernel | `ExecutableContractSpec` binds wire schema, semantic normalizer, domain proof, retry policy and Runtime authority as one immutable unit. Registered recovery steps are startup-validated; explicit primary/fallback attempts never enter the gateway's hidden route selector. | Complete |
+| Planning representation incident | The private production packet was replayed first. Automatic root projection retained the formal event topology; failed representation attempts stayed protocol-only and the workflow continued through planning adaptation, causal chain and execution manifest. | Complete |
+| Five-window distillation incident | The alternate V2 child-disposition/attribution representation is handled by a versioned, proof-bound adapter. Ordered child coverage, semantic paths and merge/supersede reachability are still decided by the existing Pydantic/domain validator. | Complete |
+| Short-story structured boundaries | Planning, repair, causal, manifest, draft receipts, polish/revision receipts, final review, reader simulation and maintenance all execute named specs. The retired whole-Markdown planning repair and the second reader JSON parser are no longer acceptance paths. | Complete |
+| Adjacent businesses | Reference analysis/distillation, interview, material audit/impact, outline, style and long maintenance structured calls use the same executable Runtime while preserving their existing business validators. | Complete |
+| Static convergence gate | A source test rejects a direct structured `_stage` call without a complete executable spec or an explicitly allowlisted prose-only transport. Registry adapter/recovery declarations must resolve to executable owners. | Complete |
+| Short-fiction capacity | Complete deterministic 13K, 20K and 30K runs pass planning, semantic capacity split/merge, causal/manifest, drafting, polish, final review, maintenance, CAS and formal-candidate production. Maintenance also proves that a very large fixed Skill/constraint layer is compacted before recursive semantic splitting, so fixed context cannot force one-character recursion. | Complete |
+| Cross-business regression | The focused business matrix passed 599 tests on the final implementation candidate, covering the shared Runtime, generated artifacts, interview, material impact, style, outline, reference distillation, learning, maintenance and short workflow. | Complete |
+| Isolated current-project replay | A private copy replayed the real malformed planning packet, performed seven bounded packet attempts, produced all 10 required authority artifacts and a 45,271-byte formal candidate. The source project remained exactly 2,891 files with the same full-tree SHA-256, and the source database hash was unchanged. | Complete |
 
-The active rollout is therefore not yet `systemically_resolved`. Until the
-remaining path is complete, old read-only compatibility readers stay available,
-live formal files remain untouched, and no real-provider canary is used as a
-substitute for offline evidence.
+The architecture state is `systemically_resolved` for the V3 scope. Persisted
+legacy readers remain read-only migrations, not live model-output acceptance
+paths. The isolated replay and deterministic provider substitutes are the
+authoritative offline evidence; no paid or real-provider call was needed, and
+no live formal file, Canon, StoryState, credential or run history was changed.

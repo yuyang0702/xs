@@ -1548,10 +1548,12 @@ async def test_whole_semantic_capacity_protocol_failure_never_becomes_prose_fail
         }],
     } for event_id, segment in zip(event_ids, segments, strict=True)]
     calls = 0
+    observed_specs = []
 
-    async def malformed_stage(*_args, **_kwargs):
+    async def malformed_stage(*_args, **kwargs):
         nonlocal calls
         calls += 1
+        observed_specs.append(kwargs.get("execution_spec"))
         return "not json"
 
     service._stage = malformed_stage
@@ -1564,7 +1566,11 @@ async def test_whole_semantic_capacity_protocol_failure_never_becomes_prose_fail
             details={"trigger": "preflight"}, failure_stage="draft",
         )
 
-    assert calls == 2
+    assert calls == 1
+    assert len(observed_specs) == 1
+    assert observed_specs[0].contract_name == "draft_whole_window_receipt"
+    assert callable(observed_specs[0].semantic_normalizer)
+    assert callable(observed_specs[0].domain_validator)
 
 
 @pytest.mark.asyncio
