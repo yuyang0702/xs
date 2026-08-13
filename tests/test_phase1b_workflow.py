@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -17,6 +19,7 @@ from novel_flywheel.project_transactions import (
     project_mutation_journal_path,
     recover_project_mutations,
 )
+from novel_flywheel.reliability_trace import read_trace, trace_file_for_project
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.short_canonical_promotion import (
     SHORT_CANONICAL_GATE_NAME,
@@ -135,7 +138,9 @@ async def test_dual_gate_requires_environment_and_exact_project_scope(
     assert frozen["writer_plan_hash"]
     assert frozen["proposed_claim_batch_hash"]
     assert frozen["accepted_mutation_ids"] == []
+    assert frozen["rejected_mutation_ids"] == []
     assert frozen["held_mutation_ids"] == []
+    assert frozen["journal_saga_id"] == "phase1b-short"
     assert frozen["evidence_envelope_set_hash"]
     assert frozen["base_story_state_revision"] == both[
         "state_before"
@@ -147,6 +152,10 @@ async def test_dual_gate_requires_environment_and_exact_project_scope(
     assert frozen["formal_receipt_deterministic_input_hash"]
     assert receipt["commit_performed"] is True
     assert receipt["story_state_commit_count"] == 1
+    assert receipt["journal_saga_id"] == "phase1b-short"
+    assert receipt["accepted_mutation_ids"] == []
+    assert receipt["rejected_mutation_ids"] == []
+    assert receipt["held_mutation_ids"] == []
     assert both["state_after"].revision == both["state_before"].revision + 1
     assert [item["role"] for item in both["gateway"].calls] == [
         item["role"] for item in env_only["gateway"].calls
@@ -154,6 +163,36 @@ async def test_dual_gate_requires_environment_and_exact_project_scope(
     assert [item["max_output_tokens"] for item in both["gateway"].calls] == [
         item["max_output_tokens"] for item in env_only["gateway"].calls
     ]
+
+    def checkpoint_projection(run):
+        with run["db"].connect() as connection:
+            return [tuple(row) for row in connection.execute(
+                "SELECT node_key, status, validation_stage, attempt "
+                "FROM workflow_node_checkpoints WHERE run_id=? "
+                "ORDER BY node_key, input_sha256",
+                ("phase1b-short",),
+            )]
+
+    assert checkpoint_projection(both) == checkpoint_projection(env_only)
+    candidate_projection = lambda run: sorted(
+        (item.kind, item.status)
+        for item in StoryStateStore(run["db"]).list_candidates(
+            run["project"].id,
+        )
+    )
+    assert candidate_projection(both) == candidate_projection(env_only)
+    assert both["after"] == env_only["after"]
+    promotion_events = [
+        item for item in read_trace(
+            trace_file_for_project(both["project"].path),
+        ).events
+        if item.event_type == "promotion_write"
+        and item.source_writer == "short_canonical_v2"
+    ]
+    assert len(promotion_events) == 1
+    assert promotion_events[0].payload["decision"] == "committed"
+    assert promotion_events[0].payload["receipt_hash"] == receipt["receipt_hash"]
+    assert promotion_events[0].payload["story_state_commit_count"] == 1
 
 
 @pytest.mark.asyncio
@@ -236,6 +275,17 @@ async def test_batch_hold_preserves_formal_state_and_pending_candidate(
         run["store"], workflow="short-story",
     ) == []
     assert _formal_manifest(run["project"]) == run["before"]
+    promotion_events = [
+        item for item in read_trace(
+            trace_file_for_project(run["project"].path),
+        ).events
+        if item.event_type == "promotion_write"
+        and item.source_writer == "short_canonical_v2"
+    ]
+    assert len(promotion_events) == 1
+    assert promotion_events[0].payload["decision"] == "hold"
+    assert promotion_events[0].payload["commit_performed"] is False
+    assert promotion_events[0].payload["projection_effects"] == []
 
 
 @pytest.mark.asyncio
@@ -311,3 +361,123 @@ async def test_receipt_failure_recovers_from_frozen_journal_without_model_call(
         final_state.data, ensure_ascii=False, sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_pre_artifact_interruption_rolls_back_v2_saga(
+    tmp_path, monkeypatch,
+) -> None:
+    import novel_flywheel.workflows as workflows_module
+
+    gateway = RecordingFakeGateway()
+    db, store, project, service = _service(
+        tmp_path, mode="short", gateway=gateway, title="Phase 1B rollback",
+    )
+    db.set_feature_flag(
+        "short_canonical_v2", True,
+        scope_type="project", scope_id=project.id,
+    )
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    state_before = StoryStateStore(db).ensure(project.id, project.path)
+    formal_before = _formal_manifest(project)
+    original_atomic_write = workflows_module.atomic_write
+    interrupted = False
+
+    def interrupt_first_formal_write(path, *args, **kwargs):
+        nonlocal interrupted
+        target = Path(path)
+        journal_path = project_mutation_journal_path(
+            project.path, "phase1b-pre-artifact-interruption",
+        )
+        if (
+            not interrupted
+            and target == project.path / "manuscript" / "story.md"
+            and journal_path.is_file()
+        ):
+            interrupted = True
+            raise OSError("injected pre-artifact interruption")
+        return original_atomic_write(path, *args, **kwargs)
+
+    monkeypatch.setattr(
+        workflows_module, "atomic_write", interrupt_first_formal_write,
+    )
+    with pytest.raises(OSError, match="pre-artifact interruption"):
+        await service.run_short(
+            project.id, use_crewai=False,
+            run_id="phase1b-pre-artifact-interruption",
+        )
+    assert interrupted is True
+    journal = load_project_mutation_journal(project_mutation_journal_path(
+        project.path, "phase1b-pre-artifact-interruption",
+    ))
+    assert journal.status == "rolled_back"
+    assert journal.post_commit_gate is not None
+    assert journal.post_commit_gate.status == "pending"
+    state_after = StoryStateStore(db).get(project.id)
+    assert state_after is not None
+    assert state_after.revision == state_before.revision
+    assert state_after.data == state_before.data
+    assert _formal_manifest(project) == formal_before
+    assert db.get_run("phase1b-pre-artifact-interruption")["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_enabled_disabled_candidate_lane_overhead_report(
+    tmp_path, monkeypatch,
+) -> None:
+    started = time.perf_counter()
+    disabled = await _run(
+        tmp_path / "disabled", monkeypatch,
+        environment=False, project_flag=False, run_id="phase1b-overhead",
+    )
+    disabled_seconds = time.perf_counter() - started
+    started = time.perf_counter()
+    enabled = await _run(
+        tmp_path / "enabled", monkeypatch,
+        environment=True, project_flag=True, run_id="phase1b-overhead",
+    )
+    enabled_seconds = time.perf_counter() - started
+    assert enabled["after"] == disabled["after"]
+    assert enabled["state_after"].data == disabled["state_after"].data
+    assert [item["role"] for item in enabled["gateway"].calls] == [
+        item["role"] for item in disabled["gateway"].calls
+    ]
+    assert [item["max_output_tokens"] for item in enabled["gateway"].calls] == [
+        item["max_output_tokens"] for item in disabled["gateway"].calls
+    ]
+
+    def artifact_bytes(run) -> int:
+        root = run["project"].path / "runs" / "phase1b-overhead"
+        return sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
+
+    output = os.environ.get("NOVEL_PHASE1B_OVERHEAD_REPORT")
+    if output:
+        payload = {
+            "schema": "Phase1BOverheadReportV1",
+            "timing_scope": "one deterministic offline complete short run",
+            "disabled_seconds": disabled_seconds,
+            "enabled_seconds": enabled_seconds,
+            "elapsed_delta_seconds": enabled_seconds - disabled_seconds,
+            "disabled_run_artifact_bytes": artifact_bytes(disabled),
+            "enabled_run_artifact_bytes": artifact_bytes(enabled),
+            "run_artifact_delta_bytes": (
+                artifact_bytes(enabled) - artifact_bytes(disabled)
+            ),
+            "ordered_model_calls_equal": True,
+            "model_call_delta": 0,
+            "system_prompt_hash_delta": 0,
+            "user_prompt_hash_delta": 0,
+            "prompt_parity_evidence": (
+                "test_feature_gate_does_not_change_same_project_prompt_or_budget"
+            ),
+            "output_budget_delta": 0,
+            "business_artifacts_equal": True,
+            "paid_model_calls": 0,
+        }
+        target = Path(output)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+            + "\n",
+            encoding="utf-8",
+        )

@@ -1,0 +1,31 @@
+{
+  "schema": "Phase1BLegacyNormalIsomorphicFixtureV1",
+  "version": 1,
+  "privacy": "sanitized-topology-only-no-real-prose",
+  "source_shape": "legacy-normal-maintenance-string-facts",
+  "facts": [
+    "synthetic durable fact 01", "synthetic durable fact 02",
+    "synthetic durable fact 03", "synthetic durable fact 04",
+    "synthetic durable fact 05", "synthetic durable fact 06",
+    "synthetic durable fact 07", "synthetic durable fact 08",
+    "synthetic durable fact 09", "synthetic durable fact 10",
+    "synthetic durable fact 11", "synthetic durable fact 12",
+    "synthetic durable fact 13", "synthetic durable fact 14",
+    "synthetic durable fact 15", "synthetic durable fact 16",
+    "synthetic durable fact 17", "synthetic durable fact 18",
+    "synthetic durable fact 19", "synthetic durable fact 20",
+    "synthetic durable fact 21", "synthetic durable fact 22",
+    "synthetic durable fact 23", "synthetic durable fact 24",
+    "synthetic durable fact 25", "synthetic durable fact 26",
+    "synthetic durable fact 27", "synthetic durable fact 28",
+    "synthetic durable fact 29", "synthetic durable fact 30",
+    "synthetic durable fact 31", "synthetic durable fact 32",
+    "synthetic durable fact 33", "synthetic durable fact 34",
+    "synthetic durable fact 35"
+  ],
+  "expected": {
+    "proposal_total": 35,
+    "legacy_only": 35,
+    "lost_before_v2": 0
+  }
+}

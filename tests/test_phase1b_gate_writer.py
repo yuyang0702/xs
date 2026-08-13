@@ -32,7 +32,9 @@ def _profiles(root) -> None:
     )
 
 
-def _eligible_fixture(root, *, legacy_accepted: bool = True):
+def _eligible_fixture(
+    root, *, legacy_accepted: bool = True, source_mode: str = "normal",
+):
     _profiles(root)
     source = (
         "Aster arrived at North Gate. "
@@ -72,14 +74,14 @@ def _eligible_fixture(root, *, legacy_accepted: bool = True):
         ],
     }
     units = proposal_units_from_candidate(
-        proposal, source_mode="normal", source_locator="fixture",
+        proposal, source_mode=source_mode, source_locator="fixture",
         source_attempt=1,
     )
     classified = classify_legacy_disposition(
         units, proposal if legacy_accepted else {"facts": []},
     )
     inventory = make_maintenance_inventory(
-        source_mode="normal",
+        source_mode=source_mode,
         source_artifact_hash=hashlib.sha256(source).hexdigest(),
         base_authority_revision=4,
         base_authority_hash=story_state_authority_hash(state),
@@ -157,6 +159,71 @@ def test_legacy_rejected_unit_remains_independently_v2_eligible(tmp_path) -> Non
     assert result.replay_counts["legacy_reject_v2_accept"] == 3
 
 
+def test_normal_and_window_share_v2_evidence_identity_and_eligibility(
+    tmp_path,
+) -> None:
+    results = []
+    for source_mode in ("normal", "window"):
+        source, state, inventory = _eligible_fixture(
+            tmp_path / source_mode, source_mode=source_mode,
+        )
+        results.append(evaluate_short_canonical_gate(
+            project_root=tmp_path / source_mode, project_id="project-1",
+            inventory=inventory, final_source_bytes=source,
+            story_state_revision=4, story_state_data=state,
+        ))
+    normal, window = results
+    assert [item.grounding for item in normal.evidence] == [
+        item.grounding for item in window.evidence
+    ]
+    assert [item.evidence_hash for item in normal.evidence] == [
+        item.evidence_hash for item in window.evidence
+    ]
+    assert [item.slot_id for item in normal.phase1a_mutations] == [
+        item.slot_id for item in window.phase1a_mutations
+    ]
+    assert [item.eligibility for item in normal.phase1a_mutations] == [
+        item.eligibility for item in window.phase1a_mutations
+    ]
+    assert [item.operation for item in normal.formal_mutations] == [
+        item.operation for item in window.formal_mutations
+    ]
+
+
+def test_stale_base_and_multiple_story_state_values_hold_batch(tmp_path) -> None:
+    source, state, inventory = _eligible_fixture(tmp_path / "stale")
+    stale = evaluate_short_canonical_gate(
+        project_root=tmp_path / "stale", project_id="project-1",
+        inventory=inventory, final_source_bytes=source,
+        story_state_revision=5, story_state_data=state,
+    )
+    assert stale.canonical_gate_result == "hold"
+    assert "stale_base_revision" in stale.canonical_hold_reasons
+    assert not stale.formal_mutations
+
+    source, state, inventory = _eligible_fixture(tmp_path / "multiple")
+    state["confirmed_facts"] = [{
+        "key": "Aster.location", "value": "West Hall",
+    }]
+    inventory = make_maintenance_inventory(
+        source_mode="normal",
+        source_artifact_hash=hashlib.sha256(source).hexdigest(),
+        base_authority_revision=4,
+        base_authority_hash=story_state_authority_hash(state),
+        units=inventory.units,
+    )
+    multiple = evaluate_short_canonical_gate(
+        project_root=tmp_path / "multiple", project_id="project-1",
+        inventory=inventory, final_source_bytes=source,
+        story_state_revision=4, story_state_data=state,
+    )
+    assert multiple.canonical_gate_result == "hold"
+    assert "story_state_multiple_current_values" in (
+        multiple.canonical_hold_reasons
+    )
+    assert not multiple.formal_mutations
+
+
 def test_projection_mismatch_holds_operational_readiness_not_canonical_gate(
     tmp_path,
 ) -> None:
@@ -217,6 +284,48 @@ def test_reserved_shape_or_source_hash_mismatch_holds_batch(tmp_path) -> None:
     }
 
 
+@pytest.mark.parametrize("semantic_domain", [
+    "future_normative", "provider-specific-domain",
+])
+def test_non_current_semantic_domain_holds_entire_batch(
+    tmp_path, semantic_domain,
+) -> None:
+    _profiles(tmp_path)
+    source = b"Aster arrived at North Gate."
+    state = {
+        "manuscript_revision": 0,
+        "character_states": {"Aster": {"location": "South Pier"}},
+    }
+    proposal = {"state_transitions": [{
+        "character": "Aster", "field": "location",
+        "from": "South Pier", "to": "North Gate",
+        "evidence": "arrived at North Gate",
+        "semantic_domain": semantic_domain,
+    }]}
+    units = proposal_units_from_candidate(
+        proposal, source_mode="normal", source_locator="semantic-domain",
+        source_attempt=1,
+    )
+    inventory = make_maintenance_inventory(
+        source_mode="normal",
+        source_artifact_hash=hashlib.sha256(source).hexdigest(),
+        base_authority_revision=1,
+        base_authority_hash=story_state_authority_hash(state), units=units,
+    )
+    result = evaluate_short_canonical_gate(
+        project_root=tmp_path, project_id="project-1",
+        inventory=inventory, final_source_bytes=source,
+        story_state_revision=1, story_state_data=state,
+    )
+    assert result.canonical_gate_result == "hold"
+    assert "unauthorized_semantic_domain" in result.canonical_hold_reasons
+    assert not result.formal_mutations
+    if semantic_domain == "future_normative":
+        assert result.claims[0].semantic_domain == "future_normative"
+    else:
+        assert not result.claims
+
+
 def test_formal_receipt_separates_story_time_and_source_hash(tmp_path) -> None:
     source, state, inventory = _eligible_fixture(tmp_path)
     result = evaluate_short_canonical_gate(
@@ -230,12 +339,16 @@ def test_formal_receipt_separates_story_time_and_source_hash(tmp_path) -> None:
         candidate_hash=hashlib.sha256(source).hexdigest(),
         writer_plan_hash="b" * 64,
         journal_frozen_input_hash="c" * 64,
+        journal_saga_id="run-1",
     )
     assert receipt.story_time == result.story_time.story_time
     assert receipt.source_artifact_hash == hashlib.sha256(source).hexdigest()
     assert receipt.story_time != receipt.source_artifact_hash
     assert receipt.story_state_commit_count == 1
     assert receipt.commit_performed is True
+    assert receipt.journal_saga_id == "run-1"
+    assert receipt.rejected_mutation_ids == ()
+    assert receipt.held_mutation_ids == ()
 
 
 def test_writer_plan_applies_both_owners_to_base_once() -> None:

@@ -894,6 +894,7 @@ def extract_shadow_claim_inputs(
         operation: MutationOperation = "ASSERT", expected: Any = None,
         raw_object: str | None = None, knowledge_topic: Any = None,
         perspective: Perspective = "objective_world",
+        semantic_domain: SemanticDomain = "occurred_current",
     ) -> None:
         subject, subject_status = _resolved_or_ambiguous_entity(
             aliases, raw_subject,
@@ -908,7 +909,7 @@ def extract_shadow_claim_inputs(
             claim_kind=kind, subject_id=subject, predicate=predicate,
             object_id=object_id, knowledge_owner_id=owner,
             knowledge_topic=knowledge_topic,
-            perspective=perspective, semantic_domain="occurred_current",
+            perspective=perspective, semantic_domain=semantic_domain,
             story_time=story_time, value=value,
             source_artifact_hash=source_artifact_hash,
         )
@@ -947,11 +948,15 @@ def extract_shadow_claim_inputs(
                 str(evidence.get("quote") or "").strip()
                 if isinstance(evidence, Mapping) else str(evidence or value).strip()
             )
+            semantic_domain = raw.get("semantic_domain", "occurred_current")
+            if semantic_domain not in {"occurred_current", "future_normative"}:
+                continue
             if parts[1] == "location":
                 add(
                     kind="character.location", raw_subject=parts[0],
                     predicate="location", value=value, raw_key=key,
                     evidence_text=evidence_text,
+                    semantic_domain=semantic_domain,
                 )
             elif parts[1] == "knowledge" and len(parts) > 2:
                 add(
@@ -959,6 +964,7 @@ def extract_shadow_claim_inputs(
                     predicate="knowledge", knowledge_topic=".".join(parts[2:]),
                     value=value, raw_key=key, evidence_text=evidence_text,
                     perspective="character_belief",
+                    semantic_domain=semantic_domain,
                 )
             elif (
                 len(parts) > 2
@@ -969,6 +975,7 @@ def extract_shadow_claim_inputs(
                     raw_object=parts[-1], predicate=parts[1], value=value,
                     raw_key=key, evidence_text=evidence_text,
                     perspective="character_belief",
+                    semantic_domain=semantic_domain,
                 )
 
     state = candidate.get("state")
@@ -1019,13 +1026,16 @@ def extract_shadow_claim_inputs(
                 str(evidence.get("quote") or "").strip()
                 if isinstance(evidence, Mapping) else str(evidence or "").strip()
             )
+            semantic_domain = raw.get("semantic_domain", "occurred_current")
+            if semantic_domain not in {"occurred_current", "future_normative"}:
+                continue
             if field == "location":
                 add(
                     kind="character.location", raw_subject=subject,
                     predicate="location", value=raw["to"],
                     raw_key=f"transition.{index}.{subject}.{field}",
                     evidence_text=evidence_text, operation="TRANSITION",
-                    expected=raw["from"],
+                    expected=raw["from"], semantic_domain=semantic_domain,
                 )
             elif field.startswith("knowledge."):
                 add(
@@ -1034,6 +1044,7 @@ def extract_shadow_claim_inputs(
                     value=raw["to"], raw_key=f"transition.{index}.{subject}.{field}",
                     evidence_text=evidence_text, operation="TRANSITION",
                     expected=raw["from"], perspective="character_belief",
+                    semantic_domain=semantic_domain,
                 )
             elif field.startswith("relationships."):
                 add(
@@ -1042,6 +1053,7 @@ def extract_shadow_claim_inputs(
                     value=raw["to"], raw_key=f"transition.{index}.{subject}.{field}",
                     evidence_text=evidence_text, operation="TRANSITION",
                     expected=raw["from"], perspective="character_belief",
+                    semantic_domain=semantic_domain,
                 )
     return tuple(sorted(observations, key=lambda item: item.claim.claim_id))
 

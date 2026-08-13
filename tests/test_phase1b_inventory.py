@@ -104,3 +104,55 @@ def test_legacy_rejection_is_annotation_not_v2_filter() -> None:
     )
     assert inventory_as_shadow_candidate(inventory)["facts"]
     assert inventory.lost_before_v2 == 0
+
+
+def test_legacy_text_facts_are_counted_before_v2_without_becoming_reserved() -> None:
+    proposal = {"facts": ["  first durable fact  ", "second durable fact"]}
+    units = proposal_units_from_candidate(
+        proposal, source_mode="normal", source_locator="legacy-text",
+        source_attempt=1,
+    )
+    assert len(units) == 2
+    assert {item.category for item in units} == {"legacy_only"}
+    assert {item.value for item in units} == {
+        "first durable fact", "second durable fact",
+    }
+    assert all(item.raw_key.startswith("maintenance.") for item in units)
+    classified = classify_legacy_disposition(units, proposal)
+    assert all(
+        item.legacy_disposition == "legacy_accepted" for item in classified
+    )
+    inventory = make_maintenance_inventory(
+        source_mode="normal", source_artifact_hash="a" * 64,
+        base_authority_revision=1, base_authority_hash="b" * 64,
+        units=classified,
+    )
+    assert predecision_replay_counts(inventory) == {
+        "proposal_total": 2, "legacy_accepted": 2,
+        "legacy_rejected": 0, "lost_before_v2": 0,
+    }
+
+
+def test_private_snapshot_isomorphic_legacy_normal_topology_is_lossless() -> None:
+    fixture = json.loads((
+        Path(__file__).parent / "fixtures" / "canonical"
+        / "phase1b-legacy-normal-isomorphic-v1.json"
+    ).read_text(encoding="utf-8"))
+    units = proposal_units_from_candidate(
+        {"facts": fixture["facts"]}, source_mode="normal",
+        source_locator="sanitized-private-isomorph", source_attempt=1,
+    )
+    inventory = make_maintenance_inventory(
+        source_mode="normal", source_artifact_hash="a" * 64,
+        base_authority_revision=2, base_authority_hash="b" * 64,
+        units=classify_legacy_disposition(
+            units, {"facts": fixture["facts"]},
+        ),
+    )
+    assert len(units) == fixture["expected"]["proposal_total"]
+    assert sum(item.category == "legacy_only" for item in units) == (
+        fixture["expected"]["legacy_only"]
+    )
+    assert inventory.lost_before_v2 == fixture["expected"][
+        "lost_before_v2"
+    ]

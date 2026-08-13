@@ -305,6 +305,7 @@ from novel_flywheel.short_canonical_promotion import (
     inventory_as_shadow_candidate,
     make_maintenance_inventory,
     predecision_replay_counts,
+    proposed_claim_batch_hash,
     proposal_units_from_candidate,
     short_canonical_feature_snapshot,
     short_canonical_journal_gate_payload,
@@ -4261,6 +4262,40 @@ class WorkflowService:
                             "formal_commit_performed": False,
                         },
                     )
+                    emit_observation(
+                        project.path,
+                        event_type="promotion_write",
+                        source_component="workflows._short_pipeline",
+                        source_writer="short_canonical_v2",
+                        observation_status="confirmed",
+                        payload={
+                            "store": "CanonicalPromotion",
+                            "writer": "short_canonical_v2",
+                            "decision": "hold",
+                            "canonical_gate_result": (
+                                decision.canonical_gate_result
+                            ),
+                            "operational_readiness": (
+                                decision.operational_readiness
+                            ),
+                            "hold_reasons": list(decision.hold_reasons),
+                            "commit_performed": False,
+                            "decision_hash": decision.decision_hash,
+                            "proposed_claim_batch_hash": (
+                                proposed_claim_batch_hash(
+                                    canonical_evaluation.batch
+                                )
+                            ),
+                            "projection_effects": [],
+                        },
+                        run_id=run_id,
+                        stage_id="short_canonical_v2_gate",
+                        semantic_domain="occurred_current",
+                        authority_revision=state.revision,
+                        authority_hash=canonical_json_sha256(state.data),
+                        object_old_hash=canonical_json_sha256(state.data),
+                        object_new_hash=candidate.content_hash,
+                    )
                     self.db.update_run(
                         run_id, "failed", "archive",
                         error="Short canonical promotion is on evidence hold.",
@@ -4302,6 +4337,7 @@ class WorkflowService:
                         path.relative_to(project.path).as_posix()
                         for path, _content in promotion_files
                     ),
+                    journal_saga_id=run_id,
                 )
                 gate_payload["superseded_candidate_id"] = draft_candidate.id
                 post_commit_gate = ProjectMutationPostCommitGateV1(
@@ -4411,6 +4447,42 @@ class WorkflowService:
                     )
                     completed_journal = finalize_project_mutation(
                         self.projects, run_id,
+                    )
+                    emit_observation(
+                        project.path,
+                        event_type="promotion_write",
+                        source_component="workflows._short_pipeline",
+                        source_writer="short_canonical_v2",
+                        observation_status="confirmed",
+                        payload={
+                            "store": "CanonicalPromotion",
+                            "writer": "short_canonical_v2",
+                            "decision": "committed",
+                            "canonical_gate_result": "eligible",
+                            "operational_readiness": "ready",
+                            "commit_performed": True,
+                            "receipt_hash": receipt.receipt_hash,
+                            "writer_plan_hash": gate_payload[
+                                "writer_plan_hash"
+                            ],
+                            "proposed_claim_batch_hash": gate_payload[
+                                "proposed_claim_batch_hash"
+                            ],
+                            "story_state_commit_count": 1,
+                            "projection_diagnostics_hash": (
+                                receipt.projection_diagnostics_hash
+                            ),
+                            "projection_effects": [],
+                        },
+                        run_id=run_id,
+                        stage_id="short_canonical_v2_commit",
+                        semantic_domain="occurred_current",
+                        authority_revision=receipt.target_revision,
+                        authority_hash=receipt.target_authority_hash,
+                        object_old_hash=gate_payload[
+                            "base_story_state_hash"
+                        ],
+                        object_new_hash=receipt.target_authority_hash,
                     )
                 except Exception as exc:
                     self.db.update_run(

@@ -1316,7 +1316,16 @@ class ProductionSizedShortGateway:
                     "fact_key": "ending.public_ledger",
                     "value": "调查员在天亮前公开完整底账并承担关系代价",
                 }],
-                "state": {"沈砚": {"knowledge": "已确认全部档案链"}},
+                "state": {"沈砚": {"knowledge": {
+                    "public-ledger": True,
+                }}},
+                "state_transitions": [{
+                    "character": "沈砚",
+                    "field": "knowledge.public-ledger",
+                    "from": False,
+                    "to": True,
+                    "evidence": "天亮前，沈砚公开完整底账",
+                }],
                 "world_rules": [], "timeline": ["底账在天亮前公开"],
             }, ensure_ascii=False))
         raise AssertionError(f"unexpected offline model call: {role}: {user[:160]}")
@@ -3061,6 +3070,10 @@ async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript
         premise="A missing archivist leaves a complete but contradictory evidence chain.",
         target_words=target_words,
     ))
+    (project.path / "characters" / "shen-yan.md").write_text(
+        "---\nname: 沈砚\nrole: protagonist\n---\n",
+        encoding="utf-8",
+    )
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = ProductionSizedShortGateway()
@@ -3093,6 +3106,15 @@ async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript
         state_candidate.id, initial_state.revision,
         {
             **initial_state.data,
+            "character_states": {
+                **initial_state.data.get("character_states", {}),
+                "沈砚": {
+                    **initial_state.data.get(
+                        "character_states", {},
+                    ).get("沈砚", {}),
+                    "knowledge": {"public-ledger": False},
+                },
+            },
             "outline": {"content": "", "events": formal_events},
             "ending": {
                 "surface_goal": "天亮前公开完整底账并找到失踪档案员",

@@ -22,6 +22,7 @@ from novel_flywheel.canonical_shadow import (
     canonical_sha256,
     claim_value_hash,
     entity_id,
+    extract_shadow_claim_inputs,
     make_proposed_claim,
     evaluate_maintenance_shadow,
     observe_maintenance_shadow,
@@ -56,6 +57,33 @@ def _claim() -> ProposedClaimV2:
         **payload,
         "claim_id": stable_id("claim", "ProposedClaimV2", payload),
     })
+
+
+def test_shadow_extraction_preserves_explicit_semantic_domains(tmp_path) -> None:
+    characters = tmp_path / "characters"
+    characters.mkdir()
+    (characters / "aster.md").write_text(
+        "---\nname: Aster\n---\n", encoding="utf-8",
+    )
+    aliases = build_entity_alias_index(
+        tmp_path, {"character_states": {"Aster": {}}},
+    )
+    rows = extract_shadow_claim_inputs(
+        {"facts": [
+            {
+                "key": "Aster.location", "value": "North Gate",
+                "semantic_domain": "future_normative",
+            },
+            {
+                "key": "Aster.knowledge.seal", "value": True,
+                "semantic_domain": "unknown-provider-domain",
+            },
+        ]},
+        aliases=aliases, story_time="chapter:32",
+        source_artifact_hash=H2,
+    )
+    assert len(rows) == 1
+    assert rows[0].claim.semantic_domain == "future_normative"
 
 
 def test_canonical_hash_ignores_dict_order_and_volatile_ids() -> None:

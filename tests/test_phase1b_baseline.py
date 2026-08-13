@@ -52,3 +52,20 @@ def test_phase1b_replay_corpus_has_balanced_predecision_shapes() -> None:
     }
     assert all(sample["source"] and isinstance(sample["proposal"], dict)
                for sample in samples)
+    assert any(
+        fact.get("semantic_domain") == "future_normative"
+        for sample in samples
+        for fact in sample["proposal"].get("facts", [])
+        if isinstance(fact, dict)
+    )
+    assert any(
+        sample["state"].get("confirmed_facts")
+        for sample in samples
+    )
+    assert any(
+        sample["state"].get("character_states", {}).get(
+            "Aster", {},
+        ).get("location") == "North Gate"
+        and sample["proposal"].get("facts")
+        for sample in samples
+    )

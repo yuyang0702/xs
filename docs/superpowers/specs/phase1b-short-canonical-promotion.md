@@ -43,6 +43,12 @@ Every structurally valid unit receives an inventory identity and disposition:
 `legacy_accepted`, `legacy_rejected`, `v2_eligible`, `v2_hold`,
 `lost_before_v2`, `legacy_accept_v2_reject`, and
 `legacy_reject_v2_accept`. Candidate commit requires `lost_before_v2=0`.
+Legacy text facts remain structurally valid Legacy-only units. Their stable
+`maintenance.<sha256-prefix>` key is derived with the same rule as the existing
+Legacy reducer, so an accepted string fact is counted rather than silently
+lost before V2. Explicit `future_normative` is preserved through inventory and
+shadow observation; unknown domains remain `unknown`. Neither can be rewritten
+to `occurred_current`.
 
 ## Stable story time
 
@@ -50,12 +56,13 @@ Every structurally valid unit receives an inventory identity and disposition:
 binds evidence, source bytes, publication closure, and candidate lineage; it is
 never the semantic time coordinate.
 
-Short uses `short-publication-endpoint-v1:<project-id>:edition:<n>`, where
-`edition` is the base `manuscript_revision + 1`. Project ID and the integer
-edition are stable business coordinates; timestamp, run ID, random UUID, and
-narrative hash are forbidden. Revisions of the same logical endpoint retain
-the story time and use `SUPERSEDE`. A later edition is a different transition
-point even when the value is unchanged.
+Short uses the logical tuple `(<project identity hash>, <edition>,
+publication_endpoint)` and serializes it as a stable content-addressed story
+time ID. `edition` is the base `manuscript_revision + 1`. Project identity and
+the integer edition are stable business coordinates; timestamp, run ID,
+random UUID, and narrative hash are forbidden. Revisions of the same logical
+endpoint retain the story time and use `SUPERSEDE`. A later edition is a
+different transition point even when the value is unchanged.
 
 ## Canonical eligibility and operational readiness
 
@@ -141,6 +148,13 @@ accepted Phase 1A mutation facts plus leaf patch values. Phase 1A
 `ShortCanonicalCommitReceiptV1` is deterministic from the frozen Journal gate
 payload and the committed target revision/hash. A hold produces
 `ShortCanonicalGateDecisionV1`, not a committed receipt.
+The formal receipt records accepted, rejected, and held mutation ID sets plus
+the frozen Journal/Saga run ID. A committed batch has empty rejected/held sets;
+any non-empty held set would have stopped before Journal preparation.
+
+Hash-only `promotion_write` observations record the V2 hold or committed
+decision after that decision is durable. Trace failure remains best effort and
+cannot participate in the Gate, CAS, Saga, receipt, retry, or recovery result.
 
 Rollback is `git revert` per Phase 1B commit plus both feature gates off. The
 Legacy path remains intact. A Journal already beyond `prepared` follows the
@@ -162,6 +176,8 @@ Candidate lane readiness requires offline tests for:
 - exactly one StoryState CAS and deterministic receipt recovery;
 - no added model call or prompt/token/budget change;
 - full Short flows at 13K, 20K, and 30K effective Han characters.
+- a read-only private legacy snapshot and a committed sanitized isomorphic
+  topology fixture; unverifiable legacy artifacts remain explicitly unknown.
 
 The final status is exactly `Short Canonical Promotion Candidate Lane Ready`
 or `Short Canonical Promotion Candidate Lane NO-GO`. It must not be described

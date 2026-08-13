@@ -53,6 +53,9 @@ ProposalShape = Literal[
 LegacyDisposition = Literal[
     "pending", "legacy_accepted", "legacy_rejected", "unknown",
 ]
+ProposalSemanticDomain = Literal[
+    "occurred_current", "future_normative", "unknown",
+]
 WriterOwner = Literal["legacy", "canonical_v2"]
 PatchOperation = Literal["set", "remove"]
 SHORT_CANONICAL_GATE_NAME = "short_canonical_v2_commit_v1"
@@ -81,6 +84,7 @@ class MaintenanceProposalUnitV1(_FrozenModel):
     value: Any
     expected_current: Any | None = None
     evidence_text: str | None = None
+    semantic_domain: ProposalSemanticDomain = "occurred_current"
     payload_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     legacy_disposition: LegacyDisposition = "pending"
 
@@ -96,6 +100,7 @@ class MaintenanceProposalUnitV1(_FrozenModel):
             "value": self.value,
             "expected_current": self.expected_current,
             "evidence_text": self.evidence_text,
+            "semantic_domain": self.semantic_domain,
         }) != self.payload_hash:
             raise ValueError("maintenance proposal unit payload hash is stale")
         if self.unit_id != stable_id(
@@ -332,7 +337,10 @@ class ShortCanonicalCommitReceiptV1(_FrozenModel):
     candidate_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     proposed_claim_batch_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     evidence_envelope_set_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
-    mutation_ids: tuple[str, ...]
+    accepted_mutation_ids: tuple[str, ...]
+    rejected_mutation_ids: tuple[str, ...]
+    held_mutation_ids: tuple[str, ...]
+    journal_saga_id: str = Field(min_length=1)
     writer_plan_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     journal_frozen_input_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
     commit_performed: Literal[True] = True
@@ -342,8 +350,12 @@ class ShortCanonicalCommitReceiptV1(_FrozenModel):
     def validate_receipt(self) -> "ShortCanonicalCommitReceiptV1":
         if self.target_revision != self.base_authority_revision + 1:
             raise ValueError("canonical receipt target revision is invalid")
-        if len(set(self.mutation_ids)) != len(self.mutation_ids):
+        if len(set(self.accepted_mutation_ids)) != len(
+            self.accepted_mutation_ids
+        ):
             raise ValueError("canonical receipt mutation IDs are duplicated")
+        if self.rejected_mutation_ids or self.held_mutation_ids:
+            raise ValueError("committed receipt cannot contain rejected mutations")
         payload = self.model_dump(
             mode="json", by_alias=True, exclude={"receipt_hash"},
         )
@@ -438,12 +450,14 @@ def _make_unit(
     *, source_mode: ProposalSourceMode, source_locator: str,
     source_attempt: int, shape: ProposalShape, raw_key: str, value: Any,
     expected_current: Any | None = None, evidence_text: str | None = None,
+    semantic_domain: ProposalSemanticDomain = "occurred_current",
     legacy_disposition: LegacyDisposition = "pending",
 ) -> MaintenanceProposalUnitV1:
     payload_hash = canonical_sha256("MaintenanceProposalUnitPayloadV1", {
         "shape": shape, "raw_key": raw_key, "value": value,
         "expected_current": expected_current,
         "evidence_text": evidence_text,
+        "semantic_domain": semantic_domain,
     })
     payload = {
         "schema": "MaintenanceProposalUnitV1", "version": 1,
@@ -451,7 +465,8 @@ def _make_unit(
         "source_attempt": source_attempt, "shape": shape,
         "category": _category(raw_key, shape), "raw_key": raw_key,
         "value": value, "expected_current": expected_current,
-        "evidence_text": evidence_text, "payload_hash": payload_hash,
+        "evidence_text": evidence_text,
+        "semantic_domain": semantic_domain, "payload_hash": payload_hash,
     }
     return MaintenanceProposalUnitV1.model_validate({
         **payload, "legacy_disposition": legacy_disposition,
@@ -459,6 +474,13 @@ def _make_unit(
             "proposal-unit", "MaintenanceProposalUnitV1", payload,
         ),
     })
+
+
+def _proposal_semantic_domain(raw: Mapping[str, Any]) -> ProposalSemanticDomain:
+    value = raw.get("semantic_domain")
+    if value in {"occurred_current", "future_normative"}:
+        return value
+    return "unknown" if "semantic_domain" in raw else "occurred_current"
 
 
 def _flatten_state(
@@ -485,6 +507,21 @@ def proposal_units_from_candidate(
     facts = candidate.get("facts")
     if isinstance(facts, list):
         for index, raw in enumerate(facts):
+            if isinstance(raw, str):
+                value = raw.strip()
+                if not value:
+                    continue
+                units.append(_make_unit(
+                    source_mode=source_mode,
+                    source_locator=f"{source_locator}:facts:{index}",
+                    source_attempt=source_attempt, shape="fact",
+                    raw_key=(
+                        "maintenance."
+                        + hashlib.sha256(value.encode("utf-8")).hexdigest()[:16]
+                    ),
+                    value=value,
+                ))
+                continue
             if not isinstance(raw, Mapping):
                 continue
             key = str(raw.get("key") or raw.get("fact_key") or "").strip()
@@ -496,6 +533,7 @@ def proposal_units_from_candidate(
                 source_locator=f"{source_locator}:facts:{index}",
                 source_attempt=source_attempt, shape="fact", raw_key=key,
                 value=value, evidence_text=_evidence_text(raw.get("evidence")),
+                semantic_domain=_proposal_semantic_domain(raw),
             ))
     state = candidate.get("state")
     if isinstance(state, Mapping):
@@ -523,6 +561,7 @@ def proposal_units_from_candidate(
                 source_attempt=source_attempt, shape="state_delta",
                 raw_key=f"{character}.{field}", value=value,
                 evidence_text=_evidence_text(raw.get("evidence")),
+                semantic_domain=_proposal_semantic_domain(raw),
             ))
     transitions = candidate.get("state_transitions")
     if isinstance(transitions, list):
@@ -544,6 +583,7 @@ def proposal_units_from_candidate(
                 raw_key=f"{character}.{field}", value=raw["to"],
                 expected_current=raw["from"],
                 evidence_text=_evidence_text(raw.get("evidence")),
+                semantic_domain=_proposal_semantic_domain(raw),
             ))
     for field, shape in (("world_rules", "world_rule"), ("timeline", "timeline")):
         values = candidate.get(field)
@@ -570,6 +610,10 @@ def proposal_units_from_candidate(
                 source_locator=f"{source_locator}:{field}:{index}",
                 source_attempt=source_attempt, shape=shape,
                 raw_key=key, value=value, evidence_text=evidence,
+                semantic_domain=(
+                    _proposal_semantic_domain(raw)
+                    if isinstance(raw, Mapping) else "occurred_current"
+                ),
             ))
     return tuple(sorted(units, key=lambda item: item.unit_id))
 
@@ -713,11 +757,13 @@ def inventory_as_shadow_candidate(
                 "character": character, "field": field,
                 "from": unit.expected_current, "to": unit.value,
                 "evidence": unit.evidence_text,
+                "semantic_domain": unit.semantic_domain,
             })
         else:
             facts.append({
                 "key": unit.raw_key, "value": unit.value,
                 "evidence": unit.evidence_text,
+                "semantic_domain": unit.semantic_domain,
             })
     return {"facts": facts, "state_transitions": transitions}
 
@@ -864,7 +910,7 @@ def _claim_for_unit(
         ),
         knowledge_topic=topic,
         perspective=perspective,
-        semantic_domain="occurred_current",
+        semantic_domain=unit.semantic_domain,
         story_time=story_time, value=unit.value,
         source_artifact_hash=source_artifact_hash,
     )
@@ -938,6 +984,12 @@ def evaluate_short_canonical_gate(
         item.category == "unsupported_reserved" for item in inventory.units
     ):
         canonical_reasons.append("unsupported_reserved_kind")
+    if any(
+        item.category != "legacy_only"
+        and item.semantic_domain != "occurred_current"
+        for item in inventory.units
+    ):
+        canonical_reasons.append("unauthorized_semantic_domain")
 
     provisional: list[tuple[
         MaintenanceProposalUnitV1, ProposedClaimV2,
@@ -948,6 +1000,8 @@ def evaluate_short_canonical_gate(
             "character.location", "character.knowledge",
             "character.relationship",
         }:
+            continue
+        if unit.semantic_domain == "unknown":
             continue
         claim, target_path, fact_key = _claim_for_unit(
             unit, aliases=aliases, story_time=story_time.story_time,
@@ -1084,11 +1138,12 @@ def evaluate_short_canonical_gate(
         "legacy_reject_v2_accept": legacy_reject_v2_accept,
     }
     reasons = tuple(sorted(set(canonical_reasons)))
+    committable_mutations = () if reasons else tuple(formal_mutations)
     return ShortCanonicalGateEvaluation(
         story_time=story_time, batch=batch, claims=unique_claims,
         evidence=tuple(evidence_rows),
         phase1a_mutations=tuple(shadow_mutations),
-        formal_mutations=tuple(formal_mutations),
+        formal_mutations=committable_mutations,
         canonical_gate_result="hold" if reasons else "eligible",
         canonical_hold_reasons=reasons,
         operational_readiness="hold" if operational_reasons else "ready",
@@ -1265,6 +1320,7 @@ def build_short_commit_receipt(
     target_revision: int, target_authority_hash: str,
     candidate_hash: str, writer_plan_hash: str,
     journal_frozen_input_hash: str,
+    journal_saga_id: str,
 ) -> ShortCanonicalCommitReceiptV1:
     if (
         evaluation.canonical_gate_result != "eligible"
@@ -1293,9 +1349,11 @@ def build_short_commit_receipt(
         "evidence_envelope_set_hash": evidence_envelope_set_hash(
             evaluation.evidence
         ),
-        "mutation_ids": tuple(sorted(
+        "accepted_mutation_ids": tuple(sorted(
             item.commit_mutation_id for item in evaluation.formal_mutations
         )),
+        "rejected_mutation_ids": (), "held_mutation_ids": (),
+        "journal_saga_id": journal_saga_id,
         "writer_plan_hash": writer_plan_hash,
         "journal_frozen_input_hash": journal_frozen_input_hash,
         "commit_performed": True, "story_state_commit_count": 1,
@@ -1313,7 +1371,7 @@ def short_canonical_journal_gate_payload(
     evaluation: ShortCanonicalGateEvaluation,
     inventory: MaintenanceProposalInventoryV1,
     writer_plan: ShortWriterPlanV1, candidate_hash: str,
-    expected_formal_targets: Sequence[str],
+    expected_formal_targets: Sequence[str], journal_saga_id: str,
 ) -> dict[str, Any]:
     if not feature_snapshot.enabled:
         raise ValueError("disabled feature snapshot cannot enter the V2 lane")
@@ -1341,9 +1399,11 @@ def short_canonical_journal_gate_payload(
         "evidence_envelope_set_hash": evidence_envelope_set_hash(
             evaluation.evidence
         ),
-        "mutation_ids": sorted(
+        "accepted_mutation_ids": sorted(
             item.commit_mutation_id for item in evaluation.formal_mutations
         ),
+        "rejected_mutation_ids": [], "held_mutation_ids": [],
+        "journal_saga_id": journal_saga_id,
         "writer_plan_hash": writer_plan.plan_hash,
     }
     receipt_input_hash = canonical_sha256(
@@ -1359,8 +1419,10 @@ def short_canonical_journal_gate_payload(
         "proposed_claim_batch_hash": receipt_input[
             "proposed_claim_batch_hash"
         ],
-        "accepted_mutation_ids": receipt_input["mutation_ids"],
-        "held_mutation_ids": [],
+        "accepted_mutation_ids": receipt_input["accepted_mutation_ids"],
+        "rejected_mutation_ids": receipt_input["rejected_mutation_ids"],
+        "held_mutation_ids": receipt_input["held_mutation_ids"],
+        "journal_saga_id": receipt_input["journal_saga_id"],
         "evidence_envelope_set_hash": receipt_input[
             "evidence_envelope_set_hash"
         ],
@@ -1422,7 +1484,14 @@ def build_short_commit_receipt_from_frozen_payload(
         "evidence_envelope_set_hash": receipt_input[
             "evidence_envelope_set_hash"
         ],
-        "mutation_ids": tuple(receipt_input["mutation_ids"]),
+        "accepted_mutation_ids": tuple(
+            receipt_input["accepted_mutation_ids"]
+        ),
+        "rejected_mutation_ids": tuple(
+            receipt_input["rejected_mutation_ids"]
+        ),
+        "held_mutation_ids": tuple(receipt_input["held_mutation_ids"]),
+        "journal_saga_id": receipt_input["journal_saga_id"],
         "writer_plan_hash": receipt_input["writer_plan_hash"],
         "journal_frozen_input_hash": actual_input_hash,
         "commit_performed": True, "story_state_commit_count": 1,

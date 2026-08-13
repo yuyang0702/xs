@@ -1723,3 +1723,32 @@ Rollback is to disable both flags and revert the Phase 1B commits. Existing
 flag-off projects stay on the legacy Short writer. Never delete a pending
 Phase 1B Journal or snapshot manually; let startup recovery close the exact
 frozen Saga first.
+
+The pre-decision inventory includes Legacy string facts as `legacy_only`
+units, using the existing `maintenance.<sha256-prefix>` identity rule. It also
+preserves explicit `future_normative` separately from `occurred_current`.
+Future or unknown semantic domains make a V2-owned batch hold; they are never
+coerced into current truth.
+
+The formal commit receipt records the accepted/rejected/held mutation sets and
+the frozen Journal/Saga run ID. Reliability trace adds a hash-only
+`promotion_write` observation for V2 hold or commit after the decision is
+durable; trace failure cannot change the result.
+
+Focused verification:
+
+```powershell
+& .venv\Scripts\python.exe -X utf8 -m pytest -q `
+  tests/test_phase1b_baseline.py `
+  tests/test_phase1b_inventory.py `
+  tests/test_phase1b_gate_writer.py `
+  tests/test_phase1b_workflow.py `
+  tests/test_phase1b_production.py `
+  tests/test_phase1_cutover_acceptance.py
+```
+
+The production-length tests replace only the paid network boundary and run the
+real 13K/20K/30K Short orchestration. A historical project artifact without a
+pre-decision inventory is reported as `unverifiable_legacy` and may only prove
+fail-closed compatibility. It is not a real canary and does not authorize
+production cutover.
