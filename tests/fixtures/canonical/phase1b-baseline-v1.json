@@ -1,0 +1,18 @@
+{
+  "schema": "Phase1BBaselineV1",
+  "baseline_head": "7e692151e155299a480a6977fb7f307d513bdd43",
+  "branch": "phase1a/canonical-contracts-shadow-gate-20260813",
+  "full_suite": {
+    "passed": 2303,
+    "skipped": 1,
+    "strict_xfailed": 5,
+    "failed": 0
+  },
+  "protected": {
+    "feature_default": "off",
+    "formal_writer": "existing-short-project-mutation",
+    "model_call_delta": 0,
+    "prompt_delta": 0,
+    "strict_xfail_count": 5
+  }
+}
