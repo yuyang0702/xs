@@ -1696,3 +1696,30 @@ legacy review/resume binding, and non-unique canonical context. Phase 1B, 1C,
 1D, Maintenance V2, StoryState authority cutover, Long promotion convergence,
 RepairContract enforcement, RecoveryPolicy enforcement, and `_stage`
 decomposition are outside this phase.
+# Phase 1B Short canonical candidate lane
+
+The Phase 1B Short canonical lane is a development-only candidate path. It is
+disabled unless both `NOVEL_SHORT_CANONICAL_V2=1` and the existing database
+feature flag `short_canonical_v2` are enabled for the exact project. A global
+flag never authorizes the lane. Production cutover remains separately gated.
+
+The lane runs after publication closure and before the existing Short Project
+Mutation Saga. It reuses the current Candidate, snapshot, formal target set,
+StoryState CAS, Journal, and recovery kernel. A batch evidence/identity/writer
+hold retains the polish Candidate as pending/protected and makes no formal,
+Canon, Memory, projection, Journal, or StoryState change. There is no Legacy
+fallback or partial promotion on hold.
+
+An eligible canary Journal has a `short_canonical_v2_commit_v1` post-commit
+gate. Its payload freezes the feature snapshot, policy, writer plan, claim and
+evidence hashes, base authority, Candidate/final narrative hashes, mutation
+IDs, formal targets, and deterministic receipt input. Recovery may only use
+these frozen values to roll the existing target forward or rebuild
+`short-canonical-commit-v1.json`; it never calls a model or reruns alias,
+evidence, identity, eligibility, or writer selection. Turning either flag off
+after Journal preparation does not reinterpret that run.
+
+Rollback is to disable both flags and revert the Phase 1B commits. Existing
+flag-off projects stay on the legacy Short writer. Never delete a pending
+Phase 1B Journal or snapshot manually; let startup recovery close the exact
+frozen Saga first.

@@ -5,6 +5,7 @@ import hashlib
 import pytest
 
 from novel_flywheel.canonical_shadow import story_state_authority_hash
+from novel_flywheel.db import Database
 from novel_flywheel.short_canonical_promotion import (
     build_short_commit_receipt,
     build_short_hold_decision,
@@ -16,6 +17,7 @@ from novel_flywheel.short_canonical_promotion import (
     proposal_units_from_candidate,
     select_short_mutation_operation,
     short_publication_story_time,
+    short_canonical_feature_snapshot,
 )
 
 
@@ -108,6 +110,18 @@ def test_story_time_is_logical_and_narrative_hash_independent() -> None:
         current_story_time=first.story_time,
         current_exists=True, explicit_transition=True,
     ) == "TRANSITION"
+
+
+def test_global_flag_cannot_authorize_project_canary(tmp_path, monkeypatch) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.set_feature_flag("short_canonical_v2", True)
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    snapshot = short_canonical_feature_snapshot(db, "project-1")
+    assert snapshot.flag_scope_type == "global"
+    assert snapshot.environment_enabled is True
+    assert snapshot.project_flag_enabled is False
+    assert snapshot.enabled is False
 
 
 def test_gate_uses_exact_story_state_and_final_evidence(tmp_path) -> None:

@@ -287,11 +287,18 @@ from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
 from novel_flywheel.reliability_trace import (
     changed_paths as reliability_changed_paths,
     emit_observation,
+    resolve_projection_provenance,
     safe_canonical_hash as reliability_hash,
 )
 from novel_flywheel.canonical_shadow import observe_maintenance_shadow
 from novel_flywheel.short_canonical_promotion import (
+    SHORT_CANONICAL_GATE_NAME,
+    SHORT_CANONICAL_RECEIPT,
     MaintenanceProposalInventoryV1,
+    build_short_commit_receipt_from_frozen_payload,
+    build_short_hold_decision,
+    build_short_writer_plan,
+    canonical_v2_writer_patches,
     candidate_from_window_envelope,
     classify_legacy_disposition,
     combine_maintenance_inventories,
@@ -299,7 +306,10 @@ from novel_flywheel.short_canonical_promotion import (
     make_maintenance_inventory,
     predecision_replay_counts,
     proposal_units_from_candidate,
+    short_canonical_feature_snapshot,
+    short_canonical_journal_gate_payload,
     short_publication_story_time,
+    evaluate_short_canonical_gate,
 )
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
@@ -3579,6 +3589,9 @@ class WorkflowService:
             )
             raise
         state = self.story_states.ensure(project.id, project.path)
+        short_canonical_feature = short_canonical_feature_snapshot(
+            self.db, project.id,
+        )
         candidate_id = None
         draft_candidate_id = None
         state_committed = False
@@ -4115,14 +4128,7 @@ class WorkflowService:
                 authority_revision=state.revision,
                 object_new_hash=candidate.content_hash,
             )
-            chapter_text = self._chapter_file(project, polished)
-            canon_json = json.dumps(canon, ensure_ascii=False, indent=2)
-            promotion_files = [
-                (formal[0], polished),
-                (formal[1], chapter_text),
-                (formal[2], canon_json),
-            ]
-            next_data = {
+            legacy_next_data = {
                 **state.data,
                 "confirmed_facts": confirmed,
                 "character_states": canon.get(
@@ -4138,6 +4144,171 @@ class WorkflowService:
                     state.data.get("manuscript_revision", 0),
                 ) + 1,
             }
+            canonical_evaluation = None
+            canonical_writer_plan = None
+            if short_canonical_feature.enabled:
+                inventory = self._read_short_maintenance_inventory(
+                    self._short_maintenance_inventory_path(
+                        run_path, maintenance_suffix,
+                    )
+                )
+                if inventory is None:
+                    inventory = make_maintenance_inventory(
+                        source_mode="normal",
+                        source_artifact_hash=hashlib.sha256(
+                            polished.encode("utf-8")
+                        ).hexdigest(),
+                        base_authority_revision=current_story_state.revision,
+                        base_authority_hash=canonical_json_sha256(
+                            current_story_state.data
+                        ),
+                        units=(), structurally_valid_unit_count=1,
+                        complete=False,
+                        coverage_gaps=("predecision_inventory_unavailable",),
+                    )
+                projection_diagnostics = (
+                    self._short_canonical_projection_diagnostics(
+                        project,
+                        authority_revision=current_story_state.revision,
+                        authority_hash=canonical_json_sha256(
+                            current_story_state.data
+                        ),
+                    )
+                )
+                canonical_evaluation = evaluate_short_canonical_gate(
+                    project_root=project.path, project_id=project.id,
+                    inventory=inventory,
+                    final_source_bytes=polished.encode("utf-8"),
+                    story_state_revision=current_story_state.revision,
+                    story_state_data=current_story_state.data,
+                    projection_diagnostics=projection_diagnostics,
+                )
+                try:
+                    v2_patches = canonical_v2_writer_patches(
+                        evaluation=canonical_evaluation,
+                        base_state=state.data,
+                        legacy_target=legacy_next_data,
+                        project_root=project.path,
+                    )
+                    canonical_writer_plan, next_data = build_short_writer_plan(
+                        base_state=state.data,
+                        legacy_target=legacy_next_data,
+                        v2_patches=v2_patches,
+                    )
+                except (KeyError, TypeError, ValueError):
+                    canonical_evaluation = replace(
+                        canonical_evaluation,
+                        canonical_gate_result="hold",
+                        canonical_hold_reasons=tuple(sorted(set(
+                            canonical_evaluation.canonical_hold_reasons
+                            + ("writer_ownership_ambiguity",)
+                        ))),
+                    )
+                    next_data = dict(state.data)
+                if (
+                    canonical_evaluation.canonical_gate_result == "hold"
+                    or canonical_evaluation.operational_readiness == "hold"
+                ):
+                    decision = build_short_hold_decision(
+                        evaluation=canonical_evaluation,
+                        inventory=inventory,
+                        candidate_hash=candidate.content_hash,
+                    )
+                    decision_path = (
+                        run_path / "receipts"
+                        / "short-canonical-gate-decision-v1.json"
+                    )
+                    atomic_write(
+                        decision_path,
+                        json.dumps(
+                            decision.model_dump(mode="json", by_alias=True),
+                            ensure_ascii=False, indent=2, sort_keys=True,
+                        ) + "\n",
+                        preserve_newlines=True,
+                    )
+                    self.story_states.update_candidate(
+                        candidate.id, content_hash=candidate.content_hash,
+                        metadata={
+                            **candidate.metadata,
+                            "canonical_v2": {
+                                "status": "hold", "protected": True,
+                                "decision_hash": decision.decision_hash,
+                                "decision_artifact": (
+                                    "receipts/short-canonical-gate-decision-v1.json"
+                                ),
+                            },
+                        },
+                    )
+                    self.story_states.reject(
+                        draft_candidate.id,
+                        "superseded by protected canonical V2 candidate",
+                    )
+                    draft_candidate_id = None
+                    snapshot.discard()
+                    self.db.add_run_event(
+                        run_id, "warning", "short_canonical_v2_hold",
+                        "Short canonical candidate was retained without formal promotion.",
+                        stage="archive", metadata={
+                            "candidate_id": candidate.id,
+                            "decision_hash": decision.decision_hash,
+                            "canonical_gate_result": (
+                                decision.canonical_gate_result
+                            ),
+                            "operational_readiness": (
+                                decision.operational_readiness
+                            ),
+                            "hold_reasons": list(decision.hold_reasons),
+                            "formal_commit_performed": False,
+                        },
+                    )
+                    self.db.update_run(
+                        run_id, "failed", "archive",
+                        error="Short canonical promotion is on evidence hold.",
+                    )
+                    return self.db.get_run(run_id) or {
+                        "id": run_id, "status": "failed",
+                    }
+                if canonical_writer_plan is None:
+                    raise RuntimeError("Short canonical writer plan is unavailable")
+                confirmed = list(next_data.get("confirmed_facts") or [])
+                canon = {
+                    **canon,
+                    "facts": confirmed,
+                    "state": next_data.get("character_states", {}),
+                    "world_rules": next_data.get("world_rules", []),
+                    "timeline": next_data.get("timeline_events", []),
+                }
+            else:
+                next_data = legacy_next_data
+
+            chapter_text = self._chapter_file(project, polished)
+            canon_json = json.dumps(canon, ensure_ascii=False, indent=2)
+            promotion_files = [
+                (formal[0], polished),
+                (formal[1], chapter_text),
+                (formal[2], canon_json),
+            ]
+            post_commit_gate = None
+            if short_canonical_feature.enabled:
+                if canonical_evaluation is None or canonical_writer_plan is None:
+                    raise RuntimeError("Short canonical commit inputs are unavailable")
+                gate_payload = short_canonical_journal_gate_payload(
+                    feature_snapshot=short_canonical_feature,
+                    evaluation=canonical_evaluation,
+                    inventory=inventory,
+                    writer_plan=canonical_writer_plan,
+                    candidate_hash=candidate.content_hash,
+                    expected_formal_targets=tuple(
+                        path.relative_to(project.path).as_posix()
+                        for path, _content in promotion_files
+                    ),
+                )
+                gate_payload["superseded_candidate_id"] = draft_candidate.id
+                post_commit_gate = ProjectMutationPostCommitGateV1(
+                    name=SHORT_CANONICAL_GATE_NAME,
+                    payload_sha256=canonical_json_sha256(gate_payload),
+                    payload=gate_payload,
+                )
             promotion_journal_path = project_mutation_journal_path(
                 project.path, run_id,
             )
@@ -4171,6 +4342,7 @@ class WorkflowService:
                     path.relative_to(project.path).as_posix()
                     for path, _content in promotion_files
                 ),
+                post_commit_gate=post_commit_gate,
             )
             write_project_mutation_journal(
                 promotion_journal_path, promotion_journal,
@@ -4200,10 +4372,70 @@ class WorkflowService:
             write_project_mutation_journal(
                 promotion_journal_path, promotion_journal,
             )
-            completed_journal = complete_project_mutation(
-                self.projects, run_id,
-            )
-            state_committed = True
+            if short_canonical_feature.enabled:
+                completed_journal = commit_project_mutation_authority(
+                    self.projects, run_id,
+                )
+                state_committed = True
+                if (
+                    completed_journal.story_state is None
+                    or completed_journal.post_commit_gate is None
+                ):
+                    raise RuntimeError(
+                        "Short canonical committed Saga lacks frozen authority"
+                    )
+                try:
+                    receipt = build_short_commit_receipt_from_frozen_payload(
+                        gate_payload=completed_journal.post_commit_gate.payload,
+                        target_revision=(
+                            completed_journal.story_state.target_revision
+                        ),
+                        target_authority_hash=(
+                            completed_journal.story_state.state_sha256
+                        ),
+                    )
+                    receipt_path = (
+                        run_path / "receipts" / SHORT_CANONICAL_RECEIPT
+                    )
+                    atomic_write(
+                        receipt_path,
+                        json.dumps(
+                            receipt.model_dump(mode="json", by_alias=True),
+                            ensure_ascii=False, indent=2, sort_keys=True,
+                        ) + "\n",
+                        preserve_newlines=True,
+                    )
+                    record_project_mutation_gate_result(
+                        self.projects, run_id, status="passed",
+                        receipt_path=receipt_path,
+                    )
+                    completed_journal = finalize_project_mutation(
+                        self.projects, run_id,
+                    )
+                except Exception as exc:
+                    self.db.update_run(
+                        run_id, "recovering_protocol", "archive",
+                        error=_safe_workflow_error(
+                            exc, boundary="short.canonical_receipt_recovery",
+                        ),
+                    )
+                    self.db.add_run_event(
+                        run_id, "warning",
+                        "short_canonical_receipt_recovery_pending",
+                        "Canonical authority committed; deterministic receipt recovery is pending.",
+                        stage="archive", metadata={
+                            "model_call_delta": 0,
+                            "semantic_re_evaluation": False,
+                        },
+                    )
+                    return self.db.get_run(run_id) or {
+                        "id": run_id, "status": "recovering_protocol",
+                    }
+            else:
+                completed_journal = complete_project_mutation(
+                    self.projects, run_id,
+                )
+                state_committed = True
             self.story_states.reject(draft_candidate.id, "superseded by accepted polish")
             self.db.add_run_event(
                 run_id, "success", "story_state_committed", "正式稿与权威故事状态已提交",
@@ -16173,6 +16405,52 @@ class WorkflowService:
         except (OSError, UnicodeError, ValueError, TypeError):
             return None
 
+    def _short_canonical_projection_diagnostics(
+        self, project: Project, *, authority_revision: int,
+        authority_hash: str,
+    ) -> tuple[dict[str, Any], ...]:
+        projections = {
+            "canon_facts": (
+                "SELECT COUNT(*) AS count FROM canon_facts WHERE project_id=?"
+            ),
+            "chapter_states": (
+                "SELECT COUNT(*) AS count FROM chapter_states WHERE project_id=?"
+            ),
+            "chapter_search": (
+                "SELECT COUNT(*) AS count FROM chapter_search WHERE project_id=?"
+            ),
+        }
+        rows: list[dict[str, Any]] = []
+        present: list[str] = []
+        with self.db.connect() as connection:
+            for projection, query in projections.items():
+                row = connection.execute(query, (project.id,)).fetchone()
+                if row is None or int(row["count"] or 0) == 0:
+                    rows.append({
+                        "projection": projection,
+                        "freshness": "not_present",
+                        "source_authority_hash": None,
+                        "actual_source_revision": None,
+                    })
+                else:
+                    present.append(projection)
+        if present:
+            report = resolve_projection_provenance(
+                project.path, projections=present,
+                requested_authority_revision=authority_revision,
+                requested_authority_hash=authority_hash,
+            )
+            rows.extend(report["projection_sources"])
+            if report["reader_coverage_gaps"]:
+                rows.append({
+                    "projection": "reliability_trace",
+                    "freshness": "unknown",
+                    "coverage_gap_hash": canonical_json_sha256(
+                        report["reader_coverage_gaps"]
+                    ),
+                })
+        return tuple(sorted(rows, key=lambda item: str(item["projection"])))
+
     async def _close_short_maintenance_window(
         self,
         run_id: str,
@@ -16718,6 +16996,12 @@ class WorkflowService:
                     inventory = combine_maintenance_inventories(
                         fallback_inventories,
                     )
+                self._write_short_maintenance_inventory(
+                    self._short_maintenance_inventory_path(
+                        run_path, suffix,
+                    ),
+                    inventory,
+                )
                 if current_state is not None:
                     observe_maintenance_shadow(
                         project_root=project.path,
@@ -16864,6 +17148,13 @@ class WorkflowService:
                     ),
                     inventory,
                 )
+                if stage_suffix != suffix:
+                    self._write_short_maintenance_inventory(
+                        self._short_maintenance_inventory_path(
+                            run_path, suffix,
+                        ),
+                        inventory,
+                    )
                 if current_state is not None:
                     observe_maintenance_shadow(
                         project_root=project.path,

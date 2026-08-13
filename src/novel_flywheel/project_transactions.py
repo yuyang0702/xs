@@ -929,12 +929,39 @@ def recover_project_mutations(
     *,
     workflow: str,
 ) -> list[str]:
-    recovered = []
+    recovered: list[str] = []
+    if workflow == "short-story":
+        from novel_flywheel.short_canonical_promotion import (
+            SHORT_CANONICAL_GATE_NAME,
+            recover_short_canonical_promotions,
+        )
+        recovered.extend(
+            recover_short_canonical_promotions(store, workflow=workflow)
+        )
+    else:
+        SHORT_CANONICAL_GATE_NAME = ""
     for run in store.db.list_nonterminal_workflow_runs(workflow):
         try:
             project = store.get(str(run["project_id"]))
         except Exception:
             project = None
+        if project is not None and SHORT_CANONICAL_GATE_NAME:
+            try:
+                journal = load_project_mutation_journal(
+                    project_mutation_journal_path(
+                        project.path, str(run["id"]),
+                    )
+                )
+            except Exception:
+                journal = None
+            if (
+                journal is not None
+                and journal.post_commit_gate is not None
+                and journal.post_commit_gate.name == SHORT_CANONICAL_GATE_NAME
+            ):
+                # The domain recovery above either completed this frozen lane
+                # or deliberately retained its evidence for a later retry.
+                continue
         try:
             complete_project_mutation(store, str(run["id"]))
         except Exception as exc:

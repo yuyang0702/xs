@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -54,6 +55,8 @@ LegacyDisposition = Literal[
 ]
 WriterOwner = Literal["legacy", "canonical_v2"]
 PatchOperation = Literal["set", "remove"]
+SHORT_CANONICAL_GATE_NAME = "short_canonical_v2_commit_v1"
+SHORT_CANONICAL_RECEIPT = "short-canonical-commit-v1.json"
 
 
 class _FrozenModel(BaseModel):
@@ -348,6 +351,37 @@ class ShortCanonicalCommitReceiptV1(_FrozenModel):
             self.receipt_hash
         ):
             raise ValueError("canonical commit receipt hash is stale")
+        return self
+
+
+class ShortCanonicalFeatureSnapshotV1(_FrozenModel):
+    schema_name: Literal["ShortCanonicalFeatureSnapshotV1"] = Field(
+        default="ShortCanonicalFeatureSnapshotV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    snapshot_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    environment_enabled: bool
+    project_flag_enabled: bool
+    flag_scope_type: str
+    flag_scope_id_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
+    enabled: bool
+
+    @model_validator(mode="after")
+    def validate_snapshot(self) -> "ShortCanonicalFeatureSnapshotV1":
+        expected = (
+            self.environment_enabled and self.project_flag_enabled
+            and self.flag_scope_type == "project"
+        )
+        if self.enabled != expected:
+            raise ValueError("short canonical feature snapshot is inconsistent")
+        payload = self.model_dump(
+            mode="json", by_alias=True, exclude={"snapshot_hash"},
+        )
+        if canonical_sha256("ShortCanonicalFeatureSnapshotV1", payload) != (
+            self.snapshot_hash
+        ):
+            raise ValueError("short canonical feature snapshot hash is stale")
         return self
 
 
@@ -721,6 +755,39 @@ def short_publication_story_time(
     )
 
 
+def short_canonical_feature_snapshot(
+    db: Any, project_id: str,
+) -> ShortCanonicalFeatureSnapshotV1:
+    environment_enabled = os.environ.get(
+        "NOVEL_SHORT_CANONICAL_V2", "0",
+    ) == "1"
+    flag = db.feature_flag(
+        "short_canonical_v2", project_id=project_id, default=False,
+    )
+    exact_project_scope = (
+        flag.get("scope_type") == "project"
+        and str(flag.get("scope_id")) == project_id
+    )
+    project_enabled = bool(flag.get("enabled")) and exact_project_scope
+    scope_hash = hashlib.sha256(
+        str(flag.get("scope_id") or "*").encode("utf-8")
+    ).hexdigest()
+    payload = {
+        "schema": "ShortCanonicalFeatureSnapshotV1", "version": 1,
+        "environment_enabled": environment_enabled,
+        "project_flag_enabled": project_enabled,
+        "flag_scope_type": str(flag.get("scope_type") or "default"),
+        "flag_scope_id_hash": scope_hash,
+        "enabled": environment_enabled and project_enabled,
+    }
+    return ShortCanonicalFeatureSnapshotV1.model_validate({
+        **payload,
+        "snapshot_hash": canonical_sha256(
+            "ShortCanonicalFeatureSnapshotV1", payload,
+        ),
+    })
+
+
 def select_short_mutation_operation(
     *, proposed_story_time: str, current_story_time: str | None,
     current_exists: bool, explicit_transition: bool,
@@ -1047,6 +1114,99 @@ def make_writer_patch(
     )
 
 
+def _pointer_value(root: Any, path: str) -> tuple[bool, Any]:
+    cursor = root
+    for token in _pointer_tokens(path):
+        try:
+            cursor = cursor[int(token)] if isinstance(cursor, list) else cursor[token]
+        except (KeyError, IndexError, TypeError, ValueError):
+            return False, None
+    return True, cursor
+
+
+def canonical_v2_writer_patches(
+    *, evaluation: ShortCanonicalGateEvaluation,
+    base_state: Mapping[str, Any], legacy_target: Mapping[str, Any],
+    project_root: Path,
+) -> tuple[WriterLeafPatchV1, ...]:
+    """Build V2-owned state/fact leaves without using Legacy as a base."""
+
+    aliases = build_entity_alias_index(project_root, base_state)
+    source_hash = evaluation.batch.source_artifact_hash
+    story_time = evaluation.story_time.story_time
+    legacy_facts = list(legacy_target.get("confirmed_facts") or [])
+    fact_slots: dict[str, list[int]] = {}
+    for index, raw in enumerate(legacy_facts):
+        if not isinstance(raw, Mapping):
+            continue
+        key = str(raw.get("key") or raw.get("fact_key") or "").strip()
+        value = raw.get("value", raw.get("fact"))
+        units = proposal_units_from_candidate(
+            {"facts": [{"key": key, "value": value}]},
+            source_mode="normal", source_locator=f"writer-fact:{index}",
+            source_attempt=1,
+        )
+        if len(units) != 1 or units[0].category not in {
+            "character.location", "character.knowledge",
+            "character.relationship",
+        }:
+            continue
+        claim, _target, _fact_key = _claim_for_unit(
+            units[0], aliases=aliases, story_time=story_time,
+            source_artifact_hash=source_hash,
+        )
+        slot = resolve_shadow_slot(claim).slot_id
+        if slot:
+            fact_slots.setdefault(slot, []).append(index)
+
+    patches: list[WriterLeafPatchV1] = []
+    appended = 0
+    for mutation in evaluation.formal_mutations:
+        exists, current = _pointer_value(base_state, mutation.target_state_path)
+        patches.append(make_writer_patch(
+            path=mutation.target_state_path, operation="set",
+            owner="canonical_v2", mutation_id=mutation.commit_mutation_id,
+            value=mutation.proposed_value,
+            no_change=(
+                exists and canonical_sha256("WriterComparableValueV1", current)
+                == canonical_sha256(
+                    "WriterComparableValueV1", mutation.proposed_value,
+                )
+            ),
+        ))
+        indices = fact_slots.get(mutation.slot_id, [])
+        if indices:
+            for index in indices:
+                path = f"/confirmed_facts/{index}/value"
+                exists, current = _pointer_value(base_state, path)
+                patches.append(make_writer_patch(
+                    path=path, operation="set", owner="canonical_v2",
+                    mutation_id=mutation.commit_mutation_id,
+                    value=mutation.proposed_value,
+                    no_change=(
+                        exists and canonical_sha256(
+                            "WriterComparableValueV1", current,
+                        ) == canonical_sha256(
+                            "WriterComparableValueV1", mutation.proposed_value,
+                        )
+                    ),
+                ))
+        else:
+            index = len(legacy_facts) + appended
+            appended += 1
+            patches.append(make_writer_patch(
+                path=f"/confirmed_facts/{index}", operation="set",
+                owner="canonical_v2",
+                mutation_id=mutation.commit_mutation_id,
+                value={
+                    "key": mutation.canonical_fact_key,
+                    "value": mutation.proposed_value,
+                    "source": f"canonical-v2:{mutation.commit_mutation_id}",
+                },
+            ))
+    return tuple(patches)
+
+
 def proposed_claim_batch_hash(batch: ProposedClaimBatchV2) -> str:
     return canonical_sha256(
         "ProposedClaimBatchV2",
@@ -1148,6 +1308,133 @@ def build_short_commit_receipt(
     })
 
 
+def short_canonical_journal_gate_payload(
+    *, feature_snapshot: ShortCanonicalFeatureSnapshotV1,
+    evaluation: ShortCanonicalGateEvaluation,
+    inventory: MaintenanceProposalInventoryV1,
+    writer_plan: ShortWriterPlanV1, candidate_hash: str,
+    expected_formal_targets: Sequence[str],
+) -> dict[str, Any]:
+    if not feature_snapshot.enabled:
+        raise ValueError("disabled feature snapshot cannot enter the V2 lane")
+    if (
+        evaluation.canonical_gate_result != "eligible"
+        or evaluation.operational_readiness != "ready"
+    ):
+        raise ValueError("held canonical evaluation cannot enter the Saga")
+    receipt_input = {
+        "lane": "short_canonical_v2",
+        "policy_version": "short-canonical-policy-v1",
+        "canonical_gate_result": "eligible",
+        "operational_readiness": "ready",
+        "projection_diagnostics_hash": canonical_sha256(
+            "ProjectionDiagnosticsV1", evaluation.projection_diagnostics,
+        ),
+        "story_time": evaluation.story_time.story_time,
+        "source_artifact_hash": inventory.source_artifact_hash,
+        "base_authority_revision": inventory.base_authority_revision,
+        "base_authority_hash": inventory.base_authority_hash,
+        "candidate_hash": candidate_hash,
+        "proposed_claim_batch_hash": proposed_claim_batch_hash(
+            evaluation.batch
+        ),
+        "evidence_envelope_set_hash": evidence_envelope_set_hash(
+            evaluation.evidence
+        ),
+        "mutation_ids": sorted(
+            item.commit_mutation_id for item in evaluation.formal_mutations
+        ),
+        "writer_plan_hash": writer_plan.plan_hash,
+    }
+    receipt_input_hash = canonical_sha256(
+        "ShortCanonicalReceiptDeterministicInputV1", receipt_input,
+    )
+    return {
+        "lane": "short_canonical_v2",
+        "feature_flag_snapshot": feature_snapshot.model_dump(
+            mode="json", by_alias=True,
+        ),
+        "policy_version": "short-canonical-policy-v1",
+        "writer_plan_hash": writer_plan.plan_hash,
+        "proposed_claim_batch_hash": receipt_input[
+            "proposed_claim_batch_hash"
+        ],
+        "accepted_mutation_ids": receipt_input["mutation_ids"],
+        "held_mutation_ids": [],
+        "evidence_envelope_set_hash": receipt_input[
+            "evidence_envelope_set_hash"
+        ],
+        "base_story_state_revision": inventory.base_authority_revision,
+        "base_story_state_hash": inventory.base_authority_hash,
+        "candidate_hash": candidate_hash,
+        "final_narrative_hash": inventory.source_artifact_hash,
+        "story_time": evaluation.story_time.story_time,
+        "expected_formal_targets": sorted(expected_formal_targets),
+        "formal_receipt_deterministic_input_hash": receipt_input_hash,
+        "receipt_input": receipt_input,
+    }
+
+
+def build_short_commit_receipt_from_frozen_payload(
+    *, gate_payload: Mapping[str, Any], target_revision: int,
+    target_authority_hash: str,
+) -> ShortCanonicalCommitReceiptV1:
+    """Rebuild a receipt without rerunning any semantic decision."""
+
+    if gate_payload.get("lane") != "short_canonical_v2":
+        raise ValueError("journal does not own the Short V2 lane")
+    receipt_input = gate_payload.get("receipt_input")
+    if not isinstance(receipt_input, Mapping):
+        raise ValueError("journal receipt input is unavailable")
+    actual_input_hash = canonical_sha256(
+        "ShortCanonicalReceiptDeterministicInputV1", dict(receipt_input),
+    )
+    if actual_input_hash != gate_payload.get(
+        "formal_receipt_deterministic_input_hash"
+    ):
+        raise ValueError("journal receipt deterministic input is stale")
+    if (
+        int(receipt_input.get("base_authority_revision") or 0) + 1
+        != target_revision
+    ):
+        raise ValueError("journal receipt target revision is stale")
+    payload = {
+        "schema": "ShortCanonicalCommitReceiptV1", "version": 1,
+        "lane": "short_canonical_v2", "outcome": "committed",
+        "policy_version": receipt_input["policy_version"],
+        "canonical_gate_result": receipt_input["canonical_gate_result"],
+        "operational_readiness": receipt_input["operational_readiness"],
+        "projection_diagnostics_hash": receipt_input[
+            "projection_diagnostics_hash"
+        ],
+        "story_time": receipt_input["story_time"],
+        "source_artifact_hash": receipt_input["source_artifact_hash"],
+        "base_authority_revision": receipt_input[
+            "base_authority_revision"
+        ],
+        "base_authority_hash": receipt_input["base_authority_hash"],
+        "target_revision": target_revision,
+        "target_authority_hash": target_authority_hash,
+        "candidate_hash": receipt_input["candidate_hash"],
+        "proposed_claim_batch_hash": receipt_input[
+            "proposed_claim_batch_hash"
+        ],
+        "evidence_envelope_set_hash": receipt_input[
+            "evidence_envelope_set_hash"
+        ],
+        "mutation_ids": tuple(receipt_input["mutation_ids"]),
+        "writer_plan_hash": receipt_input["writer_plan_hash"],
+        "journal_frozen_input_hash": actual_input_hash,
+        "commit_performed": True, "story_state_commit_count": 1,
+    }
+    return ShortCanonicalCommitReceiptV1.model_validate({
+        **payload,
+        "receipt_hash": canonical_sha256(
+            "ShortCanonicalCommitReceiptV1", payload,
+        ),
+    })
+
+
 def _join_pointer(path: str, token: str) -> str:
     return path + "/" + _pointer_escape(token)
 
@@ -1222,6 +1509,16 @@ def _apply_patch(target: Any, patch: WriterLeafPatchV1) -> None:
         cursor[leaf] = patch.value
 
 
+def _patch_sort_key(patch: WriterLeafPatchV1) -> tuple[Any, ...]:
+    tokens: list[tuple[int, Any]] = []
+    for token in _pointer_tokens(patch.path):
+        tokens.append((0, int(token)) if token.isdigit() else (1, token))
+    return (
+        0 if patch.owner == "legacy" else 1,
+        len(tokens), tuple(tokens),
+    )
+
+
 def build_short_writer_plan(
     *, base_state: Mapping[str, Any], legacy_target: Mapping[str, Any],
     v2_patches: Sequence[WriterLeafPatchV1],
@@ -1262,7 +1559,7 @@ def build_short_writer_plan(
     )
     setters = sorted(
         (item for item in combined if item.operation == "set"),
-        key=lambda item: (len(_pointer_tokens(item.path)), item.path),
+        key=_patch_sort_key,
     )
     for patch in [*removals, *setters]:
         if not patch.no_change:
@@ -1290,3 +1587,113 @@ def build_short_writer_plan(
         **payload, "plan_hash": canonical_sha256("ShortWriterPlanV1", payload),
     })
     return plan, result
+
+
+def recover_short_canonical_promotions(
+    store: Any, *, workflow: str = "short-story",
+) -> list[str]:
+    """Recover only from frozen Saga inputs; never re-evaluate semantics."""
+
+    from novel_flywheel.project_transactions import (
+        commit_project_mutation_authority,
+        finalize_project_mutation,
+        load_project_mutation_journal,
+        project_mutation_journal_path,
+        record_project_mutation_gate_result,
+    )
+    from novel_flywheel.reliability_trace import emit_observation
+    from novel_flywheel.storage import atomic_write
+
+    recovered: list[str] = []
+    for run in store.db.list_nonterminal_workflow_runs(workflow):
+        run_id = str(run["id"])
+        try:
+            project = store.get(str(run["project_id"]))
+            journal_path = project_mutation_journal_path(project.path, run_id)
+            journal = load_project_mutation_journal(journal_path)
+        except Exception:
+            continue
+        gate = journal.post_commit_gate
+        if gate is None or gate.name != SHORT_CANONICAL_GATE_NAME:
+            continue
+        try:
+            if journal.status in {"prepared", "artifacts_committed"}:
+                journal = commit_project_mutation_authority(store, run_id)
+            if journal.status == "rolled_back":
+                recovered.append(run_id)
+                continue
+            if journal.status != "committed" or journal.story_state is None:
+                raise ValueError("Short canonical Saga target is unavailable")
+            gate = journal.post_commit_gate
+            if gate is None:
+                raise ValueError("Short canonical Saga gate is unavailable")
+            receipt_path = (
+                project.path / "runs" / run_id / "receipts"
+                / SHORT_CANONICAL_RECEIPT
+            )
+            if gate.status == "pending":
+                receipt = build_short_commit_receipt_from_frozen_payload(
+                    gate_payload=gate.payload,
+                    target_revision=journal.story_state.target_revision,
+                    target_authority_hash=journal.story_state.state_sha256,
+                )
+                atomic_write(
+                    receipt_path,
+                    json.dumps(
+                        receipt.model_dump(mode="json", by_alias=True),
+                        ensure_ascii=False, indent=2, sort_keys=True,
+                    ) + "\n",
+                    preserve_newlines=True,
+                )
+                journal = record_project_mutation_gate_result(
+                    store, run_id, status="passed", receipt_path=receipt_path,
+                )
+            if journal.post_commit_gate is None or (
+                journal.post_commit_gate.status != "passed"
+            ):
+                raise ValueError("Short canonical Saga gate is not passed")
+            finalize_project_mutation(store, run_id)
+            superseded = str(gate.payload.get("superseded_candidate_id") or "")
+            if superseded:
+                from novel_flywheel.story_state import StoryStateStore
+                candidate = StoryStateStore(store.db).get_candidate(superseded)
+                if candidate is not None and candidate.status == "pending":
+                    StoryStateStore(store.db).reject(
+                        superseded, "superseded by accepted canonical V2 polish",
+                    )
+            emit_observation(
+                project.path, event_type="recovery_attempt",
+                source_component=(
+                    "short_canonical_promotion.recover_short_canonical_promotions"
+                ),
+                source_writer="short_canonical_v2_recovery",
+                observation_status="confirmed",
+                payload={
+                    "attempt_id": "short-canonical-v2-frozen-recovery",
+                    "parent_attempt_id": None,
+                    "action": "rebuild_receipt_from_frozen_journal",
+                    "outcome": "succeeded", "model_call_delta": 0,
+                    "semantic_re_evaluation": False,
+                },
+                run_id=run_id, stage_id="short_canonical_v2_recovery",
+            )
+            recovered.append(run_id)
+        except Exception as exc:
+            emit_observation(
+                project.path, event_type="recovery_attempt",
+                source_component=(
+                    "short_canonical_promotion.recover_short_canonical_promotions"
+                ),
+                source_writer="short_canonical_v2_recovery",
+                observation_status="confirmed",
+                payload={
+                    "attempt_id": "short-canonical-v2-frozen-recovery",
+                    "parent_attempt_id": None,
+                    "action": "rebuild_receipt_from_frozen_journal",
+                    "outcome": "failed", "model_call_delta": 0,
+                    "semantic_re_evaluation": False,
+                    "error_class": type(exc).__name__,
+                },
+                run_id=run_id, stage_id="short_canonical_v2_recovery",
+            )
+    return recovered

@@ -601,7 +601,7 @@ def recover_project_file_state_mutations(store: ProjectStore) -> list[str]:
         recovered = []
         for workflow in (
             "material-impact-apply", "material-edit", "outline-apply",
-            "materials-audit", "long-setup",
+            "materials-audit", "long-setup", "short-story",
         ):
             recovered.extend(
                 recover_project_mutations(store, workflow=workflow),
