@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -345,6 +346,40 @@ class ProjectionProvenanceV1(_ShadowModel):
     source_artifact_hash: Sha256 = Field(pattern=r"^[0-9a-f]{64}$")
     projection_hash: Sha256 = Field(pattern=r"^[0-9a-f]{64}$")
     writer: str = Field(min_length=1)
+
+
+@dataclass(frozen=True)
+class ShadowClaimInput:
+    claim: ProposedClaimV2
+    evidence_text: str | None
+    operation: MutationOperation
+    requested_expected_current_hash: str | None
+    raw_key_hash: str
+
+
+@dataclass(frozen=True)
+class ShadowObservationReport:
+    enabled: bool
+    workflow: str
+    claim_count: int
+    eligible_count: int
+    no_change_count: int
+    ineligible_count: int
+    ambiguous_count: int
+    exact_evidence_count: int
+    evidence_gap_count: int
+    identity_ambiguous_count: int
+    comparison_counts: dict[str, int]
+    receipt_hashes: tuple[str, ...]
+
+
+CONTROLLED_RELATIONSHIP_PREDICATES = frozenset({
+    "relationship", "trust", "hostility", "alliance", "romance", "kinship",
+})
+
+
+def shadow_enabled() -> bool:
+    return os.environ.get("NOVEL_CANONICAL_SHADOW_V1", "0") == "1"
 
 
 def story_state_authority_hash(state_data: Mapping[str, Any]) -> str:
@@ -830,3 +865,337 @@ def build_shadow_receipt(
             "ShadowCanonicalCommitReceiptV1", payload,
         ),
     })
+
+
+def _resolved_or_ambiguous_entity(
+    aliases: EntityAliasIndex, raw: str,
+) -> tuple[str, IdentityStatus]:
+    resolved, status = aliases.resolve(raw)
+    if resolved:
+        return resolved, status
+    return stable_id(
+        "ambiguous", "AmbiguousShadowEntityV1",
+        {"normalized_alias": normalize_entity_alias(raw), "status": status},
+    ), "ambiguous"
+
+
+def extract_shadow_claim_inputs(
+    candidate: Mapping[str, Any], *, aliases: EntityAliasIndex,
+    story_time: str | None, source_artifact_hash: str,
+) -> tuple[ShadowClaimInput, ...]:
+    """Project only the three Phase 1A kinds from a frozen legacy result."""
+
+    observations: list[ShadowClaimInput] = []
+    seen: dict[str, int] = {}
+
+    def add(
+        *, kind: ClaimKind, raw_subject: str, predicate: str, value: Any,
+        raw_key: str, evidence_text: str | None,
+        operation: MutationOperation = "ASSERT", expected: Any = None,
+        raw_object: str | None = None, knowledge_topic: Any = None,
+        perspective: Perspective = "objective_world",
+    ) -> None:
+        subject, subject_status = _resolved_or_ambiguous_entity(
+            aliases, raw_subject,
+        )
+        object_id = None
+        if raw_object is not None:
+            object_id, _object_status = _resolved_or_ambiguous_entity(
+                aliases, raw_object,
+            )
+        owner = subject if kind == "character.knowledge" else None
+        claim = make_proposed_claim(
+            claim_kind=kind, subject_id=subject, predicate=predicate,
+            object_id=object_id, knowledge_owner_id=owner,
+            knowledge_topic=knowledge_topic,
+            perspective=perspective, semantic_domain="occurred_current",
+            story_time=story_time, value=value,
+            source_artifact_hash=source_artifact_hash,
+        )
+        observation = ShadowClaimInput(
+            claim=claim, evidence_text=evidence_text,
+            operation=operation,
+            requested_expected_current_hash=(
+                claim_value_hash(expected)
+                if operation != "ASSERT" and expected is not None else None
+            ),
+            raw_key_hash=canonical_sha256("LegacyClaimKeyV1", {
+                "raw_key": raw_key,
+                "subject_status": subject_status,
+            }),
+        )
+        existing = seen.get(claim.claim_id)
+        if existing is not None:
+            if operation != "ASSERT":
+                observations[existing] = observation
+            return
+        seen[claim.claim_id] = len(observations)
+        observations.append(observation)
+
+    facts = candidate.get("facts")
+    if isinstance(facts, list):
+        for index, raw in enumerate(facts):
+            if not isinstance(raw, Mapping):
+                continue
+            key = str(raw.get("key") or raw.get("fact_key") or "").strip()
+            value = raw.get("value", raw.get("fact"))
+            parts = [item for item in key.split(".") if item]
+            if len(parts) < 2 or value in (None, ""):
+                continue
+            evidence = raw.get("evidence")
+            evidence_text = (
+                str(evidence.get("quote") or "").strip()
+                if isinstance(evidence, Mapping) else str(evidence or value).strip()
+            )
+            if parts[1] == "location":
+                add(
+                    kind="character.location", raw_subject=parts[0],
+                    predicate="location", value=value, raw_key=key,
+                    evidence_text=evidence_text,
+                )
+            elif parts[1] == "knowledge" and len(parts) > 2:
+                add(
+                    kind="character.knowledge", raw_subject=parts[0],
+                    predicate="knowledge", knowledge_topic=".".join(parts[2:]),
+                    value=value, raw_key=key, evidence_text=evidence_text,
+                    perspective="character_belief",
+                )
+            elif (
+                len(parts) > 2
+                and parts[1] in CONTROLLED_RELATIONSHIP_PREDICATES
+            ):
+                add(
+                    kind="character.relationship", raw_subject=parts[0],
+                    raw_object=parts[-1], predicate=parts[1], value=value,
+                    raw_key=key, evidence_text=evidence_text,
+                    perspective="character_belief",
+                )
+
+    state = candidate.get("state")
+    if isinstance(state, Mapping):
+        for raw_subject, raw_state in state.items():
+            if not isinstance(raw_state, Mapping):
+                continue
+            if "location" in raw_state:
+                value = raw_state["location"]
+                add(
+                    kind="character.location", raw_subject=str(raw_subject),
+                    predicate="location", value=value,
+                    raw_key=f"{raw_subject}.location",
+                    evidence_text=str(value) if isinstance(value, str) else None,
+                )
+            knowledge = raw_state.get("knowledge")
+            if isinstance(knowledge, Mapping):
+                for topic, value in knowledge.items():
+                    add(
+                        kind="character.knowledge", raw_subject=str(raw_subject),
+                        predicate="knowledge", knowledge_topic=topic, value=value,
+                        raw_key=f"{raw_subject}.knowledge.{topic}",
+                        evidence_text=str(topic) if isinstance(topic, str) else None,
+                        perspective="character_belief",
+                    )
+            relationships = raw_state.get("relationships")
+            if isinstance(relationships, Mapping):
+                for other, value in relationships.items():
+                    add(
+                        kind="character.relationship", raw_subject=str(raw_subject),
+                        raw_object=str(other), predicate="relationship", value=value,
+                        raw_key=f"{raw_subject}.relationship.{other}",
+                        evidence_text=str(value) if isinstance(value, str) else None,
+                        perspective="character_belief",
+                    )
+
+    transitions = candidate.get("state_transitions")
+    if isinstance(transitions, list):
+        for index, raw in enumerate(transitions):
+            if not isinstance(raw, Mapping):
+                continue
+            subject = str(raw.get("character") or "").strip()
+            field = str(raw.get("field") or "").strip()
+            if not subject or "from" not in raw or "to" not in raw:
+                continue
+            evidence = raw.get("evidence")
+            evidence_text = (
+                str(evidence.get("quote") or "").strip()
+                if isinstance(evidence, Mapping) else str(evidence or "").strip()
+            )
+            if field == "location":
+                add(
+                    kind="character.location", raw_subject=subject,
+                    predicate="location", value=raw["to"],
+                    raw_key=f"transition.{index}.{subject}.{field}",
+                    evidence_text=evidence_text, operation="TRANSITION",
+                    expected=raw["from"],
+                )
+            elif field.startswith("knowledge."):
+                add(
+                    kind="character.knowledge", raw_subject=subject,
+                    predicate="knowledge", knowledge_topic=field.split(".", 1)[1],
+                    value=raw["to"], raw_key=f"transition.{index}.{subject}.{field}",
+                    evidence_text=evidence_text, operation="TRANSITION",
+                    expected=raw["from"], perspective="character_belief",
+                )
+            elif field.startswith("relationships."):
+                add(
+                    kind="character.relationship", raw_subject=subject,
+                    raw_object=field.split(".", 1)[1], predicate="relationship",
+                    value=raw["to"], raw_key=f"transition.{index}.{subject}.{field}",
+                    evidence_text=evidence_text, operation="TRANSITION",
+                    expected=raw["from"], perspective="character_belief",
+                )
+    return tuple(sorted(observations, key=lambda item: item.claim.claim_id))
+
+
+def evaluate_maintenance_shadow(
+    *, project_root: Path, workflow: str, legacy_candidate: Mapping[str, Any],
+    final_source_bytes: bytes, story_time: str | None,
+    story_state_revision: int, story_state_data: Mapping[str, Any],
+    coverage_mode: Literal["complete_source", "window_union"],
+) -> tuple[ShadowObservationReport, tuple[dict[str, Any], ...]]:
+    """Compute a deterministic evaluation without any production writer."""
+
+    source_hash = hashlib.sha256(final_source_bytes).hexdigest()
+    authority_hash = story_state_authority_hash(story_state_data)
+    aliases = build_entity_alias_index(project_root, story_state_data)
+    inputs = extract_shadow_claim_inputs(
+        legacy_candidate, aliases=aliases, story_time=story_time,
+        source_artifact_hash=source_hash,
+    )
+    batch = make_claim_batch(
+        tuple(item.claim for item in inputs),
+        base_authority_revision=story_state_revision,
+        base_authority_hash=authority_hash,
+        source_artifact_hash=source_hash, coverage_mode=coverage_mode,
+    )
+    rows: list[dict[str, Any]] = []
+    comparisons: dict[str, int] = {}
+    receipts: list[str] = []
+    for item in inputs:
+        slot = resolve_shadow_slot(item.claim)
+        evidence = build_evidence_envelope(
+            item.claim, final_source_bytes=final_source_bytes,
+            declared_source_artifact_hash=source_hash,
+            evidence_text=item.evidence_text,
+            base_authority_revision=story_state_revision,
+            base_authority_hash=authority_hash,
+            covered_ranges=((0, len(final_source_bytes)),),
+        )
+        mutation = build_shadow_mutation(
+            operation=item.operation, claim=item.claim, evidence=evidence,
+            slot=slot, state_data=story_state_data,
+            actual_revision=story_state_revision,
+            actual_authority_hash=authority_hash, aliases=aliases,
+            requested_expected_current_hash=item.requested_expected_current_hash,
+        )
+        if slot.status != "exact":
+            comparison = "identity_false_split_candidate"
+        elif mutation.eligibility in {"eligible", "no_change"}:
+            comparison = "equivalent"
+        else:
+            comparison = "qualification_mismatch"
+        receipt = build_shadow_receipt(
+            mutation, legacy_comparison=comparison,
+        )
+        comparisons[comparison] = comparisons.get(comparison, 0) + 1
+        receipts.append(receipt.receipt_hash)
+        rows.append({
+            "workflow": workflow, "batch_id": batch.batch_id,
+            "claim_id": item.claim.claim_id,
+            "claim_kind": item.claim.claim_kind,
+            "raw_key_hash": item.raw_key_hash,
+            "slot_id": slot.slot_id,
+            "competition_key": slot.competition_key,
+            "identity_status": slot.status,
+            "evidence_hash": evidence.evidence_hash,
+            "grounding": evidence.grounding,
+            "evidence_gap_count": len(evidence.gaps),
+            "mutation_id": mutation.mutation_id,
+            "operation": mutation.operation,
+            "eligibility": mutation.eligibility,
+            "failure_codes": mutation.failure_codes,
+            "authority_slice_hash": mutation.authority_slice_hash,
+            "expected_current_hash": mutation.expected_current_hash,
+            "receipt_hash": receipt.receipt_hash,
+            "legacy_comparison": comparison,
+            "shadow_only": True, "commit_performed": False,
+            "source_artifact_hash": source_hash,
+            "base_authority_revision": story_state_revision,
+            "base_authority_hash": authority_hash,
+            "coverage_mode": coverage_mode,
+        })
+    report = ShadowObservationReport(
+        enabled=True, workflow=workflow, claim_count=len(rows),
+        eligible_count=sum(row["eligibility"] == "eligible" for row in rows),
+        no_change_count=sum(row["eligibility"] == "no_change" for row in rows),
+        ineligible_count=sum(row["eligibility"] == "ineligible" for row in rows),
+        ambiguous_count=sum(row["eligibility"] == "ambiguous" for row in rows),
+        exact_evidence_count=sum(row["grounding"] == "exact" for row in rows),
+        evidence_gap_count=sum(int(row["evidence_gap_count"]) for row in rows),
+        identity_ambiguous_count=sum(
+            row["identity_status"] != "exact" for row in rows
+        ),
+        comparison_counts=dict(sorted(comparisons.items())),
+        receipt_hashes=tuple(sorted(receipts)),
+    )
+    return report, tuple(rows)
+
+
+def observe_maintenance_shadow(
+    *, project_root: Path, workflow: str, legacy_candidate: Mapping[str, Any],
+    final_source_bytes: bytes, story_time: str | None,
+    story_state_revision: int, story_state_data: Mapping[str, Any],
+    coverage_mode: Literal["complete_source", "window_union"],
+    run_id: str | None = None,
+) -> ShadowObservationReport | None:
+    """Fail-open facade; disabled mode returns before alias or claim work."""
+
+    if not shadow_enabled():
+        return None
+    try:
+        report, rows = evaluate_maintenance_shadow(
+            project_root=project_root, workflow=workflow,
+            legacy_candidate=legacy_candidate,
+            final_source_bytes=final_source_bytes, story_time=story_time,
+            story_state_revision=story_state_revision,
+            story_state_data=story_state_data, coverage_mode=coverage_mode,
+        )
+        from novel_flywheel.reliability_trace import emit_observation
+
+        for row in rows:
+            emit_observation(
+                project_root, event_type="proposed_claim",
+                source_component="canonical_shadow.observe_maintenance_shadow",
+                source_writer=workflow, observation_status=(
+                    "confirmed" if row["identity_status"] == "exact" else "unknown"
+                ),
+                payload={
+                    "claim_kind": row["claim_kind"], "shadow_only": True,
+                    "affects_business_decision": False,
+                    "batch_id": row["batch_id"], "claim_id": row["claim_id"],
+                    "slot_id": row["slot_id"],
+                    "competition_key": row["competition_key"],
+                    "identity_status": row["identity_status"],
+                    "evidence_hash": row["evidence_hash"],
+                    "grounding": row["grounding"],
+                    "mutation_id": row["mutation_id"],
+                    "operation": row["operation"],
+                    "eligibility": row["eligibility"],
+                    "failure_codes": list(row["failure_codes"]),
+                    "authority_slice_hash": row["authority_slice_hash"],
+                    "expected_current_hash": row["expected_current_hash"],
+                    "receipt_hash": row["receipt_hash"],
+                    "legacy_comparison": row["legacy_comparison"],
+                    "commit_performed": False,
+                    "source_artifact_hash": row["source_artifact_hash"],
+                    "base_authority_revision": row["base_authority_revision"],
+                    "base_authority_hash": row["base_authority_hash"],
+                    "coverage_mode": row["coverage_mode"],
+                },
+                run_id=run_id, stage_id="maintenance_shadow",
+                semantic_domain="occurred_current",
+                authority_revision=story_state_revision,
+                authority_hash=story_state_authority_hash(story_state_data),
+            )
+        return report
+    except Exception:
+        return None

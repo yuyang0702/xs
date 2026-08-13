@@ -198,9 +198,12 @@ def test_projection_provenance_resolves_only_trace_backed_writers(tmp_path) -> N
             "requested_authority_revision": 4,
             "actual_source_revision": 4,
             "source_authority_hash": authority_hash,
+            "source_commit_id": "commit-" + "a" * 32,
             "projection_hash": projection_hash,
             "source_artifact": "ProjectMutationJournalV1",
             "source_artifact_hash": journal_hash,
+            "provenance_schema": "ProjectionProvenanceV1",
+            "provenance_version": 1,
             "freshness": "fresh",
         },
         correlation_id="provenance",
@@ -219,6 +222,7 @@ def test_projection_provenance_resolves_only_trace_backed_writers(tmp_path) -> N
     assert resolved["revision_metadata_present"] is True
     assert resolved["actual_source_revision"] == 4
     assert resolved["source_authority_hash"] == authority_hash
+    assert resolved["projection_sources"][0]["source_commit_id"].startswith("commit-")
     assert resolved["freshness"] == "fresh"
     assert resolved["projection_sources"][0]["source_artifact_hash"] == journal_hash
 
@@ -244,9 +248,12 @@ def test_projection_and_artifact_binding_matrices_preserve_exact_lineage() -> No
             "requested_authority_revision": 7,
             "actual_source_revision": 7,
             "source_authority_hash": authority_hash,
+            "source_commit_id": "commit-" + "b" * 32,
             "projection_hash": _hash("projection"),
             "source_artifact": "ProjectMutationJournalV1",
             "source_artifact_hash": _hash("journal"),
+            "provenance_schema": "ProjectionProvenanceV1",
+            "provenance_version": 1,
             "freshness": "fresh",
         },
         authority_revision=7,
@@ -287,11 +294,13 @@ def test_projection_and_artifact_binding_matrices_preserve_exact_lineage() -> No
     provenance = projection_provenance_matrix([projection])
     assert provenance[0]["actual_source_revision"] == 7
     assert provenance[0]["source_artifact_hash"] == _hash("journal")
+    assert provenance[0]["source_commit_id"].startswith("commit-")
     bindings = artifact_binding_matrix([binding, repair])
     assert bindings[0]["reviewed_object_hash"] == _hash("draft")
     assert bindings[0]["validator_set"] == [
         "contract_adapter", "domain_validator",
     ]
+    assert bindings[0]["binding_lane"] == "exact_v2"
     assert bindings[1]["parent_artifact"] == _hash("draft")
     assert bindings[1]["superseded_artifact"] == _hash("draft")
 

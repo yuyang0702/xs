@@ -18,6 +18,10 @@ from novel_flywheel.learning_artifacts import (
 )
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
+from novel_flywheel.canonical_shadow import (
+    ProjectionProvenanceV1,
+    stable_id as shadow_stable_id,
+)
 
 
 PROJECT_MUTATION_JOURNAL = "project-mutation-journal.json"
@@ -770,6 +774,20 @@ def _observe_project_mutation(
         memory_effect_hash = canonical_json_sha256([
             item.model_dump(mode="json") for item in journal.memory_effects
         ])
+        source_commit_id = shadow_stable_id(
+            "commit", "ProjectionSourceCommitV1", {
+                "operation": journal.operation,
+                "status": journal.status,
+                "source_authority_sha256": journal.source_authority_sha256,
+                "expected_story_state_revision": (
+                    journal.expected_story_state_revision
+                ),
+                "source_authority_revision": authority_revision,
+                "source_authority_hash": authority_hash,
+                "artifact_target_hash": artifact_target_hash,
+                "memory_effect_hash": memory_effect_hash,
+            },
+        )
         emit_observation(
             project.path,
             event_type="promotion_write",
@@ -803,13 +821,25 @@ def _observe_project_mutation(
             object_new_hash=target.state_sha256 if target is not None else None,
         )
         for effect in journal.memory_effects:
+            if journal.status != "committed" or authority_hash is None:
+                continue
             effect_payload = effect.model_dump(mode="json")
             effect_hash = safe_canonical_hash(effect_payload)
+            if effect_hash is None:
+                continue
             projection = {
                 "canon_fact": "canon_facts",
                 "chapter_index": "chapter_search",
                 "chapter_state": "chapter_states",
             }[effect.kind]
+            provenance = ProjectionProvenanceV1(
+                source_authority_revision=authority_revision,
+                source_authority_hash=authority_hash,
+                source_commit_id=source_commit_id,
+                source_artifact_hash=journal_hash,
+                projection_hash=effect_hash,
+                writer=journal.operation,
+            )
             emit_observation(
                 project.path,
                 event_type="promotion_write",
@@ -820,14 +850,23 @@ def _observe_project_mutation(
                     "store": type(effect).__name__,
                     "writer": journal.operation,
                     "projection": projection,
+                    "provenance_schema": provenance.schema_name,
+                    "provenance_version": provenance.version,
                     "requested_authority_revision": (
                         journal.expected_story_state_revision
                     ),
-                    "actual_source_revision": authority_revision,
-                    "source_authority_hash": authority_hash,
-                    "projection_hash": effect_hash,
+                    "actual_source_revision": (
+                        provenance.source_authority_revision
+                    ),
+                    "source_authority_hash": (
+                        provenance.source_authority_hash
+                    ),
+                    "source_commit_id": provenance.source_commit_id,
+                    "projection_hash": provenance.projection_hash,
                     "source_artifact": "ProjectMutationJournalV1",
-                    "source_artifact_hash": journal_hash,
+                    "source_artifact_hash": (
+                        provenance.source_artifact_hash
+                    ),
                     "freshness": "fresh",
                     "effect_kind": effect.kind,
                 },

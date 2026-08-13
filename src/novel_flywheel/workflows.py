@@ -289,6 +289,7 @@ from novel_flywheel.reliability_trace import (
     emit_observation,
     safe_canonical_hash as reliability_hash,
 )
+from novel_flywheel.canonical_shadow import observe_maintenance_shadow
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
@@ -3644,6 +3645,7 @@ class WorkflowService:
                     payload={
                         "artifact_type": source_artifact,
                         "binding_status": "reused",
+                        "binding_lane": "exact_v2",
                         "expected_input_sha256": str(
                             checkpoint_context["generation_context_sha256"]
                         ),
@@ -3931,6 +3933,7 @@ class WorkflowService:
                         payload={
                             "artifact_type": "review.md",
                             "binding_status": "unverifiable_legacy",
+                            "binding_lane": "legacy",
                             "expected_input_sha256": hashlib.sha256(
                                 draft.encode("utf-8")
                             ).hexdigest(),
@@ -16511,6 +16514,27 @@ class WorkflowService:
                     semantic_domain="occurred_current",
                 )
                 current_state = self.story_states.get(project.id)
+                shadow_candidate: dict = {"facts": []}
+                for envelope in reduction.window_envelopes:
+                    shadow_candidate = self._combine_short_maintenance_proposals(
+                        shadow_candidate,
+                        receipt_to_maintenance_candidate(envelope),
+                    )
+                if current_state is not None:
+                    observe_maintenance_shadow(
+                        project_root=project.path,
+                        workflow="short-window-maintenance",
+                        legacy_candidate=shadow_candidate,
+                        final_source_bytes=polished.encode("utf-8"),
+                        story_time=(
+                            "publication:" + hashlib.sha256(
+                                polished.encode("utf-8")
+                            ).hexdigest()
+                        ),
+                        story_state_revision=current_state.revision,
+                        story_state_data=current_state.data,
+                        coverage_mode="window_union", run_id=run_id,
+                    )
                 emit_observation(
                     project.path,
                     event_type="promotion_write",
@@ -16599,6 +16623,21 @@ class WorkflowService:
                     semantic_domain="occurred_current",
                 )
                 current_state = self.story_states.get(project.id)
+                if current_state is not None:
+                    observe_maintenance_shadow(
+                        project_root=project.path,
+                        workflow="short-normal-maintenance",
+                        legacy_candidate=preserved,
+                        final_source_bytes=polished.encode("utf-8"),
+                        story_time=(
+                            "publication:" + hashlib.sha256(
+                                polished.encode("utf-8")
+                            ).hexdigest()
+                        ),
+                        story_state_revision=current_state.revision,
+                        story_state_data=current_state.data,
+                        coverage_mode="complete_source", run_id=run_id,
+                    )
                 emit_observation(
                     project.path,
                     event_type="promotion_write",
@@ -26479,6 +26518,7 @@ class WorkflowService:
                 payload={
                     "artifact_type": f"{name}.md",
                     "binding_status": "exact",
+                    "binding_lane": "exact_v2",
                     "input_object_hash": business_input_sha256,
                     "output_object_hash": output_sha256,
                     "reviewed_object_hash": reviewed_object_hash,

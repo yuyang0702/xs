@@ -23,6 +23,8 @@ from novel_flywheel.canonical_shadow import (
     claim_value_hash,
     entity_id,
     make_proposed_claim,
+    evaluate_maintenance_shadow,
+    observe_maintenance_shadow,
     resolve_shadow_slot,
     resolve_story_state_expected_current,
     stable_id,
@@ -386,3 +388,54 @@ def test_assert_requires_known_absence_not_unknown_subject(tmp_path) -> None:
     )
     assert blocked.eligibility == "ineligible"
     assert "story_state_subject_unknown" in blocked.failure_codes
+
+
+def test_normal_and_window_generate_same_shadow_contract(tmp_path) -> None:
+    characters = tmp_path / "characters"
+    characters.mkdir()
+    (characters / "hero.md").write_text(
+        "---\nname: 主角\n---\n", encoding="utf-8",
+    )
+    source = "主角从上海抵达北京。".encode("utf-8")
+    state = {"character_states": {"主角": {"location": "上海"}}}
+    candidate = {
+        "facts": [], "state": {"主角": {"location": "北京"}},
+        "state_transitions": [{
+            "character": "主角", "field": "location",
+            "from": "上海", "to": "北京", "evidence": "抵达北京",
+        }],
+    }
+    normal, normal_rows = evaluate_maintenance_shadow(
+        project_root=tmp_path, workflow="short-normal-maintenance",
+        legacy_candidate=candidate, final_source_bytes=source,
+        story_time="chapter:2", story_state_revision=3,
+        story_state_data=state, coverage_mode="complete_source",
+    )
+    window, window_rows = evaluate_maintenance_shadow(
+        project_root=tmp_path, workflow="short-window-maintenance",
+        legacy_candidate=candidate, final_source_bytes=source,
+        story_time="chapter:2", story_state_revision=3,
+        story_state_data=state, coverage_mode="window_union",
+    )
+    assert normal.claim_count == window.claim_count == 1
+    assert normal.eligible_count == window.eligible_count == 1
+    assert normal.receipt_hashes == window.receipt_hashes
+    assert normal_rows[0]["expected_current_hash"] == claim_value_hash("上海")
+    assert normal_rows[0]["coverage_mode"] == "complete_source"
+    assert window_rows[0]["coverage_mode"] == "window_union"
+
+
+def test_disabled_shadow_returns_before_alias_or_claim_work(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("NOVEL_CANONICAL_SHADOW_V1", "0")
+    monkeypatch.setattr(
+        "novel_flywheel.canonical_shadow.build_entity_alias_index",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("disabled observer read aliases")
+        ),
+    )
+    assert observe_maintenance_shadow(
+        project_root=tmp_path, workflow="test", legacy_candidate={},
+        final_source_bytes=b"final", story_time="chapter:1",
+        story_state_revision=1, story_state_data={},
+        coverage_mode="complete_source",
+    ) is None

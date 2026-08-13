@@ -565,6 +565,9 @@ def test_project_mutation_replays_memory_effects_idempotently(tmp_path) -> None:
     assert all(
         item["source_artifact"] == "ProjectMutationJournalV1"
         and item["source_artifact_hash"]
+        and item["source_commit_id"].startswith("commit-")
+        and item["provenance_schema"] == "ProjectionProvenanceV1"
+        and item["provenance_version"] == 1
         and item["projection_hash"]
         and item["freshness"] == "fresh"
         for item in by_projection.values()

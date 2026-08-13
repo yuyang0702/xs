@@ -32,6 +32,10 @@ from novel_flywheel.reliability_trace import (
     resolve_projection_provenance,
     safe_canonical_hash,
 )
+from novel_flywheel.canonical_shadow import (
+    observe_maintenance_shadow,
+    shadow_enabled,
+)
 
 
 def _workflow_failure(exc: BaseException) -> str:
@@ -94,6 +98,20 @@ async def run_long_setup(
         )
         if not isinstance(canon.get("facts"), list):
             raise ValueError("Maintenance output must contain a facts array")
+        if shadow_enabled():
+            shadow_state = service.story_states.ensure(project.id, project.path)
+            observe_maintenance_shadow(
+                project_root=project.path, workflow="long-setup-maintenance",
+                legacy_candidate=canon, final_source_bytes=outline.encode("utf-8"),
+                story_time=(
+                    "book-setup:" + hashlib.sha256(
+                        outline.encode("utf-8")
+                    ).hexdigest()
+                ),
+                story_state_revision=shadow_state.revision,
+                story_state_data=shadow_state.data,
+                coverage_mode="complete_source", run_id=run_id,
+            )
         target_text = {
             outline_path: outline,
             canon_path: json.dumps(canon, ensure_ascii=False, indent=2),
@@ -327,6 +345,16 @@ async def run_chapter(
         )
         if not isinstance(canon.get("facts"), list):
             raise ValueError("Maintenance output must contain a facts array")
+        if shadow_enabled():
+            shadow_state = service.story_states.ensure(project.id, project.path)
+            observe_maintenance_shadow(
+                project_root=project.path, workflow="long-chapter-maintenance",
+                legacy_candidate=canon, final_source_bytes=polished.encode("utf-8"),
+                story_time=f"chapter:{chapter_number}",
+                story_state_revision=shadow_state.revision,
+                story_state_data=shadow_state.data,
+                coverage_mode="complete_source", run_id=run_id,
+            )
         chapter_text = service._chapter_file(
             project, polished, chapter_number,
         )

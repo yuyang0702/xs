@@ -495,11 +495,14 @@ def projection_reconciliation(
             "observation_status": item.observation_status,
             "result_sha256": item.payload.get("result_sha256"),
             "source_authority_hash": item.payload.get("source_authority_hash"),
+            "source_commit_id": item.payload.get("source_commit_id"),
             "projection_hash": item.payload.get("projection_hash")
             or item.payload.get("result_sha256"),
             "writer": item.payload.get("writer"),
             "source_artifact": item.payload.get("source_artifact"),
             "source_artifact_hash": item.payload.get("source_artifact_hash"),
+            "provenance_schema": item.payload.get("provenance_schema"),
+            "provenance_version": item.payload.get("provenance_version"),
             "projection_sources": list(item.payload.get("projection_sources") or []),
         }
         for item in events if item.event_type == "projection_read"
@@ -530,12 +533,15 @@ def projection_provenance_matrix(
             ),
             "source_authority_hash": item.payload.get("source_authority_hash")
             or item.authority_hash,
+            "source_commit_id": item.payload.get("source_commit_id"),
             "projection_hash": item.payload.get("projection_hash")
             or item.payload.get("result_sha256")
             or item.object_new_hash,
             "writer": item.payload.get("writer") or item.source_writer,
             "source_artifact": item.payload.get("source_artifact"),
             "source_artifact_hash": item.payload.get("source_artifact_hash"),
+            "provenance_schema": item.payload.get("provenance_schema"),
+            "provenance_version": item.payload.get("provenance_version"),
             "freshness": item.payload.get("freshness")
             or item.payload.get("stale")
             or "unknown",
@@ -572,10 +578,13 @@ def resolve_projection_provenance(
                 "projection": projection,
                 "actual_source_revision": None,
                 "source_authority_hash": None,
+                "source_commit_id": None,
                 "projection_hash": None,
                 "writer": None,
                 "source_artifact": None,
                 "source_artifact_hash": None,
+                "provenance_schema": None,
+                "provenance_version": None,
                 "freshness": "unknown",
                 "observation_status": "unknown",
             })
@@ -595,11 +604,14 @@ def resolve_projection_provenance(
             "projection": projection,
             "actual_source_revision": revision,
             "source_authority_hash": authority_hash,
+            "source_commit_id": item.payload.get("source_commit_id"),
             "projection_hash": item.payload.get("projection_hash")
             or item.object_new_hash,
             "writer": item.payload.get("writer") or item.source_writer,
             "source_artifact": item.payload.get("source_artifact"),
             "source_artifact_hash": item.payload.get("source_artifact_hash"),
+            "provenance_schema": item.payload.get("provenance_schema"),
+            "provenance_version": item.payload.get("provenance_version"),
             "freshness": freshness,
             "observation_status": item.observation_status,
         })
@@ -616,6 +628,7 @@ def resolve_projection_provenance(
         and item["source_authority_hash"] is not None
         and item["projection_hash"] is not None
         and item["source_artifact_hash"] is not None
+        and item["source_commit_id"] is not None
         for item in sources
     )
     if complete and all(item["freshness"] == "fresh" for item in sources):
@@ -649,6 +662,10 @@ def artifact_binding_matrix(
                 "sequence": item.sequence,
                 "artifact_type": payload.get("artifact_type"),
                 "binding_status": payload.get("binding_status"),
+                "binding_lane": payload.get("binding_lane") or (
+                    "legacy" if payload.get("binding_status") == "unverifiable_legacy"
+                    else "exact_v2"
+                ),
                 "input_object_hash": payload.get("input_object_hash")
                 or payload.get("expected_input_sha256"),
                 "actual_input_object_hash": payload.get("actual_input_sha256")
@@ -672,6 +689,10 @@ def artifact_binding_matrix(
                 "binding_status": (
                     "exact" if item.object_old_hash and item.object_new_hash else "unknown"
                 ),
+                "binding_lane": (
+                    "exact_v2" if item.object_old_hash and item.object_new_hash
+                    else "unknown"
+                ),
                 "input_object_hash": item.object_old_hash,
                 "actual_input_object_hash": item.object_old_hash,
                 "output_object_hash": item.object_new_hash,
@@ -694,6 +715,7 @@ def artifact_binding_matrix(
                 "sequence": item.sequence,
                 "artifact_type": payload.get("store"),
                 "binding_status": "exact",
+                "binding_lane": "exact_v2",
                 "input_object_hash": payload.get("input_object_hash"),
                 "actual_input_object_hash": payload.get("input_object_hash"),
                 "output_object_hash": payload.get("output_object_hash")
