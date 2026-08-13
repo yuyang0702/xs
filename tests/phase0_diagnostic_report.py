@@ -11,7 +11,10 @@ from pathlib import Path
 from novel_flywheel.generated_artifacts import ReliabilityTraceEnvelopeV1
 from novel_flywheel.reliability_trace import (
     BestEffortTraceSink,
+    artifact_binding_matrix,
     authority_lineage,
+    event_type_coverage_matrix,
+    projection_provenance_matrix,
     projection_reconciliation,
     read_trace,
     recovery_attempt_dag,
@@ -28,9 +31,16 @@ def diagnostic_report(path: Path) -> dict:
         "reader_coverage_gaps": trace.coverage_gaps,
         "authority_lineage": authority_lineage(trace.events),
         "projection_reconciliation": projection_reconciliation(trace.events),
+        "projection_provenance_matrix": projection_provenance_matrix(
+            trace.events,
+        ),
+        "artifact_binding_matrix": artifact_binding_matrix(trace.events),
         "repair_diff": repair_diff_view(trace.events),
         "recovery_attempt_dag": recovery_attempt_dag(trace.events),
         "trace_coverage_matrix": trace_coverage_matrix(trace.events),
+        "event_type_coverage_matrix": event_type_coverage_matrix(
+            trace.events,
+        ),
     }
 
 

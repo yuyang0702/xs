@@ -1572,6 +1572,37 @@ time, semantic domain, disagreeing value hashes, and both source hashes are all
 known. Missing evidence remains `observation_status=unknown`; Phase 0 never
 selects a winner.
 
+### Phase 0.5 evidence closure
+
+Phase 0.5 extends the same physically isolated trace with two diagnostic views;
+it does not change projection, maintenance, recovery, or promotion decisions.
+`projection_provenance_matrix` reports the requested StoryState revision, the
+explicit source revision/hash, projection hash, writer, source journal, and
+`fresh`, `stale`, or `unknown`. Only `promotion_write` records produced after a
+completed `ProjectMutationJournalV1` transaction can close provenance. Legacy
+rows without that trace stay `unknown`; multiple source revisions are never
+collapsed into an inferred revision.
+
+`artifact_binding_matrix` follows stage input/output hashes, Runtime-owned
+reviewed-object hashes, contract/policy version, validators, checkpoint parent,
+and superseded repair input. Existing `review.md` artifacts without binding
+metadata remain `unverifiable_legacy` and are not rejected by this observation.
+The stage observer runs after output/checkpoint persistence and remains
+best-effort, so it cannot alter validation, retry, fallback, or resume.
+
+The offline evidence suite is `tests/test_phase05_evidence_closure.py`. It runs
+the real short, long-setup, long-chapter, and two-chapter orchestration with the
+existing deterministic gateways. Each workflow reports all eight trace event
+types. Events that do not naturally occur on a successful path are emitted only
+by `tests/phase05_evidence_harness.py`, carry `synthetic=true`, and never enter
+production code or business artifacts. Maintenance and Saga baselines are
+content-addressed and omit volatile run/candidate identities.
+
+Future cutover criteria live in `tests/test_phase1_cutover_acceptance.py` as
+strict expected failures. An unexpected pass fails the suite and requires a
+review of the cutover evidence; Phase 0.5 must not make those tests pass by
+changing business semantics.
+
 Sequence numbers are monotonic only within one `correlation_id`. The writer
 uses a non-blocking cross-process lock and one complete append. Lock or write
 failure drops telemetry and cannot enter business recovery. A partial write is
