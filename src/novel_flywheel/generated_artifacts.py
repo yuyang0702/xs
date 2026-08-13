@@ -5,11 +5,12 @@ import json
 import re
 import unicodedata
 from collections.abc import Callable, Iterator, Mapping, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 from json_repair import repair_json
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from novel_flywheel.evidence_alignment import align_unique_evidence_span
 from novel_flywheel.model_output import (
@@ -34,6 +35,92 @@ RecoveryStep = Literal[
     "semantic_split",
     "checkpoint_resume",
 ]
+
+ReliabilityTraceEventType = Literal[
+    "authority_read",
+    "proposed_claim",
+    "promotion_write",
+    "projection_read",
+    "repair_diff",
+    "recovery_attempt",
+    "resume_binding",
+    "authority_evidence_conflict",
+]
+ReliabilitySemanticDomain = Literal[
+    "future_normative", "occurred_current", "unknown",
+]
+ReliabilityObservationStatus = Literal["confirmed", "inferred", "unknown"]
+
+
+class ReliabilityTraceEnvelopeV1(BaseModel):
+    """Hash-only, non-authoritative reliability observation.
+
+    The envelope is intentionally not registered as a generated artifact: it is
+    operational telemetry and must never become model, candidate, or StoryState
+    input. Event-specific required fields prevent a syntactically valid trace
+    from overstating what was observed.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    schema_name: Literal["ReliabilityTraceEnvelopeV1"] = Field(
+        default="ReliabilityTraceEnvelopeV1", alias="schema",
+        serialization_alias="schema",
+    )
+    canonicalization_version: Literal["phase0-canonical-json-v1"] = (
+        "phase0-canonical-json-v1"
+    )
+    event_id: str = Field(min_length=16, max_length=128)
+    correlation_id: str = Field(min_length=1, max_length=256)
+    run_id: str | None = Field(default=None, max_length=256)
+    stage_id: str | None = Field(default=None, max_length=256)
+    sequence: int = Field(default=1, ge=1)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    event_type: ReliabilityTraceEventType
+    source_component: str = Field(min_length=1, max_length=256)
+    source_writer: str = Field(min_length=1, max_length=256)
+    semantic_domain: ReliabilitySemanticDomain = "unknown"
+    authority_revision: int | None = Field(default=None, ge=0)
+    authority_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    object_old_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    object_new_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    observation_status: ReliabilityObservationStatus
+    payload: dict[str, Any]
+
+    REQUIRED_PAYLOAD: ClassVar[dict[str, frozenset[str]]] = {
+        "authority_read": frozenset({"authority_type", "reader"}),
+        "proposed_claim": frozenset({"claim_kind", "shadow_only", "affects_business_decision"}),
+        "promotion_write": frozenset({"store", "writer"}),
+        "projection_read": frozenset({"projection", "revision_metadata_present", "stale"}),
+        "repair_diff": frozenset({"allowed_scope_source", "changed_paths", "validators_rerun"}),
+        "recovery_attempt": frozenset({"attempt_id", "action", "outcome", "model_call_delta"}),
+        "resume_binding": frozenset({"artifact_type", "binding_status"}),
+        "authority_evidence_conflict": frozenset({
+            "shadow_slot", "story_time", "left_source_hash", "right_source_hash",
+            "values_disagree", "resolution",
+        }),
+    }
+
+    @model_validator(mode="after")
+    def validate_observation_claims(self) -> "ReliabilityTraceEnvelopeV1":
+        missing = self.REQUIRED_PAYLOAD[self.event_type] - self.payload.keys()
+        if missing:
+            raise ValueError(f"missing trace payload fields: {sorted(missing)}")
+        if self.event_type == "proposed_claim" and (
+            self.payload.get("shadow_only") is not True
+            or self.payload.get("affects_business_decision") is not False
+        ):
+            raise ValueError("Phase 0 claims must remain shadow-only")
+        if self.event_type == "authority_evidence_conflict":
+            if self.observation_status != "confirmed":
+                raise ValueError("unknown evidence must not be emitted as a conflict")
+            if self.semantic_domain == "unknown":
+                raise ValueError("a conflict requires one known semantic domain")
+            if self.payload.get("values_disagree") is not True:
+                raise ValueError("a conflict requires explicit value disagreement")
+            if self.payload.get("resolution") != "unresolved_phase0":
+                raise ValueError("Phase 0 must not adjudicate authority conflicts")
+        return self
 
 EXECUTABLE_RECOVERY_STEP_OWNERS: Mapping[str, str] = {
     "exact_json": "GeneratedArtifactGateway",
