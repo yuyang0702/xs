@@ -68,6 +68,14 @@ class TransportInterruptedError(RuntimeError):
         self.partial_text = partial_text
 
 
+class StructuredRouteQuarantinedError(RuntimeError):
+    """A route/mode/schema tuple has failed business-shaped validation."""
+
+    def __init__(self, execution_mode: str) -> None:
+        super().__init__("structured route mode is quarantined")
+        self.execution_mode = execution_mode
+
+
 class ModelGateway:
     CONNECT_RETRY_DELAY = 2
 
@@ -445,8 +453,55 @@ class ModelGateway:
             max_output_tokens=max_output_tokens,
         )
         execution_mode = "plain"
+        structured_mode_degraded = False
+        route_fingerprint = self._route_fingerprint(resolved, execution_mode)
+        contract_name = ""
+        schema_sha256 = ""
         if response_schema is not None:
-            if capability == StructuredOutputCapability.STRICT_TOOL:
+            contract_name = str(
+                response_schema.get("name") or "structured_output"
+            )
+            schema_value = dict(response_schema.get("schema") or {})
+            schema_sha256 = hashlib.sha256(json.dumps(
+                schema_value, sort_keys=True, ensure_ascii=False,
+                separators=(",", ":"),
+            ).encode("utf-8")).hexdigest()
+            configured_mode = (
+                "strict_tool"
+                if capability == StructuredOutputCapability.STRICT_TOOL
+                else "strict_json_schema"
+                if capability == StructuredOutputCapability.STRICT_JSON_SCHEMA
+                else "json_object"
+                if capability == StructuredOutputCapability.JSON_OBJECT
+                else "plain"
+            )
+            qualification = self.db.get_structured_route_qualification(
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                route_fingerprint=route_fingerprint,
+                execution_mode=configured_mode,
+                contract_name=contract_name,
+                schema_sha256=schema_sha256,
+            )
+            if qualification and qualification.get("status") == "quarantined":
+                if configured_mode == "plain":
+                    raise StructuredRouteQuarantinedError(configured_mode)
+                plain_qualification = self.db.get_structured_route_qualification(
+                    provider_id=resolved.provider_id,
+                    model_id=resolved.model_id,
+                    route_fingerprint=route_fingerprint,
+                    execution_mode="plain",
+                    contract_name=contract_name,
+                    schema_sha256=schema_sha256,
+                )
+                if (
+                    plain_qualification
+                    and plain_qualification.get("status") == "quarantined"
+                ):
+                    raise StructuredRouteQuarantinedError("plain")
+                structured_mode_degraded = True
+                execution_mode = "plain"
+            elif capability == StructuredOutputCapability.STRICT_TOOL:
                 tool_name = str(response_schema.get("name") or "structured_output")
                 request = request.model_copy(update={
                     "tools": [ToolDefinition(
@@ -468,8 +523,33 @@ class ModelGateway:
                 })
                 execution_mode = "json_object"
 
-        response = await resolved.adapter.complete(request)
-        if capability == StructuredOutputCapability.STRICT_TOOL and response_schema is not None:
+        try:
+            response = await resolved.adapter.complete(request)
+        except Exception as exc:
+            native_protocol_rejected = (
+                execution_mode != "plain"
+                and response_schema is not None
+                and (
+                    isinstance(exc, ToolCapabilityError)
+                    or (
+                        isinstance(exc, httpx.HTTPStatusError)
+                        and exc.response.status_code in {400, 422}
+                    )
+                )
+            )
+            if native_protocol_rejected:
+                self.db.save_structured_route_outcome(
+                    provider_id=resolved.provider_id,
+                    model_id=resolved.model_id,
+                    route_fingerprint=route_fingerprint,
+                    execution_mode=execution_mode,
+                    contract_name=contract_name,
+                    schema_sha256=schema_sha256,
+                    outcome="protocol_invalid",
+                    failure_reason="native_protocol_rejected",
+                )
+            raise
+        if execution_mode == "strict_tool" and response_schema is not None:
             expected_name = str(response_schema.get("name") or "structured_output")
             matching = [
                 call for call in response.tool_calls if call.name == expected_name
@@ -497,9 +577,12 @@ class ModelGateway:
                 "transport_complete", True,
             ) is not False,
             "requested_max_output_tokens": max_output_tokens,
-            "route_fingerprint": self._route_fingerprint(resolved, execution_mode),
+            "route_fingerprint": route_fingerprint,
             "execution_mode": execution_mode,
             "structured_output_capability": capability.value,
+            "structured_mode_degraded": structured_mode_degraded,
+            "contract_name": contract_name or None,
+            "schema_sha256": schema_sha256 or None,
         }
         self._record_output_observation(receipt, response.text)
         if not receipt["transport_complete"]:
@@ -898,7 +981,10 @@ class ModelGateway:
             "execution_mode": mode, "tool_call_count": calls,
         }
 
-    def _route_fingerprint(self, resolved, execution_mode: str) -> str:
+    def _route_fingerprint(self, resolved, execution_mode: str = "") -> str:
+        declared = str(getattr(resolved, "route_fingerprint", "") or "")
+        if len(declared) == 64:
+            return declared
         provider = self.db.get_provider(resolved.provider_id) or {}
         payload = {
             "provider_id": resolved.provider_id,
@@ -908,11 +994,30 @@ class ModelGateway:
             "base_url": provider.get("base_url"),
             "auth_type": provider.get("auth_type"),
             "header_names": sorted((provider.get("extra_headers") or {}).keys()),
-            "capabilities": resolved.capabilities,
-            "execution_mode": execution_mode,
         }
         encoded = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
         return hashlib.sha256(encoded).hexdigest()
+
+    def record_structured_contract_outcome(
+        self, receipt: dict, contract: StructuredArtifactContract, *,
+        outcome: str, failure_reason: str | None = None,
+        observed_visible_characters: int = 0,
+        expected_visible_characters: int = 0,
+    ) -> dict:
+        """Bind empirical business validation to an immutable route identity."""
+
+        return self.db.save_structured_route_outcome(
+            provider_id=str(receipt.get("provider_id") or ""),
+            model_id=str(receipt.get("model_id") or ""),
+            route_fingerprint=str(receipt.get("route_fingerprint") or ""),
+            execution_mode=str(receipt.get("execution_mode") or "plain"),
+            contract_name=contract.name,
+            schema_sha256=contract.schema_sha256(),
+            outcome=outcome,
+            failure_reason=failure_reason,
+            observed_visible_characters=observed_visible_characters,
+            expected_visible_characters=expected_visible_characters,
+        )
 
     def _record_output_observation(self, receipt: dict, text: str) -> None:
         self.db.save_model_output_observation(

@@ -34,7 +34,7 @@ def test_r0_migration_is_idempotent_and_exposes_durable_tables(tmp_path) -> None
         "originality_findings",
     } <= db.table_names()
     with db.connect() as connection:
-        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 3
+        assert connection.execute("SELECT version FROM schema_version").fetchone()[0] == 4
 
 
 def test_supervisor_persists_resume_inputs_without_provider_secrets(tmp_path) -> None:

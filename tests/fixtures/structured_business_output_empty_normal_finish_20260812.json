@@ -1,0 +1,26 @@
+{
+  "fixture_version": 1,
+  "incident_family": "provider.structured_output_business_incomplete",
+  "workflow": "short-story",
+  "stage": "review",
+  "authority_shape": {
+    "retained_upstream_artifacts": 3,
+    "owned_units": 6,
+    "expected_visible_characters": 1200
+  },
+  "provider_shape": {
+    "execution_mode": "strict_tool",
+    "finish_reason": "tool_use",
+    "transport_complete": true,
+    "visible_characters": 2,
+    "tool_arguments": {}
+  },
+  "required_recovery": [
+    "quarantine_route_mode_contract_schema",
+    "retry_same_route_in_plain_json_mode",
+    "select_independent_fallback_if_plain_mode_is_incomplete",
+    "revalidate_business_contract",
+    "resume_from_retained_authority"
+  ],
+  "terminal_message": "normal_finish_empty_structured_output"
+}

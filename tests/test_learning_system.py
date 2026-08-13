@@ -22,6 +22,26 @@ def setup_system(tmp_path):
     return db, library, projects, LearningSystem(db, library, projects)
 
 
+def route_schedule_receipt() -> str:
+    """A business-shaped receipt for tests that isolate route scheduling."""
+
+    return json.dumps({
+        "version": 2,
+        "covered_child_ids": ["route-schedule-fixture"],
+        "child_dispositions": [{
+            "child_id": "route-schedule-fixture",
+            "disposition": "no_transferable_claim",
+            "reason": "This fixture verifies explicit route scheduling only.",
+        }],
+        "child_attributions": [],
+        "semantic": {"ok": True},
+    })
+
+
+def route_schedule_semantic(text: str) -> dict:
+    return json.loads(text)["semantic"]
+
+
 def test_local_attraction_context_never_truncates_partial_json() -> None:
     small = {"questions": [{"excerpt": "small"}], "turns": []}
     small_context = LearningSystem._local_attraction_prompt_context(
@@ -1078,7 +1098,7 @@ async def test_reference_synthesis_route_plan_bypasses_tiny_primary_for_fallback
 
         async def complete_configured_fallback(self, *_args, **_kwargs):
             self.routes.append("fallback")
-            return SimpleNamespace(text='{"ok":true}', receipt={})
+            return SimpleNamespace(text=route_schedule_receipt(), receipt={})
 
     gateway = RouteGateway()
     system = LearningSystem(db, library, projects, gateway)
@@ -1086,7 +1106,7 @@ async def test_reference_synthesis_route_plan_bypasses_tiny_primary_for_fallback
 
     response, value = await system._execute_reference_synthesis(
         route_plan=plan, system="system", user="user",
-        validator=lambda text: json.loads(text),
+        validator=route_schedule_semantic,
     )
 
     assert plan.version == 1
@@ -1106,7 +1126,7 @@ async def test_reference_synthesis_auto_expands_to_explicit_route_schedule(
     class RouteGateway:
         def __init__(self):
             self.routes = []
-            self.fallback_outputs = iter(["not-json", '{"ok":true}'])
+            self.fallback_outputs = iter(["not-json", route_schedule_receipt()])
 
         async def complete(self, *_args, **_kwargs):
             raise AssertionError("auto must not use hidden gateway routing")
@@ -1128,7 +1148,8 @@ async def test_reference_synthesis_auto_expands_to_explicit_route_schedule(
     )
 
     _response, value = await system._execute_reference_synthesis(
-        route_plan=plan, system="system", user="user", validator=json.loads,
+        route_plan=plan, system="system", user="user",
+        validator=route_schedule_semantic,
     )
 
     assert gateway.routes == ["primary", "primary", "fallback", "fallback"]
@@ -1160,7 +1181,7 @@ async def test_reference_synthesis_route_plan_uses_primary_when_it_is_only_route
 
         async def complete_primary(self, *_args, **_kwargs):
             self.routes.append("primary")
-            return SimpleNamespace(text='{"ok":true}', receipt={})
+            return SimpleNamespace(text=route_schedule_receipt(), receipt={})
 
         async def complete(self, *_args, **_kwargs):
             self.routes.append("auto")
@@ -1172,7 +1193,7 @@ async def test_reference_synthesis_route_plan_uses_primary_when_it_is_only_route
 
     _response, value = await system._execute_reference_synthesis(
         route_plan=plan, system="system", user="user",
-        validator=lambda text: json.loads(text),
+        validator=route_schedule_semantic,
     )
 
     assert plan.mode == "primary"
@@ -1201,7 +1222,7 @@ async def test_reference_synthesis_primary_only_retries_one_invalid_receipt(
 
     class RouteGateway:
         def __init__(self):
-            self.outputs = iter(["not-json", '{"ok":true}'])
+            self.outputs = iter(["not-json", route_schedule_receipt()])
             self.routes = []
 
         async def complete_primary(self, *_args, **_kwargs):
@@ -1213,7 +1234,7 @@ async def test_reference_synthesis_primary_only_retries_one_invalid_receipt(
 
     _response, value = await system._execute_reference_synthesis(
         route_plan=system._reference_synthesis_route_plan(),
-        system="system", user="user", validator=json.loads,
+        system="system", user="user", validator=route_schedule_semantic,
     )
 
     assert gateway.routes == ["primary", "primary"]

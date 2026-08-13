@@ -13,6 +13,7 @@ from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
 from novel_flywheel.context_policy import estimate_input_tokens
 from novel_flywheel.contract_runtime import (
+    ContractBusinessOutputIncompleteError,
     ExecutableContractSpec,
     contract_route_capacity_plan,
     execute_contract_runtime,
@@ -758,11 +759,20 @@ class LearningSystem:
                             if callable(fallback) else ("primary", "primary")
                         ),
                     )
-                except (ArtifactConversionError, ValueError) as exc:
+                except (
+                    ArtifactConversionError,
+                    ContractBusinessOutputIncompleteError,
+                    ValueError,
+                ) as exc:
                     detail = (
                         "模型返回空内容或未闭合的结构化结果"
-                        if isinstance(exc, ArtifactConversionError)
-                        and exc.audit.failure_code == "output_truncated"
+                        if (
+                            isinstance(exc, ArtifactConversionError)
+                            and exc.audit.failure_code == "output_truncated"
+                        ) or (
+                            isinstance(exc, ContractBusinessOutputIncompleteError)
+                            and exc.reason in {"empty_output", "empty_object"}
+                        )
                         else safe_local_validation_message(exc)
                     )
                     raise ValueError(

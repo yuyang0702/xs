@@ -510,6 +510,31 @@ CREATE TABLE IF NOT EXISTS model_output_observations(
   transport_complete INTEGER NOT NULL DEFAULT 1,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS structured_route_qualifications(
+  provider_id TEXT NOT NULL,
+  model_id TEXT NOT NULL,
+  route_fingerprint TEXT NOT NULL,
+  execution_mode TEXT NOT NULL,
+  contract_name TEXT NOT NULL,
+  schema_sha256 TEXT NOT NULL,
+  status TEXT NOT NULL,
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  success_count INTEGER NOT NULL DEFAULT 0,
+  last_failure_reason TEXT,
+  observed_visible_characters INTEGER NOT NULL DEFAULT 0,
+  expected_visible_characters INTEGER NOT NULL DEFAULT 0,
+  last_success_at TEXT,
+  last_failure_at TEXT,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(
+    provider_id, model_id, route_fingerprint, execution_mode,
+    contract_name, schema_sha256
+  )
+);
+CREATE INDEX IF NOT EXISTS idx_structured_route_qualification_status
+  ON structured_route_qualifications(
+    provider_id, model_id, route_fingerprint, status
+  );
 CREATE TABLE IF NOT EXISTS workflow_node_checkpoints(
   run_id TEXT NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
   node_key TEXT NOT NULL,
@@ -743,7 +768,7 @@ class Database:
                 "WHERE checkpoint_version<2"
             )
             connection.execute(
-                "UPDATE schema_version SET version=3 WHERE version<3"
+                "UPDATE schema_version SET version=4 WHERE version<4"
             )
 
     def _backup_before_story_state_upgrade(self) -> None:
@@ -2759,6 +2784,119 @@ class Database:
         return self.model_output_profile(
             provider_id, model_id, str(row["route_fingerprint"]), execution_mode,
         )
+
+    def save_structured_route_outcome(
+        self, *, provider_id: str, model_id: str, route_fingerprint: str,
+        execution_mode: str, contract_name: str, schema_sha256: str,
+        outcome: str, failure_reason: str | None = None,
+        observed_visible_characters: int = 0,
+        expected_visible_characters: int = 0,
+    ) -> dict[str, Any]:
+        """Persist route-and-schema business qualification.
+
+        Protocol probes never call this method.  Only a Runtime-owned business
+        validator can qualify a route, and only a business-shaped incomplete
+        response can quarantine it.  This prevents a later tiny capability
+        probe from erasing production evidence.
+        """
+
+        valid_outcomes = {
+            "valid", "empty_output", "empty_object", "required_fields_missing",
+            "underfilled", "protocol_invalid", "output_limited",
+            "semantic_invalid",
+        }
+        if outcome not in valid_outcomes:
+            raise ValueError("unknown structured route outcome")
+        key = (
+            provider_id, model_id, route_fingerprint, execution_mode,
+            contract_name, schema_sha256,
+        )
+        with self.connect() as connection:
+            current = connection.execute(
+                "SELECT * FROM structured_route_qualifications "
+                "WHERE provider_id=? AND model_id=? AND route_fingerprint=? "
+                "AND execution_mode=? AND contract_name=? AND schema_sha256=?",
+                key,
+            ).fetchone()
+            failures = int(current["consecutive_failures"] or 0) if current else 0
+            successes = int(current["success_count"] or 0) if current else 0
+            current_status = str(current["status"] or "unverified") if current else "unverified"
+            if outcome == "valid":
+                status = "qualified"
+                failures = 0
+                successes += 1
+                last_failure_reason = None
+                last_success_at = datetime.now(timezone.utc).isoformat()
+                last_failure_at = (
+                    current["last_failure_at"] if current else None
+                )
+            else:
+                failures += 1
+                severe = outcome in {
+                    "empty_output", "empty_object", "required_fields_missing",
+                    "underfilled",
+                } or (
+                    outcome == "protocol_invalid" and execution_mode != "plain"
+                )
+                status = (
+                    "quarantined" if severe or failures >= 2
+                    else "degraded" if outcome in {"protocol_invalid", "output_limited"}
+                    else current_status
+                )
+                last_failure_reason = failure_reason or outcome
+                last_success_at = (
+                    current["last_success_at"] if current else None
+                )
+                last_failure_at = datetime.now(timezone.utc).isoformat()
+            connection.execute(
+                "INSERT INTO structured_route_qualifications("
+                "provider_id, model_id, route_fingerprint, execution_mode, "
+                "contract_name, schema_sha256, status, consecutive_failures, "
+                "success_count, last_failure_reason, observed_visible_characters, "
+                "expected_visible_characters, last_success_at, last_failure_at, "
+                "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "
+                "datetime('now')) "
+                "ON CONFLICT(provider_id, model_id, route_fingerprint, execution_mode, "
+                "contract_name, schema_sha256) DO UPDATE SET "
+                "status=excluded.status, "
+                "consecutive_failures=excluded.consecutive_failures, "
+                "success_count=excluded.success_count, "
+                "last_failure_reason=excluded.last_failure_reason, "
+                "observed_visible_characters=excluded.observed_visible_characters, "
+                "expected_visible_characters=excluded.expected_visible_characters, "
+                "last_success_at=excluded.last_success_at, "
+                "last_failure_at=excluded.last_failure_at, "
+                "updated_at=excluded.updated_at",
+                (
+                    *key, status, failures, successes, last_failure_reason,
+                    max(0, int(observed_visible_characters)),
+                    max(0, int(expected_visible_characters)),
+                    last_success_at, last_failure_at,
+                ),
+            )
+        result = self.get_structured_route_qualification(
+            provider_id=provider_id, model_id=model_id,
+            route_fingerprint=route_fingerprint, execution_mode=execution_mode,
+            contract_name=contract_name, schema_sha256=schema_sha256,
+        )
+        assert result is not None
+        return result
+
+    def get_structured_route_qualification(
+        self, *, provider_id: str, model_id: str, route_fingerprint: str,
+        execution_mode: str, contract_name: str, schema_sha256: str,
+    ) -> dict[str, Any] | None:
+        with self.connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM structured_route_qualifications "
+                "WHERE provider_id=? AND model_id=? AND route_fingerprint=? "
+                "AND execution_mode=? AND contract_name=? AND schema_sha256=?",
+                (
+                    provider_id, model_id, route_fingerprint, execution_mode,
+                    contract_name, schema_sha256,
+                ),
+            ).fetchone()
+        return dict(row) if row is not None else None
 
     def save_wizard(self, wizard_id: str, status: str, mode: str,
                     schema: dict, answers: dict, project_id: str | None = None) -> None:

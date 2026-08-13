@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from enum import StrEnum
 from typing import Any, Mapping
 
@@ -114,3 +116,21 @@ class StructuredArtifactContract(BaseModel):
             "strict": True,
             "schema": self.json_schema,
         }
+
+    def schema_sha256(self) -> str:
+        encoded = json.dumps(
+            self.json_schema,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return hashlib.sha256(encoded).hexdigest()
+
+    def required_top_level_fields(self) -> tuple[str, ...]:
+        required = self.json_schema.get("required", ())
+        if not isinstance(required, (list, tuple)):
+            return ()
+        return tuple(
+            str(value) for value in required
+            if isinstance(value, str) and value
+        )

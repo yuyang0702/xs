@@ -61,6 +61,16 @@ class ArtifactContractRegistration(BaseModel):
     machine_control_fields: Literal["closed"] = "closed"
     narrative_invariants: Literal["runtime_authoritative"] = "runtime_authoritative"
     legacy_labels: tuple[str, ...] = ()
+    wire_required_fields: tuple[str, ...] = ()
+    wire_optional_fields: tuple[str, ...] = ()
+    wire_variant_requirements: dict[str, tuple[str, ...]] = Field(
+        default_factory=dict,
+    )
+    wire_closed: bool = False
+    # None keeps a task-local estimate for dynamic contracts; zero explicitly
+    # disables raw-size gating when structural and domain validation fully
+    # describe a legitimately compact receipt.
+    minimum_business_characters: int | None = Field(default=None, ge=0)
     recovery_ladder: tuple[RecoveryStep, ...] = (
         "exact_json",
         "local_syntax_repair",
@@ -76,6 +86,12 @@ _REGISTRATIONS = (
         name="planning_adaptation_segment", phase="planning",
         semantic_authority="normalize_planning_adaptation_receipt",
         legacy_labels=("Planning adaptation receipt segment",),
+        wire_required_fields=(
+            "authority_sha256", "planning_sha256", "authority_version",
+            "segment", "event_reviews", "segment_order_preserved",
+            "formal_direction_preserved", "summary",
+        ),
+        wire_closed=True, minimum_business_characters=600,
     ),
     ArtifactContractRegistration(
         name="planning_adaptation_facet", phase="planning",
@@ -84,6 +100,11 @@ _REGISTRATIONS = (
             "Planning adaptation facet receipt",
             "Planning adaptation facet window receipt",
         ),
+        wire_required_fields=(
+            "invariants", "changed_dimensions", "plan_evidence_ids",
+            "plan_evidence_quote", "reason",
+        ),
+        wire_closed=True, minimum_business_characters=180,
     ),
     ArtifactContractRegistration(
         name="planning_adaptation_hierarchy", phase="planning",
@@ -92,26 +113,56 @@ _REGISTRATIONS = (
             "Planning adaptation hierarchy receipt",
             "Planning adaptation regional receipt",
         ),
+        wire_required_fields=(
+            "source_sha256", "segment_numbers", "event_ids",
+            "causal_order_preserved", "adjacent_handoffs_preserved",
+            "knowledge_progression_preserved",
+            "relationship_progression_preserved",
+            "viewpoint_timeline_preserved", "promises_ending_preserved",
+            "formal_direction_preserved", "affected_segments",
+            "affected_event_ids", "entry_state", "exit_state",
+            "knowledge_state", "relationship_state", "viewpoint_timeline",
+            "open_promises", "resolved_promises", "reason", "summary",
+        ),
+        wire_closed=True, minimum_business_characters=600,
     ),
     ArtifactContractRegistration(
         name="planning_adaptation_whole", phase="planning",
         semantic_authority="normalize_planning_adaptation_whole_receipt",
         legacy_labels=("Whole planning adaptation receipt",),
+        wire_required_fields=(
+            "authority_sha256", "planning_sha256", "segment_numbers",
+            "event_ids", "causal_order_preserved",
+            "adjacent_handoffs_preserved", "knowledge_progression_preserved",
+            "relationship_progression_preserved",
+            "viewpoint_timeline_preserved", "promises_ending_preserved",
+            "formal_direction_preserved", "affected_segments",
+            "affected_event_ids", "reason", "summary",
+        ),
+        wire_closed=True, minimum_business_characters=600,
     ),
     ArtifactContractRegistration(
         name="planning_repair_patch", phase="planning",
         semantic_authority="normalize_planning_repair_patch",
         legacy_labels=("Planning repair patch segment",),
+        wire_required_fields=(
+            "authority_sha256", "segment", "replacements", "summary",
+        ),
+        wire_closed=True, minimum_business_characters=180,
     ),
     ArtifactContractRegistration(
         name="short_plan_packet", phase="planning",
         semantic_authority="runtime event ownership and narrative contract",
         legacy_labels=("structured payload", "JSON packet"),
+        wire_required_fields=("segments",),
+        minimum_business_characters=160,
     ),
     ArtifactContractRegistration(
         name="planning_event_realizations", phase="planning",
         semantic_authority="ordered Runtime-owned planning event realization IR",
         legacy_labels=("planning event realization array",),
+        wire_required_fields=("events",),
+        wire_closed=True, minimum_business_characters=160,
     ),
     ArtifactContractRegistration(
         name="planning_semantic_v2", version=2, phase="planning",
@@ -119,6 +170,8 @@ _REGISTRATIONS = (
             "PlanningSemanticDraftV2 plus Runtime-owned formal event and exit topology"
         ),
         legacy_labels=("Markdown-first short planning",),
+        wire_required_fields=("version", "initial_state", "segments"),
+        wire_closed=True, minimum_business_characters=160,
     ),
     ArtifactContractRegistration(
         name="short_causal_chain", phase="planning", parser_strategy="baml_sap",
@@ -129,6 +182,14 @@ _REGISTRATIONS = (
             "semantic_protocol_retry", "model_fallback",
             "minimal_regeneration", "semantic_split", "checkpoint_resume",
         ),
+        wire_required_fields=(
+            "core_goal", "cycles", "ending", "covered_event_ids",
+        ),
+        wire_optional_fields=(
+            "opening", "accidents", "reversal", "question_chain",
+            "relationship_arc",
+        ),
+        wire_closed=True, minimum_business_characters=500,
     ),
     ArtifactContractRegistration(
         name="embedded_causal_chain", phase="planning",
@@ -139,46 +200,110 @@ _REGISTRATIONS = (
         name="execution_manifest", phase="planning",
         semantic_authority="ExecutionManifestFragment plus narrative contract",
         legacy_labels=("Execution manifest segment",),
+        # Runtime binds version, authority hashes and adjacent handoff after the
+        # model has returned this single-segment body.
+        wire_required_fields=("beats", "segments"),
+        wire_closed=True,
+        minimum_business_characters=600,
     ),
     ArtifactContractRegistration(
         name="execution_manifest_receipt", phase="planning",
         semantic_authority="execution manifest evidence validator",
         legacy_labels=("Execution manifest receipt segment",),
+        wire_required_fields=(
+            "authority_sha256", "manifest_sha256", "beat_receipts",
+            "segment_receipts", "formal_plot_unchanged", "summary",
+        ),
+        wire_closed=True,
+        minimum_business_characters=300,
     ),
     ArtifactContractRegistration(
         name="generated_narrative_artifact", phase="writing",
         semantic_authority="structured artifact contract plus event ownership",
         legacy_labels=("structured narrative payload",),
+        wire_variant_requirements={
+            "deficit_han": ("scenes",),
+            "scene_index": (
+                "text", "entry_state", "exit_state", "time",
+                "evidence_source", "transition", "new_facts",
+            ),
+        },
+        wire_closed=True, minimum_business_characters=200,
     ),
     ArtifactContractRegistration(
         name="draft_atomic_semantic_receipt", phase="writing",
         semantic_authority=(
             "atomic beat semantic receipt verifier with task and beat ownership"
         ),
+        wire_required_fields=(
+            "authority_sha256", "execution_manifest_sha256", "task_id",
+            "prose_sha256", "beat_receipts", "entry", "exit",
+            "outside_beat_ids", "future_beat_ids", "causal_order_valid",
+            "causal_order_evidence", "summary",
+        ),
+        wire_closed=True,
+        minimum_business_characters=240,
     ),
     ArtifactContractRegistration(
         name="draft_segment_semantic_receipt", phase="writing",
         semantic_authority=(
             "segment event semantic receipt verifier with task ownership"
         ),
+        wire_required_fields=(
+            "authority_sha256", "task_id", "prose_sha256",
+            "event_receipts", "entry", "exit", "outside_event_ids",
+            "causal_order_valid", "causal_order_evidence", "summary",
+        ),
+        wire_closed=True,
+        minimum_business_characters=300,
     ),
     ArtifactContractRegistration(
         name="draft_whole_semantic_receipt", phase="writing",
         semantic_authority=(
             "whole-story semantic receipt verifier over ordered segment evidence"
         ),
+        wire_required_fields=(
+            "authority_sha256", "draft_sha256", "segment_sha256",
+            "event_ids", "missing_event_ids", "duplicate_event_ids",
+            "out_of_order_event_ids", "causal_order_valid",
+            "continuity_valid", "ending_valid", "commitments_valid",
+            "evidence", "summary",
+        ),
+        wire_closed=True,
+        minimum_business_characters=500,
     ),
     ArtifactContractRegistration(
         name="draft_whole_window_receipt", phase="writing",
         semantic_authority=(
             "capacity-window semantic receipt verifier with obligation deltas"
         ),
+        wire_required_fields=(
+            "authority_sha256", "draft_sha256", "segment_numbers",
+            "segment_sha256", "event_ids", "missing_event_ids",
+            "duplicate_event_ids", "out_of_order_event_ids",
+            "causal_order_valid", "continuity_valid",
+            "commitment_flow_valid", "ending_valid", "ending_evidence",
+            "introduced_obligations",
+            "resolved_within_window_obligations",
+            "obligation_reconciliations", "evidence", "summary",
+        ),
+        wire_closed=True,
+        minimum_business_characters=500,
     ),
     ArtifactContractRegistration(
         name="draft_whole_reducer_receipt", phase="writing",
         semantic_authority=(
             "global whole-story reducer over validated semantic windows"
         ),
+        wire_required_fields=(
+            "authority_sha256", "draft_sha256", "segment_sha256",
+            "event_ids", "missing_event_ids", "duplicate_event_ids",
+            "out_of_order_event_ids", "causal_order_valid",
+            "continuity_valid", "ending_valid", "commitments_valid",
+            "evidence", "summary",
+        ),
+        wire_closed=True,
+        minimum_business_characters=600,
     ),
     ArtifactContractRegistration(
         name="polish_assessment", phase="quality",
@@ -187,32 +312,67 @@ _REGISTRATIONS = (
     ArtifactContractRegistration(
         name="revision_plan", phase="quality",
         semantic_authority="normalize_revision_plan for structural scene tasks",
+        wire_required_fields=("checks", "tasks"),
+        wire_optional_fields=("global_facts",),
+        wire_closed=True, minimum_business_characters=96,
     ),
     ArtifactContractRegistration(
         name="revision_patch_contract", phase="quality",
         semantic_authority=(
             "normalize_repair_contract for one Runtime-authorized semantic issue group"
         ),
+        wire_required_fields=("manuscript_hash", "groups"),
+        wire_closed=True, minimum_business_characters=240,
     ),
     ArtifactContractRegistration(
         name="final_review", phase="quality",
         semantic_authority="typed final-review verdict and authoritative issue ledger",
+        # normalize_review accepts either canonical dimensions or the legacy
+        # aggregate score and deterministically derives decision/hard_fail.
+        wire_required_fields=("issues",),
+        wire_optional_fields=(
+            "dimensions", "score", "hard_fail", "decision",
+            "reconciliations", "criteria", "criterion_evidence",
+        ),
+        wire_closed=True,
+        minimum_business_characters=160,
     ),
     ArtifactContractRegistration(
         name="final_review_window", phase="quality",
         semantic_authority="typed manuscript-window evidence and descriptive issues",
+        wire_required_fields=("summary", "issues"),
+        wire_closed=True,
+        # A clean window legitimately has an empty issue list and one bounded
+        # summary, so its floor must reject token-sized acknowledgements
+        # without rejecting a complete no-findings receipt.
+        minimum_business_characters=96,
     ),
     ArtifactContractRegistration(
         name="final_review_regional", phase="quality",
         semantic_authority="typed regional issue reduction semantic body",
+        wire_required_fields=("summary", "issues"),
+        wire_closed=True,
+        minimum_business_characters=96,
     ),
     ArtifactContractRegistration(
         name="final_review_detail", phase="quality",
         semantic_authority="typed detailed ending, causality, and promise evidence",
+        wire_required_fields=(
+            "events", "promises", "character_states", "timeline",
+        ),
+        wire_closed=True,
+        minimum_business_characters=300,
     ),
     ArtifactContractRegistration(
         name="reader_review", phase="quality",
         semantic_authority="target-reader quality verdict plus reader signals",
+        wire_required_fields=("issues", "reader_signals"),
+        wire_optional_fields=(
+            "dimensions", "score", "hard_fail", "decision",
+            "reconciliations", "criteria", "criterion_evidence",
+        ),
+        wire_closed=True,
+        minimum_business_characters=160,
     ),
     ArtifactContractRegistration(
         name="short_maintenance_facts", phase="runtime",
@@ -221,6 +381,9 @@ _REGISTRATIONS = (
             "typed state transitions, and audited singleton normalization"
         ),
         legacy_labels=("short-story maintenance facts",),
+        wire_required_fields=("facts",),
+        wire_optional_fields=("state",),
+        minimum_business_characters=0,
     ),
     ArtifactContractRegistration(
         name="long_setup_maintenance", phase="runtime",
@@ -228,6 +391,9 @@ _REGISTRATIONS = (
             "long-form setup facts, volume plan, and initial memory projection"
         ),
         legacy_labels=("book setup maintenance facts",),
+        wire_required_fields=("facts",),
+        wire_optional_fields=("state", "volumes"),
+        minimum_business_characters=0,
     ),
     ArtifactContractRegistration(
         name="long_chapter_maintenance", phase="runtime",
@@ -235,6 +401,9 @@ _REGISTRATIONS = (
             "long-form chapter fact and character-state delta projection"
         ),
         legacy_labels=("chapter maintenance facts",),
+        wire_required_fields=("facts",),
+        wire_optional_fields=("state",),
+        minimum_business_characters=0,
     ),
     ArtifactContractRegistration(
         name="maintenance_window_receipt", phase="runtime",
@@ -318,6 +487,115 @@ _REGISTRATIONS = (
 ARTIFACT_CONTRACT_REGISTRY: Mapping[str, ArtifactContractRegistration] = {
     item.name: item for item in _REGISTRATIONS
 }
+
+
+_NONEMPTY_ARRAY_FIELDS = {
+    "beat_receipts", "beats", "cycles", "event_receipts", "event_reviews",
+    "events", "evidence", "groups", "replacements", "scenes", "segments",
+    "segment_receipts", "tasks",
+}
+_OBJECT_FIELDS = {
+    "criteria", "criterion_evidence", "dimensions", "entry", "exit",
+    "invariants", "opening", "reader_signals", "reversal",
+}
+_BOOLEAN_FIELDS = {
+    "causal_order_valid", "commitment_flow_valid", "commitments_valid",
+    "continuity_valid", "ending_valid", "formal_plot_unchanged", "hard_fail",
+    "requires_user_confirmation",
+}
+_INTEGER_FIELDS = {"authority_version", "segment", "version"}
+
+
+def _wire_property_schema(field: str) -> dict[str, Any]:
+    if field == "score":
+        return {"type": "number", "minimum": 0, "maximum": 100}
+    if field in _INTEGER_FIELDS:
+        return {"type": "integer"}
+    if field in _BOOLEAN_FIELDS or field.endswith("_preserved"):
+        return {"type": "boolean"}
+    if (
+        field in _NONEMPTY_ARRAY_FIELDS
+        or field.endswith("_ids")
+        or field.endswith("_segments")
+        or field in {
+            "accidents", "affected_segments", "character_states", "checks",
+            "duplicate_event_ids", "future_beat_ids", "global_facts",
+            "facts", "introduced_obligations", "issues", "missing_event_ids",
+            "new_facts", "obligation_reconciliations", "open_promises",
+            "out_of_order_event_ids", "outside_beat_ids", "outside_event_ids",
+            "promises", "question_chain", "relationship_arc",
+            "reconciliations", "resolved_promises",
+            "resolved_within_window_obligations",
+            "segment_numbers", "segment_sha256", "timeline",
+            "volumes",
+        }
+    ):
+        schema: dict[str, Any] = {"type": "array", "items": {}}
+        if field in _NONEMPTY_ARRAY_FIELDS:
+            schema["minItems"] = 1
+        return schema
+    if field in _OBJECT_FIELDS or field in {
+        "criteria", "criterion_evidence", "dimensions", "reader_signals",
+        "state",
+    }:
+        return {"type": "object", "minProperties": 1}
+    if field.endswith("sha256") or field.endswith("_hash"):
+        return {"type": "string", "minLength": 64, "maxLength": 64}
+    if field in {
+        "core_goal", "ending", "entry_state", "exit_state", "summary",
+    }:
+        # These narrative values are intentionally open to string/object/list
+        # representations; Runtime-owned domain validation remains decisive.
+        return {}
+    return {"type": "string", "minLength": 1}
+
+
+def registered_business_wire_schema(
+    contract_name: str,
+    runtime_authority: Mapping[str, object] | None = None,
+) -> dict[str, Any]:
+    """Build the registered business-anchored provider schema.
+
+    An unregistered or open-root default is a configuration error.  Dynamic
+    variants are selected only from Runtime authority, never provider/model
+    names or returned content.
+    """
+
+    registration = ARTIFACT_CONTRACT_REGISTRY.get(contract_name)
+    if registration is None:
+        raise KeyError(f"unregistered generated artifact contract: {contract_name}")
+    required = registration.wire_required_fields
+    if registration.wire_variant_requirements:
+        authority = runtime_authority or {}
+        matches = [
+            fields
+            for authority_key, fields in registration.wire_variant_requirements.items()
+            if authority_key in authority
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                f"{contract_name} wire schema variant is not uniquely bound"
+            )
+        required = matches[0]
+    if not required:
+        raise ValueError(
+            f"{contract_name} has no registered business wire schema"
+        )
+    optional = registration.wire_optional_fields
+    if len(required) != len(set(required)):
+        raise ValueError(f"{contract_name} wire schema repeats a required field")
+    if len(optional) != len(set(optional)) or set(required) & set(optional):
+        raise ValueError(f"{contract_name} wire schema has invalid optional fields")
+    properties = tuple(dict.fromkeys((*required, *optional)))
+    return {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+            field: _wire_property_schema(field) for field in properties
+        },
+        "required": list(required),
+        "additionalProperties": not registration.wire_closed,
+    }
 
 
 def validate_executable_contract_registry() -> None:

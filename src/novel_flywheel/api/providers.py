@@ -178,6 +178,14 @@ async def probe_model(provider_id: str, model_id: str,
         probed_at = datetime.now(timezone.utc)
         registry.update_model_capabilities(provider_id, model_id, {
             "structured_output": result.structured_output_capability,
+            "structured_output_protocol_capability": result.protocol_capability,
+            "structured_output_qualification": result.qualification_status,
+            "verified_business_output_characters": (
+                result.verified_output_characters
+            ),
+            "business_probe_schema_sha256": (
+                result.qualification_schema_sha256
+            ),
             "tool_support": "enabled" if result.tool_calling else "disabled",
             "capability_probe_status": "succeeded",
             "capability_probe_route_fingerprint": resolved.route_fingerprint,

@@ -68,6 +68,26 @@ named `tool_choice`; record its ordinary tool support, but do not mark it
 so an optional-only primary is skipped before the paid request and an explicitly
 strict fallback is used.
 
+Protocol support is not business qualification. Runtime records business outcomes
+for the exact provider, model, route fingerprint, execution mode, contract version,
+and schema hash. A successful capability probe cannot erase a prior empty, partial,
+or underfilled business result. Each generated artifact must contain its registered
+business roots and pass the stage's existing domain validator; contracts with a
+legitimately compact no-issue receipt use their own calibrated size policy instead of
+a global character cutoff. A failed native schema/tool mode is quarantined only for
+that exact route and contract, then retried as plain JSON or on the configured
+fallback. Plain responses pass through the shared unique-object extractor and safe
+syntax repair, but local parsing never invents missing facts or chooses between
+multiple candidates. Ambiguity, missing roots, or domain-incomplete content stops or
+continues the explicit recovery ladder before any checkpoint or formal promotion.
+
+The model/API status distinguishes a protocol-only observation from a
+business-qualified route. Diagnose repeated failures from the stored contract/mode
+outcome rather than repeatedly probing the provider. The deterministic regression
+fixture for a normal-finish empty object is
+`tests/fixtures/structured_business_output_empty_normal_finish_20260812.json`;
+production-shaped recovery tests use isolated workspaces and make no paid calls.
+
 Planning presentation repair now asks the model only for ordered creative event
 narratives. Segment identity, outline basis, packet ownership, opening/closing
 boundaries, hashes, retry budgets, and checkpoint identity remain Runtime-owned.

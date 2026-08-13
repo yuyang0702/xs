@@ -45,6 +45,17 @@ class ContractOutputLimitExhaustedError(RuntimeError):
         self.receipt = dict(receipt)
 
 
+class ContractBusinessOutputIncompleteError(RuntimeError):
+    """Every permitted route/mode failed structural business completeness."""
+
+    def __init__(self, reason: str, *, receipt: Mapping[str, Any]) -> None:
+        super().__init__(
+            "structured business output remained incomplete after route recovery"
+        )
+        self.reason = reason
+        self.receipt = dict(receipt)
+
+
 @dataclass(frozen=True)
 class ExecutableContractSpec:
     """An indivisible model-output contract execution boundary.
@@ -658,6 +669,69 @@ def _protocol_regeneration_system(system: str) -> str:
     )
 
 
+def _best_effort_object(text: str) -> dict[str, Any] | None:
+    try:
+        return GeneratedArtifactGateway().convert_object(
+            text, contract_name="capability_probe",
+        ).payload
+    except (TypeError, ValueError, ArtifactConversionError):
+        return None
+
+
+def _business_incomplete_reason(
+    text: str,
+    contract: StructuredArtifactContract,
+    *,
+    payload: Mapping[str, Any] | None = None,
+    expected_output_characters: int = 0,
+) -> str | None:
+    """Classify invariant structural deficits, never creative shortness alone."""
+
+    visible = str(text or "").strip()
+    if not visible:
+        return "empty_output"
+    candidate = dict(payload) if payload is not None else _best_effort_object(visible)
+    if candidate == {}:
+        return "empty_object"
+    required = contract.required_top_level_fields()
+    if candidate is not None and required:
+        missing = [field for field in required if field not in candidate]
+        if missing:
+            return "required_fields_missing"
+    floor = max(24, int(max(0, expected_output_characters) * 0.25))
+    if expected_output_characters > 0 and len(visible) < floor:
+        return "underfilled"
+    return None
+
+
+def _record_business_outcome(
+    gateway: Any,
+    response: Any,
+    contract: StructuredArtifactContract,
+    *,
+    outcome: str,
+    failure_reason: str | None,
+    expected_output_characters: int,
+) -> None:
+    recorder = getattr(gateway, "record_structured_contract_outcome", None)
+    receipt = getattr(response, "receipt", None)
+    if not callable(recorder) or not isinstance(receipt, dict):
+        return
+    try:
+        recorder(
+            receipt,
+            contract,
+            outcome=outcome,
+            failure_reason=failure_reason,
+            observed_visible_characters=len(str(getattr(response, "text", "") or "")),
+            expected_visible_characters=max(0, expected_output_characters),
+        )
+    except Exception:
+        # Qualification memory is protective telemetry.  A storage fault must
+        # not replace the business result or suppress configured fallback.
+        return
+
+
 async def execute_contract_runtime(
     gateway: Any,
     *,
@@ -666,6 +740,7 @@ async def execute_contract_runtime(
     user: str,
     execution_spec: ExecutableContractSpec,
     max_output_tokens: int | None = None,
+    expected_output_characters: int = 0,
     same_route_attempts: int = 2,
     fallback_attempts: int = 2,
     attempt_routes: tuple[
@@ -683,6 +758,16 @@ async def execute_contract_runtime(
 
     contract_name = execution_spec.contract_name
     structured_contract = execution_spec.structured_contract
+    registration = ARTIFACT_CONTRACT_REGISTRY[contract_name]
+    # A calibrated contract baseline outranks source-scaled caller estimates.
+    # Uncalibrated dynamic contracts (for example wizard/interview schemas)
+    # retain their task-local estimate instead of silently disabling the size
+    # guard.  Every fixed workflow contract is calibrated in the registry.
+    expected_output_characters = max(0, (
+        expected_output_characters
+        if registration.minimum_business_characters is None
+        else registration.minimum_business_characters
+    ))
     policy = _contract_recovery_policy(contract_name)
     converter = GeneratedArtifactGateway()
     last_error: Exception | None = None
@@ -690,6 +775,7 @@ async def execute_contract_runtime(
     fallback_error: Exception | None = None
     last_receipt: Mapping[str, Any] = {}
     output_limit_seen = False
+    last_business_incomplete_reason: str | None = None
     attempt_output_tokens = max_output_tokens
 
     attempts = _contract_attempts(
@@ -703,7 +789,10 @@ async def execute_contract_runtime(
     for attempt in attempts:
         route_system = system
         route_user = user
-        if isinstance(last_error, ArtifactConversionError):
+        if isinstance(
+            last_error,
+            (ArtifactConversionError, ContractBusinessOutputIncompleteError),
+        ):
             route_system = _protocol_regeneration_system(system)
         try:
             response = (
@@ -751,6 +840,28 @@ async def execute_contract_runtime(
                 audit_sink(exc.audit)
             last_error = exc
             receipt = getattr(response, "receipt", None)
+            incomplete_reason = _business_incomplete_reason(
+                str(getattr(response, "text", response)),
+                structured_contract,
+                expected_output_characters=expected_output_characters,
+            )
+            if incomplete_reason is not None:
+                last_business_incomplete_reason = incomplete_reason
+            _record_business_outcome(
+                gateway, response, structured_contract,
+                outcome=(
+                    incomplete_reason
+                    or (
+                        "output_limited"
+                        if output_limited(
+                            receipt if isinstance(receipt, dict) else None
+                        )
+                        else "protocol_invalid"
+                    )
+                ),
+                failure_reason=incomplete_reason,
+                expected_output_characters=expected_output_characters,
+            )
             if output_limited(receipt if isinstance(receipt, dict) else None):
                 attempt_output_tokens = expanded_output_budget(
                     attempt_output_tokens,
@@ -758,6 +869,30 @@ async def execute_contract_runtime(
             continue
         if audit_sink is not None:
             audit_sink(conversion.audit)
+        incomplete_reason = _business_incomplete_reason(
+            str(getattr(response, "text", response)),
+            structured_contract,
+            payload=conversion.payload,
+            expected_output_characters=expected_output_characters,
+        )
+        if incomplete_reason is not None:
+            last_business_incomplete_reason = incomplete_reason
+            receipt = getattr(response, "receipt", None)
+            _record_business_outcome(
+                gateway, response, structured_contract,
+                outcome=incomplete_reason,
+                failure_reason=incomplete_reason,
+                expected_output_characters=expected_output_characters,
+            )
+            if output_limited(receipt if isinstance(receipt, dict) else None):
+                attempt_output_tokens = expanded_output_budget(
+                    attempt_output_tokens,
+                )
+            last_error = ContractBusinessOutputIncompleteError(
+                incomplete_reason,
+                receipt=(dict(receipt) if isinstance(receipt, Mapping) else {}),
+            )
+            continue
         try:
             domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
@@ -765,11 +900,40 @@ async def execute_contract_runtime(
                 raise
             last_error = exc
             receipt = getattr(response, "receipt", None)
+            incomplete_reason = _business_incomplete_reason(
+                str(getattr(response, "text", response)),
+                structured_contract,
+                payload=conversion.payload,
+                expected_output_characters=expected_output_characters,
+            )
+            if incomplete_reason is not None:
+                last_business_incomplete_reason = incomplete_reason
+            _record_business_outcome(
+                gateway, response, structured_contract,
+                outcome=(
+                    incomplete_reason
+                    or (
+                        "output_limited"
+                        if output_limited(
+                            receipt if isinstance(receipt, dict) else None
+                        )
+                        else "semantic_invalid"
+                    )
+                ),
+                failure_reason=incomplete_reason,
+                expected_output_characters=expected_output_characters,
+            )
             if output_limited(receipt if isinstance(receipt, dict) else None):
                 attempt_output_tokens = expanded_output_budget(
                     attempt_output_tokens,
                 )
             continue
+        _record_business_outcome(
+            gateway, response, structured_contract,
+            outcome="valid",
+            failure_reason=None,
+            expected_output_characters=expected_output_characters,
+        )
         return ContractRuntimeResult(
             payload=conversion.payload,
             domain_value=domain_value,
@@ -779,9 +943,17 @@ async def execute_contract_runtime(
         )
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("structured contract runtime had no executable attempt")
-    if output_limit_seen and isinstance(last_error, ArtifactConversionError):
+    if output_limit_seen and (
+        isinstance(last_error, ArtifactConversionError)
+        or last_business_incomplete_reason is not None
+    ):
         raise ContractOutputLimitExhaustedError(
             "structured output remained incomplete after every permitted route",
+            receipt=last_receipt,
+        ) from last_error
+    if last_business_incomplete_reason is not None:
+        raise ContractBusinessOutputIncompleteError(
+            last_business_incomplete_reason,
             receipt=last_receipt,
         ) from last_error
     if primary_error is not None and fallback_error is not None:

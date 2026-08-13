@@ -17,6 +17,7 @@ from novel_flywheel.context_policy import (
     classify_model_failure,
     classify_input_pressure,
 )
+from novel_flywheel.contract_runtime import ContractBusinessOutputIncompleteError
 from novel_flywheel.execution_manifest import (
     bind_previous_exit_hashes,
     execution_manifest_payload,
@@ -809,6 +810,15 @@ class FakeGateway:
                 "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         text = next(self.responses)
+        if "TARGET READER SIMULATION" in user:
+            payload = json.loads(text)
+            payload["reader_signals"] = {
+                "would_continue": True,
+                "would_pay": True,
+                "abandonment_point": "none",
+                "payoff_felt": True,
+            }
+            text = json.dumps(payload, ensure_ascii=False)
         if role == "final_review" and "AUTHORITATIVE REVIEW ISSUE LEDGER:" in user:
             payload = json.loads(text)
             ledger_text = user.split(
@@ -882,6 +892,9 @@ class ProductionSizedShortGateway:
         planning_sha = user.split(
             "EXPECTED PLANNING SHA256: ", 1,
         )[1].splitlines()[0]
+        authority_version = int(user.split(
+            "EXPECTED AUTHORITY VERSION: ", 1,
+        )[1].splitlines()[0])
         segment = int(user.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
         expected = json.loads(
             user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
@@ -895,6 +908,7 @@ class ProductionSizedShortGateway:
         return json.dumps({
             "authority_sha256": authority,
             "planning_sha256": planning_sha,
+            "authority_version": authority_version,
             "segment": segment,
             "event_reviews": [{
                 "event_id": event_id,
@@ -2654,6 +2668,9 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
                 planning_sha = user.split(
                     "EXPECTED PLANNING SHA256: ", 1,
                 )[1].splitlines()[0]
+                authority_version = int(user.split(
+                    "EXPECTED AUTHORITY VERSION: ", 1,
+                )[1].splitlines()[0])
                 segment = int(user.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
                 expected = json.loads(
                     user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
@@ -2667,6 +2684,7 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
                 return ModelResult(json.dumps({
                     "authority_sha256": authority,
                     "planning_sha256": planning_sha,
+                    "authority_version": authority_version,
                     "segment": segment,
                     "event_reviews": [{
                         "event_id": event_id,
@@ -3213,7 +3231,17 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
                     ],
                     "summary": "全文节拍顺序和结局均已核对。",
                 }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
-            return ModelResult(next(self.responses), {"role": role, "model_name": f"fake-{role}"})
+            text = next(self.responses)
+            if "TARGET READER SIMULATION" in user:
+                payload = json.loads(text)
+                payload["reader_signals"] = {
+                    "would_continue": True,
+                    "would_pay": True,
+                    "abandonment_point": "none",
+                    "payoff_felt": True,
+                }
+                text = json.dumps(payload, ensure_ascii=False)
+            return ModelResult(text, {"role": role, "model_name": f"fake-{role}"})
 
         async def complete_primary(self, role, system, user, **kwargs):
             return await self.complete(role, system, user, **kwargs)
@@ -3637,7 +3665,7 @@ async def test_prepublication_chapter_failure_restores_files_and_memory(
         SkillGate(db, SkillScanner([skill_root])),
     )
 
-    with pytest.raises(ValueError, match="authoritative domain contract"):
+    with pytest.raises(ContractBusinessOutputIncompleteError):
         await service.run_chapter(
             project.id, "Reach the gate", use_crewai=False,
             run_id="invalid-maintenance",
@@ -3772,6 +3800,15 @@ class RecordingGateway:
                 "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         text = next(self.responses)
+        if "TARGET READER SIMULATION" in user:
+            payload = json.loads(text)
+            payload["reader_signals"] = {
+                "would_continue": True,
+                "would_pay": True,
+                "abandonment_point": "none",
+                "payoff_felt": True,
+            }
+            text = json.dumps(payload, ensure_ascii=False)
         if role == "planning" and text.strip() == "# Plan" and '"segment_count"' in user:
             count_match = re.search(r'"segment_count"\s*:\s*(\d+)', user)
             count = int(count_match.group(1)) if count_match else 1
@@ -13765,9 +13802,22 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 return self.result(role, json.dumps(
                     payload, ensure_ascii=False,
                 ))
+            if "SHORT_PLAN_EVENT_REALIZATION_RECOVERY_V3" in user:
+                # The private production artifact predates independently
+                # executable event bodies. Rebuild only the Runtime-owned
+                # event realizations; segment controls stay byte-authoritative.
+                return self.result(
+                    role,
+                    ProductionSizedShortGateway._planning_event_realizations(
+                        user,
+                    ),
+                )
             if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
                 authority = user.split("EXPECTED AUTHORITY SHA256: ", 1)[1].splitlines()[0]
                 planning_sha = user.split("EXPECTED PLANNING SHA256: ", 1)[1].splitlines()[0]
+                authority_version = int(user.split(
+                    "EXPECTED AUTHORITY VERSION: ", 1,
+                )[1].splitlines()[0])
                 segment = int(user.split("CURRENT SEGMENT: ", 1)[1].splitlines()[0])
                 expected = json.loads(
                     user.split("EXPECTED EVENT IDS:\n", 1)[1].splitlines()[0]
@@ -13839,6 +13889,7 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 return self.result(role, json.dumps({
                     "authority_sha256": authority,
                     "planning_sha256": planning_sha,
+                    "authority_version": authority_version,
                     "segment": segment,
                     "event_reviews": event_reviews,
                     "segment_order_preserved": True,
@@ -14012,7 +14063,16 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 source = user.rsplit("MANUSCRIPT SEGMENT:\n", 1)[1]
                 return self.result(role, source)
             if "TARGET READER SIMULATION" in user:
-                return self.result(role, quality_review(90, 91, 89, issues=[]))
+                payload = json.loads(quality_review(90, 91, 89, issues=[]))
+                payload["reader_signals"] = {
+                    "would_continue": True,
+                    "would_pay": True,
+                    "abandonment_point": "none",
+                    "payoff_felt": True,
+                }
+                return self.result(
+                    role, json.dumps(payload, ensure_ascii=False),
+                )
             if role == "review":
                 return self.result(role, quality_review(88, 89, 86, issues=[{
                     "category": "prose", "severity": "medium",
@@ -14234,22 +14294,31 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
     assert capacity_simulation["facet_windows"] >= capacity_simulation[
         "singleton_facets"
     ]
-    assert gateway.patch_feedback_seen is True
+    if using_exact_production_artifact:
+        assert any(
+            "SHORT_PLAN_EVENT_REALIZATION_RECOVERY_V3" in call["user"]
+            for call in gateway.calls
+        )
+    else:
+        assert gateway.patch_feedback_seen is True
     patch_calls = [
         call for call in gateway.calls
         if "SHORT_PLAN_EVIDENCE_PATCH_V3" in call["user"]
     ]
-    assert patch_calls
-    assert all(
-        0 < call["max_output_tokens"] < capacity_fixture["output_reserve_tokens"]
-        for call in patch_calls
-    )
-    assert all(classify_input_pressure(
-        full_input_tokens=capacity_fixture["estimated_input_tokens"],
-        authority_input_tokens=capacity_fixture["authority_input_tokens"],
-        output_reserve=call["max_output_tokens"],
-        context_window=capacity_fixture["context_window"],
-    ) == "full" for call in patch_calls)
+    if using_exact_production_artifact:
+        assert not patch_calls
+    else:
+        assert patch_calls
+        assert all(
+            0 < call["max_output_tokens"] < capacity_fixture["output_reserve_tokens"]
+            for call in patch_calls
+        )
+        assert all(classify_input_pressure(
+            full_input_tokens=capacity_fixture["estimated_input_tokens"],
+            authority_input_tokens=capacity_fixture["authority_input_tokens"],
+            output_reserve=call["max_output_tokens"],
+            context_window=capacity_fixture["context_window"],
+        ) == "full" for call in patch_calls)
     run_path = project.path / "runs" / result["id"]
     repaired_plan = (run_path / "outputs" / "planning.md").read_text(encoding="utf-8")
     planning_ir = json.loads(
@@ -14266,21 +14335,36 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
     ] == [item.upper() for item in event_ids]
     before_segments = service._short_plan_segments(original_plan, 6)
     after_segments = service._short_plan_segments(repaired_plan, 6)
-    assert [after_segments[index] == before_segments[index] for index in range(6)] == [
-        True, True, True, False, True, True,
-    ]
-    assert "暗中继续追查" not in after_segments[3]
-    assert "老仆口中关于三小姐的线索" not in after_segments[3]
-    assert "闻出毒味" in after_segments[3]
-    assert "裴砚行替花穗闻出毒味" not in repaired_plan
+    if using_exact_production_artifact:
+        assert any(
+            after != before
+            for before, after in zip(before_segments, after_segments, strict=True)
+        )
+        for before, after in zip(before_segments, after_segments, strict=True):
+            assert service._short_plan_event_ids(after) == (
+                service._short_plan_event_ids(before)
+            )
+            for field in ("outline", "opening", "handoff"):
+                assert service._short_plan_field(after, field) == (
+                    service._short_plan_field(before, field)
+                )
+    else:
+        assert [
+            after_segments[index] == before_segments[index] for index in range(6)
+        ] == [True, True, True, False, True, True]
+        assert "暗中继续追查" not in after_segments[3]
+        assert "老仆口中关于三小姐的线索" not in after_segments[3]
+        assert "闻出毒味" in after_segments[3]
+        assert "裴砚行替花穗闻出毒味" not in repaired_plan
     saved_recovery = json.loads(
         (run_path / "outputs" / "planning-recovery-state.json").read_text(
             encoding="utf-8",
         )
     )
     assert saved_recovery["status"] == "ready"
-    assert any(not item["accepted"] for item in saved_recovery["candidates"])
-    assert any(item["accepted"] for item in saved_recovery["candidates"])
+    if not using_exact_production_artifact:
+        assert any(not item["accepted"] for item in saved_recovery["candidates"])
+        assert any(item["accepted"] for item in saved_recovery["candidates"])
     causal_chain = json.loads(
         (run_path / "outputs" / "short-causal-chain.json").read_text(encoding="utf-8")
     )

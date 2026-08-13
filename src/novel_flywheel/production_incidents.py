@@ -225,6 +225,17 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "provider.structured_output_business_incomplete",
+        "A third-party route returned a terminal but business-incomplete structured artifact",
+        "Retain the last complete authority-bound checkpoint. Quarantine the exact immutable route, execution mode, contract, and schema digest; do not let a tiny capability probe clear that evidence. Retry the immutable receipt once through prompt JSON on the same route, then select the configured independent fallback. If the receipt is output-limited, expand verified headroom once and split only by semantic ownership. Re-enter canonical conversion and the unchanged domain validator before resuming the smallest blocked unit through its next authoritative boundary.",
+        (
+            r"structured business output remained incomplete after route recovery",
+            r"normal_finish_empty_structured_output",
+            r"structured[_ -]output.*(?:empty_object|underfilled|required_fields_missing)",
+            r"business qualification payload.*(?:empty|incomplete|short)",
+        ),
+    ),
+    IncidentDefinition(
         "planning.causal_chain_invalid",
         "因果链解析或正式事件覆盖不完整",
         "保留正式大纲与最佳规划；完整响应先进行一次同范围协议重试，仍不合格则进入内容寻址的语义分包任务树，只重建失败的连续事件范围并复用已验证分包。覆盖、顺序、唯一所有权、邻接状态和整链因果全部通过后才生成执行清单和正文。",

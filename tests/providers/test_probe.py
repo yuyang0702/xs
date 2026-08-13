@@ -1,8 +1,14 @@
+import json
+
 import pytest
 
 from novel_flywheel.domain.models import ModelResponse, ToolCall
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.providers.probe import CapabilityProbe
+
+
+def business_payload() -> dict:
+    return CapabilityProbe._business_payload()
 
 
 class ProbeAdapter:
@@ -14,14 +20,21 @@ class ProbeAdapter:
     async def complete(self, request):
         self.calls += 1
         self.requests.append(request)
-        if self.calls == 1:
-            return ModelResponse(text="连接正常")
-        if self.calls == 2:
-            assert request.response_schema is not None
-            return ModelResponse(text='{"ok":true}')
-        if self.tool_calling:
-            return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
-        return ModelResponse(text="tools unavailable")
+        if request.response_schema is not None:
+            return ModelResponse(text=json.dumps(
+                business_payload(), ensure_ascii=False,
+            ))
+        if request.tools:
+            if self.tool_calling:
+                return ModelResponse(tool_calls=[ToolCall(
+                    id="probe", name="probe_tool", arguments=business_payload(),
+                )])
+            return ModelResponse(text="tools unavailable")
+        if request.response_format == "json_object":
+            return ModelResponse(text=json.dumps(
+                business_payload(), ensure_ascii=False,
+            ))
+        return ModelResponse(text="连接正常")
 
 
 class FailingProbeAdapter:
@@ -32,11 +45,18 @@ class FailingProbeAdapter:
 class EmptyChatProbeAdapter(ProbeAdapter):
     async def complete(self, request):
         self.calls += 1
-        if self.calls == 1:
+        self.requests.append(request)
+        if request.response_schema is None and not request.tools:
             return ModelResponse(text="")
-        if self.calls == 2:
-            return ModelResponse(text='```json\n{"ok": true}\n```')
-        return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+        if request.response_schema is not None:
+            return ModelResponse(text=(
+                "```json\n"
+                + json.dumps(business_payload(), ensure_ascii=False)
+                + "\n```"
+            ))
+        return ModelResponse(tool_calls=[ToolCall(
+            id="probe", name="probe_tool", arguments=business_payload(),
+        )])
 
 
 class ThinkingProbeAdapter(ProbeAdapter):
@@ -45,13 +65,17 @@ class ThinkingProbeAdapter(ProbeAdapter):
     async def complete(self, request):
         self.calls += 1
         self.requests.append(request)
-        if self.calls == 1:
+        if request.response_schema is not None:
+            return ModelResponse(text=json.dumps(
+                business_payload(), ensure_ascii=False,
+            ))
+        if not request.tools:
             return ModelResponse(text="ok")
-        if self.calls == 2:
-            return ModelResponse(text='{"ok":true}')
         if request.required_tool:
             raise ToolCapabilityError(self.error)
-        return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+        return ModelResponse(tool_calls=[ToolCall(
+            id="probe", name="probe_tool", arguments=business_payload(),
+        )])
 
 
 class KimiThinkingProbeAdapter(ThinkingProbeAdapter):
@@ -66,64 +90,86 @@ class IgnoredForcedToolProbeAdapter(ProbeAdapter):
     async def complete(self, request):
         self.calls += 1
         self.requests.append(request)
-        if self.calls == 1:
+        if request.response_schema is not None:
+            return ModelResponse(text=json.dumps(
+                business_payload(), ensure_ascii=False,
+            ))
+        if not request.tools:
             return ModelResponse(text="ok")
-        if self.calls == 2:
-            return ModelResponse(text='{"ok":true}')
         if request.required_tool:
             return ModelResponse(text="I cannot call tools")
-        return ModelResponse(tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})])
+        return ModelResponse(tool_calls=[ToolCall(
+            id="probe", name="probe_tool", arguments=business_payload(),
+        )])
 
 
 class OptionalToolOnlyProbeAdapter(ProbeAdapter):
+    """Accepts parameters but only returns a tiny/ignored schema payload."""
+
     async def complete(self, request):
         self.calls += 1
         self.requests.append(request)
-        if self.calls == 1:
-            return ModelResponse(text="ok")
-        if self.calls == 2:
+        if request.response_schema is not None:
             return ModelResponse(text='{"ok":true,"unexpected":"schema ignored"}')
+        if not request.tools:
+            return ModelResponse(text="ok")
         if request.required_tool:
             raise ToolCapabilityError(
                 "Thinking mode does not support this tool_choice"
             )
-        return ModelResponse(
-            tool_calls=[ToolCall(id="probe", name="probe_tool", arguments={})],
-        )
+        return ModelResponse(tool_calls=[ToolCall(
+            id="probe", name="probe_tool", arguments=business_payload(),
+        )])
+
+
+class EmptyForcedToolArgumentsAdapter(ProbeAdapter):
+    async def complete(self, request):
+        self.calls += 1
+        self.requests.append(request)
+        if request.response_schema is not None:
+            return ModelResponse(text="{}")
+        if request.tools:
+            return ModelResponse(tool_calls=[ToolCall(
+                id="probe", name="probe_tool", arguments={},
+            )])
+        return ModelResponse(text="ok")
 
 
 @pytest.mark.asyncio
-async def test_probe_reports_chat_json_and_tool_calling_separately() -> None:
+async def test_probe_reports_business_json_and_tool_calling_separately() -> None:
     adapter = ProbeAdapter()
     result = await CapabilityProbe(adapter).run("model")
-    assert result.model_dump() == {
-        "chat": True,
-        "structured_output": True,
-        "tool_calling": True,
-        "forced_tool": True,
-        "structured_output_capability": "strict_json_schema",
-        "json_object": True,
-        "error": None,
-        "diagnostic_code": None,
-    }
+
+    assert result.chat is True
+    assert result.structured_output is True
+    assert result.tool_calling is True
+    assert result.forced_tool is True
+    assert result.structured_output_capability == "strict_json_schema"
+    assert result.protocol_capability == "strict_json_schema"
+    assert result.qualification_status == "business_qualified"
+    assert result.verified_output_characters > 1200
+    assert len(result.qualification_schema_sha256) == 64
+    assert result.json_object is True
+    assert result.error is None
+    assert result.diagnostic_code is None
     assert adapter.requests[2].required_tool == "probe_tool"
+    assert adapter.requests[1].max_output_tokens == 2048
 
 
 @pytest.mark.asyncio
-async def test_probe_can_report_partial_support() -> None:
+async def test_probe_can_report_partial_tool_support_after_business_qualification() -> None:
     result = await CapabilityProbe(ProbeAdapter(tool_calling=False)).run("model")
     assert result.chat is True
     assert result.structured_output is True
+    assert result.qualification_status == "business_qualified"
     assert result.tool_calling is False
-    assert result.error == "工具检测：供应商没有返回测试工具调用"
+    assert result.error is not None
 
 
 @pytest.mark.asyncio
 async def test_probe_retries_without_forced_tool_choice_for_thinking_models() -> None:
     adapter = ThinkingProbeAdapter()
-
     result = await CapabilityProbe(adapter).run("model")
-
     assert result.tool_calling is True
     assert result.forced_tool is False
     assert adapter.requests[-1].tools
@@ -133,21 +179,16 @@ async def test_probe_retries_without_forced_tool_choice_for_thinking_models() ->
 @pytest.mark.asyncio
 async def test_probe_retries_kimi_without_forced_tool_choice() -> None:
     adapter = KimiThinkingProbeAdapter()
-
     result = await CapabilityProbe(adapter).run("model")
-
     assert result.tool_calling is True
     assert result.forced_tool is False
-    assert adapter.requests[-1].tools
     assert adapter.requests[-1].required_tool is None
 
 
 @pytest.mark.asyncio
 async def test_probe_retries_when_provider_rejects_forced_tool_choice() -> None:
     adapter = UnsupportedForcedToolProbeAdapter()
-
     result = await CapabilityProbe(adapter).run("model")
-
     assert result.tool_calling is True
     assert result.forced_tool is False
     assert adapter.requests[-1].required_tool is None
@@ -156,31 +197,39 @@ async def test_probe_retries_when_provider_rejects_forced_tool_choice() -> None:
 @pytest.mark.asyncio
 async def test_probe_retries_when_provider_ignores_forced_tool_choice() -> None:
     adapter = IgnoredForcedToolProbeAdapter()
-
     result = await CapabilityProbe(adapter).run("model")
-
     assert result.tool_calling is True
     assert result.forced_tool is False
     assert adapter.requests[-1].required_tool is None
 
 
 @pytest.mark.asyncio
-async def test_optional_tool_support_is_not_misclassified_as_strict_tool() -> None:
+async def test_optional_tool_support_is_not_misclassified_as_business_strict() -> None:
     result = await CapabilityProbe(OptionalToolOnlyProbeAdapter()).run("model")
-
     assert result.chat is True
     assert result.tool_calling is True
     assert result.forced_tool is False
     assert result.structured_output is False
     assert result.structured_output_capability == "plain_text"
+    assert result.qualification_status == "protocol_only"
+    assert result.verified_output_characters == 0
+
+
+@pytest.mark.asyncio
+async def test_empty_forced_tool_arguments_never_receive_business_qualification() -> None:
+    result = await CapabilityProbe(EmptyForcedToolArgumentsAdapter()).run("model")
+    assert result.chat is True
+    assert result.forced_tool is True
+    assert result.protocol_capability in {"strict_json_schema", "strict_tool"}
+    assert result.structured_output_capability == "plain_text"
+    assert result.qualification_status == "protocol_only"
+    assert result.verified_output_characters == 0
 
 
 @pytest.mark.asyncio
 async def test_probe_includes_actionable_error_message() -> None:
     result = await CapabilityProbe(FailingProbeAdapter()).run("model")
-
     assert result.error is not None
-    assert "模型能力探测未完成" in result.error
     assert "provider.probe_failed" in result.error
     assert "endpoint returned text/html" not in result.error
     assert result.diagnostic_code == "connection_failed"
@@ -199,12 +248,12 @@ def test_probe_classifies_route_diagnostics_without_declaring_model_absent(
 
 
 @pytest.mark.asyncio
-async def test_probe_treats_successful_empty_chat_as_connected_and_accepts_fenced_json() -> None:
+async def test_probe_accepts_fenced_business_json_and_empty_chat() -> None:
     result = await CapabilityProbe(EmptyChatProbeAdapter()).run("model")
-
     assert result.chat is True
     assert result.structured_output is True
     assert result.tool_calling is True
+    assert result.qualification_status == "business_qualified"
 
 
 def test_probe_json_parser_accepts_wrappers_and_rejects_ambiguous_objects() -> None:

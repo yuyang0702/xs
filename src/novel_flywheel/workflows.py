@@ -120,6 +120,7 @@ from novel_flywheel.generated_artifacts import (
     ArtifactConversionError,
     GeneratedArtifactGateway,
     adapt_registered_contract,
+    registered_business_wire_schema,
     write_conversion_audit,
 )
 from novel_flywheel.semantic_packets import (
@@ -742,7 +743,13 @@ class WorkflowService:
             structured_contract=StructuredArtifactContract(
                 name=contract_name,
                 version=ARTIFACT_CONTRACT_REGISTRY[contract_name].version,
-                schema=dict(schema or {"type": "object"}),
+                schema=(
+                    dict(schema)
+                    if schema is not None
+                    else registered_business_wire_schema(
+                        contract_name, runtime_authority,
+                    )
+                ),
                 runtime_authority=dict(runtime_authority),
             ),
             semantic_normalizer=lambda value: (
@@ -22141,7 +22148,13 @@ class WorkflowService:
                             version=ARTIFACT_CONTRACT_REGISTRY[
                                 "draft_whole_window_receipt"
                             ].version,
-                            schema={"type": "object"},
+                            schema=registered_business_wire_schema(
+                                "draft_whole_window_receipt",
+                                {
+                                    "authority_sha256": authority_sha256,
+                                    "event_ids": window_event_ids,
+                                },
+                            ),
                             runtime_authority={
                             "authority_sha256": authority_sha256,
                             "draft_sha256": draft_sha256,
@@ -22426,7 +22439,13 @@ class WorkflowService:
                         version=ARTIFACT_CONTRACT_REGISTRY[
                             "draft_whole_reducer_receipt"
                         ].version,
-                        schema={"type": "object"},
+                        schema=registered_business_wire_schema(
+                            "draft_whole_reducer_receipt",
+                            {
+                                "authority_sha256": authority_sha256,
+                                "event_ids": expected_event_ids,
+                            },
+                        ),
                         runtime_authority={
                         "reducer_authority_sha256": reducer_authority,
                         "reducer_input_sha256": reducer_input,
@@ -25767,6 +25786,9 @@ class WorkflowService:
                         role=gateway_role, system=system, user=user,
                         execution_spec=execution_spec,
                         max_output_tokens=output_budget,
+                        expected_output_characters=(
+                            expected_output_characters or 0
+                        ),
                         same_route_attempts=2, fallback_attempts=2,
                         attempt_routes=requested_routes,
                         audit_sink=lambda audit: write_conversion_audit(

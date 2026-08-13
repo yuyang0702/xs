@@ -196,6 +196,8 @@ class ProviderRegistry:
             result.update({
                 "structured_output": "plain_text",
                 "tool_support": "auto",
+                "structured_output_qualification": "unqualified",
+                "verified_business_output_characters": 0,
                 "capability_probe_status": "stale",
                 "capability_probe_stale_reason": (
                     "route_changed" if probed_route != fingerprint else "expired"
