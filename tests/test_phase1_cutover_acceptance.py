@@ -178,4 +178,3 @@ def test_phase1_acceptance_canonical_context_uniqueness() -> None:
     explicit_conflict = "authority_evidence_conflict" in rendered
 
     assert len(truths) == 1 or explicit_conflict
-

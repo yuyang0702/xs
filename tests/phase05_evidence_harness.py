@@ -194,7 +194,6 @@ def maintenance_baseline(
         "repeatability_sha256": canonical_json_sha256(rows),
     }
 
-
 def saga_baseline(project_root: Path, run_id: str) -> dict[str, Any]:
     journal = load_project_mutation_journal(
         project_mutation_journal_path(project_root, run_id),
@@ -228,4 +227,3 @@ def saga_baseline(project_root: Path, run_id: str) -> dict[str, Any]:
         **stable,
         "repeatability_sha256": canonical_json_sha256(stable),
     }
-
