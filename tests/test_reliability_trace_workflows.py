@@ -150,6 +150,10 @@ def test_stale_review_binding_remains_unverifiable_not_rejected() -> None:
     }, observation_status="unknown")
     assert event.payload["binding_status"] == "unverifiable_legacy"
     assert event.observation_status == "unknown"
+    binding = artifact_binding_matrix([event])[0]
+    assert binding["binding_lane"] == "legacy"
+    assert binding["binding_status"] == "unverifiable_legacy"
+    assert binding["actual_input_object_hash"] is None
 
 
 def test_recovery_attempt_dag_uses_only_explicit_parent_edges() -> None:

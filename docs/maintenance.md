@@ -1625,3 +1625,74 @@ Focused verification:
   tests/test_reliability_trace_isolation.py `
   tests/test_phase0_baseline_harness.py
 ```
+
+## Phase 1A canonical shadow gate
+
+Phase 1A defines deterministic canonical claim, evidence, slot, mutation, and
+shadow-receipt contracts. It does not enable a new authority. The production
+feature flag is disabled by default:
+
+```powershell
+$env:NOVEL_CANONICAL_SHADOW_V1 = "1"  # observe only
+$env:NOVEL_RELIABILITY_TRACE = "1"    # persist hash-only diagnostics
+```
+
+When the shadow flag is disabled, the observer returns before reading aliases,
+building claims, or emitting shadow trace. When enabled, it runs only after the
+legacy Maintenance result is frozen and outside StoryState CAS, Saga commit,
+and project write locks. Any shadow computation or trace failure is swallowed;
+it cannot change the legacy return value, exception, retry, fallback, timeout,
+or recovery path.
+
+The Short normal, Short window/capacity, Long setup, and Long chapter
+Maintenance paths call the same observer. The observer emits hash-only
+`proposed_claim` diagnostics and a batch summary. It never emits a formal
+`promotion_write`. `ShadowCanonicalCommitReceiptV1` is permanently marked
+`shadow_only=true`, `commit_performed=false`, and
+`outcome=shadow_not_committed`; it has no target authority revision/hash or
+projection effects. Production mutation journals reject this contract.
+
+Mutation eligibility reads expected current values only from the requested
+StoryState revision/hash and its `character_states` or `confirmed_facts`
+authority slice. Canon, chapter state, Memory, FTS, summaries, planning data,
+and other projections are not eligibility inputs. Missing or mismatched
+StoryState authority remains unknown/ineligible and is never replaced by a
+projection guess.
+
+Evidence spans bind the publication-closed final UTF-8 bytes, source hash,
+zero-based byte range, exact byte-slice hash, and extractor contract version.
+Repeated evidence, mismatched source hashes, or unstable offsets are reported
+as ambiguous/ungrounded and cannot become an eligible shadow mutation.
+
+Read-only diagnostics are available through
+`canonical_shadow_comparison_matrix`. Projection provenance continues to be
+reported only for a completed Project Mutation Journal memory effect and now
+includes its deterministic `source_commit_id`, contract schema, and version.
+Artifact bindings are split into `exact_v2` and `legacy` lanes; unverifiable
+legacy artifacts remain characterization evidence and are not rejected.
+
+Focused verification:
+
+```powershell
+& .venv\Scripts\python.exe -m pytest -q `
+  tests/test_canonical_shadow.py `
+  tests/test_phase1a_shadow_workflows.py `
+  tests/test_project_transactions.py `
+  tests/test_reliability_trace_workflows.py `
+  tests/test_phase1_cutover_acceptance.py
+```
+
+Rollback is an independent revert of the four `Phase 1A-*` commits. For an
+immediate operational rollback, set `NOVEL_CANONICAL_SHADOW_V1=0`; this is the
+default and does not require changing project data. Reliability trace files
+remain physically outside project artifacts and may be retained for audit or
+removed independently.
+
+Phase 1A closes only the development gate for canonical contracts and shadow
+observation. The production authority cutover gate remains closed. The five
+strict expected failures continue to characterize Long authority divergence,
+unknown projection revision, normal/window legacy evidence asymmetry, stale
+legacy review/resume binding, and non-unique canonical context. Phase 1B, 1C,
+1D, Maintenance V2, StoryState authority cutover, Long promotion convergence,
+RepairContract enforcement, RecoveryPolicy enforcement, and `_stage`
+decomposition are outside this phase.

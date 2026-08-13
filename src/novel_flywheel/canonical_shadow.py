@@ -1196,6 +1196,32 @@ def observe_maintenance_shadow(
                 authority_revision=story_state_revision,
                 authority_hash=story_state_authority_hash(story_state_data),
             )
+        emit_observation(
+            project_root, event_type="proposed_claim",
+            source_component="canonical_shadow.observe_maintenance_shadow",
+            source_writer=workflow, observation_status="confirmed",
+            payload={
+                "claim_kind": "shadow_batch_summary", "shadow_only": True,
+                "affects_business_decision": False,
+                "workflow": report.workflow, "claim_count": report.claim_count,
+                "eligible_count": report.eligible_count,
+                "no_change_count": report.no_change_count,
+                "ineligible_count": report.ineligible_count,
+                "ambiguous_count": report.ambiguous_count,
+                "exact_evidence_count": report.exact_evidence_count,
+                "evidence_gap_count": report.evidence_gap_count,
+                "identity_ambiguous_count": report.identity_ambiguous_count,
+                "comparison_counts": report.comparison_counts,
+                "receipt_set_hash": canonical_sha256(
+                    "ShadowReceiptSetV1", report.receipt_hashes,
+                ),
+                "commit_performed": False,
+            },
+            run_id=run_id, stage_id="maintenance_shadow_summary",
+            semantic_domain="occurred_current",
+            authority_revision=story_state_revision,
+            authority_hash=story_state_authority_hash(story_state_data),
+        )
         return report
     except Exception:
         return None

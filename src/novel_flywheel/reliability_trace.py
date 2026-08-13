@@ -733,6 +733,48 @@ def artifact_binding_matrix(
     return rows
 
 
+def canonical_shadow_comparison_matrix(
+    events: Iterable[ReliabilityTraceEnvelopeV1],
+) -> list[dict[str, Any]]:
+    """Render hash-only Phase 1A claim and mutation evaluations."""
+
+    rows = []
+    for item in events:
+        if (
+            item.event_type != "proposed_claim"
+            or item.source_component
+            != "canonical_shadow.observe_maintenance_shadow"
+        ):
+            continue
+        payload = item.payload
+        rows.append({
+            "sequence": item.sequence,
+            "workflow": payload.get("workflow") or item.source_writer,
+            "claim_kind": payload.get("claim_kind"),
+            "claim_id": payload.get("claim_id"),
+            "slot_id": payload.get("slot_id"),
+            "competition_key": payload.get("competition_key"),
+            "identity_status": payload.get("identity_status"),
+            "grounding": payload.get("grounding"),
+            "mutation_id": payload.get("mutation_id"),
+            "operation": payload.get("operation"),
+            "eligibility": payload.get("eligibility"),
+            "authority_slice_hash": payload.get("authority_slice_hash"),
+            "expected_current_hash": payload.get("expected_current_hash"),
+            "receipt_hash": payload.get("receipt_hash"),
+            "legacy_comparison": payload.get("legacy_comparison"),
+            "claim_count": payload.get("claim_count"),
+            "eligible_count": payload.get("eligible_count"),
+            "evidence_gap_count": payload.get("evidence_gap_count"),
+            "identity_ambiguous_count": payload.get(
+                "identity_ambiguous_count"
+            ),
+            "commit_performed": payload.get("commit_performed"),
+            "observation_status": item.observation_status,
+        })
+    return rows
+
+
 def event_type_coverage_matrix(
     events: Iterable[ReliabilityTraceEnvelopeV1],
 ) -> dict[str, Any]:

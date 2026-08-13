@@ -66,4 +66,3 @@ New exact-bound artifacts are classified `exact_v2`. Legacy review/resume
 artifacts remain `unverifiable_legacy` and continue in the legacy lane during
 Phase 1A. Unknown is never treated as fresh. No lane cutover is implemented in
 this phase.
-

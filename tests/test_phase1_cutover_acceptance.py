@@ -48,7 +48,10 @@ def _event(event_type: str, payload: dict, **extra):
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Phase 1: long current-truth authority has not converged",
+    reason=(
+        "target=Phase1C; gate=production_cutover; "
+        "long current-truth authority has not converged"
+    ),
 )
 def test_phase1_acceptance_long_authority_convergence() -> None:
     state = {
@@ -77,7 +80,10 @@ def test_phase1_acceptance_long_authority_convergence() -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Phase 1: legacy projections still lack source revision/hash",
+    reason=(
+        "target=Phase1C; gate=production_cutover; "
+        "authority context still accepts legacy projections without revision/hash"
+    ),
 )
 def test_phase1_acceptance_projection_revision_is_provable(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
@@ -112,7 +118,10 @@ def test_phase1_acceptance_projection_revision_is_provable(tmp_path) -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Phase 1: normal/window Maintenance evidence policies differ",
+    reason=(
+        "target=Phase1B; gate=production_cutover; "
+        "legacy normal/window Maintenance evidence policies differ"
+    ),
 )
 def test_phase1_acceptance_normal_window_maintenance_evidence_parity() -> None:
     normal = _event("authority_read", {
@@ -131,7 +140,10 @@ def test_phase1_acceptance_normal_window_maintenance_evidence_parity() -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Phase 1/2: legacy review/resume binding remains unverifiable",
+    reason=(
+        "target=Phase1D; gate=production_cutover; "
+        "legacy review/resume binding remains unverifiable"
+    ),
 )
 def test_phase1_acceptance_stale_review_resume_cannot_appear_fresh() -> None:
     legacy = _event(
@@ -153,7 +165,10 @@ def test_phase1_acceptance_stale_review_resume_cannot_appear_fresh() -> None:
 
 @pytest.mark.xfail(
     strict=True,
-    reason="Phase 1: stage context can contain conflicting current truths without a conflict state",
+    reason=(
+        "target=Phase1C; gate=production_cutover; "
+        "stage context can contain conflicting current truths without conflict state"
+    ),
 )
 def test_phase1_acceptance_canonical_context_uniqueness() -> None:
     relevant = json.dumps({

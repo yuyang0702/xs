@@ -13,6 +13,7 @@ from novel_flywheel.reliability_trace import (
     BestEffortTraceSink,
     artifact_binding_matrix,
     authority_lineage,
+    canonical_shadow_comparison_matrix,
     event_type_coverage_matrix,
     projection_provenance_matrix,
     projection_reconciliation,
@@ -35,6 +36,9 @@ def diagnostic_report(path: Path) -> dict:
             trace.events,
         ),
         "artifact_binding_matrix": artifact_binding_matrix(trace.events),
+        "canonical_shadow_comparison_matrix": (
+            canonical_shadow_comparison_matrix(trace.events)
+        ),
         "repair_diff": repair_diff_view(trace.events),
         "recovery_attempt_dag": recovery_attempt_dag(trace.events),
         "trace_coverage_matrix": trace_coverage_matrix(trace.events),
