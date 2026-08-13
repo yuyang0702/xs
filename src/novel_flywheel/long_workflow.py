@@ -27,7 +27,11 @@ from novel_flywheel.project_transactions import (
     write_project_mutation_journal,
 )
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
-from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
+from novel_flywheel.reliability_trace import (
+    emit_observation,
+    resolve_projection_provenance,
+    safe_canonical_hash,
+)
 
 
 def _workflow_failure(exc: BaseException) -> str:
@@ -230,14 +234,48 @@ async def run_chapter(
     projection_observation: dict[str, Any] | None = None
     try:
         constraints = service.projects.load_constraints(project.id)
+        requested_state = service.story_states.ensure(project.id, project.path)
+        requested_authority_hash = safe_canonical_hash(
+            requested_state.data, root=project.path,
+        )
         context = service.memory.context(project.id, chapter_goal)
+        required_projections = []
+        if context.get("canon"):
+            required_projections.append("canon_facts")
+        if context.get("recent_state"):
+            required_projections.append("chapter_states")
+        if context.get("relevant_chapters"):
+            required_projections.append("chapter_search")
+        provenance = resolve_projection_provenance(
+            project.path,
+            projections=required_projections,
+            requested_authority_revision=requested_state.revision,
+            requested_authority_hash=requested_authority_hash,
+        )
         projection_observation = {
             "projection": "StoryMemory.context",
-            "revision_metadata_present": False,
-            "requested_revision": None,
-            "actual_revision": None,
-            "stale": "unknown",
+            "revision_metadata_present": provenance[
+                "revision_metadata_present"
+            ],
+            "requested_revision": requested_state.revision,
+            "actual_revision": provenance["actual_source_revision"],
+            "requested_authority_hash": requested_authority_hash,
+            "source_authority_hash": provenance["source_authority_hash"],
+            "stale": provenance["freshness"],
             "result_sha256": safe_canonical_hash(context, root=project.path),
+            "projection_hash": safe_canonical_hash(context, root=project.path),
+            "writer": "StoryMemory.context",
+            "source_artifact": "ProjectMutationJournalV1",
+            "source_artifact_hash": (
+                provenance["projection_sources"][0].get(
+                    "source_artifact_hash"
+                )
+                if len(provenance["projection_sources"]) == 1 else None
+            ),
+            "projection_sources": provenance["projection_sources"],
+            "reader_coverage_gap_count": len(
+                provenance["reader_coverage_gaps"]
+            ),
             "canon_count": len(context.get("canon") or []),
             "relevant_chapter_count": len(context.get("relevant_chapters") or []),
         }
@@ -448,9 +486,19 @@ async def run_chapter(
                 event_type="projection_read",
                 source_component="long_workflow.run_chapter",
                 source_writer="memory_observer",
-                observation_status="unknown",
+                observation_status=(
+                    "confirmed"
+                    if projection_observation["revision_metadata_present"]
+                    else "unknown"
+                ),
                 payload=projection_observation,
                 run_id=run_id,
                 stage_id="long_chapter_context",
                 semantic_domain="occurred_current",
+                authority_revision=projection_observation[
+                    "requested_revision"
+                ],
+                authority_hash=projection_observation[
+                    "requested_authority_hash"
+                ],
             )

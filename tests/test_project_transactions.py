@@ -35,7 +35,11 @@ from novel_flywheel.project_transactions import (
 )
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.storage import ProjectSnapshot
-from novel_flywheel.reliability_trace import read_trace, trace_file_for_project
+from novel_flywheel.reliability_trace import (
+    projection_provenance_matrix,
+    read_trace,
+    trace_file_for_project,
+)
 
 
 def test_mixed_file_story_state_writer_inventory_cannot_grow() -> None:
@@ -547,6 +551,24 @@ def test_project_mutation_replays_memory_effects_idempotently(tmp_path) -> None:
     event_types = [item.event_type for item in trace.events]
     assert "promotion_write" in event_types
     assert "proposed_claim" in event_types
+    provenance = projection_provenance_matrix(trace.events)
+    by_projection = {
+        item["projection"]: item for item in provenance
+        if item["event_type"] == "promotion_write"
+    }
+    assert set(by_projection) == {
+        "canon_facts", "chapter_search", "chapter_states",
+    }
+    assert {
+        item["actual_source_revision"] for item in by_projection.values()
+    } == {state.revision}
+    assert all(
+        item["source_artifact"] == "ProjectMutationJournalV1"
+        and item["source_artifact_hash"]
+        and item["projection_hash"]
+        and item["freshness"] == "fresh"
+        for item in by_projection.values()
+    )
     assert all(
         item.run_id == run_id for item in trace.events
         if item.source_component.startswith("project_transactions")

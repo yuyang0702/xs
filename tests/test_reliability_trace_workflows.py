@@ -5,9 +5,14 @@ import hashlib
 from novel_flywheel.generated_artifacts import ReliabilityTraceEnvelopeV1
 from novel_flywheel.reliability_trace import (
     assess_authority_evidence_conflict,
+    artifact_binding_matrix,
     authority_lineage,
+    emit_observation,
+    event_type_coverage_matrix,
+    projection_provenance_matrix,
     projection_reconciliation,
     recovery_attempt_dag,
+    resolve_projection_provenance,
     shadow_slot_identity,
     trace_coverage_matrix,
 )
@@ -127,12 +132,15 @@ def test_projection_revision_absence_remains_unknown() -> None:
         "stale": "unknown", "result_sha256": _hash("projection"),
     }, observation_status="unknown")
     view = projection_reconciliation([event])
-    assert view == [{
-        "sequence": 1, "projection": "StoryMemory.context",
-        "requested_revision": None, "actual_revision": None,
-        "revision_metadata_present": False, "stale": "unknown",
-        "observation_status": "unknown", "result_sha256": _hash("projection"),
-    }]
+    assert view[0]["projection"] == "StoryMemory.context"
+    assert view[0]["requested_revision"] is None
+    assert view[0]["actual_revision"] is None
+    assert view[0]["source_authority_hash"] is None
+    assert view[0]["revision_metadata_present"] is False
+    assert view[0]["stale"] == "unknown"
+    assert view[0]["observation_status"] == "unknown"
+    assert view[0]["projection_hash"] == _hash("projection")
+    assert view[0]["projection_sources"] == []
 
 
 def test_stale_review_binding_remains_unverifiable_not_rejected() -> None:
@@ -169,3 +177,149 @@ def test_coverage_matrix_reports_missing_points_without_fabrication() -> None:
     matrix = trace_coverage_matrix([one])
     assert matrix["covered"] == 1
     assert "projection_read" in matrix["coverage_gaps"]
+
+
+def test_projection_provenance_resolves_only_trace_backed_writers(tmp_path) -> None:
+    project = tmp_path / "projects" / "project"
+    project.mkdir(parents=True)
+    authority_hash = _hash("story-state-revision-4")
+    projection_hash = _hash("canon-fact-effect")
+    journal_hash = _hash("journal")
+    assert emit_observation(
+        project,
+        event_type="promotion_write",
+        source_component="project_transactions.apply_project_memory_effects",
+        source_writer="long-setup",
+        observation_status="confirmed",
+        payload={
+            "store": "ProjectMutationCanonFactV1",
+            "writer": "long-setup",
+            "projection": "canon_facts",
+            "requested_authority_revision": 4,
+            "actual_source_revision": 4,
+            "source_authority_hash": authority_hash,
+            "projection_hash": projection_hash,
+            "source_artifact": "ProjectMutationJournalV1",
+            "source_artifact_hash": journal_hash,
+            "freshness": "fresh",
+        },
+        correlation_id="provenance",
+        semantic_domain="occurred_current",
+        authority_revision=4,
+        authority_hash=authority_hash,
+        object_new_hash=projection_hash,
+    )
+
+    resolved = resolve_projection_provenance(
+        project,
+        projections=["canon_facts"],
+        requested_authority_revision=4,
+        requested_authority_hash=authority_hash,
+    )
+    assert resolved["revision_metadata_present"] is True
+    assert resolved["actual_source_revision"] == 4
+    assert resolved["source_authority_hash"] == authority_hash
+    assert resolved["freshness"] == "fresh"
+    assert resolved["projection_sources"][0]["source_artifact_hash"] == journal_hash
+
+    legacy = resolve_projection_provenance(
+        project,
+        projections=["chapter_states"],
+        requested_authority_revision=4,
+        requested_authority_hash=authority_hash,
+    )
+    assert legacy["revision_metadata_present"] is False
+    assert legacy["actual_source_revision"] is None
+    assert legacy["freshness"] == "unknown"
+
+
+def test_projection_and_artifact_binding_matrices_preserve_exact_lineage() -> None:
+    authority_hash = _hash("authority")
+    projection = _event(
+        "promotion_write", 1,
+        {
+            "store": "ProjectMutationChapterStateV1",
+            "writer": "long-chapter",
+            "projection": "chapter_states",
+            "requested_authority_revision": 7,
+            "actual_source_revision": 7,
+            "source_authority_hash": authority_hash,
+            "projection_hash": _hash("projection"),
+            "source_artifact": "ProjectMutationJournalV1",
+            "source_artifact_hash": _hash("journal"),
+            "freshness": "fresh",
+        },
+        authority_revision=7,
+        authority_hash=authority_hash,
+        object_new_hash=_hash("projection"),
+    )
+    binding = _event(
+        "resume_binding", 2,
+        {
+            "artifact_type": "review.md",
+            "binding_status": "exact",
+            "input_object_hash": _hash("review-input"),
+            "output_object_hash": _hash("review-output"),
+            "reviewed_object_hash": _hash("draft"),
+            "policy": "final_review",
+            "policy_version": 3,
+            "validator_set": ["contract_adapter", "domain_validator"],
+            "parent_artifact": _hash("draft"),
+            "superseded_artifact": None,
+        },
+        authority_revision=7,
+        authority_hash=authority_hash,
+        object_new_hash=_hash("review-output"),
+    )
+    repair = _event(
+        "repair_diff", 3,
+        {
+            "allowed_scope_source": "reviewer_minfix",
+            "changed_paths": ["$.state.hero.location"],
+            "validators_rerun": ["domain_validator"],
+            "reviewed_object_hash": _hash("draft"),
+            "policy_version": 1,
+        },
+        object_old_hash=_hash("draft"),
+        object_new_hash=_hash("new-draft"),
+    )
+
+    provenance = projection_provenance_matrix([projection])
+    assert provenance[0]["actual_source_revision"] == 7
+    assert provenance[0]["source_artifact_hash"] == _hash("journal")
+    bindings = artifact_binding_matrix([binding, repair])
+    assert bindings[0]["reviewed_object_hash"] == _hash("draft")
+    assert bindings[0]["validator_set"] == [
+        "contract_adapter", "domain_validator",
+    ]
+    assert bindings[1]["parent_artifact"] == _hash("draft")
+    assert bindings[1]["superseded_artifact"] == _hash("draft")
+
+
+def test_event_type_coverage_distinguishes_normal_and_synthetic() -> None:
+    events = [
+        _event(
+            "authority_read", 1,
+            {"authority_type": "StoryState", "reader": "stage:review"},
+        ),
+        _event(
+            "repair_diff", 2,
+            {
+                "allowed_scope_source": "controlled_failure_injection",
+                "changed_paths": ["$.state"],
+                "validators_rerun": ["domain_validator"],
+                "synthetic": True,
+            },
+        ),
+    ]
+    matrix = event_type_coverage_matrix(events)
+    authority = next(
+        row for row in matrix["rows"] if row["event_type"] == "authority_read"
+    )
+    repair = next(
+        row for row in matrix["rows"] if row["event_type"] == "repair_diff"
+    )
+    assert authority["normal_observed"] == 1
+    assert authority["synthetic_observed"] == 0
+    assert repair["normal_observed"] == 0
+    assert repair["synthetic_observed"] == 1

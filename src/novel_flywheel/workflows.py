@@ -3850,6 +3850,25 @@ class WorkflowService:
                         checkpoint_context["generation_context_sha256"]
                     ),
                     "story_state_revision": state.revision,
+                    "input_object_hash": hashlib.sha256(
+                        draft.encode("utf-8")
+                    ).hexdigest(),
+                    "output_object_hash": hashlib.sha256(
+                        draft.encode("utf-8")
+                    ).hexdigest(),
+                    "reviewed_object_hash": hashlib.sha256(
+                        draft.encode("utf-8")
+                    ).hexdigest(),
+                    "policy": "short-checkpoint",
+                    "policy_version": 1,
+                    "validator_set": [
+                        "execution_manifest_receipt",
+                        "draft_integrity",
+                        "semantic_segment_receipts",
+                        "whole_semantic_receipt",
+                    ],
+                    "parent_artifact": "draft.md",
+                    "superseded_artifact": None,
                 },
                 run_id=run_id,
                 stage_id="short_checkpoint",
@@ -3917,6 +3936,18 @@ class WorkflowService:
                             ).hexdigest(),
                             "actual_input_sha256": None,
                             "binding_metadata_present": False,
+                            "input_object_hash": hashlib.sha256(
+                                draft.encode("utf-8")
+                            ).hexdigest(),
+                            "output_object_hash": hashlib.sha256(
+                                review_text.encode("utf-8")
+                            ).hexdigest(),
+                            "reviewed_object_hash": None,
+                            "policy": "legacy-review-resume",
+                            "policy_version": None,
+                            "validator_set": [],
+                            "parent_artifact": "draft.md",
+                            "superseded_artifact": None,
                             "source_run_sha256": hashlib.sha256(
                                 review_checkpoint.parent.parent.name.encode("utf-8")
                             ).hexdigest(),
@@ -3924,6 +3955,10 @@ class WorkflowService:
                         run_id=run_id,
                         stage_id="short_review_resume",
                         semantic_domain="occurred_current",
+                        authority_revision=state.revision,
+                        authority_hash=reliability_hash(
+                            state.data, root=project.path,
+                        ),
                         object_new_hash=hashlib.sha256(
                             review_text.encode("utf-8")
                         ).hexdigest(),
@@ -16475,6 +16510,45 @@ class WorkflowService:
                     stage_id="maintenance",
                     semantic_domain="occurred_current",
                 )
+                current_state = self.story_states.get(project.id)
+                emit_observation(
+                    project.path,
+                    event_type="promotion_write",
+                    source_component="workflows._close_short_maintenance_authority",
+                    source_writer="capacity_window_maintenance",
+                    observation_status="confirmed",
+                    payload={
+                        "store": "MaintenanceDecision",
+                        "writer": "capacity_window_maintenance",
+                        "decision": "accepted",
+                        "evidence_policy": "window_reduction",
+                        "input_hash": reliability_hash(state_data),
+                        "candidate_hash": reliability_hash(raw_payload),
+                        "output_hash": reliability_hash({
+                            "canon": replayed_canon,
+                            "confirmed_facts": replayed_confirmed,
+                        }),
+                        "projection_effects": [
+                            "canon", "confirmed_facts",
+                        ],
+                    },
+                    run_id=run_id,
+                    stage_id="maintenance",
+                    semantic_domain="occurred_current",
+                    authority_revision=(
+                        current_state.revision if current_state else None
+                    ),
+                    authority_hash=(
+                        reliability_hash(
+                            current_state.data, root=project.path,
+                        ) if current_state else None
+                    ),
+                    object_old_hash=reliability_hash(state_data),
+                    object_new_hash=reliability_hash({
+                        "canon": replayed_canon,
+                        "confirmed_facts": replayed_confirmed,
+                    }),
+                )
                 return replayed_canon, replayed_confirmed
             candidate = raw_payload
             safe, conflicts = self._partition_short_maintenance_proposal(
@@ -16523,6 +16597,45 @@ class WorkflowService:
                     run_id=run_id,
                     stage_id="maintenance",
                     semantic_domain="occurred_current",
+                )
+                current_state = self.story_states.get(project.id)
+                emit_observation(
+                    project.path,
+                    event_type="promotion_write",
+                    source_component="workflows._close_short_maintenance_authority",
+                    source_writer="normal_maintenance",
+                    observation_status="confirmed",
+                    payload={
+                        "store": "MaintenanceDecision",
+                        "writer": "normal_maintenance",
+                        "decision": "accepted",
+                        "evidence_policy": "single_response",
+                        "input_hash": reliability_hash(state_data),
+                        "candidate_hash": reliability_hash(raw_payload),
+                        "output_hash": reliability_hash({
+                            "canon": merged_result[0],
+                            "confirmed_facts": merged_result[1],
+                        }),
+                        "projection_effects": [
+                            "canon", "confirmed_facts",
+                        ],
+                    },
+                    run_id=run_id,
+                    stage_id="maintenance",
+                    semantic_domain="occurred_current",
+                    authority_revision=(
+                        current_state.revision if current_state else None
+                    ),
+                    authority_hash=(
+                        reliability_hash(
+                            current_state.data, root=project.path,
+                        ) if current_state else None
+                    ),
+                    object_old_hash=reliability_hash(state_data),
+                    object_new_hash=reliability_hash({
+                        "canon": merged_result[0],
+                        "confirmed_facts": merged_result[1],
+                    }),
                 )
                 return merged_result
             if attempt == 1:
@@ -26327,6 +26440,73 @@ class WorkflowService:
                     "execution_mode": result.receipt.get("execution_mode"),
                     "skills": skills,
                 },
+            )
+            output_sha256 = hashlib.sha256(
+                result.text.encode("utf-8")
+            ).hexdigest()
+            business_input_sha256 = hashlib.sha256(
+                user.encode("utf-8")
+            ).hexdigest()
+            runtime_authority = (
+                dict(structured_contract.runtime_authority)
+                if structured_contract is not None else {}
+            )
+            authority_hashes = {
+                str(key): str(value)
+                for key, value in runtime_authority.items()
+                if str(key).endswith("sha256")
+                and re.fullmatch(r"[0-9a-f]{64}", str(value))
+            }
+            reviewed_object_hash = next((
+                authority_hashes[key] for key in (
+                    "draft_sha256", "prose_sha256", "manuscript_sha256",
+                    "chapter_sha256", "candidate_sha256",
+                ) if key in authority_hashes
+            ), None)
+            validator_set = ["transport"]
+            if completion_check is not None:
+                validator_set.append("completion_check")
+            if execution_spec is not None:
+                validator_set.extend([
+                    "contract_adapter", "domain_validator",
+                ])
+            emit_observation(
+                project.path,
+                event_type="resume_binding",
+                source_component="workflows.WorkflowService._stage",
+                source_writer="stage_artifact_binding",
+                observation_status="confirmed",
+                payload={
+                    "artifact_type": f"{name}.md",
+                    "binding_status": "exact",
+                    "input_object_hash": business_input_sha256,
+                    "output_object_hash": output_sha256,
+                    "reviewed_object_hash": reviewed_object_hash,
+                    "authority_input_hashes": authority_hashes,
+                    "policy": (
+                        execution_spec.contract_name
+                        if execution_spec is not None else "stage-text"
+                    ),
+                    "policy_version": (
+                        structured_contract.version
+                        if structured_contract is not None else 1
+                    ),
+                    "validator_set": validator_set,
+                    "parent_artifact": business_input_sha256,
+                    "superseded_artifact": None,
+                },
+                run_id=run_id,
+                stage_id=node_key,
+                semantic_domain="occurred_current",
+                authority_revision=(
+                    current_state.revision if current_state is not None else None
+                ),
+                authority_hash=(
+                    reliability_hash(current_state.data, root=project.path)
+                    if current_state is not None else None
+                ),
+                object_old_hash=business_input_sha256,
+                object_new_hash=output_sha256,
             )
             return StageText(result.text, result.receipt)
         except asyncio.CancelledError:

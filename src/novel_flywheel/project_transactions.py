@@ -751,6 +751,25 @@ def _observe_project_mutation(
         project = store.get(journal.project_id)
         state = StoryStateStore(store.db).get(journal.project_id)
         target = journal.story_state
+        authority_revision = (
+            target.target_revision
+            if target is not None else journal.expected_story_state_revision
+        )
+        authority_hash = (
+            target.state_sha256
+            if target is not None else
+            safe_canonical_hash(state.data, root=project.path)
+            if state is not None else None
+        )
+        journal_hash = canonical_json_sha256(
+            journal.model_dump(mode="json")
+        )
+        artifact_target_hash = canonical_json_sha256([
+            item.model_dump(mode="json") for item in journal.artifacts
+        ])
+        memory_effect_hash = canonical_json_sha256([
+            item.model_dump(mode="json") for item in journal.memory_effects
+        ])
         emit_observation(
             project.path,
             event_type="promotion_write",
@@ -766,18 +785,59 @@ def _observe_project_mutation(
                 "artifact_count": len(journal.artifacts),
                 "memory_effect_count": len(journal.memory_effects),
                 "source_authority_sha256": journal.source_authority_sha256,
+                "input_hash": journal.source_authority_sha256,
+                "output_hash": target.state_sha256 if target else journal_hash,
+                "candidate_hash": target.state_sha256 if target else None,
+                "journal_target_hash": artifact_target_hash,
+                "journal_effect_hash": memory_effect_hash,
+                "commit_result": journal.status,
+                "projection_effects": [
+                    effect.kind for effect in journal.memory_effects
+                ],
             },
             run_id=journal.run_id,
             stage_id="project_mutation",
             semantic_domain="occurred_current",
-            authority_revision=state.revision if state is not None else None,
-            authority_hash=(
-                safe_canonical_hash(state.data, root=project.path)
-                if state is not None else None
-            ),
+            authority_revision=authority_revision,
+            authority_hash=authority_hash,
             object_new_hash=target.state_sha256 if target is not None else None,
         )
         for effect in journal.memory_effects:
+            effect_payload = effect.model_dump(mode="json")
+            effect_hash = safe_canonical_hash(effect_payload)
+            projection = {
+                "canon_fact": "canon_facts",
+                "chapter_index": "chapter_search",
+                "chapter_state": "chapter_states",
+            }[effect.kind]
+            emit_observation(
+                project.path,
+                event_type="promotion_write",
+                source_component="project_transactions.apply_project_memory_effects",
+                source_writer=journal.operation,
+                observation_status="confirmed",
+                payload={
+                    "store": type(effect).__name__,
+                    "writer": journal.operation,
+                    "projection": projection,
+                    "requested_authority_revision": (
+                        journal.expected_story_state_revision
+                    ),
+                    "actual_source_revision": authority_revision,
+                    "source_authority_hash": authority_hash,
+                    "projection_hash": effect_hash,
+                    "source_artifact": "ProjectMutationJournalV1",
+                    "source_artifact_hash": journal_hash,
+                    "freshness": "fresh",
+                    "effect_kind": effect.kind,
+                },
+                run_id=journal.run_id,
+                stage_id="memory_projection",
+                semantic_domain="occurred_current",
+                authority_revision=authority_revision,
+                authority_hash=authority_hash,
+                object_new_hash=effect_hash,
+            )
             if isinstance(effect, ProjectMutationCanonFactV1):
                 key_hash = hashlib.sha256(effect.fact_key.encode("utf-8")).hexdigest()
                 emit_observation(
@@ -805,8 +865,6 @@ def _observe_project_mutation(
                     semantic_domain="occurred_current",
                 )
             else:
-                effect_payload = effect.model_dump(mode="json")
-                effect_hash = safe_canonical_hash(effect_payload)
                 emit_observation(
                     project.path,
                     event_type="promotion_write",

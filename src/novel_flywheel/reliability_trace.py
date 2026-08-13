@@ -20,6 +20,16 @@ CANONICALIZATION_VERSION = "phase0-canonical-json-v1"
 TRACE_BASENAME = "_reliability-trace-v1.jsonl"
 TRACE_DIRECTORY = "reliability-traces"
 UTF8 = "utf-8"
+TRACE_EVENT_TYPES = (
+    "authority_read",
+    "proposed_claim",
+    "promotion_write",
+    "projection_read",
+    "repair_diff",
+    "recovery_attempt",
+    "resume_binding",
+    "authority_evidence_conflict",
+)
 VOLATILE_KEYS = frozenset({
     "created_at", "updated_at", "timestamp", "started_at", "finished_at",
     "event_id", "correlation_id", "run_id", "candidate_id", "trace_id",
@@ -484,9 +494,248 @@ def projection_reconciliation(
             "stale": item.payload.get("stale"),
             "observation_status": item.observation_status,
             "result_sha256": item.payload.get("result_sha256"),
+            "source_authority_hash": item.payload.get("source_authority_hash"),
+            "projection_hash": item.payload.get("projection_hash")
+            or item.payload.get("result_sha256"),
+            "writer": item.payload.get("writer"),
+            "source_artifact": item.payload.get("source_artifact"),
+            "source_artifact_hash": item.payload.get("source_artifact_hash"),
+            "projection_sources": list(item.payload.get("projection_sources") or []),
         }
         for item in events if item.event_type == "projection_read"
     ]
+
+
+def projection_provenance_matrix(
+    events: Iterable[ReliabilityTraceEnvelopeV1],
+) -> list[dict[str, Any]]:
+    """Return declared projection writes and reads without inferring lineage."""
+
+    rows: list[dict[str, Any]] = []
+    for item in events:
+        projection = item.payload.get("projection")
+        if item.event_type not in {"promotion_write", "projection_read"} or not projection:
+            continue
+        rows.append({
+            "sequence": item.sequence,
+            "event_type": item.event_type,
+            "projection": projection,
+            "requested_authority_revision": item.payload.get(
+                "requested_authority_revision",
+                item.payload.get("requested_revision"),
+            ),
+            "actual_source_revision": item.payload.get(
+                "actual_source_revision",
+                item.payload.get("actual_revision"),
+            ),
+            "source_authority_hash": item.payload.get("source_authority_hash")
+            or item.authority_hash,
+            "projection_hash": item.payload.get("projection_hash")
+            or item.payload.get("result_sha256")
+            or item.object_new_hash,
+            "writer": item.payload.get("writer") or item.source_writer,
+            "source_artifact": item.payload.get("source_artifact"),
+            "source_artifact_hash": item.payload.get("source_artifact_hash"),
+            "freshness": item.payload.get("freshness")
+            or item.payload.get("stale")
+            or "unknown",
+            "observation_status": item.observation_status,
+        })
+    return rows
+
+
+def resolve_projection_provenance(
+    project_root: Path,
+    *,
+    projections: Iterable[str],
+    requested_authority_revision: int | None,
+    requested_authority_hash: str | None,
+) -> dict[str, Any]:
+    """Resolve only explicit trace-backed projection writers.
+
+    Missing legacy metadata remains unknown.  Multiple source revisions are
+    reported losslessly and are never collapsed into a guessed aggregate.
+    """
+
+    required = list(dict.fromkeys(str(item) for item in projections if str(item)))
+    report = read_trace(trace_file_for_project(project_root))
+    latest: dict[str, ReliabilityTraceEnvelopeV1] = {}
+    for item in report.events:
+        projection = str(item.payload.get("projection") or "")
+        if item.event_type == "promotion_write" and projection in required:
+            latest[projection] = item
+    sources = []
+    for projection in required:
+        item = latest.get(projection)
+        if item is None:
+            sources.append({
+                "projection": projection,
+                "actual_source_revision": None,
+                "source_authority_hash": None,
+                "projection_hash": None,
+                "writer": None,
+                "source_artifact": None,
+                "source_artifact_hash": None,
+                "freshness": "unknown",
+                "observation_status": "unknown",
+            })
+            continue
+        revision = item.payload.get("actual_source_revision")
+        authority_hash = item.payload.get("source_authority_hash") or item.authority_hash
+        if revision is None or authority_hash is None:
+            freshness = "unknown"
+        elif (
+            requested_authority_revision == revision
+            and requested_authority_hash == authority_hash
+        ):
+            freshness = "fresh"
+        else:
+            freshness = "stale"
+        sources.append({
+            "projection": projection,
+            "actual_source_revision": revision,
+            "source_authority_hash": authority_hash,
+            "projection_hash": item.payload.get("projection_hash")
+            or item.object_new_hash,
+            "writer": item.payload.get("writer") or item.source_writer,
+            "source_artifact": item.payload.get("source_artifact"),
+            "source_artifact_hash": item.payload.get("source_artifact_hash"),
+            "freshness": freshness,
+            "observation_status": item.observation_status,
+        })
+    revisions = {
+        item["actual_source_revision"] for item in sources
+        if item["actual_source_revision"] is not None
+    }
+    hashes = {
+        item["source_authority_hash"] for item in sources
+        if item["source_authority_hash"] is not None
+    }
+    complete = bool(required) and len(sources) == len(required) and all(
+        item["actual_source_revision"] is not None
+        and item["source_authority_hash"] is not None
+        and item["projection_hash"] is not None
+        and item["source_artifact_hash"] is not None
+        for item in sources
+    )
+    if complete and all(item["freshness"] == "fresh" for item in sources):
+        freshness = "fresh"
+    elif any(item["freshness"] == "stale" for item in sources):
+        freshness = "stale"
+    else:
+        freshness = "unknown"
+    return {
+        "requested_authority_revision": requested_authority_revision,
+        "requested_authority_hash": requested_authority_hash,
+        "actual_source_revision": next(iter(revisions)) if len(revisions) == 1 else None,
+        "source_authority_hash": next(iter(hashes)) if len(hashes) == 1 else None,
+        "revision_metadata_present": complete,
+        "freshness": freshness,
+        "projection_sources": sources,
+        "reader_coverage_gaps": list(report.coverage_gaps),
+    }
+
+
+def artifact_binding_matrix(
+    events: Iterable[ReliabilityTraceEnvelopeV1],
+) -> list[dict[str, Any]]:
+    """Render exact and legacy artifact bindings from explicit observations."""
+
+    rows: list[dict[str, Any]] = []
+    for item in events:
+        if item.event_type == "resume_binding":
+            payload = item.payload
+            rows.append({
+                "sequence": item.sequence,
+                "artifact_type": payload.get("artifact_type"),
+                "binding_status": payload.get("binding_status"),
+                "input_object_hash": payload.get("input_object_hash")
+                or payload.get("expected_input_sha256"),
+                "actual_input_object_hash": payload.get("actual_input_sha256")
+                or payload.get("input_object_hash"),
+                "output_object_hash": payload.get("output_object_hash")
+                or item.object_new_hash,
+                "reviewed_object_hash": payload.get("reviewed_object_hash"),
+                "authority_revision": item.authority_revision,
+                "authority_hash": item.authority_hash,
+                "policy": payload.get("policy"),
+                "policy_version": payload.get("policy_version"),
+                "validator_set": list(payload.get("validator_set") or []),
+                "parent_artifact": payload.get("parent_artifact"),
+                "superseded_artifact": payload.get("superseded_artifact"),
+                "observation_status": item.observation_status,
+            })
+        elif item.event_type == "repair_diff":
+            rows.append({
+                "sequence": item.sequence,
+                "artifact_type": "repair_output",
+                "binding_status": (
+                    "exact" if item.object_old_hash and item.object_new_hash else "unknown"
+                ),
+                "input_object_hash": item.object_old_hash,
+                "actual_input_object_hash": item.object_old_hash,
+                "output_object_hash": item.object_new_hash,
+                "reviewed_object_hash": item.payload.get("reviewed_object_hash"),
+                "authority_revision": item.authority_revision,
+                "authority_hash": item.authority_hash,
+                "policy": item.payload.get("allowed_scope_source"),
+                "policy_version": item.payload.get("policy_version"),
+                "validator_set": list(item.payload.get("validators_rerun") or []),
+                "parent_artifact": item.object_old_hash,
+                "superseded_artifact": item.object_old_hash,
+                "observation_status": item.observation_status,
+            })
+        elif (
+            item.event_type == "promotion_write"
+            and item.payload.get("input_object_hash")
+        ):
+            payload = item.payload
+            rows.append({
+                "sequence": item.sequence,
+                "artifact_type": payload.get("store"),
+                "binding_status": "exact",
+                "input_object_hash": payload.get("input_object_hash"),
+                "actual_input_object_hash": payload.get("input_object_hash"),
+                "output_object_hash": payload.get("output_object_hash")
+                or item.object_new_hash,
+                "reviewed_object_hash": payload.get("reviewed_object_hash"),
+                "authority_revision": item.authority_revision,
+                "authority_hash": item.authority_hash,
+                "policy": payload.get("policy"),
+                "policy_version": payload.get("policy_version"),
+                "validator_set": list(payload.get("validator_set") or []),
+                "parent_artifact": payload.get("parent_artifact"),
+                "superseded_artifact": payload.get("superseded_artifact"),
+                "observation_status": item.observation_status,
+            })
+    return rows
+
+
+def event_type_coverage_matrix(
+    events: Iterable[ReliabilityTraceEnvelopeV1],
+) -> dict[str, Any]:
+    """Report normal and explicitly synthetic coverage for all eight events."""
+
+    materialized = list(events)
+    rows = []
+    for event_type in TRACE_EVENT_TYPES:
+        selected = [item for item in materialized if item.event_type == event_type]
+        synthetic = sum(bool(item.payload.get("synthetic")) for item in selected)
+        rows.append({
+            "event_type": event_type,
+            "observed": len(selected),
+            "normal_observed": len(selected) - synthetic,
+            "synthetic_observed": synthetic,
+            "covered": bool(selected),
+        })
+    gaps = [row["event_type"] for row in rows if not row["covered"]]
+    return {
+        "rows": rows,
+        "covered": len(rows) - len(gaps),
+        "expected": len(rows),
+        "coverage_ratio": (len(rows) - len(gaps)) / len(rows),
+        "coverage_gaps": gaps,
+    }
 
 
 def repair_diff_view(events: Iterable[ReliabilityTraceEnvelopeV1]) -> list[dict[str, Any]]:
