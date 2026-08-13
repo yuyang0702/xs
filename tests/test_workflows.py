@@ -17345,6 +17345,18 @@ async def test_maintenance_authority_conflict_uses_one_bounded_repair(
     assert json.loads(adapter_audits[0].read_text(
         encoding="utf-8",
     ))["schema"] == "maintenance-contract-adapter-audit-v1"
+    inventory_path = next((run_path / "receipts").glob(
+        "maintenance-inventory-*.json",
+    ))
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    assert inventory["complete"] is True
+    assert inventory["structurally_valid_unit_count"] == len(
+        inventory["units"]
+    ) == 4
+    assert sum(
+        item["legacy_disposition"] == "legacy_rejected"
+        for item in inventory["units"]
+    ) == 1
 
 
 @pytest.mark.asyncio
@@ -17488,6 +17500,13 @@ async def test_maintenance_capacity_windows_cover_middle_facts_and_reduce_determ
     reduction = json.loads(reduction_paths[0].read_text(encoding="utf-8"))
     assert reduction["coverage_spans"][0][0] == 0
     assert max(end for _start, end in reduction["coverage_spans"]) == len(manuscript)
+    inventory = json.loads(next((run_path / "receipts").glob(
+        "maintenance-inventory-*.json",
+    )).read_text(encoding="utf-8"))
+    assert inventory["complete"] is True
+    assert inventory["structurally_valid_unit_count"] == len(
+        inventory["units"]
+    )
 
     first_window_call_count = len(calls)
     resumed_canon, resumed_confirmed = await service._close_short_maintenance_authority(
@@ -17679,6 +17698,18 @@ async def test_maintenance_capacity_reduces_ordered_state_chain_and_repairs_fact
         audit.get("rejected_receipt_sha256")
         for envelope in reduction["window_envelopes"]
         for audit in envelope["adapter_audit"]
+    )
+    inventory = json.loads(next((run_path / "receipts").glob(
+        "maintenance-inventory-*.json",
+    )).read_text(encoding="utf-8"))
+    assert inventory["complete"] is True
+    assert inventory["structurally_valid_unit_count"] == len(
+        inventory["units"]
+    )
+    assert any(
+        item["value"] == "B"
+        and item["legacy_disposition"] == "legacy_rejected"
+        for item in inventory["units"]
     )
 
 

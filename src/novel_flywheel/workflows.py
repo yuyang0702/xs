@@ -290,6 +290,16 @@ from novel_flywheel.reliability_trace import (
     safe_canonical_hash as reliability_hash,
 )
 from novel_flywheel.canonical_shadow import observe_maintenance_shadow
+from novel_flywheel.short_canonical_promotion import (
+    MaintenanceProposalInventoryV1,
+    candidate_from_window_envelope,
+    classify_legacy_disposition,
+    combine_maintenance_inventories,
+    inventory_as_shadow_candidate,
+    make_maintenance_inventory,
+    predecision_replay_counts,
+    proposal_units_from_candidate,
+)
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
@@ -16111,6 +16121,57 @@ class WorkflowService:
                 return True
         return False
 
+    @staticmethod
+    def _short_maintenance_inventory_path(
+        run_path: Path, suffix: str,
+    ) -> Path:
+        audit_suffix = (suffix.strip("-") or "initial").replace("/", "-")
+        return run_path / "receipts" / f"maintenance-inventory-{audit_suffix}.json"
+
+    @staticmethod
+    def _freeze_short_maintenance_inventory(
+        *, candidate: Mapping[str, Any], accepted_candidate: Mapping[str, Any],
+        source_mode: str, source_locator: str, source_attempt: int,
+        source_artifact_hash: str, base_authority_revision: int,
+        base_authority_hash: str,
+    ) -> MaintenanceProposalInventoryV1:
+        units = proposal_units_from_candidate(
+            candidate, source_mode=source_mode,
+            source_locator=source_locator, source_attempt=source_attempt,
+        )
+        classified = classify_legacy_disposition(units, accepted_candidate)
+        return make_maintenance_inventory(
+            source_mode=source_mode,
+            source_artifact_hash=source_artifact_hash,
+            base_authority_revision=base_authority_revision,
+            base_authority_hash=base_authority_hash,
+            units=classified,
+        )
+
+    @staticmethod
+    def _write_short_maintenance_inventory(
+        path: Path, inventory: MaintenanceProposalInventoryV1,
+    ) -> None:
+        atomic_write(
+            path,
+            json.dumps(
+                inventory.model_dump(mode="json", by_alias=True),
+                ensure_ascii=False, indent=2, sort_keys=True,
+            ) + "\n",
+            preserve_newlines=True,
+        )
+
+    @staticmethod
+    def _read_short_maintenance_inventory(
+        path: Path,
+    ) -> MaintenanceProposalInventoryV1 | None:
+        try:
+            return MaintenanceProposalInventoryV1.model_validate_json(
+                path.read_text(encoding="utf-8"),
+            )
+        except (OSError, UnicodeError, ValueError, TypeError):
+            return None
+
     async def _close_short_maintenance_window(
         self,
         run_id: str,
@@ -16122,7 +16183,11 @@ class WorkflowService:
         state_data: Mapping[str, object],
         *,
         suffix: str,
-    ) -> tuple[list, dict, list[dict]]:
+        base_authority_revision: int,
+        base_authority_hash: str,
+    ) -> tuple[
+        list, dict, list[dict], list[MaintenanceProposalInventoryV1],
+    ]:
         """Close one authority window, recursively splitting only on capacity."""
 
         state_authority = self._short_maintenance_state_authority(state_data)
@@ -16165,34 +16230,70 @@ class WorkflowService:
                     "entry_state_sha256": source_state_sha256,
                 },
             )
+            checkpoint_inventories: list[MaintenanceProposalInventoryV1] = []
+            for index, envelope in enumerate(checkpoint_bundle.envelopes, 1):
+                candidate = candidate_from_window_envelope(envelope)
+                units = classify_legacy_disposition(
+                    proposal_units_from_candidate(
+                        candidate, source_mode="window",
+                        source_locator=(
+                            f"checkpoint:{envelope.contract.window_id}:{index}"
+                        ),
+                        source_attempt=1,
+                    ),
+                    candidate,
+                )
+                checkpoint_inventories.append(make_maintenance_inventory(
+                    source_mode="window",
+                    source_artifact_hash=hashlib.sha256(
+                        manuscript.encode("utf-8")
+                    ).hexdigest(),
+                    base_authority_revision=base_authority_revision,
+                    base_authority_hash=base_authority_hash,
+                    units=units,
+                    structurally_valid_unit_count=len(units) + 1,
+                    complete=False,
+                    coverage_gaps=(
+                        "checkpoint_predecision_inventory_unavailable",
+                    ),
+                ))
             return (
                 list(checkpoint_bundle.envelopes),
                 dict(checkpoint_bundle.canon),
                 [dict(item) for item in checkpoint_bundle.confirmed_facts],
+                checkpoint_inventories,
             )
 
+        split_inventories: list[MaintenanceProposalInventoryV1] = []
+
         async def split_window(_details: dict) -> str:
+            nonlocal split_inventories
             left, right = bisect_maintenance_window_contract(
                 contract, manuscript,
                 entry_state_sha256=source_state_sha256,
             )
-            left_envelopes, left_canon, left_confirmed = (
+            left_envelopes, left_canon, left_confirmed, left_inventories = (
                 await self._close_short_maintenance_window(
                     run_id, run_path, project, constraints, manuscript,
                     left, state_data,
                     suffix=f"{suffix}-{left.window_id.lower()}",
+                    base_authority_revision=base_authority_revision,
+                    base_authority_hash=base_authority_hash,
                 )
             )
             right_state = self._short_maintenance_state_after_reduction(
                 state_data, left_canon, left_confirmed,
             )
-            right_envelopes, right_canon, right_confirmed = (
+            right_envelopes, right_canon, right_confirmed, right_inventories = (
                 await self._close_short_maintenance_window(
                     run_id, run_path, project, constraints, manuscript,
                     right, right_state,
                     suffix=f"{suffix}-{right.window_id.lower()}",
+                    base_authority_revision=base_authority_revision,
+                    base_authority_hash=base_authority_hash,
                 )
             )
+            split_inventories = [*left_inventories, *right_inventories]
             bundle = build_maintenance_window_bundle(
                 parent_contract=contract,
                 source_state_sha256=source_state_sha256,
@@ -16208,6 +16309,7 @@ class WorkflowService:
 
         preserved: dict = {"facts": []}
         accepted_envelopes: list = []
+        proposal_inventories: list[MaintenanceProposalInventoryV1] = []
         repair: dict | None = None
         for attempt in range(2):
             prompt = maintenance_window_prompt(
@@ -16271,9 +16373,36 @@ class WorkflowService:
                         ensure_ascii=False, indent=2, sort_keys=True,
                     ),
                 )
+                if not split_inventories:
+                    for index, item in enumerate(bundle.envelopes, 1):
+                        candidate = candidate_from_window_envelope(item)
+                        units = classify_legacy_disposition(
+                            proposal_units_from_candidate(
+                                candidate, source_mode="window",
+                                source_locator=(
+                                    f"runtime-bundle:{item.contract.window_id}:{index}"
+                                ),
+                                source_attempt=1,
+                            ), candidate,
+                        )
+                        split_inventories.append(make_maintenance_inventory(
+                            source_mode="window",
+                            source_artifact_hash=hashlib.sha256(
+                                manuscript.encode("utf-8")
+                            ).hexdigest(),
+                            base_authority_revision=base_authority_revision,
+                            base_authority_hash=base_authority_hash,
+                            units=units,
+                            structurally_valid_unit_count=len(units) + 1,
+                            complete=False,
+                            coverage_gaps=(
+                                "runtime_bundle_predecision_inventory_unavailable",
+                            ),
+                        ))
                 return (
                     list(bundle.envelopes), dict(bundle.canon),
                     [dict(item) for item in bundle.confirmed_facts],
+                    split_inventories,
                 )
             try:
                 envelope = adapt_maintenance_window_payload(
@@ -16308,6 +16437,21 @@ class WorkflowService:
                     envelope, safe, conflicts=conflicts,
                 )
             )
+            proposal_inventories.append(
+                self._freeze_short_maintenance_inventory(
+                    candidate=candidate_from_window_envelope(envelope),
+                    accepted_candidate=safe, source_mode="window",
+                    source_locator=(
+                        f"{contract.window_id}:attempt:{attempt + 1}"
+                    ),
+                    source_attempt=attempt + 1,
+                    source_artifact_hash=hashlib.sha256(
+                        manuscript.encode("utf-8")
+                    ).hexdigest(),
+                    base_authority_revision=base_authority_revision,
+                    base_authority_hash=base_authority_hash,
+                )
+            )
             if not conflicts:
                 canon, confirmed = self._merge_short_maintenance_authority(
                     state_data, preserved, run_id=run_id,
@@ -16339,7 +16483,7 @@ class WorkflowService:
                         ensure_ascii=False, indent=2, sort_keys=True,
                     ),
                 )
-                return accepted_envelopes, canon, confirmed
+                return accepted_envelopes, canon, confirmed, proposal_inventories
             if attempt == 1:
                 raise ValueError(
                     "maintenance window authority conflicts did not converge: "
@@ -16387,17 +16531,26 @@ class WorkflowService:
         )
         current_state = dict(state_data)
         all_envelopes: list = []
+        all_inventories: list[MaintenanceProposalInventoryV1] = []
         final_canon: dict | None = None
         final_confirmed: list[dict] | None = None
+        current_authority = self.story_states.get(project.id)
+        if current_authority is None:
+            raise LookupError("Short maintenance StoryState is unavailable")
+        base_authority_revision = current_authority.revision
+        base_authority_hash = canonical_json_sha256(current_authority.data)
         for index, contract in enumerate(contracts, 1):
-            envelopes, final_canon, final_confirmed = (
+            envelopes, final_canon, final_confirmed, inventories = (
                 await self._close_short_maintenance_window(
                     run_id, run_path, project, constraints, manuscript,
                     contract, current_state,
                     suffix=f"{suffix}-map-{index:03d}",
+                    base_authority_revision=base_authority_revision,
+                    base_authority_hash=base_authority_hash,
                 )
             )
             all_envelopes.extend(envelopes)
+            all_inventories.extend(inventories)
             current_state = self._short_maintenance_state_after_reduction(
                 current_state, final_canon, final_confirmed,
             )
@@ -16411,6 +16564,11 @@ class WorkflowService:
             confirmed_facts=final_confirmed,
         )
         audit_suffix = (suffix.strip("-") or "initial").replace("/", "-")
+        combined_inventory = combine_maintenance_inventories(all_inventories)
+        self._write_short_maintenance_inventory(
+            self._short_maintenance_inventory_path(run_path, suffix),
+            combined_inventory,
+        )
         atomic_write(
             run_path / "receipts" / f"maintenance-reduction-{audit_suffix}.json",
             json.dumps(
@@ -16432,6 +16590,15 @@ class WorkflowService:
         maintenance_input = polished
         preserved: dict = {"facts": []}
         publish_text = "\n\n".join(self._split_segments(polished))
+        source_artifact_hash = hashlib.sha256(
+            publish_text.encode("utf-8")
+        ).hexdigest()
+        base_authority = self.story_states.get(project.id)
+        if base_authority is None:
+            raise LookupError("Short maintenance StoryState is unavailable")
+        base_authority_revision = base_authority.revision
+        base_authority_hash = canonical_json_sha256(base_authority.data)
+        normal_inventories: list[MaintenanceProposalInventoryV1] = []
         for attempt in range(2):
             stage_suffix = suffix if attempt == 0 else f"{suffix}-authority-repair"
             canon_text = await self._stage_with_role_fallback(
@@ -16514,18 +16681,48 @@ class WorkflowService:
                     semantic_domain="occurred_current",
                 )
                 current_state = self.story_states.get(project.id)
-                shadow_candidate: dict = {"facts": []}
-                for envelope in reduction.window_envelopes:
-                    shadow_candidate = self._combine_short_maintenance_proposals(
-                        shadow_candidate,
-                        receipt_to_maintenance_candidate(envelope),
+                inventory = self._read_short_maintenance_inventory(
+                    self._short_maintenance_inventory_path(
+                        run_path, stage_suffix,
+                    )
+                )
+                if inventory is None:
+                    fallback_inventories: list[
+                        MaintenanceProposalInventoryV1
+                    ] = []
+                    for index, envelope in enumerate(
+                        reduction.window_envelopes, 1,
+                    ):
+                        candidate = candidate_from_window_envelope(envelope)
+                        units = classify_legacy_disposition(
+                            proposal_units_from_candidate(
+                                candidate, source_mode="window",
+                                source_locator=(
+                                    f"sealed-reduction:{index}"
+                                ), source_attempt=1,
+                            ), candidate,
+                        )
+                        fallback_inventories.append(make_maintenance_inventory(
+                            source_mode="window",
+                            source_artifact_hash=source_artifact_hash,
+                            base_authority_revision=base_authority_revision,
+                            base_authority_hash=base_authority_hash,
+                            units=units,
+                            structurally_valid_unit_count=len(units) + 1,
+                            complete=False,
+                            coverage_gaps=(
+                                "sealed_reduction_predecision_inventory_unavailable",
+                            ),
+                        ))
+                    inventory = combine_maintenance_inventories(
+                        fallback_inventories,
                     )
                 if current_state is not None:
                     observe_maintenance_shadow(
                         project_root=project.path,
                         workflow="short-window-maintenance",
-                        legacy_candidate=shadow_candidate,
-                        final_source_bytes=polished.encode("utf-8"),
+                        legacy_candidate=inventory_as_shadow_candidate(inventory),
+                        final_source_bytes=publish_text.encode("utf-8"),
                         story_time=(
                             "publication:" + hashlib.sha256(
                                 polished.encode("utf-8")
@@ -16535,6 +16732,31 @@ class WorkflowService:
                         story_state_data=current_state.data,
                         coverage_mode="window_union", run_id=run_id,
                     )
+                emit_observation(
+                    project.path,
+                    event_type="proposed_claim",
+                    source_component=(
+                        "workflows._close_short_maintenance_authority"
+                    ),
+                    source_writer="predecision_inventory",
+                    observation_status=(
+                        "confirmed" if inventory.complete else "unknown"
+                    ),
+                    payload={
+                        "claim_kind": "predecision_inventory_summary",
+                        "shadow_only": True,
+                        "affects_business_decision": False,
+                        **predecision_replay_counts(inventory),
+                        "inventory_id": inventory.inventory_id,
+                        "inventory_complete": inventory.complete,
+                        "coverage_gaps": list(inventory.coverage_gaps),
+                    },
+                    run_id=run_id,
+                    stage_id="maintenance_predecision_inventory",
+                    semantic_domain="occurred_current",
+                    authority_revision=base_authority_revision,
+                    authority_hash=base_authority_hash,
+                )
                 emit_observation(
                     project.path,
                     event_type="promotion_write",
@@ -16578,6 +16800,17 @@ class WorkflowService:
             safe, conflicts = self._partition_short_maintenance_proposal(
                 state_data, candidate, run_id=run_id,
                 manuscript_text=publish_text,
+            )
+            normal_inventories.append(
+                self._freeze_short_maintenance_inventory(
+                    candidate=candidate, accepted_candidate=safe,
+                    source_mode="normal",
+                    source_locator=f"normal:attempt:{attempt + 1}",
+                    source_attempt=attempt + 1,
+                    source_artifact_hash=source_artifact_hash,
+                    base_authority_revision=base_authority_revision,
+                    base_authority_hash=base_authority_hash,
+                )
             )
             adaptations = safe.get("_runtime_adaptations")
             if isinstance(adaptations, list) and adaptations:
@@ -16623,12 +16856,21 @@ class WorkflowService:
                     semantic_domain="occurred_current",
                 )
                 current_state = self.story_states.get(project.id)
+                inventory = combine_maintenance_inventories(
+                    normal_inventories,
+                )
+                self._write_short_maintenance_inventory(
+                    self._short_maintenance_inventory_path(
+                        run_path, stage_suffix,
+                    ),
+                    inventory,
+                )
                 if current_state is not None:
                     observe_maintenance_shadow(
                         project_root=project.path,
                         workflow="short-normal-maintenance",
-                        legacy_candidate=preserved,
-                        final_source_bytes=polished.encode("utf-8"),
+                        legacy_candidate=inventory_as_shadow_candidate(inventory),
+                        final_source_bytes=publish_text.encode("utf-8"),
                         story_time=(
                             "publication:" + hashlib.sha256(
                                 polished.encode("utf-8")
@@ -16638,6 +16880,31 @@ class WorkflowService:
                         story_state_data=current_state.data,
                         coverage_mode="complete_source", run_id=run_id,
                     )
+                emit_observation(
+                    project.path,
+                    event_type="proposed_claim",
+                    source_component=(
+                        "workflows._close_short_maintenance_authority"
+                    ),
+                    source_writer="predecision_inventory",
+                    observation_status=(
+                        "confirmed" if inventory.complete else "unknown"
+                    ),
+                    payload={
+                        "claim_kind": "predecision_inventory_summary",
+                        "shadow_only": True,
+                        "affects_business_decision": False,
+                        **predecision_replay_counts(inventory),
+                        "inventory_id": inventory.inventory_id,
+                        "inventory_complete": inventory.complete,
+                        "coverage_gaps": list(inventory.coverage_gaps),
+                    },
+                    run_id=run_id,
+                    stage_id="maintenance_predecision_inventory",
+                    semantic_domain="occurred_current",
+                    authority_revision=base_authority_revision,
+                    authority_hash=base_authority_hash,
+                )
                 emit_observation(
                     project.path,
                     event_type="promotion_write",
