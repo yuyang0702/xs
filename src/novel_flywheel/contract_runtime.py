@@ -27,6 +27,7 @@ from novel_flywheel.structured_artifacts import StructuredArtifactContract
 DomainValidator = Callable[[Mapping[str, Any]], Any]
 TextValidator = Callable[[str], Any]
 AuditSink = Callable[[ArtifactConversionAudit], None]
+AttemptObserver = Callable[[dict[str, Any]], None]
 ModelRoute = Literal["primary", "configured_fallback"]
 ContractAttemptExecutor = Callable[
     [
@@ -35,6 +36,16 @@ ContractAttemptExecutor = Callable[
     ],
     Awaitable[Any],
 ]
+
+
+def _observe_attempt(observer: AttemptObserver | None, **observation: Any) -> None:
+    if observer is None:
+        return
+    try:
+        observer(observation)
+    except Exception:
+        # Observation must never alter retry, fallback, timeout, or failure.
+        return
 
 
 class ContractOutputLimitExhaustedError(RuntimeError):
@@ -452,6 +463,7 @@ async def execute_model_route_runtime(
     toolbox: Any | None = None,
     fallback_context: Callable[[], str] | None = None,
     run_id: str | None = None,
+    attempt_observer: AttemptObserver | None = None,
 ) -> ModelRouteRuntimeResult:
     """Execute one immutable task through an explicit, auditable route plan.
 
@@ -506,6 +518,20 @@ async def execute_model_route_runtime(
                 run_id=run_id,
             )
         except Exception as exc:
+            _observe_attempt(
+                attempt_observer,
+                attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(
+                    str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None
+                ),
+                route=attempt.route,
+                route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
+                outcome="transport_failure",
+                failure_class=classify_model_failure(exc),
+                error_class=type(exc).__name__,
+                model_call_delta=1,
+            )
             last_error = exc
             if attempt.route == "configured_fallback":
                 fallback_error = exc
@@ -525,6 +551,21 @@ async def execute_model_route_runtime(
             if attempt.route == "configured_fallback":
                 receipt.setdefault("configured_fallback_direct", True)
                 receipt.setdefault("fallback_used", True)
+        _observe_attempt(
+            attempt_observer,
+            attempt_id=str(attempt.attempt_index),
+            parent_attempt_id=(
+                str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None
+            ),
+            route=attempt.route,
+            route_attempt=attempt.route_attempt,
+            action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
+            outcome="returned",
+            failure_class=None,
+            model_call_delta=1,
+            input_tokens=(receipt or {}).get("input_tokens") if isinstance(receipt, dict) else None,
+            output_tokens=(receipt or {}).get("output_tokens") if isinstance(receipt, dict) else None,
+        )
         return ModelRouteRuntimeResult(response, attempt)
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("model route runtime had no executable attempt")
@@ -592,6 +633,7 @@ async def execute_text_runtime(
         Literal["primary", "configured_fallback"], ...
     ] | None = None,
     retry_domain_failures: bool = False,
+    attempt_observer: AttemptObserver | None = None,
 ) -> TextRuntimeResult:
     """Run prose generation on explicit routes without imposing a JSON shape.
 
@@ -629,6 +671,14 @@ async def execute_text_runtime(
                 max_output_tokens=max_output_tokens,
             )
         except Exception as exc:
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
+                outcome="transport_failure", failure_class=classify_model_failure(exc),
+                error_class=type(exc).__name__, model_call_delta=1,
+            )
             last_error = exc
             last_domain_error = False
             continue
@@ -641,11 +691,29 @@ async def execute_text_runtime(
                 if domain_validator is not None else text
             )
         except (TypeError, ValueError) as exc:
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.MINIMAL_REGENERATE),
+                outcome="domain_failure", failure_class="domain_validation",
+                error_class=type(exc).__name__, model_call_delta=1,
+            )
             if not retry_domain_failures:
                 raise
             last_error = exc
             last_domain_error = True
             continue
+        receipt = getattr(response, "receipt", None)
+        _observe_attempt(
+            attempt_observer, attempt_id=str(attempt.attempt_index),
+            parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+            route=attempt.route, route_attempt=attempt.route_attempt,
+            action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
+            outcome="valid", failure_class=None, model_call_delta=1,
+            input_tokens=(receipt or {}).get("input_tokens") if isinstance(receipt, dict) else None,
+            output_tokens=(receipt or {}).get("output_tokens") if isinstance(receipt, dict) else None,
+        )
         return TextRuntimeResult(
             text=text,
             domain_value=domain_value,
@@ -748,6 +816,7 @@ async def execute_contract_runtime(
     ] | None = None,
     audit_sink: AuditSink | None = None,
     attempt_executor: ContractAttemptExecutor | None = None,
+    attempt_observer: AttemptObserver | None = None,
 ) -> ContractRuntimeResult:
     """Run one shared syntax/adapter/schema recovery ladder on explicit routes.
 
@@ -818,6 +887,14 @@ async def execute_contract_runtime(
                     last_receipt,
                 )
         except Exception as exc:
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
+                outcome="transport_failure", failure_class=classify_model_failure(exc),
+                error_class=type(exc).__name__, model_call_delta=1,
+            )
             last_error = exc
             if attempt.route == "configured_fallback":
                 fallback_error = exc
@@ -836,6 +913,14 @@ async def execute_contract_runtime(
                 owns_ending=execution_spec.owns_ending,
             )
         except ArtifactConversionError as exc:
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.RECEIPT_ONLY_RETRY),
+                outcome="protocol_failure", failure_class="protocol",
+                error_class=type(exc).__name__, model_call_delta=1,
+            )
             if audit_sink is not None:
                 audit_sink(exc.audit)
             last_error = exc
@@ -876,6 +961,14 @@ async def execute_contract_runtime(
             expected_output_characters=expected_output_characters,
         )
         if incomplete_reason is not None:
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.RECEIPT_ONLY_RETRY),
+                outcome="business_incomplete", failure_class=incomplete_reason,
+                model_call_delta=1,
+            )
             last_business_incomplete_reason = incomplete_reason
             receipt = getattr(response, "receipt", None)
             _record_business_outcome(
@@ -896,6 +989,14 @@ async def execute_contract_runtime(
         try:
             domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.MINIMAL_REGENERATE),
+                outcome="domain_failure", failure_class="domain_validation",
+                error_class=type(exc).__name__, model_call_delta=1,
+            )
             if not execution_spec.retry_domain_failures:
                 raise
             last_error = exc
@@ -933,6 +1034,16 @@ async def execute_contract_runtime(
             outcome="valid",
             failure_reason=None,
             expected_output_characters=expected_output_characters,
+        )
+        receipt = getattr(response, "receipt", None)
+        _observe_attempt(
+            attempt_observer, attempt_id=str(attempt.attempt_index),
+            parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+            route=attempt.route, route_attempt=attempt.route_attempt,
+            action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
+            outcome="valid", failure_class=None, model_call_delta=1,
+            input_tokens=(receipt or {}).get("input_tokens") if isinstance(receipt, Mapping) else None,
+            output_tokens=(receipt or {}).get("output_tokens") if isinstance(receipt, Mapping) else None,
         )
         return ContractRuntimeResult(
             payload=conversion.payload,

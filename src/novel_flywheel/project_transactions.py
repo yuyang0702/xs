@@ -17,6 +17,7 @@ from novel_flywheel.learning_artifacts import (
     apply_learning_artifact_invalidations,
 )
 from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
 
 
 PROJECT_MUTATION_JOURNAL = "project-mutation-journal.json"
@@ -667,9 +668,11 @@ def commit_project_mutation_authority(
 ) -> ProjectMutationJournalV1:
     """Commit files/state/memory while leaving a later business gate pending."""
 
-    return _advance_project_mutation(
+    journal = _advance_project_mutation(
         store, run_id, finalize_run=False, allow_post_commit_gate=False,
     )
+    _observe_project_mutation(store, journal)
+    return journal
 
 
 def finalize_project_mutation(
@@ -678,9 +681,11 @@ def finalize_project_mutation(
 ) -> ProjectMutationJournalV1:
     """Finalize a two-phase Saga after its domain owner proves the gate."""
 
-    return _advance_project_mutation(
+    journal = _advance_project_mutation(
         store, run_id, finalize_run=True, allow_post_commit_gate=True,
     )
+    _observe_project_mutation(store, journal)
+    return journal
 
 
 def record_project_mutation_gate_result(
@@ -731,9 +736,95 @@ def complete_project_mutation(
 ) -> ProjectMutationJournalV1:
     """Complete a Saga that has no deferred domain-owned business gate."""
 
-    return _advance_project_mutation(
+    journal = _advance_project_mutation(
         store, run_id, finalize_run=True, allow_post_commit_gate=False,
     )
+    _observe_project_mutation(store, journal)
+    return journal
+
+
+def _observe_project_mutation(
+    store: _ProjectStore, journal: ProjectMutationJournalV1,
+) -> None:
+    """Observe a completed Saga after every business transaction has closed."""
+    try:
+        project = store.get(journal.project_id)
+        state = StoryStateStore(store.db).get(journal.project_id)
+        target = journal.story_state
+        emit_observation(
+            project.path,
+            event_type="promotion_write",
+            source_component="project_transactions",
+            source_writer=journal.operation,
+            observation_status="confirmed",
+            payload={
+                "store": "ProjectMutationJournal",
+                "writer": journal.operation,
+                "status": journal.status,
+                "expected_revision": journal.expected_story_state_revision,
+                "target_revision": target.target_revision if target else None,
+                "artifact_count": len(journal.artifacts),
+                "memory_effect_count": len(journal.memory_effects),
+                "source_authority_sha256": journal.source_authority_sha256,
+            },
+            run_id=journal.run_id,
+            stage_id="project_mutation",
+            semantic_domain="occurred_current",
+            authority_revision=state.revision if state is not None else None,
+            authority_hash=(
+                safe_canonical_hash(state.data, root=project.path)
+                if state is not None else None
+            ),
+            object_new_hash=target.state_sha256 if target is not None else None,
+        )
+        for effect in journal.memory_effects:
+            if isinstance(effect, ProjectMutationCanonFactV1):
+                key_hash = hashlib.sha256(effect.fact_key.encode("utf-8")).hexdigest()
+                emit_observation(
+                    project.path,
+                    event_type="proposed_claim",
+                    source_component="project_transactions.apply_project_memory_effects",
+                    source_writer=journal.operation,
+                    observation_status="unknown",
+                    payload={
+                        "claim_kind": "legacy_canon_fact",
+                        "shadow_only": True,
+                        "affects_business_decision": False,
+                        "legacy_key_hash": key_hash,
+                        "shadow_slot": "legacy-" + key_hash[:24],
+                        "identity_status": "ambiguous",
+                        "value_sha256": hashlib.sha256(
+                            effect.value.encode("utf-8")
+                        ).hexdigest(),
+                        "source_sha256": hashlib.sha256(
+                            effect.source.encode("utf-8")
+                        ).hexdigest(),
+                    },
+                    run_id=journal.run_id,
+                    stage_id="memory_projection",
+                    semantic_domain="occurred_current",
+                )
+            else:
+                effect_payload = effect.model_dump(mode="json")
+                effect_hash = safe_canonical_hash(effect_payload)
+                emit_observation(
+                    project.path,
+                    event_type="promotion_write",
+                    source_component="project_transactions.apply_project_memory_effects",
+                    source_writer=journal.operation,
+                    observation_status="confirmed",
+                    payload={
+                        "store": type(effect).__name__,
+                        "writer": journal.operation,
+                        "effect_sha256": effect_hash,
+                    },
+                    run_id=journal.run_id,
+                    stage_id="memory_projection",
+                    semantic_domain="occurred_current",
+                    object_new_hash=effect_hash,
+                )
+    except Exception:
+        return
 
 
 def recover_project_mutations(
@@ -744,11 +835,50 @@ def recover_project_mutations(
     recovered = []
     for run in store.db.list_nonterminal_workflow_runs(workflow):
         try:
-            complete_project_mutation(store, str(run["id"]))
+            project = store.get(str(run["project_id"]))
         except Exception:
+            project = None
+        try:
+            complete_project_mutation(store, str(run["id"]))
+        except Exception as exc:
+            if project is not None:
+                emit_observation(
+                    project.path,
+                    event_type="recovery_attempt",
+                    source_component="project_transactions.recover_project_mutations",
+                    source_writer="startup_recovery",
+                    observation_status="confirmed",
+                    payload={
+                        "attempt_id": "startup-recovery",
+                        "parent_attempt_id": None,
+                        "action": "resume_checkpoint",
+                        "outcome": "failed",
+                        "error_class": type(exc).__name__,
+                        "model_call_delta": 0,
+                    },
+                    run_id=str(run["id"]),
+                    stage_id="project_mutation_recovery",
+                )
             # Keep target/snapshot evidence for a later retry or diagnosis.
             # Unknown concurrent authority must never be overwritten merely to
             # make startup look successful.
             continue
+        if project is not None:
+            emit_observation(
+                project.path,
+                event_type="recovery_attempt",
+                source_component="project_transactions.recover_project_mutations",
+                source_writer="startup_recovery",
+                observation_status="confirmed",
+                payload={
+                    "attempt_id": "startup-recovery",
+                    "parent_attempt_id": None,
+                    "action": "resume_checkpoint",
+                    "outcome": "succeeded",
+                    "model_call_delta": 0,
+                },
+                run_id=str(run["id"]),
+                stage_id="project_mutation_recovery",
+            )
         recovered.append(str(run["id"]))
     return recovered

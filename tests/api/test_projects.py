@@ -14,6 +14,7 @@ from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.storage import ProjectSnapshot
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.project_transactions import complete_project_mutation
+from novel_flywheel.reliability_trace import read_trace, trace_file_for_project
 
 
 class FakeStyleSamples:
@@ -1795,6 +1796,12 @@ def test_story_state_api_reads_edits_section_and_keeps_history(tmp_path) -> None
     assert updated.json()["data"]["character_states"]["林昼"]["location"] == "公司"
     history = client.get(f"{endpoint}/history").json()
     assert [item["revision"] for item in history] == [1, 2]
+    project_root = next((tmp_path / "workspace").iterdir())
+    trace = read_trace(trace_file_for_project(project_root))
+    manual = [item for item in trace.events if item.source_writer == "manual_edit"]
+    assert len(manual) == 1
+    assert manual[0].run_id is None
+    assert manual[0].authority_revision == 2
 
 
 def test_story_state_api_rejects_stale_manual_edit(tmp_path) -> None:

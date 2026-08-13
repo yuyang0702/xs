@@ -27,6 +27,7 @@ from novel_flywheel.project_transactions import (
     write_project_mutation_journal,
 )
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
+from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
 
 
 def _workflow_failure(exc: BaseException) -> str:
@@ -226,9 +227,20 @@ async def run_chapter(
     committed = False
     journal_path: Path | None = None
     journal: ProjectMutationJournalV1 | None = None
+    projection_observation: dict[str, Any] | None = None
     try:
         constraints = service.projects.load_constraints(project.id)
         context = service.memory.context(project.id, chapter_goal)
+        projection_observation = {
+            "projection": "StoryMemory.context",
+            "revision_metadata_present": False,
+            "requested_revision": None,
+            "actual_revision": None,
+            "stale": "unknown",
+            "result_sha256": safe_canonical_hash(context, root=project.path),
+            "canon_count": len(context.get("canon") or []),
+            "relevant_chapter_count": len(context.get("relevant_chapters") or []),
+        }
         brief = json.dumps({
             "chapter_number": chapter_number,
             "goal": chapter_goal,
@@ -429,3 +441,16 @@ async def run_chapter(
                 raise
         service.db.update_run(run_id, "failed", error=_workflow_failure(exc))
         raise
+    finally:
+        if projection_observation is not None:
+            emit_observation(
+                project.path,
+                event_type="projection_read",
+                source_component="long_workflow.run_chapter",
+                source_writer="memory_observer",
+                observation_status="unknown",
+                payload=projection_observation,
+                run_id=run_id,
+                stage_id="long_chapter_context",
+                semantic_domain="occurred_current",
+            )

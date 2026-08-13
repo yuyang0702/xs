@@ -48,6 +48,7 @@ from novel_flywheel.project_transactions import (
     write_project_mutation_journal,
 )
 from novel_flywheel.revision import normalize_chinese_prose
+from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StaleStoryState, StoryStateStore
 
@@ -1369,6 +1370,32 @@ def update_story_state(project_id: str, payload: StoryStateEditPayload,
         )
     except StaleStoryState as exc:
         raise HTTPException(status_code=409, detail={"code": "story_state_stale"}) from exc
+    emit_observation(
+        project.path,
+        event_type="promotion_write",
+        source_component="api.projects.update_story_state",
+        source_writer="manual_edit",
+        observation_status="confirmed",
+        payload={
+            "store": "StoryState",
+            "writer": "manual_edit",
+            "section_sha256": hashlib.sha256(
+                payload.section.encode("utf-8")
+            ).hexdigest(),
+            "expected_revision": payload.expected_revision,
+            "target_revision": updated.revision,
+            "candidate_sha256": candidate.content_hash,
+        },
+        semantic_domain=(
+            "future_normative"
+            if payload.section in {"outline", "ending"}
+            else "occurred_current"
+        ),
+        authority_revision=updated.revision,
+        authority_hash=safe_canonical_hash(updated.data, root=project.path),
+        object_old_hash=safe_canonical_hash(current.data, root=project.path),
+        object_new_hash=safe_canonical_hash(updated.data, root=project.path),
+    )
     return {"project_id": updated.project_id, "revision": updated.revision, "data": updated.data}
 
 

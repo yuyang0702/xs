@@ -35,6 +35,7 @@ from novel_flywheel.project_transactions import (
 )
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.storage import ProjectSnapshot
+from novel_flywheel.reliability_trace import read_trace, trace_file_for_project
 
 
 def test_mixed_file_story_state_writer_inventory_cannot_grow() -> None:
@@ -541,3 +542,12 @@ def test_project_mutation_replays_memory_effects_idempotently(tmp_path) -> None:
     assert len(indexed) == 1
     assert dict(indexed[0]) == {"content": prose, "summary": "主角发现线索"}
     assert json.loads(saved_state["state_json"]) == chapter_state
+    trace = read_trace(trace_file_for_project(project.path))
+    assert not trace.coverage_gaps
+    event_types = [item.event_type for item in trace.events]
+    assert "promotion_write" in event_types
+    assert "proposed_claim" in event_types
+    assert all(
+        item.run_id == run_id for item in trace.events
+        if item.source_component.startswith("project_transactions")
+    )

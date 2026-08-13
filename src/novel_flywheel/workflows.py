@@ -284,6 +284,11 @@ from novel_flywheel.receipt_contracts import (
 )
 from novel_flywheel.repair_gate import evaluate_candidate_gate
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
+from novel_flywheel.reliability_trace import (
+    changed_paths as reliability_changed_paths,
+    emit_observation,
+    safe_canonical_hash as reliability_hash,
+)
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
     RevisionOperations,
@@ -3630,6 +3635,30 @@ class WorkflowService:
                         "source_artifact": source_artifact,
                     },
                 )
+                emit_observation(
+                    project.path,
+                    event_type="resume_binding",
+                    source_component="workflows._short_pipeline",
+                    source_writer="checkpoint_resume",
+                    observation_status="confirmed",
+                    payload={
+                        "artifact_type": source_artifact,
+                        "binding_status": "reused",
+                        "expected_input_sha256": str(
+                            checkpoint_context["generation_context_sha256"]
+                        ),
+                        "actual_input_sha256": str(
+                            checkpoint_context["generation_context_sha256"]
+                        ),
+                        "source_run_sha256": hashlib.sha256(
+                            checkpoint.parent.name.encode("utf-8")
+                        ).hexdigest(),
+                    },
+                    run_id=run_id,
+                    stage_id="short_checkpoint_resume",
+                    semantic_domain="occurred_current",
+                    object_new_hash=hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+                )
             elif partial_checkpoint:
                 partial_bundle = self._restore_short_partial_checkpoint(
                     partial_checkpoint, run_path / "outputs", project,
@@ -3808,6 +3837,27 @@ class WorkflowService:
                 self._save_short_checkpoint(
                     run_path / "outputs", checkpoint_context,
                 )
+            emit_observation(
+                project.path,
+                event_type="promotion_write",
+                source_component="workflows._short_pipeline",
+                source_writer="short_checkpoint",
+                observation_status="confirmed",
+                payload={
+                    "store": "ShortCheckpoint",
+                    "writer": "short_pipeline",
+                    "generation_context_sha256": str(
+                        checkpoint_context["generation_context_sha256"]
+                    ),
+                    "story_state_revision": state.revision,
+                },
+                run_id=run_id,
+                stage_id="short_checkpoint",
+                semantic_domain="occurred_current",
+                authority_revision=state.revision,
+                authority_hash=reliability_hash(state.data, root=project.path),
+                object_new_hash=hashlib.sha256(draft.encode("utf-8")).hexdigest(),
+            )
             draft_analysis = self._analyze_manuscript(
                 draft, run_path, project, "draft",
             )
@@ -3817,6 +3867,24 @@ class WorkflowService:
                 {"artifact": "outputs/draft.md"},
             )
             draft_candidate_id = draft_candidate.id
+            emit_observation(
+                project.path,
+                event_type="promotion_write",
+                source_component="workflows._short_pipeline",
+                source_writer="draft_candidate",
+                observation_status="confirmed",
+                payload={
+                    "store": "StoryCandidate",
+                    "writer": "draft_candidate",
+                    "candidate_kind": "draft",
+                    "base_revision": state.revision,
+                },
+                run_id=run_id,
+                stage_id="draft_candidate",
+                semantic_domain="occurred_current",
+                authority_revision=state.revision,
+                object_new_hash=draft_candidate.content_hash,
+            )
             review_checkpoint = (
                 None if resumed_best or checkpoint is None else self._find_short_stage_output(
                     project, checkpoint.parent.name, "review.md",
@@ -3834,6 +3902,31 @@ class WorkflowService:
                     self.db.add_run_event(
                         run_id, "success", "checkpoint_reused", "已复用上一轮有效编辑审核",
                         stage="review", metadata={"source_run": review_checkpoint.parent.parent.name},
+                    )
+                    emit_observation(
+                        project.path,
+                        event_type="resume_binding",
+                        source_component="workflows._short_pipeline",
+                        source_writer="legacy_review_resume",
+                        observation_status="unknown",
+                        payload={
+                            "artifact_type": "review.md",
+                            "binding_status": "unverifiable_legacy",
+                            "expected_input_sha256": hashlib.sha256(
+                                draft.encode("utf-8")
+                            ).hexdigest(),
+                            "actual_input_sha256": None,
+                            "binding_metadata_present": False,
+                            "source_run_sha256": hashlib.sha256(
+                                review_checkpoint.parent.parent.name.encode("utf-8")
+                            ).hexdigest(),
+                        },
+                        run_id=run_id,
+                        stage_id="short_review_resume",
+                        semantic_domain="occurred_current",
+                        object_new_hash=hashlib.sha256(
+                            review_text.encode("utf-8")
+                        ).hexdigest(),
                     )
             if review is None:
                 review_input = (
@@ -3955,6 +4048,24 @@ class WorkflowService:
                 {"artifact": "outputs/polish.md"},
             )
             candidate_id = candidate.id
+            emit_observation(
+                project.path,
+                event_type="promotion_write",
+                source_component="workflows._short_pipeline",
+                source_writer="polish_candidate",
+                observation_status="confirmed",
+                payload={
+                    "store": "StoryCandidate",
+                    "writer": "polish_candidate",
+                    "candidate_kind": "polish",
+                    "base_revision": state.revision,
+                },
+                run_id=run_id,
+                stage_id="polish_candidate",
+                semantic_domain="occurred_current",
+                authority_revision=state.revision,
+                object_new_hash=candidate.content_hash,
+            )
             chapter_text = self._chapter_file(project, polished)
             canon_json = json.dumps(canon, ensure_ascii=False, indent=2)
             promotion_files = [
@@ -14922,6 +15033,7 @@ class WorkflowService:
                             "beats": execution_manifest_payload(fragment)["beats"],
                             "segments": execution_manifest_payload(fragment)["segments"],
                         }
+                        repair_source_fragment = fragment
                         repaired, stats, failure_issues, last_body = (
                             await self._generate_short_execution_fragment(
                                 run_id, run_path, project, constraints, hashes,
@@ -14944,6 +15056,32 @@ class WorkflowService:
                                 run_id, run_path, project, constraints, fragment,
                                 fragment_authority, plan_segment, segment, suffix=mode,
                             )
+                        )
+                        emit_observation(
+                            project.path,
+                            event_type="repair_diff",
+                            source_component="workflows._ensure_short_execution_manifest",
+                            source_writer=mode,
+                            observation_status="confirmed",
+                            payload={
+                                "allowed_scope_source": "semantic_directive",
+                                "changed_paths": reliability_changed_paths(
+                                    repair_source_fragment, fragment,
+                                ),
+                                "validators_rerun": [
+                                    "execution_manifest_fragment",
+                                    "semantic_fragment_review",
+                                ],
+                                "review_passed": not bool(semantic_issues),
+                                "segment": segment,
+                                "repair_attempt": semantic_repair + 1,
+                                "unauthorized_change": "unknown",
+                            },
+                            run_id=run_id,
+                            stage_id=f"execution_manifest:{segment}",
+                            semantic_domain="future_normative",
+                            object_old_hash=reliability_hash(repair_source_fragment),
+                            object_new_hash=reliability_hash(fragment),
                         )
                         if execution_manifest_receipt_issues_are_protocol_only(
                             semantic_issues,
@@ -16317,6 +16455,26 @@ class WorkflowService:
                     raise ValueError(
                         "maintenance reduction does not replay to its declared canon"
                     )
+                emit_observation(
+                    project.path,
+                    event_type="authority_read",
+                    source_component="workflows._close_short_maintenance_authority",
+                    source_writer="capacity_window_observer",
+                    observation_status="confirmed",
+                    payload={
+                        "authority_type": "maintenance_entry_state",
+                        "reader": "capacity_window_maintenance",
+                        "state_sha256": reliability_hash(state_data),
+                        "manuscript_sha256": hashlib.sha256(
+                            publish_text.encode("utf-8")
+                        ).hexdigest(),
+                        "proposal_sha256": reliability_hash(raw_payload),
+                        "evidence_mode": "window_reduction",
+                    },
+                    run_id=run_id,
+                    stage_id="maintenance",
+                    semantic_domain="occurred_current",
+                )
                 return replayed_canon, replayed_confirmed
             candidate = raw_payload
             safe, conflicts = self._partition_short_maintenance_proposal(
@@ -16342,10 +16500,31 @@ class WorkflowService:
                 preserved, safe,
             )
             if not conflicts:
-                return self._merge_short_maintenance_authority(
+                merged_result = self._merge_short_maintenance_authority(
                     state_data, preserved, run_id=run_id,
                     manuscript_text=publish_text,
                 )
+                emit_observation(
+                    project.path,
+                    event_type="authority_read",
+                    source_component="workflows._close_short_maintenance_authority",
+                    source_writer="normal_maintenance_observer",
+                    observation_status="confirmed",
+                    payload={
+                        "authority_type": "maintenance_entry_state",
+                        "reader": "normal_maintenance",
+                        "state_sha256": reliability_hash(state_data),
+                        "manuscript_sha256": hashlib.sha256(
+                            publish_text.encode("utf-8")
+                        ).hexdigest(),
+                        "proposal_sha256": reliability_hash(raw_payload),
+                        "evidence_mode": "single_response",
+                    },
+                    run_id=run_id,
+                    stage_id="maintenance",
+                    semantic_domain="occurred_current",
+                )
+                return merged_result
             if attempt == 1:
                 raise ValueError(
                     "maintenance authority conflicts did not converge: "
@@ -25138,6 +25317,7 @@ class WorkflowService:
                      defer_route_failure_audit: bool = False,
                      protocol_system_contract: str | None = None) -> str:
         node_key = f"{stage}{suffix}"
+        attempt_observations: list[dict] = []
         if execution_spec is not None and structured_transport_contract is not None:
             raise ValueError(
                 "a stage cannot own a structured execution spec and act as a "
@@ -25795,6 +25975,7 @@ class WorkflowService:
                             run_path / "outputs" / "conversion-audits", audit,
                         ),
                         attempt_executor=contract_attempt_executor,
+                        attempt_observer=attempt_observations.append,
                     )
                     result = contract_runtime.model_response
                     result.receipt.setdefault(
@@ -25835,6 +26016,7 @@ class WorkflowService:
                             ensure_ascii=False,
                         ),
                         run_id=run_id,
+                        attempt_observer=attempt_observations.append,
                     )
                     result = route_runtime.model_response
                     selected_route = route_runtime.attempt.route
@@ -26228,6 +26410,56 @@ class WorkflowService:
                 ),
             )
             raise
+        finally:
+            # The model result/error and all business persistence above are
+            # already decided. Fail-open telemetry cannot participate in a DB
+            # lock, Saga, retry, fallback, or exception selection.
+            emit_observation(
+                project.path,
+                event_type="authority_read",
+                source_component="workflows.WorkflowService._stage",
+                source_writer="stage_observer",
+                observation_status=(
+                    "confirmed" if current_state is not None else "unknown"
+                ),
+                payload={
+                    "authority_type": "StoryState",
+                    "reader": f"stage:{stage}",
+                    "requested_revision": (
+                        current_state.revision if current_state is not None else None
+                    ),
+                    "actual_revision": (
+                        current_state.revision if current_state is not None else None
+                    ),
+                    "sections": [],
+                },
+                run_id=run_id,
+                stage_id=node_key,
+                semantic_domain="occurred_current",
+                authority_revision=(
+                    current_state.revision if current_state is not None else None
+                ),
+                authority_hash=(
+                    reliability_hash(current_state.data, root=project.path)
+                    if current_state is not None else None
+                ),
+            )
+            for observation in attempt_observations:
+                emit_observation(
+                    project.path,
+                    event_type="recovery_attempt",
+                    source_component="contract_runtime",
+                    source_writer="stage_attempt_observer",
+                    observation_status="confirmed",
+                    payload={
+                        **observation,
+                        "stage": stage,
+                        "role": model_role or stage,
+                    },
+                    run_id=run_id,
+                    stage_id=node_key,
+                    semantic_domain="unknown",
+                )
 
     async def _stage_with_role_fallback(
         self, run_id: str, run_path: Path, project: Project, stage: str,

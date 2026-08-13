@@ -313,3 +313,83 @@ def read_trace(path: Path) -> TraceReadReport:
 
 def new_event_id() -> str:
     return uuid.uuid4().hex
+
+
+def safe_canonical_hash(value: Any, *, root: Path | None = None) -> str | None:
+    try:
+        return canonical_hash(value, root=root)
+    except Exception:
+        return None
+
+
+def changed_paths(before: Any, after: Any, prefix: str = "$") -> list[str]:
+    """Return changed JSON paths without retaining either value."""
+    if hasattr(before, "model_dump"):
+        before = before.model_dump(mode="json")
+    if hasattr(after, "model_dump"):
+        after = after.model_dump(mode="json")
+    if isinstance(before, dict) and isinstance(after, dict):
+        paths: list[str] = []
+        for key in sorted(set(before) | set(after), key=str):
+            child = f"{prefix}.{key}"
+            if key not in before or key not in after:
+                paths.append(child)
+            else:
+                paths.extend(changed_paths(before[key], after[key], child))
+        return paths
+    if isinstance(before, (list, tuple)) and isinstance(after, (list, tuple)):
+        paths = []
+        for index in range(max(len(before), len(after))):
+            child = f"{prefix}[{index}]"
+            if index >= len(before) or index >= len(after):
+                paths.append(child)
+            else:
+                paths.extend(changed_paths(before[index], after[index], child))
+        return paths
+    return [] if before == after else [prefix]
+
+
+def emit_observation(
+    project_root: Path,
+    *,
+    event_type: str,
+    source_component: str,
+    source_writer: str,
+    observation_status: str,
+    payload: dict[str, Any],
+    run_id: str | None = None,
+    correlation_id: str | None = None,
+    stage_id: str | None = None,
+    semantic_domain: str = "unknown",
+    authority_revision: int | None = None,
+    authority_hash: str | None = None,
+    object_old_hash: str | None = None,
+    object_new_hash: str | None = None,
+) -> bool:
+    """Construct and append one observation; never raise into business code."""
+    try:
+        resolved_correlation = correlation_id or run_id
+        if not resolved_correlation:
+            resolved_correlation = "manual-" + hashlib.sha256(
+                project_root.resolve().name.encode(UTF8)
+            ).hexdigest()[:24]
+        envelope = ReliabilityTraceEnvelopeV1.model_validate({
+            "schema": "ReliabilityTraceEnvelopeV1",
+            "event_id": new_event_id(),
+            "correlation_id": resolved_correlation,
+            "run_id": run_id,
+            "stage_id": stage_id,
+            "event_type": event_type,
+            "source_component": source_component,
+            "source_writer": source_writer,
+            "semantic_domain": semantic_domain,
+            "authority_revision": authority_revision,
+            "authority_hash": authority_hash,
+            "object_old_hash": object_old_hash,
+            "object_new_hash": object_new_hash,
+            "observation_status": observation_status,
+            "payload": payload,
+        })
+        return BestEffortTraceSink.for_project(project_root).emit(envelope)
+    except Exception:
+        return False

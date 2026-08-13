@@ -267,6 +267,42 @@ async def test_contract_runtime_retries_same_task_on_same_explicit_route() -> No
 
 
 @pytest.mark.asyncio
+async def test_contract_runtime_observer_reports_attempt_dag_without_changing_calls() -> None:
+    class Gateway:
+        def __init__(self):
+            self.outputs = ['{"legacy":"invalid"}', '{"message":"valid"}']
+            self.calls = 0
+
+        async def complete_primary(self, role, system, user, **kwargs):
+            self.calls += 1
+            return SimpleNamespace(
+                text=self.outputs.pop(0),
+                receipt={"input_tokens": 11, "output_tokens": 3},
+            )
+
+    gateway = Gateway()
+    observations = []
+    result = await execute_contract_runtime(
+        gateway,
+        role="planning",
+        system="same immutable system",
+        user="same immutable user",
+        execution_spec=execution_spec(),
+        fallback_attempts=0,
+        attempt_observer=observations.append,
+    )
+
+    assert result.payload == {"message": "valid"}
+    assert gateway.calls == 2
+    assert [item["outcome"] for item in observations] == [
+        "protocol_failure", "valid",
+    ]
+    assert [item["attempt_id"] for item in observations] == ["1", "2"]
+    assert observations[1]["parent_attempt_id"] == "1"
+    assert sum(item["model_call_delta"] for item in observations) == gateway.calls
+
+
+@pytest.mark.asyncio
 async def test_contract_runtime_retries_original_task_when_no_semantics_exist() -> None:
     class Gateway:
         def __init__(self):
