@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -14,8 +15,18 @@ from novel_flywheel.canonical_shadow import (
     ProposedClaimV2,
     ProjectionProvenanceV1,
     ShadowCanonicalCommitReceiptV1,
+    build_entity_alias_index,
+    build_evidence_envelope,
+    build_shadow_mutation,
+    build_shadow_receipt,
     canonical_sha256,
+    claim_value_hash,
+    entity_id,
+    make_proposed_claim,
+    resolve_shadow_slot,
+    resolve_story_state_expected_current,
     stable_id,
+    story_state_authority_hash,
 )
 from novel_flywheel.project_transactions import ProjectMutationJournalV1
 
@@ -153,3 +164,225 @@ def test_phase05_baseline_manifests_are_hash_only_and_committed() -> None:
     assert '"system":' not in serialized
     assert '"user":' not in serialized
     assert "c:\\" not in serialized
+
+
+def test_alias_index_uses_explicit_aliases_and_preserves_collisions(tmp_path) -> None:
+    characters = tmp_path / "characters"
+    characters.mkdir()
+    (characters / "hero.md").write_text(
+        "---\nname: 柳春杏\naliases:\n  - 花穗\n---\n", encoding="utf-8",
+    )
+    index = build_entity_alias_index(tmp_path, {"character_states": {}})
+    assert index.resolve(" 花穗 ") == (entity_id("柳春杏"), "exact")
+    (characters / "other.md").write_text(
+        "---\nname: 另一人\naliases: [花穗]\n---\n", encoding="utf-8",
+    )
+    collision = build_entity_alias_index(tmp_path, {"character_states": {}})
+    assert collision.resolve("花穗") == (None, "ambiguous")
+    assert collision.resolve("未声明别名") == (None, "unsupported")
+
+
+def test_slot_identity_ignores_value_but_separates_kind_direction_and_domain() -> None:
+    source = H2
+    hero = entity_id("主角")
+    friend = entity_id("同伴")
+    shanghai = make_proposed_claim(
+        claim_kind="character.location", subject_id=hero, predicate="location",
+        perspective="objective_world", semantic_domain="occurred_current",
+        story_time="chapter:32", value="上海", source_artifact_hash=source,
+    )
+    beijing = make_proposed_claim(
+        claim_kind="character.location", subject_id=hero, predicate="location",
+        perspective="objective_world", semantic_domain="occurred_current",
+        story_time="chapter:32", value="北京", source_artifact_hash=source,
+    )
+    knowledge = make_proposed_claim(
+        claim_kind="character.knowledge", subject_id=hero, predicate="knowledge",
+        knowledge_owner_id=hero, knowledge_topic="密信内容",
+        perspective="character_belief", semantic_domain="occurred_current",
+        story_time="chapter:32", value=True, source_artifact_hash=source,
+    )
+    forward = make_proposed_claim(
+        claim_kind="character.relationship", subject_id=hero, object_id=friend,
+        predicate="trust", perspective="character_belief",
+        semantic_domain="occurred_current", story_time="chapter:32",
+        value="信任", source_artifact_hash=source,
+    )
+    reverse = make_proposed_claim(
+        claim_kind="character.relationship", subject_id=friend, object_id=hero,
+        predicate="trust", perspective="character_belief",
+        semantic_domain="occurred_current", story_time="chapter:32",
+        value="信任", source_artifact_hash=source,
+    )
+    future = make_proposed_claim(
+        claim_kind="character.location", subject_id=hero, predicate="location",
+        perspective="objective_world", semantic_domain="future_normative",
+        story_time="chapter:32", value="北京", source_artifact_hash=source,
+    )
+    slots = [resolve_shadow_slot(item) for item in (
+        shanghai, beijing, knowledge, forward, reverse, future,
+    )]
+    assert slots[0].slot_id == slots[1].slot_id
+    assert len({item.slot_id for item in slots[1:]}) == 5
+
+
+def test_evidence_uses_utf8_bytes_and_never_selects_first_duplicate() -> None:
+    claim = make_proposed_claim(
+        claim_kind="character.location", subject_id=entity_id("主角"),
+        predicate="location", perspective="objective_world",
+        semantic_domain="occurred_current", story_time="chapter:2", value="北京",
+        source_artifact_hash=hashlib.sha256("甲到北京。".encode()).hexdigest(),
+    )
+    final = "甲到北京。".encode("utf-8")
+    exact = build_evidence_envelope(
+        claim, final_source_bytes=final,
+        declared_source_artifact_hash=hashlib.sha256(final).hexdigest(),
+        evidence_text="北京", base_authority_revision=3,
+        base_authority_hash=H1, covered_ranges=((0, len(final)),),
+    )
+    assert exact.grounding == "exact"
+    assert exact.spans[0].byte_start == len("甲到".encode("utf-8"))
+    duplicate_bytes = "北京后又回北京".encode("utf-8")
+    duplicate_claim = make_proposed_claim(
+        claim_kind="character.location", subject_id=entity_id("主角"),
+        predicate="location", perspective="objective_world",
+        semantic_domain="occurred_current", story_time="chapter:3", value="北京",
+        source_artifact_hash=hashlib.sha256(duplicate_bytes).hexdigest(),
+    )
+    ambiguous = build_evidence_envelope(
+        duplicate_claim, final_source_bytes=duplicate_bytes,
+        declared_source_artifact_hash=hashlib.sha256(duplicate_bytes).hexdigest(),
+        evidence_text="北京", base_authority_revision=3,
+        base_authority_hash=H1, covered_ranges=((0, len(duplicate_bytes)),),
+    )
+    assert ambiguous.grounding == "ambiguous"
+    assert ambiguous.spans == ()
+
+
+def test_expected_current_reads_only_exact_story_state_authority(tmp_path) -> None:
+    state = {"character_states": {"主角": {"location": "上海"}}, "confirmed_facts": []}
+    authority_hash = story_state_authority_hash(state)
+    aliases = build_entity_alias_index(tmp_path, state)
+    claim = make_proposed_claim(
+        claim_kind="character.location", subject_id=entity_id("主角"),
+        predicate="location", perspective="objective_world",
+        semantic_domain="occurred_current", story_time="chapter:32", value="北京",
+        source_artifact_hash=H2,
+    )
+    current = resolve_story_state_expected_current(
+        state_data=state, actual_revision=7, actual_authority_hash=authority_hash,
+        requested_revision=7, requested_authority_hash=authority_hash,
+        claim=claim, aliases=aliases,
+    )
+    assert current["status"] == "exact"
+    assert current["current_hash"] == claim_value_hash("上海")
+    stale = resolve_story_state_expected_current(
+        state_data=state, actual_revision=7, actual_authority_hash=authority_hash,
+        requested_revision=7, requested_authority_hash=H3,
+        claim=claim, aliases=aliases,
+    )
+    assert stale["status"] == "unavailable"
+    assert "projection" not in resolve_story_state_expected_current.__annotations__
+
+
+def test_mutation_eligibility_requires_story_state_current_and_exact_evidence(tmp_path) -> None:
+    final = "主角从上海抵达北京。".encode("utf-8")
+    state = {"character_states": {"主角": {"location": "上海"}}, "confirmed_facts": []}
+    authority_hash = story_state_authority_hash(state)
+    aliases = build_entity_alias_index(tmp_path, state)
+    claim = make_proposed_claim(
+        claim_kind="character.location", subject_id=entity_id("主角"),
+        predicate="location", perspective="objective_world",
+        semantic_domain="occurred_current", story_time="chapter:33", value="北京",
+        source_artifact_hash=hashlib.sha256(final).hexdigest(),
+    )
+    evidence = build_evidence_envelope(
+        claim, final_source_bytes=final,
+        declared_source_artifact_hash=hashlib.sha256(final).hexdigest(),
+        evidence_text="抵达北京", base_authority_revision=7,
+        base_authority_hash=authority_hash, covered_ranges=((0, len(final)),),
+    )
+    mutation = build_shadow_mutation(
+        operation="TRANSITION", claim=claim, evidence=evidence,
+        slot=resolve_shadow_slot(claim), state_data=state, actual_revision=7,
+        actual_authority_hash=authority_hash, aliases=aliases,
+        requested_expected_current_hash=claim_value_hash("上海"),
+    )
+    assert mutation.eligibility == "eligible"
+    assert mutation.expected_current_hash == claim_value_hash("上海")
+    stale = build_shadow_mutation(
+        operation="TRANSITION", claim=claim,
+        evidence=evidence.model_copy(update={"base_authority_hash": H3}),
+        slot=resolve_shadow_slot(claim), state_data=state, actual_revision=7,
+        actual_authority_hash=authority_hash, aliases=aliases,
+        requested_expected_current_hash=claim_value_hash("上海"),
+    )
+    assert stale.eligibility == "ineligible"
+    assert "story_state_base_mismatch" in stale.failure_codes
+    receipt = build_shadow_receipt(mutation, legacy_comparison="equivalent")
+    assert receipt.outcome == "shadow_not_committed"
+
+
+@pytest.mark.parametrize("operation", ["SUPERSEDE", "RETRACT"])
+def test_explicit_current_operations_require_matching_story_state(
+    tmp_path, operation,
+) -> None:
+    final = "主角公开离开上海。".encode("utf-8")
+    state = {"character_states": {"主角": {"location": "上海"}}}
+    authority_hash = story_state_authority_hash(state)
+    aliases = build_entity_alias_index(tmp_path, state)
+    claim = make_proposed_claim(
+        claim_kind="character.location", subject_id=entity_id("主角"),
+        predicate="location", perspective="objective_world",
+        semantic_domain="occurred_current", story_time="chapter:34", value="离开",
+        source_artifact_hash=hashlib.sha256(final).hexdigest(),
+    )
+    evidence = build_evidence_envelope(
+        claim, final_source_bytes=final,
+        declared_source_artifact_hash=hashlib.sha256(final).hexdigest(),
+        evidence_text="离开上海", base_authority_revision=2,
+        base_authority_hash=authority_hash, covered_ranges=((0, len(final)),),
+    )
+    mutation = build_shadow_mutation(
+        operation=operation, claim=claim, evidence=evidence,
+        slot=resolve_shadow_slot(claim), state_data=state, actual_revision=2,
+        actual_authority_hash=authority_hash, aliases=aliases,
+        requested_expected_current_hash=claim_value_hash("上海"),
+    )
+    assert mutation.eligibility == "eligible"
+
+
+def test_assert_requires_known_absence_not_unknown_subject(tmp_path) -> None:
+    final = "主角抵达上海。".encode("utf-8")
+    state = {"character_states": {"主角": {"status": "active"}}}
+    authority_hash = story_state_authority_hash(state)
+    aliases = build_entity_alias_index(tmp_path, state)
+    claim = make_proposed_claim(
+        claim_kind="character.location", subject_id=entity_id("主角"),
+        predicate="location", perspective="objective_world",
+        semantic_domain="occurred_current", story_time="chapter:1", value="上海",
+        source_artifact_hash=hashlib.sha256(final).hexdigest(),
+    )
+    evidence = build_evidence_envelope(
+        claim, final_source_bytes=final,
+        declared_source_artifact_hash=hashlib.sha256(final).hexdigest(),
+        evidence_text="抵达上海", base_authority_revision=1,
+        base_authority_hash=authority_hash, covered_ranges=((0, len(final)),),
+    )
+    eligible = build_shadow_mutation(
+        operation="ASSERT", claim=claim, evidence=evidence,
+        slot=resolve_shadow_slot(claim), state_data=state, actual_revision=1,
+        actual_authority_hash=authority_hash, aliases=aliases,
+    )
+    assert eligible.eligibility == "eligible"
+    unknown = {"character_states": {"另一人": {"location": "北京"}}}
+    unknown_hash = story_state_authority_hash(unknown)
+    unknown_aliases = build_entity_alias_index(tmp_path, unknown)
+    blocked = build_shadow_mutation(
+        operation="ASSERT", claim=claim,
+        evidence=evidence.model_copy(update={"base_authority_hash": unknown_hash}),
+        slot=resolve_shadow_slot(claim), state_data=unknown, actual_revision=1,
+        actual_authority_hash=unknown_hash, aliases=unknown_aliases,
+    )
+    assert blocked.eligibility == "ineligible"
+    assert "story_state_subject_unknown" in blocked.failure_codes
