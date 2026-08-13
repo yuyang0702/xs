@@ -1532,3 +1532,65 @@ architecture are `test_failure_boundary.py`, `test_workflow_coordination.py`,
 `test_source_encoding.py`, and the lifespan test in `test_app.py`; they augment,
 not replace, the API, task/supervisor, structured-artifact, workflow, current
 project snapshot, and 13K/20K/30K complete-flow acceptance suites.
+
+## Phase 0 reliability trace
+
+Phase 0 adds a non-authoritative, hash-only observation stream. It does not
+change StoryState, Canon, Maintenance, candidate, checkpoint, Saga, retry,
+fallback, repair, resume, prompt, or model-call decisions.
+
+The file is physically outside every project:
+
+```text
+<data>/runtime/reliability-traces/<project-name-sha256-prefix>/_reliability-trace-v1.jsonl
+```
+
+It is therefore outside Prompt/Context Assembly, Memory/FTS, reference and
+material scanning, run outputs, candidate lookup, Canon, StoryState,
+checkpoint, Project Mutation Journal, snapshot, migration, export, publication,
+and formal artifact manifests. Production code has no business reader for this
+directory. `NOVEL_RELIABILITY_TRACE=0` disables emission immediately.
+
+`ReliabilityTraceEnvelopeV1` uses
+`canonicalization_version=phase0-canonical-json-v1`. Hash inputs use UTF-8,
+sorted JSON keys, compact JSON separators, preserved JSON null/boolean/number
+types, root-relative path fields, and the declared exclusion set for volatile
+observation timestamps and random correlation/run/candidate identifiers.
+Non-finite numbers and unsupported Python representations are rejected. Trace
+records never contain prompt text, story prose, full business objects,
+credentials, raw errors, or absolute paths.
+
+Event types are `authority_read`, `proposed_claim`, `promotion_write`,
+`projection_read`, `repair_diff`, `recovery_attempt`, `resume_binding`, and
+`authority_evidence_conflict`. A proposed claim is always `shadow_only=true`
+and `affects_business_decision=false`. `future_normative` and
+`occurred_current` are separate semantic domains with no cross-domain global
+precedence.
+
+An authority conflict is emitted only when the shadow slot, comparable story
+time, semantic domain, disagreeing value hashes, and both source hashes are all
+known. Missing evidence remains `observation_status=unknown`; Phase 0 never
+selects a winner.
+
+Sequence numbers are monotonic only within one `correlation_id`. The writer
+uses a non-blocking cross-process lock and one complete append. Lock or write
+failure drops telemetry and cannot enter business recovery. A partial write is
+truncated back while the lock is held when possible. The reader reports
+invalid records, incomplete tails, and sequence gaps as coverage gaps and never
+invents a missing edge or causal event.
+
+The read-only diagnostic helpers derive Authority Lineage, Projection
+Reconciliation, Repair Diff, Recovery Attempt DAG, and a trace coverage matrix
+from the single JSONL stream. These views are diagnostics, not project
+artifacts or authority.
+
+Focused verification:
+
+```powershell
+& .venv\Scripts\python.exe -m pytest -q `
+  tests/test_reliability_trace.py `
+  tests/test_reliability_trace_repair.py `
+  tests/test_reliability_trace_workflows.py `
+  tests/test_reliability_trace_isolation.py `
+  tests/test_phase0_baseline_harness.py
+```

@@ -393,3 +393,166 @@ def emit_observation(
         return BestEffortTraceSink.for_project(project_root).emit(envelope)
     except Exception:
         return False
+
+
+def shadow_slot_identity(
+    *,
+    entity_hash: str,
+    predicate: str,
+    semantic_domain: str,
+    perspective: str | None = None,
+    knowledge_owner_hash: str | None = None,
+    relationship_direction: str | None = None,
+) -> str:
+    """Derive shadow identity without using or replacing a legacy fact key."""
+    return "slot-" + canonical_hash({
+        "entity_hash": entity_hash,
+        "predicate": predicate,
+        "semantic_domain": semantic_domain,
+        "perspective": perspective,
+        "knowledge_owner_hash": knowledge_owner_hash,
+        "relationship_direction": relationship_direction,
+    })[:32]
+
+
+def assess_authority_evidence_conflict(
+    left: dict[str, Any], right: dict[str, Any],
+) -> dict[str, Any]:
+    """Confirm a conflict only when all user-required evidence is explicit."""
+    required = ("shadow_slot", "story_time", "semantic_domain", "value_sha256", "source_hash")
+    if any(not left.get(key) or not right.get(key) for key in required):
+        return {"observation_status": "unknown", "conflict": False}
+    comparable = (
+        left["shadow_slot"] == right["shadow_slot"]
+        and left["story_time"] == right["story_time"]
+        and left["semantic_domain"] == right["semantic_domain"]
+    )
+    if not comparable:
+        return {"observation_status": "unknown", "conflict": False}
+    disagrees = left["value_sha256"] != right["value_sha256"]
+    return {
+        "observation_status": "confirmed",
+        "conflict": disagrees,
+        "semantic_domain": left["semantic_domain"],
+        "payload": ({
+            "shadow_slot": left["shadow_slot"],
+            "story_time": left["story_time"],
+            "left_source_hash": left["source_hash"],
+            "right_source_hash": right["source_hash"],
+            "values_disagree": True,
+            "resolution": "unresolved_phase0",
+        } if disagrees else None),
+    }
+
+
+def authority_lineage(events: Iterable[ReliabilityTraceEnvelopeV1]) -> list[dict[str, Any]]:
+    selected = {
+        "authority_read", "promotion_write", "proposed_claim",
+        "authority_evidence_conflict",
+    }
+    return [
+        {
+            "correlation_id_hash": hashlib.sha256(
+                item.correlation_id.encode(UTF8)
+            ).hexdigest(),
+            "sequence": item.sequence,
+            "event_type": item.event_type,
+            "stage_id": item.stage_id,
+            "source_component": item.source_component,
+            "source_writer": item.source_writer,
+            "semantic_domain": item.semantic_domain,
+            "authority_revision": item.authority_revision,
+            "authority_hash": item.authority_hash,
+            "object_old_hash": item.object_old_hash,
+            "object_new_hash": item.object_new_hash,
+            "observation_status": item.observation_status,
+        }
+        for item in events if item.event_type in selected
+    ]
+
+
+def projection_reconciliation(
+    events: Iterable[ReliabilityTraceEnvelopeV1],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "sequence": item.sequence,
+            "projection": item.payload.get("projection"),
+            "requested_revision": item.payload.get("requested_revision"),
+            "actual_revision": item.payload.get("actual_revision"),
+            "revision_metadata_present": item.payload.get("revision_metadata_present"),
+            "stale": item.payload.get("stale"),
+            "observation_status": item.observation_status,
+            "result_sha256": item.payload.get("result_sha256"),
+        }
+        for item in events if item.event_type == "projection_read"
+    ]
+
+
+def repair_diff_view(events: Iterable[ReliabilityTraceEnvelopeV1]) -> list[dict[str, Any]]:
+    return [
+        {
+            "sequence": item.sequence,
+            "stage_id": item.stage_id,
+            "old_sha256": item.object_old_hash,
+            "new_sha256": item.object_new_hash,
+            "changed_paths": list(item.payload.get("changed_paths") or []),
+            "validators_rerun": list(item.payload.get("validators_rerun") or []),
+            "unauthorized_change": item.payload.get("unauthorized_change"),
+        }
+        for item in events if item.event_type == "repair_diff"
+    ]
+
+
+def recovery_attempt_dag(events: Iterable[ReliabilityTraceEnvelopeV1]) -> dict[str, Any]:
+    nodes = []
+    edges = []
+    for item in events:
+        if item.event_type != "recovery_attempt":
+            continue
+        attempt_id = str(item.payload["attempt_id"])
+        nodes.append({
+            "attempt_id": attempt_id,
+            "route": item.payload.get("route"),
+            "action": item.payload["action"],
+            "outcome": item.payload["outcome"],
+            "model_call_delta": item.payload["model_call_delta"],
+        })
+        parent = item.payload.get("parent_attempt_id")
+        if parent is not None:
+            # Never infer an edge from sequence or a missing record.
+            edges.append({"from": str(parent), "to": attempt_id, "explicit": True})
+    return {"nodes": nodes, "edges": edges}
+
+
+TRACE_COVERAGE_POINTS: dict[str, tuple[str, str]] = {
+    "stage_authority_read": ("authority_read", "workflows.WorkflowService._stage"),
+    "normal_maintenance_read": ("authority_read", "workflows._close_short_maintenance_authority"),
+    "projection_read": ("projection_read", "long_workflow.run_chapter"),
+    "repair_diff": ("repair_diff", "workflows._ensure_short_execution_manifest"),
+    "runtime_attempt": ("recovery_attempt", "contract_runtime"),
+    "resume_binding": ("resume_binding", "workflows._short_pipeline"),
+    "saga_promotion": ("promotion_write", "project_transactions"),
+    "manual_story_state": ("promotion_write", "api.projects.update_story_state"),
+}
+
+
+def trace_coverage_matrix(
+    events: Iterable[ReliabilityTraceEnvelopeV1],
+) -> dict[str, Any]:
+    materialized = list(events)
+    rows = []
+    for point, (event_type, component) in TRACE_COVERAGE_POINTS.items():
+        count = sum(
+            item.event_type == event_type and item.source_component == component
+            for item in materialized
+        )
+        rows.append({"trace_point": point, "observed": count, "covered": count > 0})
+    gaps = [row["trace_point"] for row in rows if not row["covered"]]
+    return {
+        "rows": rows,
+        "covered": len(rows) - len(gaps),
+        "expected": len(rows),
+        "coverage_ratio": (len(rows) - len(gaps)) / len(rows),
+        "coverage_gaps": gaps,
+    }

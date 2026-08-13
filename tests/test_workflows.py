@@ -16,6 +16,7 @@ from novel_flywheel.context_policy import (
     build_polish_authority_packet,
     classify_model_failure,
     classify_input_pressure,
+    estimate_input_tokens,
 )
 from novel_flywheel.contract_runtime import ContractBusinessOutputIncompleteError
 from novel_flywheel.execution_manifest import (
@@ -75,6 +76,7 @@ from novel_flywheel.quality_profiles import score_review
 from novel_flywheel.quality_records import load_quality_checkpoint, write_quality_checkpoint
 from novel_flywheel.quality_summary import effective_han_characters
 from novel_flywheel.repair_records import RepairRunStore, repair_artifact_hash
+from novel_flywheel.reliability_trace import emit_observation, trace_file_for_project
 from novel_flywheel.recovery_engine import protocol_receipt_attempts
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.revision import segment_map
@@ -2615,6 +2617,90 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert state.data["manuscript_revision"] == 1
     assert state.data["confirmed_facts"][0]["value"] == "The hero survived."
     assert any(item["event_type"] == "story_state_committed" for item in events)
+
+
+@pytest.mark.asyncio
+async def test_trace_content_never_enters_stage_prompt_and_disabled_keeps_calls_identical(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "data" / "projects")
+    project = store.create(ProjectCreate(
+        title="Trace isolation", mode="short", genre="mystery",
+        premise="An offline reliability fixture.", target_words=6000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class RecordingGateway:
+        def __init__(self):
+            self.calls = []
+
+        @staticmethod
+        def has_configured_fallback(_role):
+            return False
+
+        async def complete_primary(self, role, system, user, **kwargs):
+            self.calls.append((role, system, user, kwargs.get("max_output_tokens")))
+            return ModelResult("{}", {
+                "role": role, "model_name": "offline",
+                "input_tokens": 10, "output_tokens": 1,
+            })
+
+    gateway = RecordingGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    sentinel = "TRACE_SENTINEL_NEVER_PROMPT"
+    assert emit_observation(
+        project.path,
+        event_type="authority_read",
+        source_component="test",
+        source_writer="isolation",
+        observation_status="confirmed",
+        payload={"authority_type": "StoryState", "reader": sentinel},
+        semantic_domain="occurred_current",
+    )
+    assert sentinel in trace_file_for_project(project.path).read_text(encoding="utf-8")
+
+    monkeypatch.setenv("NOVEL_RELIABILITY_TRACE", "1")
+    run_a, path_a = service._begin_run(project, "short-story", "trace-enabled")
+    constraints = store.load_constraints(project.id)
+    await service._stage(
+        run_a, path_a, project, "review", constraints, "same immutable task",
+        allow_tools=False,
+    )
+    monkeypatch.setenv("NOVEL_RELIABILITY_TRACE", "0")
+    run_b, path_b = service._begin_run(project, "short-story", "trace-disabled")
+    await service._stage(
+        run_b, path_b, project, "review", constraints, "same immutable task",
+        allow_tools=False,
+    )
+
+    assert len(gateway.calls) == 2
+    assert gateway.calls[0] == gateway.calls[1]
+    assert all(sentinel not in system and sentinel not in user
+               for _role, system, user, _budget in gateway.calls)
+    parity_rows = [{
+        "role": role,
+        "system_sha256": hashlib.sha256(system.encode("utf-8")).hexdigest(),
+        "user_sha256": hashlib.sha256(user.encode("utf-8")).hexdigest(),
+        "prompt_tokens": estimate_input_tokens(system + "\n" + user),
+        "max_output_tokens": budget,
+    } for role, system, user, budget in gateway.calls]
+    assert parity_rows[0] == parity_rows[1]
+    report_path = os.environ.get("PHASE0_MODEL_PARITY_REPORT")
+    if report_path:
+        Path(report_path).write_text(json.dumps({
+            "schema": "Phase0ModelParityReportV1",
+            "trace_enabled": parity_rows[0],
+            "trace_disabled": parity_rows[1],
+            "ordered_model_call_delta": 0,
+            "prompt_token_delta": 0,
+            "output_budget_delta": 0,
+            "attempt_sequence_changed": False,
+        }, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 @pytest.mark.asyncio

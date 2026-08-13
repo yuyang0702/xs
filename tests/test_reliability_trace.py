@@ -17,6 +17,7 @@ from novel_flywheel.reliability_trace import (
     trace_file_for_project,
 )
 from phase0_baseline_harness import canonical_hash as baseline_hash
+from phase0_diagnostic_report import benchmark
 
 
 def _process_append(arguments: tuple[str, int]) -> bool:
@@ -153,3 +154,14 @@ def test_reader_reports_corrupt_tail_and_sequence_gap_without_fabrication(tmp_pa
     assert {gap["reason"] for gap in report.coverage_gaps} == {
         "sequence_gap", "incomplete_tail",
     }
+
+
+def test_overhead_report_is_hash_only_and_reports_failures_and_gaps() -> None:
+    report = benchmark(20)
+    assert report["iterations"] == 20
+    assert report["enabled_written"] == 20
+    assert report["enabled_dropped"] == 0
+    assert report["write_failure_rate"] == 0.0
+    assert report["reader_coverage_gap_count"] == 0
+    assert report["disabled_ns_per_event"] >= 0
+    assert report["enabled_ns_per_event"] >= 0
