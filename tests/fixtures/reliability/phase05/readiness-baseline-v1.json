@@ -1,0 +1,18 @@
+{
+  "baseline_head": "416947ed96b7cb6f5f139526b8190af8312f8686",
+  "evidence_report_sha256": "f2a2f443b39b767bc9d9cea6c15e236679463e07fbd728b621d0c686af5eba68",
+  "formal_sha256": "66f36577472f63660cc3b5f2af735f35a4c1ae18508a0ae6200079786e4df14c",
+  "maintenance_repeatability_sha256": "00fe72246a744f316b7c186b2495643c44c004dec8dd166633b5a0c7de95b93f",
+  "paid_llm_call_delta": 0,
+  "saga_repeatability_sha256": "3f42905641513365819c575b8646f883042193f1cd49286669dc6dec3be67128",
+  "schema": "Phase05CommittedReadinessBaselineV1",
+  "story_state_revision": 2,
+  "story_state_sha256": "aad23e127a6a017f6c67e30c316ddb7c960dcad2e2b81beb22afbe6392241c3c",
+  "strict_xfail_count": 5,
+  "workflow_coverage": {
+    "long_chapter": "8/8",
+    "long_multi_chapter": "8/8",
+    "long_setup": "8/8",
+    "short": "8/8"
+  }
+}

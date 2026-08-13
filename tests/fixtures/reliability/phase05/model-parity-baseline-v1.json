@@ -1,0 +1,11 @@
+{
+  "attempt_sequence_changed": false,
+  "max_output_tokens": 4096,
+  "model_parity_report_sha256": "adcddbb132945e8fd5d4464a202a9dc5e62394c321e8cd9f719b798f8de426ec",
+  "ordered_model_call_delta": 0,
+  "prompt_token_delta": 0,
+  "prompt_tokens": 846,
+  "schema": "Phase05CommittedModelParityBaselineV1",
+  "system_sha256": "cf1562e52e4e632f03ef127dab206332efe2b89f4b1329b616dda372ecfbfebf",
+  "user_sha256": "81f632395eb655a4afd7aa9d19f02398b2d99c22d59a6f41b63282036ffe50fc"
+}
