@@ -299,6 +299,7 @@ from novel_flywheel.short_canonical_promotion import (
     make_maintenance_inventory,
     predecision_replay_counts,
     proposal_units_from_candidate,
+    short_publication_story_time,
 )
 from novel_flywheel.revision_operations import (
     RevisionOperationError,
@@ -16723,11 +16724,9 @@ class WorkflowService:
                         workflow="short-window-maintenance",
                         legacy_candidate=inventory_as_shadow_candidate(inventory),
                         final_source_bytes=publish_text.encode("utf-8"),
-                        story_time=(
-                            "publication:" + hashlib.sha256(
-                                polished.encode("utf-8")
-                            ).hexdigest()
-                        ),
+                        story_time=short_publication_story_time(
+                            project.id, current_state.data,
+                        ).story_time,
                         story_state_revision=current_state.revision,
                         story_state_data=current_state.data,
                         coverage_mode="window_union", run_id=run_id,
@@ -16871,11 +16870,9 @@ class WorkflowService:
                         workflow="short-normal-maintenance",
                         legacy_candidate=inventory_as_shadow_candidate(inventory),
                         final_source_bytes=publish_text.encode("utf-8"),
-                        story_time=(
-                            "publication:" + hashlib.sha256(
-                                polished.encode("utf-8")
-                            ).hexdigest()
-                        ),
+                        story_time=short_publication_story_time(
+                            project.id, current_state.data,
+                        ).story_time,
                         story_state_revision=current_state.revision,
                         story_state_data=current_state.data,
                         coverage_mode="complete_source", run_id=run_id,
