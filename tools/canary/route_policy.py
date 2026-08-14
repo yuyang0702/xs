@@ -38,7 +38,11 @@ class ApprovedRoutePolicy:
             raise CanaryRouteBlocked("stage_not_approved_for_role")
         if observation.ordinal < 1:
             raise CanaryRouteBlocked("route_ordinal_invalid")
-        selected_kind = "fallback" if observation.route_kind == "fallback" else "primary"
+        selected_kind = (
+            "fallback" if observation.route_kind in {
+                "fallback", "configured_fallback",
+            } else "primary"
+        )
         selected = route.get(selected_kind)
         if not isinstance(selected, Mapping):
             raise CanaryRouteBlocked(f"{selected_kind}_route_not_approved")
@@ -48,3 +52,9 @@ class ApprovedRoutePolicy:
             raise CanaryRouteBlocked("model_binding_mismatch")
         if selected.get("protocol") != observation.protocol:
             raise CanaryRouteBlocked("provider_protocol_mismatch")
+        maximum_output = selected.get("maximum_canary_output_tokens")
+        if maximum_output is not None:
+            if type(maximum_output) is not int or maximum_output <= 0:
+                raise CanaryRouteBlocked("route_output_cap_invalid")
+            if observation.output_budget > maximum_output:
+                raise CanaryRouteBlocked("route_output_cap_exceeded")

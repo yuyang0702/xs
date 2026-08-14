@@ -36,6 +36,7 @@ class ExactBoundaryVerifier:
         cli_approved_plan_sha256: str, initial_plan_sha256: str,
         initial_approval_sha256: str, initial_launcher_sha256: str,
         initial_workload_manifest_hash: str,
+        expected_scope: str = "C0A_FAKE_DRY_RUN",
         now: datetime | None = None,
     ) -> None:
         self.snapshot_supplier = snapshot_supplier
@@ -44,10 +45,13 @@ class ExactBoundaryVerifier:
         self.initial_approval_sha256 = initial_approval_sha256
         self.initial_launcher_sha256 = initial_launcher_sha256
         self.initial_workload_manifest_hash = initial_workload_manifest_hash
+        self.expected_scope = expected_scope
         self.now = now
         self.receipts: list[dict] = []
 
-    def __call__(self, request: BoundaryRequest) -> dict:
+    def validate_inputs(self, request: BoundaryRequest) -> dict[str, Any]:
+        """Validate mutable inputs before any budget authority is reserved."""
+
         snapshot = deepcopy(dict(self.snapshot_supplier()))
         plan = validate_canary_experiment_plan_v1(snapshot["plan"])
         _require(plan["plan_sha256"] == self.cli_approved_plan_sha256,
@@ -55,7 +59,7 @@ class ExactBoundaryVerifier:
         _require(plan["plan_sha256"] == self.initial_plan_sha256,
                  "plan_changed_during_canary")
         approval = validate_canary_plan_approval_v1(
-            snapshot["approval"], expected_scope="C0A_FAKE_DRY_RUN",
+            snapshot["approval"], expected_scope=self.expected_scope,
             expected_plan_sha256=plan["plan_sha256"],
             expected_launcher_sha256=plan["launcher_sha256"], now=self.now,
         )
@@ -107,6 +111,13 @@ class ExactBoundaryVerifier:
         )
         _require(snapshot["canary_root_validation"].get("validation_status") == "exact",
                  "canary_root_identity_mismatch")
+        return {"snapshot": snapshot, "plan": plan}
+
+    def run_runtime_preflight(
+        self, request: BoundaryRequest, validated: Mapping[str, Any],
+    ) -> dict:
+        snapshot = validated["snapshot"]
+        plan = validated["plan"]
         runtime_receipt = canary_runtime_fingerprint_preflight_v1(
             deployment_mode=plan["runtime_mode"],
             approved_build_fingerprint=plan["approved_build_fingerprint"],
@@ -133,3 +144,6 @@ class ExactBoundaryVerifier:
         }
         self.receipts.append(receipt)
         return receipt
+
+    def __call__(self, request: BoundaryRequest) -> dict:
+        return self.run_runtime_preflight(request, self.validate_inputs(request))

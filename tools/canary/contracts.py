@@ -226,6 +226,34 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
                  f"budget_{field}_invalid")
     _require(budgets["maximum_total_model_calls"] >= budgets["maximum_model_calls_per_run"],
              "total_call_budget_below_per_run")
+    if value["canary_mode"] == "c0b_real_path_reachability":
+        _require_fields(budgets, {
+            "monetary_budget", "price_catalog_sha256",
+            "call_topology_sha256", "elapsed_budget_sha256",
+            "worst_case_chargeable",
+        }, "c0b_budget")
+        monetary = budgets["monetary_budget"]
+        _require(isinstance(monetary, Mapping), "monetary_budget_invalid")
+        _require_fields(monetary, {
+            "schema", "maximum_usd_cost_microunits",
+            "maximum_cny_cost_microunits", "approved_fx_snapshot",
+        }, "monetary_budget")
+        _require(monetary["schema"] == "CanaryMonetaryBudgetV1",
+                 "monetary_budget_schema_invalid")
+        for field in (
+            "maximum_usd_cost_microunits", "maximum_cny_cost_microunits",
+        ):
+            _require(type(monetary[field]) is int and monetary[field] >= 0,
+                     f"{field}_invalid")
+        _require(monetary["approved_fx_snapshot"] is None,
+                 "unapproved_fx_snapshot")
+        for field in (
+            "price_catalog_sha256", "call_topology_sha256",
+            "elapsed_budget_sha256",
+        ):
+            _require_hash(budgets[field], f"{field}_invalid")
+        _require(budgets["worst_case_chargeable"] is True,
+                 "failed_call_billing_not_conservative")
     _require(isinstance(value["stop_conditions"], list)
              and all(isinstance(item, str) and item for item in value["stop_conditions"]),
              "stop_conditions_invalid")

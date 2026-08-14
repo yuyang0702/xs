@@ -1,0 +1,90 @@
+{
+  "controlled_family": "CONTROLLED_PROVIDER_CAPABILITY_OUTCOME",
+  "entries": [
+    {
+      "context": "VERIFIED_372K",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "gpt-5.6-sol",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "lingsuan_gpt",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "claude-sonnet-5",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "lingsuan_sonnet",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "qwen-3.7-plus",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "happy",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "qwen-max-thinking",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "happy",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "claude-opus-4-5",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "happy",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "VERIFIED_1M",
+      "identity": "VERIFIED",
+      "max_output": "VERIFIED_384K",
+      "model": "deepseek-v4-pro",
+      "pricing": "VERIFIED",
+      "protocol_capability": "VERIFIED",
+      "provider": "deepseek",
+      "readiness": "VERIFIED"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "doubao-seed-character-260628",
+      "pricing": "VERIFIED",
+      "protocol_capability": "VERIFIED_DISPATCH",
+      "provider": "doubao",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "BOUNDED_256K_PRICE_TIERS",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "doubao-seed-2-0-pro-260215",
+      "pricing": "VERIFIED",
+      "protocol_capability": "VERIFIED_DISPATCH",
+      "provider": "doubao",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    }
+  ],
+  "hard_blockers": [],
+  "maximum_output_tokens_per_dispatch": 32000,
+  "policy": "VerifiedIdentityPrice_BoundedCapabilityUnknown",
+  "schema": "C0BBoundedUnknownCapabilityMatrixV1",
+  "version": 1
+}

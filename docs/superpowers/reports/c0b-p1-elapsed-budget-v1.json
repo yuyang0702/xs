@@ -1,0 +1,11 @@
+{
+  "definition_sha256": "a3c32156c65c7abe4068a8af9e0f143457f8816013de6543c77410eee1df81a6",
+  "expected_duration_seconds": 1800,
+  "fingerprint_overhead_seconds": 288,
+  "hard_launcher_timeout_seconds": 27108,
+  "provider_timeout_seconds": 180,
+  "schema": "C0BElapsedBudgetV1",
+  "version": 1,
+  "worst_legal_run_seconds": 26808,
+  "worst_legal_stage_seconds": 728
+}

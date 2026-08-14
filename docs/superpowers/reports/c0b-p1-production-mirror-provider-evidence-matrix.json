@@ -1,0 +1,282 @@
+{
+  "capability_evidence": [
+    {
+      "context": "VERIFIED_372K",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "gpt-5.6-sol",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "lingsuan_gpt",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "claude-sonnet-5",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "lingsuan_sonnet",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "qwen-3.7-plus",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "happy",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "qwen-max-thinking",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "happy",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "claude-opus-4-5",
+      "pricing": "VERIFIED",
+      "protocol_capability": "PARTIAL",
+      "provider": "happy",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "VERIFIED_1M",
+      "identity": "VERIFIED",
+      "max_output": "VERIFIED_384K",
+      "model": "deepseek-v4-pro",
+      "pricing": "VERIFIED",
+      "protocol_capability": "VERIFIED",
+      "provider": "deepseek",
+      "readiness": "VERIFIED"
+    },
+    {
+      "context": "UNKNOWN",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "doubao-seed-character-260628",
+      "pricing": "VERIFIED",
+      "protocol_capability": "VERIFIED_DISPATCH",
+      "provider": "doubao",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    },
+    {
+      "context": "BOUNDED_256K_PRICE_TIERS",
+      "identity": "VERIFIED",
+      "max_output": "UNKNOWN",
+      "model": "doubao-seed-2-0-pro-260215",
+      "pricing": "VERIFIED",
+      "protocol_capability": "VERIFIED_DISPATCH",
+      "provider": "doubao",
+      "readiness": "BOUNDED_UNKNOWN_ALLOWED_FOR_SMOKE"
+    }
+  ],
+  "generated_at": "2026-08-14T18:00:00+00:00",
+  "hard_blockers": [],
+  "official_sources": {
+    "deepseek": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "doubao_character": "https://www.volcengine.com/product/doubao",
+    "doubao_pricing": "https://www.volcengine.com/docs/84458/1585097?lang=zh&redirect=1"
+  },
+  "price_evidence": [
+    {
+      "cached_input_rate_per_unit": "0.044",
+      "currency": "USD",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "5ca4882b56cfa68b1a9f9d2449a3d292f67ea0347b7fceee2fbeb8b8d9b4d593",
+      "input_rate_per_unit": "1.32",
+      "model": "deepseek-v4-pro",
+      "output_rate_per_unit": "3.96",
+      "provider": "deepseek",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "OFFICIAL_PROVIDER_PUBLIC_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "3.2",
+      "currency": "CNY",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "cca9491e7861382963956a9ee541201bf3607e8e012c7afee767f132be6ecfb2",
+      "input_rate_per_unit": "3.2",
+      "model": "doubao-seed-2-0-pro-260215",
+      "output_rate_per_unit": "16",
+      "provider": "doubao",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "OFFICIAL_PROVIDER_PUBLIC_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "0.16",
+      "currency": "CNY",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "1075b933243b97d66ae67607ae127fa53cae27b0110256a0b017aec3aca267cd",
+      "input_rate_per_unit": "0.8",
+      "model": "doubao-seed-character-260628",
+      "output_rate_per_unit": "2",
+      "provider": "doubao",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "OFFICIAL_PROVIDER_PUBLIC_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "5",
+      "currency": "USD",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "1d49725abd1c3cafa08e7116e610663acbab1e64c22ab371a3f82acdd581bbb4",
+      "input_rate_per_unit": "5",
+      "model": "claude-opus-4-5",
+      "output_rate_per_unit": "25",
+      "provider": "happy",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "USER_SUPPLIED_RELAY_CONSOLE_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "0.2",
+      "currency": "USD",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "3f29356fd368a18e7a3dc624c3a05a12a5672c385169f99e2e19cbc32253ef69",
+      "input_rate_per_unit": "1",
+      "model": "qwen-3.7-plus",
+      "output_rate_per_unit": "4",
+      "provider": "happy",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "USER_SUPPLIED_RELAY_CONSOLE_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "1",
+      "currency": "USD",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "bdf49e5adde0ae373e1bb845381f35dbfd217dc8a0cf32e1ea3dad70eaab1444",
+      "input_rate_per_unit": "1",
+      "model": "qwen-max-thinking",
+      "output_rate_per_unit": "4",
+      "provider": "happy",
+      "reasoning_token_rule": "separate_if_reported",
+      "relay_group": "default",
+      "source_type": "USER_SUPPLIED_RELAY_CONSOLE_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "0.114",
+      "currency": "CNY",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "d27e289bba10552bd2320b359bfb8f2a51e74ef609795153c78bc245897f445f",
+      "input_rate_per_unit": "1.14",
+      "model": "gpt-5.6-sol",
+      "output_rate_per_unit": "6.84",
+      "provider": "lingsuan_gpt",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "USER_SUPPLIED_RELAY_CONSOLE_EVIDENCE",
+      "unit_tokens": 1000000
+    },
+    {
+      "cached_input_rate_per_unit": "0.1",
+      "currency": "CNY",
+      "effective_evidence_date": "2026-08-15",
+      "evidence_sha256": "eaa01fc8f240122322465e08a1452b6330270dc62b65b57a3338759d515cb3cb",
+      "input_rate_per_unit": "1",
+      "model": "claude-sonnet-5",
+      "output_rate_per_unit": "5",
+      "provider": "lingsuan_sonnet",
+      "reasoning_token_rule": "included_in_completion_cap",
+      "relay_group": "default",
+      "source_type": "USER_SUPPLIED_RELAY_CONSOLE_EVIDENCE",
+      "unit_tokens": 1000000
+    }
+  ],
+  "relay_evidence_policy": "Lingsuan/Happy evidence is user-supplied relay-console evidence; it is not upstream-vendor identity proof.",
+  "routes": [
+    {
+      "fallback_model": "deepseek-v4-pro",
+      "fallback_provider": "deepseek",
+      "primary_model": "gpt-5.6-sol",
+      "primary_provider": "lingsuan_gpt",
+      "protocol": "anthropic",
+      "relay_group": "not_applicable",
+      "role": "planning"
+    },
+    {
+      "fallback_model": "deepseek-v4-pro",
+      "fallback_provider": "deepseek",
+      "primary_model": "gpt-5.6-sol",
+      "primary_provider": "lingsuan_gpt",
+      "protocol": "anthropic",
+      "relay_group": "not_applicable",
+      "role": "maintenance"
+    },
+    {
+      "fallback_model": "deepseek-v4-pro",
+      "fallback_provider": "deepseek",
+      "primary_model": "gpt-5.6-sol",
+      "primary_provider": "lingsuan_gpt",
+      "protocol": "anthropic",
+      "relay_group": "not_applicable",
+      "role": "final_review"
+    },
+    {
+      "fallback_model": "qwen-max-thinking",
+      "fallback_provider": "happy",
+      "primary_model": "qwen-3.7-plus",
+      "primary_provider": "happy",
+      "protocol": "anthropic",
+      "relay_group": "default",
+      "role": "draft"
+    },
+    {
+      "fallback_model": "gpt-5.6-sol",
+      "fallback_provider": "lingsuan_gpt",
+      "primary_model": "deepseek-v4-pro",
+      "primary_provider": "deepseek",
+      "protocol": "anthropic",
+      "relay_group": "not_applicable",
+      "role": "review"
+    },
+    {
+      "fallback_model": "doubao-seed-2-0-pro-260215",
+      "fallback_provider": "doubao",
+      "primary_model": "doubao-seed-character-260628",
+      "primary_provider": "doubao",
+      "protocol": "openai-responses",
+      "relay_group": "not_applicable",
+      "role": "reader_review"
+    },
+    {
+      "fallback_model": "claude-opus-4-5",
+      "fallback_provider": "happy",
+      "primary_model": "claude-sonnet-5",
+      "primary_provider": "lingsuan_sonnet",
+      "protocol": "anthropic",
+      "relay_group": "default",
+      "role": "polish"
+    },
+    {
+      "fallback_model": "claude-sonnet-5",
+      "fallback_provider": "lingsuan_sonnet",
+      "primary_model": "claude-opus-4-5",
+      "primary_provider": "happy",
+      "protocol": "anthropic",
+      "relay_group": "default",
+      "role": "line_edit"
+    }
+  ],
+  "schema": "ProductionMirrorProviderEvidenceMatrixV1",
+  "version": 1
+}

@@ -43,6 +43,7 @@ def read_json_object(path: Path, reason_code: str) -> dict:
 def validate_packet(
     *, plan_path: Path, approval_path: Path,
     cli_approved_plan_sha256: str,
+    execution_requested: bool = False,
 ) -> dict:
     plan = validate_canary_experiment_plan_v1(
         read_json_object(plan_path, "plan_unavailable_or_invalid"),
@@ -58,22 +59,41 @@ def validate_packet(
     )
     if manifest["launcher_sha256"] != plan["launcher_sha256"]:
         raise CanaryLauncherError("launcher_changed_during_canary")
+    expected_scope = (
+        "C0B_REAL_PROVIDER_PATH_REACHABILITY"
+        if plan["canary_mode"] == "c0b_real_path_reachability"
+        else "C0A_FAKE_DRY_RUN"
+    )
     approval = validate_canary_plan_approval_v1(
         read_json_object(approval_path, "approval_unavailable_or_invalid"),
-        expected_scope="C0A_FAKE_DRY_RUN",
+        expected_scope=expected_scope,
         expected_plan_sha256=plan["plan_sha256"],
         expected_launcher_sha256=manifest["launcher_sha256"],
     )
-    if plan["canary_mode"] != "c0a_fake_dry_run":
-        raise CanaryLauncherError("real_provider_mode_blocked_in_c0a")
     actions = approval["authorized_actions"]
-    if any(actions.get(name) is not False for name in (
-        "credential_lookup", "provider_client_creation", "network",
-        "paid_model_calls",
-    )):
-        raise CanaryLauncherError("c0a_external_action_authorized")
-    if actions.get("fake_boundary") is not True:
-        raise CanaryLauncherError("fake_boundary_not_authorized")
+    if plan["canary_mode"] == "c0a_fake_dry_run":
+        if execution_requested:
+            raise CanaryLauncherError("fake_approval_cannot_execute_real_mode")
+        if any(actions.get(name) is not False for name in (
+            "credential_lookup", "provider_client_creation", "network",
+            "paid_model_calls",
+        )):
+            raise CanaryLauncherError("c0a_external_action_authorized")
+        if actions.get("fake_boundary") is not True:
+            raise CanaryLauncherError("fake_boundary_not_authorized")
+    elif plan["canary_mode"] == "c0b_real_path_reachability":
+        if execution_requested:
+            if any(actions.get(name) is not True for name in (
+                "credential_lookup", "provider_client_creation", "network",
+                "paid_model_calls",
+            )):
+                raise CanaryLauncherError("real_mode_final_authorization_missing")
+            if actions.get("fake_boundary") is not False:
+                raise CanaryLauncherError("real_mode_fake_boundary_forbidden")
+            if not approval.get("named_approver"):
+                raise CanaryLauncherError("real_mode_named_approver_missing")
+    else:
+        raise CanaryLauncherError("statistical_mode_not_supported_by_c0b_launcher")
     return {
         "schema": "CanaryPacketValidationV1",
         "status": "exact",
@@ -81,6 +101,8 @@ def validate_packet(
         "approval_sha256": approval["approval_sha256"],
         "launcher_sha256": manifest["launcher_sha256"],
         "dependency_file_count": len(manifest["files"]),
+        "canary_mode": plan["canary_mode"],
+        "execution_authorized": bool(execution_requested),
     }
 
 
@@ -91,6 +113,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--approved-plan-sha256", required=True)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--real-run", action="store_true")
     parser.add_argument("--workload-fixture", type=Path)
     parser.add_argument("--canary-root", type=Path)
     parser.add_argument("--approval-ledger-root", type=Path)
@@ -104,7 +127,9 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     sentinel = FailClosedNetworkSentinel()
     try:
-        if args.validate_only == args.dry_run:
+        if sum(bool(value) for value in (
+            args.validate_only, args.dry_run, args.real_run,
+        )) != 1:
             raise CanaryLauncherError("exactly_one_canary_action_required")
         if args.validate_only:
             with sentinel:
@@ -113,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
                     cli_approved_plan_sha256=args.approved_plan_sha256,
                 )
             result["network_call_count"] = sentinel.network_call_count
-        else:
+        elif args.dry_run:
             required = (
                 args.workload_fixture, args.canary_root,
                 args.approval_ledger_root, args.live_database,
@@ -138,6 +163,39 @@ def main(argv: list[str] | None = None) -> int:
             evidence = completed["evidence"]
             result = {
                 "schema": "CanaryDryRunResultV1",
+                "outcome": evidence["outcome"]["value"],
+                "reason_code": evidence["outcome"]["reason_code"],
+                "evidence_sha256": evidence["evidence_sha256"],
+                "network_call_count": evidence["counters"]["network_call_count"],
+                "paid_model_call_count": evidence["counters"]["paid_model_call_count"],
+            }
+        else:
+            required = (
+                args.workload_fixture, args.canary_root,
+                args.approval_ledger_root, args.live_database,
+                args.live_project_root,
+            )
+            if any(item is None for item in required):
+                raise CanaryLauncherError("c0b_real_run_argument_missing")
+            validate_packet(
+                plan_path=args.plan, approval_path=args.approval,
+                cli_approved_plan_sha256=args.approved_plan_sha256,
+                execution_requested=True,
+            )
+            from .real_run import run_c0b_real_run
+            completed = asyncio.run(run_c0b_real_run(
+                plan_path=args.plan, approval_path=args.approval,
+                approved_plan_sha256=args.approved_plan_sha256,
+                workload_fixture_path=args.workload_fixture,
+                canary_root=args.canary_root,
+                approval_ledger_root=args.approval_ledger_root,
+                live_database_path=args.live_database,
+                live_project_root=args.live_project_root,
+                live_incident_roots=args.live_incident_root,
+            ))
+            evidence = completed["evidence"]
+            result = {
+                "schema": "C0BRealCanaryResultV1",
                 "outcome": evidence["outcome"]["value"],
                 "reason_code": evidence["outcome"]["reason_code"],
                 "evidence_sha256": evidence["evidence_sha256"],

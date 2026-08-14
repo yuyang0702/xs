@@ -1,0 +1,51 @@
+{
+  "definition_sha256": "a36eb946c3dae1c1122e78789c8bcc2dd14218e5aedf3e3a3fa63f2cc0af6113",
+  "evidence": {
+    "observed_normal_boundary_count": 16,
+    "runtime_configured_fallback_attempts": 2,
+    "runtime_same_route_attempts": 2,
+    "source_locations": [
+      "src/novel_flywheel/contract_runtime.py:model_route_attempts",
+      "src/novel_flywheel/workflows.py:_short_pipeline",
+      "src/novel_flywheel/workflows.py:_quality_polish",
+      "src/novel_flywheel/workflows.py:_close_short_maintenance_authority",
+      "src/novel_flywheel/workflows.py:_ensure_short_plan_adaptations:12101-12111"
+    ]
+  },
+  "expected_logical_boundaries": 16,
+  "expected_primary_calls": 16,
+  "first_terminal_stop": true,
+  "maximum_components": {
+    "bounded_scoped_repair_dispatches": 32,
+    "maintenance_repair_dispatches": 8,
+    "normal_configured_fallback": 16,
+    "normal_fallback_retry": 16,
+    "normal_primary": 16,
+    "normal_protocol_retry": 16,
+    "quality_correction_dispatches": 32,
+    "role_fallback_dispatches": 8
+  },
+  "maximum_configured_fallback_calls": 36,
+  "maximum_kind": "exact_canary_authorization_cap",
+  "maximum_maintenance_extra_calls": 8,
+  "maximum_primary_calls": 36,
+  "maximum_protocol_retries": 36,
+  "maximum_repair_calls": 32,
+  "maximum_total_paid_dispatches": 144,
+  "per_boundary_route_schedule": {
+    "configured_fallback": 1,
+    "fallback_retry": 1,
+    "primary": 1,
+    "protocol_retry": 1
+  },
+  "provider_hidden_retry_calls": 0,
+  "resume_paid_continuation": "within_same_single_use_budget_and_window_only",
+  "runtime_theoretical_global_maximum": "NOT_GLOBALLY_BOUNDED",
+  "runtime_theoretical_maximum_reason": "planning adaptation resets per-unit attempt counters after each strictly improved candidate; Runtime has no single workflow-wide paid-dispatch counter",
+  "schema": "C0BShortCallTopologyV1",
+  "segment_count": 1,
+  "target_words": 6000,
+  "terminal_semantics": "the first terminal or controlled provider capability outcome stops the cohort; dispatch 145 is rejected before credential lookup",
+  "version": 1,
+  "workload_id": "short-normal-v1"
+}

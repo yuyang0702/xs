@@ -1,0 +1,34 @@
+{
+  "order": [
+    "load_plan",
+    "validate_approval",
+    "rehash_launcher",
+    "rehash_workload",
+    "source_revalidation",
+    "build_validation",
+    "execution_config_validation",
+    "runtime_execution_validation",
+    "origin_binding_validation",
+    "executor_binding_validation",
+    "sidecar_validation",
+    "route_manifest_validation",
+    "phase1b_validation",
+    "canary_root_validation",
+    "budget_reservation",
+    "CanaryRuntimeFingerprintPreflightV1",
+    "approval_authorization",
+    "credential_lookup",
+    "provider_client_construction",
+    "network_model_dispatch"
+  ],
+  "p1_observed_counts": {
+    "credential_lookup": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client_creation": 0
+  },
+  "schema": "C0BCredentialClientNetworkOrderingEvidenceV1",
+  "test": "tests/canary/test_c0b_budget_boundary.py::test_credential_client_and_network_follow_final_authorization",
+  "version": 1
+}

@@ -76,8 +76,12 @@ async def test_every_boundary_revalidates_and_reserves_before_delegate() -> None
     await wrapped.run_initial_preflight()
     await first
     await wrapped.complete("planning", "system-2", "user-2", max_output_tokens=20)
-    assert calls == [1, 1, 2]
+    assert calls == [1, 2]
     assert ledger.snapshot()["reservation_count"] == 2
+    observation = wrapped.boundary_ledger[-1]["provider_observation"]
+    assert observation["status"] == "completed"
+    assert len(observation["response_sha256"]) == 64
+    assert "text" not in observation
 
 
 @pytest.mark.asyncio
@@ -93,7 +97,8 @@ async def test_blocked_preflight_aborts_without_delegate_or_background_task() ->
     with pytest.raises(CanaryBoundaryAbort):
         await task
     assert wrapped.gate.state == GateState.ABORTED
-    assert ledger.snapshot()["reservation_count"] == 0
+    # Reservation precedes Runtime preflight and is never refunded.
+    assert ledger.snapshot()["reservation_count"] == 1
     assert wrapped.counters()["fake_model_boundary_calls"] == 0
 
 
@@ -105,10 +110,11 @@ async def test_unapproved_actual_route_blocks_before_delegate() -> None:
         "model_binding_hash": h("model"), "protocol": "fake",
     }
     task = asyncio.create_task(wrapped.complete("planning", "s", "u", max_output_tokens=1))
-    await wrapped.run_initial_preflight()
     with pytest.raises(CanaryBoundaryAbort) as exc:
-        await task
+        await wrapped.run_initial_preflight()
     assert exc.value.reason_code == "provider_descriptor_mismatch"
+    with pytest.raises(CanaryBoundaryAbort):
+        await task
     assert ledger.snapshot()["reservation_count"] == 0
     assert wrapped.counters()["fake_model_boundary_calls"] == 0
 

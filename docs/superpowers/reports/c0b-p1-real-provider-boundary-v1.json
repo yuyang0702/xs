@@ -1,0 +1,11 @@
+{
+  "credential_store": "GuardedCredentialStore(KeyringSecretStore)",
+  "default_execution_enabled": false,
+  "delegate": "novel_flywheel.models.ModelGateway",
+  "production_source_changes": 0,
+  "provider_protocol_reimplementation": false,
+  "provider_registry": "novel_flywheel.providers.registry.ProviderRegistry",
+  "schema": "C0BRealProviderBoundaryDesignV1",
+  "test_boundary": "fake production-shaped delegate only",
+  "version": 1
+}

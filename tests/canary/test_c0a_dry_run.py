@@ -134,7 +134,7 @@ async def test_official_short_api_fake_dry_run_is_isolated_and_exact(tmp_path: P
     assert evidence["model_boundary_ledger"]
     assert len(evidence["preflight_receipts"]) == len(
         evidence["model_boundary_ledger"]
-    ) + 1
+    )
     assert evidence["budget_ledger"]["reservation_count"] == len(
         evidence["model_boundary_ledger"]
     )

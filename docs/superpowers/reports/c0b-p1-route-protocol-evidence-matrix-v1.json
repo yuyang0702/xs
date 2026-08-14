@@ -1,0 +1,35 @@
+{
+  "entries": [
+    {
+      "configured_protocol": "anthropic",
+      "evidence_summary": "official/direct protocol and current configured dispatch agree",
+      "provider": "deepseek",
+      "status": "EXACT_MATCH"
+    },
+    {
+      "configured_protocol": "anthropic",
+      "evidence_summary": "current production Anthropic dispatch path; public capability detail unavailable",
+      "provider": "lingsuan_gpt",
+      "status": "PARTIAL_EVIDENCE"
+    },
+    {
+      "configured_protocol": "anthropic",
+      "evidence_summary": "OpenAI Chat verified; Anthropic relay endpoint is only partially evidenced",
+      "provider": "happy",
+      "status": "PARTIAL_EVIDENCE"
+    },
+    {
+      "configured_protocol": "openai-responses",
+      "evidence_summary": "official/direct protocol and current configured dispatch agree",
+      "provider": "doubao",
+      "status": "EXACT_MATCH"
+    },
+    {
+      "configured_protocol": "anthropic",
+      "evidence_summary": "current production Anthropic dispatch path; public capability detail unavailable",
+      "provider": "lingsuan_sonnet",
+      "status": "PARTIAL_EVIDENCE"
+    }
+  ],
+  "schema": "RouteProtocolEvidenceMatrixV1"
+}

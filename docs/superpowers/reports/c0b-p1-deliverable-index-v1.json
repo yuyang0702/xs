@@ -1,0 +1,23 @@
+{
+  "definition_sha256": "16e12f8045641bb9828255239671274ff727a0a633057bb53d3243960311695b",
+  "execution_performed": false,
+  "files": [
+    "c0b-p1-bounded-unknown-capability-matrix-v1.json",
+    "c0b-p1-canary-monetary-budget-v1.json",
+    "c0b-p1-elapsed-budget-v1.json",
+    "c0b-p1-exact-hash-matrix-v1.json",
+    "c0b-p1-ordering-evidence-v1.json",
+    "c0b-p1-production-mirror-provider-evidence-matrix.json",
+    "c0b-p1-provider-billing-policy-v1.json",
+    "c0b-p1-real-provider-boundary-v1.json",
+    "c0b-p1-route-protocol-evidence-matrix-v1.json",
+    "c0b-p1-short-call-topology-v1.json",
+    "c0b-smoke-1-approval-draft-v1.json",
+    "c0b-smoke-1-approval-packet-v1.json",
+    "c0b-smoke-1-plan-v1.json"
+  ],
+  "hard_blockers": [],
+  "schema": "C0BP1DeliverableIndexV1",
+  "status": "C0B_SMOKE_1_READY_FOR_USER_APPROVAL",
+  "version": 1
+}

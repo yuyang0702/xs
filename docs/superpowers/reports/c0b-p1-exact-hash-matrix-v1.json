@@ -1,0 +1,16 @@
+{
+  "approval_draft_sha256": "262d0057db5942919510d87cffaf714deb64d862b3d95d8709aa55ebb808fdb8",
+  "build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+  "call_topology_sha256": "a36eb946c3dae1c1122e78789c8bcc2dd14218e5aedf3e3a3fa63f2cc0af6113",
+  "elapsed_budget_sha256": "a3c32156c65c7abe4068a8af9e0f143457f8816013de6543c77410eee1df81a6",
+  "execution_config_fingerprint": "70a487fa8f2152e14923aa82560ace39c83a052e4556e03eb1b54ba4976bff13",
+  "launcher_sha256": "d0b308f2e3da995a848dc25e73c30d4d17fb03ed8461ff0b031736b85539be50",
+  "plan_sha256": "9895d811772f4f1b8fdc98ee073ffcf015a9cf7d05e630f8857dd3fd7d849dd8",
+  "price_catalog_sha256": "053fbf7d5fe203257dfb200e019c0ac4bdb811f09e244db4f37c906c7667649a",
+  "provider_descriptor_manifest_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+  "role_binding_manifest_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+  "runtime_execution_fingerprint": "eb2ed19dd0b6b9a7517f6044f4a8aecb0aadfcb9f2e1303f3ba77567a8b710a5",
+  "schema": "C0BExactHashMatrixV1",
+  "version": 1,
+  "workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1"
+}
