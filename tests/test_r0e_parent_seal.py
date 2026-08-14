@@ -67,4 +67,3 @@ def test_six_primary_unclassified_incidents_remain_individually_named() -> None:
     assert all(
         row["runtime_build_status"] == "unknown_runtime" for row in rows
     )
-

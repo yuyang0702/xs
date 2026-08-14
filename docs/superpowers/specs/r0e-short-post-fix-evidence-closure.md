@@ -172,4 +172,3 @@ binds `RuntimeBuildFingerprintV1`, the final status is:
 The exposure design uses the one-sided 95% zero-failure upper bound
 `1 - 0.05 ** (1 / N)` (approximately `3/N`). It reports a canary-mixture bound
 unless workload weights are demonstrated to match production distribution.
-

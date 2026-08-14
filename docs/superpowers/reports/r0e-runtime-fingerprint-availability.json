@@ -1,0 +1,39 @@
+{
+  "schema": "R0ERuntimeFingerprintAvailabilityV1",
+  "fingerprint_instrumentation": "NOT_IMPLEMENTED",
+  "real_provider_canary": "BLOCKED_BY_FINGERPRINT",
+  "paid_llm_calls": 0,
+  "availability": {
+    "control_plane_git_commit": "available_outside_run",
+    "run_bound_git_commit": "unavailable",
+    "build_id": "unavailable",
+    "contract_runtime_global_version": "unavailable",
+    "contract_registration_versions": "available_but_not_a_run_source_binding",
+    "recovery_policy_version": "unavailable",
+    "incident_catalog_version": "derivable_at_read_but_not_run_bound",
+    "feature_flags": "derivable_current_state_but_not_frozen_with_source"
+  },
+  "phase1b_flags": {
+    "NOVEL_SHORT_CANONICAL_V2_effective": false,
+    "project_short_canonical_v2_effective": false
+  },
+  "proposed_not_implemented": {
+    "schema": "RuntimeBuildFingerprintV1",
+    "fields": [
+      "schema_version",
+      "git_commit",
+      "dirty_tree_hash",
+      "build_id_hash",
+      "contract_runtime_manifest_hash",
+      "adapter_manifest_hash",
+      "recovery_policy_manifest_hash",
+      "incident_catalog_hash",
+      "feature_flag_snapshot_hash",
+      "canonicalization_version",
+      "fingerprint_sha256"
+    ],
+    "privacy": "hash-only; no prompt, prose, credentials, provider response, absolute path, or raw environment values",
+    "failure_mode": "fail-open for ordinary runs; hard precondition checked by the separately authorized canary launcher"
+  },
+  "conclusion": "The current workstation HEAD cannot prove which source future provider runs execute. A real-provider canary remains blocked until a run-bound fingerprint is implemented and verified in a separate task."
+}
