@@ -1,0 +1,60 @@
+{
+  "schema": "C0BExactHashMatrixV1",
+  "generated_at": "2026-08-14T00:00:00Z",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "source_head": "ae00d8460b66ffdca1bbf02d567a2b577e9799d3",
+  "hash_generation_boundary": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "provider_api_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "method": "safe route metadata was mirrored into temporary database/project roots; existing fingerprint canonicalization computed hashes"
+  },
+  "common": {
+    "launcher_sha256": "2f9a6e2c052f05ae811444de7772c5ca29afda9166dd8b8d60af85be61b5e3f1",
+    "launcher_file_count": 19,
+    "workload_manifest_hash": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+    "fixture_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+    "prompt_policy_manifest_sha256": "309707b5e9c7c024081cd5cacd4da6fb1aaa507dc21dc82d88b93e77de644366"
+  },
+  "option_a_production_mirror": {
+    "candidate_status": "NO_GO_NO_PLAN_GENERATED",
+    "build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+    "execution_config_fingerprint": "ddcfe8d5ac317d708f9eb591759a29042b28b9accc3a6230c9bbf249e3f13639",
+    "runtime_execution_fingerprint": "bb226eb81ca876d52f4cac70e75739f85a9609b61ce8ae4de07ab148ee7fb35b",
+    "provider_descriptor_manifest_hash": "b93615e5c48a8673ca33c84ea06a17c335d642b8f3c959dff2e28238fb8af2dc",
+    "model_role_binding_manifest_hash": "af762d9752768e2945212ac37c881652fb09cba343ea3f544385e9faac964f10",
+    "feature_flag_snapshot_hash": "37d5a4c8a1f3c95994f5ce3d1d599df8ac4a59b7d404d92da2f7ce5d65543726",
+    "route_definition_hash": "91378b2ba1c98a62fbf54ab989336689d9779b105825a09abf163e88b5af8f2b",
+    "plan_sha256": null,
+    "approval_sha256": null,
+    "isolation_root_identity": null,
+    "stop_condition_manifest_hash": null,
+    "reason": "Provider/model evidence and budget are incomplete."
+  },
+  "option_b_reduced_risk": {
+    "candidate_status": "HASH_EXACT_BUT_NON_EXECUTABLE",
+    "build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+    "execution_config_fingerprint": "f7a13e99168f6dc2b0d75feede9b08b57545676d368ffd4e499ed6add4f3c659",
+    "runtime_execution_fingerprint": "2791c5dc8d477f57152b1270dc8b2a6003d9910681a485873b4d6e0069ed7190",
+    "provider_descriptor_manifest_hash": "e26569aea69bcd4819c71fdab210349aa1c0bd514f1abb623321503f98fb2e65",
+    "per_route_provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a",
+    "model_role_binding_manifest_hash": "fbbb248b96b40147e6e3980b287bc2f7660cfcae08197b94d0cf75dddd7f23fb",
+    "per_route_model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+    "feature_flag_snapshot_hash": "37d5a4c8a1f3c95994f5ce3d1d599df8ac4a59b7d404d92da2f7ce5d65543726",
+    "route_definition_hash": "23822cf8868ab4ec118bfae65915a8bd45bd777d117d6d168d4756187e5d9aeb",
+    "plan_sha256": "97cbebae95633250d0b1e17d7e5be806f394bb7b5f5f14cd448454d44fb44fac",
+    "approval_sha256": "85ae2ee4ce9accea6ab62447c830d1ebb1545c877926605196e6be1517eb3514",
+    "isolation_root_identity": "2e8dd9e616a3264bd8f33919413585616704ed51c7771198ec48b9e3defa966f",
+    "stop_condition_manifest_hash": "6110748fccad91a841b4b9715bc8ef0e3ec17874820c64344896d6cf9919dc31",
+    "exactness_limit": "Hashes are exact for the documented candidate bytes/config. They do not make unresolved call/time budgets exact and do not make the current launcher capable of C0B execution."
+  },
+  "reuse_policy": {
+    "c0a_fake_plan_reused": false,
+    "c0a_fake_approval_reused": false,
+    "c0a_fake_execution_config_reused": false,
+    "build_and_launcher_reused_only_after_byte_reverification": true,
+    "rehash_required_if_any_candidate_field_changes": true
+  }
+}

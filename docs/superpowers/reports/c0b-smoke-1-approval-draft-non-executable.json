@@ -1,0 +1,25 @@
+{
+  "approval_expiry": "2026-08-20T03:15:00Z",
+  "approval_scope": "C0B_REAL_PROVIDER_PATH_REACHABILITY",
+  "approval_sha256": "85ae2ee4ce9accea6ab62447c830d1ebb1545c877926605196e6be1517eb3514",
+  "approved_launcher_sha256": "2f9a6e2c052f05ae811444de7772c5ca29afda9166dd8b8d60af85be61b5e3f1",
+  "approved_plan_sha256": "97cbebae95633250d0b1e17d7e5be806f394bb7b5f5f14cd448454d44fb44fac",
+  "authorized_actions": {
+    "credential_lookup": false,
+    "fake_boundary": false,
+    "network": false,
+    "paid_model_calls": false,
+    "provider_client_creation": false
+  },
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "consumed_evidence_sha256": null,
+  "execution_window": {
+    "not_after": "2026-08-20T03:00:00Z",
+    "not_before": "2026-08-20T02:00:00Z"
+  },
+  "maximum_executions": 1,
+  "schema": "CanaryPlanApprovalV1",
+  "single_use_cohort_id": "c0b-smoke-1-deepseek-20260820-001",
+  "usage_status": "unused",
+  "version": 1
+}

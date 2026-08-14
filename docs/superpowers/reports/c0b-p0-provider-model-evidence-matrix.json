@@ -1,0 +1,293 @@
+{
+  "schema": "C0BProviderModelEvidenceMatrixV1",
+  "generated_at": "2026-08-14T00:00:00Z",
+  "scope": "git_workspace_short_real_provider_approval_evidence_only",
+  "credential_material_read": false,
+  "provider_api_calls": 0,
+  "model_calls": 0,
+  "evidence_hash_policy": {
+    "source_locator_sha256": "sha256(utf8(exact_source_url))",
+    "note": "Locator hashes identify the cited source. They are not archived-content hashes and do not prove that web content is immutable."
+  },
+  "sources": [
+    {
+      "source_id": "deepseek_models_pricing",
+      "kind": "official_provider_documentation",
+      "url": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "retrieved_at": "2026-08-14",
+      "source_locator_sha256": "280758cc57a6ef53ae8b560670d7471772f61b7e53f0c31149a901e6741c7019",
+      "supports": [
+        "deepseek-v4-pro exact model ID and current version",
+        "context and maximum output limits",
+        "JSON Output, Tool Calls, Responses and Anthropic support",
+        "USD token prices and scheduled pricing effective 2026-08-16T16:00:00Z"
+      ]
+    },
+    {
+      "source_id": "deepseek_updates",
+      "kind": "official_provider_documentation",
+      "url": "https://api-docs.deepseek.com/updates/",
+      "retrieved_at": "2026-08-14",
+      "source_locator_sha256": "e547d0d8cbe359a0512323969db53e31cf3a620be6d38f8518e502a1b538d6d1",
+      "supports": [
+        "deepseek-v4-pro exact identifier",
+        "Anthropic API support"
+      ]
+    },
+    {
+      "source_id": "volcengine_foundation_model_versions",
+      "kind": "official_provider_api_explorer",
+      "url": "https://api.volcengine.com/api-explorer/?action=ListFoundationModelVersions&groupName=%E5%9F%BA%E7%A1%80%E6%A8%A1%E5%9E%8B&serviceCode=ark&version=2024-01-01",
+      "retrieved_at": "2026-08-14",
+      "source_locator_sha256": "a6e7c5428d0b7d19d8a11d63a40e8b48450b1b4062be1d7738fab8a3fe26a95c",
+      "supports": [
+        "doubao-seed-2-0-pro version 260215 exists"
+      ]
+    },
+    {
+      "source_id": "volcengine_model_pricing",
+      "kind": "official_provider_documentation",
+      "url": "https://www.volcengine.com/docs/84458/1585097?lang=zh&redirect=1",
+      "retrieved_at": "2026-08-14",
+      "source_locator_sha256": "c204d23f5dcbc349b4b83e305812e6b1786aee9ade75794ad259c30c6cebacd9",
+      "supports": [
+        "Doubao Seed 2.0 Pro tiered CNY input and output prices"
+      ]
+    },
+    {
+      "source_id": "volcengine_doubao_product",
+      "kind": "official_provider_product_page",
+      "url": "https://www.volcengine.com/product/doubao",
+      "retrieved_at": "2026-08-14",
+      "source_locator_sha256": "de9540d33055abe0de79a94090f54357784ed700c8814def38e8e28ee6c1cc91",
+      "supports": [
+        "generic Character-family starting prices only"
+      ],
+      "does_not_support": [
+        "exact doubao-seed-character-260628 binding",
+        "exact version-specific context or output limits",
+        "complete version-specific price schedule"
+      ]
+    },
+    {
+      "source_id": "happy_public_homepage",
+      "kind": "aggregator_public_page",
+      "url": "https://happyapi.org/",
+      "retrieved_at": "2026-08-14",
+      "source_locator_sha256": "3faf84a310dab0a0632b6db6c2f76f17ab1f15267e1ca226dcfb6665eb603cd4",
+      "supports": [
+        "Happy is presented as a unified gateway"
+      ],
+      "does_not_support": [
+        "exact upstream model mapping",
+        "version-specific limits",
+        "account-specific pricing"
+      ]
+    },
+    {
+      "source_id": "safe_local_route_metadata",
+      "kind": "read_only_sqlite_projection",
+      "retrieved_at": "2026-08-14",
+      "source_artifact": "data/app.db providers/models/role_bindings safe fields only",
+      "provider_descriptor_manifest_sha256": "b93615e5c48a8673ca33c84ea06a17c335d642b8f3c959dff2e28238fb8af2dc",
+      "role_binding_manifest_sha256": "af762d9752768e2945212ac37c881652fb09cba343ea3f544385e9faac964f10",
+      "query_mode": "mode=ro&immutable=1; PRAGMA query_only=ON",
+      "excluded": [
+        "credentials",
+        "API keys",
+        "secret values"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "internal_provider_alias": "happy",
+      "internal_provider_id": "87f5f31c-ef5d-4282-ae6f-86f4b335d9ff",
+      "internal_model_alias": "qwen-3.7-plus",
+      "internal_model_id": "ca04ad81-5512-49e8-9e50-5ea8bbc6b8f1",
+      "route_uses": ["draft:primary"],
+      "actual_supplier": null,
+      "actual_model_id": null,
+      "actual_model_version": null,
+      "protocol_observed_locally": "anthropic",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "local_probe_plain_text_not_supplier_proof",
+      "tool_capability": "local_probe_disabled_not_supplier_proof",
+      "pricing": null,
+      "verification_status": "USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["mapping", "capability", "pricing", "billing_semantics"]
+    },
+    {
+      "internal_provider_alias": "happy",
+      "internal_provider_id": "87f5f31c-ef5d-4282-ae6f-86f4b335d9ff",
+      "internal_model_alias": "qwen-max-thinking",
+      "internal_model_id": "f7f9a6a2-a357-48af-b6bf-a52f3875a0ff",
+      "route_uses": ["draft:fallback"],
+      "actual_supplier": null,
+      "actual_model_id": null,
+      "actual_model_version": null,
+      "protocol_observed_locally": "anthropic",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "local_probe_plain_text_not_supplier_proof",
+      "tool_capability": "local_probe_disabled_not_supplier_proof",
+      "pricing": null,
+      "verification_status": "USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["mapping", "capability", "pricing", "thinking_token_billing", "retry_billing"]
+    },
+    {
+      "internal_provider_alias": "lingsuan_gpt",
+      "internal_provider_id": "247c0b35-b5ff-47a0-9793-9f9a6c663b08",
+      "internal_model_alias": "gpt-5.6-sol",
+      "internal_model_id": "29ef9f64-11b7-4522-b421-510977fc7efc",
+      "route_uses": ["planning:primary", "final_review:primary", "maintenance:primary", "review:fallback"],
+      "actual_supplier": null,
+      "actual_model_id": null,
+      "actual_model_version": null,
+      "protocol_observed_locally": "anthropic",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "stale_local_probe_strict_tool_not_supplier_proof",
+      "tool_capability": "stale_local_probe_enabled_not_supplier_proof",
+      "pricing": null,
+      "verification_status": "USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["mapping", "capability", "pricing", "billing_semantics"]
+    },
+    {
+      "internal_provider_alias": "deepseek",
+      "internal_provider_id": "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+      "internal_model_alias": "deepseek-v4-pro",
+      "internal_model_id": "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+      "route_uses": ["review:primary", "planning:fallback", "final_review:fallback", "maintenance:fallback"],
+      "actual_supplier": "DeepSeek",
+      "actual_model_id": "deepseek-v4-pro",
+      "actual_model_version": "DeepSeek-V4-Pro-0813",
+      "mapping_basis": "direct official api.deepseek.com endpoint plus exact official model identifier",
+      "protocol_observed_locally": "anthropic",
+      "context_limit": 1000000,
+      "maximum_output_limit": 384000,
+      "structured_output": "JSON Output supported",
+      "tool_capability": "Tool Calls supported",
+      "pricing": {
+        "currency": "USD",
+        "unit": "1000000_tokens",
+        "retrieval_date_schedule": {
+          "cache_hit_input": 0.003625,
+          "cache_miss_input": 0.435,
+          "output": 0.87
+        },
+        "scheduled_effective_at": "2026-08-16T16:00:00Z",
+        "scheduled_peak": {
+          "cache_hit_input": 0.044,
+          "cache_miss_input": 1.32,
+          "output": 3.96
+        },
+        "scheduled_off_peak": {
+          "cache_hit_input": 0.022,
+          "cache_miss_input": 0.66,
+          "output": 1.98
+        },
+        "worst_case_policy": "scheduled_peak_cache_miss"
+      },
+      "capability_source_ids": ["deepseek_models_pricing", "deepseek_updates"],
+      "pricing_source_ids": ["deepseek_models_pricing"],
+      "verification_status": "VERIFIED_OFFICIAL"
+    },
+    {
+      "internal_provider_alias": "happy",
+      "internal_provider_id": "87f5f31c-ef5d-4282-ae6f-86f4b335d9ff",
+      "internal_model_alias": "claude-opus-4-5",
+      "internal_model_id": "a51a5732-9ac0-4292-8609-918994338790",
+      "route_uses": ["line_edit:primary", "polish:fallback"],
+      "actual_supplier": null,
+      "actual_model_id": null,
+      "actual_model_version": null,
+      "protocol_observed_locally": "anthropic",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "local_probe_plain_text_not_supplier_proof",
+      "tool_capability": "local_probe_disabled_not_supplier_proof",
+      "pricing": null,
+      "verification_status": "USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["mapping", "capability", "pricing", "billing_semantics"]
+    },
+    {
+      "internal_provider_alias": "lingsuan_sonnet",
+      "internal_provider_id": "68fd833c-17a5-4f45-830b-bd6dfa64d718",
+      "internal_model_alias": "claude-sonnet-5",
+      "internal_model_id": "404ce3de-7516-46f3-85f0-7cbf608a38f8",
+      "route_uses": ["polish:primary", "line_edit:fallback"],
+      "actual_supplier": null,
+      "actual_model_id": null,
+      "actual_model_version": null,
+      "protocol_observed_locally": "anthropic",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "stale_local_probe_strict_tool_not_supplier_proof",
+      "tool_capability": "stale_local_probe_enabled_not_supplier_proof",
+      "pricing": null,
+      "verification_status": "USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["mapping", "capability", "pricing", "billing_semantics"]
+    },
+    {
+      "internal_provider_alias": "doubao",
+      "internal_provider_id": "1e915fbe-7b79-4a20-8eaa-ab78bdf5b1ea",
+      "internal_model_alias": "doubao-seed-character-260628",
+      "internal_model_id": "d058f66c-e536-4738-8c34-3f2f3b49dee0",
+      "route_uses": ["reader_review:primary"],
+      "actual_supplier": "Volcengine Ark",
+      "actual_model_id": "doubao-seed-character-260628",
+      "actual_model_version": null,
+      "mapping_basis": "direct ark.cn-beijing.volces.com endpoint; exact public version documentation not found",
+      "protocol_observed_locally": "openai-responses",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "local_probe_strict_json_schema_not_complete_supplier_proof",
+      "tool_capability": "local_probe_enabled_not_complete_supplier_proof",
+      "pricing": null,
+      "verification_status": "USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["exact_version", "capability", "version_specific_pricing", "billing_semantics"]
+    },
+    {
+      "internal_provider_alias": "doubao",
+      "internal_provider_id": "1e915fbe-7b79-4a20-8eaa-ab78bdf5b1ea",
+      "internal_model_alias": "doubao-seed-2-0-pro-260215",
+      "internal_model_id": "fbc0aef9-97bc-44e8-ae33-35d499be9383",
+      "route_uses": ["reader_review:fallback"],
+      "actual_supplier": "Volcengine Ark",
+      "actual_model_id": "doubao-seed-2-0-pro",
+      "actual_model_version": "260215",
+      "mapping_basis": "direct ark.cn-beijing.volces.com endpoint and official API Explorer version record",
+      "protocol_observed_locally": "openai-responses",
+      "context_limit": null,
+      "maximum_output_limit": null,
+      "structured_output": "local_probe_plain_text_not_complete_supplier_proof",
+      "tool_capability": "local_probe_auto_not_complete_supplier_proof",
+      "pricing": {
+        "currency": "CNY",
+        "unit": "1000000_tokens",
+        "tiers": [
+          {"input_window": "[0,32000]", "input": 3.2, "output": 16.0},
+          {"input_window": "(32000,128000]", "input": 4.8, "output": 24.0},
+          {"input_window": "(128000,256000]", "input": 9.6, "output": 48.0}
+        ]
+      },
+      "capability_source_ids": ["volcengine_foundation_model_versions"],
+      "pricing_source_ids": ["volcengine_model_pricing"],
+      "verification_status": "PARTIAL_USER_SUPPLIED_PROVIDER_EVIDENCE_REQUIRED",
+      "blocked_fields": ["context_limit", "maximum_output_limit", "structured_output", "tool_capability", "billing_semantics"]
+    }
+  ],
+  "current_route_graph_status": "OPTION_A_NO_GO_MISSING_EVIDENCE",
+  "fully_verified_models": ["deepseek/deepseek-v4-pro"],
+  "partially_verified_models": ["doubao/doubao-seed-2-0-pro-260215"],
+  "unverified_models": [
+    "happy/qwen-3.7-plus",
+    "happy/qwen-max-thinking",
+    "lingsuan_gpt/gpt-5.6-sol",
+    "happy/claude-opus-4-5",
+    "lingsuan_sonnet/claude-sonnet-5",
+    "doubao/doubao-seed-character-260628"
+  ]
+}

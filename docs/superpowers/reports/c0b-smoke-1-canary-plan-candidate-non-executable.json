@@ -1,0 +1,157 @@
+{
+  "approved_build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+  "approved_dependency_manifest": {
+    "production_package": true,
+    "stdlib": true,
+    "third_party": []
+  },
+  "approved_execution_config_fingerprint": "f7a13e99168f6dc2b0d75feede9b08b57545676d368ffd4e499ed6add4f3c659",
+  "approved_routes": [
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "planning"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "draft"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "review"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "reader_review"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "final_review"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "polish"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "line_edit"
+    },
+    {
+      "allowed_stages": ["starting", "planning", "planning_review", "causal_chain", "execution_manifest", "execution_manifest_review", "draft", "draft_validation", "draft_integrity", "review", "reader_review", "quality", "polish", "final_review", "maintenance"],
+      "fallback": null,
+      "primary": {
+        "model_binding_hash": "ba019d0df3156897d6e4dd9bb27799586d28c30ab2b24837661ae13d4c730ddf",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "1cfd409b3396a97b66b15bd2b43489d24e1210e60417921440fedbb1c49ba49a"
+      },
+      "role": "maintenance"
+    }
+  ],
+  "budgets": {
+    "currency": "USD",
+    "gate_wait_timeout_seconds": 60,
+    "maximum_elapsed_seconds": 3780,
+    "maximum_estimated_cost_microunits": 10560000,
+    "maximum_input_tokens": 2000000,
+    "maximum_model_calls_per_run": 100,
+    "maximum_output_tokens": 2000000,
+    "maximum_runs": 1,
+    "maximum_total_model_calls": 100,
+    "pricing_status": "verified_deepseek_peak_schedule_effective_2026-08-16"
+  },
+  "canary_mode": "c0b_real_path_reachability",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "expected_runtime_execution_fingerprint": "2791c5dc8d477f57152b1270dc8b2a6003d9910681a485873b4d6e0069ed7190",
+  "feature_flag_snapshot": {
+    "NOVEL_CANONICAL_SHADOW_V1": false,
+    "NOVEL_RELIABILITY_TRACE": true,
+    "NOVEL_SHORT_CANONICAL_V2": false,
+    "project_short_canonical_v2": false
+  },
+  "isolation": {
+    "approval_ledger_identity": "fd6e0d3c76b3f650805f88af98f50aa63edd1a2200b62c2782c1aeb7b6eb5773",
+    "data_root_kind": "canary_ephemeral",
+    "db_path_hash": "bbccc53b4aceeed4adc8344d6515f3bf8ba3bf523e20b0a4d1d50417054cbdc2",
+    "project_root_hash": "dfd4eb9d81f52d38954d6b45c08725888a44c3f0b1b241838f918f6d862d1812",
+    "run_namespace": "c0b-smoke-1-deepseek-20260820-001",
+    "stable_root_identity": "2e8dd9e616a3264bd8f33919413585616704ed51c7771198ec48b9e3defa966f"
+  },
+  "launcher_sha256": "2f9a6e2c052f05ae811444de7772c5ca29afda9166dd8b8d60af85be61b5e3f1",
+  "plan_sha256": "97cbebae95633250d0b1e17d7e5be806f394bb7b5f5f14cd448454d44fb44fac",
+  "provider_descriptor_definition_sha256": "e26569aea69bcd4819c71fdab210349aa1c0bd514f1abb623321503f98fb2e65",
+  "report_policy": {
+    "hash_only": true,
+    "machine_specific_paths_included": false,
+    "raw_content_included": false
+  },
+  "role_binding_manifest_definition_sha256": "fbbb248b96b40147e6e3980b287bc2f7660cfcae08197b94d0cf75dddd7f23fb",
+  "runtime_fingerprint_policy_version": "runtime-fingerprint-v1",
+  "runtime_mode": "git_workspace",
+  "schema": "CanaryExperimentPlanV1",
+  "stop_conditions": [
+    "first_terminal_failure",
+    "fingerprint_mismatch",
+    "budget_exceeded",
+    "route_mismatch",
+    "price_schedule_mismatch",
+    "approval_expired"
+  ],
+  "version": 1,
+  "workload_manifest_hash": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+  "workloads": [
+    {
+      "controlled_outcomes": ["waiting_provider", "waiting_user"],
+      "estimated_input_tokens": 36708,
+      "expected_stage_reachability": ["planning", "causal_chain", "execution_manifest", "draft", "review", "polish", "final_review", "maintenance"],
+      "fixture_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "maximum_model_calls": 100,
+      "maximum_output_tokens": 2000000,
+      "prompt_policy_manifest_sha256": "309707b5e9c7c024081cd5cacd4da6fb1aaa507dc21dc82d88b93e77de644366",
+      "success_definition": "workflow_completed",
+      "terminal_outcomes": ["workflow_terminal"],
+      "weight": 1,
+      "workload_id": "short-normal-v1"
+    }
+  ]
+}

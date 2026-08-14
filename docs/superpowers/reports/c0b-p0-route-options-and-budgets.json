@@ -1,0 +1,148 @@
+{
+  "schema": "C0BRouteOptionsAndBudgetsV1",
+  "generated_at": "2026-08-14T00:00:00Z",
+  "runtime_mode": "git_workspace",
+  "packaged_runtime_status": "NO-GO",
+  "workload": {
+    "workload_id": "short-normal-v1",
+    "runs": 1,
+    "fixture_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+    "workload_manifest_hash": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+    "estimated_input_tokens_from_c0a": 36708,
+    "purpose": "complete Short path reachability only",
+    "does_not_establish": [
+      "terminal incident rate",
+      "13K/20K/30K behavior",
+      "natural fallback frequency",
+      "natural repair frequency"
+    ]
+  },
+  "option_a_production_mirror": {
+    "status": "NO_GO_MISSING_PROVIDER_EVIDENCE",
+    "production_mirror": true,
+    "current_roles": [
+      {"role": "planning", "primary": "lingsuan_gpt/gpt-5.6-sol", "fallback": "deepseek/deepseek-v4-pro"},
+      {"role": "draft", "primary": "happy/qwen-3.7-plus", "fallback": "happy/qwen-max-thinking"},
+      {"role": "review", "primary": "deepseek/deepseek-v4-pro", "fallback": "lingsuan_gpt/gpt-5.6-sol"},
+      {"role": "reader_review", "primary": "doubao/doubao-seed-character-260628", "fallback": "doubao/doubao-seed-2-0-pro-260215"},
+      {"role": "final_review", "primary": "lingsuan_gpt/gpt-5.6-sol", "fallback": "deepseek/deepseek-v4-pro"},
+      {"role": "polish", "primary": "lingsuan_sonnet/claude-sonnet-5", "fallback": "happy/claude-opus-4-5"},
+      {"role": "line_edit", "primary": "happy/claude-opus-4-5", "fallback": "lingsuan_sonnet/claude-sonnet-5"},
+      {"role": "maintenance", "primary": "lingsuan_gpt/gpt-5.6-sol", "fallback": "deepseek/deepseek-v4-pro"}
+    ],
+    "verified_route_members": ["deepseek/deepseek-v4-pro"],
+    "unverified_route_members": [
+      "happy/qwen-3.7-plus",
+      "happy/qwen-max-thinking",
+      "lingsuan_gpt/gpt-5.6-sol",
+      "doubao/doubao-seed-character-260628",
+      "doubao/doubao-seed-2-0-pro-260215 capability limits",
+      "lingsuan_sonnet/claude-sonnet-5",
+      "happy/claude-opus-4-5"
+    ],
+    "exact_hashes": {
+      "build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+      "execution_config_fingerprint": "ddcfe8d5ac317d708f9eb591759a29042b28b9accc3a6230c9bbf249e3f13639",
+      "runtime_execution_fingerprint": "bb226eb81ca876d52f4cac70e75739f85a9609b61ce8ae4de07ab148ee7fb35b",
+      "provider_descriptor_manifest_hash": "b93615e5c48a8673ca33c84ea06a17c335d642b8f3c959dff2e28238fb8af2dc",
+      "model_role_binding_manifest_hash": "af762d9752768e2945212ac37c881652fb09cba343ea3f544385e9faac964f10",
+      "feature_flag_snapshot_hash": "37d5a4c8a1f3c95994f5ce3d1d599df8ac4a59b7d404d92da2f7ce5d65543726",
+      "route_definition_hash": "91378b2ba1c98a62fbf54ab989336689d9779b105825a09abf163e88b5af8f2b"
+    },
+    "not_generated": [
+      "executable plan",
+      "approval",
+      "cost budget",
+      "stable canary root identity",
+      "stop-condition manifest"
+    ],
+    "reason": "Every reachable primary and fallback must be exact and priced; this route graph is not."
+  },
+  "option_b_reduced_risk": {
+    "status": "CANDIDATE_NON_EXECUTABLE",
+    "production_mirror": false,
+    "route_change": "All eight Short role bindings use direct deepseek/deepseek-v4-pro as primary; all fallbacks are disabled in the isolated canary config.",
+    "production_configuration_modified": false,
+    "provider_evidence_status": "VERIFIED_OFFICIAL",
+    "route": {
+      "provider": "DeepSeek",
+      "model_id": "deepseek-v4-pro",
+      "model_version": "DeepSeek-V4-Pro-0813",
+      "protocol": "anthropic",
+      "context_limit": 1000000,
+      "maximum_output_limit": 384000,
+      "fallback": null
+    },
+    "c0b_smoke_1_provisional_budget": {
+      "budget_status": "NOT_APPROVABLE_CALL_AND_TIME_TOPOLOGY_UNPROVEN",
+      "estimated_calls": null,
+      "hard_call_cap_candidate": 100,
+      "hard_call_cap_exact": false,
+      "hard_call_cap_reason": "Conservative candidate only; no proof that it covers every legal retry, fallback-disabled, regeneration and scoped-repair transition.",
+      "estimated_input_tokens": 36708,
+      "hard_input_token_cap": 2000000,
+      "estimated_output_tokens": null,
+      "hard_output_token_cap": 2000000,
+      "currency": "USD",
+      "pricing_unit_tokens": 1000000,
+      "price_schedule": "DeepSeek scheduled peak pricing effective 2026-08-16T16:00:00Z",
+      "input_price_cache_miss": 1.32,
+      "output_price": 3.96,
+      "cache_hit_assumed": false,
+      "other_billing_items": "No unverified item treated as zero; execution remains blocked pending account billing confirmation.",
+      "worst_case_cost_formula": "(2000000 / 1000000 * 1.32) + (2000000 / 1000000 * 3.96)",
+      "worst_case_cost": 10.56,
+      "approved_maximum_cost": null,
+      "maximum_cost_candidate": 10.56,
+      "estimated_elapsed_seconds": null,
+      "hard_elapsed_cap_candidate": 3780,
+      "hard_elapsed_cap_exact": false,
+      "hard_elapsed_reason": "Candidate is 20 * 180 second route timeout plus 180 seconds gate/coordination headroom, but legal attempt topology and launcher enforcement are not implemented.",
+      "first_terminal_stop": true,
+      "maximum_runs": 1
+    },
+    "exact_candidate_hashes": {
+      "plan_sha256": "97cbebae95633250d0b1e17d7e5be806f394bb7b5f5f14cd448454d44fb44fac",
+      "launcher_sha256": "2f9a6e2c052f05ae811444de7772c5ca29afda9166dd8b8d60af85be61b5e3f1",
+      "workload_manifest_hash": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+      "build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+      "execution_config_fingerprint": "f7a13e99168f6dc2b0d75feede9b08b57545676d368ffd4e499ed6add4f3c659",
+      "runtime_execution_fingerprint": "2791c5dc8d477f57152b1270dc8b2a6003d9910681a485873b4d6e0069ed7190",
+      "provider_descriptor_hash": "e26569aea69bcd4819c71fdab210349aa1c0bd514f1abb623321503f98fb2e65",
+      "model_role_binding_manifest_hash": "fbbb248b96b40147e6e3980b287bc2f7660cfcae08197b94d0cf75dddd7f23fb",
+      "feature_flag_snapshot_hash": "37d5a4c8a1f3c95994f5ce3d1d599df8ac4a59b7d404d92da2f7ce5d65543726",
+      "route_definition_hash": "23822cf8868ab4ec118bfae65915a8bd45bd777d117d6d168d4756187e5d9aeb",
+      "isolation_root_identity": "2e8dd9e616a3264bd8f33919413585616704ed51c7771198ec48b9e3defa966f",
+      "stop_condition_manifest_hash": "6110748fccad91a841b4b9715bc8ef0e3ec17874820c64344896d6cf9919dc31"
+    },
+    "blocking_conditions": [
+      "tools/canary/launcher.py accepts only C0A_FAKE_DRY_RUN and calls run_c0a_dry_run",
+      "real-provider cost estimator and budget-enforcement path is not implemented",
+      "maximum legal call topology is not exact",
+      "maximum elapsed topology is not exact",
+      "account-specific failed-call, retry, cache and thinking-token billing terms are not verified",
+      "named approver is absent",
+      "authorizations remain false"
+    ]
+  },
+  "c0b_pilot_5_future_draft": {
+    "status": "NOT_APPROVABLE_DRAFT_ONLY",
+    "activation_dependency": "A separately approved and successful C0B-SMOKE-1",
+    "workload_count": 5,
+    "runs_per_workload": 1,
+    "workload_ids": [
+      "short-normal-v1",
+      "UNRESOLVED_WORKLOAD_2",
+      "UNRESOLVED_WORKLOAD_3",
+      "UNRESOLVED_WORKLOAD_4",
+      "UNRESOLVED_WORKLOAD_5"
+    ],
+    "scaling_example_not_approval": {
+      "hard_call_cap_candidate": 500,
+      "hard_input_token_cap": 10000000,
+      "hard_output_token_cap": 10000000,
+      "maximum_cost_candidate_usd_at_peak_cache_miss": 52.8
+    },
+    "reason": "Four workload definitions, exact per-workload attempt topology, token ceilings and elapsed limits are absent. C0B-SMOKE-1 authority cannot be extended automatically."
+  }
+}
