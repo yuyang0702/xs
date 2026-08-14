@@ -1,0 +1,78 @@
+{
+  "baseline_head": "dc15a525f656344c510f973630adaf7cbc3fecf2",
+  "full_suite": {
+    "failed": 0,
+    "passed": 2409,
+    "skipped": 1,
+    "strict_xfailed": 5
+  },
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "model_calls": 0,
+    "prompt": 0,
+    "retry_fallback_sequence": 0
+  },
+  "protected_sources": [
+    {
+      "path": "src/novel_flywheel/completion_supervisor.py",
+      "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"
+    },
+    {
+      "path": "src/novel_flywheel/contract_runtime.py",
+      "sha256": "38d578e02d75526cb6b05adc31e6099e28e4b35e395083d2602c6c02b50c4007"
+    },
+    {
+      "path": "src/novel_flywheel/generated_artifacts.py",
+      "sha256": "fb36070b06e333d4154b5b7c0d761f154a8a9fac0f3224309dc78bd56e347ddb"
+    },
+    {
+      "path": "src/novel_flywheel/long_workflow.py",
+      "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"
+    },
+    {
+      "path": "src/novel_flywheel/models.py",
+      "sha256": "2de847ac06c4f8b822c2a590ab6fed1614b7d833798b343ae4d12a648dd55f1a"
+    },
+    {
+      "path": "src/novel_flywheel/prompts.py",
+      "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"
+    },
+    {
+      "path": "src/novel_flywheel/providers/registry.py",
+      "sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "sha256": "53a8ad30b8850d7c96bce1f135fb7ef662bd4981922aebbe0dd0736cdcbe529a"
+    }
+  ],
+  "schema": "R0FBaselineV1",
+  "supervised_run_projection": {
+    "current_stage": "archive",
+    "error": null,
+    "events": [
+      {
+        "event_type": "queued",
+        "message": "Run queued",
+        "metadata": {},
+        "severity": "info",
+        "stage": "queue"
+      },
+      {
+        "event_type": "started",
+        "message": "Run started",
+        "metadata": {},
+        "severity": "info",
+        "stage": "starting"
+      },
+      {
+        "event_type": "completed",
+        "message": "Run completed",
+        "metadata": {},
+        "severity": "success",
+        "stage": "archive"
+      }
+    ],
+    "status": "completed"
+  }
+}
