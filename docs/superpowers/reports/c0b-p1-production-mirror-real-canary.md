@@ -103,9 +103,9 @@ See `c0b-p1-canary-monetary-budget-v1.json`,
 
 | Identity | SHA-256 |
 |---|---|
-| Plan | `9895d811772f4f1b8fdc98ee073ffcf015a9cf7d05e630f8857dd3fd7d849dd8` |
-| Approval Draft | `262d0057db5942919510d87cffaf714deb64d862b3d95d8709aa55ebb808fdb8` |
-| Launcher | `d0b308f2e3da995a848dc25e73c30d4d17fb03ed8461ff0b031736b85539be50` |
+| Plan | `ffd894a869c089f2098d67278e17e85bd84cc2672e4a6dffc3466e6912e7e595` |
+| Approval Draft | `78ab9790db1325361a0a9706a2b482f54ccd8eb955063e6d0f7acce0289a4015` |
+| Launcher | `783783444d66e03f5651cab840b4c9bc723c47fc3a76ef39a07c5aa75a2438f9` |
 | Workload | `c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1` |
 | Build | `bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0` |
 | Execution Config | `70a487fa8f2152e14923aa82560ace39c83a052e4556e03eb1b54ba4976bff13` |
