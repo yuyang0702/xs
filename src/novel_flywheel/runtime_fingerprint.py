@@ -10,6 +10,7 @@ import dataclasses
 import json
 import os
 import tempfile
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -358,6 +359,59 @@ def _execution_config_parent(
     })
 
 
+def collect_build_fingerprint(
+    *, module_file: Path | None = None,
+) -> tuple[dict[str, Any], tuple[dict[str, Any], ...]]:
+    collection = collect_build_manifests(module_file=module_file)
+    child_map: dict[str, dict[str, Any]] = {
+        "contract_registry": contract_registry_definition(),
+        "adapter_manifest": adapter_manifest_definition(),
+        "recovery_policy": recovery_policy_definition(),
+        "incident_catalog": incident_catalog_definition(),
+        "python_runtime": python_runtime_definition(),
+        "installed_dependencies": installed_dependency_definition(),
+    }
+    optional = {
+        "build_input": collection.build_input,
+        "installed_runtime": collection.installed_runtime,
+        "production_source": collection.production_source,
+        "git_provenance": collection.provenance,
+    }
+    child_map.update({name: item for name, item in optional.items() if item is not None})
+    return _build_parent(collection, child_map), tuple(child_map.values())
+
+
+def collect_execution_config_fingerprint(
+    db: Any, *, project_id: str | None = None,
+) -> tuple[dict[str, Any], tuple[dict[str, Any], ...]]:
+    feature_flags = feature_flag_definition(db, project_id)
+    routes = route_role_binding_definition(db)
+    return _execution_config_parent(feature_flags, routes), (feature_flags, routes)
+
+
+def combine_runtime_execution_fingerprint(
+    build: Mapping[str, Any], execution_config: Mapping[str, Any],
+) -> dict[str, Any]:
+    return make_definition("RuntimeExecutionFingerprintV1", {
+        "build_fingerprint_sha256": build["payload"]["build_fingerprint_sha256"],
+        "execution_config_fingerprint_sha256": (
+            execution_config["payload"]["execution_config_fingerprint_sha256"]
+        ),
+        "execution_fingerprint_sha256": domain_sha256(
+            "novel-flywheel-runtime-execution-v1", {
+                "build": build["payload"]["build_fingerprint_sha256"],
+                "execution_config": execution_config["payload"][
+                    "execution_config_fingerprint_sha256"
+                ],
+            },
+        ),
+        "child_definitions": {
+            "build": _definition_ref(build),
+            "execution_config": _definition_ref(execution_config),
+        },
+    })
+
+
 @dataclass(frozen=True)
 class RuntimeFingerprintSnapshotV1:
     build: dict[str, Any]
@@ -384,45 +438,12 @@ def collect_runtime_fingerprint(
     db: Any, *, project_id: str | None = None,
     module_file: Path | None = None,
 ) -> RuntimeFingerprintSnapshotV1:
-    collection = collect_build_manifests(module_file=module_file)
-    child_map: dict[str, dict[str, Any]] = {
-        "contract_registry": contract_registry_definition(),
-        "adapter_manifest": adapter_manifest_definition(),
-        "recovery_policy": recovery_policy_definition(),
-        "incident_catalog": incident_catalog_definition(),
-        "python_runtime": python_runtime_definition(),
-        "installed_dependencies": installed_dependency_definition(),
-    }
-    optional = {
-        "build_input": collection.build_input,
-        "installed_runtime": collection.installed_runtime,
-        "production_source": collection.production_source,
-        "git_provenance": collection.provenance,
-    }
-    child_map.update({name: item for name, item in optional.items() if item is not None})
-    build = _build_parent(collection, child_map)
-    feature_flags = feature_flag_definition(db, project_id)
-    routes = route_role_binding_definition(db)
-    execution_config = _execution_config_parent(feature_flags, routes)
-    execution = make_definition("RuntimeExecutionFingerprintV1", {
-        "build_fingerprint_sha256": build["payload"]["build_fingerprint_sha256"],
-        "execution_config_fingerprint_sha256": (
-            execution_config["payload"]["execution_config_fingerprint_sha256"]
-        ),
-        "execution_fingerprint_sha256": domain_sha256(
-            "novel-flywheel-runtime-execution-v1", {
-                "build": build["payload"]["build_fingerprint_sha256"],
-                "execution_config": execution_config["payload"][
-                    "execution_config_fingerprint_sha256"
-                ],
-            },
-        ),
-        "child_definitions": {
-            "build": _definition_ref(build),
-            "execution_config": _definition_ref(execution_config),
-        },
-    })
-    children = tuple([*child_map.values(), feature_flags, routes])
+    build, build_children = collect_build_fingerprint(module_file=module_file)
+    execution_config, config_children = collect_execution_config_fingerprint(
+        db, project_id=project_id,
+    )
+    execution = combine_runtime_execution_fingerprint(build, execution_config)
+    children = (*build_children, *config_children)
     return RuntimeFingerprintSnapshotV1(
         build=build, execution_config=execution_config,
         execution=execution, children=children,
@@ -458,3 +479,184 @@ def compare_runtime_fingerprints(
             provenance_changed and not build_changed and not config_changed
         ),
     }
+
+
+_PROCESS_BUILD_LOCK = threading.Lock()
+_PROCESS_BUILD: tuple[dict[str, Any], tuple[dict[str, Any], ...]] | None = None
+
+
+def process_captured_build_fingerprint() -> tuple[
+    dict[str, Any], tuple[dict[str, Any], ...]
+]:
+    """Capture build identity once per process, as required for run lineage."""
+
+    global _PROCESS_BUILD
+    with _PROCESS_BUILD_LOCK:
+        if _PROCESS_BUILD is None:
+            _PROCESS_BUILD = collect_build_fingerprint()
+        return _PROCESS_BUILD
+
+
+def _binding_event_metadata(event: Mapping[str, Any]) -> dict[str, Any] | None:
+    if event.get("event_type") != "runtime_fingerprint_binding_v1":
+        return None
+    metadata = event.get("metadata")
+    return metadata if isinstance(metadata, dict) else None
+
+
+def canonical_runtime_bindings(db: Any, run_id: str) -> dict[str, Any]:
+    """Deduplicate exact bindings and preserve contradictory epochs."""
+
+    logical: dict[str, dict[str, Any]] = {}
+    epoch_fingerprints: dict[tuple[str, str], set[str]] = {}
+    for event in db.list_run_events(run_id):
+        metadata = _binding_event_metadata(event)
+        if metadata is None:
+            continue
+        definition_sha256 = str(metadata.get("binding_definition_sha256") or "")
+        if len(definition_sha256) != 64:
+            continue
+        logical.setdefault(definition_sha256, metadata)
+        key = (
+            str(metadata.get("binding_kind") or "unknown"),
+            str(metadata.get("execution_epoch") or "unknown"),
+        )
+        epoch_fingerprints.setdefault(key, set()).add(
+            str(metadata.get("runtime_execution_fingerprint") or "unknown")
+        )
+    bindings = sorted(
+        logical.values(),
+        key=lambda item: (
+            str(item.get("binding_kind")), str(item.get("execution_epoch")),
+            str(item.get("binding_definition_sha256")),
+        ),
+    )
+    conflicts = [
+        {
+            "binding_kind": kind,
+            "execution_epoch": epoch,
+            "runtime_execution_fingerprints": sorted(fingerprints),
+        }
+        for (kind, epoch), fingerprints in sorted(epoch_fingerprints.items())
+        if len(fingerprints) > 1
+    ]
+    origins = [item for item in bindings if item.get("binding_kind") == "origin"]
+    return {
+        "bindings": bindings,
+        "logical_binding_count": len(bindings),
+        "origin_count": len(origins),
+        "origin_runtime_execution_fingerprint": (
+            origins[0].get("runtime_execution_fingerprint")
+            if len(origins) == 1 else None
+        ),
+        "binding_status": (
+            "conflict" if conflicts or len(origins) > 1
+            else "exact" if len(origins) == 1
+            else "unverifiable_legacy"
+        ),
+        "conflicts": conflicts,
+    }
+
+
+class RuntimeFingerprintRecorderV1:
+    """Best-effort post-commit run lineage recorder."""
+
+    def __init__(
+        self, db: Any, data_dir: Path, *,
+        process_build: dict[str, Any] | None = None,
+        build_children: tuple[dict[str, Any], ...] | None = None,
+    ) -> None:
+        self.db = db
+        self.store = DefinitionStore(data_dir)
+        if process_build is None or build_children is None:
+            process_build, build_children = process_captured_build_fingerprint()
+        self.process_build = process_build
+        self.build_children = build_children
+        self.store.write_graph(self.process_build, self.build_children)
+
+    def __call__(self, observation: Mapping[str, Any]) -> None:
+        try:
+            self._record(observation)
+        except Exception as exc:
+            self._record_unavailable(observation, exc)
+
+    def _record(self, observation: Mapping[str, Any]) -> None:
+        run_id = str(observation["run_id"])
+        project_id = str(observation["project_id"])
+        kind = str(observation["binding_kind"])
+        epoch = str(observation["execution_epoch"])
+        if kind not in {"origin", "executor"}:
+            raise ValueError("unsupported runtime binding kind")
+        execution_config, config_children = collect_execution_config_fingerprint(
+            self.db, project_id=project_id,
+        )
+        execution = combine_runtime_execution_fingerprint(
+            self.process_build, execution_config,
+        )
+        self.store.write_graph(execution_config, config_children)
+        self.store.write(execution)
+        current = canonical_runtime_bindings(self.db, run_id)
+        origin_fingerprint = current["origin_runtime_execution_fingerprint"]
+        binding_status = "exact"
+        if kind == "executor" and origin_fingerprint is None:
+            binding_status = "unverifiable_legacy"
+        binding = make_definition("RuntimeFingerprintRunBindingV1", {
+            "run_id_hash": _identifier_hash("run", run_id),
+            "project_id_hash": _identifier_hash("project", project_id),
+            "workflow": str(observation.get("workflow") or "unknown"),
+            "binding_kind": kind,
+            "execution_epoch": epoch,
+            "binding_status": binding_status,
+            "runtime_execution_fingerprint": execution["payload"][
+                "execution_fingerprint_sha256"
+            ],
+            "runtime_execution_definition": _definition_ref(execution),
+            "build_fingerprint_sha256": self.process_build["payload"][
+                "build_fingerprint_sha256"
+            ],
+            "execution_config_fingerprint_sha256": execution_config["payload"][
+                "execution_config_fingerprint_sha256"
+            ],
+            "origin_runtime_execution_fingerprint": (
+                execution["payload"]["execution_fingerprint_sha256"]
+                if kind == "origin" else origin_fingerprint
+            ),
+            "process_captured": True,
+        })
+        self.store.write(binding)
+        metadata = {
+            **binding["payload"],
+            "binding_definition_sha256": binding["definition_sha256"],
+        }
+        if any(
+            item.get("binding_definition_sha256") == binding["definition_sha256"]
+            for item in current["bindings"]
+        ):
+            return
+        self.db.add_run_event(
+            run_id, "info", "runtime_fingerprint_binding_v1",
+            "Runtime identity observed", stage="runtime_identity",
+            metadata=metadata,
+        )
+
+    def _record_unavailable(
+        self, observation: Mapping[str, Any], exc: Exception,
+    ) -> None:
+        try:
+            self.db.add_run_event(
+                str(observation["run_id"]), "warning",
+                "runtime_fingerprint_unavailable_v1",
+                "Runtime identity observation unavailable",
+                stage="runtime_identity", metadata={
+                    "binding_kind": observation.get("binding_kind"),
+                    "execution_epoch": observation.get("execution_epoch"),
+                    "runtime_build_status": "unknown_runtime",
+                    "reason_code": (
+                        exc.reason_code if isinstance(exc, FingerprintUnavailable)
+                        else "runtime_fingerprint_observer_failed"
+                    ),
+                },
+            )
+        except Exception:
+            # A double failure is a coverage gap. It must never affect business.
+            return

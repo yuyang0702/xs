@@ -49,6 +49,7 @@ from novel_flywheel.market import MarketService
 from novel_flywheel.market_baseline import MarketBaselineService
 from novel_flywheel.analysis_tasks import ReferenceAnalysisTaskManager
 from novel_flywheel.outlines import OutlineService
+from novel_flywheel.runtime_fingerprint import RuntimeFingerprintRecorderV1
 
 
 @asynccontextmanager
@@ -110,6 +111,17 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
     health_runtime_fingerprint = runtime_fingerprint()
     db.migrate()
     db.interrupt_active_runs()
+    try:
+        app.state.runtime_fingerprint_recorder = RuntimeFingerprintRecorderV1(
+            db, db.path.parent,
+        )
+        db.set_run_lifecycle_observer(app.state.runtime_fingerprint_recorder)
+        app.state.runtime_fingerprint_status = "available"
+    except Exception:
+        # Build identity is diagnostic for ordinary workflows. Collection and
+        # storage failures must not change application startup or recovery.
+        app.state.runtime_fingerprint_recorder = None
+        app.state.runtime_fingerprint_status = "unknown_runtime"
     app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
     settings = default_settings()
     app.state.references = reference_library or ReferenceLibrary(db, settings.data_dir / "references")

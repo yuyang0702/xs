@@ -6,7 +6,7 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from novel_flywheel.production_incidents import classify_production_failure
 
@@ -664,6 +664,24 @@ CREATE TABLE IF NOT EXISTS reference_market_links(
 class Database:
     def __init__(self, path: Path) -> None:
         self.path = path
+        self._run_lifecycle_observer: Callable[[dict[str, Any]], None] | None = None
+
+    def set_run_lifecycle_observer(
+        self, observer: Callable[[dict[str, Any]], None] | None,
+    ) -> None:
+        """Install an optional observer; it is never called inside a DB transaction."""
+
+        self._run_lifecycle_observer = observer
+
+    def _notify_run_lifecycle(self, **observation: Any) -> None:
+        observer = self._run_lifecycle_observer
+        if observer is None:
+            return
+        try:
+            observer(dict(observation))
+        except Exception:
+            # Instrumentation is not part of the business success condition.
+            return
 
     @staticmethod
     def validate_workflow_resume_payload(
@@ -1608,6 +1626,15 @@ class Database:
                 "INSERT INTO runs VALUES (?, ?, ?, ?, NULL, NULL, datetime('now'), datetime('now'))",
                 (run_id, project_id, workflow, status),
             )
+        self._notify_run_lifecycle(
+            run_id=run_id, project_id=project_id, workflow=workflow,
+            binding_kind="origin", execution_epoch="origin:1",
+        )
+        if status == "running":
+            self._notify_run_lifecycle(
+                run_id=run_id, project_id=project_id, workflow=workflow,
+                binding_kind="executor", execution_epoch="execution:1",
+            )
 
     def create_run_if_idle(self, run_id: str, project_id: str, workflow: str,
                            status: str = "queued") -> bool:
@@ -1621,7 +1648,18 @@ class Database:
                 ")",
                 (run_id, project_id, workflow, status, project_id, *ACTIVE_RUN_STATUSES),
             )
-        return cursor.rowcount == 1
+        created = cursor.rowcount == 1
+        if created:
+            self._notify_run_lifecycle(
+                run_id=run_id, project_id=project_id, workflow=workflow,
+                binding_kind="origin", execution_epoch="origin:1",
+            )
+            if status == "running":
+                self._notify_run_lifecycle(
+                    run_id=run_id, project_id=project_id, workflow=workflow,
+                    binding_kind="executor", execution_epoch="execution:1",
+                )
+        return created
 
     def activate_supervised_run(
         self, *, run_id: str, project_id: str, workflow: str,
@@ -1735,6 +1773,14 @@ class Database:
                 VALUES (?,'info',?,'queue',?,'{}',datetime('now'))""",
                 (run_id, event_type, message),
             )
+        self._notify_run_lifecycle(
+            run_id=run_id, project_id=project_id, workflow=workflow,
+            binding_kind=("origin" if expected_statuses is None else "executor"),
+            execution_epoch=(
+                f"origin:{attempt}" if expected_statuses is None
+                else f"activation:{attempt}"
+            ),
+        )
         return True
 
     def enter_supervised_run_running(self, run_id: str) -> bool:
@@ -1749,6 +1795,9 @@ class Database:
             )
             if cursor.rowcount != 1:
                 return False
+            run_identity = connection.execute(
+                "SELECT project_id,workflow FROM runs WHERE id=?", (run_id,),
+            ).fetchone()
             supervision = connection.execute(
                 "UPDATE workflow_supervision SET state='running',next_retry_at=NULL,"
                 "updated_at=datetime('now') WHERE run_id=? AND state='queued'",
@@ -1774,6 +1823,12 @@ class Database:
                 VALUES (?,'info','started','starting','Run started','{}',datetime('now'))""",
                 (run_id,),
             )
+        assert run_identity is not None
+        self._notify_run_lifecycle(
+            run_id=run_id, project_id=str(run_identity["project_id"]),
+            workflow=str(run_identity["workflow"]), binding_kind="executor",
+            execution_epoch=f"execution:{attempt}",
+        )
         return True
 
     def interrupt_supervised_run_launch_failure(
