@@ -1,0 +1,81 @@
+{
+  "schema": "R0EUnclassifiedFollowUpV1",
+  "row_count": 6,
+  "classification_policy": "retain stored/current historical identity; candidate mappings are non-destructive and require exact attempt binding before conversion",
+  "rows": [
+    {
+      "incident_id": "r0-b2c6ed395bad574738d3",
+      "stored_current_family": "unclassified.25961779f5ca5900",
+      "first_failure_boundary": "planning",
+      "first_failure_class": "normal_invalid_output",
+      "raw_binding_status": "ambiguous_multiple_candidates",
+      "candidate_current_family": "parser.generated_artifact_shape",
+      "conversion_status": "candidate_mapping_unverified",
+      "evidence_class": "C",
+      "gate": "DEVELOPMENT_NO_GO"
+    },
+    {
+      "incident_id": "r0-2f3df4e27c4d75b9306c",
+      "stored_current_family": "unclassified.f112d3a44e361db9",
+      "first_failure_boundary": "planning",
+      "first_failure_class": "output_limit",
+      "raw_binding_status": "ambiguous_multiple_candidates",
+      "candidate_current_family": "model.output_truncated",
+      "conversion_status": "candidate_mapping_unverified",
+      "evidence_class": "C",
+      "gate": "DEVELOPMENT_NO_GO"
+    },
+    {
+      "incident_id": "r0-f8482e3405d5ebda0db3",
+      "stored_current_family": "unclassified.9d8f418526544d08",
+      "first_failure_boundary": "planning",
+      "first_failure_class": "output_limit",
+      "raw_binding_status": "ambiguous_multiple_candidates",
+      "candidate_current_family": "model.output_truncated",
+      "conversion_status": "candidate_mapping_unverified",
+      "evidence_class": "C",
+      "gate": "DEVELOPMENT_NO_GO"
+    },
+    {
+      "incident_id": "r0-5dd22b699f99af2aa213",
+      "stored_current_family": "unclassified.1fc57f72f339952b",
+      "first_failure_boundary": "planning_adaptation_segment",
+      "first_failure_class": "context_capacity",
+      "raw_binding_status": "ambiguous_multiple_candidates",
+      "candidate_current_family": "model.context_capacity_preflight",
+      "conversion_status": "candidate_mapping_unverified",
+      "evidence_class": "C",
+      "gate": "DEVELOPMENT_NO_GO"
+    },
+    {
+      "incident_id": "r0-df399434efc6c2888061",
+      "stored_current_family": "unclassified.14a09fac45b683bd",
+      "first_failure_boundary": "planning",
+      "first_failure_class": "output_limit",
+      "raw_binding_status": "ambiguous_multiple_candidates",
+      "candidate_current_family": "model.output_truncated",
+      "conversion_status": "candidate_mapping_unverified",
+      "evidence_class": "C",
+      "gate": "DEVELOPMENT_NO_GO"
+    },
+    {
+      "incident_id": "r0-69887d2c16314e257c90",
+      "stored_current_family": "unclassified.14a09fac45b683bd",
+      "first_failure_boundary": "planning_adaptation_segment",
+      "first_failure_class": "output_truncation",
+      "raw_binding_status": "ambiguous_multiple_candidates",
+      "candidate_current_family": "model.output_truncated",
+      "conversion_status": "candidate_mapping_unverified",
+      "evidence_class": "C",
+      "gate": "DEVELOPMENT_NO_GO"
+    }
+  ],
+  "conversion_summary": {
+    "A": 0,
+    "B": 0,
+    "C": 6,
+    "D": 0,
+    "historical_family_converted": 0
+  },
+  "conclusion": "Typed first-failure classes support candidate mappings, but hundreds of artifacts can exist in a run and none of the six legacy rows binds the terminal attempt to one exact provider response. Historical identities remain unchanged."
+}

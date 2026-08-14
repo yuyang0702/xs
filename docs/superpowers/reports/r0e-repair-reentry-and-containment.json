@@ -1,0 +1,39 @@
+{
+  "schema": "R0ERepairEvidenceV1",
+  "historical_metric_effect": "none_mechanism_probe_only",
+  "paid_llm_calls": 0,
+  "repair_reentry": [
+    {"function":"_repair_short_plan_local_event_segment","contract_runtime":true},
+    {"function":"_repair_short_plan_adaptation_capacity_split","contract_runtime":true},
+    {"function":"_repair_short_plan_adaptation_segments","contract_runtime":true},
+    {"function":"_repair_short_revision_semantic_group","contract_runtime":true},
+    {"function":"_repair_polish_semantic_segment","contract_runtime":false},
+    {"function":"_close_short_maintenance_window","contract_runtime":false},
+    {"function":"_close_short_maintenance_authority","contract_runtime":false}
+  ],
+  "variants": [
+    "malformed_output",
+    "wrapper_output",
+    "domain_invalid",
+    "provider_truncation",
+    "primary_fallback_double_failure",
+    "fix_a_break_b",
+    "cleanup_secondary_exception"
+  ],
+  "best_candidate_contract": {
+    "prior_best_preserved_all_cases": true,
+    "checkpoint_preserved_all_cases": true,
+    "failed_repair_overwrote_best_any_case": false,
+    "resume_selected_last_legal_best_all_cases": true
+  },
+  "generic_root_cause_masking": {
+    "reproduced": true,
+    "path": "Repair route exhaustion -> polish_semantic_repair_unavailable event append -> append OSError",
+    "observed_terminal_exception": "OSError",
+    "primary_exception_in_context": "TargetedGroupError wrapping ModelRoutesExhaustedError",
+    "root_cause_preserved": false,
+    "historical_family_binding": null,
+    "gate": "MECHANISM_FIX_CANDIDATE"
+  },
+  "conclusion": "Protected best Candidate, checkpoint, and resume selection remain contained in all seven probes. Polish semantic and Maintenance secondary outputs remain sibling bypasses. A cleanup event failure can mask a primary Repair route-exhaustion exception, but no exact historical incident binding has been proved."
+}
