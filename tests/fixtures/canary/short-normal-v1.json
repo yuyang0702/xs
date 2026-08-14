@@ -1,0 +1,20 @@
+{
+  "schema": "SanitizedCanaryShortWorkloadV1",
+  "workload_id": "short-normal-v1",
+  "mode": "short",
+  "title": "Controlled Fixture",
+  "genre": "suspense",
+  "premise": "An investigator verifies one anomaly and reaches a fixed ending.",
+  "target_words": 6000,
+  "outline": "# Formal Outline\n\n## Opening\nThe investigator discovers an anomaly.\n\n## Ending\nThe investigator verifies the evidence and accepts the result.",
+  "expected_stages": [
+    "planning",
+    "causal_chain",
+    "execution_manifest",
+    "draft",
+    "review",
+    "polish",
+    "final_review",
+    "maintenance"
+  ]
+}

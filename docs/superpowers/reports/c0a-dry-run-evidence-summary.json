@@ -1,0 +1,70 @@
+{
+  "schema": "C0AEvidenceSummaryV1",
+  "version": 1,
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "plan_sha256": "668ebb9b7be09ed098d87a779d8566dc52c0e89a1cd5af7b551bbc311938cf8b",
+  "approval_sha256": "29c2495a9243b21e8436d94ba93f67b7a53ddc1bac4f51b29198724fc360cd18",
+  "launcher_sha256": "2f9a6e2c052f05ae811444de7772c5ca29afda9166dd8b8d60af85be61b5e3f1",
+  "evidence_sha256": "476d45e95de353782a041848a1af027b32bb85e8f1258128e662b83aa3480e07",
+  "outcome": "WORKFLOW_COMPLETED",
+  "reason_code": "official_short_api_fake_workflow_completed",
+  "official_api_status": 202,
+  "model_boundary_count": 16,
+  "preflight_receipt_count": 17,
+  "budget": {
+    "reservation_count": 16,
+    "reserved_input_tokens": 36708,
+    "reserved_output_tokens": 46197,
+    "reserved_cost_microunits": 0
+  },
+  "counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "fake_model_boundary_calls": 16,
+    "paid_model_call_count": 0
+  },
+  "runtime_fingerprints": {
+    "build": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+    "execution_config": "c899efe5d937cedec73fbf55bd2f5155f86889ff8b6f5c2abb3ca50a6d32a25e",
+    "runtime_execution": "9f0bb89dd5fe2c83ad52e5436777fc7731b66a1f7bcbd446dab868c65a585f5d",
+    "per_boundary_status": "exact"
+  },
+  "origin_executor_binding": {
+    "status": "exact",
+    "conflict_count": 0,
+    "origin_definition_sha256": "bd9a206999d9e003c18ca6dec85d306dd82709fc2ff05694bbf8ff850f23582a",
+    "executor_definition_sha256": "383c56c9298b2618eb2461b7f94a8c791451070d3871916e3b338f7e349c7479"
+  },
+  "live_parity": {
+    "status": "exact",
+    "before_sha256": "3bdb81626f7f51cbe593b4a2283a39e036d6877f75237601e82ae206f8a35add",
+    "after_sha256": "3bdb81626f7f51cbe593b4a2283a39e036d6877f75237601e82ae206f8a35add",
+    "active_run_count_before": 0
+  },
+  "isolated_artifacts": {
+    "file_count": 107,
+    "tree_sha256": "bb3883f9e9ef3a9d41854d6145bb4fdc1ecb967fc2f322e18956a38be6bd8d7f"
+  },
+  "performance_micros": {
+    "full_run": 33478185,
+    "initial_gate": 1190757,
+    "boundary_fingerprint_capture": {
+      "count": 17,
+      "p50": 1050059,
+      "p95": 1097632,
+      "max": 1139257
+    }
+  },
+  "approval_consumption": {
+    "status": "consumed",
+    "consumed_evidence_sha256": "476d45e95de353782a041848a1af027b32bb85e8f1258128e662b83aa3480e07"
+  },
+  "coverage_gaps": [
+    "real_provider_capability_unverified",
+    "real_provider_pricing_unverified",
+    "packaged_runtime_not_executed",
+    "crewai_outer_wrapper_not_executed",
+    "13k_20k_30k_capacity_not_claimed"
+  ]
+}

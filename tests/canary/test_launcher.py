@@ -18,7 +18,7 @@ from .test_contracts import approval_payload, plan_payload
 def packet(tmp_path: Path) -> tuple[Path, Path, dict]:
     payload = plan_payload()
     payload["launcher_sha256"] = validate_import_closure(
-        Path(__file__).parents[2] / "tools" / "canary"
+        Path(__file__).parents[2] / "tools" / "canary",
     )["launcher_sha256"]
     plan = build_canary_experiment_plan_v1(payload)
     approval_data = approval_payload(plan)
@@ -54,7 +54,7 @@ def test_launcher_rejects_cli_hash_and_real_mode(tmp_path: Path) -> None:
     payload = plan_payload()
     payload["canary_mode"] = "c0b_real_path_reachability"
     payload["launcher_sha256"] = validate_import_closure(
-        Path(__file__).parents[2] / "tools" / "canary"
+        Path(__file__).parents[2] / "tools" / "canary",
     )["launcher_sha256"]
     real_plan = build_canary_experiment_plan_v1(payload)
     real_approval_data = approval_payload(real_plan)

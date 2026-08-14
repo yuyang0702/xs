@@ -1,0 +1,60 @@
+{
+  "schema": "C0BApprovalPacketDraftV1",
+  "version": 1,
+  "decision": "NOT_APPROVED",
+  "source_stage": "C0A",
+  "source_evidence_sha256": "476d45e95de353782a041848a1af027b32bb85e8f1258128e662b83aa3480e07",
+  "readiness": {
+    "git_workspace_canary_launcher": "READY_FOR_C0B_APPROVAL_PACKET",
+    "packaged_canary_launcher": "NO-GO",
+    "real_provider_canary": "NO"
+  },
+  "blocking_unknowns": [
+    "provider_price_source_unverified",
+    "model_context_limit_source_unverified",
+    "model_output_limit_source_unverified",
+    "structured_output_capability_unverified",
+    "packaged_runtime_fingerprint_not_executed"
+  ],
+  "candidate_route_matrix": [
+    {"roles": ["planning", "maintenance", "final_review"], "primary": "lingsuan_gpt/gpt-5.6-sol", "fallback": "deepseek/deepseek-v4-pro", "capability_status": "unverified", "pricing_status": "unknown"},
+    {"roles": ["draft"], "primary": "happy/qwen-3.7-plus", "fallback": "happy/qwen-max-thinking", "capability_status": "unverified", "pricing_status": "unknown"},
+    {"roles": ["review"], "primary": "deepseek/deepseek-v4-pro", "fallback": "lingsuan_gpt/gpt-5.6-sol", "capability_status": "unverified", "pricing_status": "unknown"},
+    {"roles": ["reader_review"], "primary": "doubao/character-model", "fallback": "doubao/pro-model", "capability_status": "unverified", "pricing_status": "unknown"},
+    {"roles": ["polish"], "primary": "lingsuan_sonnet/claude-sonnet-5", "fallback": "happy/claude-opus-4-5", "capability_status": "unverified", "pricing_status": "unknown"},
+    {"roles": ["line_edit"], "primary": "happy/claude-opus-4-5", "fallback": "lingsuan_sonnet/claude-sonnet-5", "capability_status": "unverified", "pricing_status": "unknown"}
+  ],
+  "pilot_candidate": {
+    "runs": 5,
+    "expected_model_calls": 73,
+    "hard_model_call_cap": 100,
+    "maximum_input_tokens": 2000000,
+    "maximum_output_tokens": 750000,
+    "maximum_cost": "unknown_not_approved"
+  },
+  "statistical_candidates": [
+    {"runs": 59, "expected_model_calls": 861, "hard_model_call_cap": 1180, "zero_failure_one_sided_95_upper_percent": 4.951},
+    {"runs": 99, "expected_model_calls": 1444, "hard_model_call_cap": 1980, "zero_failure_one_sided_95_upper_percent": 2.981},
+    {"runs": 299, "expected_model_calls": 4359, "hard_model_call_cap": 5980, "zero_failure_one_sided_95_upper_percent": 0.997}
+  ],
+  "approval_fields_required": [
+    "exact_plan_sha256",
+    "exact_launcher_sha256",
+    "exact_workload_manifest_hash",
+    "exact_build_execution_and_runtime_fingerprints",
+    "exact_provider_descriptor_and_role_binding_hashes",
+    "verified_price_sources_and_currency",
+    "verified_context_output_and_structured_output_capabilities",
+    "maximum_runs_calls_tokens_cost_and_elapsed_time",
+    "single_use_cohort_and_execution_window",
+    "credential_and_network_authorization_scope",
+    "stop_conditions",
+    "named_approver"
+  ],
+  "authorized_actions": {
+    "credential_lookup": false,
+    "provider_client_creation": false,
+    "network": false,
+    "paid_model_calls": false
+  }
+}
