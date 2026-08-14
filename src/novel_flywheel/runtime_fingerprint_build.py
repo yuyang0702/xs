@@ -203,7 +203,10 @@ def _git(repository: Path, *args: str) -> str:
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         encoding=UTF8, errors="strict",
     )
-    return completed.stdout.strip()
+    # Porcelain status uses a meaningful leading space for worktree-only
+    # changes (`` M path``). Strip line endings only; trimming the beginning
+    # corrupts the XY status columns and therefore the changed path.
+    return completed.stdout.rstrip("\r\n")
 
 
 def git_provenance_definition(repository: Path) -> dict[str, Any]:

@@ -58,8 +58,8 @@ risk rather than being hidden. No asynchronous queue or service was introduced.
 ## Regression result
 
 - pre-change full suite: 2409 passed, 1 skipped, 5 xfailed, 0 failed;
-- post-change full suite: 2437 passed, 1 skipped, 5 xfailed, 0 failed;
-- delta: 28 newly passing R0F tests, no new failure, skip, or xfail;
+- post-change full suite: 2438 passed, 1 skipped, 5 xfailed, 0 failed;
+- delta: 29 newly passing R0F tests, no new failure, skip, or xfail;
 - focused/related suite: 223 passed before final full-suite execution;
 - paid LLM calls: 0;
 - Phase 1B environment and project flags: false.
@@ -69,6 +69,14 @@ still expected the fingerprint schema to be absent. Only that test-only evidence
 was updated to `IMPLEMENTED_R0F` while keeping real canary
 `BLOCKED_BY_APPROVAL_AND_EXACT_BINDING`; the complete suite was then rerun from
 the start and passed.
+
+Final clean-room review added a real editable-workspace mutation test. It exposed
+that trimming the leading porcelain status space could misparse ` M path` as
+`rc/...` and falsely report production source clean. The Git helper now removes
+line endings only. The test performs an actual temporary Git commit, changes
+production source bytes after process capture, re-collects, and proves source
+change plus dirty status. The complete suite was rerun again after this
+instrumentation-only correction and passed with the counts above.
 
 ## Gate status
 

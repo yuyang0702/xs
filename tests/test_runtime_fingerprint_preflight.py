@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
+import subprocess
 
 from novel_flywheel.runtime_fingerprint import (
     canary_runtime_fingerprint_preflight_v1,
@@ -142,3 +144,50 @@ def test_source_revalidation_classifies_exact_source_build_and_provenance() -> N
     assert source_changed["source_changed_after_process_start"] is True
     assert source_changed["build_changed_after_process_start"] is True
     assert source_changed["runtime_build_status"] == "runtime_not_exact"
+
+
+def test_process_start_revalidation_rehashes_actual_changed_source_bytes(
+    tmp_path: Path,
+) -> None:
+    repository = tmp_path / "editable-workspace"
+    package = repository / "src" / "novel_flywheel"
+    package.mkdir(parents=True)
+    (repository / "baml_src").mkdir()
+    module = package / "module.py"
+    module.write_text("VALUE = 'process-start'\n", encoding="utf-8")
+    (repository / "baml_src" / "main.baml").write_text(
+        "class Fixture {}\n", encoding="utf-8",
+    )
+    (repository / "pyproject.toml").write_text(
+        "[project]\nname='fixture'\n", encoding="utf-8",
+    )
+    (repository / "start-novel-console.cmd").write_text(
+        "@echo off\n", encoding="utf-8",
+    )
+    for arguments in (
+        ("init",),
+        ("config", "user.email", "fixture@example.invalid"),
+        ("config", "user.name", "R0F Fixture"),
+        ("add", "."),
+        ("commit", "-m", "fixture"),
+    ):
+        subprocess.run(
+            ["git", *arguments], cwd=repository, check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, encoding="utf-8",
+        )
+
+    process_build, process_children = collect_build_fingerprint(module_file=module)
+    module.write_text("VALUE = 'changed-after-start'\n", encoding="utf-8")
+    current_build, current_children = collect_build_fingerprint(module_file=module)
+    result = runtime_source_revalidation(
+        process_build, current_build,
+        process_children=process_children, current_children=current_children,
+    )
+
+    assert result["deployment_mode"] == "git_workspace"
+    assert result["source_changed_after_process_start"] is True
+    assert result["build_changed_after_process_start"] is True
+    assert result["production_source_clean"] is False
+    assert result["comparison_status"] == "changed"
+    assert result["runtime_build_status"] == "runtime_not_exact"
