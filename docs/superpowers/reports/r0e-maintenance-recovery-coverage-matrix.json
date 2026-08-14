@@ -1,0 +1,38 @@
+{
+  "schema": "R0EMaintenanceRecoveryCoverageMatrixV1",
+  "case_count": 16,
+  "historical_metric_effect": "none_mechanism_probe_only",
+  "historical_incident_binding": null,
+  "paid_llm_calls": 0,
+  "paired_control": {
+    "current_path": "WorkflowService.run_short -> _close_short_maintenance_authority -> _close_short_maintenance_window? -> _stage_with_role_fallback(no execution_spec) -> post-stage conversion/domain merge",
+    "control_path": "WorkflowService._stage(execution_spec) -> Contract Runtime conversion/recovery -> same Maintenance domain merge",
+    "control_scope": "paired boundary control, not a production replacement workflow"
+  },
+  "rows": [
+    {"mode":"normal","variant":"malformed_json","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":false,"controlled_nonterminal":false,"final_outcome":"TERMINAL","current_error":"ArtifactConversionError","current_calls":1,"control_recovered":true,"control_calls":2,"classification":"BYPASS_CAUSAL"},
+    {"mode":"window","variant":"malformed_json","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":false,"controlled_nonterminal":false,"final_outcome":"TERMINAL","current_error":"ArtifactConversionError","current_calls":1,"control_recovered":true,"control_calls":2,"classification":"BYPASS_CAUSAL"},
+    {"mode":"normal","variant":"fenced_json","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":1,"control_recovered":true,"control_calls":1,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"window","variant":"fenced_json","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":1,"control_recovered":true,"control_calls":1,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"normal","variant":"missing_field","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":2,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"window","variant":"missing_field","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":25,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"normal","variant":"wrong_container","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":2,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"window","variant":"wrong_container","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":25,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"normal","variant":"version_mismatch","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":1,"control_recovered":true,"control_calls":1,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"window","variant":"version_mismatch","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":1,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"normal","variant":"domain_invalid","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":2,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"window","variant":"domain_invalid","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":true,"controlled_nonterminal":false,"final_outcome":"WORKFLOW_RECOVERED","current_error":null,"current_calls":25,"control_recovered":true,"control_calls":2,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"normal","variant":"provider_truncation","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":false,"controlled_nonterminal":false,"final_outcome":"TERMINAL","current_error":"ArtifactConversionError","current_calls":1,"control_recovered":true,"control_calls":2,"classification":"BYPASS_CAUSAL","causal_order":"TRUNCATED_OUTPUT -> PROTOCOL_INVALID_AS_CONSEQUENCE"},
+    {"mode":"window","variant":"provider_truncation","boundary_recovered":true,"stage_recovered":true,"workflow_recovered":false,"controlled_nonterminal":false,"final_outcome":"TERMINAL","current_error":"ArtifactConversionError","current_calls":1,"control_recovered":true,"control_calls":2,"classification":"BYPASS_CAUSAL","causal_order":"TRUNCATED_OUTPUT -> PROTOCOL_INVALID_AS_CONSEQUENCE"},
+    {"mode":"normal","variant":"primary_fallback_double_failure","boundary_recovered":false,"stage_recovered":false,"workflow_recovered":false,"controlled_nonterminal":false,"final_outcome":"TERMINAL","current_error":"ModelRoutesExhaustedError","current_calls":8,"control_recovered":false,"control_calls":4,"classification":"NO_DIFFERENTIAL_EFFECT"},
+    {"mode":"window","variant":"primary_fallback_double_failure","boundary_recovered":false,"stage_recovered":false,"workflow_recovered":false,"controlled_nonterminal":false,"final_outcome":"TERMINAL","current_error":"ModelRoutesExhaustedError","current_calls":8,"control_recovered":false,"control_calls":4,"classification":"NO_DIFFERENTIAL_EFFECT"}
+  ],
+  "classification_summary": {
+    "BYPASS_CAUSAL": 4,
+    "BYPASS_CORRELATED": 0,
+    "NO_DIFFERENTIAL_EFFECT": 12,
+    "EVIDENCE_GAP": 0
+  },
+  "conclusion": "Malformed and provider-truncated responses diverge first at post-stage conversion: the current path terminates while the paired Contract Runtime control retries and crosses the same Maintenance domain merge. Fenced, missing-field, wrong-container, version, domain-invalid, and all-route-failure cases do not show a worse bypass outcome in this fixture.",
+  "gate": "MECHANISM_FIX_CANDIDATE"
+}
