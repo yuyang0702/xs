@@ -42,6 +42,20 @@ def plan_payload() -> dict:
         }],
         "provider_descriptor_definition_sha256": h("provider"),
         "role_binding_manifest_definition_sha256": h("binding"),
+        "approved_routes": [{
+            "role": "planning",
+            "allowed_stages": ["planning"],
+            "primary": {
+                "provider_descriptor_hash": h("planning-provider"),
+                "model_binding_hash": h("planning-model"),
+                "protocol": "anthropic",
+            },
+            "fallback": {
+                "provider_descriptor_hash": h("planning-fallback-provider"),
+                "model_binding_hash": h("planning-fallback-model"),
+                "protocol": "anthropic",
+            },
+        }],
         "feature_flag_snapshot": {
             "NOVEL_SHORT_CANONICAL_V2": False,
             "project_short_canonical_v2": False,

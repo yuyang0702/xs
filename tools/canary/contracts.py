@@ -128,7 +128,8 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
         "runtime_fingerprint_policy_version", "launcher_sha256",
         "workload_manifest_hash", "workloads",
         "provider_descriptor_definition_sha256",
-        "role_binding_manifest_definition_sha256", "feature_flag_snapshot",
+        "role_binding_manifest_definition_sha256", "approved_routes",
+        "feature_flag_snapshot",
         "isolation", "budgets", "stop_conditions", "report_policy",
         "approved_dependency_manifest", "plan_sha256",
     }, "plan")
@@ -145,6 +146,39 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
         "role_binding_manifest_definition_sha256", "plan_sha256",
     ):
         _require_hash(value[field], f"{field}_invalid")
+    routes = value["approved_routes"]
+    _require(isinstance(routes, list) and routes, "approved_routes_invalid")
+    seen_roles: set[str] = set()
+    for route in routes:
+        _require(isinstance(route, Mapping), "approved_route_invalid")
+        _require_fields(route, {
+            "role", "allowed_stages", "primary", "fallback",
+        }, "approved_route")
+        role = route["role"]
+        _require(isinstance(role, str) and role and role not in seen_roles,
+                 "approved_route_role_invalid")
+        seen_roles.add(role)
+        _require(isinstance(route["allowed_stages"], list)
+                 and route["allowed_stages"]
+                 and all(isinstance(stage, str) and stage
+                         for stage in route["allowed_stages"]),
+                 "approved_route_stages_invalid")
+        for kind in ("primary", "fallback"):
+            descriptor = route[kind]
+            if descriptor is None:
+                continue
+            _require(isinstance(descriptor, Mapping),
+                     f"approved_route_{kind}_invalid")
+            _require_fields(descriptor, {
+                "provider_descriptor_hash", "model_binding_hash", "protocol",
+            }, f"approved_route_{kind}")
+            _require_hash(descriptor["provider_descriptor_hash"],
+                          f"approved_route_{kind}_provider_hash_invalid")
+            _require_hash(descriptor["model_binding_hash"],
+                          f"approved_route_{kind}_model_hash_invalid")
+            _require(isinstance(descriptor["protocol"], str)
+                     and descriptor["protocol"],
+                     f"approved_route_{kind}_protocol_invalid")
     flags = value["feature_flag_snapshot"]
     _require(isinstance(flags, Mapping), "feature_flag_snapshot_invalid")
     _require(flags.get("NOVEL_SHORT_CANONICAL_V2") is False,
