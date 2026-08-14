@@ -1,0 +1,24 @@
+{
+  "schema": "R0EParentEvidenceSealV1",
+  "parent_head": "5a152b097732447d4a5e1db2f9ef0215815bcb91",
+  "parent_branch": "r0/short-post-fix-validation-20260814",
+  "incident_count": 123,
+  "residual_family_count": 44,
+  "residual_incident_count": 97,
+  "focused_baseline": {
+    "command": ".venv/Scripts/python.exe -m pytest -q tests/test_r0_incident_manifest.py tests/test_r0_high_frequency_replay.py tests/test_r0_reports.py",
+    "passed": 31,
+    "failed": 0,
+    "duration_seconds": 67.35
+  },
+  "sealed_files": {
+    "docs/superpowers/reports/r0-incident-corpus-manifest.json": "82a78bc6fcbdcf5269165dc34a9b0ac8d86d638d3d2275718aa8d32b94634fe7",
+    "docs/superpowers/reports/r0-incident-level-report.json": "cbd4a0fa42acbf702f69a4cb24c185f747f737a68f73b3d8a2c9002c74e53e3c",
+    "docs/superpowers/reports/r0-family-level-report.json": "34283f500aefb43e7a65cb193f4be35fdf157d7f5d6dea852251a5f155449b77",
+    "docs/superpowers/reports/r0-residual-terminal-families.json": "4ca67757844a4c0a905eb12ae80dc217835351ad22bc0627adb32b7896a6068a",
+    "docs/superpowers/reports/r0-short-stage-coverage-matrix.json": "d99c3588d7b623c9998a2d179919cff4519544546d310bb236fea22fefa337e1",
+    "docs/superpowers/reports/r0-post-fix-exposure-report.json": "b3cd7662bcacf53e0f7b54c77db2524c543db4e517dcdfb2f9309653da2b956d",
+    "docs/superpowers/reports/r0-short-post-fix-reliability-validation.md": "0f514bb089d583604a825a8110868aba85f8a2729eebe186058e2f67d112817b",
+    "docs/superpowers/specs/r0-short-post-fix-reliability-validation.md": "901f725445721294cc67809ed06d78b5b2136d8405e5ac348b6bc20e9f72e31f"
+  }
+}
