@@ -132,6 +132,22 @@ async def replay_incident(
     run = db.get_run(run_id)
     events = db.list_run_events(run_id)
     event_types = [str(item["event_type"]) for item in events]
+    audit_rows: list[dict[str, Any]] = []
+    audit_root = (
+        project.path / "runs" / run_id / "outputs" / "conversion-audits"
+    )
+    for path in sorted(audit_root.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        audit_rows.append({
+            "contract_name": payload.get("contract_name"),
+            "method": payload.get("method"),
+            "semantic_valid": payload.get("semantic_valid"),
+            "failure_code": payload.get("failure_code") or None,
+            "raw_sha256": payload.get("raw_sha256"),
+        })
     planning_completed = "planning_ir_first_compiled" in event_types
     workflow_recovered = bool(run and run["status"] == "completed" and error is None)
     controlled_event = next((
@@ -171,6 +187,7 @@ async def replay_incident(
             1 for item in event_types
             if item in {"contract_adapter_applied", "contract_syntax_repaired"}
         ),
+        "conversion_audits": audit_rows,
         "route_fallback_attempts": sum(
             1 for item in event_types if "fallback" in item
         ),
