@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "original_requirement": "Add independently verifiable build/config fingerprints and post-commit origin/executor bindings without changing runtime or business decisions.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Every approved R0F creation/resume path produces deterministic, private, independently re-hashable evidence or an explicit unknown/legacy status while all business projections remain unchanged.",
+  "forbidden_narrowing": [
+    "Do not treat a child hash without stored child content as independently verifiable.",
+    "Do not backfill legacy origin from a current executor.",
+    "Do not let Git verification authorize packaged deployment or vice versa.",
+    "Do not call credentials, providers, network, or models during collection."
+  ],
+  "resolution_status": "systemically_resolved",
+  "closed_world_justification": "The approved change is limited to named run-creation/activation methods, versioned definition schemas, a dedicated sidecar store, and a pure preflight boundary.",
+  "constraint_traceability": [
+    {
+      "requirement": "Historical definitions remain independently verifiable.",
+      "implementation": "DefinitionStore persists child and parent definitions content-addressed and verify_runtime_binding_sidecars re-hashes the complete graph.",
+      "test_paths": ["tests/test_runtime_fingerprint.py", "tests/test_runtime_fingerprint_isolation.py"],
+      "evidence": "Exact graph verification passes and child tamper returns invalid."
+    },
+    {
+      "requirement": "Legacy resume never receives a fabricated origin.",
+      "implementation": "Database only marks creation branches origin; existing activation is executor and canonical reader retains unverifiable_legacy.",
+      "test_paths": ["tests/test_runtime_fingerprint_bindings.py"],
+      "evidence": "Legacy resume has origin_count zero and a null origin fingerprint."
+    },
+    {
+      "requirement": "Instrumentation cannot change ordinary business behavior.",
+      "implementation": "Callbacks run after transaction and swallow observation failure; parity filters only declared diagnostic event types.",
+      "test_paths": ["tests/test_r0f_parity.py", "tests/test_runtime_fingerprint_bindings.py"],
+      "evidence": "Before/after run projection is identical and a raising observer leaves the run committed."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "runtime.stale_console_process",
+    "unknown_runtime",
+    "unverifiable_legacy_resume",
+    "sidecar_tamper",
+    "duplicate_or_conflicting_binding"
+  ],
+  "projected_failure_mechanisms": [
+    "source changes after process capture",
+    "packaged files differ from embedded manifest",
+    "observer callback repeats or races",
+    "sidecar write or event append fails",
+    "approved build/config differs from executor"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "R0F does not modify Prompt, model dispatch, parser, adapter, validator, retry, fallback, or model-output contracts; protected source hashes are baseline-bound.",
+  "why_previous_tests_missed": "Earlier reliability phases recorded workflow evidence but did not bind runs to an independently stored build/config definition graph.",
+  "sibling_boundaries": [
+    {
+      "boundary": "create_run and create_run_if_idle sibling creators",
+      "disposition": "fixed_and_tested",
+      "evidence": "Both creation methods notify origin only after commit; direct running creation also records executor."
+    },
+    {
+      "boundary": "activate_supervised_run new versus existing",
+      "disposition": "fixed_and_tested",
+      "evidence": "New activation records origin; resume/retry/recovery activation records executor only."
+    },
+    {
+      "boundary": "Git workspace and packaged deployment",
+      "disposition": "fixed_and_tested",
+      "evidence": "Mode-specific preflight tests prevent cross-mode authorization."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_runtime_fingerprint_bindings.py",
+    "tests/test_runtime_fingerprint_isolation.py",
+    "tests/test_r0f_parity.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_runtime_fingerprint_preflight.py"
+  ],
+  "remaining_risks": [
+    "Cold build capture exceeds the planned 250 ms target.",
+    "No real canary or approved build/config pair exists in R0F.",
+    "Double diagnostic failure remains a coverage gap by fail-open design."
+  ]
+}

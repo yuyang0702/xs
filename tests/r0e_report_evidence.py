@@ -39,18 +39,18 @@ def runtime_fingerprint_availability(root: Path) -> dict[str, Any]:
     project_id = str(projects[0]["id"]) if projects else None
     return {
         "schema": "R0ERuntimeFingerprintAvailabilityV1",
-        "fingerprint_instrumentation": "NOT_IMPLEMENTED",
-        "real_provider_canary": "BLOCKED_BY_FINGERPRINT",
+        "fingerprint_instrumentation": "IMPLEMENTED_R0F",
+        "real_provider_canary": "BLOCKED_BY_APPROVAL_AND_EXACT_BINDING",
         "paid_llm_calls": 0,
         "fields": {
             "control_plane_git_commit": "available_outside_run",
-            "run_bound_git_commit": "unavailable",
-            "build_id": "unavailable",
-            "contract_runtime_version": "unavailable_global_version",
-            "contract_registration_versions": "available_not_run_source_binding",
-            "recovery_policy_version": "unavailable",
-            "incident_catalog_version": "derivable_at_read_not_run_source_binding",
-            "feature_flags": "derivable_current_state_not_run_frozen_source_binding",
+            "run_bound_git_commit": "available_via_stored_provenance_child",
+            "build_id": "RuntimeBuildFingerprintV1",
+            "contract_runtime_version": "available_via_contract_registry_child",
+            "contract_registration_versions": "stored_and_run_bound",
+            "recovery_policy_version": "stored_and_run_bound",
+            "incident_catalog_version": "stored_and_run_bound",
+            "feature_flags": "stored_per_execution_config_binding",
         },
         "source_characterization": {
             "RuntimeBuildFingerprintV1_present": (
@@ -59,6 +59,7 @@ def runtime_fingerprint_availability(root: Path) -> dict[str, Any]:
             "run_runtime_fingerprint_field_present": any(
                 token in source for token in (
                     '"runtime_build_fingerprint"',
+                    '"runtime_execution_fingerprint"',
                     '"source_fingerprint"',
                     '"runtime_commit"',
                 )

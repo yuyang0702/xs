@@ -19,12 +19,14 @@ REPORTS = ROOT / "docs" / "superpowers" / "reports"
 def test_runtime_fingerprint_is_an_explicit_real_canary_blocker() -> None:
     availability = runtime_fingerprint_availability(ROOT)
 
-    assert availability["fingerprint_instrumentation"] == "NOT_IMPLEMENTED"
-    assert availability["real_provider_canary"] == "BLOCKED_BY_FINGERPRINT"
+    assert availability["fingerprint_instrumentation"] == "IMPLEMENTED_R0F"
+    assert availability["real_provider_canary"] == (
+        "BLOCKED_BY_APPROVAL_AND_EXACT_BINDING"
+    )
     assert availability["paid_llm_calls"] == 0
     assert availability["source_characterization"] == {
-        "RuntimeBuildFingerprintV1_present": False,
-        "run_runtime_fingerprint_field_present": False,
+        "RuntimeBuildFingerprintV1_present": True,
+        "run_runtime_fingerprint_field_present": True,
     }
     assert availability["phase1b_flags"]["environment_effective"] is False
     assert availability["phase1b_flags"]["project_effective"] is False

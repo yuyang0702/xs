@@ -660,3 +660,209 @@ class RuntimeFingerprintRecorderV1:
         except Exception:
             # A double failure is a coverage gap. It must never affect business.
             return
+
+
+def _children_by_reference(
+    children: Iterable[Mapping[str, Any]],
+) -> dict[tuple[str, str], Mapping[str, Any]]:
+    return {
+        (str(item["schema"]), str(item["definition_sha256"])): item
+        for item in children
+    }
+
+
+def runtime_source_revalidation(
+    process_build: Mapping[str, Any], current_build: Mapping[str, Any], *,
+    process_children: Iterable[Mapping[str, Any]],
+    current_children: Iterable[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Compare actual current manifests to process-start manifests, no mtime."""
+
+    process_index = _children_by_reference(process_children)
+    current_index = _children_by_reference(current_children)
+    process_refs = process_build["payload"]["child_definitions"]
+    current_refs = current_build["payload"]["child_definitions"]
+
+    def definition_for(
+        refs: Mapping[str, Any], index: Mapping[tuple[str, str], Mapping[str, Any]],
+        name: str,
+    ) -> Mapping[str, Any] | None:
+        ref = refs.get(name)
+        if not isinstance(ref, dict):
+            return None
+        return index.get((str(ref.get("schema")), str(ref.get("definition_sha256"))))
+
+    mode = str(current_build["payload"].get("mode") or "unknown")
+    source_name = "production_source" if mode == "git_workspace" else "installed_runtime"
+    process_source_ref = process_refs.get(source_name)
+    current_source_ref = current_refs.get(source_name)
+    source_changed = process_source_ref != current_source_ref
+    build_changed = (
+        process_build["payload"].get("build_fingerprint_sha256")
+        != current_build["payload"].get("build_fingerprint_sha256")
+    )
+    process_provenance = process_refs.get("git_provenance")
+    current_provenance = current_refs.get("git_provenance")
+    provenance_changed = process_provenance != current_provenance
+    current_git = definition_for(current_refs, current_index, "git_provenance")
+    production_source_clean = None
+    if current_git is not None:
+        production_source_clean = not bool(
+            current_git["payload"].get("production_source_dirty")
+        )
+    current_source = definition_for(current_refs, current_index, source_name)
+    process_source = definition_for(process_refs, process_index, source_name)
+    comparable = current_source is not None and process_source is not None
+    status = str(current_build["payload"].get("runtime_build_status") or "unknown_runtime")
+    exact = comparable and not build_changed and not source_changed and status in {
+        "verified_git_workspace", "verified_packaged_manifest",
+    }
+    return {
+        "deployment_mode": mode,
+        "comparison_status": "exact" if exact else "changed" if comparable else "unknown",
+        "runtime_build_status": status if exact else "runtime_not_exact",
+        "source_changed_after_process_start": bool(source_changed),
+        "build_changed_after_process_start": bool(build_changed),
+        "provenance_changed_only": bool(
+            provenance_changed and not build_changed and not source_changed
+        ),
+        "production_source_clean": production_source_clean,
+        "installed_manifest_exact": (
+            exact if mode == "packaged" else None
+        ),
+        "embedded_manifest_exact": (
+            status == "verified_packaged_manifest" if mode == "packaged" else None
+        ),
+    }
+
+
+def verify_runtime_binding_sidecars(
+    store: DefinitionStore, binding_metadata: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Independently re-hash binding, execution, build, config, and children."""
+
+    reasons: list[str] = []
+    try:
+        binding = store.read(
+            "RuntimeFingerprintRunBindingV1",
+            str(binding_metadata["binding_definition_sha256"]),
+        )
+        for field in (
+            "binding_kind", "execution_epoch", "runtime_execution_fingerprint",
+            "build_fingerprint_sha256", "execution_config_fingerprint_sha256",
+        ):
+            if binding["payload"].get(field) != binding_metadata.get(field):
+                reasons.append(f"binding_event_mismatch:{field}")
+        execution_ref = binding["payload"]["runtime_execution_definition"]
+        execution = store.read(
+            str(execution_ref["schema"]), str(execution_ref["definition_sha256"]),
+        )
+        graph = store.verify_graph(execution)
+        reasons.extend(graph["reason_codes"])
+        for name, ref in execution["payload"]["child_definitions"].items():
+            parent = store.read(str(ref["schema"]), str(ref["definition_sha256"]))
+            nested = store.verify_graph(parent)
+            reasons.extend(f"{name}:{code}" for code in nested["reason_codes"])
+    except (KeyError, OSError, ValueError, json.JSONDecodeError):
+        reasons.append("binding_sidecar_unavailable_or_invalid")
+    return {
+        "valid": not reasons,
+        "validation_status": "exact" if not reasons else "invalid",
+        "reason_codes": sorted(set(reasons)),
+    }
+
+
+@dataclass(frozen=True)
+class CanaryRuntimeFingerprintPreflightV1:
+    eligible: bool
+    deployment_mode: str
+    blocked_reason_codes: tuple[str, ...]
+    validation_receipt_sha256: str
+
+
+def canary_runtime_fingerprint_preflight_v1(
+    *, deployment_mode: str,
+    approved_build_fingerprint: str | None,
+    approved_execution_config_fingerprint: str | None,
+    origin_binding: Mapping[str, Any] | None,
+    executor_binding: Mapping[str, Any] | None,
+    current_source_revalidation: Mapping[str, Any],
+    sidecar_validation: Mapping[str, Any],
+    contradictory_binding: bool = False,
+) -> CanaryRuntimeFingerprintPreflightV1:
+    """Pure future-canary eligibility verifier; it has no I/O or side effects."""
+
+    reasons: list[str] = []
+    if deployment_mode not in {"git_workspace", "packaged"}:
+        reasons.append("deployment_mode_unknown")
+    if not approved_build_fingerprint:
+        reasons.append("approved_build_missing")
+    if not approved_execution_config_fingerprint:
+        reasons.append("approved_execution_config_missing")
+    if origin_binding is None:
+        reasons.append("origin_binding_missing")
+    elif origin_binding.get("binding_status") != "exact":
+        reasons.append("origin_binding_not_exact")
+    if executor_binding is None:
+        reasons.append("executor_binding_missing")
+    elif executor_binding.get("binding_status") != "exact":
+        reasons.append("executor_binding_not_exact")
+    if contradictory_binding:
+        reasons.append("contradictory_binding")
+    if executor_binding is not None:
+        if executor_binding.get("build_fingerprint_sha256") != approved_build_fingerprint:
+            reasons.append("build_fingerprint_unapproved")
+        if (
+            executor_binding.get("execution_config_fingerprint_sha256")
+            != approved_execution_config_fingerprint
+        ):
+            reasons.append("execution_config_fingerprint_unapproved")
+    if origin_binding is not None and executor_binding is not None and (
+        executor_binding.get("origin_runtime_execution_fingerprint")
+        != origin_binding.get("runtime_execution_fingerprint")
+    ):
+        reasons.append("origin_executor_binding_mismatch")
+    if sidecar_validation.get("valid") is not True:
+        reasons.append("sidecar_definition_not_exact")
+    if current_source_revalidation.get("source_changed_after_process_start") is True:
+        reasons.append("source_changed_after_process_start")
+    if current_source_revalidation.get("comparison_status") != "exact":
+        reasons.append("current_runtime_not_exact")
+    if deployment_mode == "git_workspace":
+        if current_source_revalidation.get("runtime_build_status") != "verified_git_workspace":
+            reasons.append("git_workspace_not_verified")
+        if current_source_revalidation.get("production_source_clean") is not True:
+            reasons.append("production_source_not_clean")
+    if deployment_mode == "packaged":
+        if current_source_revalidation.get("runtime_build_status") != "verified_packaged_manifest":
+            reasons.append("packaged_manifest_not_verified")
+        if current_source_revalidation.get("installed_manifest_exact") is not True:
+            reasons.append("installed_manifest_not_exact")
+        if current_source_revalidation.get("embedded_manifest_exact") is not True:
+            reasons.append("embedded_manifest_not_exact")
+    blocked = tuple(sorted(set(reasons)))
+    receipt_payload = {
+        "schema": "CanaryRuntimeFingerprintPreflightV1",
+        "deployment_mode": deployment_mode,
+        "eligible": not blocked,
+        "blocked_reason_codes": list(blocked),
+        "approved_build_fingerprint": approved_build_fingerprint,
+        "approved_execution_config_fingerprint": approved_execution_config_fingerprint,
+        "origin_binding_definition_sha256": (
+            origin_binding or {}
+        ).get("binding_definition_sha256"),
+        "executor_binding_definition_sha256": (
+            executor_binding or {}
+        ).get("binding_definition_sha256"),
+        "source_comparison_status": current_source_revalidation.get(
+            "comparison_status"
+        ),
+        "sidecar_validation_status": sidecar_validation.get("validation_status"),
+    }
+    return CanaryRuntimeFingerprintPreflightV1(
+        eligible=not blocked, deployment_mode=deployment_mode,
+        blocked_reason_codes=blocked,
+        validation_receipt_sha256=domain_sha256(
+            "novel-flywheel-canary-runtime-preflight-v1", receipt_payload,
+        ),
+    )
