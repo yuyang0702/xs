@@ -1,0 +1,315 @@
+{
+  "schema": "R0ResidualTerminalFamiliesV1",
+  "family_count": 44,
+  "incident_count": 97,
+  "rows": [
+    {
+      "family": "draft.semantic_receipt_unsatisfied",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "draft.split_merge_length_mismatch",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "initialization.location_backlink_missing",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "initialization.location_reference_missing",
+      "incident_count": 3,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 3,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "model.context_capacity_indivisible_scope",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "model.context_capacity_preflight",
+      "incident_count": 6,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 6,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "model.output_truncated",
+      "incident_count": 2,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 2,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.invariant_truth_set_shape",
+      "incident_count": 2,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 2,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.packet_merge_closedness",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.plan_structure_validation_failed",
+      "incident_count": 6,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 6,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.review_evidence_binding_invalid",
+      "incident_count": 3,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 3,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.review_protocol_route_exhausted",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.reviewed_dimensions_echo_conflict",
+      "incident_count": 2,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 2,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.runtime_identity_echo_mismatch",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "planning.structure_drift",
+      "incident_count": 17,
+      "current_runtime_workflow_recovered": 15,
+      "not_executed": 2,
+      "residual_status": "partially_replayed_historical_terminal"
+    },
+    {
+      "family": "provider.connection_failed",
+      "incident_count": 12,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 12,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "provider.credentials_unavailable",
+      "incident_count": 3,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 3,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "provider.route_rejected",
+      "incident_count": 2,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 2,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "runtime.primary_error_masked",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "runtime.required_tool_output_missing",
+      "incident_count": 2,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 2,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.088944b914b8e533",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.14a09fac45b683bd",
+      "incident_count": 2,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 2,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.183351fdd53adf77",
+      "incident_count": 3,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 3,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.1fc57f72f339952b",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.25961779f5ca5900",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.32cd564dc3df4f35",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.485aee5a5e598e02",
+      "incident_count": 5,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 5,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.521d9b121c1ac6c9",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.6880d3db8b2cd831",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.71d521980a8884f5",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.722778a723a0796f",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.765fe7cf085038a5",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.7a3e4f4bf6f972b5",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.8437793960ab614a",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.8c41c73d571b3a77",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.9c3c097499521826",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.9d8f418526544d08",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.d56d1b679863a701",
+      "incident_count": 10,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 10,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.e3b0c44298fc1c14",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.e63a6f449226549a",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.efc50724e8447a5c",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.f112d3a44e361db9",
+      "incident_count": 5,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 5,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.f27328aaafb62f7e",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    },
+    {
+      "family": "unclassified.f672f8e4948c7cbe",
+      "incident_count": 1,
+      "current_runtime_workflow_recovered": 0,
+      "not_executed": 1,
+      "residual_status": "historical_terminal_not_closed"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "R0PostFixExposureV1",
+  "epochs": {
+    "post_b49d87bd": {
+      "boundary_utc": "2026-08-12 15:06:11",
+      "short_workflow_started": 1,
+      "short_workflow_completed": 0,
+      "model_stage_attempts": 20,
+      "local_normalize_attempts": 0,
+      "local_normalize_successes": 0,
+      "protocol_retry_attempts": 6,
+      "protocol_retry_successes": 0,
+      "route_fallback_attempts": 5,
+      "route_fallback_successes": 0,
+      "controlled_waiting_resume": 0,
+      "terminal_failures": 1,
+      "coverage_gaps": [
+        "legacy conversion attempts are not emitted when no adapter audit exists",
+        "fallback success is unknown unless the legacy receipt binds fallback_used"
+      ],
+      "production_exposure_sufficient": false
+    },
+    "post_d22a28f": {
+      "boundary_utc": "2026-08-13 06:05:12",
+      "short_workflow_started": 0,
+      "short_workflow_completed": 0,
+      "model_stage_attempts": 0,
+      "local_normalize_attempts": 0,
+      "local_normalize_successes": 0,
+      "protocol_retry_attempts": 0,
+      "protocol_retry_successes": 0,
+      "route_fallback_attempts": 0,
+      "route_fallback_successes": 0,
+      "controlled_waiting_resume": 0,
+      "terminal_failures": 0,
+      "coverage_gaps": [
+        "legacy conversion attempts are not emitted when no adapter audit exists",
+        "fallback success is unknown unless the legacy receipt binds fallback_used"
+      ],
+      "production_exposure_sufficient": false
+    }
+  }
+}
