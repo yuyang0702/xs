@@ -1,0 +1,32 @@
+{
+  "approval_candidate_sha256": "bb39d72a5e5a9c636f675ce229ab2a824f11fa030fb37abc937d208968b79504",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "contract_status": "PA_STRICT_TOOL_OBS_1_SIGNED_APPROVAL_PROFILE_READY",
+  "definition_sha256": "b70f2bd55db158663ab43ffde82ce32f67142c245a4c86c7c18390ca93e078b1",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "pa-strict-tool-obs-1-execution-command-preview-v1.json": "cf3665d9ec1cf7e40a17da724dc72fa493406b6021cefb1e7fada6e2b552c04f",
+    "pa-strict-tool-obs-1-final-approval-candidate-v1.json": "84b6782b2a2b6551d86bf26148efd059f1ad3eedca6c80e0d48050c4d810ad0a",
+    "pa-strict-tool-obs-1-plan-v1.json": "2a59d08f32804579b930b31e2f8f1ea82a30acdcd3392640123381cead0bb4f9",
+    "pa-strict-tool-obs-1-user-authorization-patch-template-v1.json": "0afbb82f0bbf27a0c365e817e9d029e59b50f86db5a3c78d5a0152c56c0df134",
+    "pa-strict-tool-obs-1-validate-only-receipt-v1.json": "e5baa7b4cedf531c75fcc143c13cc1db4f51ff4d66af69acab8b9ac9a64fe249"
+  },
+  "launcher_sha256": "75c92b7fb4a4d9fccc5b9e5c17dfd79f898c4e7fc152e5d5ac45e676cc291909",
+  "parity_status": "exact",
+  "plan_sha256": "b8dbbf257a63ab7b9c6c5f2d4b0312fc3b3c33b7d2dbf6b2bd72de0b2b0343a8",
+  "privacy_status": "exact",
+  "schema": "PAStrictToolObs1MaterializationIndexV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "pa-strict-tool-obs-1-20260815t151500z-4ab0d6e",
+  "status": "PA_STRICT_TOOL_OBS_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "635c73bc7ad0f231268d68935ab05d0c62d79f9a4563ae6e7773d77a9a59baad",
+  "version": 1,
+  "workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1"
+}

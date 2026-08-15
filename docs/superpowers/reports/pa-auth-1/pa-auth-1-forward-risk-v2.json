@@ -1,0 +1,82 @@
+{
+  "version": 2,
+  "original_requirement": "Register exactly two real-Canary approval profiles and make PA-STRICT-TOOL-OBS-1 Candidate, Patch and Signed Approval deterministic, profile-aware, single-use and fail-closed without executing a provider call.",
+  "scope_classification": "closed_world",
+  "operational_definition": "C0B and PA are the only registered profiles; Candidate and Patch are non-executable at launcher and ledger boundaries; a Signed Approval must bind exact profile, plan, launcher, workload, build, runtime, target, schema, budget, window and source artifacts.",
+  "forbidden_narrowing": [
+    "A Candidate or Patch cannot be described as executable authorization.",
+    "A successful validate-only closure cannot be described as a provider observation.",
+    "A target observation outcome cannot be described as workflow completion.",
+    "Legacy C0B compatibility cannot weaken the registered Signed Approval path.",
+    "No generated PA document can be described as final user authorization."
+  ],
+  "resolution_status": "systemically_resolved",
+  "closed_world_justification": "The registry is immutable and contains exactly two profiles; only Canary control-plane, tests and reports changed.",
+  "constraint_traceability": [
+    {
+      "requirement": "Candidate, Patch and Signed Approval remain distinct and deterministic.",
+      "implementation": "Profile-specific validators and materializers are reached through a finite generic dispatcher.",
+      "test_paths": ["tests/canary/test_pa_strict_tool_obs_materialization.py"],
+      "evidence": "32 PA-AUTH contract cases cover exact binding, tamper, expiry, cross-profile rejection and single-use consumption."
+    },
+    {
+      "requirement": "C0B behavior remains compatible.",
+      "implementation": "Legacy C0B read-only validation remains explicit while registered Signed Approval uses the profile dispatcher.",
+      "test_paths": ["tests/canary/test_c0b_p12_signed_approval.py", "tests/canary/test_c0b_p11_approval_closure.py"],
+      "evidence": "Complete tests/canary suite passed."
+    },
+    {
+      "requirement": "No Provider, credential, network or model action occurs.",
+      "implementation": "Materialization uses the existing fail-closed network sentinel and emits only disabled Candidate and Patch Template artifacts.",
+      "test_paths": ["tests/canary/test_pa_strict_tool_obs_materialization.py"],
+      "evidence": "All five external counters are zero and execution_performed is false."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "approval_candidate_accidentally_executable",
+    "signed_approval_source_binding_stale",
+    "cross_profile_cohort_reuse",
+    "launcher_hash_drift"
+  ],
+  "projected_failure_mechanisms": [
+    "unknown profile or schema",
+    "candidate or patch supplied to real-run",
+    "protected field mutation",
+    "expired execution window",
+    "reservation identity or profile mismatch"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "src/novel_flywheel and baml_src have zero changed files; Prompt, provider route, retry/fallback, parser, adapter and Runtime behavior are unchanged.",
+  "why_previous_tests_missed": "The earlier PA package stopped at an inert Candidate and did not have a registered PA Signed Approval contract or generic profile-aware launcher/ledger dispatch.",
+  "sibling_boundaries": [
+    {
+      "boundary": "C0B registered profile",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Full Canary suite passed, including C0B signed approval and closure suites."
+    },
+    {
+      "boundary": "Production Runtime and formal artifacts",
+      "disposition": "not_applicable",
+      "evidence": "No production source changed; before/after live parity is exact."
+    },
+    {
+      "boundary": "PA real-provider execution",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Candidate/Patch are rejected and no Signed Approval exists; zero external counters prove no execution occurred."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_pa_strict_tool_obs_materialization.py",
+    "tests/canary/test_c0b_p12_signed_approval.py",
+    "tests/canary/test_preflight_matrix.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_pa_strict_tool_obs_materialization.py",
+    "tests/canary/test_preflight_matrix.py"
+  ],
+  "remaining_risks": [
+    "No real-provider observation exists until a new final user authorization materializes a Signed Approval.",
+    "The one future run may not reach the exact target boundary.",
+    "Provider capability may terminate the workflow after or before the observation goal."
+  ]
+}

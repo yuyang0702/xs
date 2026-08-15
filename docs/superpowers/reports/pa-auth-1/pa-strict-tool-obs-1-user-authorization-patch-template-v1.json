@@ -1,0 +1,37 @@
+{
+  "approval_expiry_confirmation": "2026-08-17T15:30:00Z",
+  "approval_scope": "PA_STRICT_TOOL_OBS_1_SINGLE_REAL_PROVIDER_OBSERVATION",
+  "approval_timestamp": "USER_CONFIRMATION_REQUIRED",
+  "approved_execution_window_confirmation": {
+    "not_after": "2026-08-17T15:30:00Z",
+    "not_before": "2026-08-15T15:30:00Z"
+  },
+  "authorization_patch_template_sha256": "bca25961a316a4365d8aedf4ad09d54c978f81891728c52ed98cca7023aa7f79",
+  "bound_approval_candidate_sha256": "bb39d72a5e5a9c636f675ce229ab2a824f11fa030fb37abc937d208968b79504",
+  "bound_build_fingerprint": "2c44c4a225a7d88ea94d1b7078a6125cf1f54e9cad210e2413e29d65f9c4669f",
+  "bound_execution_config_fingerprint": "4fb2e591c61c077784f8153b956a99c04ef509bcafe04b1c3ae0e82668f42e1b",
+  "bound_launcher_sha256": "75c92b7fb4a4d9fccc5b9e5c17dfd79f898c4e7fc152e5d5ac45e676cc291909",
+  "bound_observation_schema_sha256": "a7cc00954b501fb4c41eb30aed8090af2702c969e35955a9606514bf71a083e9",
+  "bound_plan_sha256": "b8dbbf257a63ab7b9c6c5f2d4b0312fc3b3c33b7d2dbf6b2bd72de0b2b0343a8",
+  "bound_runtime_execution_fingerprint": "eaf6810e81a52a10c60e32862926c5fc99810a698e425dfc930b6fa054c1a24a",
+  "bound_target_filter_sha256": "b92a6a13ff71ae123c694628e22d729f62a3796e0dca3c42c4958ad333366239",
+  "bound_workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_authorized": false,
+  "named_approver": "USER_CONFIRMATION_REQUIRED",
+  "profile_definition_sha256": "275577d4382a2a00a76d9a9c3327a2dd9c66fce7263603fb125d38a90a880e80",
+  "profile_id": "pa_strict_tool_obs_1",
+  "protected_fields_mutation_allowed": false,
+  "requested_authorizations": {
+    "credential_lookup": "USER_CONFIRMATION_REQUIRED",
+    "network": "USER_CONFIRMATION_REQUIRED",
+    "paid_model_calls": "USER_CONFIRMATION_REQUIRED",
+    "provider_client_creation": "USER_CONFIRMATION_REQUIRED"
+  },
+  "schema": "PAStrictToolObs1UserAuthorizationPatchTemplateV2",
+  "signed_approval_materialization_allowed": false,
+  "single_use_cohort_confirmation": "pa-strict-tool-obs-1-20260815t151500z-4ab0d6e",
+  "single_use_cohort_id": "pa-strict-tool-obs-1-20260815t151500z-4ab0d6e",
+  "template_status": "not_authorization_user_confirmation_required",
+  "version": 2
+}
