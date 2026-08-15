@@ -18,6 +18,10 @@ PROTECTED_SOURCE_PATHS = (
     "src/novel_flywheel/providers/registry.py",
     "src/novel_flywheel/workflows.py",
 )
+R1D1_PROTECTED_SOURCE_PATHS = tuple(sorted({
+    *PROTECTED_SOURCE_PATHS,
+    "src/novel_flywheel/prose_quality.py",
+}))
 
 DIAGNOSTIC_EVENT_TYPES = frozenset({
     "runtime_fingerprint_binding_v1",
@@ -34,6 +38,20 @@ def protected_source_manifest(repository: Path) -> list[dict[str, Any]]:
         {"path": relative, "sha256": sha256_file(repository / relative)}
         for relative in PROTECTED_SOURCE_PATHS
     ]
+
+
+def canonical_protected_source_manifest(repository: Path) -> list[dict[str, Any]]:
+    """Hash source bytes independently of checkout newline policy."""
+
+    rows = []
+    for relative in R1D1_PROTECTED_SOURCE_PATHS:
+        content = (repository / relative).read_bytes()
+        canonical = content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+        rows.append({
+            "path": relative,
+            "sha256": hashlib.sha256(canonical).hexdigest(),
+        })
+    return rows
 
 
 def business_run_projection(run: dict[str, Any], events: list[dict[str, Any]]) -> dict:

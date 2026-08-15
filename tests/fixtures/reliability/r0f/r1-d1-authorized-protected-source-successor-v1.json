@@ -1,0 +1,65 @@
+{
+  "schema": "R1D1AuthorizedProtectedSourceSuccessorV1",
+  "version": 1,
+  "phase": "R1-D1",
+  "parent_source_head": "caa3c0fd07b19ed0806a28f94a1184cf3d697a6d",
+  "implementation_source_head": "be8f816aa0772aa8e2d75f7a474aea419f8c7a5f",
+  "authorization_scope": "Draft authority-aware exact Latin term mixed-script exemption",
+  "business_behavior_changed": true,
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "model_calls": 0,
+    "prompt": 0,
+    "retry_fallback_sequence": 0
+  },
+  "authorized_source_deltas": [
+    {
+      "path": "src/novel_flywheel/prose_quality.py",
+      "before_sha256": "bbc5186a61d23f62073a0fd9b88201bb0fc5f08b1c8ca530008c388e06c43fef",
+      "after_sha256": "b31d292c12ae76670dabb75d4ade38d720d896097151a15e67738015898ba635"
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "before_sha256": "8756f30886188c8c03ff9d206f2ab8fd3bb0ed3f4b8686ce19a08260d71d6541",
+      "after_sha256": "c0c19ca9dce066331171d409b6ebe91bbf4e9f5a6c7edade6f099a05ff328c89"
+    }
+  ],
+  "current_protected_sources": [
+    {
+      "path": "src/novel_flywheel/completion_supervisor.py",
+      "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"
+    },
+    {
+      "path": "src/novel_flywheel/contract_runtime.py",
+      "sha256": "fc3a101b9edd0129f91192b1efdb3fc22241deba3a71db502195fb4d149c0c1f"
+    },
+    {
+      "path": "src/novel_flywheel/generated_artifacts.py",
+      "sha256": "cadd368f8cf69de0493de08d59e7e7f48128379607cf1128ca8667a34e0d5104"
+    },
+    {
+      "path": "src/novel_flywheel/long_workflow.py",
+      "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"
+    },
+    {
+      "path": "src/novel_flywheel/models.py",
+      "sha256": "1effc161eb0eda7ab30e4131f52071ddf70d5f4bc923a70c34f2b7283d874bc9"
+    },
+    {
+      "path": "src/novel_flywheel/prompts.py",
+      "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"
+    },
+    {
+      "path": "src/novel_flywheel/prose_quality.py",
+      "sha256": "b31d292c12ae76670dabb75d4ade38d720d896097151a15e67738015898ba635"
+    },
+    {
+      "path": "src/novel_flywheel/providers/registry.py",
+      "sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "sha256": "c0c19ca9dce066331171d409b6ebe91bbf4e9f5a6c7edade6f099a05ff328c89"
+    }
+  ]
+}

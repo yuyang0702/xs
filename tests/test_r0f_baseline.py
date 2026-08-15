@@ -6,8 +6,8 @@ from pathlib import Path
 from novel_flywheel.db import Database
 from r0f_baseline_harness import (
     business_run_projection,
+    canonical_protected_source_manifest,
     load_baseline,
-    protected_source_manifest,
 )
 
 
@@ -20,6 +20,11 @@ R1_PA1_SUCCESSOR = (
     Path(__file__).parent
     / "fixtures" / "reliability" / "r0f"
     / "r1-pa1-authorized-protected-source-successor-v1.json"
+)
+R1_D1_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-d1-authorized-protected-source-successor-v1.json"
 )
 
 
@@ -49,13 +54,10 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         item["path"]: (item["before_sha256"], item["after_sha256"])
         for item in successor["authorized_source_deltas"]
     }
-    current = protected_source_manifest(REPOSITORY)
-    for item in current:
-        path = item["path"]
-        if path in authorized:
-            assert authorized[path] == (original[path], item["sha256"])
-        else:
-            assert item["sha256"] == original[path]
+    assert all(
+        before == original[path]
+        for path, (before, _after) in authorized.items()
+    )
     assert successor["parent_baseline_head"] == baseline["baseline_head"]
     assert successor["phase"] == "R1-PA1"
     assert successor["business_behavior_changed"] is False
@@ -65,6 +67,30 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "prompt": 0,
         "retry_fallback_sequence": 0,
         "business_artifacts": 0,
+    }
+    r1_d1 = load_baseline(R1_D1_SUCCESSOR)
+    assert r1_d1["parent_source_head"] == (
+        "caa3c0fd07b19ed0806a28f94a1184cf3d697a6d"
+    )
+    assert r1_d1["phase"] == "R1-D1"
+    assert r1_d1["business_behavior_changed"] is True
+    assert r1_d1["protected_deltas"] == baseline["protected_deltas"]
+    assert canonical_protected_source_manifest(REPOSITORY) == (
+        r1_d1["current_protected_sources"]
+    )
+    current_hashes = {
+        item["path"]: item["sha256"]
+        for item in r1_d1["current_protected_sources"]
+    }
+    assert all(
+        item["after_sha256"] == current_hashes[item["path"]]
+        for item in r1_d1["authorized_source_deltas"]
+    )
+    assert {
+        item["path"] for item in r1_d1["authorized_source_deltas"]
+    } == {
+        "src/novel_flywheel/prose_quality.py",
+        "src/novel_flywheel/workflows.py",
     }
 
 
