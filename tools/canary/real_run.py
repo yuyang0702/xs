@@ -31,6 +31,7 @@ from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from novel_flywheel.secrets import KeyringSecretStore
 
 from .approval_store import ApprovalConsumptionStore
+from .artifact_binding import observe_last_legal_bindings
 from .artifact_hash import file_sha256, live_parity_manifest, parity_equal, tree_manifest
 from .budget import AtomicBudgetLedger, BudgetLimits
 from .contracts import validate_canary_experiment_plan_v1, validate_canary_plan_approval_v1
@@ -46,11 +47,13 @@ from .dry_run import (
 )
 from .environment import c0a_environment
 from .evidence import build_canary_evidence_package_v1
-from .gate import CanaryBoundaryAbort, PreflightGatedGateway, TwoPhaseGate
+from .gate import (
+    CanaryAbortKind, CanaryBoundaryAbort, PreflightGatedGateway, TwoPhaseGate,
+)
 from .hash_manifest import validate_import_closure
 from .isolation import create_canary_root, validate_canary_root
 from .monetary import CanaryMonetaryBudgetV1
-from .outcomes import CanaryOutcome
+from .outcomes import CanaryOutcome, outcome_for_boundary_abort
 from .packet import APPROVED_THIRD_PARTY
 from .preflight import ExactBoundaryVerifier
 from .provider_matrix import production_price_catalog
@@ -262,19 +265,41 @@ async def run_c0b_real_run(
                     initial_workload_manifest_hash=plan["workload_manifest_hash"],
                     expected_scope="C0B_REAL_PROVIDER_PATH_REACHABILITY",
                 )
+                approved_budget = approval.get("approved_budget") or {}
                 limits = BudgetLimits(
-                    maximum_model_calls_per_run=plan["budgets"]["maximum_model_calls_per_run"],
-                    maximum_total_model_calls=plan["budgets"]["maximum_total_model_calls"],
-                    maximum_input_tokens=plan["budgets"]["maximum_input_tokens"],
-                    maximum_output_tokens=plan["budgets"]["maximum_output_tokens"],
+                    maximum_model_calls_per_run=min(
+                        plan["budgets"]["maximum_model_calls_per_run"],
+                        approved_budget.get("maximum_model_calls_per_run", 10**18),
+                    ),
+                    maximum_total_model_calls=min(
+                        plan["budgets"]["maximum_total_model_calls"],
+                        approved_budget.get("maximum_total_model_calls", 10**18),
+                    ),
+                    maximum_input_tokens=min(
+                        plan["budgets"]["maximum_input_tokens"],
+                        approved_budget.get("maximum_input_tokens", 10**18),
+                    ),
+                    maximum_output_tokens=min(
+                        plan["budgets"]["maximum_output_tokens"],
+                        approved_budget.get("maximum_output_tokens", 10**18),
+                    ),
                     maximum_estimated_cost_microunits=0,
-                    maximum_elapsed_seconds=plan["budgets"]["maximum_elapsed_seconds"],
+                    maximum_elapsed_seconds=min(
+                        plan["budgets"]["maximum_elapsed_seconds"],
+                        approved_budget.get("maximum_elapsed_seconds", 10**18),
+                    ),
                 )
                 token_budget = AtomicBudgetLedger(limits)
                 money = plan["budgets"]["monetary_budget"]
                 monetary_budget = CanaryMonetaryBudgetV1(
-                    maximum_usd_microunits=money["maximum_usd_cost_microunits"],
-                    maximum_cny_microunits=money["maximum_cny_cost_microunits"],
+                    maximum_usd_microunits=min(
+                        money["maximum_usd_cost_microunits"],
+                        approved_budget.get("maximum_usd_cost_microunits", 10**18),
+                    ),
+                    maximum_cny_microunits=min(
+                        money["maximum_cny_cost_microunits"],
+                        approved_budget.get("maximum_cny_cost_microunits", 10**18),
+                    ),
                 )
                 catalog = production_price_catalog()
 
@@ -324,6 +349,19 @@ async def run_c0b_real_run(
                         raise PermissionError("real_mode_final_authorization_missing")
                     latch.authorize(current_approval["approval_sha256"])
 
+                def budget_stop_context(_request) -> dict[str, Any]:
+                    selected = run_holder.get("run_id")
+                    if not selected:
+                        return {
+                            "current_executor_epoch": None,
+                            "checkpoint": {"binding_status": "none_available"},
+                            "last_legal_artifact": {"binding_status": "none_available"},
+                        }
+                    _origin, executor, _bindings = _binding_pair(db, selected)
+                    return observe_last_legal_bindings(
+                        db, run_id=selected, executor_binding=executor,
+                    )
+
                 boundary_counters = RealBoundaryCounters()
 
                 def production_gateway() -> ModelGateway:
@@ -347,6 +385,8 @@ async def run_c0b_real_run(
                     route_policy=ApprovedRoutePolicy(plan["approved_routes"]),
                     route_resolver=route_resolver, stage_resolver=stage_resolver,
                     estimated_cost=estimated_cost, actual_cost=actual_cost,
+                    workload_identifier_hash=workload_hash,
+                    budget_stop_context_supplier=budget_stop_context,
                 )
                 service = C0AFakeWorkflowService(
                     db, app.state.projects, gated, app.state.skill_gate,
@@ -445,8 +485,11 @@ async def run_c0b_real_run(
             first_divergent_boundary_ordinal=last_boundary.get("ordinal"),
         ))
     elif isinstance(workflow_exception, CanaryBoundaryAbort):
-        outcome = CanaryOutcome.CANARY_BLOCKED_PRE_PROVIDER.value
-        reason_code = workflow_exception.reason_code
+        mapped = outcome_for_boundary_abort(
+            workflow_exception.kind.value, workflow_exception.reason_code,
+        )
+        outcome = mapped.outcome.value
+        reason_code = mapped.reason_code
     elif status in {"waiting_provider", "waiting_user"}:
         outcome = CanaryOutcome.CONTROLLED_NONTERMINAL.value
         reason_code = f"controlled_{status}"
@@ -483,6 +526,12 @@ async def run_c0b_real_run(
         "budget_ledger": {
             "tokens": token_snapshot, "monetary": monetary_snapshot,
         },
+        "budget_stop": (
+            workflow_exception.budget_stop_evidence
+            if isinstance(workflow_exception, CanaryBoundaryAbort)
+            and workflow_exception.kind == CanaryAbortKind.BUDGET_EXHAUSTED
+            else None
+        ),
         "counters": counters,
         "live_parity": {
             "status": "exact", "before_sha256": before["parity_sha256"],

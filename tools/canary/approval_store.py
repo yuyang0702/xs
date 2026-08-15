@@ -69,6 +69,19 @@ class ApprovalConsumptionStore:
         self._exclusive_write(reserved, receipt, "approval_already_reserved")
         return receipt
 
+    def status(self, approval: Mapping[str, Any]) -> dict[str, Any]:
+        """Read-only replay state for validate-only closure."""
+        cohort_id = str(approval["single_use_cohort_id"])
+        reserved = self._path(cohort_id, "reserved").is_file()
+        consumed = self._path(cohort_id, "consumed").is_file()
+        return {
+            "status": (
+                "consumed" if consumed else "reserved" if reserved else "unused"
+            ),
+            "reserved": reserved,
+            "consumed": consumed,
+        }
+
     def consume(self, approval: Mapping[str, Any], evidence_sha256: str) -> dict:
         cohort_id = str(approval["single_use_cohort_id"])
         reserved = self._path(cohort_id, "reserved")

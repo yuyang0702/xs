@@ -117,6 +117,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--workload-fixture", type=Path)
     parser.add_argument("--canary-root", type=Path)
     parser.add_argument("--approval-ledger-root", type=Path)
+    parser.add_argument("--approval-packet", type=Path)
     parser.add_argument("--live-database", type=Path)
     parser.add_argument("--live-project-root", type=Path)
     parser.add_argument("--live-incident-root", type=Path, action="append", default=[])
@@ -137,7 +138,35 @@ def main(argv: list[str] | None = None) -> int:
                     plan_path=args.plan, approval_path=args.approval,
                     cli_approved_plan_sha256=args.approved_plan_sha256,
                 )
+                if result["canary_mode"] == "c0b_real_path_reachability":
+                    required = (
+                        args.approval_packet, args.workload_fixture,
+                        args.canary_root, args.approval_ledger_root,
+                        args.live_database, args.live_project_root,
+                    )
+                    if any(item is None for item in required):
+                        raise CanaryLauncherError(
+                            "c0b_validate_only_closure_argument_missing"
+                        )
+                    from .approval_closure import validate_c0b_approval_closure
+                    result = validate_c0b_approval_closure(
+                        plan_path=args.plan, approval_path=args.approval,
+                        packet_path=args.approval_packet,
+                        workload_fixture_path=args.workload_fixture,
+                        live_database_path=args.live_database,
+                        live_project_root=args.live_project_root,
+                        canary_root=args.canary_root,
+                        approval_ledger_root=args.approval_ledger_root,
+                        cli_approved_plan_sha256=args.approved_plan_sha256,
+                    )
             result["network_call_count"] = sentinel.network_call_count
+            if result.get("overall_status") == "blocked":
+                first = next(
+                    item for item in result["ordered_checks"]
+                    if item["status"] == "blocked"
+                )
+                result["outcome"] = "CANARY_BLOCKED_PRE_PROVIDER"
+                result["reason_code"] = first["reason_code"]
         elif args.dry_run:
             required = (
                 args.workload_fixture, args.canary_root,

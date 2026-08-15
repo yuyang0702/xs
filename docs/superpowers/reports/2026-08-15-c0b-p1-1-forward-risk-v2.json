@@ -1,0 +1,41 @@
+{
+  "schema": "GeneratedArtifactForwardRiskV2",
+  "version": 2,
+  "change_id": "C0B-P1.1",
+  "scope": ["tools/canary", "tests/canary", "docs/superpowers"],
+  "production_source_changed": false,
+  "model_output_boundary_changed": false,
+  "prompt_changed": false,
+  "route_changed": false,
+  "retry_fallback_changed": false,
+  "business_state_semantics_changed": false,
+  "new_external_action": false,
+  "risks": [
+    {
+      "id": "partial_cross-ledger_reservation",
+      "disposition": "mitigated",
+      "evidence": "joint preview plus elapsed-sensitive token commit before gateway-owned monetary commit"
+    },
+    {
+      "id": "stale_checkpoint_misidentified_as_current",
+      "disposition": "mitigated",
+      "evidence": "exact requires run, executor epoch, and runtime-execution fingerprint; otherwise unverifiable"
+    },
+    {
+      "id": "budget_stop_hides_previous_failure",
+      "disposition": "mitigated",
+      "evidence": "previous typed failure, route, attempt receipt, and requested next action retained"
+    },
+    {
+      "id": "validate_only_external_side_effect",
+      "disposition": "mitigated",
+      "evidence": "fail-closed network sentinel, keyring trap, zero external counters"
+    },
+    {
+      "id": "legacy_checkpoint_epoch_absent",
+      "disposition": "accepted_observability_gap",
+      "evidence": "reported unverifiable; no checkpoint rejection or business behavior change"
+    }
+  ],
+  "unresolved_blockers": []
+}

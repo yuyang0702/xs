@@ -13,6 +13,7 @@ from collections.abc import Mapping
 from novel_flywheel.context_policy import estimate_input_tokens
 
 from .budget import AtomicBudgetLedger, CanaryBudgetExceeded
+from .budget_stop import build_budget_stop_evidence_v1
 from .monetary import CanaryMonetaryBudgetV1
 from .route_policy import ApprovedRoutePolicy, CanaryRouteBlocked, RouteObservation
 
@@ -26,12 +27,22 @@ class GateState(str, Enum):
     ABORTED = "ABORTED"
 
 
+class CanaryAbortKind(str, Enum):
+    PREFLIGHT = "preflight"
+    BUDGET_EXHAUSTED = "budget_exhausted"
+
+
 class CanaryBoundaryAbort(asyncio.CancelledError):
     """Cancellation-shaped abort so workflow failure/incident handlers do not own it."""
 
-    def __init__(self, reason_code: str) -> None:
+    def __init__(
+        self, reason_code: str, *, kind: CanaryAbortKind = CanaryAbortKind.PREFLIGHT,
+        budget_stop_evidence: Mapping[str, Any] | None = None,
+    ) -> None:
         super().__init__(reason_code)
         self.reason_code = reason_code
+        self.kind = kind
+        self.budget_stop_evidence = dict(budget_stop_evidence or {}) or None
 
 
 @dataclass(frozen=True)
@@ -145,6 +156,8 @@ class PreflightGatedGateway:
         estimated_cost: Callable[[BoundaryRequest], int | Mapping[str, int]] = lambda _request: 0,
         monetary_budget: CanaryMonetaryBudgetV1 | None = None,
         actual_cost: Callable[[BoundaryRequest, Mapping[str, Any]], tuple[Mapping[str, int] | None, bool]] | None = None,
+        workload_identifier_hash: str = hashlib.sha256(b"unknown-workload").hexdigest(),
+        budget_stop_context_supplier: Callable[[BoundaryRequest], Mapping[str, Any]] | None = None,
     ) -> None:
         self.delegate = delegate
         self.gate = gate
@@ -157,7 +170,10 @@ class PreflightGatedGateway:
         self.estimated_cost = estimated_cost
         self.monetary_budget = monetary_budget
         self.actual_cost = actual_cost
+        self.workload_identifier_hash = workload_identifier_hash
+        self.budget_stop_context_supplier = budget_stop_context_supplier
         self._ordinal = 0
+        self._reservation_lock = asyncio.Lock()
         self._first_boundary = True
         self._authorized_ordinals: set[int] = set()
         self.boundary_ledger: list[dict] = []
@@ -166,6 +182,7 @@ class PreflightGatedGateway:
         self.provider_client_creation_count = 0
         self.network_call_count = 0
         self.paid_model_call_count = 0
+        self.last_budget_stop_evidence: dict[str, Any] | None = None
 
     @staticmethod
     def _hash(value: str) -> str:
@@ -216,17 +233,34 @@ class PreflightGatedGateway:
             if isinstance(cost, Mapping):
                 if self.monetary_budget is None:
                     raise CanaryBudgetExceeded("monetary_budget_missing")
-                monetary_ordinal = self.monetary_budget.reserve(cost)
                 legacy_cost = 0
             else:
                 legacy_cost = cost
-            reservation = self.budget_ledger.reserve(
-                run_id_hash=request.run_id_hash,
-                attempt_kind=request.route_kind,
-                input_tokens=request.input_tokens,
-                output_tokens=request.output_tokens,
-                estimated_cost_microunits=legacy_cost,
-            )
+            # One gateway-local critical section makes the two ledgers an
+            # all-or-nothing Canary reservation without production state.
+            async with self._reservation_lock:
+                if isinstance(cost, Mapping):
+                    assert self.monetary_budget is not None
+                    self.monetary_budget.preview(cost)
+                self.budget_ledger.preview(
+                    run_id_hash=request.run_id_hash,
+                    input_tokens=request.input_tokens,
+                    output_tokens=request.output_tokens,
+                    estimated_cost_microunits=legacy_cost,
+                )
+                reservation = self.budget_ledger.reserve(
+                    run_id_hash=request.run_id_hash,
+                    attempt_kind=request.route_kind,
+                    input_tokens=request.input_tokens,
+                    output_tokens=request.output_tokens,
+                    estimated_cost_microunits=legacy_cost,
+                )
+                # Token/elapsed commit comes first because elapsed can advance
+                # after preview. The monetary ledger is gateway-owned and
+                # cannot change between its preview and this commit.
+                if isinstance(cost, Mapping):
+                    assert self.monetary_budget is not None
+                    monetary_ordinal = self.monetary_budget.reserve(cost)
             runtime_preflight = getattr(
                 self.verifier, "run_runtime_preflight", None,
             )
@@ -241,7 +275,34 @@ class PreflightGatedGateway:
                 authorization = self.final_authorizer(request)
                 if inspect.isawaitable(authorization):
                     await authorization
-        except (CanaryRouteBlocked, CanaryBudgetExceeded) as exc:
+        except CanaryBudgetExceeded as exc:
+            if exc.dimension not in {
+                "per_run_calls", "cohort_calls", "input_tokens",
+                "output_tokens", "elapsed_seconds", "USD", "CNY",
+                "legacy_cost_microunits",
+            }:
+                raise CanaryBoundaryAbort(exc.reason_code) from exc
+            context = (
+                self.budget_stop_context_supplier(request)
+                if self.budget_stop_context_supplier is not None else {}
+            )
+            evidence = build_budget_stop_evidence_v1(
+                request=asdict(request), failure=exc,
+                workload_identifier_hash=self.workload_identifier_hash,
+                ledger_snapshot=self.budget_ledger.snapshot(),
+                monetary_snapshot=(
+                    self.monetary_budget.snapshot()
+                    if self.monetary_budget is not None else None
+                ),
+                context=context,
+                previous_boundary=(self.boundary_ledger[-1] if self.boundary_ledger else None),
+            )
+            self.last_budget_stop_evidence = evidence
+            raise CanaryBoundaryAbort(
+                exc.reason_code, kind=CanaryAbortKind.BUDGET_EXHAUSTED,
+                budget_stop_evidence=evidence,
+            ) from exc
+        except CanaryRouteBlocked as exc:
             raise CanaryBoundaryAbort(exc.reason_code) from exc
         self.boundary_ledger.append({
             **asdict(request), "reservation_ordinal": reservation.ordinal,
@@ -255,6 +316,9 @@ class PreflightGatedGateway:
         await self.gate.begin_preflight()
         try:
             await self._authorize(request)
+        except CanaryBoundaryAbort as exc:
+            await self.gate.block_and_abort(exc.reason_code)
+            raise
         except Exception as exc:
             reason = getattr(exc, "reason_code", "canary_preflight_failed")
             await self.gate.block_and_abort(reason)
@@ -269,6 +333,8 @@ class PreflightGatedGateway:
         if request.ordinal not in self._authorized_ordinals:
             try:
                 await self._authorize(request)
+            except CanaryBoundaryAbort:
+                raise
             except Exception as exc:
                 reason = getattr(exc, "reason_code", "canary_preflight_failed")
                 raise CanaryBoundaryAbort(reason) from exc

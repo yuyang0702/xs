@@ -8,6 +8,7 @@ from enum import Enum
 
 class CanaryOutcome(str, Enum):
     CANARY_BLOCKED_PRE_PROVIDER = "CANARY_BLOCKED_PRE_PROVIDER"
+    CANARY_BUDGET_EXHAUSTED = "CANARY_BUDGET_EXHAUSTED"
     CANARY_STARTED = "CANARY_STARTED"
     WORKFLOW_COMPLETED = "WORKFLOW_COMPLETED"
     CONTROLLED_NONTERMINAL = "CONTROLLED_NONTERMINAL"
@@ -37,3 +38,19 @@ def infrastructure_outcome(reason_code: str) -> CanaryOutcomeRecord:
         reason_code,
         workflow_terminal_counted=False,
     )
+
+
+def budget_exhausted_outcome(reason_code: str) -> CanaryOutcomeRecord:
+    return CanaryOutcomeRecord(
+        CanaryOutcome.CANARY_BUDGET_EXHAUSTED,
+        reason_code,
+        workflow_terminal_counted=False,
+        production_incident_counted=False,
+    )
+
+
+def outcome_for_boundary_abort(kind: str, reason_code: str) -> CanaryOutcomeRecord:
+    """Typed mapping; callers must pass the abort kind, never exception text."""
+    if kind == "budget_exhausted":
+        return budget_exhausted_outcome(reason_code)
+    return blocked_outcome(reason_code)

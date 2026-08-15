@@ -112,14 +112,33 @@ class CanaryMonetaryBudgetV1:
         self._reconciliations: dict[int, dict] = {}
         self._lock = threading.Lock()
 
-    def reserve(self, costs: Mapping[str, int]) -> int:
+    def _normalized(self, costs: Mapping[str, int]) -> dict[str, int]:
         normalized = {"USD": int(costs.get("USD", 0)), "CNY": int(costs.get("CNY", 0))}
         if any(value < 0 for value in normalized.values()):
             raise CanaryBudgetExceeded("monetary_reservation_invalid")
+        return normalized
+
+    def _check_locked(self, normalized: Mapping[str, int]) -> None:
+        for currency, value in normalized.items():
+            reserved = self._reserved[currency]
+            ceiling = self.maximum[currency]
+            if reserved + value > ceiling:
+                raise CanaryBudgetExceeded(
+                    f"{currency.casefold()}_cost_budget_exceeded",
+                    dimension=currency, approved_ceiling=ceiling,
+                    already_reserved=reserved, requested_reservation=value,
+                    remaining_before_request=max(0, ceiling - reserved),
+                )
+
+    def preview(self, costs: Mapping[str, int]) -> None:
+        normalized = self._normalized(costs)
         with self._lock:
-            for currency, value in normalized.items():
-                if self._reserved[currency] + value > self.maximum[currency]:
-                    raise CanaryBudgetExceeded(f"{currency.casefold()}_cost_budget_exceeded")
+            self._check_locked(normalized)
+
+    def reserve(self, costs: Mapping[str, int]) -> int:
+        normalized = self._normalized(costs)
+        with self._lock:
+            self._check_locked(normalized)
             ordinal = len(self._reservations) + 1
             for currency, value in normalized.items():
                 self._reserved[currency] += value

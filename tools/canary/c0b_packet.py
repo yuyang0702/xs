@@ -143,6 +143,21 @@ def prepare_c0b_smoke_packet(
         "NOVEL_CANONICAL_SHADOW_V1": False,
         "NOVEL_RELIABILITY_TRACE": True,
     }
+    approval_budget_body = {
+        "maximum_model_calls_per_run": 48,
+        "maximum_total_model_calls": 48,
+        "maximum_input_tokens": 2_000_000,
+        "maximum_output_tokens": 2_000_000,
+        "maximum_usd_cost_microunits": 60_000_000,
+        "maximum_cny_cost_microunits": 120_000_000,
+        "maximum_elapsed_seconds": elapsed["hard_launcher_timeout_seconds"],
+    }
+    approval_budget = {
+        **approval_budget_body,
+        "definition_sha256": domain_sha256(
+            "novel-flywheel-c0b-approved-budget-v1", approval_budget_body,
+        ),
+    }
     plan = build_canary_experiment_plan_v1({
         "canary_mode": "c0b_real_path_reachability",
         "runtime_mode": str(runtime.build["payload"]["mode"]),
@@ -232,6 +247,7 @@ def prepare_c0b_smoke_packet(
         },
         "maximum_executions": 1, "usage_status": "unused",
         "consumed_evidence_sha256": None, "named_approver": None,
+        "approved_budget": approval_budget,
         "authorized_actions": {
             "credential_lookup": False, "provider_client_creation": False,
             "network": False, "paid_model_calls": False,
@@ -270,6 +286,7 @@ def prepare_c0b_smoke_packet(
             "cny_cost_microunits": 120_000_000,
             "elapsed_seconds": elapsed["hard_launcher_timeout_seconds"],
         },
+        "approval_budget": approval_budget,
         "authorization_required": True,
         "hard_blockers": [],
     }

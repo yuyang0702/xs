@@ -320,6 +320,38 @@ def validate_canary_plan_approval_v1(
     _require(not_before <= not_after <= expiry, "approval_window_invalid")
     _require(isinstance(value["authorized_actions"], Mapping),
              "authorized_actions_invalid")
+    approved_budget = value.get("approved_budget")
+    if approved_budget is not None:
+        _require(isinstance(approved_budget, Mapping), "approved_budget_invalid")
+        _require_fields(approved_budget, {
+            "maximum_model_calls_per_run", "maximum_total_model_calls",
+            "maximum_input_tokens", "maximum_output_tokens",
+            "maximum_usd_cost_microunits", "maximum_cny_cost_microunits",
+            "maximum_elapsed_seconds", "definition_sha256",
+        }, "approved_budget")
+        for field in (
+            "maximum_model_calls_per_run", "maximum_total_model_calls",
+            "maximum_input_tokens", "maximum_output_tokens",
+            "maximum_usd_cost_microunits", "maximum_cny_cost_microunits",
+            "maximum_elapsed_seconds",
+        ):
+            _require(type(approved_budget[field]) is int and approved_budget[field] >= 0,
+                     f"approved_budget_{field}_invalid")
+        _require_hash(approved_budget["definition_sha256"],
+                      "approved_budget_definition_sha256_invalid")
+        expected_budget_hash = domain_sha256(
+            "novel-flywheel-c0b-approved-budget-v1", {
+                key: approved_budget[key] for key in approved_budget
+                if key != "definition_sha256"
+            },
+        )
+        _require(approved_budget["definition_sha256"] == expected_budget_hash,
+                 "approved_budget_definition_hash_mismatch")
+        _require(
+            approved_budget["maximum_total_model_calls"]
+            >= approved_budget["maximum_model_calls_per_run"],
+            "approved_budget_total_below_per_run",
+        )
     _scan_forbidden_material(value)
     _require(value["approval_sha256"] == _approval_digest(value),
              "approval_hash_mismatch")
