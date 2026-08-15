@@ -196,8 +196,11 @@ def test_no_signed_approval_or_canary_b_artifact_is_materialized(materialized) -
     assert not any("signed-approval" in name for name in names)
     assert not any("budget-counterfactual" in name for name in names)
     assert materialized["index"]["execution_performed"] is False
+    assert materialized["index"]["contract_status"] == (
+        "PA_STRICT_TOOL_OBS_1_SIGNED_APPROVAL_PROFILE_READY"
+    )
     assert materialized["index"]["status"] == (
-        "PA_STRICT_TOOL_OBS_1_WAITING_FOR_FINAL_USER_AUTHORIZATION"
+        "PA_STRICT_TOOL_OBS_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION"
     )
 
 

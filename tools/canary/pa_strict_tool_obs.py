@@ -828,7 +828,8 @@ def materialize_pa_strict_tool_obs_1(
         "schema": INDEX_SCHEMA,
         "version": 1,
         "canonicalization_version": CANONICALIZATION_VERSION,
-        "status": "PA_STRICT_TOOL_OBS_1_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+        "contract_status": "PA_STRICT_TOOL_OBS_1_SIGNED_APPROVAL_PROFILE_READY",
+        "status": "PA_STRICT_TOOL_OBS_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
         "files": {
             path.name: file_sha256(path)
             for key, path in sorted(paths.items()) if key != "index"
