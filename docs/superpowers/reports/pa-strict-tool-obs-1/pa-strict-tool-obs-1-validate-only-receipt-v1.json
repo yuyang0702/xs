@@ -1,0 +1,205 @@
+{
+  "approval_state": "disabled_candidate_no_signed_approval",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "ordered_checks": [
+    {
+      "definition_sha256": "2ddd144c67518848c25014726a6a74a89d234e73c2341a9dfe8dc1b30fed071d",
+      "name": "plan_canonical_hash",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c0f4128818f2827828aa41809f101e40b6ac3a24f59ac7c7814a8d2684d1635a",
+      "name": "approval_candidate_canonical_hash",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "fd78af0f9d2a0e985fe818bf0d9eaac344614ec1ee143b31d5c431adc1e4b520",
+      "name": "authorization_patch_template_binding",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "6ce1f7510411c2c5d2984258846389a68f26ef716e37fbad0bbe982ef55a4660",
+      "name": "execution_preview_future_signed_approval_binding",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "a4de4ca22694768e39ac13a2018c802e6a1bfc92809f75a37644a9a4706c64d5",
+      "name": "launcher_bytes_hash",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "name": "workload_bytes_hash",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "2c44c4a225a7d88ea94d1b7078a6125cf1f54e9cad210e2413e29d65f9c4669f",
+      "name": "production_source_clean",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "2c44c4a225a7d88ea94d1b7078a6125cf1f54e9cad210e2413e29d65f9c4669f",
+      "name": "build_fingerprint",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "4fb2e591c61c077784f8153b956a99c04ef509bcafe04b1c3ae0e82668f42e1b",
+      "name": "execution_config_fingerprint",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "eaf6810e81a52a10c60e32862926c5fc99810a698e425dfc930b6fa054c1a24a",
+      "name": "runtime_execution_fingerprint",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "0a425b4d6fb8f4c97e6bc2c279b03c6bbfe790afe04469f845f38a8d97c74f92",
+      "name": "diagnostic_feature_flags",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "phase1b_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b92a6a13ff71ae123c694628e22d729f62a3796e0dca3c42c4958ad333366239",
+      "name": "exact_target_filter",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "a7cc00954b501fb4c41eb30aed8090af2702c969e35955a9606514bf71a083e9",
+      "name": "strict_tool_observation_schema",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "55251435f47ac4c42add406d84e776b5d71d098707da1c7277ac4c31e7b111f6",
+      "name": "provider_snapshot_adapter_coverage",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+      "name": "provider_descriptor_manifest",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+      "name": "role_route_binding_manifest",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "053fbf7d5fe203257dfb200e019c0ac4bdb811f09e244db4f37c906c7667649a",
+      "name": "pricing_evidence_manifest",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "db6a4241651f61ac3da36f08cde3c00432e552ff456e3d0def6a0757feea6d78",
+      "name": "budget_definition",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c40773ff77a4e28b3c44b3840dbf622b6769e25c55dfaf5ead47560aff7631bc",
+      "name": "stop_condition_manifest",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "ca474528a48715d3c76f372b1e9763cb315fe5d5f7b2bf9bd5dd6f19c59cb0a9",
+      "name": "canary_root_absent",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "cohort_unused",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "execution_window_future",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "4cf2e2517eae4573abcfd5f62fcada5853be2c83a5e19bcea5ead60044057af3",
+      "name": "external_actions_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "signed_approval_absent",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "10027e045516da5717928cc703e0895dc17adb612441d764481566f65c16d1cc",
+      "name": "privacy_scan",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+      "name": "live_artifact_parity",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "network_sentinel",
+      "reason_code": null,
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "parity": {
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "privacy": {
+    "documents_scanned": [
+      "candidate",
+      "patch",
+      "plan",
+      "preview"
+    ],
+    "policy": "hash_shape_count_only_v1",
+    "privacy_scan_sha256": "10027e045516da5717928cc703e0895dc17adb612441d764481566f65c16d1cc",
+    "status": "exact",
+    "violation_codes": [],
+    "violation_count": 0
+  },
+  "schema": "PAStrictToolObs1ValidateOnlyReceiptV1",
+  "validated_at": "2026-08-15T13:30:00Z",
+  "validation_receipt_sha256": "50b122714be07c7359d1e9967d59e7cea1bd62f607a28ccd97dd0446952eeea3",
+  "version": 1
+}

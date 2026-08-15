@@ -1,0 +1,32 @@
+{
+  "approval_expiry": "2026-08-17T13:45:00Z",
+  "approval_scope": "PA_STRICT_TOOL_OBS_1_SINGLE_REAL_PROVIDER_OBSERVATION",
+  "approval_timestamp": "USER_CONFIRMATION_REQUIRED",
+  "approved_execution_window": {
+    "not_after": "2026-08-17T13:45:00Z",
+    "not_before": "2026-08-15T13:45:00Z"
+  },
+  "authorization_patch_template_sha256": "fd78af0f9d2a0e985fe818bf0d9eaac344614ec1ee143b31d5c431adc1e4b520",
+  "bound_approval_candidate_sha256": "c0f4128818f2827828aa41809f101e40b6ac3a24f59ac7c7814a8d2684d1635a",
+  "bound_build_fingerprint": "2c44c4a225a7d88ea94d1b7078a6125cf1f54e9cad210e2413e29d65f9c4669f",
+  "bound_execution_config_fingerprint": "4fb2e591c61c077784f8153b956a99c04ef509bcafe04b1c3ae0e82668f42e1b",
+  "bound_launcher_sha256": "a4de4ca22694768e39ac13a2018c802e6a1bfc92809f75a37644a9a4706c64d5",
+  "bound_plan_sha256": "2ddd144c67518848c25014726a6a74a89d234e73c2341a9dfe8dc1b30fed071d",
+  "bound_runtime_execution_fingerprint": "eaf6810e81a52a10c60e32862926c5fc99810a698e425dfc930b6fa054c1a24a",
+  "bound_workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_authorized": false,
+  "named_approver": "USER_CONFIRMATION_REQUIRED",
+  "protected_fields_mutation_allowed": false,
+  "requested_authorizations": {
+    "credential_lookup": "USER_CONFIRMATION_REQUIRED",
+    "network": "USER_CONFIRMATION_REQUIRED",
+    "paid_model_calls": "USER_CONFIRMATION_REQUIRED",
+    "provider_client_creation": "USER_CONFIRMATION_REQUIRED"
+  },
+  "schema": "PAStrictToolObs1UserAuthorizationPatchTemplateV1",
+  "signed_approval_materialization_allowed": false,
+  "single_use_cohort_id": "pa-strict-tool-obs-1-20260815t133000z-c4261ae",
+  "template_status": "not_authorization_user_confirmation_required",
+  "version": 1
+}

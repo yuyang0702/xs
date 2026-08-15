@@ -1,0 +1,31 @@
+{
+  "approval_candidate_sha256": "c0f4128818f2827828aa41809f101e40b6ac3a24f59ac7c7814a8d2684d1635a",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "ea4d497a47e59f23150e6ebb94da17e17854f728b5be46c8423f574d2aab316f",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "pa-strict-tool-obs-1-execution-command-preview-v1.json": "c2706920ba2338cfe28079df59cdc831c8fe37a85a692fe3f51c4bd32e995b65",
+    "pa-strict-tool-obs-1-final-approval-candidate-v1.json": "174ed924dde87a8842cb7f8cbfd1bcb4dcaa0203bda25a32de38c759a631e381",
+    "pa-strict-tool-obs-1-plan-v1.json": "e9eb449c618652a23db480f6b564b34f27934ca946bb8744089c6ebf3cd8c601",
+    "pa-strict-tool-obs-1-user-authorization-patch-template-v1.json": "991f7b622919d248a53d22b04633a621ac253a244fc35592e500365bd262c01f",
+    "pa-strict-tool-obs-1-validate-only-receipt-v1.json": "4ee745d6230babd5660f32049a48054996c2a9c09ad5dc578c69e436280ce1a3"
+  },
+  "launcher_sha256": "a4de4ca22694768e39ac13a2018c802e6a1bfc92809f75a37644a9a4706c64d5",
+  "parity_status": "exact",
+  "plan_sha256": "2ddd144c67518848c25014726a6a74a89d234e73c2341a9dfe8dc1b30fed071d",
+  "privacy_status": "exact",
+  "schema": "PAStrictToolObs1MaterializationIndexV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "pa-strict-tool-obs-1-20260815t133000z-c4261ae",
+  "status": "PA_STRICT_TOOL_OBS_1_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "50b122714be07c7359d1e9967d59e7cea1bd62f607a28ccd97dd0446952eeea3",
+  "version": 1,
+  "workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1"
+}
