@@ -1,0 +1,40 @@
+{
+  "schema": "R1PA0PlanningAdaptationEvidenceV1",
+  "evidence_canonical_sha256": "73b4da607fd400d90fa81d6460da886297ccdd48760c4b1c12f301c015c49be3",
+  "run_id_sha256": "dc9b1ebb4ed139233bbf68a24dd699bfc62761c4a9a6399e9b7ac9fcc2ad69a3",
+  "real_model_call_count": 11,
+  "primary_call_count": 8,
+  "fallback_call_count": 3,
+  "planning_adaptation": {
+    "requested_output_tokens": 1276,
+    "segment_authority_sha256": "9910c8b2105a65c44e4db5adf8d2553c49f6d7600f1907016a3d944d7093338d",
+    "whole_authority_sha256": "de547721a7912385aa59eed010a64fd13ddfb93e820dc86fc5b555d2e08e836a",
+    "planning_sha256": "3625b315e307b100f7056098e01c1dfe8d6723a2b3ada91a6b7de720750891fd",
+    "event_ids": ["EV-F2DD1CE1", "EV-A8353187"],
+    "segment_raw_sha256": "8b00d0065896c6f291052ec2e46aa83f38e239bc999e57b40daa59afef2fe17d",
+    "segment_raw_bytes": 3065,
+    "segment_raw_visible_characters": 2343,
+    "segment_output_tokens": 1270,
+    "segment_finish_reason": "tool_use",
+    "segment_conversion_method": "exact_json",
+    "segment_domain_status": "valid",
+    "whole_fallback_error_sha256": "0ecd653cf45cc85c893b63e05a015430fd53225e56683516bc300fb7b16dc4b2",
+    "whole_fallback_exception_type": "RuntimeError",
+    "whole_fallback_exact_error": "strict structured tool route returned no unique artifact",
+    "whole_fallback_raw_status": "not_persisted_unverifiable",
+    "last_legal_checkpoint_output_sha256": "8b00d0065896c6f291052ec2e46aa83f38e239bc999e57b40daa59afef2fe17d"
+  },
+  "calls": [
+    {"ordinal": 1, "stage": "planning", "route": "primary", "requested_output_tokens": 7774, "actual_output_tokens": 461, "visible_characters": 2422, "finish_reason": "tool_use", "result": "valid"},
+    {"ordinal": 2, "stage": "planning_adaptation_segment_initial", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 3, "stage": "planning_adaptation_segment_packet", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 4, "stage": "planning_adaptation_segment_packet", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 5, "stage": "planning_adaptation_segment_packet", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 6, "stage": "planning_adaptation_segment_packet", "route": "configured_fallback", "requested_output_tokens": 1276, "actual_output_tokens": 1270, "visible_characters": 2343, "finish_reason": "tool_use", "result": "valid"},
+    {"ordinal": 7, "stage": "planning_adaptation_whole", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 8, "stage": "planning_adaptation_whole", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 9, "stage": "planning_adaptation_whole", "route": "primary", "requested_output_tokens": 1276, "actual_output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "result": "output_truncation"},
+    {"ordinal": 10, "stage": "planning_adaptation_whole", "route": "configured_fallback", "requested_output_tokens": 1276, "actual_output_tokens": null, "visible_characters": null, "finish_reason": null, "result": "no_unique_artifact"},
+    {"ordinal": 11, "stage": "planning_adaptation_whole", "route": "configured_fallback", "requested_output_tokens": 1276, "actual_output_tokens": null, "visible_characters": null, "finish_reason": null, "result": "no_unique_artifact"}
+  ]
+}

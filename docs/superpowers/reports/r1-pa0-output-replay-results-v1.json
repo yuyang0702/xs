@@ -1,0 +1,60 @@
+{
+  "schema": "R1PA0OutputReplayResultsV1",
+  "paid_model_calls": 0,
+  "network_calls": 0,
+  "replays": {
+    "primary_max_tokens": {
+      "source": "hash-bound persisted conversion evidence",
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_visible_characters": 0,
+      "provider_finish_reason": "max_tokens",
+      "converter_result": "output_truncated",
+      "local_syntax_repair_gate": "rejected_before repair because no closed JSON object exists",
+      "semantic_normalizer_parser_schema_adapter_domain": "not_reached",
+      "typed_route_result": "ContractOutputLimitExhaustedError then protocol_route_output_limit",
+      "stable_replay": true
+    },
+    "segment_fallback": {
+      "source": "private hash-bound evidence root",
+      "raw_sha256": "8b00d0065896c6f291052ec2e46aa83f38e239bc999e57b40daa59afef2fe17d",
+      "raw_bytes": 3065,
+      "raw_visible_characters": 2343,
+      "conversion_method": "exact_json",
+      "candidate_count": 1,
+      "semantic_valid": true,
+      "domain_issue_codes": [],
+      "event_review_count": 2,
+      "segment_order_preserved": true,
+      "formal_direction_preserved": true,
+      "deterministic_merge_eligible": true,
+      "persisted_checkpoint": true,
+      "stable_replay": true
+    },
+    "whole_fallback_attempt_1": {
+      "ordinal": 10,
+      "raw_status": "not_persisted_unverifiable",
+      "verified_boundary_error": "strict structured tool route returned no unique artifact",
+      "verified_error_sha256": "0ecd653cf45cc85c893b63e05a015430fd53225e56683516bc300fb7b16dc4b2",
+      "possible_shapes_not_distinguishable": ["zero_tool_calls", "multiple_tool_calls", "single_wrong_name_tool_call", "expected_plus_extra_tool_call"],
+      "converter_reentry": "not_reached",
+      "exact_raw_replay": false
+    },
+    "whole_fallback_attempt_2": {
+      "ordinal": 11,
+      "raw_status": "not_persisted_unverifiable",
+      "verified_boundary_error": "strict structured tool route returned no unique artifact",
+      "verified_error_sha256": "0ecd653cf45cc85c893b63e05a015430fd53225e56683516bc300fb7b16dc4b2",
+      "possible_shapes_not_distinguishable": ["zero_tool_calls", "multiple_tool_calls", "single_wrong_name_tool_call", "expected_plus_extra_tool_call"],
+      "converter_reentry": "not_reached",
+      "exact_raw_replay": false
+    }
+  },
+  "experiments": [
+    {"id": 1, "name": "truncation classification", "result": "current converter and explicitly marked max_tokens both produce output_truncation; semantic normalization cannot repair an empty unclosed candidate"},
+    {"id": 2, "name": "segment deterministic merge", "result": "real segment receipt merges and revalidates at segment scope; the same object lacks Whole required fields and cannot prove Whole domain judgments"},
+    {"id": 3, "name": "minimal Whole payload", "result": "one controlled valid Whole JSON is 623 characters and approximately 156 estimated tokens, well below 1276; Whole wire-object size is not the capacity cause"},
+    {"id": 4, "name": "retained output expansion", "result": "three isolated one-route Runtime calls request [1276,1276,1276]; one Runtime with two retained primary attempts requests [1276,2552] and accepts a controlled valid Whole artifact"},
+    {"id": 5, "name": "bad Whole strict-tool reentry", "result": "exact replay impossible because raw tool-call shape was not persisted; controlled no-unique-tool responses fail in ModelGateway before Contract Runtime conversion"},
+    {"id": 6, "name": "contract differential", "result": "Segment and Whole share registry version, 600-character calibration, converter family and recovery ladder; schemas, authority fields and domain validators differ intentionally"}
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "schema": "SegmentToWholeReceiptClosureMapV1",
+  "segment": {
+    "contract": "planning_adaptation_segment",
+    "contract_version": 1,
+    "authority_version_observed": 3,
+    "minimum_business_characters": 600,
+    "recovery_ladder": ["exact_json", "local_syntax_repair", "semantic_protocol_retry", "model_fallback", "minimal_regeneration", "checkpoint_resume"],
+    "observed_result": "schema_adapter_domain_valid",
+    "event_coverage": ["EV-F2DD1CE1", "EV-A8353187"],
+    "deterministic_packet_merge": "executed_and_revalidated_against_full_segment",
+    "checkpoint_sha256": "8b00d0065896c6f291052ec2e46aa83f38e239bc999e57b40daa59afef2fe17d"
+  },
+  "whole": {
+    "contract": "planning_adaptation_whole",
+    "contract_version": 1,
+    "authority_version_observed": 3,
+    "minimum_business_characters": 600,
+    "recovery_ladder": ["exact_json", "local_syntax_repair", "semantic_protocol_retry", "model_fallback", "minimal_regeneration", "checkpoint_resume"],
+    "authority_binds": ["outline_sha256", "planning_sha256", "all_validated_segment_receipts", "authority_version"],
+    "input_contains": ["validated_segment_receipts", "complete_plan_or_lossless_hierarchy", "formal_event_contracts", "required_whole_invariants", "expected_event_ids", "authority_version", "output_budget"],
+    "required_new_judgments": ["causal_order_preserved", "adjacent_handoffs_preserved", "knowledge_progression_preserved", "relationship_progression_preserved", "viewpoint_timeline_preserved", "promises_ending_preserved"],
+    "observed_result": "route_exhausted_before_candidate_conversion"
+  },
+  "shared": {
+    "entry": "WorkflowService._stage",
+    "runtime": "execute_contract_runtime",
+    "converter": "GeneratedArtifactGateway",
+    "route_schedule": "three_primary_then_two_configured_fallback",
+    "local_first_runtime": true
+  },
+  "different": {
+    "wire_schema": true,
+    "runtime_authority_shape": true,
+    "domain_validator": true,
+    "semantic_question": true,
+    "provider_wrapper": false,
+    "contract_version": false,
+    "recovery_ladder": false
+  },
+  "closure_conclusion": "Segment receipts are reused as Whole input and are not discarded. Their local verdicts do not logically prove emergent cross-event/cross-segment invariants, so a deterministic reducer cannot set Whole booleans without adding new semantic authority. H8 is not established."
+}
