@@ -30,6 +30,10 @@ TRACE_EVENT_TYPES = (
     "resume_binding",
     "authority_evidence_conflict",
 )
+DIAGNOSTIC_TRACE_EVENT_TYPES = (
+    "diagnostic_strict_tool_shape",
+    "diagnostic_output_budget_lineage",
+)
 VOLATILE_KEYS = frozenset({
     "created_at", "updated_at", "timestamp", "started_at", "finished_at",
     "event_id", "correlation_id", "run_id", "candidate_id", "trace_id",

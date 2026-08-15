@@ -45,6 +45,8 @@ ReliabilityTraceEventType = Literal[
     "recovery_attempt",
     "resume_binding",
     "authority_evidence_conflict",
+    "diagnostic_strict_tool_shape",
+    "diagnostic_output_budget_lineage",
 ]
 ReliabilitySemanticDomain = Literal[
     "future_normative", "occurred_current", "unknown",
@@ -98,6 +100,12 @@ class ReliabilityTraceEnvelopeV1(BaseModel):
         "authority_evidence_conflict": frozenset({
             "shadow_slot", "story_time", "left_source_hash", "right_source_hash",
             "values_disagree", "resolution",
+        }),
+        "diagnostic_strict_tool_shape": frozenset({
+            "schema", "observation_sha256", "shape_correlation_sha256", "target_status",
+        }),
+        "diagnostic_output_budget_lineage": frozenset({
+            "schema", "lineage_receipt_sha256", "lineage_event",
         }),
     }
 
