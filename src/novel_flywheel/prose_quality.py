@@ -293,6 +293,10 @@ def _mixed_script_decision(
     normalized: str | None,
     ambiguous: bool,
     context: DraftProseAuthorityContextV1,
+    *,
+    term_set_sha256: str,
+    approved_by_term: dict[str, tuple[AuthorityApprovedLatinTermV1, ...]],
+    source_metadata: dict[str, AuthorityTermSourceArtifactV1],
 ) -> dict[str, Any]:
     term_set = context.term_set
     token_sha256 = hashlib.sha256(
@@ -308,7 +312,7 @@ def _mixed_script_decision(
         "draft_authority_revision": context.current_draft_authority_revision,
         "draft_authority_sha256": context.current_draft_authority_sha256,
         "segment_binding_sha256": context.current_segment_binding_sha256,
-        "term_set_sha256": term_set.term_set_sha256,
+        "term_set_sha256": term_set_sha256,
     }
     if (
         ambiguous
@@ -334,7 +338,7 @@ def _mixed_script_decision(
     ):
         return {**base, "decision": "reject_stale_authority"}
     matches = [
-        item for item in term_set.approved_terms
+        item for item in approved_by_term.get(normalized, ())
         if item.normalized_term == normalized
         and item.term_sha256 == token_sha256
         and item.segment_binding_sha256
@@ -344,9 +348,6 @@ def _mixed_script_decision(
     ]
     if not matches:
         return {**base, "decision": "reject_unapproved_mixed_script"}
-    source_metadata = {
-        item.artifact_sha256: item for item in term_set.source_artifacts
-    }
     return {
         **base,
         "decision": "exempt_authority_approved_term",
@@ -399,23 +400,51 @@ def analyze_prose(
     if authority_context is None:
         for match in legacy_mixed_matches:
             findings.append(_finding("mixed_script_corruption", text, match, True))
-    for match, normalized, ambiguous in _latin_tokens(text):
-        if authority_context is None or not any(
-            legacy.start() < match.end() and match.start() < legacy.end()
-            for legacy in legacy_mixed_matches
-        ):
-            continue
-        if (
-            normalized is not None
-            and sum(character.isalpha() for character in normalized) < 2
-        ):
-            continue
-        decision = _mixed_script_decision(
-            match.group(0), normalized, ambiguous, authority_context,
-        )
-        mixed_script_decisions.append(decision)
-        if decision["decision"] != "exempt_authority_approved_term":
-            findings.append(_finding("mixed_script_corruption", text, match, True))
+    else:
+        term_set = authority_context.term_set
+        term_set_sha256 = term_set.term_set_sha256
+        approved_by_term_lists: dict[
+            str, list[AuthorityApprovedLatinTermV1]
+        ] = {}
+        for approved in term_set.approved_terms:
+            approved_by_term_lists.setdefault(
+                approved.normalized_term, [],
+            ).append(approved)
+        approved_by_term = {
+            term: tuple(items)
+            for term, items in approved_by_term_lists.items()
+        }
+        source_metadata = {
+            item.artifact_sha256: item for item in term_set.source_artifacts
+        }
+        legacy_index = 0
+        for match, normalized, ambiguous in _latin_tokens(text):
+            while (
+                legacy_index < len(legacy_mixed_matches)
+                and legacy_mixed_matches[legacy_index].end() <= match.start()
+            ):
+                legacy_index += 1
+            if (
+                legacy_index >= len(legacy_mixed_matches)
+                or legacy_mixed_matches[legacy_index].start() >= match.end()
+            ):
+                continue
+            if (
+                normalized is not None
+                and sum(character.isalpha() for character in normalized) < 2
+            ):
+                continue
+            decision = _mixed_script_decision(
+                match.group(0), normalized, ambiguous, authority_context,
+                term_set_sha256=term_set_sha256,
+                approved_by_term=approved_by_term,
+                source_metadata=source_metadata,
+            )
+            mixed_script_decisions.append(decision)
+            if decision["decision"] != "exempt_authority_approved_term":
+                findings.append(
+                    _finding("mixed_script_corruption", text, match, True)
+                )
     for match in UNICODE_REPLACEMENT.finditer(text):
         findings.append(_finding("unicode_replacement_character", text, match, True))
     for match in INVALID_CONTROL.finditer(text):

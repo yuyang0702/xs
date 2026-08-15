@@ -240,10 +240,12 @@ class _DraftThenSemanticGateway:
         self.contract = contract
         self.draft_calls = 0
         self.review_calls = 0
+        self.calls: list[tuple[str, str, str, int | None]] = []
 
     async def complete_primary(
         self, role, system, user, max_output_tokens=None,
     ):
+        self.calls.append((role, system, user, max_output_tokens))
         if role == "draft":
             self.draft_calls += 1
             return ModelResult(
@@ -414,3 +416,52 @@ async def test_diagnostic_sink_failure_does_not_reopen_retry_or_block_acceptance
         event for event in db.list_run_events("d1s")
         if event["event_type"] == "draft_task_scope_retry"
     ]
+
+
+@pytest.mark.asyncio
+async def test_authority_context_does_not_change_prompt_route_budget_or_call_count(
+    tmp_path,
+) -> None:
+    prose = "她逐项核对登记记录，确认编号、时间与签收栏保持一致。" * 24
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-01",
+        parent_task_id="",
+        depth=0,
+        target_han=600,
+        event_ids=("EV-00000001",),
+        scope="只写核对记录",
+        entry_state="记录尚未核对",
+        exit_requirement="记录完成核对",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=("EV-00000001/01",),
+        viewpoint="third-limited",
+    )
+    with_context = _DraftThenSemanticGateway(prose, contract)
+    db, project, service, first_path = _service(tmp_path, with_context, "d1p1")
+    await service._draft_short_segment_task(
+        "d1p1", first_path, project, "保持第三人称限知视角。",
+        "当前段正式资料。", suffix="-part-01", target=600,
+        previous_parts=[], event_ids=["EV-00000001/01"], contract=contract,
+        semantic_all_event_ids=["EV-00000001/01"],
+        prose_authority_context=_authority_context(),
+    )
+
+    without_context = _DraftThenSemanticGateway(prose, contract)
+    service.gateway = without_context
+    db.create_run("d1p2", project.id, "short-story", status="running")
+    second_path = project.path / "runs" / "d1p2"
+    (second_path / "outputs" / "conversion-audits").mkdir(parents=True)
+    (second_path / "receipts").mkdir()
+    await service._draft_short_segment_task(
+        "d1p2", second_path, project, "保持第三人称限知视角。",
+        "当前段正式资料。", suffix="-part-01", target=600,
+        previous_parts=[], event_ids=["EV-00000001/01"], contract=contract,
+        semantic_all_event_ids=["EV-00000001/01"],
+        prose_authority_context=None,
+    )
+
+    assert with_context.calls == without_context.calls
+    assert [item[0] for item in with_context.calls] == ["draft", "review"]
+    assert with_context.draft_calls == with_context.review_calls == 1
+    assert without_context.draft_calls == without_context.review_calls == 1
