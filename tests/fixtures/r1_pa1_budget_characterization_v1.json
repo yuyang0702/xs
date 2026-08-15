@@ -1,0 +1,15 @@
+{
+  "schema": "R1PA1BudgetCharacterizationV1",
+  "version": 1,
+  "source_evidence_canonical_sha256": "73b4da607fd400d90fa81d6460da886297ccdd48760c4b1c12f301c015c49be3",
+  "stage": "review",
+  "boundary": "planning_adaptation_whole_receipt",
+  "contract_id": "planning_adaptation_whole",
+  "contract_version": 1,
+  "role": "review",
+  "actual_primary_request_sequence": [1276, 1276, 1276],
+  "runtime_instance_count": 3,
+  "outer_retry_count": 3,
+  "retained_expansion_state": false,
+  "counterfactual_sequence_is_fixture_data": false
+}

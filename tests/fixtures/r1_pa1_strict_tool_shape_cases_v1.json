@@ -1,0 +1,32 @@
+{
+  "schema": "R1PA1StrictToolShapeCasesV1",
+  "version": 1,
+  "target": {
+    "stage": "review",
+    "boundary": "planning_adaptation_whole_receipt",
+    "contract_id": "planning_adaptation_whole",
+    "contract_version": 1,
+    "role": "review",
+    "route_kind": "configured_fallback",
+    "strict_tool_route": true
+  },
+  "cases": [
+    {"case_id": "zero_tool_calls", "raw_tool_call_count": 0, "snapshot_status": "snapshot_exact", "business_outcome": "reject"},
+    {"case_id": "one_correct", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "accept"},
+    {"case_id": "one_wrong", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "reject"},
+    {"case_id": "multiple_one_correct", "raw_tool_call_count": 2, "snapshot_status": "snapshot_exact", "business_outcome": "reject"},
+    {"case_id": "multiple_correct", "raw_tool_call_count": 2, "snapshot_status": "snapshot_exact", "business_outcome": "reject"},
+    {"case_id": "multiple_wrong", "raw_tool_call_count": 2, "snapshot_status": "snapshot_exact", "business_outcome": "reject"},
+    {"case_id": "arguments_missing", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "adapter_exception_or_reject"},
+    {"case_id": "arguments_object", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "accept"},
+    {"case_id": "arguments_string", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "adapter_exception_or_reject"},
+    {"case_id": "arguments_malformed_json", "raw_tool_call_count": 1, "snapshot_status": "adapter_exception_with_snapshot", "business_outcome": "adapter_exception"},
+    {"case_id": "arguments_array", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "adapter_exception_or_reject"},
+    {"case_id": "mixed_text_tool", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "accept"},
+    {"case_id": "partial_tool_call", "raw_tool_call_count": 1, "snapshot_status": "snapshot_partial", "business_outcome": "adapter_exception_or_reject"},
+    {"case_id": "finish_max_tokens", "raw_tool_call_count": 1, "snapshot_status": "snapshot_partial", "business_outcome": "adapter_exception_or_reject"},
+    {"case_id": "finish_stop", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "accept_or_reject_by_shape"},
+    {"case_id": "adapter_drops_tool", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "reject"},
+    {"case_id": "adapter_duplicates_tool", "raw_tool_call_count": 1, "snapshot_status": "snapshot_exact", "business_outcome": "reject"}
+  ]
+}
