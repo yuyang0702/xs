@@ -22,7 +22,7 @@ from .contracts import (
     SMOKE_APPROVAL_SCOPE,
     build_canary_experiment_plan_v1,
     build_c0b_smoke_1_final_approval_candidate_v2,
-    build_c0b_smoke_1_user_authorization_patch_v1,
+    build_c0b_smoke_1_user_authorization_patch_v2,
 )
 from .network_sentinel import FailClosedNetworkSentinel
 
@@ -229,7 +229,8 @@ def materialize_c0b_smoke_1_final_approval_v2(
             "execution_authorized": False,
             "approved_budget": budgets["approved"],
         })
-        patch = build_c0b_smoke_1_user_authorization_patch_v1({
+        patch = build_c0b_smoke_1_user_authorization_patch_v2({
+            "approval_scope": SMOKE_APPROVAL_SCOPE,
             "bound_plan_sha256": plan["plan_sha256"],
             "bound_approval_candidate_sha256": candidate[
                 "approval_candidate_sha256"
@@ -247,7 +248,7 @@ def materialize_c0b_smoke_1_final_approval_v2(
             "approval_timestamp": "USER_CONFIRMATION_REQUIRED",
             "approved_execution_window": candidate["execution_window"],
             "approval_expiry": candidate["approval_expiry"],
-            "single_use_cohort_id_confirmation": cohort_id,
+            "single_use_cohort_id": cohort_id,
             "authorize_credential_lookup": True,
             "authorize_provider_client_creation": True,
             "authorize_network": True,
@@ -278,6 +279,8 @@ def materialize_c0b_smoke_1_final_approval_v2(
                 ".venv/Scripts/python.exe", "-m", "tools.canary.launcher",
                 "--plan", f"{label}/{paths['plan'].name}",
                 "--approval", "${C0B_SMOKE_1_SIGNED_APPROVAL}",
+                "--approval-candidate", f"{label}/{paths['approval_candidate'].name}",
+                "--authorization-patch", "${C0B_SMOKE_1_CONFIRMED_AUTHORIZATION_PATCH}",
                 "--approved-plan-sha256", plan["plan_sha256"],
                 "--real-run", "--workload-fixture",
                 "tests/fixtures/canary/short-normal-v1.json",

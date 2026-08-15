@@ -25,9 +25,12 @@ from .approval_store import ApprovalConsumptionStore
 from .artifact_hash import file_sha256
 from .contracts import (
     SMOKE_APPROVAL_CANDIDATE_SCHEMA,
+    SMOKE_SIGNED_APPROVAL_SCHEMA,
     SMOKE_APPROVAL_SCOPE,
     validate_canary_approval_document,
     validate_canary_experiment_plan_v1,
+    validate_signed_smoke_approval_plan_v1,
+    validate_signed_smoke_approval_sources_v1,
 )
 from .descriptors import (
     copy_production_execution_config,
@@ -59,6 +62,11 @@ CHECK_NAMES = (
     "stop_condition_manifest", "canary_root_identity_layout",
     "approval_execution_window", "approval_cohort_single_use",
     "external_action_authorization",
+)
+SIGNED_CHECK_NAMES = (
+    "signed_approval_source_candidate_hash",
+    "signed_approval_source_patch_hash",
+    "signed_approval_protected_field_binding",
 )
 EXPECTED_STOPS = (
     "first_terminal_failure", "first_controlled_provider_capability_outcome",
@@ -127,6 +135,8 @@ def _result(name: str, exact: bool, reason: str, definition_hash: str | None = N
 
 def _validate_c0b_approval_closure(
     *, plan_path: Path, approval_path: Path, packet_path: Path,
+    source_candidate_path: Path | None = None,
+    source_authorization_patch_path: Path | None = None,
     workload_fixture_path: Path, live_database_path: Path,
     live_project_root: Path, canary_root: Path,
     approval_ledger_root: Path, cli_approved_plan_sha256: str,
@@ -141,11 +151,11 @@ def _validate_c0b_approval_closure(
         "cli_approved_plan_hash_mismatch", plan["plan_sha256"],
     ))
     approval_input = _read(approval_path)
-    candidate_document = (
-        approval_input.get("schema") == SMOKE_APPROVAL_CANDIDATE_SCHEMA
-    )
+    schema = approval_input.get("schema")
+    candidate_document = schema == SMOKE_APPROVAL_CANDIDATE_SCHEMA
+    signed_document = schema == SMOKE_SIGNED_APPROVAL_SCHEMA
     expected_scope = (
-        SMOKE_APPROVAL_SCOPE if candidate_document
+        SMOKE_APPROVAL_SCOPE if candidate_document or signed_document
         else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
     )
     approval, approval_identity, approval_kind = validate_canary_approval_document(
@@ -158,6 +168,17 @@ def _validate_c0b_approval_closure(
     checks.append(_result(
         CHECK_NAMES[1], True, "approval_hash_mismatch", approval_identity,
     ))
+    source_candidate = None
+    source_patch = None
+    if signed_document:
+        if source_candidate_path is None or source_authorization_patch_path is None:
+            raise ValueError("signed_approval_source_document_missing")
+        source_candidate = _read(source_candidate_path)
+        source_patch = _read(source_authorization_patch_path)
+        validate_signed_smoke_approval_sources_v1(
+            approval, source_candidate, source_patch, now=now,
+        )
+        validate_signed_smoke_approval_plan_v1(approval, plan, now=now)
     packet = _read(packet_path)
     launcher = validate_import_closure(
         Path(__file__).resolve().parent,
@@ -393,7 +414,7 @@ def _validate_c0b_approval_closure(
     all_false = all(actions.get(name) is False for name in names) and actions.get("fake_boundary") is False
     all_true = all(actions.get(name) is True for name in names) and actions.get("fake_boundary") is False and bool(approval.get("named_approver"))
     candidate_bindings_exact = True
-    if candidate_document:
+    if candidate_document or signed_document:
         policy = plan.get("smoke_1_policy") or {}
         budget_definitions = packet.get("budget_definitions") or {}
         candidate_bindings_exact = all((
@@ -416,9 +437,12 @@ def _validate_c0b_approval_closure(
             approval["first_terminal_stop"] is True,
             approval["resume_after_terminal"] is False,
             approval["phase1b_enabled"] is False,
-            approval["execution_authorized"] is False,
+            approval["execution_authorized"] is signed_document,
             packet.get("plan_sha256") == plan["plan_sha256"],
-            packet.get("approval_candidate_sha256") == approval_identity,
+            packet.get("approval_candidate_sha256") == (
+                approval["source_candidate_sha256"]
+                if signed_document else approval_identity
+            ),
             packet.get("feature_flag_snapshot_hash") == approval["feature_flag_snapshot_hash"],
             packet.get("stop_condition_manifest_hash") == approval["stop_condition_manifest_hash"],
             policy.get("approval_scope") == SMOKE_APPROVAL_SCOPE,
@@ -446,7 +470,26 @@ def _validate_c0b_approval_closure(
         "external_action_authorization_incoherent",
         domain_sha256("novel-flywheel-c0b-external-actions-v1", actions),
     ))
-    if [item["name"] for item in checks] != list(CHECK_NAMES):
+    if signed_document:
+        checks.extend((
+            _result(SIGNED_CHECK_NAMES[0],
+                    approval["source_candidate_sha256"]
+                    == source_candidate["approval_candidate_sha256"],
+                    "signed_approval_candidate_source_mismatch",
+                    approval["source_candidate_sha256"]),
+            _result(SIGNED_CHECK_NAMES[1],
+                    approval["source_authorization_patch_sha256"]
+                    == source_patch["authorization_patch_sha256"],
+                    "signed_approval_patch_source_mismatch",
+                    approval["source_authorization_patch_sha256"]),
+            _result(SIGNED_CHECK_NAMES[2], True,
+                    "signed_approval_protected_fields_mismatch",
+                    approval_identity),
+        ))
+    expected_check_names = list(CHECK_NAMES) + (
+        list(SIGNED_CHECK_NAMES) if signed_document else []
+    )
+    if [item["name"] for item in checks] != expected_check_names:
         raise AssertionError("closure_check_order_invalid")
     counters = {
         "credential_lookup_count": 0, "provider_client_creation_count": 0,
@@ -465,7 +508,10 @@ def _validate_c0b_approval_closure(
         "external_action_counters": counters,
         "approval_document_kind": approval_kind,
         "approval_identity_sha256": approval_identity,
-        "approval_state": "disabled_candidate" if all_false else "authorized_candidate",
+        "approval_state": (
+            "signed_approval_exact_and_executable" if signed_document
+            else "disabled_candidate" if all_false else "authorized_candidate"
+        ),
         "canary_root_candidate_status": root_status,
         "validated_at_policy": "caller_supplied_or_current_utc",
     }

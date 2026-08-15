@@ -15,6 +15,7 @@ from pathlib import Path
 import time
 from types import SimpleNamespace
 from typing import Any, Iterable
+from datetime import datetime
 
 from novel_flywheel.app import create_app
 from novel_flywheel.context_policy import classify_model_failure
@@ -34,7 +35,12 @@ from .approval_store import ApprovalConsumptionStore
 from .artifact_binding import observe_last_legal_bindings
 from .artifact_hash import file_sha256, live_parity_manifest, parity_equal, tree_manifest
 from .budget import AtomicBudgetLedger, BudgetLimits
-from .contracts import validate_canary_experiment_plan_v1, validate_canary_plan_approval_v1
+from .contracts import (
+    SMOKE_SIGNED_APPROVAL_SCHEMA, SMOKE_APPROVAL_SCOPE,
+    validate_canary_approval_document, validate_canary_experiment_plan_v1,
+    validate_signed_smoke_approval_plan_v1,
+    validate_signed_smoke_approval_sources_v1,
+)
 from .descriptors import (
     copy_production_execution_config, production_route_identity,
     production_route_manifest_hashes,
@@ -65,28 +71,63 @@ from .real_boundary import (
 from .route_policy import ApprovedRoutePolicy
 
 
+def validate_c0b_real_run_approval(
+    *, plan_path: Path, approval_path: Path, approved_plan_sha256: str,
+    source_candidate_path: Path | None = None,
+    source_authorization_patch_path: Path | None = None,
+    now: datetime | None = None,
+) -> tuple[dict[str, Any], str]:
+    """Validate an exact executable Approval without crossing a paid boundary."""
+    plan = validate_canary_experiment_plan_v1(_read_json(plan_path))
+    if plan["plan_sha256"] != approved_plan_sha256:
+        raise ValueError("cli_approved_plan_hash_mismatch")
+    raw = _read_json(approval_path)
+    signed = raw.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA
+    approval, identity, kind = validate_canary_approval_document(
+        raw,
+        expected_scope=(
+            SMOKE_APPROVAL_SCOPE if signed
+            else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
+        ),
+        expected_plan_sha256=plan["plan_sha256"],
+        expected_launcher_sha256=plan["launcher_sha256"],
+        now=now,
+    )
+    if kind == "final_approval_candidate":
+        raise PermissionError("approval_candidate_not_executable")
+    if signed:
+        if source_candidate_path is None or source_authorization_patch_path is None:
+            raise PermissionError("signed_approval_source_document_missing")
+        validate_signed_smoke_approval_sources_v1(
+            approval, _read_json(source_candidate_path),
+            _read_json(source_authorization_patch_path), now=now,
+        )
+        validate_signed_smoke_approval_plan_v1(approval, plan, now=now)
+    actions = approval["authorized_actions"]
+    if any(actions.get(name) is not True for name in (
+        "credential_lookup", "provider_client_creation", "network",
+        "paid_model_calls",
+    )) or actions.get("fake_boundary") is not False or not approval.get("named_approver"):
+        raise PermissionError("real_mode_final_authorization_missing")
+    return approval, identity
+
+
 async def run_c0b_real_run(
     *, plan_path: Path, approval_path: Path, approved_plan_sha256: str,
+    source_candidate_path: Path | None = None,
+    source_authorization_patch_path: Path | None = None,
     workload_fixture_path: Path, canary_root: Path,
     approval_ledger_root: Path, live_database_path: Path,
     live_project_root: Path, live_incident_roots: Iterable[Path] = (),
 ) -> dict:
     started_ns = time.perf_counter_ns()
     plan = validate_canary_experiment_plan_v1(_read_json(plan_path))
-    if plan["plan_sha256"] != approved_plan_sha256:
-        raise ValueError("cli_approved_plan_hash_mismatch")
-    approval = validate_canary_plan_approval_v1(
-        _read_json(approval_path),
-        expected_scope="C0B_REAL_PROVIDER_PATH_REACHABILITY",
-        expected_plan_sha256=plan["plan_sha256"],
-        expected_launcher_sha256=plan["launcher_sha256"],
+    approval, approval_identity = validate_c0b_real_run_approval(
+        plan_path=plan_path, approval_path=approval_path,
+        source_candidate_path=source_candidate_path,
+        source_authorization_patch_path=source_authorization_patch_path,
+        approved_plan_sha256=approved_plan_sha256,
     )
-    actions = approval["authorized_actions"]
-    if any(actions.get(name) is not True for name in (
-        "credential_lookup", "provider_client_creation", "network",
-        "paid_model_calls",
-    )) or not approval.get("named_approver"):
-        raise PermissionError("real_mode_final_authorization_missing")
     launcher = validate_import_closure(
         Path(__file__).resolve().parent,
         approved_third_party=plan["approved_dependency_manifest"]["third_party"],
@@ -208,6 +249,12 @@ async def run_c0b_real_run(
                     result = {
                         "plan": _read_json(plan_path),
                         "approval": _read_json(approval_path),
+                        **({
+                            "approval_candidate": _read_json(source_candidate_path),
+                            "authorization_patch": _read_json(
+                                source_authorization_patch_path
+                            ),
+                        } if approval.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA else {}),
                         "launcher_sha256": validate_import_closure(
                             Path(__file__).resolve().parent,
                             approved_third_party=APPROVED_THIRD_PARTY,
@@ -260,10 +307,14 @@ async def run_c0b_real_run(
                     snapshot_supplier=snapshot_supplier,
                     cli_approved_plan_sha256=approved_plan_sha256,
                     initial_plan_sha256=plan["plan_sha256"],
-                    initial_approval_sha256=approval["approval_sha256"],
+                    initial_approval_sha256=approval_identity,
                     initial_launcher_sha256=plan["launcher_sha256"],
                     initial_workload_manifest_hash=plan["workload_manifest_hash"],
-                    expected_scope="C0B_REAL_PROVIDER_PATH_REACHABILITY",
+                    expected_scope=(
+                        SMOKE_APPROVAL_SCOPE
+                        if approval.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA
+                        else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
+                    ),
                 )
                 approved_budget = approval.get("approved_budget") or {}
                 limits = BudgetLimits(
@@ -335,19 +386,13 @@ async def run_c0b_real_run(
                     )}, True
 
                 def final_authorizer(_request) -> None:
-                    current_approval = validate_canary_plan_approval_v1(
-                        _read_json(approval_path),
-                        expected_scope="C0B_REAL_PROVIDER_PATH_REACHABILITY",
-                        expected_plan_sha256=plan["plan_sha256"],
-                        expected_launcher_sha256=plan["launcher_sha256"],
+                    current_approval, current_identity = validate_c0b_real_run_approval(
+                        plan_path=plan_path, approval_path=approval_path,
+                        source_candidate_path=source_candidate_path,
+                        source_authorization_patch_path=source_authorization_patch_path,
+                        approved_plan_sha256=plan["plan_sha256"],
                     )
-                    current_actions = current_approval["authorized_actions"]
-                    if any(current_actions.get(name) is not True for name in (
-                        "credential_lookup", "provider_client_creation", "network",
-                        "paid_model_calls",
-                    )) or not current_approval.get("named_approver"):
-                        raise PermissionError("real_mode_final_authorization_missing")
-                    latch.authorize(current_approval["approval_sha256"])
+                    latch.authorize(current_identity)
 
                 def budget_stop_context(_request) -> dict[str, Any]:
                     selected = run_holder.get("run_id")
@@ -503,7 +548,7 @@ async def run_c0b_real_run(
     artifacts = tree_manifest(project.path)
     evidence = build_canary_evidence_package_v1({
         "plan_sha256": plan["plan_sha256"],
-        "approval_sha256": approval["approval_sha256"],
+        "approval_sha256": approval_identity,
         "launcher_sha256": launcher["launcher_sha256"],
         "outcome": {
             "value": outcome, "reason_code": reason_code,

@@ -8,7 +8,7 @@ from tools.canary.artifact_hash import file_sha256, tree_manifest
 from tools.canary.final_approval import materialize_c0b_smoke_1_final_approval_v2
 from tools.canary.contracts import (
     CanaryContractError,
-    build_c0b_smoke_1_user_authorization_patch_v1,
+    build_c0b_smoke_1_user_authorization_patch_v2,
     validate_c0b_smoke_1_final_approval_candidate_v2,
 )
 from tools.canary.launcher import CanaryLauncherError, validate_packet
@@ -89,7 +89,7 @@ def test_materialized_candidate_has_exact_scope_budget_window_and_false_actions(
 def test_user_authorization_patch_is_bound_and_contains_no_protected_mutation(materialized) -> None:
     candidate = materialized["approval_candidate"]
     patch = materialized["user_authorization_patch"]
-    assert patch["schema"] == "C0BSmoke1UserAuthorizationPatchV1"
+    assert patch["schema"] == "C0BSmoke1UserAuthorizationPatchV2"
     assert patch["bound_approval_candidate_sha256"] == candidate["approval_candidate_sha256"]
     assert patch["bound_plan_sha256"] == candidate["approved_plan_sha256"]
     assert patch["named_approver"] == "USER_CONFIRMATION_REQUIRED"
@@ -102,7 +102,7 @@ def test_user_authorization_patch_is_bound_and_contains_no_protected_mutation(ma
     assert patch["protected_fields_mutation_allowed"] is False
     assert patch["approved_execution_window"] == candidate["execution_window"]
     assert patch["approval_expiry"] == candidate["approval_expiry"]
-    assert patch["single_use_cohort_id_confirmation"] == candidate[
+    assert patch["single_use_cohort_id"] == candidate[
         "single_use_cohort_id"
     ]
     forbidden = {"route", "workload", "budgets", "stop_conditions", "feature_flags", "provider", "model", "launcher"}
@@ -119,7 +119,7 @@ def test_user_authorization_patch_rejects_extra_protected_fields(materialized) -
     with pytest.raises(
         CanaryContractError, match="authorization_patch_fields_unexpected",
     ):
-        build_c0b_smoke_1_user_authorization_patch_v1(payload)
+        build_c0b_smoke_1_user_authorization_patch_v2(payload)
 
 
 def test_complete_validate_only_receipt_is_exact_and_inert(materialized) -> None:

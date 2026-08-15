@@ -11,8 +11,11 @@ from novel_flywheel.runtime_fingerprint import (
 )
 
 from .contracts import (
+    SMOKE_SIGNED_APPROVAL_SCHEMA,
+    validate_canary_approval_document,
     validate_canary_experiment_plan_v1,
-    validate_canary_plan_approval_v1,
+    validate_signed_smoke_approval_plan_v1,
+    validate_signed_smoke_approval_sources_v1,
 )
 from .gate import BoundaryRequest
 
@@ -58,12 +61,25 @@ class ExactBoundaryVerifier:
                  "plan_hash_unapproved")
         _require(plan["plan_sha256"] == self.initial_plan_sha256,
                  "plan_changed_during_canary")
-        approval = validate_canary_plan_approval_v1(
+        approval, approval_identity, approval_kind = validate_canary_approval_document(
             snapshot["approval"], expected_scope=self.expected_scope,
             expected_plan_sha256=plan["plan_sha256"],
             expected_launcher_sha256=plan["launcher_sha256"], now=self.now,
         )
-        _require(approval["approval_sha256"] == self.initial_approval_sha256,
+        _require(approval_kind != "final_approval_candidate",
+                 "approval_candidate_not_executable")
+        if approval.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA:
+            _require("approval_candidate" in snapshot
+                     and "authorization_patch" in snapshot,
+                     "signed_approval_source_document_missing")
+            validate_signed_smoke_approval_sources_v1(
+                approval, snapshot["approval_candidate"],
+                snapshot["authorization_patch"], now=self.now,
+            )
+            validate_signed_smoke_approval_plan_v1(
+                approval, plan, now=self.now,
+            )
+        _require(approval_identity == self.initial_approval_sha256,
                  "approval_changed_during_canary")
         _require(snapshot["launcher_sha256"] == self.initial_launcher_sha256,
                  "launcher_changed_during_canary")

@@ -12,13 +12,19 @@ from dataclasses import asdict
 import json
 from pathlib import Path
 import sys
+from datetime import datetime
 
 from .contracts import (
     CanaryContractError,
     SMOKE_APPROVAL_CANDIDATE_SCHEMA,
+    SMOKE_AUTHORIZATION_PATCH_SCHEMA,
+    SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1,
+    SMOKE_SIGNED_APPROVAL_SCHEMA,
     SMOKE_APPROVAL_SCOPE,
     validate_canary_approval_document,
     validate_canary_experiment_plan_v1,
+    validate_signed_smoke_approval_plan_v1,
+    validate_signed_smoke_approval_sources_v1,
 )
 from .hash_manifest import validate_import_closure
 from .network_sentinel import FailClosedNetworkSentinel
@@ -46,6 +52,9 @@ def validate_packet(
     *, plan_path: Path, approval_path: Path,
     cli_approved_plan_sha256: str,
     execution_requested: bool = False,
+    source_candidate_path: Path | None = None,
+    source_authorization_patch_path: Path | None = None,
+    now: datetime | None = None,
 ) -> dict:
     plan = validate_canary_experiment_plan_v1(
         read_json_object(plan_path, "plan_unavailable_or_invalid"),
@@ -64,11 +73,14 @@ def validate_packet(
     approval_input = read_json_object(
         approval_path, "approval_unavailable_or_invalid",
     )
-    candidate_document = (
-        approval_input.get("schema") == SMOKE_APPROVAL_CANDIDATE_SCHEMA
-    )
+    schema = approval_input.get("schema")
+    candidate_document = schema == SMOKE_APPROVAL_CANDIDATE_SCHEMA
+    signed_document = schema == SMOKE_SIGNED_APPROVAL_SCHEMA
+    if schema in {SMOKE_AUTHORIZATION_PATCH_SCHEMA,
+                  SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1}:
+        raise CanaryLauncherError("authorization_patch_not_executable")
     expected_scope = (
-        SMOKE_APPROVAL_SCOPE if candidate_document
+        SMOKE_APPROVAL_SCOPE if candidate_document or signed_document
         else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
         if plan["canary_mode"] == "c0b_real_path_reachability"
         else "C0A_FAKE_DRY_RUN"
@@ -78,9 +90,22 @@ def validate_packet(
         expected_scope=expected_scope,
         expected_plan_sha256=plan["plan_sha256"],
         expected_launcher_sha256=manifest["launcher_sha256"],
+        now=now,
     )
     if candidate_document and execution_requested:
         raise CanaryLauncherError("approval_candidate_not_executable")
+    if signed_document:
+        if source_candidate_path is None or source_authorization_patch_path is None:
+            raise CanaryLauncherError("signed_approval_source_document_missing")
+        validate_signed_smoke_approval_sources_v1(
+            approval,
+            read_json_object(source_candidate_path,
+                             "approval_candidate_unavailable_or_invalid"),
+            read_json_object(source_authorization_patch_path,
+                             "authorization_patch_unavailable_or_invalid"),
+            now=now,
+        )
+        validate_signed_smoke_approval_plan_v1(approval, plan, now=now)
     actions = approval["authorized_actions"]
     if plan["canary_mode"] == "c0a_fake_dry_run":
         if execution_requested:
@@ -122,6 +147,8 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Controlled C0A Canary launcher")
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--approval", type=Path, required=True)
+    parser.add_argument("--approval-candidate", type=Path)
+    parser.add_argument("--authorization-patch", type=Path)
     parser.add_argument("--approved-plan-sha256", required=True)
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -149,6 +176,8 @@ def main(argv: list[str] | None = None) -> int:
                 result = validate_packet(
                     plan_path=args.plan, approval_path=args.approval,
                     cli_approved_plan_sha256=args.approved_plan_sha256,
+                    source_candidate_path=args.approval_candidate,
+                    source_authorization_patch_path=args.authorization_patch,
                 )
                 if result["canary_mode"] == "c0b_real_path_reachability":
                     required = (
@@ -163,6 +192,8 @@ def main(argv: list[str] | None = None) -> int:
                     from .approval_closure import validate_c0b_approval_closure
                     result = validate_c0b_approval_closure(
                         plan_path=args.plan, approval_path=args.approval,
+                        source_candidate_path=args.approval_candidate,
+                        source_authorization_patch_path=args.authorization_patch,
                         packet_path=args.approval_packet,
                         workload_fixture_path=args.workload_fixture,
                         live_database_path=args.live_database,
@@ -221,11 +252,15 @@ def main(argv: list[str] | None = None) -> int:
             validate_packet(
                 plan_path=args.plan, approval_path=args.approval,
                 cli_approved_plan_sha256=args.approved_plan_sha256,
+                source_candidate_path=args.approval_candidate,
+                source_authorization_patch_path=args.authorization_patch,
                 execution_requested=True,
             )
             from .real_run import run_c0b_real_run
             completed = asyncio.run(run_c0b_real_run(
                 plan_path=args.plan, approval_path=args.approval,
+                source_candidate_path=args.approval_candidate,
+                source_authorization_patch_path=args.authorization_patch,
                 approved_plan_sha256=args.approved_plan_sha256,
                 workload_fixture_path=args.workload_fixture,
                 canary_root=args.canary_root,

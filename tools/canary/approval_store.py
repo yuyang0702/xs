@@ -12,6 +12,12 @@ from novel_flywheel.runtime_fingerprint_build import (
     canonical_json_bytes,
     domain_sha256,
 )
+from .contracts import (
+    SMOKE_APPROVAL_CANDIDATE_SCHEMA,
+    SMOKE_AUTHORIZATION_PATCH_SCHEMA,
+    SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1,
+    SMOKE_SIGNED_APPROVAL_SCHEMA,
+)
 
 
 class CanaryApprovalReplay(RuntimeError):
@@ -26,6 +32,20 @@ class ApprovalConsumptionStore:
 
     def _path(self, cohort_id: str, suffix: str) -> Path:
         return self.root / f"{cohort_id}.{suffix}.json"
+
+    @staticmethod
+    def _identity(approval: Mapping[str, Any], *, executable: bool) -> tuple[str, str]:
+        schema = approval.get("schema")
+        if schema == SMOKE_APPROVAL_CANDIDATE_SCHEMA:
+            if executable:
+                raise CanaryApprovalReplay("approval_candidate_not_executable")
+            return "approval_candidate_sha256", str(approval["approval_candidate_sha256"])
+        if schema in {SMOKE_AUTHORIZATION_PATCH_SCHEMA,
+                      SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1}:
+            raise CanaryApprovalReplay("authorization_patch_not_executable")
+        if schema == SMOKE_SIGNED_APPROVAL_SCHEMA:
+            return "signed_approval_sha256", str(approval["signed_approval_sha256"])
+        return "approval_sha256", str(approval["approval_sha256"])
 
     @staticmethod
     def _definition(schema: str, payload: Mapping[str, Any]) -> dict:
@@ -56,6 +76,7 @@ class ApprovalConsumptionStore:
             os.close(descriptor)
 
     def reserve(self, approval: Mapping[str, Any]) -> dict:
+        identity_field, identity = self._identity(approval, executable=True)
         cohort_id = str(approval["single_use_cohort_id"])
         reserved = self._path(cohort_id, "reserved")
         consumed = self._path(cohort_id, "consumed")
@@ -63,7 +84,7 @@ class ApprovalConsumptionStore:
             raise CanaryApprovalReplay("approval_already_consumed")
         receipt = self._definition("CanaryApprovalReservationV1", {
             "cohort_id": cohort_id,
-            "approval_sha256": approval["approval_sha256"],
+            identity_field: identity,
             "approved_plan_sha256": approval["approved_plan_sha256"],
         })
         self._exclusive_write(reserved, receipt, "approval_already_reserved")
@@ -71,6 +92,7 @@ class ApprovalConsumptionStore:
 
     def status(self, approval: Mapping[str, Any]) -> dict[str, Any]:
         """Read-only replay state for validate-only closure."""
+        self._identity(approval, executable=False)
         cohort_id = str(approval["single_use_cohort_id"])
         reserved = self._path(cohort_id, "reserved").is_file()
         consumed = self._path(cohort_id, "consumed").is_file()
@@ -83,6 +105,7 @@ class ApprovalConsumptionStore:
         }
 
     def consume(self, approval: Mapping[str, Any], evidence_sha256: str) -> dict:
+        identity_field, identity = self._identity(approval, executable=True)
         cohort_id = str(approval["single_use_cohort_id"])
         reserved = self._path(cohort_id, "reserved")
         target = self._path(cohort_id, "consumed")
@@ -90,9 +113,15 @@ class ApprovalConsumptionStore:
             raise CanaryApprovalReplay("approval_not_reserved")
         if target.exists():
             raise CanaryApprovalReplay("approval_already_consumed")
+        try:
+            reservation = json.loads(reserved.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise CanaryApprovalReplay("approval_reservation_invalid") from exc
+        if reservation.get("payload", {}).get(identity_field) != identity:
+            raise CanaryApprovalReplay("approval_reservation_identity_mismatch")
         receipt = self._definition("CanaryApprovalConsumptionV1", {
             "cohort_id": cohort_id,
-            "approval_sha256": approval["approval_sha256"],
+            identity_field: identity,
             "consumed_evidence_sha256": evidence_sha256,
         })
         self._exclusive_write(target, receipt, "approval_already_consumed")
