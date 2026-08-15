@@ -1,6 +1,7 @@
 {
-  "approval_candidate_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
-  "definition_sha256": "8fc07c1929f77c525d5af0cfd5d1cd4d554b668d33d3728b4f6d153b597fce04",
+  "approval_candidate_sha256": "659f4b95a3a4eed73c18c5ba3ee2d0f8ab1fe221f862c1a27c5325f2a4971bac",
+  "contract_status": "C0B_SMOKE_1_SIGNED_APPROVAL_CONTRACT_READY",
+  "definition_sha256": "24e6c56991e9d148929e7be9c293e77bc6bfccf8edf24671ff8745bb7f2cd7aa",
   "execution_performed": false,
   "external_action_counters": {
     "credential_lookup_count": 0,
@@ -10,17 +11,17 @@
     "provider_client_creation_count": 0
   },
   "files": {
-    "c0b-smoke-1-execution-command-preview-v1.json": "a05b47e24558c97541073bb1c57462148f834bb6d905358eb6c36b3a9f03e8ba",
-    "c0b-smoke-1-final-approval-candidate-v2.json": "25d79e44847560a27868e8ee7d23346fe562b8e1b966a5493e5d5859cd7d7050",
-    "c0b-smoke-1-final-packet-v2.json": "16a78df5bc7ac8511bdb4c67f5f435692dda0edcf4ba51b5f277bd81a4ac41a7",
-    "c0b-smoke-1-final-plan-v2.json": "afe2c82f57e9a5c31f8597c0ee8dbec9a1d7b51bd1e806fef27883150458f2b1",
-    "c0b-smoke-1-final-validate-only-receipt-v2.json": "cc6215b32c0057d5d58b43618fb0dde06462b6477504abca6dd1e4e7f0b29c89",
-    "c0b-smoke-1-user-authorization-patch-v1.json": "22cf6622ce12d6157b79e66f151005f022d78f5ae9cc6812fdea6b3a1ff43790"
+    "c0b-smoke-1-execution-command-preview-v1.json": "2ebfba328539ec19d6db3354948484ab3e6e123f5e8d9cafb3a91d410ee51866",
+    "c0b-smoke-1-final-approval-candidate-v2.json": "3b3771fb83e96104709be19d558c67937ff0670d5156f0ecfa98676cd27784e3",
+    "c0b-smoke-1-final-packet-v2.json": "ee9e3480a8e5d2506d2196d9185dcf05501b29f412b1ac3676fc7385917e6225",
+    "c0b-smoke-1-final-plan-v2.json": "1884c1d47fe552d03dab2789e5241badaa0a1d5de6c30828fbd9ce59c0254c97",
+    "c0b-smoke-1-final-validate-only-receipt-v2.json": "8f5527991e2794c13cd50fe1b6b18517319adb13e5868b8029b314a0426902ae",
+    "c0b-smoke-1-user-authorization-patch-v2.json": "b01a78d8e82ed7de89d8f59be99e8901d4c7a14b197c89cbe593a09dbb24e8c6"
   },
-  "launcher_sha256": "d31e48812986b41ac3ee43fa26baa655625f5d6b0503f05d875f4ba43b060a34",
-  "plan_sha256": "20cc492ebca200ee9d3cfe42a3f09d6ad5d63e908031457b055e34833263da11",
+  "launcher_sha256": "099efc8c652a19d63ac9835e2a18e6b6a453d8abf0dc40cfc5af90ed7bdca163",
+  "plan_sha256": "7a5005c0d01c827d3af632c91cdf924ad65aceb2d10c9e2379b3f5f135c41668",
   "schema": "C0BSmoke1FinalMaterializationIndexV2",
-  "status": "C0B_SMOKE_1_WAITING_FOR_FINAL_USER_AUTHORIZATION",
-  "validation_receipt_sha256": "6501e0bfb0f9fc42b59ce664df8161b660bfa440c0a8786c7a80ae2af61c21c4",
+  "status": "C0B_SMOKE_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "c7881e0050f0a15e1dbc787c9a60bcc3c9fa256087d99f3ed29ee1ab65b74348",
   "version": 2
 }

@@ -9,9 +9,9 @@
     "maximum_total_model_calls": 48,
     "maximum_usd_cost_microunits": 20000000
   },
-  "approval_candidate_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
-  "approval_expiry": "2026-08-17T05:34:34Z",
-  "authorization_patch_sha256": "8f70676b6545caabc6f76bb6750ec7ecfc8fc2cd7ca2d170d1c59e1d24d357e5",
+  "approval_candidate_sha256": "659f4b95a3a4eed73c18c5ba3ee2d0f8ab1fe221f862c1a27c5325f2a4971bac",
+  "approval_expiry": "2026-08-17T07:35:00Z",
+  "authorization_patch_sha256": "dde3722f97369625e590930bfdebf87f5d3d20bfb2e0b1879da16a4a0855eef6",
   "authorization_required": true,
   "budget_definitions": {
     "approved": {
@@ -113,9 +113,10 @@
     "workload_id": "short-normal-v1"
   },
   "candidate_execution_window": {
-    "not_after": "2026-08-17T05:34:34Z",
-    "not_before": "2026-08-15T05:34:34Z"
+    "not_after": "2026-08-17T07:35:00Z",
+    "not_before": "2026-08-15T07:35:00Z"
   },
+  "contract_status": "C0B_SMOKE_1_SIGNED_APPROVAL_CONTRACT_READY",
   "elapsed_budget": {
     "definition_sha256": "a3c32156c65c7abe4068a8af9e0f143457f8816013de6543c77410eee1df81a6",
     "expected_duration_seconds": 1800,
@@ -148,14 +149,14 @@
     "output_tokens": 2000000,
     "usd_cost_microunits": 60000000
   },
-  "launcher_sha256": "d31e48812986b41ac3ee43fa26baa655625f5d6b0503f05d875f4ba43b060a34",
+  "launcher_sha256": "099efc8c652a19d63ac9835e2a18e6b6a453d8abf0dc40cfc5af90ed7bdca163",
   "monetary_hard_caps": {
     "approved_fx_snapshot": null,
     "maximum_cny_cost_microunits": 120000000,
     "maximum_usd_cost_microunits": 60000000,
     "schema": "CanaryMonetaryBudgetV1"
   },
-  "plan_sha256": "20cc492ebca200ee9d3cfe42a3f09d6ad5d63e908031457b055e34833263da11",
+  "plan_sha256": "7a5005c0d01c827d3af632c91cdf924ad65aceb2d10c9e2379b3f5f135c41668",
   "price_catalog": [
     {
       "cached_input_rate_per_unit": "0.044",
@@ -274,8 +275,8 @@
   "role_binding_manifest_definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
   "runtime_execution_fingerprint": "eb2ed19dd0b6b9a7517f6044f4a8aecb0aadfcb9f2e1303f3ba77567a8b710a5",
   "schema": "C0BSmoke1FinalApprovalPacketV2",
-  "single_use_cohort_id": "c0b-smoke-1-v2-20260815t051934z-3947ac6",
-  "status": "C0B_SMOKE_1_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "single_use_cohort_id": "c0b-smoke-1-p12-20260815t072000z-f9fbd60",
+  "status": "C0B_SMOKE_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
   "stop_condition_manifest_hash": "b50e7bbf835fe1fa4f10565e11a0ab9ec645e045ae11cf48718707d8ca9d1d51",
   "version": 2,
   "workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1"

@@ -296,15 +296,15 @@
     "project_short_canonical_v2": false
   },
   "isolation": {
-    "approval_ledger_identity": "ce439bba9bed97402f31f0c856d74fadd25fbafc27aa290f002c787557a0cf40",
+    "approval_ledger_identity": "9012179f1d11a3c21e1c4bb27da294ad9063857cf4519de28d9e3923d152772a",
     "data_root_kind": "canary_ephemeral",
     "db_path_hash": "bbccc53b4aceeed4adc8344d6515f3bf8ba3bf523e20b0a4d1d50417054cbdc2",
     "project_root_hash": "dfd4eb9d81f52d38954d6b45c08725888a44c3f0b1b241838f918f6d862d1812",
-    "run_namespace": "c0b-smoke-1-v2-20260815t051934z-3947ac6",
-    "stable_root_identity": "99e494ce07309d4c72eac7151a427deea3a1fa56f1e70972d215b8bde15aec4f"
+    "run_namespace": "c0b-smoke-1-p12-20260815t072000z-f9fbd60",
+    "stable_root_identity": "8ccd78f9d84a848b09102d6a1420acb9dd8b1273d44a91ed24f7d840e0d97e32"
   },
-  "launcher_sha256": "d31e48812986b41ac3ee43fa26baa655625f5d6b0503f05d875f4ba43b060a34",
-  "plan_sha256": "20cc492ebca200ee9d3cfe42a3f09d6ad5d63e908031457b055e34833263da11",
+  "launcher_sha256": "099efc8c652a19d63ac9835e2a18e6b6a453d8abf0dc40cfc5af90ed7bdca163",
+  "plan_sha256": "7a5005c0d01c827d3af632c91cdf924ad65aceb2d10c9e2379b3f5f135c41668",
   "provider_descriptor_definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
   "report_policy": {
     "hash_only": true,
