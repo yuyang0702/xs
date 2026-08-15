@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -88,3 +89,17 @@ def test_forward_risk_declares_no_model_output_boundary_change() -> None:
     assert "not_applicable" in {
         item["disposition"] for item in value["sibling_boundaries"]
     }
+
+
+def test_evidence_index_binds_every_deliverable_byte_for_byte() -> None:
+    value = _load("r1-d0-evidence-index-v1.json")
+
+    assert value["row_count"] == len(value["rows"]) == 10
+    for row in value["rows"]:
+        data = (REPORTS / row["path"]).read_bytes()
+        assert len(data) == row["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]
+    canonical = json.dumps(
+        value["rows"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    assert hashlib.sha256(canonical).hexdigest() == value["rows_canonical_sha256"]

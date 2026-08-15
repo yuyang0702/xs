@@ -1,0 +1,107 @@
+{
+  "schema": "R1D0ValidationReceiptV1",
+  "version": 1,
+  "branch": "r1-d0/draft-prose-validation-root-cause-20260816",
+  "baseline_head": "cf0756147da889e1c6da159507d006f29426eeb0",
+  "validated_through_head": "28c41e2f1d52876b807152866630057b68832de2",
+  "commits": {
+    "test_only_characterization": "ea7bd8a5d34e7ec11c8f252bfaebe5620686c061",
+    "root_cause_evidence": "7cc9375d31fe3d3480b9532df882262b4d5b2329",
+    "strict_gate_schema_alignment": "28c41e2f1d52876b807152866630057b68832de2"
+  },
+  "parent_evidence": {
+    "status": "exact_immutable_gate_passed",
+    "source_execution_head": "6405b3b806d88c56accc99d5152ce7461656e33b",
+    "canonical_sha256": "8fcaadd61ff15bedb5033054494074adcd3da26bff728782bb4684b20cbff9f1",
+    "parent_evidence_changed": false
+  },
+  "tests": {
+    "characterization_and_reports": {
+      "passed": 16,
+      "xfailed": 1,
+      "failed": 0,
+      "elapsed_seconds": 1.04
+    },
+    "prose_and_r1_d0_focused": {
+      "passed": 34,
+      "xfailed": 1,
+      "failed": 0,
+      "elapsed_seconds": 1.08
+    },
+    "workflow_siblings": {
+      "passed": 3,
+      "deselected": 375,
+      "failed": 0,
+      "elapsed_seconds": 1.44
+    },
+    "full_repository": {
+      "passed": 2693,
+      "skipped": 2,
+      "xfailed": 6,
+      "failed": 1,
+      "elapsed_seconds": 1321.61,
+      "pre_existing_failures": [
+        "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical"
+      ],
+      "new_failures": []
+    }
+  },
+  "strict_change_gate": {
+    "declared_level": "L3",
+    "baseline_used": true,
+    "blocker_count": 0,
+    "warning_count": 1,
+    "ok_as_completion_gate": false,
+    "warning": "resolution_status=unresolved because R1-D0 verifies root cause but intentionally applies no production fix"
+  },
+  "offline_replay": {
+    "exact_historical_output_hashes": 3,
+    "fake_model_boundaries": 3,
+    "credential_lookups": 0,
+    "provider_client_constructions": 0,
+    "network_calls": 0,
+    "real_provider_calls": 0,
+    "paid_model_calls": 0,
+    "terminal_reproduced": true,
+    "prompt_hash_parity_claimed": false
+  },
+  "production_parity": {
+    "src_novel_flywheel_tree_before": "6d9b49890afeb62de09599e02cb942619d654b32",
+    "src_novel_flywheel_tree_after": "6d9b49890afeb62de09599e02cb942619d654b32",
+    "baml_src_tree_before": "32d97f9a738755a03d9b7bcb4fd49adef6ab2beb",
+    "baml_src_tree_after": "32d97f9a738755a03d9b7bcb4fd49adef6ab2beb",
+    "production_source_changed": false,
+    "prompt_changed": false,
+    "route_or_retry_changed": false,
+    "validator_changed": false,
+    "checkpoint_or_resume_changed": false
+  },
+  "live_parity": {
+    "database_sha256_before": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "database_sha256_after": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_story_sha256_before": "101221ae2af393e514b2d73c921d97689611de3339e584b1b0ded819a940c745",
+    "formal_story_sha256_after": "101221ae2af393e514b2d73c921d97689611de3339e584b1b0ded819a940c745",
+    "canon_sha256_before": "5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc",
+    "canon_sha256_after": "5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc",
+    "story_state_rows_before_after": [6, 6],
+    "candidate_rows_before_after": [11, 11],
+    "checkpoint_rows_before_after": [917, 917],
+    "formal_candidate_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "formal_checkpoint_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "formal_saga_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "unchanged": true
+  },
+  "root_cause": {
+    "status": "confirmed",
+    "family": "draft.validator_false_positive",
+    "submechanism": "authority_approved_latin_term_misclassified",
+    "first_divergent_rule": "MIXED_SCRIPT",
+    "production_fix_applied": false
+  },
+  "gates": {
+    "r1_d0_evidence_closure": "COMPLETE",
+    "production_fix_completion": "UNRESOLVED_BY_DESIGN",
+    "next_development": "R1_D0_DEVELOPMENT_GO",
+    "real_canary_authorized": false
+  }
+}

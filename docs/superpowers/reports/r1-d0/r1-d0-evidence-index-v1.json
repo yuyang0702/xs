@@ -1,0 +1,63 @@
+{
+  "schema": "R1D0EvidenceIndexV1",
+  "version": 1,
+  "canonicalization": "UTF-8 JSON, sorted keys, compact separators over rows",
+  "row_count": 10,
+  "rows_canonical_sha256": "55dacc5373efecffe1ee0ffa8bb0da95ed2e753618db910322b7b4ea717c08d7",
+  "rows": [
+    {
+      "path": "2026-08-16-r1-d0-root-cause-verification-report.md",
+      "sha256": "f3561d916c77e18ab08e9c9b013825c809a28bf67a6a8a263937026840978364",
+      "bytes": 9250
+    },
+    {
+      "path": "draft-best-candidate-containment-v1.json",
+      "sha256": "e6ab4bc3aa7c39d27c3476ee2011615a9257b44f01687fe7d5f3e520d55db44d",
+      "bytes": 1232
+    },
+    {
+      "path": "draft-prose-validation-failure-timeline-v1.json",
+      "sha256": "47ddc78301abd53d30024c468bf83dd417d82537fca98b042173fa7e9c95ffba",
+      "bytes": 2583
+    },
+    {
+      "path": "draft-scope-retry-closure-map-v1.json",
+      "sha256": "e72ca3b451b3fbd26fb63478672573a5b1b459ba94100adf1338ee4449e611d3",
+      "bytes": 1878
+    },
+    {
+      "path": "draft-validator-contract-map-v1.json",
+      "sha256": "df6dd2f01c23a51a1ecc6a3d1f848d4e728c1619402d1fbaee7f2ae805c79a8e",
+      "bytes": 3356
+    },
+    {
+      "path": "r1-d0-differential-experiments-v1.json",
+      "sha256": "f9d50688205371731d660b0a9a093fb53b5137cfa53bd3c727a4a4ccb5612fec",
+      "bytes": 2719
+    },
+    {
+      "path": "r1-d0-exact-offline-replay-v1.json",
+      "sha256": "784b1d3461d06b216735574da64cfa7839bcfa542fbf88341e39403a53787281",
+      "bytes": 2291
+    },
+    {
+      "path": "r1-d0-forward-risk-v2.json",
+      "sha256": "80ae9a73d79127d6d1a773dc8b7b7dff24f06cd90b7cc5b67af22d54269d96a0",
+      "bytes": 5252
+    },
+    {
+      "path": "r1-d0-hypothesis-table-v1.json",
+      "sha256": "a381a97768fea5681ecd1acef9c2beb4f3d83d2bc27a252e98137aac571170b1",
+      "bytes": 4504
+    },
+    {
+      "path": "r1-d0-validation-receipt-v1.json",
+      "sha256": "ea84343b45b7d61de24ec7fa3e8b8827e56338e6adc21e36b4757c64ee2d6518",
+      "bytes": 4171
+    }
+  ],
+  "index_self_hash_included": false,
+  "raw_content_included": false,
+  "prompt_content_included": false,
+  "private_paths_included": false
+}
