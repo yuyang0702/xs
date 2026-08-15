@@ -1,0 +1,123 @@
+{
+  "version": 2,
+  "original_requirement": "Observe the production planning-adaptation Whole strict-tool boundary and output-budget lineage without changing provider requests, prompts, contracts, acceptance, retry, fallback, budgets, checkpoints, or formal artifacts; derive only an offline one-variable retained-budget counterfactual and non-executable Canary contracts.",
+  "scope_classification": "closed_world",
+  "operational_definition": "The closed target is review/planning_adaptation_whole_receipt/planning_adaptation_whole@1/configured_fallback plus the minimum parent budget lineage. Success means request, provider-raw, adapter-normalized and gateway decision hashes correlate; missing snapshots remain unknown; all diagnostics fail open; current business outputs and incident classification remain identical.",
+  "forbidden_narrowing": [
+    "A normalized Gateway response alone cannot be presented as provider-raw evidence.",
+    "A missing or partial snapshot cannot be classified as zero tool calls.",
+    "Parser or boundary recovery cannot be presented as workflow recovery.",
+    "The offline counterfactual cannot be presented as a production behavior fix or proof that Whole fallback would be avoided.",
+    "Passing deterministic adapters cannot be presented as real-provider shape evidence.",
+    "Canary A and Canary B cannot share approval, cohort, launcher, fingerprint, or execution."
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The user explicitly limited full-shape collection to one controlled stage/boundary/contract/role/route tuple. is_strict_tool_target performs equality checks over that tuple and tests count non-target strict routes without persisting full shape.",
+  "constraint_traceability": [
+    {
+      "requirement": "Bind request-side declaration to provider raw, adapter normalized and Gateway decision layers with one correlation hash.",
+      "implementation": "model_diagnostics.py schemas/observer plus sanitized snapshots in all three production adapters and the explicit ModelGateway diagnostic context.",
+      "test_paths": ["tests/test_r1_pa1_runtime_observability.py", "tests/providers/test_diagnostic_tool_shapes.py"],
+      "evidence": "Production-adapter fake transports reach the real adapters and Gateway and assert one exact correlation across all three layers."
+    },
+    {
+      "requirement": "Preserve original exception identity, traceback, cause/context, fallback classification and production incident family.",
+      "implementation": "Adapter snapshots attach to the original exception object; observers swallow sink/serialization failures and never wrap exceptions.",
+      "test_paths": ["tests/test_r1_pa1_runtime_observability.py"],
+      "evidence": "Enabled/disabled runs compare object identity, type, message, traceback frame names, cause/context, model failure classification and production incident classification; forced sink failure preserves the business exception and call count."
+    },
+    {
+      "requirement": "Observe cap-before/after lineage without retaining expansion state or changing budgets.",
+      "implementation": "contract_runtime.py emits immutable lineage observations around unchanged assignments; deterministic runtime IDs derive from logical ordinals.",
+      "test_paths": ["tests/test_r1_pa1_runtime_observability.py", "tests/test_r1_pa1_characterization.py"],
+      "evidence": "Three reconstructed runtimes still dispatch [1276,1276,1276], each computes the same expansion target, records provider-cap effects, and reports retained_expansion_state=false."
+    },
+    {
+      "requirement": "Derive retained-budget behavior offline while changing only cross-runtime budget retention.",
+      "implementation": "tests/r1_pa1_counterfactual.py imports the production expansion policy and has no ModelGateway/provider path.",
+      "test_paths": ["tests/test_r1_pa1_counterfactual.py"],
+      "evidence": "The derived sequence and cap interaction are stable, 2552/5104 are absent from implementation source, before/after invariant hashes match, provider calls executed remain zero, and fallback reachability is unknown_counterfactual."
+    },
+    {
+      "requirement": "Store no prompt, prose, raw response, argument, credential, request ID, absolute path, or unknown tool name in cleartext.",
+      "implementation": "model_diagnostics.py uses domain-separated hashes and reliability_trace.py retains the private-field/path denylist; a closed human-readable field allowlist is versioned.",
+      "test_paths": ["tests/test_model_diagnostics.py", "tests/test_r1_pa1_privacy_performance.py"],
+      "evidence": "Sentinel prompt/prose/argument/request/credential/path values are absent from serialized records and every non-hash string field must remain on the reviewed allowlist."
+    },
+    {
+      "requirement": "Keep both diagnostic flags default-off and execution-fingerprint-visible without changing build fingerprint.",
+      "implementation": "runtime_fingerprint.py registers both flags; model_diagnostics.py checks exact value 1 at the observation boundary.",
+      "test_paths": ["tests/test_runtime_fingerprint.py", "tests/test_model_diagnostics.py"],
+      "evidence": "Tests prove defaults are false, build fingerprint is stable, and execution-config/runtime-execution fingerprints change when flags change."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "runtime.required_tool_output_missing",
+    "parser.generated_artifact_shape",
+    "model.output_truncated",
+    "provider.structured_output_business_incomplete",
+    "planning.review_evidence_binding_invalid",
+    "planning.review_protocol_route_exhausted",
+    "runtime.primary_error_masked"
+  ],
+  "projected_failure_mechanisms": [
+    "provider returns zero, wrong, multiple or partial tool calls",
+    "adapter drops or duplicates a provider tool call",
+    "adapter raises while decoding malformed arguments",
+    "output expansion is computed inside a runtime then lost when an outer retry reconstructs it",
+    "provider/model/canary caps reduce an expansion target",
+    "diagnostic serialization, lock or append failure masks a business exception"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No parser, normalizer, schema, ToolCall conversion, strict uniqueness condition, accepted value, retry/fallback count, request body, Prompt, Contract, or budget assignment is changed. The only new adapter result is sanitized side-channel metadata in existing provider_state or on the original exception, and enabled/disabled production-shaped tests assert identical business decisions.",
+  "why_previous_tests_missed": "Earlier tests started at normalized ModelResponse or Contract Runtime output and therefore could not distinguish provider absence from adapter loss/duplication, nor show that each outer Whole attempt rebuilt a runtime after computing an unused expansion. R1-PA1 crosses the real adapter and next Gateway boundary with fake transports and records runtime-instance lineage.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Anthropic strict-tool adapter to ModelGateway",
+      "disposition": "fixed_and_tested",
+      "evidence": "tests/providers/test_diagnostic_tool_shapes.py and tests/test_r1_pa1_runtime_observability.py exercise exact, malformed and partial Anthropic shapes through the production adapter."
+    },
+    {
+      "boundary": "OpenAI Chat Completions strict-tool adapter to ModelGateway",
+      "disposition": "fixed_and_tested",
+      "evidence": "The production OpenAIChatAdapter is exercised with fake HTTP bodies and correlated raw/normalized/Gateway assertions."
+    },
+    {
+      "boundary": "OpenAI Responses strict-tool adapter to ModelGateway",
+      "disposition": "fixed_and_tested",
+      "evidence": "The production OpenAIResponsesAdapter is exercised with fake HTTP bodies and correlated raw/normalized/Gateway assertions."
+    },
+    {
+      "boundary": "planning_adaptation_segment and other strict-tool routes",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The deterministic target filter excludes all non-Whole tuples from full shape persistence and increments only strict_tool_excluded_not_target; no sibling business path is changed."
+    },
+    {
+      "boundary": "Contract Runtime parser/adapter/domain validation after strict uniqueness",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The zero/wrong/multiple cases retain the same pre-parser RuntimeError, while the unique expected tool continues into unchanged contract parsing and returns the same artifact."
+    },
+    {
+      "boundary": "Checkpoint, Candidate, StoryState, Canon and Saga promotion",
+      "disposition": "not_applicable",
+      "evidence": "No diagnostic record is registered as a generated artifact and live manifests/table counts remain byte-for-byte unchanged; no production workflow is executed by PA1D."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_r1_pa1_runtime_observability.py",
+    "tests/providers/test_diagnostic_tool_shapes.py",
+    "tests/test_r1_pa1_characterization.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_r1_pa1_runtime_observability.py",
+    "tests/test_contract_runtime.py",
+    "tests/test_planning_adaptation_workflow.py"
+  ],
+  "remaining_risks": [
+    "case_fixed refers only to the approved R1-PA1 instrumentation/counterfactual scope; the underlying production failure remains unresolved",
+    "The historical real-provider Whole raw response was not persisted and remains unverifiable.",
+    "No real-provider Canary A has been approved, materialized or executed.",
+    "The offline retained-budget sequence does not prove whether a real Whole fallback remains reachable.",
+    "Performance figures are local deterministic measurements, not production latency distributions."
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "R1PA1AuthorizedProtectedSourceSuccessorV1",
+  "version": 1,
+  "phase": "R1-PA1",
+  "parent_baseline_head": "dc15a525f656344c510f973630adaf7cbc3fecf2",
+  "authorization_scope": "strict-tool and output-budget hash-only instrumentation",
+  "business_behavior_changed": false,
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "model_calls": 0,
+    "prompt": 0,
+    "retry_fallback_sequence": 0
+  },
+  "authorized_source_deltas": [
+    {
+      "path": "src/novel_flywheel/contract_runtime.py",
+      "before_sha256": "38d578e02d75526cb6b05adc31e6099e28e4b35e395083d2602c6c02b50c4007",
+      "after_sha256": "fc3a101b9edd0129f91192b1efdb3fc22241deba3a71db502195fb4d149c0c1f"
+    },
+    {
+      "path": "src/novel_flywheel/generated_artifacts.py",
+      "before_sha256": "fb36070b06e333d4154b5b7c0d761f154a8a9fac0f3224309dc78bd56e347ddb",
+      "after_sha256": "cadd368f8cf69de0493de08d59e7e7f48128379607cf1128ca8667a34e0d5104"
+    },
+    {
+      "path": "src/novel_flywheel/models.py",
+      "before_sha256": "2de847ac06c4f8b822c2a590ab6fed1614b7d833798b343ae4d12a648dd55f1a",
+      "after_sha256": "1effc161eb0eda7ab30e4131f52071ddf70d5f4bc923a70c34f2b7283d874bc9"
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "before_sha256": "53a8ad30b8850d7c96bce1f135fb7ef662bd4981922aebbe0dd0736cdcbe529a",
+      "after_sha256": "d8bf3b3567145a102a3a13f0e65a491d6efaf8ceeb2e6e92d9383c6068619b68"
+    }
+  ]
+}

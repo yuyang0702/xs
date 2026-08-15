@@ -1,0 +1,46 @@
+{
+  "schema": "R1PAStrictToolObs1CanaryDraftV1",
+  "version": 1,
+  "status": "draft_unapproved_not_executable",
+  "canary_id": "R1-PA-STRICT-TOOL-OBS-1",
+  "authorization": {
+    "named_approver": null,
+    "approval_id": null,
+    "signature": null,
+    "execution_authorized": false
+  },
+  "run_limit": 1,
+  "workflow": "short_production_mirror",
+  "target": {
+    "stage": "review",
+    "boundary": "planning_adaptation_whole_receipt",
+    "contract_id": "planning_adaptation_whole",
+    "contract_version": 1,
+    "role": "review",
+    "route_kind": "configured_fallback"
+  },
+  "diagnostic_flags": {
+    "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1": true,
+    "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1": false
+  },
+  "behavior_contract": {
+    "budget_behavior": "current_unchanged",
+    "prompt_behavior": "current_unchanged",
+    "route_retry_fallback_behavior": "current_unchanged",
+    "observer_failure": "fail_open"
+  },
+  "stop_conditions": [
+    "first planning_adaptation_whole configured fallback observation",
+    "first workflow terminal outcome",
+    "any approval or fingerprint mismatch"
+  ],
+  "evidence_contract": {
+    "runtime_build_fingerprint_required": true,
+    "request_raw_normalized_gateway_hash_only": true,
+    "raw_content_storage_allowed": false,
+    "separate_plan_approval_required": true,
+    "cohort_id": null
+  },
+  "execution_command": null,
+  "launcher": null
+}

@@ -1,0 +1,36 @@
+{
+  "schema": "R1PABudgetCounterfactual1FutureContractV1",
+  "version": 1,
+  "status": "future_contract_not_executable",
+  "canary_id": "R1-PA-BUDGET-COUNTERFACTUAL-1",
+  "preconditions": [
+    "R1-PA-STRICT-TOOL-OBS-1 executed under a separate future approval",
+    "R1-PA-STRICT-TOOL-OBS-1 evidence reviewed",
+    "a distinct build implements a canary-only retention override",
+    "a distinct launcher, configuration, approval, fingerprint and cohort exist"
+  ],
+  "authorization": {
+    "named_approver": null,
+    "approval_id": null,
+    "signature": null,
+    "execution_authorized": false
+  },
+  "hypothesis": "retaining the expanded output budget across outer Contract Runtime reconstruction changes only later request output budgets",
+  "single_changed_variable": "retain_approved_expansion_across_outer_runtime_reconstruction",
+  "protected_invariants": [
+    "Prompt bytes and hashes", "tool schema", "route order", "retry count",
+    "fallback count", "acceptance and rejection logic", "checkpoint behavior"
+  ],
+  "not_implemented_in_r1_pa1": [
+    "canary-only behavior override", "launcher", "runtime switch",
+    "provider execution", "approval materialization"
+  ],
+  "offline_evidence": {
+    "source": "tests/r1_pa1_counterfactual.py",
+    "uses_production_expansion_policy": true,
+    "paid_model_calls": 0
+  },
+  "cohort_id": null,
+  "execution_command": null,
+  "launcher": null
+}

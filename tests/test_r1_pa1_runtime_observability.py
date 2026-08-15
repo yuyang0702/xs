@@ -25,6 +25,7 @@ from novel_flywheel.providers.registry import ResolvedModel
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
 from novel_flywheel.providers.openai_responses import OpenAIResponsesAdapter
+from novel_flywheel.production_incidents import classify_production_failure
 from novel_flywheel.reliability_trace import read_trace, trace_file_for_project
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
@@ -342,6 +343,11 @@ async def test_adapter_exception_identity_traceback_classification_and_chain_are
     assert enabled.__cause__ is disabled.__cause__ is None
     assert enabled.__context__ is disabled.__context__ is None
     assert classify_model_failure(enabled) == classify_model_failure(disabled)
+    assert classify_production_failure(
+        str(enabled), workflow="short", stage="review",
+    ) == classify_production_failure(
+        str(disabled), workflow="short", stage="review",
+    )
     disabled_frames = [item.name for item in traceback.extract_tb(disabled.__traceback__)]
     enabled_frames = [item.name for item in traceback.extract_tb(enabled.__traceback__)]
     assert enabled_frames == disabled_frames

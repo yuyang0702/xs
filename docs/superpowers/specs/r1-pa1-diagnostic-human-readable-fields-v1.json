@@ -1,0 +1,34 @@
+{
+  "schema": "R1PA1DiagnosticHumanReadableFieldsV1",
+  "version": 1,
+  "purpose": "closed allowlist for non-hash string fields in R1-PA1 diagnostic payloads",
+  "strict_tool_shape": [
+    "schema", "canonicalization_version", "stage", "boundary", "role",
+    "route_kind", "provider_alias", "model_alias", "outer_retry_id",
+    "contract_runtime_instance_id", "attempt_id", "parent_attempt_id",
+    "expected_tool_contract", "requested_expected_tool_id",
+    "tool_choice_policy", "request_protocol", "adapter_projection_status",
+    "observed_registered_tool_ids", "finish_reason", "strict_tool_decision",
+    "strict_tool_failure_code", "observation_status", "target_status"
+  ],
+  "provider_snapshot": [
+    "schema", "canonicalization_version", "adapter_id", "snapshot_status",
+    "raw_finish_reason_code"
+  ],
+  "tool_call_shape": [
+    "registered_tool_id", "argument_shape", "argument_json_parse_status"
+  ],
+  "budget_lineage": [
+    "schema", "canonicalization_version", "lineage_event", "stage",
+    "boundary", "role", "contract_id", "outer_retry_id",
+    "contract_runtime_instance_id", "previous_contract_runtime_instance_id",
+    "inner_attempt_id", "parent_attempt_id", "expansion_policy",
+    "expansion_trigger", "reconstruction_reason", "retry_owner", "route_kind",
+    "finish_reason", "typed_failure", "cap_source", "cap_sources",
+    "provider_limit_status", "request_parameter_name"
+  ],
+  "forbidden_content_classes": [
+    "prompt bodies", "narrative prose", "tool arguments", "raw provider bodies",
+    "provider request ids", "credentials", "absolute paths"
+  ]
+}

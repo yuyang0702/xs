@@ -16,6 +16,11 @@ BASELINE = (
     Path(__file__).parent
     / "fixtures" / "reliability" / "r0f" / "r0f-baseline-v1.json"
 )
+R1_PA1_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-pa1-authorized-protected-source-successor-v1.json"
+)
 
 
 def make_database(tmp_path: Path) -> Database:
@@ -38,7 +43,23 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "strict_xfailed": 5,
         "failed": 0,
     }
-    assert protected_source_manifest(REPOSITORY) == baseline["protected_sources"]
+    successor = load_baseline(R1_PA1_SUCCESSOR)
+    original = {item["path"]: item["sha256"] for item in baseline["protected_sources"]}
+    authorized = {
+        item["path"]: (item["before_sha256"], item["after_sha256"])
+        for item in successor["authorized_source_deltas"]
+    }
+    current = protected_source_manifest(REPOSITORY)
+    for item in current:
+        path = item["path"]
+        if path in authorized:
+            assert authorized[path] == (original[path], item["sha256"])
+        else:
+            assert item["sha256"] == original[path]
+    assert successor["parent_baseline_head"] == baseline["baseline_head"]
+    assert successor["phase"] == "R1-PA1"
+    assert successor["business_behavior_changed"] is False
+    assert successor["protected_deltas"] == baseline["protected_deltas"]
     assert baseline["protected_deltas"] == {
         "model_calls": 0,
         "prompt": 0,
