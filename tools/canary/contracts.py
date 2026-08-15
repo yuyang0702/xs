@@ -33,7 +33,7 @@ SMOKE_AUTHORIZATION_PATCH_DOMAIN = "novel-flywheel-c0b-smoke-1-user-authorizatio
 SMOKE_SIGNED_APPROVAL_DOMAIN = "novel-flywheel-c0b-smoke-1-signed-approval-v1"
 PLAN_MODES = frozenset({
     "c0a_fake_dry_run", "c0b_real_path_reachability",
-    "c0c_statistical_exposure",
+    "c0c_statistical_exposure", "pa_strict_tool_observation",
 })
 RUNTIME_MODES = frozenset({"git_workspace", "packaged"})
 APPROVAL_SCOPES = frozenset({
@@ -263,7 +263,9 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
                  f"budget_{field}_invalid")
     _require(budgets["maximum_total_model_calls"] >= budgets["maximum_model_calls_per_run"],
              "total_call_budget_below_per_run")
-    if value["canary_mode"] == "c0b_real_path_reachability":
+    if value["canary_mode"] in {
+        "c0b_real_path_reachability", "pa_strict_tool_observation",
+    }:
         _require_fields(budgets, {
             "monetary_budget", "price_catalog_sha256",
             "call_topology_sha256", "elapsed_budget_sha256",

@@ -1,0 +1,79 @@
+{
+  "version": 2,
+  "original_requirement": "Materialize one independent, inert PA-STRICT-TOOL-OBS-1 approval package for a future real-provider observation without executing it or changing production behavior.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Generate a hash-bound Plan, disabled Approval Candidate, non-authorizing patch template, validate-only receipt and do-not-execute preview for exactly review/planning_adaptation_whole_receipt/planning_adaptation_whole@1/review/configured_fallback.",
+  "forbidden_narrowing": [
+    "Materialization success cannot be presented as real-provider evidence.",
+    "A disabled candidate or patch template cannot be presented as user authorization.",
+    "A missing provider snapshot cannot be presented as zero tool calls.",
+    "Observation success cannot be presented as workflow completion.",
+    "The budget candidate cannot be presented as a Runtime budget change."
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The target is a six-field equality tuple and the only changed code is Canary control-plane tooling; production Runtime sources are protected.",
+  "constraint_traceability": [
+    {
+      "requirement": "All external actions remain disabled during materialization.",
+      "implementation": "FailClosedNetworkSentinel, no credential/provider constructor path, false authorization fields, and zero counters in validate-only.",
+      "test_paths": ["tests/canary/test_pa_strict_tool_obs_materialization.py"],
+      "evidence": "Tests fail on credential lookup and assert network/model/paid counters remain zero."
+    },
+    {
+      "requirement": "Bind current build/config/runtime/launcher/provider/route/flags/schema/target/workload/budget/stop identities.",
+      "implementation": "The materializer recomputes every definition from current local production metadata and canonical schemas.",
+      "test_paths": ["tests/canary/test_pa_strict_tool_obs_materialization.py"],
+      "evidence": "Validate-only independently regenerates the base plan and compares every bound digest."
+    },
+    {
+      "requirement": "Preserve live data and privacy.",
+      "implementation": "Only metadata is copied to a temporary DB, before/after parity is exact, and generated documents receive a closed privacy scan.",
+      "test_paths": ["tests/canary/test_pa_strict_tool_obs_materialization.py"],
+      "evidence": "Live DB/project hashes are unchanged and sentinel private values are absent."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "planning.review_protocol_route_exhausted",
+    "runtime.required_tool_output_missing",
+    "model.output_truncated"
+  ],
+  "projected_failure_mechanisms": [
+    "stale build/config/runtime identity",
+    "wrong route or target tuple",
+    "privacy-unsafe diagnostic schema",
+    "candidate accidentally authorizes external work",
+    "preview binds an unsigned candidate instead of a future signed approval"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No file under src/novel_flywheel is modified; no Prompt, request, parser, adapter, validator, route, retry/fallback, output budget or acceptance code changes.",
+  "why_previous_tests_missed": "R1-PA1 stopped at an unapproved draft and intentionally did not materialize current fingerprints, a single-use cohort, candidate, patch template or validate-only receipt.",
+  "sibling_boundaries": [
+    {
+      "boundary": "C0B approval materialization",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The PA package uses a new scope, mode, cohort and schema; no C0B approval identity is reused."
+    },
+    {
+      "boundary": "PA budget counterfactual Canary B",
+      "disposition": "not_applicable",
+      "evidence": "No Canary B artifact, switch, plan, approval or execution path is created."
+    },
+    {
+      "boundary": "Production Runtime and formal artifacts",
+      "disposition": "not_applicable",
+      "evidence": "Protected source is unchanged and live parity is required to be exact."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_pa_strict_tool_obs_materialization.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_r1_pa1_runtime_observability.py",
+    "tests/providers/test_diagnostic_tool_shapes.py"
+  ],
+  "remaining_risks": [
+    "No real-provider target shape is captured until a later explicit Signed Approval and execution.",
+    "The target may not be reached in the one permitted run.",
+    "The future execution path still requires a separate signed-approval materialization and final preflight."
+  ]
+}
