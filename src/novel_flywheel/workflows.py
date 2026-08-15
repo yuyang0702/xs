@@ -115,6 +115,14 @@ from novel_flywheel.models import (
     ModelRoutesExhaustedError,
     TransportInterruptedError,
 )
+from novel_flywheel.model_diagnostics import (
+    BUDGET_LINEAGE_FLAG,
+    STRICT_TOOL_FLAG,
+    ModelDiagnosticContextV1,
+    diagnostic_flag_enabled,
+    domain_sha256 as diagnostic_domain_sha256,
+    emit_budget_lineage,
+)
 from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
     ArtifactConversionError,
@@ -9446,6 +9454,8 @@ class WorkflowService:
                     route_capacity_guard=True,
                     story_skeleton_override=index_skeleton,
                     bounded_protocol_output=True,
+                    diagnostic_boundary="planning_adaptation_whole_receipt",
+                    diagnostic_outer_retry_ordinal=attempt.attempt_index,
                 ),
             )
             if route_failure is not None:
@@ -26094,7 +26104,9 @@ class WorkflowService:
                          StructuredArtifactContract | None
                      ) = None,
                      defer_route_failure_audit: bool = False,
-                     protocol_system_contract: str | None = None) -> str:
+                     protocol_system_contract: str | None = None,
+                     diagnostic_boundary: str | None = None,
+                     diagnostic_outer_retry_ordinal: int | None = None) -> str:
         node_key = f"{stage}{suffix}"
         attempt_observations: list[dict] = []
         if execution_spec is not None and structured_transport_contract is not None:
@@ -26656,6 +26668,60 @@ class WorkflowService:
             selected_route = (
                 requested_routes[0] if requested_routes else "primary"
             )
+            diagnostic_context = None
+            if (
+                diagnostic_boundary is not None
+                and diagnostic_outer_retry_ordinal is not None
+                and structured_contract is not None
+                and (
+                    diagnostic_flag_enabled(STRICT_TOOL_FLAG)
+                    or diagnostic_flag_enabled(BUDGET_LINEAGE_FLAG)
+                )
+            ):
+                binding = self.db.get_role_binding(gateway_role) or {}
+                provider_key = (
+                    "fallback_provider_id"
+                    if selected_route == "configured_fallback" else "primary_provider_id"
+                )
+                model_key = (
+                    "fallback_model_id"
+                    if selected_route == "configured_fallback" else "primary_model_id"
+                )
+                provider_id = str(binding.get(provider_key) or "unavailable")
+                model_id = str(binding.get(model_key) or "unavailable")
+                provider = self.db.get_provider(provider_id) or {}
+                protocol = str(provider.get("protocol") or "provider_specific")
+                parameter_name = {
+                    "anthropic": "max_tokens",
+                    "openai-chat": "max_tokens",
+                    "openai-responses": "max_output_tokens",
+                }.get(protocol, "provider_specific")
+                selected_ceiling = (
+                    fallback_ceiling
+                    if selected_route == "configured_fallback" else provider_ceiling
+                )
+                diagnostic_context = ModelDiagnosticContextV1(
+                    project_root=project.path,
+                    run_id=run_id,
+                    stage=stage,
+                    boundary=diagnostic_boundary,
+                    role=gateway_role,
+                    route_kind=selected_route,
+                    contract_id=structured_contract.name,
+                    contract_version=structured_contract.version,
+                    outer_retry_ordinal=diagnostic_outer_retry_ordinal,
+                    provider_declared_output_limit=selected_ceiling,
+                    provider_limit_status=(
+                        "verified" if selected_ceiling is not None else "unknown"
+                    ),
+                    provider_binding_sha256=diagnostic_domain_sha256(
+                        "r1-pa1-provider-binding-v1", provider_id,
+                    ),
+                    model_binding_sha256=diagnostic_domain_sha256(
+                        "r1-pa1-model-binding-v1", model_id,
+                    ),
+                    request_parameter_name=parameter_name,
+                )
             route_toolbox = (
                 StoryToolbox(project, self.memory)
                 if allow_tools and structured_contract is None and callable(
@@ -26711,8 +26777,81 @@ class WorkflowService:
                         route_budget = max(
                             int(route_baseline or 0), int(_attempt_budget or 0),
                         ) or None
+                        budget_before_provider_cap = route_budget
                         if route_budget is not None and route_ceiling:
                             route_budget = min(route_budget, int(route_ceiling))
+                        attempt_diagnostic_context = (
+                            replace(
+                                diagnostic_context,
+                                route_kind=attempt.route,
+                                inner_attempt_ordinal=attempt.attempt_index,
+                                parent_attempt_ordinal=(
+                                    attempt.attempt_index - 1
+                                    if attempt.attempt_index > 1 else None
+                                ),
+                                provider_declared_output_limit=route_ceiling,
+                                provider_limit_status=(
+                                    "verified" if route_ceiling is not None else "unknown"
+                                ),
+                            )
+                            if diagnostic_context is not None else None
+                        )
+                        cap_applied = bool(
+                            budget_before_provider_cap is not None
+                            and route_budget is not None
+                            and route_budget < budget_before_provider_cap
+                        )
+                        emit_budget_lineage(
+                            attempt_diagnostic_context,
+                            lineage_event="request_dispatched",
+                            system=attempt_system,
+                            user=attempt_user,
+                            contract_schema=attempt_contract.json_schema,
+                            original_requested_output_budget=output_budget,
+                            current_requested_output_budget=route_budget,
+                            previous_attempt_budget=route_baseline,
+                            expansion_trigger=(
+                                "output_limit"
+                                if _attempt_budget is not None
+                                and route_baseline is not None
+                                and _attempt_budget > route_baseline else None
+                            ),
+                            expansion_requested=bool(
+                                _attempt_budget is not None
+                                and route_baseline is not None
+                                and _attempt_budget > route_baseline
+                            ),
+                            expansion_target=(
+                                _attempt_budget
+                                if _attempt_budget is not None
+                                and route_baseline is not None
+                                and _attempt_budget > route_baseline else None
+                            ),
+                            expansion_target_before_cap=budget_before_provider_cap,
+                            effective_budget_after_policy=budget_before_provider_cap,
+                            effective_budget_after_provider_cap=route_budget,
+                            effective_budget_after_canary_cap=route_budget,
+                            expansion_applied=bool(
+                                _attempt_budget is not None
+                                and route_baseline is not None
+                                and _attempt_budget > route_baseline
+                            ),
+                            retained_expansion_state=bool(
+                                attempt.attempt_index > 1
+                                and _attempt_budget is not None
+                                and output_budget is not None
+                                and _attempt_budget > output_budget
+                            ),
+                            runtime_reconstructed=False,
+                            reconstruction_reason=None,
+                            retry_owner="contract_runtime_inner",
+                            route_kind=attempt.route,
+                            finish_reason=None,
+                            typed_failure=None,
+                            cap_applied=cap_applied,
+                            cap_source="model" if cap_applied else "none",
+                            cap_sources=("model",) if cap_applied else (),
+                        )
                         if (
                             not contract_output_expanded
                             and route_budget is not None
@@ -26738,6 +26877,7 @@ class WorkflowService:
                             max_output_tokens=route_budget,
                             structured_contract=attempt_contract,
                             allow_implicit_primary=not primary_only,
+                            diagnostic_context=attempt_diagnostic_context,
                         )
 
                     contract_runtime = await execute_contract_runtime(
@@ -26755,6 +26895,7 @@ class WorkflowService:
                         ),
                         attempt_executor=contract_attempt_executor,
                         attempt_observer=attempt_observations.append,
+                        diagnostic_context=diagnostic_context,
                     )
                     result = contract_runtime.model_response
                     result.receipt.setdefault(

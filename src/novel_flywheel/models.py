@@ -14,6 +14,12 @@ from novel_flywheel.failure_boundary import (
     safe_local_validation_message,
 )
 from novel_flywheel.context_policy import classify_model_failure, normalize_finish_reason
+from novel_flywheel.model_diagnostics import (
+    ModelDiagnosticContextV1,
+    bind_diagnostic_context,
+    observe_strict_tool_shape,
+    reset_bound_diagnostic_context,
+)
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.structured_artifacts import (
@@ -340,6 +346,7 @@ class ModelGateway:
         structured_requirement: StructuredOutputRequirement = (
             StructuredOutputRequirement.PLAIN_TEXT
         ),
+        diagnostic_context: ModelDiagnosticContextV1 | None = None,
     ) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
@@ -352,6 +359,7 @@ class ModelGateway:
             self._route_output_limit(binding.get("primary_model_id"), max_output_tokens),
             response_schema=response_schema,
             structured_requirement=structured_requirement,
+            diagnostic_context=diagnostic_context,
         )
 
     async def complete_configured_fallback(
@@ -361,6 +369,7 @@ class ModelGateway:
         structured_requirement: StructuredOutputRequirement = (
             StructuredOutputRequirement.PLAIN_TEXT
         ),
+        diagnostic_context: ModelDiagnosticContextV1 | None = None,
     ) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
@@ -373,6 +382,7 @@ class ModelGateway:
             self._route_output_limit(binding.get("fallback_model_id"), max_output_tokens),
             response_schema=response_schema,
             structured_requirement=structured_requirement,
+            diagnostic_context=diagnostic_context,
         )
         return ModelResult(result.text, {
             **result.receipt, "configured_fallback_direct": True,
@@ -390,6 +400,7 @@ class ModelGateway:
         structured_requirement: StructuredOutputRequirement = (
             StructuredOutputRequirement.PLAIN_TEXT
         ),
+        diagnostic_context: ModelDiagnosticContextV1 | None = None,
     ) -> ModelResult:
         """Execute exactly one Runtime-selected route, with no hidden fallback."""
 
@@ -402,6 +413,7 @@ class ModelGateway:
                 max_output_tokens=max_output_tokens,
                 response_schema=response_schema,
                 structured_requirement=structured_requirement,
+                diagnostic_context=diagnostic_context,
             )
         if route == "configured_fallback":
             return await self.complete_configured_fallback(
@@ -411,6 +423,7 @@ class ModelGateway:
                 max_output_tokens=max_output_tokens,
                 response_schema=response_schema,
                 structured_requirement=structured_requirement,
+                diagnostic_context=diagnostic_context,
             )
         raise ValueError(f"unknown explicit model route: {route}")
 
@@ -432,6 +445,7 @@ class ModelGateway:
         structured_requirement: StructuredOutputRequirement = (
             StructuredOutputRequirement.PLAIN_TEXT
         ),
+        diagnostic_context: ModelDiagnosticContextV1 | None = None,
     ) -> ModelResult:
         capability = configured_structured_output_capability(
             resolved.capabilities,
@@ -523,9 +537,25 @@ class ModelGateway:
                 })
                 execution_mode = "json_object"
 
+        diagnostic_token = (
+            bind_diagnostic_context(diagnostic_context)
+            if diagnostic_context is not None else None
+        )
         try:
             response = await resolved.adapter.complete(request)
         except Exception as exc:
+            if execution_mode == "strict_tool" and response_schema is not None:
+                observe_strict_tool_shape(
+                    context=diagnostic_context,
+                    adapter=resolved.adapter,
+                    provider_id=resolved.provider_id,
+                    model_id=resolved.model_id,
+                    request=request,
+                    expected_tool=str(
+                        response_schema.get("name") or "structured_output"
+                    ),
+                    exc=exc,
+                )
             native_protocol_rejected = (
                 execution_mode != "plain"
                 and response_schema is not None
@@ -549,8 +579,20 @@ class ModelGateway:
                     failure_reason="native_protocol_rejected",
                 )
             raise
+        finally:
+            if diagnostic_token is not None:
+                reset_bound_diagnostic_context(diagnostic_token)
         if execution_mode == "strict_tool" and response_schema is not None:
             expected_name = str(response_schema.get("name") or "structured_output")
+            observe_strict_tool_shape(
+                context=diagnostic_context,
+                adapter=resolved.adapter,
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                request=request,
+                expected_tool=expected_name,
+                response=response,
+            )
             matching = [
                 call for call in response.tool_calls if call.name == expected_name
             ]

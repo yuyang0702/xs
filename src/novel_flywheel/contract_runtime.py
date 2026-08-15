@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Awaitable, Callable, Literal, Mapping
 
 from novel_flywheel.generated_artifacts import (
@@ -16,6 +16,7 @@ from novel_flywheel.context_policy import (
     expanded_output_budget,
     output_limited,
 )
+from novel_flywheel.model_diagnostics import ModelDiagnosticContextV1, emit_budget_lineage
 from novel_flywheel.recovery_engine import (
     ProtocolReceiptAttempt,
     RecoveryAction,
@@ -377,6 +378,7 @@ async def dispatch_explicit_model_route(
     toolbox: Any | None = None,
     fallback_context: Callable[[], str] | None = None,
     run_id: str | None = None,
+    diagnostic_context: ModelDiagnosticContextV1 | None = None,
 ) -> Any:
     """Execute exactly one selected route without a hidden route fallback."""
 
@@ -413,13 +415,18 @@ async def dispatch_explicit_model_route(
         )
     route_executor = getattr(gateway, "complete_route", None)
     if callable(route_executor):
+        route_kwargs = {
+            "max_output_tokens": max_output_tokens,
+            "contract": structured_contract,
+        }
+        if diagnostic_context is not None:
+            route_kwargs["diagnostic_context"] = diagnostic_context
         return await route_executor(
             route,
             role,
             system,
             user,
-            max_output_tokens=max_output_tokens,
-            contract=structured_contract,
+            **route_kwargs,
         )
     if route == "configured_fallback":
         complete = getattr(gateway, "complete_configured_fallback", None)
@@ -817,6 +824,7 @@ async def execute_contract_runtime(
     audit_sink: AuditSink | None = None,
     attempt_executor: ContractAttemptExecutor | None = None,
     attempt_observer: AttemptObserver | None = None,
+    diagnostic_context: ModelDiagnosticContextV1 | None = None,
 ) -> ContractRuntimeResult:
     """Run one shared syntax/adapter/schema recovery ladder on explicit routes.
 
@@ -846,6 +854,102 @@ async def execute_contract_runtime(
     output_limit_seen = False
     last_business_incomplete_reason: str | None = None
     attempt_output_tokens = max_output_tokens
+    contract_schema = structured_contract.json_schema
+
+    def lineage_cap_values(target: int | None) -> dict[str, Any]:
+        after_provider = target
+        sources: list[str] = []
+        provider_limit = (
+            diagnostic_context.provider_declared_output_limit
+            if diagnostic_context is not None else None
+        )
+        if after_provider is not None and provider_limit is not None \
+                and after_provider > provider_limit:
+            after_provider = provider_limit
+            sources.append("model")
+        after_canary = after_provider
+        canary_limit = (
+            diagnostic_context.canary_output_limit
+            if diagnostic_context is not None else None
+        )
+        if after_canary is not None and canary_limit is not None \
+                and after_canary > canary_limit:
+            after_canary = canary_limit
+            sources.append("canary")
+        return {
+            "effective_budget_after_provider_cap": after_provider,
+            "effective_budget_after_canary_cap": after_canary,
+            "cap_applied": bool(sources),
+            "cap_source": sources[-1] if sources else "none",
+            "cap_sources": tuple(sources),
+        }
+    emit_budget_lineage(
+        diagnostic_context,
+        lineage_event="runtime_created",
+        system=system,
+        user=user,
+        contract_schema=contract_schema,
+        original_requested_output_budget=max_output_tokens,
+        current_requested_output_budget=max_output_tokens,
+        previous_attempt_budget=None,
+        expansion_trigger=None,
+        expansion_requested=False,
+        expansion_target=None,
+        expansion_target_before_cap=None,
+        effective_budget_after_policy=max_output_tokens,
+        effective_budget_after_provider_cap=max_output_tokens,
+        effective_budget_after_canary_cap=max_output_tokens,
+        expansion_applied=False,
+        retained_expansion_state=False,
+        runtime_reconstructed=bool(
+            diagnostic_context and diagnostic_context.outer_retry_ordinal > 1
+        ),
+        reconstruction_reason=(
+            "workflow_owned_protocol_retry"
+            if diagnostic_context and diagnostic_context.outer_retry_ordinal > 1 else None
+        ),
+        retry_owner="workflow_outer_receipt_schedule",
+        route_kind=(diagnostic_context.route_kind if diagnostic_context else None),
+        finish_reason=None,
+        typed_failure=None,
+        cap_applied=False,
+        cap_source="none",
+        cap_sources=(),
+    )
+    if diagnostic_context is not None and diagnostic_context.outer_retry_ordinal > 1:
+        previous_context = replace(
+            diagnostic_context,
+            outer_retry_ordinal=diagnostic_context.outer_retry_ordinal - 1,
+        )
+        emit_budget_lineage(
+            diagnostic_context,
+            lineage_event="outer_runtime_reconstructed",
+            previous_contract_runtime_instance_id=previous_context.runtime_instance_id,
+            system=system,
+            user=user,
+            contract_schema=contract_schema,
+            original_requested_output_budget=max_output_tokens,
+            current_requested_output_budget=max_output_tokens,
+            previous_attempt_budget=max_output_tokens,
+            expansion_trigger=None,
+            expansion_requested=False,
+            expansion_target=None,
+            expansion_target_before_cap=None,
+            effective_budget_after_policy=max_output_tokens,
+            effective_budget_after_provider_cap=max_output_tokens,
+            effective_budget_after_canary_cap=max_output_tokens,
+            expansion_applied=False,
+            retained_expansion_state=False,
+            runtime_reconstructed=True,
+            reconstruction_reason="workflow_owned_protocol_retry",
+            retry_owner="workflow_outer_receipt_schedule",
+            route_kind=diagnostic_context.route_kind,
+            finish_reason=None,
+            typed_failure=None,
+            cap_applied=False,
+            cap_source="none",
+            cap_sources=(),
+        )
 
     attempts = _contract_attempts(
         gateway,
@@ -856,6 +960,47 @@ async def execute_contract_runtime(
         attempt_routes=attempt_routes,
     )
     for attempt in attempts:
+        attempt_context = (
+            replace(
+                diagnostic_context,
+                route_kind=attempt.route,
+                inner_attempt_ordinal=attempt.attempt_index,
+                parent_attempt_ordinal=(
+                    attempt.attempt_index - 1 if attempt.attempt_index > 1 else None
+                ),
+            )
+            if diagnostic_context is not None else None
+        )
+        emit_budget_lineage(
+            attempt_context if attempt_executor is None else None,
+            lineage_event="request_dispatched",
+            system=system,
+            user=user,
+            contract_schema=contract_schema,
+            original_requested_output_budget=max_output_tokens,
+            current_requested_output_budget=attempt_output_tokens,
+            previous_attempt_budget=None,
+            expansion_trigger=None,
+            expansion_requested=False,
+            expansion_target=None,
+            expansion_target_before_cap=None,
+            effective_budget_after_policy=attempt_output_tokens,
+            effective_budget_after_provider_cap=attempt_output_tokens,
+            effective_budget_after_canary_cap=attempt_output_tokens,
+            expansion_applied=False,
+            retained_expansion_state=(
+                attempt.attempt_index > 1 and attempt_output_tokens != max_output_tokens
+            ),
+            runtime_reconstructed=False,
+            reconstruction_reason=None,
+            retry_owner="contract_runtime_inner",
+            route_kind=attempt.route,
+            finish_reason=None,
+            typed_failure=None,
+            cap_applied=False,
+            cap_source="none",
+            cap_sources=(),
+        )
         route_system = system
         route_user = user
         if isinstance(
@@ -948,9 +1093,34 @@ async def execute_contract_runtime(
                 expected_output_characters=expected_output_characters,
             )
             if output_limited(receipt if isinstance(receipt, dict) else None):
-                attempt_output_tokens = expanded_output_budget(
-                    attempt_output_tokens,
+                previous_budget = attempt_output_tokens
+                target_budget = expanded_output_budget(previous_budget)
+                cap_values = lineage_cap_values(target_budget)
+                emit_budget_lineage(
+                    attempt_context,
+                    lineage_event="expansion_decided",
+                    system=route_system,
+                    user=route_user,
+                    contract_schema=contract_schema,
+                    original_requested_output_budget=max_output_tokens,
+                    current_requested_output_budget=previous_budget,
+                    previous_attempt_budget=previous_budget,
+                    expansion_trigger="output_limit",
+                    expansion_requested=True,
+                    expansion_target=target_budget,
+                    expansion_target_before_cap=target_budget,
+                    effective_budget_after_policy=target_budget,
+                    expansion_applied=attempt.attempt_index < len(attempts),
+                    retained_expansion_state=False,
+                    runtime_reconstructed=False,
+                    reconstruction_reason=None,
+                    retry_owner="contract_runtime_inner",
+                    route_kind=attempt.route,
+                    finish_reason=(receipt or {}).get("finish_reason") if isinstance(receipt, Mapping) else None,
+                    typed_failure="output_limit",
+                    **cap_values,
                 )
+                attempt_output_tokens = target_budget
             continue
         if audit_sink is not None:
             audit_sink(conversion.audit)
@@ -978,9 +1148,34 @@ async def execute_contract_runtime(
                 expected_output_characters=expected_output_characters,
             )
             if output_limited(receipt if isinstance(receipt, dict) else None):
-                attempt_output_tokens = expanded_output_budget(
-                    attempt_output_tokens,
+                previous_budget = attempt_output_tokens
+                target_budget = expanded_output_budget(previous_budget)
+                cap_values = lineage_cap_values(target_budget)
+                emit_budget_lineage(
+                    attempt_context,
+                    lineage_event="expansion_decided",
+                    system=route_system,
+                    user=route_user,
+                    contract_schema=contract_schema,
+                    original_requested_output_budget=max_output_tokens,
+                    current_requested_output_budget=previous_budget,
+                    previous_attempt_budget=previous_budget,
+                    expansion_trigger="output_limit",
+                    expansion_requested=True,
+                    expansion_target=target_budget,
+                    expansion_target_before_cap=target_budget,
+                    effective_budget_after_policy=target_budget,
+                    expansion_applied=attempt.attempt_index < len(attempts),
+                    retained_expansion_state=False,
+                    runtime_reconstructed=False,
+                    reconstruction_reason=None,
+                    retry_owner="contract_runtime_inner",
+                    route_kind=attempt.route,
+                    finish_reason=(receipt or {}).get("finish_reason") if isinstance(receipt, Mapping) else None,
+                    typed_failure="output_limit",
+                    **cap_values,
                 )
+                attempt_output_tokens = target_budget
             last_error = ContractBusinessOutputIncompleteError(
                 incomplete_reason,
                 receipt=(dict(receipt) if isinstance(receipt, Mapping) else {}),
@@ -1025,9 +1220,34 @@ async def execute_contract_runtime(
                 expected_output_characters=expected_output_characters,
             )
             if output_limited(receipt if isinstance(receipt, dict) else None):
-                attempt_output_tokens = expanded_output_budget(
-                    attempt_output_tokens,
+                previous_budget = attempt_output_tokens
+                target_budget = expanded_output_budget(previous_budget)
+                cap_values = lineage_cap_values(target_budget)
+                emit_budget_lineage(
+                    attempt_context,
+                    lineage_event="expansion_decided",
+                    system=route_system,
+                    user=route_user,
+                    contract_schema=contract_schema,
+                    original_requested_output_budget=max_output_tokens,
+                    current_requested_output_budget=previous_budget,
+                    previous_attempt_budget=previous_budget,
+                    expansion_trigger="output_limit",
+                    expansion_requested=True,
+                    expansion_target=target_budget,
+                    expansion_target_before_cap=target_budget,
+                    effective_budget_after_policy=target_budget,
+                    expansion_applied=attempt.attempt_index < len(attempts),
+                    retained_expansion_state=False,
+                    runtime_reconstructed=False,
+                    reconstruction_reason=None,
+                    retry_owner="contract_runtime_inner",
+                    route_kind=attempt.route,
+                    finish_reason=(receipt or {}).get("finish_reason") if isinstance(receipt, Mapping) else None,
+                    typed_failure="output_limit",
+                    **cap_values,
                 )
+                attempt_output_tokens = target_budget
             continue
         _record_business_outcome(
             gateway, response, structured_contract,

@@ -1,10 +1,19 @@
 import json
 
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
+from novel_flywheel.model_diagnostics import (
+    attach_exception_snapshot,
+    provider_snapshot_with_status,
+    provider_tool_shape_snapshot,
+    strict_snapshot_capture_requested,
+)
 from novel_flywheel.providers.http import HttpProvider
 
 
 class AnthropicAdapter(HttpProvider):
+    DIAGNOSTIC_ADAPTER_ID = "anthropic"
+    DIAGNOSTIC_ADAPTER_VERSION = 1
+
     async def complete(self, request: ModelRequest) -> ModelResponse:
         system = "\n\n".join(message.content for message in request.messages if message.role == "system")
         payload = {
@@ -37,23 +46,126 @@ class AnthropicAdapter(HttpProvider):
             **auth_headers, "anthropic-version": "2023-06-01",
         })
         if body is None:
-            body = self._aggregate_stream(events)
+            try:
+                body = self._aggregate_stream(events)
+            except Exception as exc:
+                if strict_snapshot_capture_requested():
+                    snapshot = self._stream_exception_snapshot(events)
+                    attach_exception_snapshot(exc, snapshot)
+                raise
         usage = body.get("usage", {})
         content = body.get("content", [])
-        return ModelResponse(
-            text="".join(part.get("text", "") for part in content if part.get("type") == "text"),
-            tool_calls=[ToolCall(
-                id=part["id"], name=part["name"], arguments=part.get("input") or {},
-            ) for part in content if part.get("type") == "tool_use"],
-            finish_reason=body.get("stop_reason"),
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
-            raw_request_id=body.get("id"),
-            provider_state={
-                "content": content,
-                "transport_complete": body.get("stop_reason") is not None,
-                "raw_finish_reason": body.get("stop_reason"),
-            },
+        snapshot = None
+        if strict_snapshot_capture_requested():
+            raw_calls = [
+                part for part in content
+                if isinstance(part, dict) and part.get("type") == "tool_use"
+            ]
+            call_inputs = [{
+                "call_id": part.get("id"),
+                "name": part.get("name"),
+                "arguments_present": "input" in part,
+                "arguments": part.get("input"),
+                "partial": not bool(part.get("name")) or "input" not in part,
+            } for part in raw_calls]
+            status = (
+                "snapshot_partial"
+                if body.get("stop_reason") == "max_tokens"
+                or any(item["partial"] for item in call_inputs)
+                else "snapshot_exact"
+            )
+            snapshot = provider_tool_shape_snapshot(
+                adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
+                adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
+                provider_body=body,
+                provider_request_id=body.get("id"),
+                content_block_count=len(content),
+                text_present=any(
+                    part.get("type") == "text" and bool(part.get("text"))
+                    for part in content if isinstance(part, dict)
+                ),
+                tool_use_present=bool(call_inputs),
+                finish_reason=body.get("stop_reason"),
+                calls=call_inputs,
+                snapshot_status=status,
+            )
+        try:
+            return ModelResponse(
+                text="".join(part.get("text", "") for part in content if part.get("type") == "text"),
+                tool_calls=[ToolCall(
+                    id=part["id"], name=part["name"], arguments=part.get("input") or {},
+                ) for part in content if part.get("type") == "tool_use"],
+                finish_reason=body.get("stop_reason"),
+                input_tokens=usage.get("input_tokens", 0),
+                output_tokens=usage.get("output_tokens", 0),
+                raw_request_id=body.get("id"),
+                provider_state={
+                    "content": content,
+                    "transport_complete": body.get("stop_reason") is not None,
+                    "raw_finish_reason": body.get("stop_reason"),
+                    **({
+                        "_r1_pa1_tool_shape_snapshot": snapshot.model_dump(
+                            mode="json", by_alias=True,
+                        ),
+                    } if snapshot is not None else {}),
+                },
+            )
+        except Exception as exc:
+            if snapshot is not None:
+                attach_exception_snapshot(
+                    exc, provider_snapshot_with_status(
+                        snapshot, "adapter_exception_with_snapshot",
+                    ),
+                )
+            raise
+
+    def _stream_exception_snapshot(self, events: list[dict]):
+        blocks: dict[int, dict] = {}
+        arguments: dict[int, list[str]] = {}
+        request_id = None
+        finish_reason = None
+        for event in events:
+            kind = event.get("type")
+            if kind == "message_start":
+                request_id = (event.get("message") or {}).get("id") or request_id
+            elif kind == "content_block_start":
+                index = event.get("index", len(blocks))
+                block = dict(event.get("content_block") or {})
+                blocks[index] = block
+                if block.get("type") == "tool_use":
+                    arguments[index] = []
+            elif kind == "content_block_delta":
+                index = event.get("index", 0)
+                delta = event.get("delta") or {}
+                if delta.get("type") == "input_json_delta":
+                    arguments.setdefault(index, []).append(delta.get("partial_json", ""))
+            elif kind == "message_delta":
+                finish_reason = (event.get("delta") or {}).get("stop_reason") or finish_reason
+        calls = []
+        for index, block in sorted(blocks.items()):
+            if block.get("type") != "tool_use":
+                continue
+            raw_arguments = "".join(arguments.get(index, []))
+            calls.append({
+                "call_id": block.get("id"),
+                "name": block.get("name"),
+                "arguments_present": bool(raw_arguments) or "input" in block,
+                "arguments": raw_arguments if raw_arguments else block.get("input"),
+                "partial": True,
+            })
+        return provider_tool_shape_snapshot(
+            adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
+            adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
+            provider_body=events,
+            provider_request_id=request_id,
+            content_block_count=len(blocks),
+            text_present=any(
+                block.get("type") == "text" for block in blocks.values()
+            ),
+            tool_use_present=bool(calls),
+            finish_reason=finish_reason,
+            calls=calls,
+            snapshot_status="adapter_exception_with_snapshot",
         )
 
     @staticmethod

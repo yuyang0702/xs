@@ -1752,3 +1752,28 @@ real 13K/20K/30K Short orchestration. A historical project artifact without a
 pre-decision inventory is reported as `unverifiable_legacy` and may only prove
 fail-closed compatibility. It is not a real canary and does not authorize
 production cutover.
+
+## R1-PA1 model-boundary diagnostics
+
+`NOVEL_STRICT_TOOL_SHAPE_TRACE_V1` and
+`NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1` are disabled by default and are included in
+the Runtime execution-config fingerprint. They do not alter the build identity
+when toggled, but a changed value produces a different execution-config and
+Runtime-execution identity. Old Canary plans, approvals, and cohorts therefore
+cannot authorize a run with either flag changed.
+
+The strict-tool flag is additionally restricted to the registered
+`review / planning_adaptation_whole_receipt / planning_adaptation_whole:v1 /
+configured_fallback` boundary. It records hash-only request declarations,
+provider topology, adapter normalization, and the unchanged Gateway decision.
+Other strict-tool calls contribute only an in-process `excluded_not_target`
+count. Provider call IDs, unknown tool names, arguments, responses, prompts,
+request IDs, credentials, project names, prose, and absolute paths are never
+stored in the diagnostic record.
+
+The budget flag observes Runtime creation, request dispatch, expansion policy,
+provider/Canary cap application, and outer Runtime reconstruction. It does not
+carry an expansion target into a later Runtime and does not change any request
+budget. Both observers append through the physically isolated best-effort
+ReliabilityTrace sink; validation, hashing, locking, or write failures are
+discarded and cannot trigger retry, fallback, recovery, or task failure.

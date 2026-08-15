@@ -1,6 +1,12 @@
 import json
 
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
+from novel_flywheel.model_diagnostics import (
+    attach_exception_snapshot,
+    provider_snapshot_with_status,
+    provider_tool_shape_snapshot,
+    strict_snapshot_capture_requested,
+)
 from novel_flywheel.providers.http import HttpProvider
 
 
@@ -16,6 +22,9 @@ def _output_text(body: dict) -> str:
 
 
 class OpenAIResponsesAdapter(HttpProvider):
+    DIAGNOSTIC_ADAPTER_ID = "openai_responses"
+    DIAGNOSTIC_ADAPTER_VERSION = 1
+
     async def complete(self, request: ModelRequest) -> ModelResponse:
         payload = {
             "model": request.model,
@@ -55,25 +64,70 @@ class OpenAIResponsesAdapter(HttpProvider):
                 if incomplete_reason in {"max_output_tokens", "max_tokens"}
                 else incomplete_reason or "incomplete"
             )
-        return ModelResponse(
-            text=_output_text(body) or streamed_text,
-            tool_calls=[ToolCall(
-                id=item.get("call_id") or item.get("id"), name=item["name"],
-                arguments=json.loads(item.get("arguments") or "{}"),
-            ) for item in output if item.get("type") == "function_call"],
-            finish_reason=finish_reason,
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
-            raw_request_id=body.get("id"),
-            provider_state={
-                "output": output,
-                "transport_complete": raw_finish_reason in {
-                    "completed", "incomplete", "failed", "cancelled",
+        snapshot = None
+        if strict_snapshot_capture_requested():
+            raw_calls = [
+                item for item in output
+                if isinstance(item, dict) and item.get("type") == "function_call"
+            ]
+            call_inputs = [{
+                "call_id": item.get("call_id") or item.get("id"),
+                "name": item.get("name"),
+                "arguments_present": "arguments" in item,
+                "arguments": item.get("arguments"),
+                "partial": not bool(item.get("name")) or "arguments" not in item,
+            } for item in raw_calls]
+            status = (
+                "snapshot_partial"
+                if raw_finish_reason == "incomplete"
+                or any(item["partial"] for item in call_inputs)
+                else "snapshot_exact"
+            )
+            snapshot = provider_tool_shape_snapshot(
+                adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
+                adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
+                provider_body=body,
+                provider_request_id=body.get("id"),
+                content_block_count=len(output),
+                text_present=bool(_output_text(body) or streamed_text),
+                tool_use_present=bool(call_inputs),
+                finish_reason=finish_reason,
+                calls=call_inputs,
+                snapshot_status=status,
+            )
+        try:
+            return ModelResponse(
+                text=_output_text(body) or streamed_text,
+                tool_calls=[ToolCall(
+                    id=item.get("call_id") or item.get("id"), name=item["name"],
+                    arguments=json.loads(item.get("arguments") or "{}"),
+                ) for item in output if item.get("type") == "function_call"],
+                finish_reason=finish_reason,
+                input_tokens=usage.get("input_tokens", 0),
+                output_tokens=usage.get("output_tokens", 0),
+                raw_request_id=body.get("id"),
+                provider_state={
+                    "output": output,
+                    "transport_complete": raw_finish_reason in {
+                        "completed", "incomplete", "failed", "cancelled",
+                    },
+                    "raw_finish_reason": raw_finish_reason,
+                    "incomplete_reason": incomplete_reason,
+                    **({
+                        "_r1_pa1_tool_shape_snapshot": snapshot.model_dump(
+                            mode="json", by_alias=True,
+                        ),
+                    } if snapshot is not None else {}),
                 },
-                "raw_finish_reason": raw_finish_reason,
-                "incomplete_reason": incomplete_reason,
-            },
-        )
+            )
+        except Exception as exc:
+            if snapshot is not None:
+                attach_exception_snapshot(
+                    exc, provider_snapshot_with_status(
+                        snapshot, "adapter_exception_with_snapshot",
+                    ),
+                )
+            raise
 
     @staticmethod
     def _aggregate_stream(events: list[dict]) -> tuple[dict, str]:
