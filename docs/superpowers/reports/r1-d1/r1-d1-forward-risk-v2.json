@@ -1,0 +1,142 @@
+{
+  "version": 2,
+  "original_requirement": "Exempt only exact Latin terms approved by the current hash-bound Draft authority while preserving every genuine mixed-script corruption rejection and every downstream policy.",
+  "scope_classification": "closed_world",
+  "operational_definition": "For the current Draft segment, a legacy MIXED_SCRIPT candidate is exempt only when its NFKC case-sensitive exact token has current PlanningSegmentIR or ShortExecutionManifest field provenance, exact source hashes, exact Draft authority revision/hash, and exact segment ownership binding; every unknown, stale, extended, ambiguous, or unrelated token remains blocking.",
+  "forbidden_narrowing": [
+    "Do not disable MIXED_SCRIPT or permit Latin tokens by capitalization, length, acronym shape, project history, or model output.",
+    "Do not scan Prompt, Draft, Memory, FTS, references, Candidates, summaries, or arbitrary project files to create approvals.",
+    "Do not change Prompt, provider/model route, output budget, retry/fallback counts, semantic review, ownership, Manifest coverage, or non-MIXED_SCRIPT validators.",
+    "Do not persist raw terms, prose, prompts, tool arguments, credentials, or headers in diagnostics or reports."
+  ],
+  "resolution_status": "systemically_resolved",
+  "closed_world_justification": "The finite source contract is the already parsed current PlanningSegmentIR plus the exact matching ShortExecutionManifest segment and owned beats. The candidate set remains the pre-existing MIXED_SCRIPT regex. No inference outside those named objects is permitted.",
+  "constraint_traceability": [
+    {
+      "requirement": "Exact current authority provenance and fail-closed behavior",
+      "implementation": "AuthorityApprovedLatinTermSetV1 and WorkflowService._draft_prose_authority_context bind source artifact hashes, field-path hashes, authority revision/hash, and segment binding.",
+      "test_paths": ["tests/test_r1_d1_authority_mixed_script.py", "tests/test_r1_d1_draft_workflow.py"],
+      "evidence": "Wrong segment, stale authority, missing provenance, unknown normalization, and excluded source_evidence all remain blocking."
+    },
+    {
+      "requirement": "Remove only the historical authority false positive",
+      "implementation": "The private replay harness applies unchanged calls 20-22 to the current analyzer and leaf gate without printing source text.",
+      "test_paths": ["tests/test_r1_d1_reports.py", "tests/r1_d1_historical_replay.py"],
+      "evidence": "Calls 20/21 retain 6/7 true-positive blockers; call 22 changes from one authority-term blocker to zero and crosses the prose boundary."
+    },
+    {
+      "requirement": "Prompt, route, budget, retry, semantic review, and business artifacts remain unchanged",
+      "implementation": "Authority context is passed only to deterministic local validation and a best-effort hash-only receipt; model dispatch inputs are not modified.",
+      "test_paths": ["tests/test_r1_d1_draft_workflow.py", "tests/test_r0f_baseline.py"],
+      "evidence": "Context on/off produces byte-identical system/user prompts, role sequence, max-output budgets, and two model boundaries under a fake gateway; live artifact snapshot is exact."
+    },
+    {
+      "requirement": "Other validators and authoritative boundaries remain monotonic",
+      "implementation": "Only mixed_script_corruption is conditionally suppressed; all other findings, Manifest, ownership, semantic receipt, and checkpoint code remain authoritative.",
+      "test_paths": ["tests/test_prose_quality.py", "tests/test_draft_split.py", "tests/test_execution_manifest.py", "tests/test_execution_manifest_workflow.py"],
+      "evidence": "155 related tests pass with one pre-existing strict xfail; production-length 13K/20K/30K Short matrix passes."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "draft.validator_false_positive/authority_approved_latin_term_misclassified",
+    "mixed_script_corruption",
+    "draft prose_invalid whole-scope regeneration",
+    "semantic receipt protocol exhaustion",
+    "stale Draft checkpoint binding"
+  ],
+  "projected_failure_mechanisms": [
+    "approved term extended by an unapproved prefix or suffix",
+    "authority or source artifact advances after term projection",
+    "term belongs to another segment or ownership unit",
+    "normalization or Unicode connector is ambiguous",
+    "diagnostic sink fails after a valid business decision",
+    "Draft split or cached revalidation loses the authority context"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "CJK-left exact authority token",
+    "CJK on both sides of an exact authority token",
+    "normally punctuated exact authority token",
+    "case-sensitive NFKC width-normalized authority token",
+    "approved alphanumeric token",
+    "approved hyphenated token",
+    "approved dotted version token",
+    "repeated and multiple approved tokens with duplicate provenance"
+  ],
+  "invalid_output_variants_tested": [
+    "unapproved Latin token adjacent to CJK",
+    "approved AI extended to AIX, AIabc, or XAI",
+    "approved GPT extended to GPTgarbage",
+    "approved GPT-5 extended with an extra suffix",
+    "wrong-segment token",
+    "stale authority and missing source provenance",
+    "unknown normalization and ambiguous Unicode connector",
+    "random repeated Latin corruption plus mojibake and control characters"
+  ],
+  "transport_capacity_variants_tested": [
+    "complete output-limit receipt accepted by independent completeness validation",
+    "truncated output-limit receipt rejected without commit"
+  ],
+  "model_output_topology_classes_tested": [
+    "single direct adjacency",
+    "two-sided CJK adjacency",
+    "compound technical token with joiners and version digits",
+    "multi-occurrence multi-term segment",
+    "split-child and combined-segment revalidation"
+  ],
+  "unseen_valid_variants_tested": [
+    "sanitized Node7 alphanumeric term not present in production evidence",
+    "sanitized API-v2.1 compound version term not present in production evidence"
+  ],
+  "unknown_variant_behavior": "Unknown token grammar, normalization version, provenance, authority, source hash, or segment binding fails closed to the original mixed_script_corruption finding; no retry or fallback is added.",
+  "invariant_test_paths": [
+    "tests/test_r1_d1_authority_mixed_script.py",
+    "tests/test_r1_d1_draft_workflow.py",
+    "tests/test_prose_quality.py",
+    "tests/test_workflows.py",
+    "tests/test_execution_manifest_workflow.py"
+  ],
+  "why_previous_tests_missed": "The old validator accepted only surface adjacency and had no current Draft authority input. Sanitized corruption tests therefore could not distinguish a legitimate exact term from damaged mixed-script text.",
+  "sibling_boundaries": [
+    {
+      "boundary": "fresh Draft local prose validation and completion check",
+      "disposition": "fixed_and_tested",
+      "evidence": "The context is used in completion_check, post-stage validation, and the leaf retry decision."
+    },
+    {
+      "boundary": "cached Draft prefix and final segment integrity revalidation",
+      "disposition": "fixed_and_tested",
+      "evidence": "Each cached/generated part retains its parallel segment authority context and is rechecked with the same binding."
+    },
+    {
+      "boundary": "Draft internal split children and recombined segment",
+      "disposition": "fixed_and_tested",
+      "evidence": "The unchanged parent segment context is threaded through both children and the final combined validation."
+    },
+    {
+      "boundary": "non-Draft and authority-unavailable analyze_prose callers",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The default report shape and exact legacy MIXED_SCRIPT candidate set are preserved; absent context cannot exempt."
+    },
+    {
+      "boundary": "Long workflow, Planning, Review, Polish, Final Review, and Maintenance",
+      "disposition": "not_applicable",
+      "evidence": "No call site, Prompt, policy, or source module for these boundaries changed."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_r1_d1_draft_workflow.py",
+    "tests/test_workflows.py",
+    "tests/test_r1_d1_reports.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_r1_d1_draft_workflow.py",
+    "tests/test_draft_split.py",
+    "tests/test_execution_manifest_workflow.py"
+  ],
+  "remaining_risks": [
+    "No new real Provider Canary was authorized or run in R1-D1; readiness is based on exact replay and deterministic production-shaped workflows.",
+    "Calls 20 and 21 intentionally remain rejected for unapproved mixed-script tokens; only call 22 proves the historical authority false-positive closure.",
+    "Structured natural-language authority fields can contain incidental Latin words, but approval remains exact, current, source-hash-bound, and segment-local."
+  ]
+}

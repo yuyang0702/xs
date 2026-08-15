@@ -1,0 +1,25 @@
+{
+  "schema": "R1D1StrictChangeGateV1",
+  "version": 1,
+  "gate_script": ".agents/skills/novel-dev-council/scripts/inspect_change_gate.py",
+  "baseline_head": "caa3c0fd07b19ed0806a28f94a1184cf3d697a6d",
+  "implementation_source_head": "3745732",
+  "declared_level": "L3",
+  "automatic_level": "L3",
+  "baseline_used": true,
+  "forward_risk_version": 2,
+  "scope_classification": "closed_world",
+  "resolution_status": "systemically_resolved",
+  "core_paths": [
+    "src/novel_flywheel/prose_quality.py",
+    "src/novel_flywheel/workflows.py"
+  ],
+  "related_tests": {
+    "src/novel_flywheel/prose_quality.py": "tests/test_r1_d1_authority_mixed_script.py",
+    "src/novel_flywheel/workflows.py": "tests/test_r1_d1_draft_workflow.py"
+  },
+  "split_review_required": false,
+  "warnings": [],
+  "blockers": [],
+  "ok": true
+}

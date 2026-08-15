@@ -1,0 +1,65 @@
+{
+  "schema": "R1D1EvidenceIndexV1",
+  "version": 1,
+  "branch": "r1-d1/authority-aware-mixed-script-narrow-fix-20260816",
+  "baseline_head": "caa3c0fd07b19ed0806a28f94a1184cf3d697a6d",
+  "implementation_source_head": "3745732",
+  "gate": "R1_D1_NARROW_FIX_READY",
+  "artifacts": [
+    {
+      "path": "docs/superpowers/specs/r1-d1-authority-aware-mixed-script-v1.md",
+      "sha256": "ad640336363e35659f1cbbf2aa5a401b694aa0123a089f444826066ecac9530f",
+      "role": "approved_change_contract"
+    },
+    {
+      "path": "tests/fixtures/reliability/r1_d1/historical-draft-replay-v1.json",
+      "sha256": "40f97f37065668ae9fa262806a287f5bbaa45c97b5e8cab3cf6acccc4bf4737c",
+      "role": "sanitized_hash_only_historical_replay"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d1/r1-d1-forward-risk-v2.json",
+      "sha256": "6779565e2c9cfdbbf0fe4b58958ebfb5b2a8df3ea48ed7445b27eb258565d888",
+      "role": "strict_change_gate_forward_risk"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d1/r1-d1-validation-receipt-v1.json",
+      "sha256": "01be0271082dfeab9410c7938bb0030da2d251ec5349780f521087dee50f6451",
+      "role": "machine_readable_validation_receipt"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d1/r1-d1-implementation-report.md",
+      "sha256": "c420afefe469cffb2c56c9b61223db88a67f1578b7bae298dd4f680d1606cf62",
+      "role": "human_readable_final_report"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d1/short-completion-canary-readiness-v1.json",
+      "sha256": "705bfbf3698fcf0b2fee0af8cb7aa6acc9cdbf71e6e1d2b8c48ed00858b3bb5a",
+      "role": "non_executable_canary_approval_readiness"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d1/r1-d1-strict-change-gate-v1.json",
+      "sha256": "f1c2974aae32192e835bb59777b6a207eebdfe53d6d5b6d47029bd0d30141289",
+      "role": "strict_l3_change_gate_receipt"
+    }
+  ],
+  "private_evidence": {
+    "committed": false,
+    "exact_replay_matched_committed_fixture": true,
+    "canonical_result_sha256": "657cc71af13986b8ea94309ec0fed904abbd943e827004a8bb55283f430c1afb",
+    "target_term_sha256": "1c34f88707b55e6104c4eb20e71ffa3d33e414b71ef689a15fad0640d0ac58cb",
+    "raw_term_committed": false,
+    "raw_story_committed": false,
+    "raw_prompt_committed": false,
+    "credentials_or_headers_committed": false
+  },
+  "verification": {
+    "focused": "60 passed, 1 xfailed",
+    "related": "155 passed, 1 xfailed",
+    "workflow_focused": "14 passed, 364 deselected",
+    "production_length_matrix": "3 passed",
+    "full_suite": "1 failed, 2732 passed, 2 skipped, 6 xfailed",
+    "new_failures": 0,
+    "paid_model_calls": 0,
+    "live_artifact_changed": false
+  }
+}

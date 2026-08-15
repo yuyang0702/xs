@@ -1,0 +1,72 @@
+{
+  "schema": "R1D1ShortCompletionCanaryReadinessV1",
+  "version": 1,
+  "gate": "SHORT_COMPLETION_CANARY_APPROVAL_READY",
+  "execution_authorized": false,
+  "signed_approval_present": false,
+  "credential_lookup_authorized": false,
+  "provider_client_creation_authorized": false,
+  "network_authorized": false,
+  "paid_model_calls_authorized": false,
+  "maximum_executions": 1,
+  "candidate": {
+    "branch": "r1-d1/authority-aware-mixed-script-narrow-fix-20260816",
+    "implementation_source_head": "3745732",
+    "workload_id": "short-normal-v1",
+    "route": "full_short_completion_primary_route_with_existing_runtime_recovery_only",
+    "phase1b_enabled": false,
+    "validator_policy_sha256": "7e9875e3341f811fc3882b8161de6ca9f4e81243ce0262a0b1c72cb54353c940",
+    "historical_replay_result_sha256": "657cc71af13986b8ea94309ec0fed904abbd943e827004a8bb55283f430c1afb",
+    "runtime_build_fingerprint_sha256": "a3134c453f37791580c98021bf9a42a59a084117216c08a2435ad3438261c25d",
+    "execution_config_fingerprint_sha256": "75a7919fc623ae5b9f823f9772aab1255f833a5906002ebf6249e400c483d8ed",
+    "runtime_execution_fingerprint_sha256": "ca168f8a74c9ff1d187de88799824270092f0b41a37de28cb227314c08f180e3"
+  },
+  "budget_candidate": {
+    "expected_model_calls": 16,
+    "maximum_total_model_calls": 144,
+    "maximum_input_tokens": 2000000,
+    "maximum_output_tokens": 2000000,
+    "maximum_output_tokens_per_dispatch": 32000,
+    "maximum_elapsed_seconds": 27108,
+    "maximum_usd_cost_microunits": 60000000,
+    "maximum_cny_cost_microunits": 120000000,
+    "first_terminal_stop": true,
+    "resume_after_terminal": false,
+    "source_call_topology": "docs/superpowers/reports/c0b-p1-short-call-topology-v1.json",
+    "source_monetary_budget": "docs/superpowers/reports/c0b-p1-canary-monetary-budget-v1.json",
+    "source_elapsed_budget": "docs/superpowers/reports/c0b-p1-elapsed-budget-v1.json"
+  },
+  "entry_evidence": {
+    "r1_d1_gate": "R1_D1_NARROW_FIX_READY",
+    "exact_historical_call_22_crosses_prose_boundary": true,
+    "true_positive_calls_20_21_retained": true,
+    "fake_gateway_crosses_draft_to_semantic_review": true,
+    "prompt_route_retry_budget_parity": true,
+    "live_business_artifact_parity": true,
+    "full_suite_new_failures": 0,
+    "real_provider_calls_during_r1_d1": 0,
+    "paid_model_calls_during_r1_d1": 0
+  },
+  "required_before_execution": [
+    "fresh clean-worktree RuntimeBuildFingerprintV1 bound to the exact executable HEAD",
+    "fresh execution-config and runtime-execution fingerprints",
+    "hash-bound immutable workload and full Short route plan",
+    "single-use cohort identity and approval reservation",
+    "named-approver Signed Approval bound to all hashes, budget and time window",
+    "validate-only receipt proving the materialized authorization is exact",
+    "confirmed authorization patch that explicitly enables credential, client, network and paid calls",
+    "pre-execution live artifact parity snapshot",
+    "first-terminal stop and post-run approval consumption evidence"
+  ],
+  "forbidden_without_new_approval": [
+    "credential lookup",
+    "provider client creation",
+    "network access",
+    "paid model dispatch",
+    "reuse of any consumed C0B or PA cohort",
+    "Phase 1B enablement",
+    "automatic execution from this readiness record"
+  ],
+  "decision": "READY_TO_REQUEST_NAMED_APPROVAL_NOT_READY_TO_EXECUTE",
+  "real_canary_executed": false
+}
