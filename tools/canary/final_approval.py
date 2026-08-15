@@ -115,7 +115,7 @@ def materialize_c0b_smoke_1_final_approval_v2(
     paths = {
         "plan": output_root / "c0b-smoke-1-final-plan-v2.json",
         "approval_candidate": output_root / "c0b-smoke-1-final-approval-candidate-v2.json",
-        "user_authorization_patch": output_root / "c0b-smoke-1-user-authorization-patch-v1.json",
+        "user_authorization_patch": output_root / "c0b-smoke-1-user-authorization-patch-v2.json",
         "execution_command_preview": output_root / "c0b-smoke-1-execution-command-preview-v1.json",
         "packet": output_root / "c0b-smoke-1-final-packet-v2.json",
         "validation_receipt": output_root / "c0b-smoke-1-final-validate-only-receipt-v2.json",
