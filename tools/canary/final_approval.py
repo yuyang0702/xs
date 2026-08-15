@@ -302,7 +302,8 @@ def materialize_c0b_smoke_1_final_approval_v2(
         packet.pop("approval_draft_sha256", None)
         packet.update({
             "schema": "C0BSmoke1FinalApprovalPacketV2", "version": 2,
-            "status": "C0B_SMOKE_1_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+            "contract_status": "C0B_SMOKE_1_SIGNED_APPROVAL_CONTRACT_READY",
+            "status": "C0B_SMOKE_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
             "plan_sha256": plan["plan_sha256"],
             "approval_candidate_sha256": candidate[
                 "approval_candidate_sha256"
@@ -339,7 +340,8 @@ def materialize_c0b_smoke_1_final_approval_v2(
         raise RuntimeError("materialization_network_call_observed")
     index_body = {
         "schema": "C0BSmoke1FinalMaterializationIndexV2", "version": 2,
-        "status": "C0B_SMOKE_1_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+        "contract_status": "C0B_SMOKE_1_SIGNED_APPROVAL_CONTRACT_READY",
+        "status": "C0B_SMOKE_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
         "files": {
             path.name: file_sha256(path)
             for path in sorted(

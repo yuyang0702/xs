@@ -93,6 +93,12 @@ def _signed_payload(value: dict) -> dict:
 
 def test_candidate_and_patch_remain_non_executable(signed_packet) -> None:
     plan = signed_packet["plan"]
+    assert signed_packet["index"]["contract_status"] == (
+        "C0B_SMOKE_1_SIGNED_APPROVAL_CONTRACT_READY"
+    )
+    assert signed_packet["index"]["status"] == (
+        "C0B_SMOKE_1_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION"
+    )
     with pytest.raises(CanaryLauncherError, match="approval_candidate_not_executable"):
         validate_packet(
             plan_path=signed_packet["paths"]["plan"],
