@@ -294,3 +294,13 @@ def test_default_non_draft_report_shape_is_unchanged() -> None:
     assert _blocking("系统SignalKey记录异常。") == [
         "mixed_script_corruption"
     ]
+    assert _blocking("系统ＳｉｇｎａｌＫｅｙ记录异常。") == []
+
+
+@requires_r1_d1
+def test_authority_evaluation_does_not_expand_the_legacy_candidate_set() -> None:
+    context = _context("SignalKey")
+
+    assert _blocking(
+        "系统ＳｉｇｎａｌＫｅｙ记录异常。", context,
+    ) == []

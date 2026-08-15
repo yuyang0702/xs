@@ -395,18 +395,20 @@ def analyze_prose(
     for pattern in PRODUCTION_PATTERNS:
         for match in re.finditer(pattern, text, re.I):
             findings.append(_finding("production_text", text, match, True))
+    legacy_mixed_matches = list(MIXED_SCRIPT.finditer(text))
+    if authority_context is None:
+        for match in legacy_mixed_matches:
+            findings.append(_finding("mixed_script_corruption", text, match, True))
     for match, normalized, ambiguous in _latin_tokens(text):
-        left = text[match.start() - 1] if match.start() else ""
-        right = text[match.end()] if match.end() < len(text) else ""
-        if not (_is_cjk(left) or _is_cjk(right)):
+        if authority_context is None or not any(
+            legacy.start() < match.end() and match.start() < legacy.end()
+            for legacy in legacy_mixed_matches
+        ):
             continue
         if (
             normalized is not None
             and sum(character.isalpha() for character in normalized) < 2
         ):
-            continue
-        if authority_context is None:
-            findings.append(_finding("mixed_script_corruption", text, match, True))
             continue
         decision = _mixed_script_decision(
             match.group(0), normalized, ambiguous, authority_context,
