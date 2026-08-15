@@ -1,0 +1,88 @@
+{
+  "schema": "R1D0HypothesisTableV1",
+  "version": 1,
+  "hypotheses": [
+    {
+      "id": "H1",
+      "hypothesis": "The Draft terminal was caused by truncated output.",
+      "status": "contradicted",
+      "confidence": "high",
+      "evidence": "All three responses were end_turn, sentence-closed and within the configured Han range.",
+      "falsification": "Produce a hash-bound receipt showing a truncation finish reason or incomplete boundary for one of calls 20-22."
+    },
+    {
+      "id": "H2",
+      "hypothesis": "Scope retry modified content outside its allowed scope.",
+      "status": "contradicted_under_current_contract",
+      "confidence": "high",
+      "evidence": "The current scope owns the whole Draft unit and supplies no edit span or immutable prose; whole regeneration is allowed.",
+      "falsification": "Produce an exact contract field that limits retry to a smaller prose span."
+    },
+    {
+      "id": "H3",
+      "hypothesis": "The retries failed to remove the target leaf issue.",
+      "status": "supported",
+      "confidence": "high",
+      "evidence": "Concrete issue counts were 6, 7 and 1; the third result remained blocked.",
+      "falsification": "Replay call 22 under the same validator version and obtain zero blocking matches."
+    },
+    {
+      "id": "H4",
+      "hypothesis": "Repairing A introduced a new blocking B that was not rechecked.",
+      "status": "not_supported",
+      "confidence": "medium",
+      "evidence": "No secondary deterministic blocker was observed; narrative semantic validation was not reached, so semantic B remains unknown.",
+      "falsification": "Bind a new call-21/22 blocker or semantic receipt to the exact output hash."
+    },
+    {
+      "id": "H5",
+      "hypothesis": "The deterministic prose validator has a false positive or over-strict rule.",
+      "status": "confirmed",
+      "confidence": "high",
+      "evidence": "The same regex classifies a known corrupted name and an upstream-approved Latin term identically; punctuation alone changes the outcome.",
+      "falsification": "Show that the matched token was not authority-approved or that the current regex consults approved terminology."
+    },
+    {
+      "id": "H6",
+      "hypothesis": "A stale Draft, Manifest or Receipt was validated.",
+      "status": "contradicted_as_root_cause",
+      "confidence": "high",
+      "evidence": "The leaf gate validates the exact current returned Draft object and its regex signature does not read Manifest or Receipt state.",
+      "falsification": "Demonstrate object substitution between _stage return and _draft_segment_findings."
+    },
+    {
+      "id": "H7",
+      "hypothesis": "Best-candidate selection chose the wrong Draft.",
+      "status": "contradicted",
+      "confidence": "high",
+      "evidence": "No Draft candidate or segment checkpoint existed; candidate selection was never reached.",
+      "falsification": "Produce a run-bound Draft candidate row or protected best-candidate artifact."
+    },
+    {
+      "id": "H8",
+      "hypothesis": "Recovery Policy should have contained the least-blocked output.",
+      "status": "unresolved_policy_question",
+      "confidence": "medium",
+      "evidence": "Call 22 was diagnostically least blocked but was not a legal candidate; containment would alter acceptance/checkpoint semantics.",
+      "falsification": "Identify an existing policy path that legally seals and resumes a locally rejected stage output."
+    },
+    {
+      "id": "H9",
+      "hypothesis": "Output-budget loss caused the Draft failure.",
+      "status": "contradicted_as_first_divergence",
+      "confidence": "high",
+      "evidence": "Call 22 reported 4096 output tokens but finished end_turn, exceeded minimum length, closed its sentence and failed on a deterministic term match.",
+      "falsification": "Show that the blocking matched token or terminal disappears solely when the same output receives a larger budget."
+    },
+    {
+      "id": "H10",
+      "hypothesis": "The incident is only random model quality with no stable code defect.",
+      "status": "contradicted",
+      "confidence": "high",
+      "evidence": "A stable regex and sanitized minimal counterexample reproduce the rejection deterministically.",
+      "falsification": "Demonstrate non-deterministic results for the same text and validator build."
+    }
+  ],
+  "suggested_failure_family": "draft.validator_false_positive",
+  "suggested_submechanism": "authority_approved_latin_term_misclassified"
+}

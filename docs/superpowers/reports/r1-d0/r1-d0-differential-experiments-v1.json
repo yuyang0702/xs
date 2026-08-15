@@ -1,0 +1,69 @@
+{
+  "schema": "R1D0DifferentialExperimentsV1",
+  "version": 1,
+  "experiments": [
+    {
+      "id": 1,
+      "name": "historical-output leaf replay",
+      "input": "hash-bound calls 20-22",
+      "result": "6, 7 and 1 mixed_script_corruption findings",
+      "conclusion": "deterministic and reproducible"
+    },
+    {
+      "id": 2,
+      "name": "transport completeness",
+      "input": "finish receipt, length and sentence boundary",
+      "result": "all three end_turn, in range and sentence-closed",
+      "conclusion": "truncation is not the first divergence"
+    },
+    {
+      "id": 3,
+      "name": "authority vocabulary provenance",
+      "input": "hash-only token search over planning and manifest derivative artifacts",
+      "result": "the final blocking token occurs 83 times in 16 upstream artifacts",
+      "conclusion": "the term is upstream-approved, not random output corruption"
+    },
+    {
+      "id": 4,
+      "name": "sanitized minimal pair",
+      "input": "known corruption shape versus adjacent CJK plus SignalKey",
+      "result": "both receive mixed_script_corruption",
+      "conclusion": "the rule cannot distinguish the two semantic cases"
+    },
+    {
+      "id": 5,
+      "name": "punctuation boundary counterfactual",
+      "input": "same CJK and Latin semantic tokens with quotes added",
+      "result": "blocking finding disappears",
+      "conclusion": "surface adjacency alone controls the decision"
+    },
+    {
+      "id": 6,
+      "name": "whole-retry diff",
+      "input": "20->21 and 21->22 structural diff",
+      "result": "similarity 0.138637/0.156913 and 0/3 exact paragraphs retained",
+      "conclusion": "current retry is full owned-unit regeneration, not a localized patch"
+    },
+    {
+      "id": 7,
+      "name": "semantic boundary reachability",
+      "input": "run events, receipts and artifacts",
+      "result": "no Draft semantic receipt and semantic validator not reached",
+      "conclusion": "no evidence supports a downstream semantic cause"
+    },
+    {
+      "id": 8,
+      "name": "candidate and resume containment",
+      "input": "candidate rows, checkpoints and manuscript selection",
+      "result": "no legal Draft candidate/checkpoint; stage outputs are not resumable manuscripts",
+      "conclusion": "selector defect is not involved and containment would require a policy change"
+    },
+    {
+      "id": 9,
+      "name": "isolated full recursive replay",
+      "input": "exact raw outputs through current WorkflowService with fake gateway",
+      "result": "three Draft calls followed by the same ValueError terminal",
+      "conclusion": "the current production path deterministically reproduces the incident without a Provider"
+    }
+  ]
+}

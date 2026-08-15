@@ -1,0 +1,83 @@
+{
+  "schema": "DraftValidatorContractMapV1",
+  "version": 1,
+  "ordered_path": [
+    {
+      "order": 1,
+      "function": "WorkflowService._draft_short_segment_task",
+      "call_site": "src/novel_flywheel/workflows.py:24093",
+      "input": "rendered Draft task prompt",
+      "callee": "WorkflowService._stage",
+      "observation": "completion_check invokes _draft_segment_issues but does not itself reject an end_turn response"
+    },
+    {
+      "order": 2,
+      "function": "WorkflowService._stage",
+      "call_site": "src/novel_flywheel/workflows.py:26086",
+      "input": "Provider response plus receipt",
+      "callee": "transport completeness and checkpoint observation",
+      "observation": "all three responses were end_turn, sentence-closed and transport-complete"
+    },
+    {
+      "order": 3,
+      "function": "WorkflowService._draft_segment_findings",
+      "call_site": "src/novel_flywheel/workflows.py:24115",
+      "input": "the exact current returned Draft object",
+      "callee": "effective_han_characters, analyze_prose, duplicate and transition checks",
+      "observation": "current result is revalidated after _stage returns"
+    },
+    {
+      "order": 4,
+      "function": "novel_flywheel.prose_quality.analyze_prose",
+      "call_site": "src/novel_flywheel/workflows.py:19720",
+      "input": "current Draft text only",
+      "callee": "MIXED_SCRIPT.finditer",
+      "observation": "does not consult Manifest, authority vocabulary or semantic receipt"
+    },
+    {
+      "order": 5,
+      "function": "MIXED_SCRIPT",
+      "call_site": "src/novel_flywheel/prose_quality.py:17",
+      "input": "adjacent CJK and two-or-more ASCII letters",
+      "callee": "mixed_script_corruption finding",
+      "observation": "same rule rejects both a known corruption shape and an authority-approved Latin term shape"
+    },
+    {
+      "order": 6,
+      "function": "WorkflowService._draft_segment_findings",
+      "call_site": "src/novel_flywheel/workflows.py:19723",
+      "input": "blocking analyze_prose findings",
+      "callee": "outer prose_invalid finding",
+      "observation": "concrete issue code and evidence are collapsed"
+    },
+    {
+      "order": 7,
+      "function": "retry_same_scope",
+      "call_site": "src/novel_flywheel/workflows.py:24130",
+      "input": "outer findings",
+      "callee": "recursive _draft_short_segment_task or ValueError",
+      "observation": "two retries are allowed; third rejection is terminal"
+    },
+    {
+      "order": 8,
+      "function": "accept_node",
+      "call_site": "src/novel_flywheel/workflows.py:24120",
+      "input": "locally accepted Draft",
+      "callee": "first_person_prose_issues and _verify_draft_semantic_node",
+      "observation": "not reached in the incident"
+    }
+  ],
+  "state_reads": [
+    "StoryState revision and authority hash in _stage",
+    "DraftTaskContract authority/scope/entry/exit/manifest/beat ids",
+    "previous accepted parts for duplicate and transition validation",
+    "current Provider response and finish receipt"
+  ],
+  "state_writes": [
+    "stage output artifact and transport checkpoint observation",
+    "draft_task_scope_retry run event",
+    "terminal workflow attempt SafeFailure summary"
+  ],
+  "root_cause_location": "src/novel_flywheel/prose_quality.py:17",
+  "root_cause_type": "deterministic_validator_false_positive"
+}

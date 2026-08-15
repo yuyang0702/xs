@@ -1,0 +1,75 @@
+{
+  "schema": "DraftProseValidationFailureTimelineV1",
+  "version": 1,
+  "source_execution_head": "6405b3b806d88c56accc99d5152ce7461656e33b",
+  "evidence_status": "exact_hash_bound_offline_replay",
+  "first_divergent_node": {
+    "call_ordinal": 20,
+    "function": "novel_flywheel.prose_quality.analyze_prose",
+    "rule": "MIXED_SCRIPT",
+    "issue_code": "mixed_script_corruption",
+    "confidence": "high"
+  },
+  "timeline": [
+    {
+      "ordinal": 20,
+      "boundary": "draft-part-01",
+      "finish_reason": "end_turn",
+      "transport_complete": true,
+      "effective_han": 6957,
+      "allowed_han": [2700, 8700],
+      "sentence_closed": true,
+      "response_sha256": "85f3a3ea30dcc4c6e01262e6fb2bd653e84f079f424a72744b3f7cfa38a957e5",
+      "concrete_blocker": "mixed_script_corruption",
+      "concrete_blocker_count": 6,
+      "outer_leaf_code": "prose_invalid",
+      "result": "scope_retry"
+    },
+    {
+      "ordinal": 21,
+      "boundary": "draft-part-01-scope-retry",
+      "finish_reason": "end_turn",
+      "transport_complete": true,
+      "effective_han": 6830,
+      "allowed_han": [2700, 8700],
+      "sentence_closed": true,
+      "response_sha256": "4ad433184b8819403abffb70dae3c7fb90149a02390286493bf13e2e0bde843b",
+      "concrete_blocker": "mixed_script_corruption",
+      "concrete_blocker_count": 7,
+      "outer_leaf_code": "prose_invalid",
+      "result": "scope_retry"
+    },
+    {
+      "ordinal": 22,
+      "boundary": "draft-part-01-scope-retry-scope-retry",
+      "finish_reason": "end_turn",
+      "transport_complete": true,
+      "effective_han": 6084,
+      "allowed_han": [2700, 8700],
+      "sentence_closed": true,
+      "response_sha256": "1ddbcf4ce67948d3118b8f4208bed51da023fc46131fe9da3906a69aeef77a37",
+      "concrete_blocker": "mixed_script_corruption",
+      "concrete_blocker_count": 1,
+      "outer_leaf_code": "prose_invalid",
+      "result": "terminal_after_retry_exhaustion"
+    }
+  ],
+  "terminal": {
+    "function": "WorkflowService._draft_short_segment_task.retry_same_scope",
+    "exception_type": "ValueError",
+    "exception_message_sha256": "875536b968de58a38e211e783d32b1cbc24309761c92fd2563034730480127ec",
+    "persisted_failure_class": "unknown",
+    "persisted_incident_family": "unclassified.8bff54965de2f818",
+    "production_incident_counted": false
+  },
+  "not_reached": [
+    "first_person_prose_issues",
+    "_verify_draft_semantic_node",
+    "draft semantic receipt",
+    "segment checkpoint",
+    "candidate",
+    "draft.md"
+  ],
+  "raw_content_included": false,
+  "prompt_content_included": false
+}

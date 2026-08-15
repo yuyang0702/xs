@@ -1,0 +1,82 @@
+{
+  "version": 2,
+  "original_requirement": "Verify the exact root cause of the Draft prose validation terminal after the accepted Planning Adaptation receipt, using historical evidence and offline replay only, without changing production behavior or calling a real Provider.",
+  "scope_classification": "closed_world_diagnostic",
+  "operational_definition": "Hash-bound historical Draft outputs are replayed through the current production validation and recursive retry path with an isolated fake gateway. Reports preserve concrete, collapsed and not-reached layers separately.",
+  "forbidden_narrowing": [
+    "A transport-complete response cannot be called a valid Draft artifact.",
+    "The collapsed prose_invalid code cannot substitute for the concrete analyzer finding.",
+    "The least-blocked rejected output cannot be described as a formal Best Candidate.",
+    "A reconstructed Prompt hash mismatch cannot be described as historical Prompt parity.",
+    "No policy, validator, Prompt, retry, route or production source change is authorized by this report."
+  ],
+  "resolution_status": "root_cause_verified_no_fix_applied",
+  "closed_world_justification": "The first divergence occurs in a pure deterministic regex applied directly to the exact returned Draft text. The same production leaf and retry functions reproduce the terminal offline from three exact historical outputs.",
+  "constraint_traceability": [
+    {
+      "requirement": "Identify the exact validation layer and first divergence.",
+      "evidence": "draft-validator-contract-map-v1.json and draft-prose-validation-failure-timeline-v1.json"
+    },
+    {
+      "requirement": "Distinguish truncation, scope, semantic, selection and recovery hypotheses.",
+      "evidence": "r1-d0-hypothesis-table-v1.json and r1-d0-differential-experiments-v1.json"
+    },
+    {
+      "requirement": "Reproduce without real Provider calls or live mutation.",
+      "evidence": "r1-d0-exact-offline-replay-v1.json and final parity receipt"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "truncated_draft",
+    "scope_retry_out_of_bounds",
+    "draft_leaf_issue_persists",
+    "secondary_regression_escape",
+    "validator_false_positive",
+    "stale_artifact_binding",
+    "candidate_selector_defect",
+    "recovery_containment_gap",
+    "output_budget_loss",
+    "random_model_quality"
+  ],
+  "projected_failure_mechanisms": [
+    "approved Latin terminology adjacent to CJK characters",
+    "whole-unit regeneration repeats or relocates the same approved term",
+    "outer issue collapse prevents the retry prompt and incident classifier from seeing the concrete reason",
+    "semantic review remains unreachable because the deterministic leaf gate fires first"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only tests, sanitized fixtures and diagnostic reports are added. Production Runtime, baml_src, Prompt, Provider adapters, routes and retry code are unchanged.",
+  "why_previous_tests_missed": "The existing prose-quality test covers a genuine corrupted mixed-script name but has no authority-approved Latin-term counterexample or Draft leaf collapse assertion.",
+  "sibling_boundaries": [
+    {
+      "boundary": "general prose_quality.analyze_prose callers",
+      "disposition": "future_fix_requires_inventory",
+      "evidence": "The rule is shared; a future fix must test every caller rather than silently weakening all prose validation."
+    },
+    {
+      "boundary": "Draft semantic validation",
+      "disposition": "not_reached",
+      "evidence": "No semantic receipt exists for calls 20-22."
+    },
+    {
+      "boundary": "Checkpoint, Candidate and Resume",
+      "disposition": "not_involved",
+      "evidence": "No legal Draft artifact was produced."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_r1_d0_draft_prose_characterization.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "authority-approved Latin term accepted while genuine corruption remains rejected",
+    "concrete analyzer issue preserved through Draft leaf receipt",
+    "fixed Draft proceeds through first-person and semantic validation using a fake reviewer",
+    "accepted Draft writes the same checkpoint and candidate contracts as an ordinary valid Draft"
+  ],
+  "remaining_risks": [
+    "The historical Prompt cannot be reconstructed to an exact hash in the offline environment.",
+    "No exact parent-attempt identifier links recursive scope retries; the suffix and retry_count provide only derived lineage.",
+    "Historical checkpoint execution binding remains unverifiable_legacy.",
+    "Semantic quality of the three rejected Drafts is unknown because semantic validation was not reached."
+  ]
+}

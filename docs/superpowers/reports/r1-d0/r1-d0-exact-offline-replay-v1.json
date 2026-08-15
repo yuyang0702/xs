@@ -1,0 +1,66 @@
+{
+  "schema": "R1D0ExactOfflineReplayV1",
+  "version": 1,
+  "replay_mode": "isolated_copy_deterministic_fake_gateway",
+  "production_provider_calls": 0,
+  "credential_lookups": 0,
+  "provider_client_constructions": 0,
+  "network_calls": 0,
+  "paid_model_calls": 0,
+  "fake_boundaries": 3,
+  "inputs": {
+    "database": "isolated copy",
+    "project": "isolated copy",
+    "run_namespace": "replay-only",
+    "gateway_outputs": [
+      "85f3a3ea30dcc4c6e01262e6fb2bd653e84f079f424a72744b3f7cfa38a957e5",
+      "4ad433184b8819403abffb70dae3c7fb90149a02390286493bf13e2e0bde843b",
+      "1ddbcf4ce67948d3118b8f4208bed51da023fc46131fe9da3906a69aeef77a37"
+    ],
+    "raw_outputs_committed": false,
+    "private_paths_committed": false
+  },
+  "production_path_executed": [
+    "WorkflowService._draft_short_in_segments",
+    "WorkflowService._draft_short_segment_task",
+    "WorkflowService._stage",
+    "WorkflowService._draft_segment_findings",
+    "novel_flywheel.prose_quality.analyze_prose",
+    "WorkflowService._draft_short_segment_task.retry_same_scope"
+  ],
+  "observed_attempts": [
+    {
+      "ordinal": 20,
+      "status": "generated_complete",
+      "validation_stage": "transport",
+      "local_issue": "mixed_script_corruption",
+      "outer_issue": "prose_invalid"
+    },
+    {
+      "ordinal": 21,
+      "status": "generated_complete",
+      "validation_stage": "transport",
+      "local_issue": "mixed_script_corruption",
+      "outer_issue": "prose_invalid"
+    },
+    {
+      "ordinal": 22,
+      "status": "generated_complete",
+      "validation_stage": "transport",
+      "local_issue": "mixed_script_corruption",
+      "outer_issue": "prose_invalid"
+    }
+  ],
+  "terminal": {
+    "type": "ValueError",
+    "message_sha256": "875536b968de58a38e211e783d32b1cbc24309761c92fd2563034730480127ec",
+    "cause": null,
+    "context": null,
+    "workflow_attempt_count": 3,
+    "workflow_status": "irrecoverable",
+    "recovery_state": "automatic_recovery_exhausted"
+  },
+  "prompt_replay_parity": "not_claimed",
+  "prompt_replay_parity_reason": "Reconstructed replay context did not reproduce the historical prompt hashes. Exact historical raw outputs were nevertheless replayed through the current production validation and retry path.",
+  "result": "exact_terminal_reproduced"
+}

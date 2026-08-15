@@ -1,0 +1,53 @@
+{
+  "schema": "DraftScopeRetryClosureMapV1",
+  "version": 1,
+  "retry_limit": 2,
+  "scope_kind": "whole_ownership_unit_regeneration",
+  "stable_bindings": {
+    "authority_sha256": true,
+    "task_id": true,
+    "parent_task_id": true,
+    "depth": true,
+    "target_han": true,
+    "event_ids": true,
+    "beat_ids": true,
+    "scope": true,
+    "entry_state": true,
+    "execution_manifest_sha256": true,
+    "narrative_contract_fields": true
+  },
+  "mutated_bindings": {
+    "exit_requirement": "appends the collapsed previous-check message on each retry",
+    "stage_suffix": "appends -scope-retry"
+  },
+  "missing_bindings": {
+    "previous_draft_hash": "not supplied",
+    "formal_issue_receipt": "not materialized",
+    "validator_version": "not bound",
+    "allowed_edit_span": "not defined",
+    "immutable_prose_region": "not defined",
+    "exact_parent_attempt_id": "not persisted across recursive boundaries"
+  },
+  "diff_observations": [
+    {
+      "from": 20,
+      "to": 21,
+      "character_similarity": 0.138637,
+      "exact_retained_paragraphs": 0,
+      "interpretation": "full regeneration allowed by current whole-unit scope"
+    },
+    {
+      "from": 21,
+      "to": 22,
+      "character_similarity": 0.156913,
+      "exact_retained_paragraphs": 3,
+      "interpretation": "full regeneration allowed by current whole-unit scope"
+    }
+  ],
+  "issue_counts": [6, 7, 1],
+  "closure_classification": "target_partially_reduced_but_not_eliminated",
+  "secondary_blocking_issue_observed": false,
+  "semantic_regression_observable": false,
+  "semantic_regression_reason": "semantic validation was never reached",
+  "conclusion": "The retry stayed within its presently defined broad scope. The incident is not evidence of an out-of-scope patch; it is evidence that a false-positive leaf rule triggered three whole regenerations and then terminal exhaustion."
+}

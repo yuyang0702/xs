@@ -1,0 +1,32 @@
+{
+  "schema": "DraftBestCandidateContainmentV1",
+  "version": 1,
+  "candidate_rows_for_run": 0,
+  "sealed_draft_generation_units": 0,
+  "draft_segment_checkpoint_exists": false,
+  "draft_artifact_exists": false,
+  "best_candidate_exists": false,
+  "last_legal_artifact": {
+    "kind": "review_output",
+    "sha256": "6b3cc15f4bb54a2c70ff03c7f5c4302af177aee2efb239e7478a596f6da7436b"
+  },
+  "last_observed_checkpoint": {
+    "identity": "4ca339c5a53e9b26de40be728b927f508f15b778fbbbc58b9a6282e7f8fada13",
+    "binding_status": "unverifiable_legacy"
+  },
+  "diagnostic_best_output": {
+    "ordinal": 22,
+    "reason": "fewest current deterministic blocking matches",
+    "formal_candidate": false,
+    "promotable": false,
+    "resumable_as_draft": false
+  },
+  "resume_behavior": {
+    "accepted_manuscript_names": ["draft.md", "best-candidate.md"],
+    "best_candidate_requires_protected_quality_checkpoint": true,
+    "stage_output_suffixes_are_accepted": false,
+    "recoverable_legal_draft": false,
+    "recoverable_upstream_authority": true
+  },
+  "recovery_policy_observation": "Current code cannot safely contain call 22 as a Draft without changing acceptance and checkpoint policy. R1-D0 does not make that policy change."
+}
