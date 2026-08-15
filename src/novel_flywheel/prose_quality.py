@@ -1,6 +1,10 @@
+from dataclasses import dataclass
+import hashlib
+import json
 import re
 from statistics import mean
-from typing import Any
+from typing import Any, Iterable
+import unicodedata
 
 
 SEGMENT_SEPARATOR = "<!-- NOVEL_FLYWHEEL_SEGMENT -->"
@@ -15,6 +19,16 @@ PRODUCTION_PATTERNS = (
     r"SHORT_CAUSAL_CHAIN_JSON_(?:START|END)",
 )
 MIXED_SCRIPT = re.compile(r"(?:[\u4e00-\u9fff][A-Za-z]{2,}|[A-Za-z]{2,}[\u4e00-\u9fff])")
+AUTHORITY_LATIN_NORMALIZATION_VERSION = "nfkc-case-sensitive-exact-token-v1"
+_SHA256 = re.compile(r"[0-9a-f]{64}")
+_LATIN_TOKEN = re.compile(
+    r"[A-Za-zＡ-Ｚａ-ｚ][A-Za-z0-9Ａ-Ｚａ-ｚ０-９]*"
+    r"(?:(?:[._/\-．＿／－])[A-Za-z0-9Ａ-Ｚａ-ｚ０-９]+)*"
+    r"(?:[+＋]{1,2})?"
+)
+_NORMALIZED_LATIN_TOKEN = re.compile(
+    r"[A-Za-z][A-Za-z0-9]*(?:(?:[._/\-])[A-Za-z0-9]+)*(?:\+{1,2})?"
+)
 UNICODE_REPLACEMENT = re.compile("\ufffd")
 INVALID_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 FORMULA_PATTERNS = (
@@ -26,6 +40,331 @@ FORMULA_PATTERNS = (
 )
 WEAK_ADVERBS = re.compile(r"微微|缓缓|轻轻|猛地|悄然|不由得|下意识")
 THEME_ENDING = re.compile(r"(?:这座城市|这个时代|命运|时代).{0,30}(?:仍|还|继续|向前|运转|洪流)")
+
+
+def _canonical_sha256(value: object) -> str:
+    return hashlib.sha256(json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+
+
+def _require_sha256(value: str, field: str) -> None:
+    if _SHA256.fullmatch(value) is None:
+        raise ValueError(f"{field} must be a lowercase SHA-256 digest")
+
+
+@dataclass(frozen=True)
+class AuthorityTermSourceArtifactV1:
+    artifact_kind: str
+    artifact_sha256: str
+    contract: str
+    version: int
+    authority_status: str
+
+    def __post_init__(self) -> None:
+        if not self.artifact_kind.strip() or not self.contract.strip():
+            raise ValueError("authority term source identity must not be empty")
+        _require_sha256(self.artifact_sha256, "artifact_sha256")
+        if self.version < 1:
+            raise ValueError("authority term source version must be positive")
+        if not self.authority_status.strip():
+            raise ValueError("authority_status must not be empty")
+
+
+@dataclass(frozen=True)
+class AuthorityTermProjectionFieldV1:
+    """One explicitly selected structured authority field.
+
+    ``value`` remains process-local. Diagnostic projections retain only its
+    field-path hash and any exact normalized term hash.
+    """
+
+    source_artifact_sha256: str
+    field_path: str
+    value: str
+    segment_binding_sha256: str
+
+    def __post_init__(self) -> None:
+        _require_sha256(self.source_artifact_sha256, "source_artifact_sha256")
+        _require_sha256(self.segment_binding_sha256, "segment_binding_sha256")
+        if not self.field_path.strip():
+            raise ValueError("authority term field path must not be empty")
+
+
+@dataclass(frozen=True)
+class AuthorityApprovedLatinTermV1:
+    normalized_term: str
+    term_sha256: str
+    source_artifact_sha256: str
+    source_field_path_sha256: str
+    segment_binding_sha256: str
+
+
+@dataclass(frozen=True)
+class AuthorityApprovedLatinTermSetV1:
+    schema: str
+    version: int
+    normalization_version: str
+    draft_authority_revision: int
+    draft_authority_sha256: str
+    source_artifacts: tuple[AuthorityTermSourceArtifactV1, ...]
+    approved_terms: tuple[AuthorityApprovedLatinTermV1, ...]
+
+    @property
+    def term_set_sha256(self) -> str:
+        return _canonical_sha256({
+            "schema": self.schema,
+            "version": self.version,
+            "normalization_version": self.normalization_version,
+            "draft_authority_revision": self.draft_authority_revision,
+            "draft_authority_sha256": self.draft_authority_sha256,
+            "source_artifacts": [
+                {
+                    "artifact_kind": item.artifact_kind,
+                    "artifact_sha256": item.artifact_sha256,
+                    "contract": item.contract,
+                    "version": item.version,
+                    "authority_status": item.authority_status,
+                }
+                for item in sorted(
+                    self.source_artifacts,
+                    key=lambda item: (
+                        item.artifact_sha256, item.artifact_kind,
+                        item.contract, item.version, item.authority_status,
+                    ),
+                )
+            ],
+            "approved_terms": [
+                {
+                    "normalized_term": item.normalized_term,
+                    "term_sha256": item.term_sha256,
+                    "source_artifact_sha256": item.source_artifact_sha256,
+                    "source_field_path_sha256": item.source_field_path_sha256,
+                    "segment_binding_sha256": item.segment_binding_sha256,
+                }
+                for item in sorted(
+                    self.approved_terms,
+                    key=lambda item: (
+                        item.normalized_term, item.source_artifact_sha256,
+                        item.source_field_path_sha256,
+                        item.segment_binding_sha256,
+                    ),
+                )
+            ],
+        })
+
+    def diagnostic_payload(self) -> dict[str, Any]:
+        """Return the V1 hash-only representation; never persist raw terms."""
+
+        return {
+            "schema": self.schema,
+            "version": self.version,
+            "normalization_version": self.normalization_version,
+            "draft_authority_revision": self.draft_authority_revision,
+            "draft_authority_sha256": self.draft_authority_sha256,
+            "source_artifacts": [
+                {
+                    "artifact_kind": item.artifact_kind,
+                    "artifact_sha256": item.artifact_sha256,
+                    "contract": item.contract,
+                    "version": item.version,
+                    "authority_status": item.authority_status,
+                }
+                for item in self.source_artifacts
+            ],
+            "approved_terms": [
+                {
+                    "term_sha256": item.term_sha256,
+                    "term_length": len(item.normalized_term),
+                    "character_classes": ["latin", "digit_or_ascii_joiner_optional"],
+                    "source_artifact_sha256": item.source_artifact_sha256,
+                    "source_field_path_sha256": item.source_field_path_sha256,
+                    "segment_binding_sha256": item.segment_binding_sha256,
+                }
+                for item in self.approved_terms
+            ],
+            "term_set_sha256": self.term_set_sha256,
+        }
+
+
+@dataclass(frozen=True)
+class DraftProseAuthorityContextV1:
+    term_set: AuthorityApprovedLatinTermSetV1
+    current_draft_authority_revision: int
+    current_draft_authority_sha256: str
+    current_segment_binding_sha256: str
+    current_source_artifact_sha256s: tuple[str, ...]
+
+
+def _is_cjk(value: str) -> bool:
+    return bool(value) and "\u4e00" <= value <= "\u9fff"
+
+
+def _token_continuation(value: str) -> bool:
+    if not value or _is_cjk(value):
+        return False
+    normalized = unicodedata.normalize("NFKC", value)
+    if len(normalized) == 1 and (
+        normalized.isascii() and (
+            normalized.isalnum() or normalized in "._/+-"
+        )
+    ):
+        return True
+    return unicodedata.category(value) in {"Pd", "Pc"}
+
+
+def _normalize_latin_token(value: str) -> str | None:
+    normalized = unicodedata.normalize("NFKC", value)
+    if _NORMALIZED_LATIN_TOKEN.fullmatch(normalized) is None:
+        return None
+    return normalized
+
+
+def _latin_tokens(value: str) -> Iterable[tuple[re.Match[str], str | None, bool]]:
+    for match in _LATIN_TOKEN.finditer(value):
+        left = value[match.start() - 1] if match.start() else ""
+        right = value[match.end()] if match.end() < len(value) else ""
+        ambiguous = _token_continuation(left) or _token_continuation(right)
+        normalized = _normalize_latin_token(match.group(0))
+        yield match, normalized, ambiguous or normalized is None
+
+
+def build_authority_approved_latin_term_set(
+    *,
+    draft_authority_revision: int,
+    draft_authority_sha256: str,
+    segment_binding_sha256: str,
+    source_artifacts: Iterable[AuthorityTermSourceArtifactV1],
+    fields: Iterable[AuthorityTermProjectionFieldV1],
+) -> AuthorityApprovedLatinTermSetV1:
+    """Project exact Latin terms from an explicit finite field allow-list."""
+
+    if draft_authority_revision < 0:
+        raise ValueError("draft authority revision must not be negative")
+    _require_sha256(draft_authority_sha256, "draft_authority_sha256")
+    _require_sha256(segment_binding_sha256, "segment_binding_sha256")
+    artifacts = tuple(sorted(set(source_artifacts), key=lambda item: (
+        item.artifact_sha256, item.artifact_kind, item.contract,
+        item.version, item.authority_status,
+    )))
+    by_hash: dict[str, AuthorityTermSourceArtifactV1] = {}
+    for artifact in artifacts:
+        existing = by_hash.get(artifact.artifact_sha256)
+        if existing is not None and existing != artifact:
+            raise ValueError("one authority artifact hash has conflicting metadata")
+        by_hash[artifact.artifact_sha256] = artifact
+    approved: set[AuthorityApprovedLatinTermV1] = set()
+    for field in fields:
+        if field.source_artifact_sha256 not in by_hash:
+            raise ValueError("authority term field source has no artifact provenance")
+        if field.segment_binding_sha256 != segment_binding_sha256:
+            raise ValueError("authority term field belongs to another segment")
+        path_sha256 = hashlib.sha256(field.field_path.encode("utf-8")).hexdigest()
+        for _match, normalized, ambiguous in _latin_tokens(field.value):
+            if (
+                ambiguous
+                or normalized is None
+                or sum(character.isalpha() for character in normalized) < 2
+            ):
+                continue
+            approved.add(AuthorityApprovedLatinTermV1(
+                normalized_term=normalized,
+                term_sha256=hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
+                source_artifact_sha256=field.source_artifact_sha256,
+                source_field_path_sha256=path_sha256,
+                segment_binding_sha256=segment_binding_sha256,
+            ))
+    return AuthorityApprovedLatinTermSetV1(
+        schema="AuthorityApprovedLatinTermSetV1",
+        version=1,
+        normalization_version=AUTHORITY_LATIN_NORMALIZATION_VERSION,
+        draft_authority_revision=draft_authority_revision,
+        draft_authority_sha256=draft_authority_sha256,
+        source_artifacts=artifacts,
+        approved_terms=tuple(sorted(approved, key=lambda item: (
+            item.normalized_term, item.source_artifact_sha256,
+            item.source_field_path_sha256, item.segment_binding_sha256,
+        ))),
+    )
+
+
+def _mixed_script_decision(
+    token: str,
+    normalized: str | None,
+    ambiguous: bool,
+    context: DraftProseAuthorityContextV1,
+) -> dict[str, Any]:
+    term_set = context.term_set
+    token_sha256 = hashlib.sha256(
+        (normalized if normalized is not None else token).encode("utf-8")
+    ).hexdigest()
+    base: dict[str, Any] = {
+        "schema": "DraftProseMixedScriptDecisionV1",
+        "version": 1,
+        "token_sha256": token_sha256,
+        "token_length": len(normalized if normalized is not None else token),
+        "character_classes": ["latin", "cjk_adjacent"],
+        "normalization_version": term_set.normalization_version,
+        "draft_authority_revision": context.current_draft_authority_revision,
+        "draft_authority_sha256": context.current_draft_authority_sha256,
+        "segment_binding_sha256": context.current_segment_binding_sha256,
+        "term_set_sha256": term_set.term_set_sha256,
+    }
+    if (
+        ambiguous
+        or normalized is None
+        or term_set.normalization_version
+        != AUTHORITY_LATIN_NORMALIZATION_VERSION
+    ):
+        return {**base, "decision": "reject_ambiguous_term"}
+    term_sources = {item.artifact_sha256 for item in term_set.source_artifacts}
+    current_sources = set(context.current_source_artifact_sha256s)
+    if (
+        term_set.schema != "AuthorityApprovedLatinTermSetV1"
+        or term_set.version != 1
+        or term_set.draft_authority_revision
+        != context.current_draft_authority_revision
+        or term_set.draft_authority_sha256
+        != context.current_draft_authority_sha256
+        or any(
+            item.authority_status != "accepted_current"
+            for item in term_set.source_artifacts
+        )
+        or term_sources != current_sources
+    ):
+        return {**base, "decision": "reject_stale_authority"}
+    matches = [
+        item for item in term_set.approved_terms
+        if item.normalized_term == normalized
+        and item.term_sha256 == token_sha256
+        and item.segment_binding_sha256
+        == context.current_segment_binding_sha256
+        and item.source_artifact_sha256 in current_sources
+        and _SHA256.fullmatch(item.source_field_path_sha256) is not None
+    ]
+    if not matches:
+        return {**base, "decision": "reject_unapproved_mixed_script"}
+    source_metadata = {
+        item.artifact_sha256: item for item in term_set.source_artifacts
+    }
+    return {
+        **base,
+        "decision": "exempt_authority_approved_term",
+        "source_artifacts": [
+            {
+                "artifact_kind": source_metadata[item.source_artifact_sha256].artifact_kind,
+                "artifact_sha256": item.source_artifact_sha256,
+                "source_field_path_sha256": item.source_field_path_sha256,
+                "contract": source_metadata[item.source_artifact_sha256].contract,
+                "version": source_metadata[item.source_artifact_sha256].version,
+                "authority_status": source_metadata[item.source_artifact_sha256].authority_status,
+            }
+            for item in sorted(matches, key=lambda value: (
+                value.source_artifact_sha256,
+                value.source_field_path_sha256,
+            ))
+        ],
+    }
 
 
 def _segment_for(text: str, offset: int) -> int:
@@ -46,13 +385,35 @@ def _finding(code: str, text: str, match: re.Match[str], blocking: bool = False,
     }
 
 
-def analyze_prose(text: str) -> dict[str, Any]:
+def analyze_prose(
+    text: str,
+    *,
+    authority_context: DraftProseAuthorityContextV1 | None = None,
+) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
+    mixed_script_decisions: list[dict[str, Any]] = []
     for pattern in PRODUCTION_PATTERNS:
         for match in re.finditer(pattern, text, re.I):
             findings.append(_finding("production_text", text, match, True))
-    for match in MIXED_SCRIPT.finditer(text):
-        findings.append(_finding("mixed_script_corruption", text, match, True))
+    for match, normalized, ambiguous in _latin_tokens(text):
+        left = text[match.start() - 1] if match.start() else ""
+        right = text[match.end()] if match.end() < len(text) else ""
+        if not (_is_cjk(left) or _is_cjk(right)):
+            continue
+        if (
+            normalized is not None
+            and sum(character.isalpha() for character in normalized) < 2
+        ):
+            continue
+        if authority_context is None:
+            findings.append(_finding("mixed_script_corruption", text, match, True))
+            continue
+        decision = _mixed_script_decision(
+            match.group(0), normalized, ambiguous, authority_context,
+        )
+        mixed_script_decisions.append(decision)
+        if decision["decision"] != "exempt_authority_approved_term":
+            findings.append(_finding("mixed_script_corruption", text, match, True))
     for match in UNICODE_REPLACEMENT.finditer(text):
         findings.append(_finding("unicode_replacement_character", text, match, True))
     for match in INVALID_CONTROL.finditer(text):
@@ -109,13 +470,16 @@ def analyze_prose(text: str) -> dict[str, Any]:
     blocking_count = sum(item["count"] for item in findings if item["blocking"])
     targeted_count = sum(item["count"] for item in findings if not item["blocking"])
     penalty = blocking_count * 30 + min(45, targeted_count * 5)
-    return {
+    result = {
         "naturalness_score": max(0, 100 - penalty),
         "blocking_count": blocking_count,
         "targeted_count": targeted_count,
         "findings": findings,
         "metrics": metrics,
     }
+    if authority_context is not None:
+        result["mixed_script_decisions"] = mixed_script_decisions
+    return result
 
 
 def prose_metrics(text: str) -> dict[str, float]:

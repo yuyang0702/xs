@@ -46,7 +46,7 @@ def _context(
     fields = tuple(
         prose_quality.AuthorityTermProjectionFieldV1(
             source_artifact_sha256=source_hash,
-            field_path=f"segments/1/event_body/{index}",
+            field_path=f"segments/1/event_body/{_sha(term)[:16]}",
             value=f"权威字段包含{term}并要求原样保留",
             segment_binding_sha256=segment_binding,
         )
@@ -78,11 +78,7 @@ def _blocking(text: str, context=None) -> list[str]:
     ]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="R1-D1A freezes the missing authority-term contract before code",
-)
-def test_authority_term_contract_is_not_available_before_r1_d1b() -> None:
+def test_authority_term_contract_is_available_in_r1_d1b() -> None:
     assert IMPLEMENTED
 
 
@@ -106,7 +102,7 @@ def test_pre_fix_characterization_rejects_sanitized_approved_shape() -> None:
         ("AIX", "系统AIX仍在线。"),
         ("Node7", "节点Node7已锁定。"),
         ("GPT-5", "调用GPT-5接口。"),
-        ("v2.1", "协议v2.1版本已启用。"),
+        ("API-v2.1", "协议API-v2.1版本已启用。"),
         ("SignalKey", "SignalKey记录与SignalKey日志一致。"),
     ],
 )
@@ -234,6 +230,50 @@ def test_receipt_is_hash_only_and_explains_allow_and_reject_decisions() -> None:
     )
     assert "SignalKey" not in serialized
     assert "RandomNoise" not in serialized
+
+
+@requires_r1_d1
+def test_receipt_explains_stale_and_ambiguous_rejections_hash_only() -> None:
+    current = _context("SignalKey")
+    stale = replace(
+        current,
+        current_draft_authority_sha256=_sha("advanced-authority"),
+    )
+    stale_report = prose_quality.analyze_prose(
+        "她核对了SignalKey记录。", authority_context=stale,
+    )
+    ambiguous_report = prose_quality.analyze_prose(
+        "她核对了SignalKey—extra记录。", authority_context=current,
+    )
+
+    assert stale_report["mixed_script_decisions"][0]["decision"] == (
+        "reject_stale_authority"
+    )
+    assert {
+        item["decision"] for item in ambiguous_report["mixed_script_decisions"]
+    } == {"reject_ambiguous_term"}
+    serialized = repr(
+        stale_report["mixed_script_decisions"]
+        + ambiguous_report["mixed_script_decisions"]
+    )
+    assert "SignalKey" not in serialized
+    assert "extra" not in serialized
+
+
+@requires_r1_d1
+def test_term_set_diagnostic_projection_never_contains_term_text() -> None:
+    context = _context("SignalKey", "Node7")
+
+    diagnostic = context.term_set.diagnostic_payload()
+    serialized = repr(diagnostic)
+
+    assert diagnostic["schema"] == "AuthorityApprovedLatinTermSetV1"
+    assert diagnostic["normalization_version"] == (
+        prose_quality.AUTHORITY_LATIN_NORMALIZATION_VERSION
+    )
+    assert diagnostic["term_set_sha256"] == context.term_set.term_set_sha256
+    assert "SignalKey" not in serialized
+    assert "Node7" not in serialized
 
 
 @requires_r1_d1

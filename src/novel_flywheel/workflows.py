@@ -362,7 +362,15 @@ from novel_flywheel.revision import (
     remove_consecutive_duplicate_blocks,
     segment_map,
 )
-from novel_flywheel.prose_quality import analyze_prose, compare_voice_metrics, prose_metrics
+from novel_flywheel.prose_quality import (
+    AuthorityTermProjectionFieldV1,
+    AuthorityTermSourceArtifactV1,
+    DraftProseAuthorityContextV1,
+    analyze_prose,
+    build_authority_approved_latin_term_set,
+    compare_voice_metrics,
+    prose_metrics,
+)
 from novel_flywheel.prose_policy import load_prose_validation_policy
 from novel_flywheel.project_transactions import (
     ProjectMutationCanonFactV1,
@@ -19693,9 +19701,144 @@ class WorkflowService:
         return all_ids if len(all_ids) == 1 else []
 
     @classmethod
+    def _draft_prose_authority_context(
+        cls,
+        *,
+        planning_segment: PlanningSegmentIR,
+        execution_manifest: ShortExecutionManifest,
+        execution_manifest_sha256_value: str,
+        segment_number: int,
+        draft_authority_revision: int,
+        draft_authority_sha256: str,
+    ) -> DraftProseAuthorityContextV1 | None:
+        """Project a fail-closed term set from current structured authority.
+
+        This helper receives already parsed and validated objects. It never
+        reads Prompt text, generated Draft text, project files, Memory, FTS or
+        reference material.
+        """
+
+        try:
+            if (
+                planning_segment.segment != segment_number
+                or execution_manifest_sha256(execution_manifest)
+                != execution_manifest_sha256_value
+            ):
+                return None
+            manifest_segment = next(
+                item for item in execution_manifest.segments
+                if item.segment == segment_number
+            )
+            beat_by_id = {
+                item.beat_id: item for item in execution_manifest.beats
+            }
+            if any(
+                beat_id not in beat_by_id
+                or beat_by_id[beat_id].owner_segment != segment_number
+                for beat_id in manifest_segment.beat_ids
+            ):
+                return None
+            planning_sha256 = planning_segment.authority_sha256
+            segment_binding_sha256 = canonical_sha256({
+                "schema": "DraftSegmentAuthorityBindingV1",
+                "version": 1,
+                "segment": segment_number,
+                "planning_segment_sha256": planning_sha256,
+                "execution_manifest_sha256": execution_manifest_sha256_value,
+                "beat_ids": list(manifest_segment.beat_ids),
+            })
+            sources = (
+                AuthorityTermSourceArtifactV1(
+                    artifact_kind="planning_segment_ir",
+                    artifact_sha256=planning_sha256,
+                    contract="PlanningSegmentIR",
+                    version=planning_segment.version,
+                    authority_status="accepted_current",
+                ),
+                AuthorityTermSourceArtifactV1(
+                    artifact_kind="short_execution_manifest",
+                    artifact_sha256=execution_manifest_sha256_value,
+                    contract="ShortExecutionManifest",
+                    version=execution_manifest.version,
+                    authority_status="accepted_current",
+                ),
+            )
+            fields: list[AuthorityTermProjectionFieldV1] = []
+
+            def add_field(source_hash: str, path: str, value: object) -> None:
+                if isinstance(value, str) and value:
+                    fields.append(AuthorityTermProjectionFieldV1(
+                        source_artifact_sha256=source_hash,
+                        field_path=path,
+                        value=value,
+                        segment_binding_sha256=segment_binding_sha256,
+                    ))
+
+            for field_name in (
+                "heading", "outline", "opening", "event_body", "handoff",
+            ):
+                add_field(
+                    planning_sha256,
+                    f"segments/{segment_number}/{field_name}",
+                    getattr(planning_segment, field_name),
+                )
+            scalar_beat_fields = (
+                "action", "actor", "location",
+            )
+            collection_beat_fields = (
+                "preconditions", "postconditions", "knowledge_delta",
+                "relationship_delta",
+            )
+            for beat_id in manifest_segment.beat_ids:
+                beat = beat_by_id[beat_id]
+                for field_name in scalar_beat_fields:
+                    add_field(
+                        execution_manifest_sha256_value,
+                        f"beats/{beat_id}/{field_name}",
+                        getattr(beat, field_name),
+                    )
+                for field_name in collection_beat_fields:
+                    for offset, value in enumerate(getattr(beat, field_name)):
+                        add_field(
+                            execution_manifest_sha256_value,
+                            f"beats/{beat_id}/{field_name}/{offset}",
+                            value,
+                        )
+            for state_kind in ("entry_state", "exit_state"):
+                for offset, assertion in enumerate(
+                    getattr(manifest_segment, state_kind)
+                ):
+                    add_field(
+                        execution_manifest_sha256_value,
+                        f"segments/{segment_number}/{state_kind}/{offset}/state",
+                        assertion.state,
+                    )
+            term_set = build_authority_approved_latin_term_set(
+                draft_authority_revision=draft_authority_revision,
+                draft_authority_sha256=draft_authority_sha256,
+                segment_binding_sha256=segment_binding_sha256,
+                source_artifacts=sources,
+                fields=fields,
+            )
+            return DraftProseAuthorityContextV1(
+                term_set=term_set,
+                current_draft_authority_revision=draft_authority_revision,
+                current_draft_authority_sha256=draft_authority_sha256,
+                current_segment_binding_sha256=segment_binding_sha256,
+                current_source_artifact_sha256s=tuple(
+                    sorted(item.artifact_sha256 for item in sources)
+                ),
+            )
+        except (AttributeError, StopIteration, TypeError, ValueError):
+            return None
+
+    @classmethod
     def _draft_segment_findings(
         cls, part: str, target: int, previous_parts: list[str],
         location_catalog: dict[str, LocationRef] | None = None,
+        *,
+        authority_context: DraftProseAuthorityContextV1 | None = None,
+        decision_sink: list[dict[str, Any]] | None = None,
     ) -> list[dict]:
         findings: list[dict] = []
         han = effective_han_characters(part)
@@ -19716,8 +19859,15 @@ class WorkflowService:
                 "han_characters": han,
                 "target_characters": target,
             })
+        prose_report = analyze_prose(
+            part, authority_context=authority_context,
+        )
+        if decision_sink is not None:
+            decision_sink.extend(
+                prose_report.get("mixed_script_decisions", [])
+            )
         blocking = [
-            item for item in analyze_prose(part).get("findings", [])
+            item for item in prose_report.get("findings", [])
             if item.get("blocking")
         ]
         if blocking:
@@ -19760,14 +19910,68 @@ class WorkflowService:
     def _draft_segment_issues(
         cls, part: str, target: int, previous_parts: list[str],
         location_catalog: dict[str, LocationRef] | None = None,
+        *,
+        authority_context: DraftProseAuthorityContextV1 | None = None,
     ) -> list[str]:
         return [
             str(item["message"])
             for item in cls._draft_segment_findings(
                 part, target, previous_parts, location_catalog,
+                authority_context=authority_context,
             )
             if item.get("blocking")
         ]
+
+    def _record_draft_prose_validation_decisions(
+        self,
+        run_id: str,
+        contract: DraftTaskContract,
+        authority_context: DraftProseAuthorityContextV1 | None,
+        decisions: list[dict[str, Any]],
+    ) -> bool:
+        """Best-effort hash-only receipt; failure cannot affect validation."""
+
+        if authority_context is None or not decisions:
+            return False
+        counts: dict[str, int] = {}
+        for decision in decisions:
+            code = str(decision.get("decision") or "unknown")
+            counts[code] = counts.get(code, 0) + 1
+        try:
+            self.db.add_run_event(
+                run_id,
+                "info",
+                "draft_prose_validation_receipt",
+                "正文混合字符检查已完成权威术语判定",
+                stage="draft",
+                metadata={
+                    "schema": "DraftProseValidationReceiptV1",
+                    "version": 1,
+                    "task_id_sha256": hashlib.sha256(
+                        contract.task_id.encode("utf-8")
+                    ).hexdigest(),
+                    "draft_authority_revision": (
+                        authority_context.current_draft_authority_revision
+                    ),
+                    "draft_authority_sha256": (
+                        authority_context.current_draft_authority_sha256
+                    ),
+                    "segment_binding_sha256": (
+                        authority_context.current_segment_binding_sha256
+                    ),
+                    "normalization_version": (
+                        authority_context.term_set.normalization_version
+                    ),
+                    "term_set_sha256": (
+                        authority_context.term_set.term_set_sha256
+                    ),
+                    "decision_counts": counts,
+                    "decisions": decisions,
+                },
+            )
+        except Exception:
+            return False
+        return True
 
     @classmethod
     def _split_segments(cls, text: str) -> list[str]:
@@ -23530,7 +23734,11 @@ class WorkflowService:
         self._validate_short_authority_graph(
             planning_ir, causal_chain, execution_manifest,
         )
-        authoritative_state = self.story_states.ensure(project.id, project.path).data
+        authoritative_story_state = self.story_states.ensure(
+            project.id, project.path,
+        )
+        authoritative_state = authoritative_story_state.data
+        draft_authority_revision = authoritative_story_state.revision
         story_state_sha256 = hashlib.sha256(json.dumps(
             authoritative_state, ensure_ascii=False, sort_keys=True, default=str,
         ).encode("utf-8")).hexdigest()
@@ -23557,6 +23765,9 @@ class WorkflowService:
         compatible_authority_hashes = {authority_hash}
         checkpoint_root = run_path / "outputs" / "draft-checkpoints"
         parts: list[str] = []
+        segment_authority_contexts: list[
+            DraftProseAuthorityContextV1 | None
+        ] = []
         event_assignments: list[dict] = []
         all_expected_event_ids = [
             beat_id
@@ -23629,6 +23840,14 @@ class WorkflowService:
                 **_draft_narrative_contract_fields(project),
                 future_beat_guard=manifest_segment.future_beat_guard,
             )
+            prose_authority_context = self._draft_prose_authority_context(
+                planning_segment=planning_ir.segments[index - 1],
+                execution_manifest=execution_manifest,
+                execution_manifest_sha256_value=execution_manifest_hash,
+                segment_number=index,
+                draft_authority_revision=draft_authority_revision,
+                draft_authority_sha256=authority_hash,
+            )
             cache_structurally_valid = (
                 checkpoint.get("version") == 3
                 and checkpoint.get("authority_sha256") in compatible_authority_hashes
@@ -23647,6 +23866,7 @@ class WorkflowService:
                 and cached_part
                 and not self._draft_segment_issues(
                     cached_part, target, parts, location_catalog,
+                    authority_context=prose_authority_context,
                 )
             )
             cached_semantic_receipt = None
@@ -23676,6 +23896,7 @@ class WorkflowService:
                     )
             if cache_structurally_valid:
                 parts.append(cached_part)
+                segment_authority_contexts.append(prose_authority_context)
                 assignment = {
                     **cached_assignment,
                     **({"semantic_receipt": cached_semantic_receipt}
@@ -23726,9 +23947,13 @@ class WorkflowService:
                 ),
                 semantic_receipt_sink=semantic_receipt_nodes,
                 beat_catalog=beat_by_id,
+                prose_authority_context=prose_authority_context,
             )
             issues = (
-                self._draft_segment_issues(part, target, parts, location_catalog)
+                self._draft_segment_issues(
+                    part, target, parts, location_catalog,
+                    authority_context=prose_authority_context,
+                )
                 if count > 1 else []
             )
             if issues:
@@ -23754,6 +23979,7 @@ class WorkflowService:
             warnings = [
                 finding for finding in self._draft_segment_findings(
                     part, target, parts, location_catalog,
+                    authority_context=prose_authority_context,
                 ) if not finding.get("blocking")
             ]
             if warnings:
@@ -23766,6 +23992,7 @@ class WorkflowService:
                     },
                 )
             parts.append(part.strip())
+            segment_authority_contexts.append(prose_authority_context)
             assignment = {
                 "segment": index,
                 "event_ids": expected_event_ids,
@@ -23869,6 +24096,7 @@ class WorkflowService:
                 str(finding["message"])
                 for finding in self._draft_segment_findings(
                     part, target, parts[:segment_index], location_catalog,
+                    authority_context=segment_authority_contexts[segment_index],
                 )
                 if finding.get("blocking") and finding.get("code") != "underlength"
             ]
@@ -23947,6 +24175,7 @@ class WorkflowService:
         semantic_all_event_ids: list[str] | None = None,
         semantic_receipt_sink: list[tuple[DraftTaskContract, dict]] | None = None,
         beat_catalog: Mapping[str, AtomicBeat] | None = None,
+        prose_authority_context: DraftProseAuthorityContextV1 | None = None,
     ) -> str:
         """Generate one owned segment and split when one response cannot own it."""
         owned_event_ids = list(event_ids or [])
@@ -24076,6 +24305,7 @@ class WorkflowService:
                 semantic_all_event_ids=semantic_all_event_ids,
                 semantic_receipt_sink=semantic_receipt_sink,
                 beat_catalog=beat_catalog,
+                prose_authority_context=prose_authority_context,
             )
             return retried
 
@@ -24096,6 +24326,7 @@ class WorkflowService:
                 expected_output_characters=target,
                 completion_check=lambda value: not self._draft_segment_issues(
                     value, target, previous_parts, location_catalog,
+                    authority_context=prose_authority_context,
                 ),
             )
         except IncompleteModelOutputError as exc:
@@ -24112,11 +24343,17 @@ class WorkflowService:
             finish_reason = normalize_finish_reason(
                 receipt.get("finish_reason") if isinstance(receipt, dict) else None
             )
+            decisions: list[dict[str, Any]] = []
             findings = [
                 finding for finding in self._draft_segment_findings(
                     part, target, previous_parts, location_catalog,
+                    authority_context=prose_authority_context,
+                    decision_sink=decisions,
                 ) if finding.get("blocking")
             ]
+            self._record_draft_prose_validation_decisions(
+                run_id, contract, prose_authority_context, decisions,
+            )
             if not findings:
                 try:
                     return await accept_node(part)
@@ -24238,6 +24475,7 @@ class WorkflowService:
             semantic_all_event_ids=semantic_all_event_ids,
             semantic_receipt_sink=semantic_receipt_sink,
             beat_catalog=beat_catalog,
+            prose_authority_context=prose_authority_context,
         )
         first_han = effective_han_characters(first)
         second_target = residual_target(target, first_han)
@@ -24274,10 +24512,12 @@ class WorkflowService:
             semantic_all_event_ids=semantic_all_event_ids,
             semantic_receipt_sink=semantic_receipt_sink,
             beat_catalog=beat_catalog,
+            prose_authority_context=prose_authority_context,
         )
         combined = f"{first.strip()}\n\n{second.strip()}"
         remaining = self._draft_segment_issues(
             combined, target, previous_parts, location_catalog,
+            authority_context=prose_authority_context,
         )
         if remaining:
             return await retry_same_scope([{
