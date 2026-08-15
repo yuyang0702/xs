@@ -29,19 +29,28 @@ from novel_flywheel.runtime_fingerprint_build import (
 )
 
 from .artifact_hash import file_sha256, live_parity_manifest, parity_equal
+from .approval_profiles import (
+    PA_CANDIDATE_SCHEMA, PA_PATCH_TEMPLATE_SCHEMA, PA_PROFILE_ID, PA_SCOPE,
+    PA_SIGNED_SCHEMA, approval_profile,
+)
 from .c0b_packet import prepare_c0b_smoke_packet
-from .contracts import build_canary_experiment_plan_v1
+from .contracts import CanaryContractError, build_canary_experiment_plan_v1
 from .network_sentinel import FailClosedNetworkSentinel
+from .pa_approval import (
+    build_pa_authorization_patch_template_v2,
+    build_pa_final_approval_candidate_v1,
+    validate_pa_final_approval_candidate_v1,
+)
 
 
 CANARY_ID = "PA-STRICT-TOOL-OBS-1"
-APPROVAL_SCOPE = "PA_STRICT_TOOL_OBS_1_SINGLE_REAL_PROVIDER_OBSERVATION"
-CANDIDATE_SCHEMA = "PAStrictToolObs1FinalApprovalCandidateV1"
-PATCH_SCHEMA = "PAStrictToolObs1UserAuthorizationPatchTemplateV1"
+APPROVAL_SCOPE = PA_SCOPE
+CANDIDATE_SCHEMA = PA_CANDIDATE_SCHEMA
+PATCH_SCHEMA = PA_PATCH_TEMPLATE_SCHEMA
 PREVIEW_SCHEMA = "PAStrictToolObs1ExecutionCommandPreviewV1"
 RECEIPT_SCHEMA = "PAStrictToolObs1ValidateOnlyReceiptV1"
 INDEX_SCHEMA = "PAStrictToolObs1MaterializationIndexV1"
-FUTURE_SIGNED_APPROVAL_SCHEMA = "PAStrictToolObs1SignedApprovalV1"
+FUTURE_SIGNED_APPROVAL_SCHEMA = PA_SIGNED_SCHEMA
 
 CANDIDATE_DOMAIN = "novel-flywheel-pa-strict-tool-obs-1-candidate-v1"
 PATCH_DOMAIN = "novel-flywheel-pa-strict-tool-obs-1-patch-template-v1"
@@ -339,7 +348,8 @@ def _build_plan(
 ) -> dict[str, Any]:
     payload = deepcopy(dict(base_plan))
     payload.pop("plan_sha256", None)
-    payload["canary_mode"] = "pa_strict_tool_observation"
+    profile = approval_profile(PA_PROFILE_ID)
+    payload["canary_mode"] = profile.canary_mode
     payload["feature_flag_snapshot"] = deepcopy(FEATURE_FLAGS)
     payload["workloads"][0].update({
         "maximum_model_calls": 24,
@@ -386,7 +396,9 @@ def _build_plan(
     }
     payload["pa_strict_tool_observation_policy"] = {
         "canary_id": CANARY_ID,
-        "approval_scope": APPROVAL_SCOPE,
+        "profile_id": profile.profile_id,
+        "profile_definition_sha256": profile.profile_definition_sha256,
+        "approval_scope": profile.approval_scope,
         "target": deepcopy(target),
         "target_filter_sha256": domain_sha256(
             "novel-flywheel-pa-strict-tool-target-filter-v1", target,
@@ -423,16 +435,22 @@ def _build_candidate(
 ) -> dict[str, Any]:
     policy = plan["pa_strict_tool_observation_policy"]
     workload = plan["workloads"][0]
+    profile = approval_profile(PA_PROFILE_ID)
+    budget_hashes = policy["budget_definition_hashes"]
+    approved_budget = {
+        **profile.budget(),
+        "definition_sha256": definitions["budget_manifest"][
+            "definition_sha256"
+        ],
+    }
     body = {
-        "schema": CANDIDATE_SCHEMA,
-        "version": 1,
-        "canonicalization_version": CANONICALIZATION_VERSION,
         "status": "waiting_for_final_user_authorization",
-        "approval_scope": APPROVAL_SCOPE,
+        "approval_scope": profile.approval_scope,
         "approved_plan_sha256": plan["plan_sha256"],
         "approved_launcher_sha256": plan["launcher_sha256"],
         "approved_workload_sha256": workload["fixture_sha256"],
         "approved_workload_manifest_hash": plan["workload_manifest_hash"],
+        "approved_workload_id": workload["workload_id"],
         "approved_build_fingerprint": plan["approved_build_fingerprint"],
         "approved_execution_config_fingerprint": plan[
             "approved_execution_config_fingerprint"
@@ -440,16 +458,17 @@ def _build_candidate(
         "approved_runtime_execution_fingerprint": plan[
             "expected_runtime_execution_fingerprint"
         ],
-        "provider_descriptor_manifest_sha256": plan[
+        "runtime_mode": plan["runtime_mode"],
+        "provider_descriptor_hash": plan[
             "provider_descriptor_definition_sha256"
         ],
-        "role_route_binding_manifest_sha256": plan[
+        "model_role_binding_manifest_hash": plan[
             "role_binding_manifest_definition_sha256"
         ],
-        "pricing_evidence_manifest_sha256": plan["budgets"][
+        "pricing_evidence_manifest_hash": plan["budgets"][
             "price_catalog_sha256"
         ],
-        "feature_flag_snapshot_sha256": definitions["feature"][
+        "feature_flag_snapshot_hash": definitions["feature"][
             "definition_sha256"
         ],
         "target_filter_sha256": policy["target_filter_sha256"],
@@ -460,10 +479,14 @@ def _build_candidate(
         "adapter_coverage_definition_sha256": policy[
             "adapter_coverage_definition_sha256"
         ],
+        "call_budget_definition_sha256": budget_hashes["call"],
+        "token_budget_definition_sha256": budget_hashes["token"],
+        "monetary_budget_definition_sha256": budget_hashes["monetary"],
+        "elapsed_budget_definition_sha256": budget_hashes["elapsed"],
         "budget_definition_sha256": definitions["budget_manifest"][
             "definition_sha256"
         ],
-        "stop_condition_manifest_sha256": definitions["stop"][
+        "stop_condition_manifest_hash": definitions["stop"][
             "definition_sha256"
         ],
         "canary_root_identity_candidate": plan["isolation"][
@@ -484,10 +507,18 @@ def _build_candidate(
         "authorize_provider_client_creation": False,
         "authorize_network": False,
         "authorize_paid_model_calls": False,
+        "authorized_actions": {
+            "credential_lookup": False,
+            "provider_client_creation": False,
+            "network": False,
+            "paid_model_calls": False,
+            "fake_boundary": False,
+        },
         "execution_authorized": False,
         "phase1b_enabled": False,
         "maximum_runs": 1,
         "expected_model_calls": 11,
+        "maximum_model_calls_per_run": 24,
         "maximum_total_model_calls": 24,
         "maximum_input_tokens": 500_000,
         "maximum_output_tokens": 500_000,
@@ -500,115 +531,26 @@ def _build_candidate(
         "second_run_allowed": False,
         "signed_approval_materialized": False,
         "execution_performed": False,
+        "approved_budget": approved_budget,
     }
-    return _sealed(CANDIDATE_DOMAIN, body, "approval_candidate_sha256")
+    return build_pa_final_approval_candidate_v1(body)
 
 
 def validate_candidate(candidate: Mapping[str, Any]) -> dict[str, Any]:
-    required = {
-        "schema", "version", "canonicalization_version", "status",
-        "approval_scope", "approved_plan_sha256", "approved_launcher_sha256",
-        "approved_workload_sha256", "approved_workload_manifest_hash",
-        "approved_build_fingerprint", "approved_execution_config_fingerprint",
-        "approved_runtime_execution_fingerprint",
-        "provider_descriptor_manifest_sha256",
-        "role_route_binding_manifest_sha256",
-        "pricing_evidence_manifest_sha256", "feature_flag_snapshot_sha256",
-        "target_filter_sha256", "observation_schema_sha256",
-        "observation_schema_definition_sha256",
-        "adapter_coverage_definition_sha256", "budget_definition_sha256",
-        "stop_condition_manifest_sha256", "canary_root_identity_candidate",
-        "single_use_cohort_id", "maximum_executions", "usage_status",
-        "consumed_evidence_sha256", "materialized_at", "execution_window",
-        "approval_expiry", "named_approver", "authorize_credential_lookup",
-        "authorize_provider_client_creation", "authorize_network",
-        "authorize_paid_model_calls", "execution_authorized",
-        "phase1b_enabled", "maximum_runs", "expected_model_calls",
-        "maximum_total_model_calls", "maximum_input_tokens",
-        "maximum_output_tokens", "maximum_output_tokens_per_call",
-        "maximum_usd_cost_microunits", "maximum_cny_cost_microunits",
-        "maximum_elapsed_seconds", "first_terminal_stop",
-        "resume_after_terminal", "second_run_allowed",
-        "signed_approval_materialized", "execution_performed",
-        "approval_candidate_sha256",
-    }
-    _require(set(candidate) == required, "candidate_fields_invalid")
-    _require(candidate["schema"] == CANDIDATE_SCHEMA, "candidate_schema_invalid")
-    _require(candidate["approval_scope"] == APPROVAL_SCOPE, "candidate_scope_invalid")
-    for key in required:
-        if key.endswith(("sha256", "fingerprint", "_hash")):
-            value = candidate[key]
-            if value is not None:
-                _require(isinstance(value, str) and _HEX64.fullmatch(value),
-                         f"candidate_hash_invalid:{key}")
-    false_fields = (
-        "authorize_credential_lookup", "authorize_provider_client_creation",
-        "authorize_network", "authorize_paid_model_calls",
-        "execution_authorized", "phase1b_enabled", "resume_after_terminal",
-        "second_run_allowed", "signed_approval_materialized",
-        "execution_performed",
-    )
-    _require(all(candidate[name] is False for name in false_fields),
-             "candidate_external_authorization_present")
-    _require(candidate["named_approver"] == "USER_CONFIRMATION_REQUIRED",
-             "candidate_named_approver_invalid")
-    _require(candidate["usage_status"] == "unused"
-             and candidate["consumed_evidence_sha256"] is None,
-             "candidate_cohort_already_used")
-    expected_budget = (1, 11, 24, 500_000, 500_000, 32_000,
-                       10_000_000, 25_000_000, 7_200)
-    actual_budget = tuple(candidate[name] for name in (
-        "maximum_runs", "expected_model_calls", "maximum_total_model_calls",
-        "maximum_input_tokens", "maximum_output_tokens",
-        "maximum_output_tokens_per_call", "maximum_usd_cost_microunits",
-        "maximum_cny_cost_microunits", "maximum_elapsed_seconds",
-    ))
-    _require(actual_budget == expected_budget, "candidate_budget_invalid")
-    body = dict(candidate)
-    digest = body.pop("approval_candidate_sha256")
-    _require(digest == domain_sha256(CANDIDATE_DOMAIN, body),
-             "candidate_hash_mismatch")
-    return deepcopy(dict(candidate))
+    try:
+        return validate_pa_final_approval_candidate_v1(candidate)
+    except CanaryContractError as exc:
+        reason = exc.reason_code
+        if reason.startswith("approval_candidate_"):
+            reason = reason.removeprefix("approval_")
+        raise PAStrictToolObsMaterializationError(reason) from exc
 
 
 def _build_patch_template(
     *, plan: Mapping[str, Any], candidate: Mapping[str, Any],
 ) -> dict[str, Any]:
-    body = {
-        "schema": PATCH_SCHEMA,
-        "version": 1,
-        "canonicalization_version": CANONICALIZATION_VERSION,
-        "template_status": "not_authorization_user_confirmation_required",
-        "approval_scope": APPROVAL_SCOPE,
-        "bound_plan_sha256": plan["plan_sha256"],
-        "bound_approval_candidate_sha256": candidate[
-            "approval_candidate_sha256"
-        ],
-        "bound_launcher_sha256": plan["launcher_sha256"],
-        "bound_workload_sha256": candidate["approved_workload_sha256"],
-        "bound_build_fingerprint": candidate["approved_build_fingerprint"],
-        "bound_execution_config_fingerprint": candidate[
-            "approved_execution_config_fingerprint"
-        ],
-        "bound_runtime_execution_fingerprint": candidate[
-            "approved_runtime_execution_fingerprint"
-        ],
-        "single_use_cohort_id": candidate["single_use_cohort_id"],
-        "approved_execution_window": candidate["execution_window"],
-        "approval_expiry": candidate["approval_expiry"],
-        "named_approver": "USER_CONFIRMATION_REQUIRED",
-        "approval_timestamp": "USER_CONFIRMATION_REQUIRED",
-        "requested_authorizations": {
-            "credential_lookup": "USER_CONFIRMATION_REQUIRED",
-            "provider_client_creation": "USER_CONFIRMATION_REQUIRED",
-            "network": "USER_CONFIRMATION_REQUIRED",
-            "paid_model_calls": "USER_CONFIRMATION_REQUIRED",
-        },
-        "execution_authorized": False,
-        "protected_fields_mutation_allowed": False,
-        "signed_approval_materialization_allowed": False,
-    }
-    return _sealed(PATCH_DOMAIN, body, "authorization_patch_template_sha256")
+    del plan
+    return build_pa_authorization_patch_template_v2(candidate)
 
 
 def _build_preview(
@@ -699,7 +641,7 @@ def _validate_only(
     candidate_valid = True
     try:
         validate_candidate(candidate)
-    except PAStrictToolObsMaterializationError:
+    except Exception:
         candidate_valid = False
     window = candidate["execution_window"]
     external_false = all(candidate[name] is False for name in (
@@ -718,7 +660,7 @@ def _validate_only(
         _check("build_fingerprint", current_build == plan["approved_build_fingerprint"] == packet["build_fingerprint"], "build_fingerprint_mismatch", current_build),
         _check("execution_config_fingerprint", regenerated_plan["approved_execution_config_fingerprint"] == plan["approved_execution_config_fingerprint"], "execution_config_fingerprint_mismatch", plan["approved_execution_config_fingerprint"]),
         _check("runtime_execution_fingerprint", regenerated_plan["expected_runtime_execution_fingerprint"] == plan["expected_runtime_execution_fingerprint"], "runtime_execution_fingerprint_mismatch", plan["expected_runtime_execution_fingerprint"]),
-        _check("diagnostic_feature_flags", plan["feature_flag_snapshot"] == FEATURE_FLAGS and candidate["feature_flag_snapshot_sha256"] == definitions["feature"]["definition_sha256"], "feature_flag_snapshot_mismatch", definitions["feature"]["definition_sha256"]),
+        _check("diagnostic_feature_flags", plan["feature_flag_snapshot"] == FEATURE_FLAGS and candidate["feature_flag_snapshot_hash"] == definitions["feature"]["definition_sha256"], "feature_flag_snapshot_mismatch", definitions["feature"]["definition_sha256"]),
         _check("phase1b_disabled", plan["feature_flag_snapshot"]["NOVEL_SHORT_CANONICAL_V2"] is False and plan["feature_flag_snapshot"]["project_short_canonical_v2"] is False, "phase1b_enabled"),
         _check("exact_target_filter", policy["target"] == TARGET and policy["target_filter_sha256"] == domain_sha256("novel-flywheel-pa-strict-tool-target-filter-v1", TARGET), "target_filter_mismatch", policy["target_filter_sha256"]),
         _check("strict_tool_observation_schema", policy["observation_schema_sha256"] == definitions["schema"]["payload"]["schema_sha256"], "observation_schema_mismatch", policy["observation_schema_sha256"]),
@@ -727,7 +669,7 @@ def _validate_only(
         _check("role_route_binding_manifest", regenerated_plan["role_binding_manifest_definition_sha256"] == plan["role_binding_manifest_definition_sha256"], "route_manifest_mismatch", plan["role_binding_manifest_definition_sha256"]),
         _check("pricing_evidence_manifest", regenerated_plan["budgets"]["price_catalog_sha256"] == plan["budgets"]["price_catalog_sha256"], "pricing_manifest_mismatch", plan["budgets"]["price_catalog_sha256"]),
         _check("budget_definition", candidate["budget_definition_sha256"] == definitions["budget_manifest"]["definition_sha256"] and candidate["maximum_total_model_calls"] == 24 and candidate["maximum_input_tokens"] == 500_000 and candidate["maximum_output_tokens"] == 500_000, "budget_definition_mismatch", candidate["budget_definition_sha256"]),
-        _check("stop_condition_manifest", tuple(plan["stop_conditions"]) == STOP_CONDITIONS and candidate["stop_condition_manifest_sha256"] == definitions["stop"]["definition_sha256"], "stop_condition_mismatch", definitions["stop"]["definition_sha256"]),
+        _check("stop_condition_manifest", tuple(plan["stop_conditions"]) == STOP_CONDITIONS and candidate["stop_condition_manifest_hash"] == definitions["stop"]["definition_sha256"], "stop_condition_mismatch", definitions["stop"]["definition_sha256"]),
         _check("canary_root_absent", not (temporary_root / "future-canary-root").exists(), "canary_root_not_absent", plan["isolation"]["stable_root_identity"]),
         _check("cohort_unused", candidate["usage_status"] == "unused" and candidate["consumed_evidence_sha256"] is None and not (temporary_root / "approval-ledger" / cohort_id).exists(), "cohort_not_unused"),
         _check("execution_window_future", now < _parse_utc(window["not_before"]) < _parse_utc(window["not_after"]) <= _parse_utc(candidate["approval_expiry"]), "execution_window_invalid"),

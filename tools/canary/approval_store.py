@@ -12,12 +12,7 @@ from novel_flywheel.runtime_fingerprint_build import (
     canonical_json_bytes,
     domain_sha256,
 )
-from .contracts import (
-    SMOKE_APPROVAL_CANDIDATE_SCHEMA,
-    SMOKE_AUTHORIZATION_PATCH_SCHEMA,
-    SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1,
-    SMOKE_SIGNED_APPROVAL_SCHEMA,
-)
+from .approval_profiles import CanaryApprovalProfileError, approval_profile_for_schema
 
 
 class CanaryApprovalReplay(RuntimeError):
@@ -36,16 +31,31 @@ class ApprovalConsumptionStore:
     @staticmethod
     def _identity(approval: Mapping[str, Any], *, executable: bool) -> tuple[str, str]:
         schema = approval.get("schema")
-        if schema == SMOKE_APPROVAL_CANDIDATE_SCHEMA:
+        try:
+            _profile, kind = approval_profile_for_schema(str(schema))
+        except CanaryApprovalProfileError:
+            # Legacy C0A documents remain supported and never cross the real boundary.
+            return "approval_sha256", str(approval["approval_sha256"])
+        if kind == "candidate":
             if executable:
                 raise CanaryApprovalReplay("approval_candidate_not_executable")
             return "approval_candidate_sha256", str(approval["approval_candidate_sha256"])
-        if schema in {SMOKE_AUTHORIZATION_PATCH_SCHEMA,
-                      SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1}:
+        if kind in {"authorization_patch", "authorization_patch_template"}:
             raise CanaryApprovalReplay("authorization_patch_not_executable")
-        if schema == SMOKE_SIGNED_APPROVAL_SCHEMA:
+        if kind == "signed_approval":
             return "signed_approval_sha256", str(approval["signed_approval_sha256"])
-        return "approval_sha256", str(approval["approval_sha256"])
+        raise CanaryApprovalReplay("approval_profile_unknown")
+
+    @staticmethod
+    def _profile_id(approval: Mapping[str, Any]) -> str:
+        try:
+            profile, _kind = approval_profile_for_schema(str(approval.get("schema")))
+        except CanaryApprovalProfileError:
+            return "legacy_c0a"
+        declared = approval.get("profile_id")
+        if declared is not None and declared != profile.profile_id:
+            raise CanaryApprovalReplay("approval_profile_unknown")
+        return profile.profile_id
 
     @staticmethod
     def _definition(schema: str, payload: Mapping[str, Any]) -> dict:
@@ -84,6 +94,7 @@ class ApprovalConsumptionStore:
             raise CanaryApprovalReplay("approval_already_consumed")
         receipt = self._definition("CanaryApprovalReservationV1", {
             "cohort_id": cohort_id,
+            "profile_id": self._profile_id(approval),
             identity_field: identity,
             "approved_plan_sha256": approval["approved_plan_sha256"],
         })
@@ -119,8 +130,11 @@ class ApprovalConsumptionStore:
             raise CanaryApprovalReplay("approval_reservation_invalid") from exc
         if reservation.get("payload", {}).get(identity_field) != identity:
             raise CanaryApprovalReplay("approval_reservation_identity_mismatch")
+        if reservation.get("payload", {}).get("profile_id") != self._profile_id(approval):
+            raise CanaryApprovalReplay("approval_reservation_profile_mismatch")
         receipt = self._definition("CanaryApprovalConsumptionV1", {
             "cohort_id": cohort_id,
+            "profile_id": self._profile_id(approval),
             identity_field: identity,
             "consumed_evidence_sha256": evidence_sha256,
         })

@@ -41,6 +41,10 @@ from .contracts import (
     validate_signed_smoke_approval_plan_v1,
     validate_signed_smoke_approval_sources_v1,
 )
+from .approval_dispatch import (
+    profile_for_plan, validate_registered_approval_document,
+    validate_registered_signed_plan, validate_registered_signed_sources,
+)
 from .descriptors import (
     copy_production_execution_config, production_route_identity,
     production_route_manifest_hashes,
@@ -71,6 +75,45 @@ from .real_boundary import (
 from .route_policy import ApprovedRoutePolicy
 
 
+def _strict_tool_observation_summary(root: Path, profile) -> dict[str, Any] | None:
+    if not profile.observation_goal_outcomes:
+        return None
+    matches: list[dict[str, Any]] = []
+    damaged = 0
+    for path in root.rglob("_reliability-trace-v1.jsonl"):
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                damaged += 1
+                continue
+            if event.get("event_type") != "diagnostic_strict_tool_shape":
+                continue
+            payload = event.get("payload") or {}
+            if payload.get("target_status") != "target":
+                continue
+            matches.append({
+                "observation_sha256": payload.get("observation_sha256"),
+                "shape_correlation_sha256": payload.get("shape_correlation_sha256"),
+                "observation_status": payload.get("observation_status"),
+                "strict_tool_decision": payload.get("strict_tool_decision"),
+                "strict_tool_failure_code": payload.get("strict_tool_failure_code"),
+                "stage_id": event.get("stage_id"),
+            })
+    outcome = (
+        "TARGET_STRICT_TOOL_SHAPE_OBSERVED" if matches
+        else "TARGET_OBSERVATION_UNAVAILABLE" if damaged
+        else "TARGET_NOT_REACHED"
+    )
+    return {
+        "observation_goal_outcome": outcome,
+        "target_observation_count": len(matches),
+        "damaged_trace_line_count": damaged,
+        "observations": matches,
+        "raw_content_included": False,
+    }
+
+
 def validate_c0b_real_run_approval(
     *, plan_path: Path, approval_path: Path, approved_plan_sha256: str,
     source_candidate_path: Path | None = None,
@@ -81,28 +124,23 @@ def validate_c0b_real_run_approval(
     plan = validate_canary_experiment_plan_v1(_read_json(plan_path))
     if plan["plan_sha256"] != approved_plan_sha256:
         raise ValueError("cli_approved_plan_hash_mismatch")
-    raw = _read_json(approval_path)
-    signed = raw.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA
-    approval, identity, kind = validate_canary_approval_document(
-        raw,
-        expected_scope=(
-            SMOKE_APPROVAL_SCOPE if signed
-            else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
-        ),
+    profile = profile_for_plan(plan)
+    approval, identity, kind, _document_profile = validate_registered_approval_document(
+        _read_json(approval_path), expected_profile_id=profile.profile_id,
+        expected_scope=profile.approval_scope,
         expected_plan_sha256=plan["plan_sha256"],
-        expected_launcher_sha256=plan["launcher_sha256"],
-        now=now,
+        expected_launcher_sha256=plan["launcher_sha256"], now=now,
     )
     if kind == "final_approval_candidate":
         raise PermissionError("approval_candidate_not_executable")
-    if signed:
+    if kind in {"signed_smoke_approval", "signed_approval"}:
         if source_candidate_path is None or source_authorization_patch_path is None:
             raise PermissionError("signed_approval_source_document_missing")
-        validate_signed_smoke_approval_sources_v1(
-            approval, _read_json(source_candidate_path),
+        validate_registered_signed_sources(
+            profile.profile_id, approval, _read_json(source_candidate_path),
             _read_json(source_authorization_patch_path), now=now,
         )
-        validate_signed_smoke_approval_plan_v1(approval, plan, now=now)
+        validate_registered_signed_plan(profile.profile_id, approval, plan, now=now)
     actions = approval["authorized_actions"]
     if any(actions.get(name) is not True for name in (
         "credential_lookup", "provider_client_creation", "network",
@@ -112,7 +150,7 @@ def validate_c0b_real_run_approval(
     return approval, identity
 
 
-async def run_c0b_real_run(
+async def run_registered_real_run(
     *, plan_path: Path, approval_path: Path, approved_plan_sha256: str,
     source_candidate_path: Path | None = None,
     source_authorization_patch_path: Path | None = None,
@@ -122,6 +160,7 @@ async def run_c0b_real_run(
 ) -> dict:
     started_ns = time.perf_counter_ns()
     plan = validate_canary_experiment_plan_v1(_read_json(plan_path))
+    profile = profile_for_plan(plan)
     approval, approval_identity = validate_c0b_real_run_approval(
         plan_path=plan_path, approval_path=approval_path,
         source_candidate_path=source_candidate_path,
@@ -177,7 +216,7 @@ async def run_c0b_real_run(
     bindings_observed: dict[str, Any] = {}
     gated: PreflightGatedGateway | None = None
     verifier: ExactBoundaryVerifier | None = None
-    with c0a_environment(canary_root):
+    with c0a_environment(canary_root, feature_flags=profile.required_flags()):
         db = Database(canary_root / "db" / "app.db")
         db.migrate()
         copy_production_execution_config(Database(live_database_path), db)
@@ -246,6 +285,18 @@ async def run_c0b_real_run(
                         "reason_codes": ["executor_binding_missing"],
                     }
                     route_hashes = production_route_manifest_hashes(db)
+                    expected_flags = profile.required_flags()
+                    observed_flags = {
+                        name: (
+                            bool(db.feature_flag(
+                                "short_canonical_v2", project_id=project_id,
+                                default=False,
+                            )["enabled"])
+                            if name == "project_short_canonical_v2"
+                            else os.environ.get(name, "0") == "1"
+                        )
+                        for name in expected_flags
+                    }
                     result = {
                         "plan": _read_json(plan_path),
                         "approval": _read_json(approval_path),
@@ -254,7 +305,7 @@ async def run_c0b_real_run(
                             "authorization_patch": _read_json(
                                 source_authorization_patch_path
                             ),
-                        } if approval.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA else {}),
+                        } if approval.get("schema") == profile.signed_approval_schema else {}),
                         "launcher_sha256": validate_import_closure(
                             Path(__file__).resolve().parent,
                             approved_third_party=APPROVED_THIRD_PARTY,
@@ -264,21 +315,7 @@ async def run_c0b_real_run(
                             fixture["workload_id"]: file_sha256(workload_fixture_path),
                         },
                         **route_hashes,
-                        "feature_flag_snapshot": {
-                            "NOVEL_SHORT_CANONICAL_V2": os.environ.get(
-                                "NOVEL_SHORT_CANONICAL_V2", "0"
-                            ) == "1",
-                            "project_short_canonical_v2": bool(db.feature_flag(
-                                "short_canonical_v2", project_id=project_id,
-                                default=False,
-                            )["enabled"]),
-                            "NOVEL_CANONICAL_SHADOW_V1": os.environ.get(
-                                "NOVEL_CANONICAL_SHADOW_V1", "0"
-                            ) == "1",
-                            "NOVEL_RELIABILITY_TRACE": os.environ.get(
-                                "NOVEL_RELIABILITY_TRACE", "0"
-                            ) == "1",
-                        },
+                        "feature_flag_snapshot": observed_flags,
                         "build_fingerprint": current_runtime.build_fingerprint_sha256,
                         "execution_config_fingerprint": current_runtime.execution_config_fingerprint_sha256,
                         "runtime_execution_fingerprint": current_runtime.execution_fingerprint_sha256,
@@ -310,11 +347,8 @@ async def run_c0b_real_run(
                     initial_approval_sha256=approval_identity,
                     initial_launcher_sha256=plan["launcher_sha256"],
                     initial_workload_manifest_hash=plan["workload_manifest_hash"],
-                    expected_scope=(
-                        SMOKE_APPROVAL_SCOPE
-                        if approval.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA
-                        else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
-                    ),
+                    expected_scope=profile.approval_scope,
+                    expected_profile_id=profile.profile_id,
                 )
                 approved_budget = approval.get("approved_budget") or {}
                 limits = BudgetLimits(
@@ -546,7 +580,11 @@ async def run_c0b_real_run(
         reason_code = "canary_outcome_unknown"
     project = app.state.projects.get(project_id)
     artifacts = tree_manifest(project.path)
+    strict_tool_observation = _strict_tool_observation_summary(
+        canary_root, profile,
+    )
     evidence = build_canary_evidence_package_v1({
+        "profile_id": profile.profile_id,
         "plan_sha256": plan["plan_sha256"],
         "approval_sha256": approval_identity,
         "launcher_sha256": launcher["launcher_sha256"],
@@ -559,6 +597,7 @@ async def run_c0b_real_run(
             "safe_failure_class": failure_class or None,
         },
         "controlled_provider_capability": controlled_capability,
+        "strict_tool_observation": strict_tool_observation,
         "runtime_fingerprints": {
             "build": plan["approved_build_fingerprint"],
             "execution_config": plan["approved_execution_config_fingerprint"],
@@ -602,10 +641,15 @@ async def run_c0b_real_run(
         "approval_reservation_definition_sha256": reservation_receipt["definition_sha256"],
         "raw_content_included": False,
     })
-    report_path = canary_root / "reports" / "c0b-real-evidence-v1.json"
+    report_path = canary_root / "reports" / f"{profile.profile_id}-real-evidence-v1.json"
     report_path.write_text(
         json.dumps(evidence, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n",
         encoding="utf-8",
     )
     consumption = store.consume(approval, evidence["evidence_sha256"])
     return {"evidence": evidence, "consumption_receipt": consumption, "report_path": report_path}
+
+
+async def run_c0b_real_run(**kwargs: Any) -> dict:
+    """Backward-compatible C0B entry point over the registered runner."""
+    return await run_registered_real_run(**kwargs)

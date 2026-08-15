@@ -298,6 +298,35 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
              "stop_conditions_invalid")
     _require(isinstance(value["approved_dependency_manifest"], Mapping),
              "dependency_manifest_invalid")
+    if value["canary_mode"] == "pa_strict_tool_observation":
+        from .approval_profiles import PA_PROFILE_ID, approval_profile
+
+        profile = approval_profile(PA_PROFILE_ID)
+        policy = value.get("pa_strict_tool_observation_policy")
+        _require(isinstance(policy, Mapping), "approval_profile_scope_mismatch")
+        _require(policy.get("profile_id") == profile.profile_id,
+                 "approval_profile_scope_mismatch")
+        _require(policy.get("approval_scope") == profile.approval_scope,
+                 "approval_profile_scope_mismatch")
+        _require(policy.get("profile_definition_sha256")
+                 == profile.profile_definition_sha256,
+                 "approval_profile_hash_mismatch")
+        _require(value["feature_flag_snapshot"] == profile.required_flags(),
+                 "execution_feature_flags_changed")
+        _require(policy.get("target") == profile.target_filter(),
+                 "target_filter_mismatch")
+        _require(tuple(value["stop_conditions"])
+                 == profile.stop_condition_policy,
+                 "stop_condition_manifest_mismatch")
+        _require(all(item.get("workload_id") in profile.allowed_workload_ids
+                     for item in value["workloads"]),
+                 "workload_not_allowed_by_profile")
+        profile_budget = profile.budget()
+        _require(all(
+            value["budgets"].get(name) == expected
+            for name, expected in profile_budget.items()
+            if name in value["budgets"]
+        ), "budget_profile_mismatch")
     _scan_forbidden_material(value)
     _require(value["plan_sha256"] == _plan_digest(value), "plan_hash_mismatch")
     return deepcopy(dict(value))

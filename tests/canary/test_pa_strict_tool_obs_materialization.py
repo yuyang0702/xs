@@ -19,6 +19,18 @@ from tools.canary.pa_strict_tool_obs import (
     materialize_pa_strict_tool_obs_1,
     validate_candidate,
 )
+from tools.canary.approval_dispatch import (
+    materialize_signed_canary_approval, validate_registered_approval_document,
+    validate_registered_signed_plan, validate_registered_signed_sources,
+)
+from tools.canary.approval_profiles import PA_PROFILE_ID, approval_profile
+from tools.canary.approval_store import ApprovalConsumptionStore, CanaryApprovalReplay
+from tools.canary.contracts import CanaryContractError
+from tools.canary.pa_approval import (
+    materialize_pa_authorization_patch_v1,
+    validate_pa_final_approval_candidate_v1,
+    validate_pa_signed_approval_v1,
+)
 
 
 ROOT = Path(__file__).parents[2]
@@ -29,10 +41,11 @@ NOW = datetime(2026, 8, 15, 13, 30, tzinfo=timezone.utc)
 COHORT = "pa-strict-tool-obs-1-20260815t133000z-test"
 
 
-@pytest.fixture()
-def materialized(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+@pytest.fixture(scope="module")
+def materialized(tmp_path_factory: pytest.TempPathFactory):
     import keyring
 
+    monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(
         keyring,
         "get_password",
@@ -48,7 +61,7 @@ def materialized(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         live_database_path=LIVE_DB,
         live_project_root=LIVE_PROJECTS,
         fixture_path=FIXTURE,
-        output_root=tmp_path / "outputs",
+        output_root=tmp_path_factory.mktemp("pa-materialized") / "outputs",
         cohort_id=COHORT,
         run_namespace=COHORT,
         artifact_root_label="docs/superpowers/reports/pa-strict-tool-obs-1",
@@ -59,7 +72,22 @@ def materialized(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         "projects": tree_manifest(LIVE_PROJECTS)["tree_sha256"],
     }
     assert before == after
+    monkeypatch.undo()
     return result
+
+
+@pytest.fixture(scope="module")
+def signed_documents(materialized):
+    patch = materialize_pa_authorization_patch_v1(
+        materialized["authorization_patch_template"],
+        named_approver="test_project_owner",
+        approval_timestamp="2026-08-15T13:45:00Z",
+    )
+    signed = materialize_signed_canary_approval(
+        PA_PROFILE_ID, materialized["approval_candidate"], patch,
+        now=datetime(2026, 8, 15, 13, 45, tzinfo=timezone.utc),
+    )
+    return materialized["approval_candidate"], patch, signed
 
 
 def test_plan_binds_exact_target_flags_route_and_dual_outcomes(materialized) -> None:
@@ -172,3 +200,124 @@ def test_no_signed_approval_or_canary_b_artifact_is_materialized(materialized) -
         "PA_STRICT_TOOL_OBS_1_WAITING_FOR_FINAL_USER_AUTHORIZATION"
     )
 
+
+def test_candidate_patch_and_signed_documents_are_distinct(signed_documents) -> None:
+    candidate, patch, signed = signed_documents
+    assert len({candidate["schema"], patch["schema"], signed["schema"]}) == 3
+    assert candidate["execution_authorized"] is False
+    assert patch["execution_authorized"] is True
+    assert signed["execution_authorized"] is True
+
+
+def test_generic_signer_materializes_pa_signed_contract(signed_documents) -> None:
+    assert signed_documents[2]["profile_id"] == PA_PROFILE_ID
+
+
+def test_signed_sources_are_exactly_bound(signed_documents) -> None:
+    candidate, patch, signed = signed_documents
+    assert validate_registered_signed_sources(
+        PA_PROFILE_ID, signed, candidate, patch,
+        now=datetime(2026, 8, 15, 13, 45, tzinfo=timezone.utc),
+    ) == signed
+
+
+def test_signed_plan_is_exactly_bound(materialized, signed_documents) -> None:
+    assert validate_registered_signed_plan(
+        PA_PROFILE_ID, signed_documents[2], materialized["plan"],
+        now=datetime(2026, 8, 15, 13, 45, tzinfo=timezone.utc),
+    ) == signed_documents[2]
+
+
+def test_registered_candidate_remains_non_executable(materialized) -> None:
+    profile = approval_profile(PA_PROFILE_ID)
+    _document, _identity, kind, _profile = validate_registered_approval_document(
+        materialized["approval_candidate"], expected_profile_id=profile.profile_id,
+        expected_scope=profile.approval_scope,
+        expected_plan_sha256=materialized["plan"]["plan_sha256"],
+        expected_launcher_sha256=materialized["plan"]["launcher_sha256"],
+        enforce_time=False,
+    )
+    assert kind == "final_approval_candidate"
+
+
+def test_registered_patch_is_never_an_executable_document(signed_documents, materialized) -> None:
+    profile = approval_profile(PA_PROFILE_ID)
+    with pytest.raises(CanaryContractError, match="authorization_patch_not_executable"):
+        validate_registered_approval_document(
+            signed_documents[1], expected_profile_id=profile.profile_id,
+            expected_scope=profile.approval_scope,
+            expected_plan_sha256=materialized["plan"]["plan_sha256"],
+            expected_launcher_sha256=materialized["plan"]["launcher_sha256"],
+        )
+
+
+@pytest.mark.parametrize("field", [
+    "approved_plan_sha256", "approved_launcher_sha256",
+    "approved_workload_sha256", "approved_build_fingerprint",
+    "target_filter_sha256", "observation_schema_sha256",
+    "profile_definition_sha256", "source_candidate_sha256",
+])
+def test_signed_protected_field_tamper_is_rejected(signed_documents, field) -> None:
+    signed = deepcopy(signed_documents[2])
+    signed[field] = "0" * 64
+    with pytest.raises(CanaryContractError):
+        validate_pa_signed_approval_v1(
+            signed, now=datetime(2026, 8, 15, 13, 45, tzinfo=timezone.utc),
+        )
+
+
+@pytest.mark.parametrize("field", [
+    "authorize_credential_lookup", "authorize_provider_client_creation",
+    "authorize_network", "authorize_paid_model_calls",
+])
+def test_candidate_authorization_tamper_is_rejected(materialized, field) -> None:
+    candidate = deepcopy(materialized["approval_candidate"])
+    candidate[field] = True
+    with pytest.raises(CanaryContractError, match="external_authorization_present"):
+        validate_pa_final_approval_candidate_v1(candidate)
+
+
+def test_signed_ledger_is_single_use(tmp_path: Path, signed_documents) -> None:
+    store = ApprovalConsumptionStore(tmp_path)
+    signed = signed_documents[2]
+    reservation = store.reserve(signed)
+    assert reservation["payload"]["profile_id"] == PA_PROFILE_ID
+    store.consume(signed, "a" * 64)
+    with pytest.raises(CanaryApprovalReplay, match="already_consumed"):
+        store.reserve(signed)
+
+
+def test_ledger_rejects_candidate_execution(tmp_path: Path, materialized) -> None:
+    with pytest.raises(CanaryApprovalReplay, match="candidate_not_executable"):
+        ApprovalConsumptionStore(tmp_path).reserve(materialized["approval_candidate"])
+
+
+def test_pa_profile_definition_is_immutable() -> None:
+    with pytest.raises(Exception):
+        approval_profile(PA_PROFILE_ID).profile_id = "mutated"
+
+
+def test_unknown_profile_fails_closed() -> None:
+    with pytest.raises(Exception, match="approval_profile_unknown"):
+        approval_profile("unknown")
+
+
+def test_cross_profile_declaration_is_rejected(materialized) -> None:
+    candidate = deepcopy(materialized["approval_candidate"])
+    candidate["profile_id"] = "c0b_smoke_1"
+    with pytest.raises(CanaryContractError, match="approval_profile_unknown"):
+        validate_registered_approval_document(
+            candidate, expected_profile_id=PA_PROFILE_ID,
+            expected_scope=approval_profile(PA_PROFILE_ID).approval_scope,
+            expected_plan_sha256=materialized["plan"]["plan_sha256"],
+            expected_launcher_sha256=materialized["plan"]["launcher_sha256"],
+            enforce_time=False,
+        )
+
+
+def test_expired_signed_approval_is_rejected(signed_documents) -> None:
+    with pytest.raises(CanaryContractError, match="outside_execution_window"):
+        validate_pa_signed_approval_v1(
+            signed_documents[2],
+            now=datetime(2026, 8, 18, 13, 45, tzinfo=timezone.utc),
+        )

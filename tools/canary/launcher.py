@@ -26,6 +26,10 @@ from .contracts import (
     validate_signed_smoke_approval_plan_v1,
     validate_signed_smoke_approval_sources_v1,
 )
+from .approval_dispatch import (
+    profile_for_plan, validate_registered_approval_document,
+    validate_registered_signed_plan, validate_registered_signed_sources,
+)
 from .hash_manifest import validate_import_closure
 from .network_sentinel import FailClosedNetworkSentinel
 from .outcomes import blocked_outcome, infrastructure_outcome
@@ -46,6 +50,16 @@ def read_json_object(path: Path, reason_code: str) -> dict:
     if not isinstance(value, dict):
         raise CanaryLauncherError(reason_code)
     return value
+
+
+def _validate_registered_closure(profile_name: str, **kwargs) -> dict:
+    if profile_name == "c0b_approval_closure_v1":
+        from .approval_closure import validate_c0b_approval_closure
+        return validate_c0b_approval_closure(**kwargs)
+    if profile_name == "pa_strict_tool_observation_closure_v1":
+        from .pa_approval_closure import validate_pa_approval_closure
+        return validate_pa_approval_closure(**kwargs)
+    raise CanaryLauncherError("validate_only_profile_not_supported")
 
 
 def validate_packet(
@@ -73,39 +87,52 @@ def validate_packet(
     approval_input = read_json_object(
         approval_path, "approval_unavailable_or_invalid",
     )
-    schema = approval_input.get("schema")
-    candidate_document = schema == SMOKE_APPROVAL_CANDIDATE_SCHEMA
-    signed_document = schema == SMOKE_SIGNED_APPROVAL_SCHEMA
-    if schema in {SMOKE_AUTHORIZATION_PATCH_SCHEMA,
-                  SMOKE_AUTHORIZATION_PATCH_SCHEMA_V1}:
+    registered_real = plan["canary_mode"] != "c0a_fake_dry_run"
+    profile = profile_for_plan(plan) if registered_real else None
+    registered_schema = profile is not None and approval_input.get("schema") in {
+        profile.candidate_schema, profile.authorization_patch_schema,
+        profile.authorization_patch_template_schema, profile.signed_approval_schema,
+    }
+    if profile is not None and approval_input.get("schema") in {
+        profile.authorization_patch_schema,
+        profile.authorization_patch_template_schema,
+    }:
         raise CanaryLauncherError("authorization_patch_not_executable")
-    expected_scope = (
-        SMOKE_APPROVAL_SCOPE if candidate_document or signed_document
-        else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
-        if plan["canary_mode"] == "c0b_real_path_reachability"
-        else "C0A_FAKE_DRY_RUN"
-    )
-    approval, approval_identity, approval_kind = validate_canary_approval_document(
-        approval_input,
-        expected_scope=expected_scope,
-        expected_plan_sha256=plan["plan_sha256"],
-        expected_launcher_sha256=manifest["launcher_sha256"],
-        now=now,
-    )
-    if candidate_document and execution_requested:
+    if profile is not None and registered_schema:
+        approval, approval_identity, approval_kind, document_profile = (
+            validate_registered_approval_document(
+                approval_input, expected_profile_id=profile.profile_id,
+                expected_scope=profile.approval_scope,
+                expected_plan_sha256=plan["plan_sha256"],
+                expected_launcher_sha256=manifest["launcher_sha256"], now=now,
+            )
+        )
+        if document_profile.profile_id != profile.profile_id:
+            raise CanaryLauncherError("approval_profile_scope_mismatch")
+    else:
+        legacy_scope = (
+            "C0B_REAL_PROVIDER_PATH_REACHABILITY"
+            if profile is not None else "C0A_FAKE_DRY_RUN"
+        )
+        approval, approval_identity, approval_kind = validate_canary_approval_document(
+            approval_input, expected_scope=legacy_scope,
+            expected_plan_sha256=plan["plan_sha256"],
+            expected_launcher_sha256=manifest["launcher_sha256"], now=now,
+        )
+    if approval_kind == "final_approval_candidate" and execution_requested:
         raise CanaryLauncherError("approval_candidate_not_executable")
-    if signed_document:
+    if profile is not None and approval_kind in {"signed_smoke_approval", "signed_approval"}:
         if source_candidate_path is None or source_authorization_patch_path is None:
             raise CanaryLauncherError("signed_approval_source_document_missing")
-        validate_signed_smoke_approval_sources_v1(
-            approval,
+        validate_registered_signed_sources(
+            profile.profile_id, approval,
             read_json_object(source_candidate_path,
                              "approval_candidate_unavailable_or_invalid"),
             read_json_object(source_authorization_patch_path,
                              "authorization_patch_unavailable_or_invalid"),
             now=now,
         )
-        validate_signed_smoke_approval_plan_v1(approval, plan, now=now)
+        validate_registered_signed_plan(profile.profile_id, approval, plan, now=now)
     actions = approval["authorized_actions"]
     if plan["canary_mode"] == "c0a_fake_dry_run":
         if execution_requested:
@@ -117,7 +144,7 @@ def validate_packet(
             raise CanaryLauncherError("c0a_external_action_authorized")
         if actions.get("fake_boundary") is not True:
             raise CanaryLauncherError("fake_boundary_not_authorized")
-    elif plan["canary_mode"] == "c0b_real_path_reachability":
+    elif profile is not None:
         if execution_requested:
             if any(actions.get(name) is not True for name in (
                 "credential_lookup", "provider_client_creation", "network",
@@ -140,6 +167,7 @@ def validate_packet(
         "dependency_file_count": len(manifest["files"]),
         "canary_mode": plan["canary_mode"],
         "execution_authorized": bool(execution_requested),
+        "profile_id": profile.profile_id if profile is not None else None,
     }
 
 
@@ -179,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
                     source_candidate_path=args.approval_candidate,
                     source_authorization_patch_path=args.authorization_patch,
                 )
-                if result["canary_mode"] == "c0b_real_path_reachability":
+                if result.get("profile_id") is not None:
                     required = (
                         args.approval_packet, args.workload_fixture,
                         args.canary_root, args.approval_ledger_root,
@@ -189,8 +217,11 @@ def main(argv: list[str] | None = None) -> int:
                         raise CanaryLauncherError(
                             "c0b_validate_only_closure_argument_missing"
                         )
-                    from .approval_closure import validate_c0b_approval_closure
-                    result = validate_c0b_approval_closure(
+                    profile = profile_for_plan(read_json_object(
+                        args.plan, "plan_unavailable_or_invalid",
+                    ))
+                    result = _validate_registered_closure(
+                        profile.validate_only_profile,
                         plan_path=args.plan, approval_path=args.approval,
                         source_candidate_path=args.approval_candidate,
                         source_authorization_patch_path=args.authorization_patch,
@@ -256,8 +287,8 @@ def main(argv: list[str] | None = None) -> int:
                 source_authorization_patch_path=args.authorization_patch,
                 execution_requested=True,
             )
-            from .real_run import run_c0b_real_run
-            completed = asyncio.run(run_c0b_real_run(
+            from .real_run import run_registered_real_run
+            completed = asyncio.run(run_registered_real_run(
                 plan_path=args.plan, approval_path=args.approval,
                 source_candidate_path=args.approval_candidate,
                 source_authorization_patch_path=args.authorization_patch,

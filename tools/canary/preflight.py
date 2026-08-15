@@ -17,6 +17,12 @@ from .contracts import (
     validate_signed_smoke_approval_plan_v1,
     validate_signed_smoke_approval_sources_v1,
 )
+from .approval_dispatch import (
+    validate_registered_approval_document,
+    validate_registered_signed_plan,
+    validate_registered_signed_sources,
+)
+from .approval_profiles import approval_profile
 from .gate import BoundaryRequest
 
 
@@ -40,6 +46,7 @@ class ExactBoundaryVerifier:
         initial_approval_sha256: str, initial_launcher_sha256: str,
         initial_workload_manifest_hash: str,
         expected_scope: str = "C0A_FAKE_DRY_RUN",
+        expected_profile_id: str | None = None,
         now: datetime | None = None,
     ) -> None:
         self.snapshot_supplier = snapshot_supplier
@@ -49,6 +56,7 @@ class ExactBoundaryVerifier:
         self.initial_launcher_sha256 = initial_launcher_sha256
         self.initial_workload_manifest_hash = initial_workload_manifest_hash
         self.expected_scope = expected_scope
+        self.expected_profile_id = expected_profile_id
         self.now = now
         self.receipts: list[dict] = []
 
@@ -61,23 +69,36 @@ class ExactBoundaryVerifier:
                  "plan_hash_unapproved")
         _require(plan["plan_sha256"] == self.initial_plan_sha256,
                  "plan_changed_during_canary")
-        approval, approval_identity, approval_kind = validate_canary_approval_document(
-            snapshot["approval"], expected_scope=self.expected_scope,
-            expected_plan_sha256=plan["plan_sha256"],
-            expected_launcher_sha256=plan["launcher_sha256"], now=self.now,
-        )
+        if self.expected_profile_id is None:
+            approval, approval_identity, approval_kind = validate_canary_approval_document(
+                snapshot["approval"], expected_scope=self.expected_scope,
+                expected_plan_sha256=plan["plan_sha256"],
+                expected_launcher_sha256=plan["launcher_sha256"], now=self.now,
+            )
+        else:
+            profile = approval_profile(self.expected_profile_id)
+            approval, approval_identity, approval_kind, _document_profile = (
+                validate_registered_approval_document(
+                    snapshot["approval"], expected_profile_id=profile.profile_id,
+                    expected_scope=profile.approval_scope,
+                    expected_plan_sha256=plan["plan_sha256"],
+                    expected_launcher_sha256=plan["launcher_sha256"], now=self.now,
+                )
+            )
         _require(approval_kind != "final_approval_candidate",
                  "approval_candidate_not_executable")
-        if approval.get("schema") == SMOKE_SIGNED_APPROVAL_SCHEMA:
+        if self.expected_profile_id is not None and approval_kind in {
+            "signed_smoke_approval", "signed_approval",
+        }:
             _require("approval_candidate" in snapshot
                      and "authorization_patch" in snapshot,
                      "signed_approval_source_document_missing")
-            validate_signed_smoke_approval_sources_v1(
-                approval, snapshot["approval_candidate"],
+            validate_registered_signed_sources(
+                self.expected_profile_id, approval, snapshot["approval_candidate"],
                 snapshot["authorization_patch"], now=self.now,
             )
-            validate_signed_smoke_approval_plan_v1(
-                approval, plan, now=self.now,
+            validate_registered_signed_plan(
+                self.expected_profile_id, approval, plan, now=self.now,
             )
         _require(approval_identity == self.initial_approval_sha256,
                  "approval_changed_during_canary")
