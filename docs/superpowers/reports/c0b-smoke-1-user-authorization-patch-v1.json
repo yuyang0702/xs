@@ -1,0 +1,27 @@
+{
+  "approval_expiry": "2026-08-17T05:34:34Z",
+  "approval_timestamp": "USER_CONFIRMATION_REQUIRED",
+  "approved_execution_window": {
+    "not_after": "2026-08-17T05:34:34Z",
+    "not_before": "2026-08-15T05:34:34Z"
+  },
+  "authorization_patch_sha256": "8f70676b6545caabc6f76bb6750ec7ecfc8fc2cd7ca2d170d1c59e1d24d357e5",
+  "authorize_credential_lookup": true,
+  "authorize_network": true,
+  "authorize_paid_model_calls": true,
+  "authorize_provider_client_creation": true,
+  "bound_approval_candidate_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+  "bound_build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+  "bound_execution_config_fingerprint": "70a487fa8f2152e14923aa82560ace39c83a052e4556e03eb1b54ba4976bff13",
+  "bound_launcher_sha256": "d31e48812986b41ac3ee43fa26baa655625f5d6b0503f05d875f4ba43b060a34",
+  "bound_plan_sha256": "20cc492ebca200ee9d3cfe42a3f09d6ad5d63e908031457b055e34833263da11",
+  "bound_runtime_execution_fingerprint": "eb2ed19dd0b6b9a7517f6044f4a8aecb0aadfcb9f2e1303f3ba77567a8b710a5",
+  "bound_workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_authorized": true,
+  "named_approver": "USER_CONFIRMATION_REQUIRED",
+  "protected_fields_mutation_allowed": false,
+  "schema": "C0BSmoke1UserAuthorizationPatchV1",
+  "single_use_cohort_id_confirmation": "c0b-smoke-1-v2-20260815t051934z-3947ac6",
+  "version": 1
+}

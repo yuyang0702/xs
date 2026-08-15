@@ -15,8 +15,10 @@ import sys
 
 from .contracts import (
     CanaryContractError,
+    SMOKE_APPROVAL_CANDIDATE_SCHEMA,
+    SMOKE_APPROVAL_SCOPE,
+    validate_canary_approval_document,
     validate_canary_experiment_plan_v1,
-    validate_canary_plan_approval_v1,
 )
 from .hash_manifest import validate_import_closure
 from .network_sentinel import FailClosedNetworkSentinel
@@ -59,17 +61,26 @@ def validate_packet(
     )
     if manifest["launcher_sha256"] != plan["launcher_sha256"]:
         raise CanaryLauncherError("launcher_changed_during_canary")
+    approval_input = read_json_object(
+        approval_path, "approval_unavailable_or_invalid",
+    )
+    candidate_document = (
+        approval_input.get("schema") == SMOKE_APPROVAL_CANDIDATE_SCHEMA
+    )
     expected_scope = (
-        "C0B_REAL_PROVIDER_PATH_REACHABILITY"
+        SMOKE_APPROVAL_SCOPE if candidate_document
+        else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
         if plan["canary_mode"] == "c0b_real_path_reachability"
         else "C0A_FAKE_DRY_RUN"
     )
-    approval = validate_canary_plan_approval_v1(
-        read_json_object(approval_path, "approval_unavailable_or_invalid"),
+    approval, approval_identity, approval_kind = validate_canary_approval_document(
+        approval_input,
         expected_scope=expected_scope,
         expected_plan_sha256=plan["plan_sha256"],
         expected_launcher_sha256=manifest["launcher_sha256"],
     )
+    if candidate_document and execution_requested:
+        raise CanaryLauncherError("approval_candidate_not_executable")
     actions = approval["authorized_actions"]
     if plan["canary_mode"] == "c0a_fake_dry_run":
         if execution_requested:
@@ -98,7 +109,8 @@ def validate_packet(
         "schema": "CanaryPacketValidationV1",
         "status": "exact",
         "plan_sha256": plan["plan_sha256"],
-        "approval_sha256": approval["approval_sha256"],
+        "approval_sha256": approval_identity,
+        "approval_document_kind": approval_kind,
         "launcher_sha256": manifest["launcher_sha256"],
         "dependency_file_count": len(manifest["files"]),
         "canary_mode": plan["canary_mode"],

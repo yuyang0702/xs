@@ -8,7 +8,7 @@ credential, project, or model.
 from __future__ import annotations
 
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import re
 from typing import Any, Mapping
 
@@ -20,8 +20,13 @@ from novel_flywheel.runtime_fingerprint_build import (
 
 PLAN_SCHEMA = "CanaryExperimentPlanV1"
 APPROVAL_SCHEMA = "CanaryPlanApprovalV1"
+SMOKE_APPROVAL_CANDIDATE_SCHEMA = "C0BSmoke1FinalApprovalCandidateV2"
+SMOKE_AUTHORIZATION_PATCH_SCHEMA = "C0BSmoke1UserAuthorizationPatchV1"
+SMOKE_APPROVAL_SCOPE = "C0B_REAL_PROVIDER_PATH_REACHABILITY_SMOKE_1"
 PLAN_DOMAIN = "novel-flywheel-canary-experiment-plan-v1"
 APPROVAL_DOMAIN = "novel-flywheel-canary-plan-approval-v1"
+SMOKE_APPROVAL_CANDIDATE_DOMAIN = "novel-flywheel-c0b-smoke-1-final-approval-candidate-v2"
+SMOKE_AUTHORIZATION_PATCH_DOMAIN = "novel-flywheel-c0b-smoke-1-user-authorization-patch-v1"
 PLAN_MODES = frozenset({
     "c0a_fake_dry_run", "c0b_real_path_reachability",
     "c0c_statistical_exposure",
@@ -29,7 +34,7 @@ PLAN_MODES = frozenset({
 RUNTIME_MODES = frozenset({"git_workspace", "packaged"})
 APPROVAL_SCOPES = frozenset({
     "C0A_FAKE_DRY_RUN", "C0B_REAL_PROVIDER_PATH_REACHABILITY",
-    "C0C_STATISTICAL_EXPOSURE",
+    "C0C_STATISTICAL_EXPOSURE", SMOKE_APPROVAL_SCOPE,
 })
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _WINDOWS_ABSOLUTE = re.compile(r"^[A-Za-z]:[\\/]")
@@ -103,6 +108,20 @@ def _plan_digest(value: Mapping[str, Any]) -> str:
 def _approval_digest(value: Mapping[str, Any]) -> str:
     return domain_sha256(
         APPROVAL_DOMAIN, _body_without_digest(value, "approval_sha256"),
+    )
+
+
+def _smoke_candidate_digest(value: Mapping[str, Any]) -> str:
+    return domain_sha256(
+        SMOKE_APPROVAL_CANDIDATE_DOMAIN,
+        _body_without_digest(value, "approval_candidate_sha256"),
+    )
+
+
+def _smoke_patch_digest(value: Mapping[str, Any]) -> str:
+    return domain_sha256(
+        SMOKE_AUTHORIZATION_PATCH_DOMAIN,
+        _body_without_digest(value, "authorization_patch_sha256"),
     )
 
 
@@ -369,3 +388,243 @@ def validate_canary_plan_approval_v1(
         _require(not_before <= current <= not_after, "approval_outside_execution_window")
         _require(value["usage_status"] == "unused", "approval_already_used")
     return deepcopy(dict(value))
+
+
+def build_c0b_smoke_1_final_approval_candidate_v2(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    candidate = {
+        "schema": SMOKE_APPROVAL_CANDIDATE_SCHEMA,
+        "version": 2,
+        "canonicalization_version": CANONICALIZATION_VERSION,
+        **deepcopy(dict(payload)),
+    }
+    candidate["approval_candidate_sha256"] = _smoke_candidate_digest(candidate)
+    return validate_c0b_smoke_1_final_approval_candidate_v2(
+        candidate, enforce_time=False,
+    )
+
+
+def validate_c0b_smoke_1_final_approval_candidate_v2(
+    value: Mapping[str, Any], *, expected_plan_sha256: str | None = None,
+    expected_launcher_sha256: str | None = None,
+    now: datetime | None = None, enforce_time: bool = True,
+) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "approval_candidate_not_object")
+    _require_fields(value, {
+        "schema", "version", "canonicalization_version", "approval_scope",
+        "approved_plan_sha256", "approved_launcher_sha256",
+        "approved_workload_sha256", "approved_workload_manifest_hash",
+        "approved_build_fingerprint", "approved_execution_config_fingerprint",
+        "approved_runtime_execution_fingerprint", "runtime_mode",
+        "provider_descriptor_hash", "model_role_binding_manifest_hash",
+        "pricing_evidence_manifest_hash", "feature_flag_snapshot_hash",
+        "stop_condition_manifest_hash", "call_budget_definition_sha256",
+        "token_budget_definition_sha256", "monetary_budget_definition_sha256",
+        "elapsed_budget_definition_sha256", "canary_root_identity_candidate",
+        "approved_workload_id", "maximum_runs", "expected_model_calls",
+        "maximum_total_model_calls", "maximum_input_tokens",
+        "maximum_output_tokens", "maximum_output_tokens_per_call",
+        "maximum_usd_cost_microunits", "maximum_cny_cost_microunits",
+        "maximum_elapsed_seconds", "first_terminal_stop",
+        "resume_after_terminal", "phase1b_enabled", "execution_window",
+        "materialized_at", "approval_expiry", "single_use_cohort_id", "maximum_executions",
+        "usage_status", "consumed_evidence_sha256", "named_approver",
+        "authorize_credential_lookup", "authorize_provider_client_creation",
+        "authorize_network", "authorize_paid_model_calls",
+        "authorized_actions", "execution_authorized", "approved_budget",
+        "approval_candidate_sha256",
+    }, "approval_candidate")
+    _require(
+        value["schema"] == SMOKE_APPROVAL_CANDIDATE_SCHEMA
+        and value["version"] == 2,
+        "approval_candidate_schema_unsupported",
+    )
+    _require(value["canonicalization_version"] == CANONICALIZATION_VERSION,
+             "approval_candidate_canonicalization_unsupported")
+    _require(value["approval_scope"] == SMOKE_APPROVAL_SCOPE,
+             "approval_candidate_scope_mismatch")
+    for field in (
+        "approved_plan_sha256", "approved_launcher_sha256",
+        "approved_workload_sha256", "approved_workload_manifest_hash",
+        "approved_build_fingerprint", "approved_execution_config_fingerprint",
+        "approved_runtime_execution_fingerprint", "provider_descriptor_hash",
+        "model_role_binding_manifest_hash", "pricing_evidence_manifest_hash",
+        "feature_flag_snapshot_hash", "stop_condition_manifest_hash",
+        "call_budget_definition_sha256", "token_budget_definition_sha256",
+        "monetary_budget_definition_sha256", "elapsed_budget_definition_sha256",
+        "canary_root_identity_candidate", "approval_candidate_sha256",
+    ):
+        _require_hash(value[field], f"{field}_invalid")
+    _require(value["runtime_mode"] == "git_workspace", "runtime_mode_not_git_workspace")
+    _require(value["approved_workload_id"] == "short-normal-v1",
+             "smoke_workload_id_mismatch")
+    expected_numbers = {
+        "maximum_runs": 1, "expected_model_calls": 16,
+        "maximum_total_model_calls": 48,
+        "maximum_input_tokens": 1_000_000,
+        "maximum_output_tokens": 1_000_000,
+        "maximum_output_tokens_per_call": 32_000,
+        "maximum_usd_cost_microunits": 20_000_000,
+        "maximum_cny_cost_microunits": 50_000_000,
+        "maximum_elapsed_seconds": 7_200, "maximum_executions": 1,
+    }
+    for field, expected in expected_numbers.items():
+        _require(value[field] == expected, f"smoke_{field}_mismatch")
+    _require(value["first_terminal_stop"] is True,
+             "smoke_first_terminal_stop_not_enabled")
+    _require(value["resume_after_terminal"] is False,
+             "smoke_resume_after_terminal_enabled")
+    _require(value["phase1b_enabled"] is False, "phase1b_enabled")
+    _require(value["usage_status"] == "unused"
+             and value["consumed_evidence_sha256"] is None,
+             "approval_candidate_not_unused")
+    _require(value["named_approver"] == "USER_CONFIRMATION_REQUIRED",
+             "approval_candidate_named_approver_not_placeholder")
+    _require(value["execution_authorized"] is False,
+             "approval_candidate_execution_authorized")
+    _require(all(value[name] is False for name in (
+        "authorize_credential_lookup", "authorize_provider_client_creation",
+        "authorize_network", "authorize_paid_model_calls",
+    )), "approval_candidate_external_action_enabled")
+    actions = value["authorized_actions"]
+    _require(isinstance(actions, Mapping), "authorized_actions_invalid")
+    _require(all(actions.get(name) is False for name in (
+        "credential_lookup", "provider_client_creation", "network",
+        "paid_model_calls", "fake_boundary",
+    )), "approval_candidate_external_action_enabled")
+    _require(isinstance(value["single_use_cohort_id"], str)
+             and re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,63}",
+                              value["single_use_cohort_id"]) is not None,
+             "single_use_cohort_id_invalid")
+    window = value["execution_window"]
+    _require(isinstance(window, Mapping), "execution_window_invalid")
+    _require_fields(window, {"not_before", "not_after"}, "execution_window")
+    not_before = _parse_utc(window["not_before"], "execution_window_invalid")
+    not_after = _parse_utc(window["not_after"], "execution_window_invalid")
+    materialized_at = _parse_utc(
+        value["materialized_at"], "approval_candidate_materialized_at_invalid",
+    )
+    expiry = _parse_utc(value["approval_expiry"], "approval_expiry_invalid")
+    _require(
+        not_before >= materialized_at + timedelta(minutes=15)
+        and not_after - not_before == timedelta(hours=48)
+        and expiry == not_after,
+             "approval_candidate_window_invalid")
+    if enforce_time:
+        current = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        _require(current < expiry, "approval_expired")
+    budget = value["approved_budget"]
+    _require(isinstance(budget, Mapping), "approved_budget_invalid")
+    _require_fields(budget, {
+        "maximum_model_calls_per_run", "maximum_total_model_calls",
+        "maximum_input_tokens", "maximum_output_tokens",
+        "maximum_usd_cost_microunits", "maximum_cny_cost_microunits",
+        "maximum_elapsed_seconds", "definition_sha256",
+    }, "approved_budget")
+    expected_budget = {
+        "maximum_model_calls_per_run": 48,
+        "maximum_total_model_calls": 48,
+        "maximum_input_tokens": 1_000_000,
+        "maximum_output_tokens": 1_000_000,
+        "maximum_usd_cost_microunits": 20_000_000,
+        "maximum_cny_cost_microunits": 50_000_000,
+        "maximum_elapsed_seconds": 7_200,
+    }
+    _require({key: budget.get(key) for key in expected_budget} == expected_budget,
+             "approved_budget_smoke_limits_mismatch")
+    _require_hash(budget["definition_sha256"],
+                  "approved_budget_definition_sha256_invalid")
+    _require(budget["definition_sha256"] == domain_sha256(
+        "novel-flywheel-c0b-approved-budget-v1", expected_budget,
+    ), "approved_budget_definition_hash_mismatch")
+    _require(value["approval_candidate_sha256"] == _smoke_candidate_digest(value),
+             "approval_candidate_hash_mismatch")
+    if expected_plan_sha256 is not None:
+        _require(value["approved_plan_sha256"] == expected_plan_sha256,
+                 "approval_candidate_plan_mismatch")
+    if expected_launcher_sha256 is not None:
+        _require(value["approved_launcher_sha256"] == expected_launcher_sha256,
+                 "approval_candidate_launcher_mismatch")
+    _scan_forbidden_material(value)
+    return deepcopy(dict(value))
+
+
+def build_c0b_smoke_1_user_authorization_patch_v1(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    patch = {
+        "schema": SMOKE_AUTHORIZATION_PATCH_SCHEMA,
+        "version": 1,
+        "canonicalization_version": CANONICALIZATION_VERSION,
+        **deepcopy(dict(payload)),
+    }
+    patch["authorization_patch_sha256"] = _smoke_patch_digest(patch)
+    return validate_c0b_smoke_1_user_authorization_patch_v1(patch)
+
+
+def validate_c0b_smoke_1_user_authorization_patch_v1(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "authorization_patch_not_object")
+    exact_fields = {
+        "schema", "version", "canonicalization_version",
+        "bound_plan_sha256", "bound_approval_candidate_sha256",
+        "bound_launcher_sha256", "bound_workload_sha256",
+        "bound_build_fingerprint", "bound_execution_config_fingerprint",
+        "bound_runtime_execution_fingerprint", "named_approver",
+        "approval_timestamp", "approved_execution_window", "approval_expiry",
+        "single_use_cohort_id_confirmation", "authorize_credential_lookup",
+        "authorize_provider_client_creation", "authorize_network",
+        "authorize_paid_model_calls", "execution_authorized",
+        "protected_fields_mutation_allowed", "authorization_patch_sha256",
+    }
+    _require_fields(value, exact_fields, "authorization_patch")
+    _require(set(value) == exact_fields, "authorization_patch_fields_unexpected")
+    _require(value["schema"] == SMOKE_AUTHORIZATION_PATCH_SCHEMA
+             and value["version"] == 1,
+             "authorization_patch_schema_unsupported")
+    for field in (
+        "bound_plan_sha256", "bound_approval_candidate_sha256",
+        "bound_launcher_sha256", "bound_workload_sha256",
+        "bound_build_fingerprint", "bound_execution_config_fingerprint",
+        "bound_runtime_execution_fingerprint", "authorization_patch_sha256",
+    ):
+        _require_hash(value[field], f"{field}_invalid")
+    _require(value["named_approver"] == "USER_CONFIRMATION_REQUIRED"
+             and value["approval_timestamp"] == "USER_CONFIRMATION_REQUIRED",
+             "authorization_patch_user_confirmation_missing")
+    _require(all(value[name] is True for name in (
+        "authorize_credential_lookup", "authorize_provider_client_creation",
+        "authorize_network", "authorize_paid_model_calls", "execution_authorized",
+    )), "authorization_patch_action_not_requested")
+    _require(value["protected_fields_mutation_allowed"] is False,
+             "authorization_patch_protected_mutation_enabled")
+    _require(value["authorization_patch_sha256"] == _smoke_patch_digest(value),
+             "authorization_patch_hash_mismatch")
+    _scan_forbidden_material(value)
+    return deepcopy(dict(value))
+
+
+def validate_canary_approval_document(
+    value: Mapping[str, Any], *, expected_scope: str,
+    expected_plan_sha256: str, expected_launcher_sha256: str,
+    now: datetime | None = None, enforce_time: bool = True,
+) -> tuple[dict[str, Any], str, str]:
+    """Validate an executable Approval or a non-executable Smoke candidate."""
+    if value.get("schema") == SMOKE_APPROVAL_CANDIDATE_SCHEMA:
+        candidate = validate_c0b_smoke_1_final_approval_candidate_v2(
+            value, expected_plan_sha256=expected_plan_sha256,
+            expected_launcher_sha256=expected_launcher_sha256,
+            now=now, enforce_time=enforce_time,
+        )
+        _require(expected_scope == SMOKE_APPROVAL_SCOPE,
+                 "approval_candidate_scope_mismatch")
+        return candidate, candidate["approval_candidate_sha256"], "final_approval_candidate"
+    approval = validate_canary_plan_approval_v1(
+        value, expected_scope=expected_scope,
+        expected_plan_sha256=expected_plan_sha256,
+        expected_launcher_sha256=expected_launcher_sha256,
+        now=now, enforce_time=enforce_time,
+    )
+    return approval, approval["approval_sha256"], "executable_approval"

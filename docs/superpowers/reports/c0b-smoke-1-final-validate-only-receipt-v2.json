@@ -1,0 +1,197 @@
+{
+  "approval_document_kind": "final_approval_candidate",
+  "approval_identity_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+  "approval_state": "disabled_candidate",
+  "canary_root_candidate_status": "valid_absent_candidate",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_hashes": {
+    "approval_canonical_hash": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+    "approval_cohort_single_use": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+    "approval_execution_window": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+    "build_child_manifests": "725d169da7f7938b2eadb2c26644f3b875894ffe5370bfe2cfeb2557daa6b6d6",
+    "build_fingerprint": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+    "call_budget_definition": "1a6e5ee9ccae3ba31e0f945bc43a8ff8bffa23744d78905fd039e461faab9572",
+    "canary_root_identity_layout": "99e494ce07309d4c72eac7151a427deea3a1fa56f1e70972d215b8bde15aec4f",
+    "elapsed_budget_definition": "0b7fe3382a03755ae163999b4836256612827c60090169442b93577086b4bbf8",
+    "execution_config_fingerprint": "70a487fa8f2152e14923aa82560ace39c83a052e4556e03eb1b54ba4976bff13",
+    "external_action_authorization": "135bdb9812843edb18ee795b570e3c10a0ae323f50cba1fca42dd14dd3703c08",
+    "feature_flag_snapshot": "84c9b4c8e118bb14fe177bb3aabc29866710cec8b50bc37c1b9ba9c4cda39a05",
+    "happy_relay_group": "bdf49e5adde0ae373e1bb845381f35dbfd217dc8a0cf32e1ea3dad70eaab1444",
+    "launcher_bytes_hash": "d31e48812986b41ac3ee43fa26baa655625f5d6b0503f05d875f4ba43b060a34",
+    "monetary_budget_definition": "e0e8c7080e1cbb4ccdaccda1ab336a14d692271539afb325c9951b999eceef18",
+    "plan_canonical_hash": "20cc492ebca200ee9d3cfe42a3f09d6ad5d63e908031457b055e34833263da11",
+    "pricing_evidence_manifest": "053fbf7d5fe203257dfb200e019c0ac4bdb811f09e244db4f37c906c7667649a",
+    "production_source_byte_revalidation": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+    "protocol_route_evidence": "bef52323e8f46c77e4a0f5e8d5318b05a26998ef700ccdb7c1f6b7a650b225bd",
+    "provider_descriptor_manifest": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+    "role_route_binding_manifest": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+    "runtime_execution_fingerprint": "eb2ed19dd0b6b9a7517f6044f4a8aecb0aadfcb9f2e1303f3ba77567a8b710a5",
+    "stop_condition_manifest": "b50e7bbf835fe1fa4f10565e11a0ab9ec645e045ae11cf48718707d8ca9d1d51",
+    "token_budget_definition": "34acc16519f866a9b07318e1a85c18616f345d5dc7d336717837eb04c406db7e",
+    "workload_bytes_hash": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "ordered_checks": [
+    {
+      "definition_sha256": "20cc492ebca200ee9d3cfe42a3f09d6ad5d63e908031457b055e34833263da11",
+      "name": "plan_canonical_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+      "name": "approval_canonical_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "d31e48812986b41ac3ee43fa26baa655625f5d6b0503f05d875f4ba43b060a34",
+      "name": "launcher_bytes_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "name": "workload_bytes_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+      "name": "production_source_byte_revalidation",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "bbf17ef072856d2c8bfc56281ce0469dc1ac323fcab6b2bde1c8ce08845253f0",
+      "name": "build_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "725d169da7f7938b2eadb2c26644f3b875894ffe5370bfe2cfeb2557daa6b6d6",
+      "name": "build_child_manifests",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "70a487fa8f2152e14923aa82560ace39c83a052e4556e03eb1b54ba4976bff13",
+      "name": "execution_config_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "eb2ed19dd0b6b9a7517f6044f4a8aecb0aadfcb9f2e1303f3ba77567a8b710a5",
+      "name": "runtime_execution_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+      "name": "provider_descriptor_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+      "name": "role_route_binding_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "bef52323e8f46c77e4a0f5e8d5318b05a26998ef700ccdb7c1f6b7a650b225bd",
+      "name": "protocol_route_evidence",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "84c9b4c8e118bb14fe177bb3aabc29866710cec8b50bc37c1b9ba9c4cda39a05",
+      "name": "feature_flag_snapshot",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "phase1b_disabled",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "053fbf7d5fe203257dfb200e019c0ac4bdb811f09e244db4f37c906c7667649a",
+      "name": "pricing_evidence_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "bdf49e5adde0ae373e1bb845381f35dbfd217dc8a0cf32e1ea3dad70eaab1444",
+      "name": "happy_relay_group",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "e0e8c7080e1cbb4ccdaccda1ab336a14d692271539afb325c9951b999eceef18",
+      "name": "monetary_budget_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "1a6e5ee9ccae3ba31e0f945bc43a8ff8bffa23744d78905fd039e461faab9572",
+      "name": "call_budget_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "34acc16519f866a9b07318e1a85c18616f345d5dc7d336717837eb04c406db7e",
+      "name": "token_budget_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "0b7fe3382a03755ae163999b4836256612827c60090169442b93577086b4bbf8",
+      "name": "elapsed_budget_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b50e7bbf835fe1fa4f10565e11a0ab9ec645e045ae11cf48718707d8ca9d1d51",
+      "name": "stop_condition_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "99e494ce07309d4c72eac7151a427deea3a1fa56f1e70972d215b8bde15aec4f",
+      "name": "canary_root_identity_layout",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+      "name": "approval_execution_window",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8428668102b0e7ea359ef04148d550e22359175a38380a37a77c1c5905e4bc06",
+      "name": "approval_cohort_single_use",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "135bdb9812843edb18ee795b570e3c10a0ae323f50cba1fca42dd14dd3703c08",
+      "name": "external_action_authorization",
+      "reason_code": "exact",
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "C0BApprovalClosureValidationReceiptV1",
+  "validated_at_policy": "caller_supplied_or_current_utc",
+  "validation_receipt_sha256": "6501e0bfb0f9fc42b59ce664df8161b660bfa440c0a8786c7a80ae2af61c21c4",
+  "version": 1
+}

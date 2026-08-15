@@ -1,0 +1,89 @@
+{
+  "version": 2,
+  "original_requirement": "Materialize one disabled, current-tree-bound C0B-SMOKE-1 Final Approval Candidate and complete offline validation without external action or business-state mutation.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Exactly one short-normal-v1 Candidate with the fixed Smoke scope, fixed budgets, a future 48-hour UTC window, fresh unused cohort, 25-check closure, and zero external-action counters.",
+  "forbidden_narrowing": [
+    "Do not treat a Draft Approval as a Final Approval Candidate.",
+    "Do not reuse pre-P1.1 hashes or a prior cohort.",
+    "Do not substitute function-level validation for the real validate-only CLI closure.",
+    "Do not count a blocked real execution attempt as Smoke execution.",
+    "Do not repair production Route drift during materialization."
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The requested output is one explicitly named, bounded Approval materialization package; no production/model-output behavior is changed.",
+  "constraint_traceability": [
+    {
+      "requirement": "Candidate is exact, disabled, and bound to current runtime evidence.",
+      "implementation": "Candidate V2 contract, materializer, and candidate-aware 25-check closure.",
+      "test_paths": ["tests/canary/test_c0b_smoke_final_approval_v2.py"],
+      "evidence": "25/25 exact; candidate/plan/launcher/workload/build/config/runtime/route/price/budget hashes cross-bind."
+    },
+    {
+      "requirement": "No credential, provider client, network, model, paid call, Approval consumption, or execution.",
+      "implementation": "FailClosedNetworkSentinel, false Candidate authorization, read-only ledger status, and Launcher execution rejection.",
+      "test_paths": ["tests/canary/test_c0b_smoke_final_approval_v2.py"],
+      "evidence": "All five counters are zero; execution_requested raises approval_candidate_not_executable."
+    },
+    {
+      "requirement": "Legacy executable Approval validation remains compatible.",
+      "implementation": "Approval closure branches only when the V2 Candidate schema is present.",
+      "test_paths": ["tests/canary/test_c0b_p11_approval_closure.py", "tests/canary/test_launcher.py"],
+      "evidence": "Legacy closure and Launcher tests remain passing."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "stale-plan-or-launcher-hash",
+    "approval-replay-or-consumption",
+    "route-or-pricing-evidence-drift",
+    "external-action-leakage-during-validation",
+    "phase1b-flag-drift",
+    "known-r0e-live-db-baseline-drift"
+  ],
+  "projected_failure_mechanisms": [
+    "candidate supplied to real-run",
+    "candidate window already started or expired",
+    "budget definition substituted after materialization",
+    "launcher bytes change after Plan creation",
+    "cohort is reserved or consumed",
+    "production route or pricing catalog drifts"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only Canary control-plane contracts, validation, tests, and reports changed; src/novel_flywheel and prompts have zero diff.",
+  "why_previous_tests_missed": "P1.1 validated the legacy disabled Approval Draft and budget-stop contract, but did not define the narrower final Candidate schema, unapplied user patch, exact 48-hour candidate window, or execution rejection for Candidate documents.",
+  "sibling_boundaries": [
+    {
+      "boundary": "legacy C0A/C0B executable Approval validation",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Legacy closure, launcher, and packet tests pass unchanged."
+    },
+    {
+      "boundary": "Candidate real execution",
+      "disposition": "fixed_and_tested",
+      "evidence": "Launcher rejects execution_requested with approval_candidate_not_executable."
+    },
+    {
+      "boundary": "live project and database state",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Task-start and post-materialization DB/artifact hashes and row counts are exact."
+    },
+    {
+      "boundary": "model output and Prompt processing",
+      "disposition": "not_applicable",
+      "evidence": "No production runtime or prompt source changed and model call count is zero."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_c0b_smoke_final_approval_v2.py",
+    "tests/canary/test_c0b_p11_approval_closure.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_c0b_smoke_final_approval_v2.py",
+    "tests/canary/test_launcher.py"
+  ],
+  "remaining_risks": [
+    "No real Provider path was executed; real capability remains intentionally unverified.",
+    "Any hash/config drift or missed execution window invalidates this Candidate and requires rematerialization.",
+    "The historical R0E fixed DB hash still fails and was intentionally not changed."
+  ]
+}

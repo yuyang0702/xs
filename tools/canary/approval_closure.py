@@ -24,8 +24,10 @@ from novel_flywheel.runtime_fingerprint_build import (
 from .approval_store import ApprovalConsumptionStore
 from .artifact_hash import file_sha256
 from .contracts import (
+    SMOKE_APPROVAL_CANDIDATE_SCHEMA,
+    SMOKE_APPROVAL_SCOPE,
+    validate_canary_approval_document,
     validate_canary_experiment_plan_v1,
-    validate_canary_plan_approval_v1,
 )
 from .descriptors import (
     copy_production_execution_config,
@@ -138,14 +140,24 @@ def _validate_c0b_approval_closure(
         CHECK_NAMES[0], plan["plan_sha256"] == cli_approved_plan_sha256,
         "cli_approved_plan_hash_mismatch", plan["plan_sha256"],
     ))
-    approval = validate_canary_plan_approval_v1(
-        _read(approval_path),
-        expected_scope="C0B_REAL_PROVIDER_PATH_REACHABILITY",
+    approval_input = _read(approval_path)
+    candidate_document = (
+        approval_input.get("schema") == SMOKE_APPROVAL_CANDIDATE_SCHEMA
+    )
+    expected_scope = (
+        SMOKE_APPROVAL_SCOPE if candidate_document
+        else "C0B_REAL_PROVIDER_PATH_REACHABILITY"
+    )
+    approval, approval_identity, approval_kind = validate_canary_approval_document(
+        approval_input,
+        expected_scope=expected_scope,
         expected_plan_sha256=plan["plan_sha256"],
         expected_launcher_sha256=plan["launcher_sha256"],
         now=now,
     )
-    checks.append(_result(CHECK_NAMES[1], True, "approval_hash_mismatch", approval["approval_sha256"]))
+    checks.append(_result(
+        CHECK_NAMES[1], True, "approval_hash_mismatch", approval_identity,
+    ))
     packet = _read(packet_path)
     launcher = validate_import_closure(
         Path(__file__).resolve().parent,
@@ -290,19 +302,50 @@ def _validate_c0b_approval_closure(
         approved_budget["maximum_usd_cost_microunits"] <= money["maximum_usd_cost_microunits"],
         approved_budget["maximum_cny_cost_microunits"] <= money["maximum_cny_cost_microunits"],
     ))
-    checks.append(_result(CHECK_NAMES[16], monetary_exact, "monetary_budget_definition_mismatch", budget_hash))
+    if candidate_document:
+        monetary_exact = monetary_exact and all((
+            approved_budget["maximum_usd_cost_microunits"] == 20_000_000,
+            approved_budget["maximum_cny_cost_microunits"] == 50_000_000,
+        ))
+    monetary_hash = (
+        approval["monetary_budget_definition_sha256"]
+        if candidate_document else budget_hash
+    )
+    checks.append(_result(
+        CHECK_NAMES[16], monetary_exact,
+        "monetary_budget_definition_mismatch", monetary_hash,
+    ))
     call_exact = bool(approved_budget) and all((
         approved_budget["maximum_model_calls_per_run"] == 48,
         approved_budget["maximum_total_model_calls"] == 48,
         approved_budget["maximum_model_calls_per_run"] <= outer["maximum_model_calls_per_run"],
         approved_budget["maximum_total_model_calls"] <= outer["maximum_total_model_calls"],
     ))
-    checks.append(_result(CHECK_NAMES[17], call_exact, "call_budget_definition_mismatch", budget_hash))
+    call_hash = (
+        approval["call_budget_definition_sha256"]
+        if candidate_document else budget_hash
+    )
+    checks.append(_result(
+        CHECK_NAMES[17], call_exact, "call_budget_definition_mismatch", call_hash,
+    ))
     token_exact = bool(approved_budget) and all((
         approved_budget["maximum_input_tokens"] <= outer["maximum_input_tokens"],
         approved_budget["maximum_output_tokens"] <= outer["maximum_output_tokens"],
     ))
-    checks.append(_result(CHECK_NAMES[18], token_exact, "token_budget_definition_mismatch", budget_hash))
+    if candidate_document:
+        token_exact = token_exact and all((
+            approved_budget["maximum_input_tokens"] == 1_000_000,
+            approved_budget["maximum_output_tokens"] == 1_000_000,
+            approval["maximum_output_tokens_per_call"] == 32_000,
+        ))
+    token_hash = (
+        approval["token_budget_definition_sha256"]
+        if candidate_document else budget_hash
+    )
+    checks.append(_result(
+        CHECK_NAMES[18], token_exact,
+        "token_budget_definition_mismatch", token_hash,
+    ))
     topology = c0b_short_call_topology_v1()
     elapsed = C0BElapsedBudgetV1.from_topology(topology).definition()
     elapsed_exact = bool(approved_budget) and all((
@@ -310,7 +353,18 @@ def _validate_c0b_approval_closure(
         outer["elapsed_budget_sha256"] == elapsed["definition_sha256"],
         approved_budget["maximum_elapsed_seconds"] <= outer["maximum_elapsed_seconds"],
     ))
-    checks.append(_result(CHECK_NAMES[19], elapsed_exact, "elapsed_budget_definition_mismatch", elapsed["definition_sha256"]))
+    if candidate_document:
+        elapsed_exact = elapsed_exact and (
+            approved_budget["maximum_elapsed_seconds"] == 7_200
+        )
+    elapsed_hash = (
+        approval["elapsed_budget_definition_sha256"]
+        if candidate_document else elapsed["definition_sha256"]
+    )
+    checks.append(_result(
+        CHECK_NAMES[19], elapsed_exact,
+        "elapsed_budget_definition_mismatch", elapsed_hash,
+    ))
     stop_hash = domain_sha256("novel-flywheel-c0b-stop-conditions-v1", list(EXPECTED_STOPS))
     checks.append(_result(
         CHECK_NAMES[20], tuple(plan["stop_conditions"]) == EXPECTED_STOPS,
@@ -325,16 +379,70 @@ def _validate_c0b_approval_closure(
         "canary_root_candidate_invalid",
         plan["isolation"]["stable_root_identity"],
     ))
-    checks.append(_result(CHECK_NAMES[22], True, "approval_execution_window_invalid", approval["approval_sha256"]))
+    checks.append(_result(
+        CHECK_NAMES[22], True, "approval_execution_window_invalid",
+        approval_identity,
+    ))
     replay = ApprovalConsumptionStore(approval_ledger_root).status(approval)
     replay_exact = replay["status"] == "unused" and approval["usage_status"] == "unused"
-    checks.append(_result(CHECK_NAMES[23], replay_exact, "approval_replayed", approval["approval_sha256"]))
+    checks.append(_result(
+        CHECK_NAMES[23], replay_exact, "approval_replayed", approval_identity,
+    ))
     actions = approval["authorized_actions"]
     names = ("credential_lookup", "provider_client_creation", "network", "paid_model_calls")
     all_false = all(actions.get(name) is False for name in names) and actions.get("fake_boundary") is False
     all_true = all(actions.get(name) is True for name in names) and actions.get("fake_boundary") is False and bool(approval.get("named_approver"))
+    candidate_bindings_exact = True
+    if candidate_document:
+        policy = plan.get("smoke_1_policy") or {}
+        budget_definitions = packet.get("budget_definitions") or {}
+        candidate_bindings_exact = all((
+            approval["approval_scope"] == SMOKE_APPROVAL_SCOPE,
+            approval["approved_workload_sha256"] == fixture_hash,
+            approval["approved_workload_manifest_hash"] == plan["workload_manifest_hash"],
+            approval["approved_build_fingerprint"] == runtime.build_fingerprint_sha256,
+            approval["approved_execution_config_fingerprint"] == runtime.execution_config_fingerprint_sha256,
+            approval["approved_runtime_execution_fingerprint"] == runtime.execution_fingerprint_sha256,
+            approval["provider_descriptor_hash"] == route_hashes["provider_descriptor_definition_sha256"],
+            approval["model_role_binding_manifest_hash"] == route_hashes["role_binding_manifest_definition_sha256"],
+            approval["pricing_evidence_manifest_hash"] == price_hash,
+            approval["feature_flag_snapshot_hash"] == domain_sha256(
+                "novel-flywheel-c0b-feature-flags-v1", expected_flags,
+            ),
+            approval["stop_condition_manifest_hash"] == stop_hash,
+            approval["canary_root_identity_candidate"] == plan["isolation"]["stable_root_identity"],
+            approval["expected_model_calls"] == 16,
+            approval["maximum_total_model_calls"] == 48,
+            approval["first_terminal_stop"] is True,
+            approval["resume_after_terminal"] is False,
+            approval["phase1b_enabled"] is False,
+            approval["execution_authorized"] is False,
+            packet.get("plan_sha256") == plan["plan_sha256"],
+            packet.get("approval_candidate_sha256") == approval_identity,
+            packet.get("feature_flag_snapshot_hash") == approval["feature_flag_snapshot_hash"],
+            packet.get("stop_condition_manifest_hash") == approval["stop_condition_manifest_hash"],
+            policy.get("approval_scope") == SMOKE_APPROVAL_SCOPE,
+            policy.get("expected_model_calls") == 16,
+            policy.get("maximum_total_model_calls") == 48,
+            policy.get("maximum_input_tokens") == 1_000_000,
+            policy.get("maximum_output_tokens") == 1_000_000,
+            policy.get("maximum_output_tokens_per_call") == 32_000,
+            policy.get("maximum_usd_cost_microunits") == 20_000_000,
+            policy.get("maximum_cny_cost_microunits") == 50_000_000,
+            policy.get("maximum_elapsed_seconds") == 7_200,
+            policy.get("first_terminal_stop") is True,
+            policy.get("resume_after_terminal") is False,
+            policy.get("budget_definition_hashes") == {
+                name: budget_definitions.get(name, {}).get("definition_sha256")
+                for name in ("call", "token", "monetary", "elapsed")
+            },
+            approval["call_budget_definition_sha256"] == budget_definitions.get("call", {}).get("definition_sha256"),
+            approval["token_budget_definition_sha256"] == budget_definitions.get("token", {}).get("definition_sha256"),
+            approval["monetary_budget_definition_sha256"] == budget_definitions.get("monetary", {}).get("definition_sha256"),
+            approval["elapsed_budget_definition_sha256"] == budget_definitions.get("elapsed", {}).get("definition_sha256"),
+        ))
     checks.append(_result(
-        CHECK_NAMES[24], all_false or all_true,
+        CHECK_NAMES[24], (all_false or all_true) and candidate_bindings_exact,
         "external_action_authorization_incoherent",
         domain_sha256("novel-flywheel-c0b-external-actions-v1", actions),
     ))
@@ -355,6 +463,8 @@ def _validate_c0b_approval_closure(
             if item["definition_sha256"] is not None
         },
         "external_action_counters": counters,
+        "approval_document_kind": approval_kind,
+        "approval_identity_sha256": approval_identity,
         "approval_state": "disabled_candidate" if all_false else "authorized_candidate",
         "canary_root_candidate_status": root_status,
         "validated_at_policy": "caller_supplied_or_current_utc",
@@ -376,6 +486,11 @@ def validate_c0b_approval_closure(**kwargs: Any) -> dict[str, Any]:
             "phase1b_environment_flag_enabled": "phase1b_disabled",
             "phase1b_project_flag_enabled": "phase1b_disabled",
             "approval_hash_mismatch": "approval_canonical_hash",
+            "approval_candidate_hash_mismatch": "approval_canonical_hash",
+            "approval_candidate_plan_mismatch": "plan_canonical_hash",
+            "approval_candidate_launcher_mismatch": "launcher_bytes_hash",
+            "approval_candidate_scope_mismatch": "external_action_authorization",
+            "approval_candidate_window_already_started": "approval_execution_window",
             "approval_expired": "approval_execution_window",
             "approval_outside_execution_window": "approval_execution_window",
             "approval_already_used": "approval_cohort_single_use",
@@ -404,6 +519,8 @@ def validate_c0b_approval_closure(**kwargs: Any) -> dict[str, Any]:
             "canonicalization_version": CANONICALIZATION_VERSION,
             "overall_status": "blocked", "ordered_checks": checks,
             "definition_hashes": {}, "external_action_counters": counters,
+            "approval_document_kind": "unknown",
+            "approval_identity_sha256": None,
             "approval_state": "unknown", "canary_root_candidate_status": "unknown",
             "validated_at_policy": "caller_supplied_or_current_utc",
         }
