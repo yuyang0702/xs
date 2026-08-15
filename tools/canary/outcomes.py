@@ -10,6 +10,7 @@ class CanaryOutcome(str, Enum):
     CANARY_BLOCKED_PRE_PROVIDER = "CANARY_BLOCKED_PRE_PROVIDER"
     CANARY_BUDGET_EXHAUSTED = "CANARY_BUDGET_EXHAUSTED"
     CANARY_STARTED = "CANARY_STARTED"
+    CANARY_OBSERVATION_GOAL_REACHED_STOPPED = "CANARY_OBSERVATION_GOAL_REACHED_STOPPED"
     WORKFLOW_COMPLETED = "WORKFLOW_COMPLETED"
     CONTROLLED_NONTERMINAL = "CONTROLLED_NONTERMINAL"
     WORKFLOW_TERMINAL = "WORKFLOW_TERMINAL"
@@ -43,6 +44,15 @@ def infrastructure_outcome(reason_code: str) -> CanaryOutcomeRecord:
 def budget_exhausted_outcome(reason_code: str) -> CanaryOutcomeRecord:
     return CanaryOutcomeRecord(
         CanaryOutcome.CANARY_BUDGET_EXHAUSTED,
+        reason_code,
+        workflow_terminal_counted=False,
+        production_incident_counted=False,
+    )
+
+
+def observation_goal_stopped_outcome(reason_code: str) -> CanaryOutcomeRecord:
+    return CanaryOutcomeRecord(
+        CanaryOutcome.CANARY_OBSERVATION_GOAL_REACHED_STOPPED,
         reason_code,
         workflow_terminal_counted=False,
         production_incident_counted=False,

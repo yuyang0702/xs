@@ -60,6 +60,10 @@ from .evidence import build_canary_evidence_package_v1
 from .gate import (
     CanaryAbortKind, CanaryBoundaryAbort, PreflightGatedGateway, TwoPhaseGate,
 )
+from .goal_stop import (
+    ObservationGoalLatch, STOP_OUTCOME, STOP_REASON,
+    capture_reliability_trace_goal,
+)
 from .hash_manifest import validate_import_closure
 from .isolation import create_canary_root, validate_canary_root
 from .monetary import CanaryMonetaryBudgetV1
@@ -216,7 +220,17 @@ async def run_registered_real_run(
     bindings_observed: dict[str, Any] = {}
     gated: PreflightGatedGateway | None = None
     verifier: ExactBoundaryVerifier | None = None
-    with c0a_environment(canary_root, feature_flags=profile.required_flags()):
+    observation_goal_latch = (
+        ObservationGoalLatch(
+            receipt_path=canary_root / "reports" / "observation-goal-receipt-v1.json",
+        )
+        if "target_strict_tool_shape_exact_captured" in profile.stop_condition_policy
+        else None
+    )
+    with (
+        c0a_environment(canary_root, feature_flags=profile.required_flags()),
+        capture_reliability_trace_goal(observation_goal_latch),
+    ):
         db = Database(canary_root / "db" / "app.db")
         db.migrate()
         copy_production_execution_config(Database(live_database_path), db)
@@ -466,6 +480,7 @@ async def run_registered_real_run(
                     estimated_cost=estimated_cost, actual_cost=actual_cost,
                     workload_identifier_hash=workload_hash,
                     budget_stop_context_supplier=budget_stop_context,
+                    observation_goal_latch=observation_goal_latch,
                 )
                 service = C0AFakeWorkflowService(
                     db, app.state.projects, gated, app.state.skill_gate,
@@ -529,7 +544,10 @@ async def run_registered_real_run(
         "ToolCapabilityError", "IncompleteModelOutputError",
     }
     controlled_capability: dict[str, Any] | None = None
-    if status == "completed":
+    if observation_goal_latch is not None and observation_goal_latch.reached:
+        outcome = STOP_OUTCOME
+        reason_code = STOP_REASON
+    elif status == "completed":
         outcome = CanaryOutcome.WORKFLOW_COMPLETED.value
         reason_code = "production_mirror_short_completed"
     elif workflow_exception is not None and (
@@ -583,6 +601,10 @@ async def run_registered_real_run(
     strict_tool_observation = _strict_tool_observation_summary(
         canary_root, profile,
     )
+    if observation_goal_latch is not None:
+        strict_tool_observation = observation_goal_latch.observation_summary(
+            strict_tool_observation,
+        )
     evidence = build_canary_evidence_package_v1({
         "profile_id": profile.profile_id,
         "plan_sha256": plan["plan_sha256"],
@@ -598,6 +620,10 @@ async def run_registered_real_run(
         },
         "controlled_provider_capability": controlled_capability,
         "strict_tool_observation": strict_tool_observation,
+        "canary_observation_goal": (
+            observation_goal_latch.snapshot()
+            if observation_goal_latch is not None else None
+        ),
         "runtime_fingerprints": {
             "build": plan["approved_build_fingerprint"],
             "execution_config": plan["approved_execution_config_fingerprint"],

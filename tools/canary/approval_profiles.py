@@ -232,6 +232,7 @@ _PA = _profile(
     ),
     workflow_outcomes=(
         "WORKFLOW_COMPLETED", "WORKFLOW_TERMINAL", "CONTROLLED_NONTERMINAL",
+        "CANARY_OBSERVATION_GOAL_REACHED_STOPPED",
     ),
     ledger_policy=(
         ("maximum_reservations", 1),

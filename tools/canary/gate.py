@@ -16,6 +16,7 @@ from .budget import AtomicBudgetLedger, CanaryBudgetExceeded
 from .budget_stop import build_budget_stop_evidence_v1
 from .monetary import CanaryMonetaryBudgetV1
 from .route_policy import ApprovedRoutePolicy, CanaryRouteBlocked, RouteObservation
+from .goal_stop import ObservationGoalLatch
 
 
 class GateState(str, Enum):
@@ -158,6 +159,7 @@ class PreflightGatedGateway:
         actual_cost: Callable[[BoundaryRequest, Mapping[str, Any]], tuple[Mapping[str, int] | None, bool]] | None = None,
         workload_identifier_hash: str = hashlib.sha256(b"unknown-workload").hexdigest(),
         budget_stop_context_supplier: Callable[[BoundaryRequest], Mapping[str, Any]] | None = None,
+        observation_goal_latch: ObservationGoalLatch | None = None,
     ) -> None:
         self.delegate = delegate
         self.gate = gate
@@ -172,8 +174,10 @@ class PreflightGatedGateway:
         self.actual_cost = actual_cost
         self.workload_identifier_hash = workload_identifier_hash
         self.budget_stop_context_supplier = budget_stop_context_supplier
+        self.observation_goal_latch = observation_goal_latch
         self._ordinal = 0
         self._reservation_lock = asyncio.Lock()
+        self._goal_dispatch_lock = asyncio.Lock()
         self._first_boundary = True
         self._authorized_ordinals: set[int] = set()
         self.boundary_ledger: list[dict] = []
@@ -210,6 +214,10 @@ class PreflightGatedGateway:
         )
 
     async def _authorize(self, request: BoundaryRequest) -> None:
+        if self.observation_goal_latch is not None:
+            self.observation_goal_latch.raise_if_reached(
+                boundary_ordinal=request.ordinal,
+            )
         observation = RouteObservation(
             stage=request.stage, role=request.role, ordinal=request.ordinal,
             route_kind=request.route_kind,
@@ -239,6 +247,10 @@ class PreflightGatedGateway:
             # One gateway-local critical section makes the two ledgers an
             # all-or-nothing Canary reservation without production state.
             async with self._reservation_lock:
+                if self.observation_goal_latch is not None:
+                    self.observation_goal_latch.raise_if_reached(
+                        boundary_ordinal=request.ordinal,
+                    )
                 if isinstance(cost, Mapping):
                     assert self.monetary_budget is not None
                     self.monetary_budget.preview(cost)
@@ -327,6 +339,15 @@ class PreflightGatedGateway:
         return request
 
     async def _dispatch(self, request: BoundaryRequest, method: str, *args, **kwargs):
+        if self.observation_goal_latch is not None:
+            async with self._goal_dispatch_lock:
+                self.observation_goal_latch.raise_if_reached(
+                    boundary_ordinal=request.ordinal,
+                )
+                return await self._dispatch_open(request, method, *args, **kwargs)
+        return await self._dispatch_open(request, method, *args, **kwargs)
+
+    async def _dispatch_open(self, request: BoundaryRequest, method: str, *args, **kwargs):
         if self._first_boundary:
             self._first_boundary = False
             await self.gate.park(request)
@@ -338,6 +359,10 @@ class PreflightGatedGateway:
             except Exception as exc:
                 reason = getattr(exc, "reason_code", "canary_preflight_failed")
                 raise CanaryBoundaryAbort(reason) from exc
+        if self.observation_goal_latch is not None:
+            self.observation_goal_latch.raise_if_reached(
+                boundary_ordinal=request.ordinal,
+            )
         self.fake_model_boundary_calls += 1
         ledger_entry = self.boundary_ledger[-1]
 
