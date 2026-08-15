@@ -1,0 +1,97 @@
+{
+  "version": 2,
+  "original_requirement": "After an exact PA strict-tool target observation, finish the current Provider boundary and evidence receipt, then stop before every later credential lookup, Provider-client construction, budget reservation, network dispatch or paid call without changing production Runtime behavior.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Only the PA Canary profile installs a first-exact-target-wins latch. The current boundary completes; the next PreflightGatedGateway dispatch raises a typed Canary-only cancellation before authorization, reservation or delegate invocation. C0B and production paths do not install the latch.",
+  "forbidden_narrowing": [
+    "Gateway tool-shape acceptance alone cannot be described as Whole receipt closure.",
+    "A goal stop cannot be counted as workflow terminal, Provider failure, Runtime defect, production incident or budget exhaustion.",
+    "The current target boundary cannot be interrupted before its Provider receipt and business result or exception are retained.",
+    "Trace sink or sidecar write failure cannot reopen Provider dispatch.",
+    "C0B Smoke and Budget Counterfactual cannot inherit the PA goal-stop behavior."
+  ],
+  "resolution_status": "systemically_resolved",
+  "closed_world_justification": "The external-action boundary is the finite Canary PreflightGatedGateway. All Canary model dispatch methods converge on _dispatch; the PA-only latch is checked under one dispatch lock before authorization/reservation/delegate, while profiles without the stop condition receive no latch.",
+  "constraint_traceability": [
+    {
+      "requirement": "Call 10 may finish but call 11 must be stopped before all paid/external actions and budget reservation.",
+      "implementation": "ObservationGoalLatch plus the gateway-local goal dispatch lock and pre-authorization checks.",
+      "test_paths": ["tests/canary/test_pa_goal_stop.py"],
+      "evidence": "Tests separately assert target completion, boundary receipt persistence, ordinal 11 block, zero post-goal credential/client/network/paid deltas, and unchanged reservation count."
+    },
+    {
+      "requirement": "First exact target wins across duplicates, concurrent next dispatch, trace failure, cancellation and later exceptions.",
+      "implementation": "Thread-safe idempotent latch, atomic hash-only sidecar replacement, trace interception before best-effort append, and cancellation-shaped typed stop.",
+      "test_paths": ["tests/canary/test_pa_goal_stop.py"],
+      "evidence": "Duplicate, concurrent dispatch, sink failure, target-boundary exception, process exception and launcher-cancellation tests pass."
+    },
+    {
+      "requirement": "C0B, Budget Counterfactual and live business artifacts remain unchanged.",
+      "implementation": "Latch construction is conditional on the PA stop condition; PA output-budget-lineage remains false and forbidden; no production path is changed.",
+      "test_paths": ["tests/canary/test_pa_goal_stop.py", "tests/canary/test_c0b_budget_boundary.py"],
+      "evidence": "Profile isolation and live-tree parity tests pass; complete Canary suite passes."
+    },
+    {
+      "requirement": "Calls 10 through 22 and Whole receipt closure are evidence-bound without inventing checkpoint or validator facts.",
+      "implementation": "Two sanitized V1 diagnostic artifacts preserve exact hashes and explicit unknown/unverifiable fields.",
+      "test_paths": ["tests/canary/test_r1_pa2_evidence.py"],
+      "evidence": "Timeline covers exactly ordinals 10–22; closure matrix preserves checkpoint_binding_exact=false and workflow_completed=false."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "canary_goal_reached_but_downstream_paid_calls_continue",
+    "boundary_cancelled_before_receipt_persistence",
+    "trace_sink_failure_reopens_dispatch",
+    "duplicate_observation_replaces_first_target",
+    "goal_stop_misclassified_as_production_terminal",
+    "cross_profile_canary_behavior_leak"
+  ],
+  "projected_failure_mechanisms": [
+    "next dispatch races exact target emission",
+    "goal flag observed after budget reservation",
+    "trace append returns false or raises",
+    "sidecar receipt write fails",
+    "current target boundary returns an exception",
+    "launcher cancellation or later process exception occurs after the target",
+    "C0B profile accidentally receives a PA latch"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No Prompt, provider adapter, parser, Contract Runtime, retry/fallback, Planning Adaptation, src/novel_flywheel or baml_src source changed. The Canary wrapper observes an already-produced hash-only diagnostic envelope and gates only a later Canary dispatch.",
+  "why_previous_tests_missed": "Prior tests verified that the target could be observed and summarized after workflow completion, but no test asserted an in-flight observer-to-next-dispatch latch or post-target external-action deltas.",
+  "sibling_boundaries": [
+    {
+      "boundary": "PA complete/primary/configured-fallback/route/structured gateway methods",
+      "disposition": "fixed_and_tested",
+      "evidence": "All methods converge on PreflightGatedGateway._dispatch, where the PA latch serializes and blocks the next boundary before authorization."
+    },
+    {
+      "boundary": "C0B Smoke real-run profile",
+      "disposition": "tested_not_susceptible",
+      "evidence": "C0B has no target stop condition or stop outcome; complete Canary regression passed."
+    },
+    {
+      "boundary": "PA Budget Counterfactual",
+      "disposition": "tested_not_susceptible",
+      "evidence": "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1 remains false and is still in forbidden_feature_flags."
+    },
+    {
+      "boundary": "Production Runtime and live StoryState/Canon/Candidate/Checkpoint/Saga artifacts",
+      "disposition": "not_applicable",
+      "evidence": "No production source changed; the focused live-tree parity characterization remains exact."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_pa_goal_stop.py",
+    "tests/canary/test_c0b_budget_boundary.py",
+    "tests/canary/test_gate_budget.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_pa_goal_stop.py",
+    "tests/canary/test_r1_pa2_evidence.py"
+  ],
+  "remaining_risks": [
+    "No second real PA Canary was run or authorized; the consumed cohort cannot validate the patched runner in production-provider conditions.",
+    "The accepted Whole artifact to checkpoint execution binding remains unverifiable in the historical evidence.",
+    "Call 11 has no exact predecessor-object hash binding even though the business execution path is confirmed."
+  ]
+}

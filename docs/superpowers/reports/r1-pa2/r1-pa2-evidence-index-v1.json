@@ -1,0 +1,22 @@
+{
+  "schema": "R1PA2EvidenceIndexV1",
+  "version": 1,
+  "source_execution_head": "6405b3b806d88c56accc99d5152ce7461656e33b",
+  "evidence_commit": "7ff424eefeb7056f7696a07a477be9802e86accd",
+  "canary_patch_commit": "a6311e98010e018a83fa8e333b63c80c2e97e773",
+  "source_evidence_canonical_sha256": "8fcaadd61ff15bedb5033054494074adcd3da26bff728782bb4684b20cbff9f1",
+  "files": [
+    {
+      "path": "accepted-whole-receipt-closure-v1.json",
+      "bytes": 5639,
+      "sha256": "a854b56a67a8cd8aee79c26d03cfd272d3baa1c81f9c6db6132d66f3e58c115c"
+    },
+    {
+      "path": "post-accepted-receipt-call-timeline-v1.json",
+      "bytes": 17358,
+      "sha256": "bfb473b278b0e6affa367411f1e2df8cc3563170a2a041f8e7d8c56424fce21d"
+    }
+  ],
+  "private_raw_evidence_committed": false,
+  "raw_content_included": false
+}

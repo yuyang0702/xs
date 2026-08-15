@@ -1,0 +1,106 @@
+{
+  "schema": "AcceptedWholeReceiptClosureV1",
+  "version": 1,
+  "source_evidence_canonical_sha256": "8fcaadd61ff15bedb5033054494074adcd3da26bff728782bb4684b20cbff9f1",
+  "target_provider_boundary_ordinal": 10,
+  "target_stage_id": "review-plan-adaptation-whole-initial-4-fallback",
+  "target_output_object_hash": "5767b8f041dfe4af39cd5923bf0a21ee680c74ee62fb5873b7095b3fc647378e",
+  "raw_content_included": false,
+  "questions": [
+    {
+      "ordinal": 1,
+      "question": "Gateway 是否只是接受了唯一 tool-call shape？",
+      "answer": "是，但这只是第一层。Gateway 证据为 accept_unique_expected；它本身不证明下游 Contract/Domain closure。",
+      "status": "confirmed",
+      "evidence": "observation_sha256=8707ead549684ade12c804aed81e995f8d22d733a9669201d0fdda7cc89cdf58"
+    },
+    {
+      "ordinal": 2,
+      "question": "tool arguments 是否成功提取？",
+      "answer": "是。一个 native object 被提取，arguments_present=true，未保存原文。",
+      "status": "confirmed",
+      "evidence": "argument_sha256=a86c7f8f12a957f701a81f9e432b930c789a34b43ae465ae38ae9b8acf6ec594"
+    },
+    {
+      "ordinal": 3,
+      "question": "JSON/parser 是否通过？",
+      "answer": "通过。Provider 与 normalized observation 均记录 argument_json_parse_status=native_object。",
+      "status": "confirmed",
+      "evidence": "normalized_tool_call_count=1; adapter_drop=0; adapter_duplicate=0"
+    },
+    {
+      "ordinal": 4,
+      "question": "Schema 是否通过？",
+      "answer": "通过到足以形成 valid Contract Runtime receipt；但没有独立、逐 validator 的 schema receipt，因此证据粒度为 supported_not_independently_signed。",
+      "status": "supported_not_independent",
+      "evidence": "binding_lane=exact_v2; recovery outcome=valid"
+    },
+    {
+      "ordinal": 5,
+      "question": "Contract Adapter 是否通过？",
+      "answer": "通过。Adapter projection 为 exact，exact expected-tool matches=1，validator_set 包含 contract_adapter。",
+      "status": "confirmed",
+      "evidence": "adapter_manifest_sha256=1f10c5ecd040b021be476bb0f274181b3af176a70290e13bdeb65063b6d480f5; validator_set includes contract_adapter"
+    },
+    {
+      "ordinal": 6,
+      "question": "Domain Validator 是否通过？",
+      "answer": "通过。Recovery attempt outcome=valid，exact_v2 binding 的 validator_set 包含 domain_validator。",
+      "status": "confirmed",
+      "evidence": "stage_id=review-plan-adaptation-whole-initial-4-fallback; outcome=valid"
+    },
+    {
+      "ordinal": 7,
+      "question": "Planning Adaptation invariants 是否通过？",
+      "answer": "通过。后续 Planning Adaptation merge 明确进入 ready，equivalent=2、protocol_repairs=6、semantic_repairs=0。",
+      "status": "confirmed",
+      "evidence": "planning_adaptation_ready observed after target receipt"
+    },
+    {
+      "ordinal": 8,
+      "question": "Whole receipt 是否正式成为 accepted artifact？",
+      "answer": "是。exact_v2 resume binding 记录 artifact、input/output hash、policy/version 与 validator set；输出文件和 receipt 均存在于隔离 run。",
+      "status": "confirmed",
+      "evidence": "output_object_hash=5767b8f041dfe4af39cd5923bf0a21ee680c74ee62fb5873b7095b3fc647378e"
+    },
+    {
+      "ordinal": 9,
+      "question": "是否写入合法 checkpoint？",
+      "answer": "无法证明。存在 last checkpoint identity，但 checkpoint 与该 exact artifact 的 execution binding 为 unverifiable。",
+      "status": "unverifiable",
+      "evidence": "checkpoint_identity=4ca339c5a53e9b26de40be728b927f508f15b778fbbbc58b9a6282e7f8fada13; execution_binding=unverifiable"
+    },
+    {
+      "ordinal": 10,
+      "question": "是否成为后续阶段的输入？",
+      "answer": "业务路径上是：merge ready 后调用 11 进入 causal-chain；但 call 11 没有保存 exact predecessor object binding，因此 object-hash 级直接边保持 unknown。",
+      "status": "confirmed_path_unknown_exact_hash_edge",
+      "evidence": "call 11 stage=planning-causal-chain; exact predecessor binding absent"
+    },
+    {
+      "ordinal": 11,
+      "question": "是否被后续 retry/fallback 丢弃或失效？",
+      "answer": "没有证据表明被丢弃或 supersede。Call 11～14 是下游 causal-chain 恢复，不是 Whole receipt 重试。",
+      "status": "confirmed_not_superseded",
+      "evidence": "whole binding superseded_artifact=null; subsequent stage changed to planning"
+    },
+    {
+      "ordinal": 12,
+      "question": "Planning Adaptation boundary 是否真正闭合？",
+      "answer": "Contract/Domain/Planning Adaptation 业务边界已闭合；整个 Short workflow 未闭合。Canary 目标也已闭合，但旧 runner 未在闭合后阻断下一 Provider dispatch。",
+      "status": "boundary_closed_workflow_not_closed",
+      "evidence": "call 10 valid accepted artifact; call 11 normal downstream; terminal after call 22"
+    }
+  ],
+  "closure_levels": {
+    "gateway_tool_shape_accepted": true,
+    "contract_receipt_valid": true,
+    "domain_valid": true,
+    "planning_adaptation_invariants_valid": true,
+    "accepted_artifact_materialized": true,
+    "checkpoint_binding_exact": false,
+    "planning_adaptation_boundary_closed": true,
+    "workflow_completed": false
+  },
+  "conclusion": "Gateway acceptance was necessary but not sufficient. Independent downstream evidence confirms the Whole receipt became a valid accepted artifact and closed the Planning Adaptation boundary. The terminal occurred later, after call 22, in Draft prose validation."
+}
