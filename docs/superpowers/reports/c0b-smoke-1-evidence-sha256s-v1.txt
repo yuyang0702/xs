@@ -1,0 +1,7 @@
+fe60164ed3ba7cecba200df7c2f6b7825a3c09605d223156603c8ff9e623215f  2026-08-15_c0b-smoke-1-real-provider-execution-report.md
+eac45be4933c9f2230b705e12b3385f0109c7a4214a07886cb002dd2ed3ddb3f  c0b-smoke-1-approval-consumption-v1.json
+a4fcc1126a039a8c9b231551af2f6520951028246d96aab9d9a5179abc5e9973  c0b-smoke-1-approval-reservation-v1.json
+8ab7b98bdff21bf80ffcf4b1037ebabb5a8f4088cc4dfabc9b29578cd5eb02b9  c0b-smoke-1-confirmed-authorization-patch-v2.json
+58bcf22b59f0327f0f3ca63b44d8f2a93d4a4d759caf583181def873a627e8d3  c0b-smoke-1-real-evidence-v1.json
+ab7d130f597029f80c2d729e6a4cdcc74faa5fe68eea427bb4f199971b74dfcb  c0b-smoke-1-signed-approval-v1.json
+87dbbc175dec18189c8ae6a4af837688a2533ac077b13085adc2583823c5af45  c0b-smoke-1-signed-validate-only-receipt-v1.json
