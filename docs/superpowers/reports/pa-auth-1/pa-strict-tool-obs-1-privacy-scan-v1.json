@@ -1,0 +1,14 @@
+{
+  "damaged_trace_line_count": 0,
+  "documents_scanned": [
+    "CanaryEvidencePackageV1",
+    "ReliabilityTraceEnvelopeV1"
+  ],
+  "evidence_revalidated": true,
+  "raw_content_flags_all_false": true,
+  "schema": "PAStrictToolObsPrivacyScanV1",
+  "status": "exact",
+  "target_observation_count": 1,
+  "trace_line_count": 53,
+  "violation_codes": []
+}

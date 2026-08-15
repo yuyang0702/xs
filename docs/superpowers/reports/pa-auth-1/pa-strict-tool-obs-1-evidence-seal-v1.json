@@ -1,0 +1,63 @@
+{
+  "schema": "PAStrictToolObsEvidenceSealV1",
+  "version": 1,
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "source": {
+    "branch": "pa-auth-1/registered-approval-profiles-20260815",
+    "head": "6405b3b806d88c56accc99d5152ce7461656e33b",
+    "single_use_cohort": "pa-strict-tool-obs-1-20260815t151500z-4ab0d6e",
+    "cohort_state": "consumed"
+  },
+  "outcomes": {
+    "observation_goal_outcome": "TARGET_STRICT_TOOL_SHAPE_OBSERVED",
+    "workflow_final_outcome": "WORKFLOW_TERMINAL",
+    "target_provider_boundary_ordinal": 10,
+    "provider_boundaries_after_target": 12,
+    "mechanism_classification": "MIXED_OR_OTHER",
+    "production_incident_counted": false
+  },
+  "evidence_bindings": {
+    "evidence_canonical_sha256": "8fcaadd61ff15bedb5033054494074adcd3da26bff728782bb4684b20cbff9f1",
+    "signed_approval_canonical_sha256": "ae2add3ed517e01c90aa32b4ac5148eeb340c2ff3b6f381e83a7d110d4a06a93",
+    "signed_validate_only_receipt_canonical_sha256": "c3011b478c6935e0fdee9a3b8cd47452776054869f6c8db3e9b015dc84cd0a20",
+    "confirmed_authorization_patch_canonical_sha256": "322f6e5701543ef7e7766629845d9bd7a298ef7b823beb5c7ba5aa0626e47138",
+    "approval_reservation_canonical_sha256": "73b946403cc686ffa52ac81f8e2cf6dd97d109ce7ea28174eef6a83e1bf6548d",
+    "approval_consumption_canonical_sha256": "5b04e7e0e7cdb860c34f151aa826139c75cde38e98e71345352db0d2499ec1ae",
+    "strict_tool_observation_sha256": "8707ead549684ade12c804aed81e995f8d22d733a9669201d0fdda7cc89cdf58",
+    "shape_correlation_sha256": "e57c0cc60ba7e4cfadaa11380f2ab380eba4405f2ed558dd363a14e1f6ca4ef1"
+  },
+  "call_and_cost_ledger": {
+    "model_boundary_calls": 22,
+    "network_calls": 22,
+    "paid_model_calls": 22,
+    "credential_lookups": 22,
+    "provider_clients_created": 22,
+    "primary_calls": 18,
+    "configured_fallback_calls": 4,
+    "reported_input_tokens": 110847,
+    "reported_output_tokens": 61258,
+    "actual_cost_microunits": {
+      "USD": 317969,
+      "CNY": 95598
+    },
+    "elapsed_micros": 1339951449
+  },
+  "live_parity": {
+    "status": "exact",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "live_db_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "live_project_tree_sha256": "e8ba00afd255b1500caca5605535b66c98c0436b9b271c4a26652c72b86e94db",
+    "formal_business_artifact_set_sha256": "7cd33f5db7446160fb25d73d0cf6832297b0265d3b1a3429d9601bb1eaa9d059",
+    "story_state_manifest_sha256": "5b8edeffbc0a040d11ca3c7306ecdc1a943f3ba2c87f9fc29b3004ac23faa184"
+  },
+  "privacy": {
+    "privacy_scan_status": "exact",
+    "raw_content_included": false,
+    "prompt_or_prose_included": false,
+    "tool_arguments_included": false,
+    "credential_or_header_included": false,
+    "private_raw_evidence_committed": false,
+    "private_raw_evidence_location_included": false
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "PAStrictToolObsSha256ManifestV1",
+  "version": 1,
+  "hash_algorithm": "SHA-256",
+  "manifest_self_included": false,
+  "manifest_self_exclusion_reason": "Avoid recursive self-hash; Git object identity binds this manifest.",
+  "files": [
+    {
+      "path": "2026-08-16-pa-strict-tool-obs-1-real-provider-execution-report.md",
+      "bytes": 12728,
+      "sha256": "9df452c14b311e1ba19189f88c852b5664874a9b9c58a27c5983c622ce626ccc"
+    },
+    {
+      "path": "pa-strict-tool-obs-1-confirmed-authorization-patch-v1.json",
+      "bytes": 2137,
+      "sha256": "e4319bd4817a1973cd827c7aff7f1d159e10a0cc0ece8bac5f13853b8e2ba420"
+    },
+    {
+      "path": "pa-strict-tool-obs-1-evidence-seal-v1.json",
+      "bytes": 2980,
+      "sha256": "70fb7ca7753bb84088c6c332b59d3e2aa29dd1d1f51af060ed79de50667bea08"
+    },
+    {
+      "path": "pa-strict-tool-obs-1-privacy-scan-v1.json",
+      "bytes": 364,
+      "sha256": "74a643aea243e329c777be203047714d49c831a3c9156beddbe2d205cea25384"
+    },
+    {
+      "path": "pa-strict-tool-obs-1-real-evidence-v1.json",
+      "bytes": 42539,
+      "sha256": "b0922be96a1360d31a77937e122e9b26a483f8dcd995b143c34e6f5d93b9d94c"
+    },
+    {
+      "path": "pa-strict-tool-obs-1-signed-approval-v1.json",
+      "bytes": 4842,
+      "sha256": "b50ebd8d62f35af25cb42b9efa665823d7304d35b06b44faf6e32ec12520808c"
+    },
+    {
+      "path": "pa-strict-tool-obs-1-signed-validate-only-receipt-v1.json",
+      "bytes": 5552,
+      "sha256": "09084c82f0655990d5610aef566b9de3708d1833017e567617198ffb2cf72092"
+    }
+  ]
+}
