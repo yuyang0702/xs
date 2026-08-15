@@ -83,8 +83,8 @@ def test_committed_r1_d0_evidence_contains_no_raw_private_material() -> None:
 def test_forward_risk_declares_no_model_output_boundary_change() -> None:
     value = _load("r1-d0-forward-risk-v2.json")
 
-    assert value["resolution_status"] == "root_cause_verified_no_fix_applied"
+    assert value["resolution_status"] == "unresolved"
     assert value["model_output_boundary_changed"] is False
-    assert "not_reached" in {
+    assert "not_applicable" in {
         item["disposition"] for item in value["sibling_boundaries"]
     }
