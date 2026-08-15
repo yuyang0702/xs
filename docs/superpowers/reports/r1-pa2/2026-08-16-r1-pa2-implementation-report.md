@@ -103,4 +103,9 @@ Post-test live characterization remains:
   `5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc`
 - StoryState / Candidate / Checkpoint rows: `6 / 11 / 917`
 
+The L3 strict change gate was replayed in a detached temporary worktree from
+the evidence commit through the Canary patch and C/D evidence commit. Result:
+`ok=true`, warnings `0`, blockers `0`. This avoids treating already committed
+source as an empty task-local delta.
+
 No new Canary execution is authorized by this report.
