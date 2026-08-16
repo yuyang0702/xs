@@ -29,6 +29,15 @@ PA_PATCH_SCHEMA = "PAStrictToolObsUserAuthorizationPatchV1"
 PA_PATCH_TEMPLATE_SCHEMA = "PAStrictToolObs1UserAuthorizationPatchTemplateV2"
 PA_SIGNED_SCHEMA = "PAStrictToolObsSignedApprovalV1"
 
+SHORT_COMPLETION_PROFILE_ID = "short_completion_1"
+SHORT_COMPLETION_SCOPE = "SHORT_COMPLETION_SINGLE_REAL_PROVIDER_CANARY"
+SHORT_COMPLETION_CANDIDATE_SCHEMA = "ShortCompletionFinalApprovalCandidateV1"
+SHORT_COMPLETION_PATCH_SCHEMA = "ShortCompletionUserAuthorizationPatchV1"
+SHORT_COMPLETION_PATCH_TEMPLATE_SCHEMA = (
+    "ShortCompletionUserAuthorizationPatchTemplateV1"
+)
+SHORT_COMPLETION_SIGNED_SCHEMA = "ShortCompletionSignedApprovalV1"
+
 PA_TARGET_FILTER = (
     ("stage", "review"),
     ("boundary", "planning_adaptation_whole_receipt"),
@@ -242,9 +251,91 @@ _PA = _profile(
     ),
 )
 
+_SHORT_COMPLETION = _profile(
+    profile_id=SHORT_COMPLETION_PROFILE_ID,
+    approval_scope=SHORT_COMPLETION_SCOPE,
+    canary_mode="short_completion",
+    candidate_schema=SHORT_COMPLETION_CANDIDATE_SCHEMA,
+    authorization_patch_schema=SHORT_COMPLETION_PATCH_SCHEMA,
+    authorization_patch_template_schema=SHORT_COMPLETION_PATCH_TEMPLATE_SCHEMA,
+    signed_approval_schema=SHORT_COMPLETION_SIGNED_SCHEMA,
+    validate_only_profile="short_completion_approval_closure_v1",
+    launcher_mode="real_single_use_completion",
+    real_runner_handler="production_mirror_short_v1",
+    required_feature_flags=(
+        ("NOVEL_SHORT_CANONICAL_V2", False),
+        ("project_short_canonical_v2", False),
+        ("NOVEL_CANONICAL_SHADOW_V1", False),
+        ("NOVEL_RELIABILITY_TRACE", True),
+        ("NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1", False),
+        ("NOVEL_STRICT_TOOL_SHAPE_TRACE_V1", False),
+    ),
+    forbidden_feature_flags=(
+        "NOVEL_SHORT_CANONICAL_V2", "project_short_canonical_v2",
+        "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1",
+        "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1",
+    ),
+    required_target_filter=(),
+    required_observation_schema=(),
+    allowed_workload_ids=("short-normal-v1",),
+    budget_policy=(
+        ("maximum_runs", 1),
+        ("expected_model_calls", 16),
+        ("maximum_model_calls_per_run", 48),
+        ("maximum_total_model_calls", 48),
+        ("maximum_input_tokens", 1_000_000),
+        ("maximum_output_tokens", 1_000_000),
+        ("maximum_output_tokens_per_call", 32_000),
+        ("maximum_usd_cost_microunits", 20_000_000),
+        ("maximum_cny_cost_microunits", 50_000_000),
+        ("maximum_elapsed_seconds", 7_200),
+    ),
+    stop_condition_policy=(
+        "first_workflow_terminal",
+        "fingerprint_mismatch",
+        "production_source_dirty_or_changed",
+        "route_model_protocol_mismatch",
+        "budget_exhausted",
+        "approval_expired",
+        "cohort_replay",
+        "live_isolation_violation",
+        "phase1b_enabled",
+        "prompt_policy_mismatch",
+        "pricing_manifest_mismatch",
+        "draft_validator_policy_mismatch",
+        "authority_aware_mixed_script_policy_mismatch",
+        "final_review_contract_mismatch",
+        "final_review_binding_invalid",
+        "maintenance_definition_mismatch",
+        "final_artifact_binding_failure",
+        "final_checkpoint_closure_failure",
+        "root_cause_masking",
+    ),
+    observation_goal_outcomes=(
+        "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
+        "WORKFLOW_COMPLETED_FINAL_REVIEW_NOT_ACCEPTED",
+        "WORKFLOW_COMPLETED_FINAL_REVIEW_BINDING_INVALID",
+        "WORKFLOW_COMPLETED_MAINTENANCE_INCOMPLETE",
+        "WORKFLOW_COMPLETED_FINAL_ARTIFACT_UNBOUND",
+        "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED",
+        "WORKFLOW_TERMINAL",
+        "VERIFICATION_INSUFFICIENT",
+    ),
+    workflow_outcomes=(
+        "WORKFLOW_COMPLETED", "WORKFLOW_TERMINAL", "CONTROLLED_NONTERMINAL",
+    ),
+    ledger_policy=(
+        ("maximum_reservations", 1),
+        ("identity_fields", "profile_id,signed_approval_sha256,cohort_id"),
+        ("cross_profile_cohort_reuse_allowed", False),
+        ("consume_requires_evidence_sha256", True),
+    ),
+)
+
 _REGISTRY = MappingProxyType({
     C0B_PROFILE_ID: _C0B,
     PA_PROFILE_ID: _PA,
+    SHORT_COMPLETION_PROFILE_ID: _SHORT_COMPLETION,
 })
 
 

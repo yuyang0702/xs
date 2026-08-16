@@ -45,6 +45,7 @@ from .approval_dispatch import (
     profile_for_plan, validate_registered_approval_document,
     validate_registered_signed_plan, validate_registered_signed_sources,
 )
+from .approval_profiles import SHORT_COMPLETION_PROFILE_ID
 from .descriptors import (
     copy_production_execution_config, production_route_identity,
     production_route_manifest_hashes,
@@ -80,7 +81,7 @@ from .route_policy import ApprovedRoutePolicy
 
 
 def _strict_tool_observation_summary(root: Path, profile) -> dict[str, Any] | None:
-    if not profile.observation_goal_outcomes:
+    if not profile.required_target_filter:
         return None
     matches: list[dict[str, Any]] = []
     damaged = 0
@@ -598,6 +599,18 @@ async def run_registered_real_run(
         reason_code = "canary_outcome_unknown"
     project = app.state.projects.get(project_id)
     artifacts = tree_manifest(project.path)
+    short_completion_verification = None
+    if profile.profile_id == SHORT_COMPLETION_PROFILE_ID:
+        from .short_completion_verification import verify_short_completion_v1
+
+        short_completion_verification = verify_short_completion_v1(
+            project_root=project.path,
+            run_root=project.path / "runs" / run_id,
+            run_identity=run_id,
+            workload_sha256=fixture_sha,
+            workflow_final_status=status,
+            live_parity_status="exact",
+        )
     strict_tool_observation = _strict_tool_observation_summary(
         canary_root, profile,
     )
@@ -612,6 +625,11 @@ async def run_registered_real_run(
         "launcher_sha256": launcher["launcher_sha256"],
         "outcome": {
             "value": outcome, "reason_code": reason_code,
+            "workflow_final_outcome": outcome,
+            "short_completion_goal_outcome": (
+                short_completion_verification.get("completion_goal_outcome")
+                if short_completion_verification is not None else None
+            ),
             "final_run_status": status,
             "workflow_terminal_counted": outcome == CanaryOutcome.WORKFLOW_TERMINAL.value,
             "production_incident_counted": False,
@@ -624,6 +642,7 @@ async def run_registered_real_run(
             observation_goal_latch.snapshot()
             if observation_goal_latch is not None else None
         ),
+        "short_completion_verification": short_completion_verification,
         "runtime_fingerprints": {
             "build": plan["approved_build_fingerprint"],
             "execution_config": plan["approved_execution_config_fingerprint"],

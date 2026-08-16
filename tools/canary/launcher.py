@@ -42,6 +42,15 @@ class CanaryLauncherError(RuntimeError):
         self.reason_code = reason_code
 
 
+def real_result_exit_code(result: dict) -> int:
+    """Short completion has a stricter success gate than workflow completion."""
+    if result.get("short_completion_goal_outcome") is not None:
+        return 0 if result["short_completion_goal_outcome"] == (
+            "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED"
+        ) else 4
+    return 0 if result.get("outcome") in {None, "WORKFLOW_COMPLETED"} else 4
+
+
 def read_json_object(path: Path, reason_code: str) -> dict:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -59,6 +68,11 @@ def _validate_registered_closure(profile_name: str, **kwargs) -> dict:
     if profile_name == "pa_strict_tool_observation_closure_v1":
         from .pa_approval_closure import validate_pa_approval_closure
         return validate_pa_approval_closure(**kwargs)
+    if profile_name == "short_completion_approval_closure_v1":
+        from .short_completion_closure import (
+            validate_short_completion_approval_closure,
+        )
+        return validate_short_completion_approval_closure(**kwargs)
     raise CanaryLauncherError("validate_only_profile_not_supported")
 
 
@@ -301,16 +315,26 @@ def main(argv: list[str] | None = None) -> int:
                 live_incident_roots=args.live_incident_root,
             ))
             evidence = completed["evidence"]
+            short_verification = evidence.get("short_completion_verification")
             result = {
-                "schema": "C0BRealCanaryResultV1",
+                "schema": (
+                    "ShortCompletionRealCanaryResultV1"
+                    if short_verification is not None
+                    else "C0BRealCanaryResultV1"
+                ),
                 "outcome": evidence["outcome"]["value"],
+                "workflow_final_outcome": evidence["outcome"]["value"],
+                "short_completion_goal_outcome": (
+                    short_verification.get("completion_goal_outcome")
+                    if short_verification is not None else None
+                ),
                 "reason_code": evidence["outcome"]["reason_code"],
                 "evidence_sha256": evidence["evidence_sha256"],
                 "network_call_count": evidence["counters"]["network_call_count"],
                 "paid_model_call_count": evidence["counters"]["paid_model_call_count"],
             }
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-        return 0 if result.get("outcome") in {None, "WORKFLOW_COMPLETED"} else 4
+        return real_result_exit_code(result)
     except (CanaryContractError, CanaryLauncherError) as exc:
         outcome = blocked_outcome(getattr(exc, "reason_code", "canary_packet_blocked"))
         report = {**asdict(outcome), "outcome": outcome.outcome.value,

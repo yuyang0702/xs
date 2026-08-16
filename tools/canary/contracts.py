@@ -34,6 +34,7 @@ SMOKE_SIGNED_APPROVAL_DOMAIN = "novel-flywheel-c0b-smoke-1-signed-approval-v1"
 PLAN_MODES = frozenset({
     "c0a_fake_dry_run", "c0b_real_path_reachability",
     "c0c_statistical_exposure", "pa_strict_tool_observation",
+    "short_completion",
 })
 RUNTIME_MODES = frozenset({"git_workspace", "packaged"})
 APPROVAL_SCOPES = frozenset({
@@ -265,6 +266,7 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
              "total_call_budget_below_per_run")
     if value["canary_mode"] in {
         "c0b_real_path_reachability", "pa_strict_tool_observation",
+        "short_completion",
     }:
         _require_fields(budgets, {
             "monetary_budget", "price_catalog_sha256",
@@ -327,6 +329,44 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
             for name, expected in profile_budget.items()
             if name in value["budgets"]
         ), "budget_profile_mismatch")
+    if value["canary_mode"] == "short_completion":
+        from .approval_profiles import SHORT_COMPLETION_PROFILE_ID, approval_profile
+        from .short_completion import completion_contract_bundle_v1
+
+        profile = approval_profile(SHORT_COMPLETION_PROFILE_ID)
+        policy = value.get("short_completion_policy")
+        _require(isinstance(policy, Mapping), "approval_profile_scope_mismatch")
+        _require(policy.get("profile_id") == profile.profile_id and
+                 policy.get("approval_scope") == profile.approval_scope,
+                 "approval_profile_scope_mismatch")
+        _require(policy.get("profile_definition_sha256") ==
+                 profile.profile_definition_sha256,
+                 "approval_profile_hash_mismatch")
+        _require(value["feature_flag_snapshot"] == profile.required_flags(),
+                 "execution_feature_flags_changed")
+        _require(tuple(value["stop_conditions"]) == profile.stop_condition_policy,
+                 "stop_condition_manifest_mismatch")
+        _require(all(item.get("workload_id") in profile.allowed_workload_ids
+                     for item in value["workloads"]),
+                 "workload_not_allowed_by_profile")
+        profile_budget = profile.budget()
+        _require(all(value["budgets"].get(name) == expected
+                     for name, expected in profile_budget.items()
+                     if name in value["budgets"]), "budget_profile_mismatch")
+        definitions = completion_contract_bundle_v1()
+        expected_policy = {
+            "stop_condition_manifest_hash": definitions["stop_conditions"]["definition_sha256"],
+            "draft_validator_policy_sha256": definitions["draft_validator_policy"]["definition_sha256"],
+            "mixed_script_policy_sha256": definitions["mixed_script_policy"]["definition_sha256"],
+            "final_review_definition_sha256": definitions["final_review"]["definition_sha256"],
+            "maintenance_definition_sha256": definitions["maintenance"]["definition_sha256"],
+            "final_artifact_policy_sha256": definitions["final_artifact"]["definition_sha256"],
+            "final_checkpoint_policy_sha256": definitions["final_checkpoint"]["definition_sha256"],
+            "completion_goal_definition_sha256": definitions["completion_goal"]["definition_sha256"],
+        }
+        _require(all(policy.get(name) == digest
+                     for name, digest in expected_policy.items()),
+                 "short_completion_policy_mismatch")
     _scan_forbidden_material(value)
     _require(value["plan_sha256"] == _plan_digest(value), "plan_hash_mismatch")
     return deepcopy(dict(value))
