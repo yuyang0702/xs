@@ -1,0 +1,32 @@
+{
+  "branch_at_seal": "sc-fp1/semantic-feature-flag-fingerprint-20260816",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "head": "beaf2bb7f80d6203ba64e8b6d9a462f7b7a5f73b",
+  "live_parity_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "old_authority": {
+    "candidate_canonical_sha256": "e62b836c13f2de47309bbe1d6a2f9a1222e8b09a6317a7065238b359551fc479",
+    "cohort_id": "short-completion-1-20260816t061700z",
+    "confirmed_patch_canonical_sha256": "fd2e251bf4073d718ee3d90363765bf393df5f9c4c011b10840a8a8086e13d54",
+    "plan_canonical_sha256": "64e121b26d241ce2571f3cbb9ed47e750f3fb22dad542863dce3c97c3bd9adec",
+    "reservation_definition_sha256": "f31b4a8898c377e6205b12dddb6b4e04842f27c92290d0f8ed7cda83587c5e9b",
+    "reservation_file_sha256": "387f1b9ed2b3e82014f9f9b4cc2cc156177245a26853083ec952badd8c5480f2",
+    "reservation_status": "reserved_not_consumed_locked",
+    "signed_approval_canonical_sha256": "fd39172fa06afc4991f943c69e7208f532df0ee9f53b1750ad406f04a2c5cb6b"
+  },
+  "old_fingerprint_incident": {
+    "actual_execution_config_fingerprint": "0a5b452c6d5f081ebeedc9b6c49f8049c9f07eb0ad39cb21432e570d0b8879f3",
+    "actual_runtime_execution_fingerprint": "e2090775927ddeb8a3ae13200d74d3693495b9ad5f95699d13afcbaab31f701e",
+    "expected_execution_config_fingerprint": "6f047d7fac61794f704b92397addd00475980c3bafab0f21b3ccb8d4e72b2277",
+    "expected_runtime_execution_fingerprint": "c43ad3e4e58f95e8945982df4b6c089b42f8f9c72dc1dd2040ba018e21025cae",
+    "first_divergent_check": "execution_config_fingerprint_pre_launch"
+  },
+  "sealed_files": {
+    "short-completion-1-confirmed-authorization-patch-v1.json": "496cb819541db90662f40a172c2c1362d33d5ddc3828c92ddafab9991caf9e1b",
+    "short-completion-1-sc-ops-1-evidence-sha256-manifest-v1.json": "5cf8338a9dcb1898a84edd2545f78723587b9d677a0348c955d74be35d37fd47",
+    "short-completion-1-sc-ops-1-execution-report-v1.json": "5c819a59d683645630df1f25a8b48fdb8749a6489def44f4ced74d037f66025e",
+    "short-completion-1-signed-approval-v1.json": "db59a4876c8054363b1e21c1fedf09a34ec00ad824adfc0068c0ef97e037d63e"
+  },
+  "schema": "ScFp1ParentEvidenceSealV1",
+  "status": "exact",
+  "version": 1
+}
