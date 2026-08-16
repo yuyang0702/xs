@@ -31,6 +31,11 @@ R1_D3_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-d3-authorized-protected-source-successor-v1.json"
 )
+R1_PTR1_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr1-authorized-protected-source-successor-v1.json"
+)
 
 
 def make_database(tmp_path: Path) -> Database:
@@ -110,9 +115,6 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "retry_prompt_policy": 1,
         "retry_fallback_sequence": 0,
     }
-    assert canonical_protected_source_manifest(REPOSITORY) == (
-        r1_d3["current_protected_sources"]
-    )
     r1_d3_hashes = {
         item["path"]: item["sha256"]
         for item in r1_d3["current_protected_sources"]
@@ -124,6 +126,40 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     assert {
         item["path"] for item in r1_d3["authorized_source_deltas"]
     } == {"src/novel_flywheel/workflows.py"}
+    r1_ptr1 = load_baseline(R1_PTR1_SUCCESSOR)
+    assert r1_ptr1["parent_source_head"] == (
+        "4305858dee4843ce2f83a2cc1ebf1f02f58a3804"
+    )
+    assert r1_ptr1["phase"] == "R1-PTR1"
+    assert r1_ptr1["business_behavior_changed"] is False
+    assert r1_ptr1["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "model_calls": 0,
+        "output_budget": 0,
+        "prompt": 0,
+        "route_model": 0,
+        "retry_fallback_sequence": 0,
+    }
+    assert canonical_protected_source_manifest(REPOSITORY) == (
+        r1_ptr1["current_protected_sources"]
+    )
+    r1_ptr1_hashes = {
+        item["path"]: item["sha256"]
+        for item in r1_ptr1["current_protected_sources"]
+    }
+    assert all(
+        item["after_sha256"] == r1_ptr1_hashes[item["path"]]
+        for item in r1_ptr1["authorized_source_deltas"]
+    )
+    assert {
+        item["path"] for item in r1_ptr1["authorized_source_deltas"]
+    } == {
+        "src/novel_flywheel/contract_runtime.py",
+        "src/novel_flywheel/generated_artifacts.py",
+        "src/novel_flywheel/models.py",
+        "src/novel_flywheel/workflows.py",
+    }
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(

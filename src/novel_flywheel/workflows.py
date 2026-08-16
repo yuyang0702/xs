@@ -123,6 +123,9 @@ from novel_flywheel.model_diagnostics import (
     domain_sha256 as diagnostic_domain_sha256,
     emit_budget_lineage,
 )
+from novel_flywheel.planning_repair_diagnostics import (
+    PLANNING_REPAIR_EVIDENCE_FLAG,
+)
 from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
     ArtifactConversionError,
@@ -170,6 +173,8 @@ from novel_flywheel.planning_adaptation import (
     normalize_planning_adaptation_receipt,
     normalize_planning_adaptation_whole_receipt,
     normalize_planning_repair_patch,
+    planning_repair_patch_diagnostic_findings,
+    planning_repair_patch_diagnostic_policy_sha256,
     planning_adaptation_artifact_sha256,
     planning_adaptation_evidence_candidates,
     planning_adaptation_event_facet_authority_sha256,
@@ -922,6 +927,10 @@ class WorkflowService:
         completion_check: Callable[[str], bool],
         runtime_authority: Mapping[str, object],
         schema: Mapping[str, object] | None = None,
+        domain_diagnostic_extractor: (
+            Callable[[Mapping[str, Any]], Sequence[Mapping[str, Any]]] | None
+        ) = None,
+        domain_diagnostic_metadata: Mapping[str, Any] | None = None,
         retry_domain_failures: bool = True,
         expected_event_ids: Sequence[str] = (),
         owns_opening: bool = True,
@@ -961,6 +970,8 @@ class WorkflowService:
                 dict(value) if isinstance(value, Mapping) else None
             ),
             domain_validator=validate,
+            domain_diagnostic_extractor=domain_diagnostic_extractor,
+            domain_diagnostic_metadata=domain_diagnostic_metadata,
             retry_domain_failures=retry_domain_failures,
             expected_event_ids=tuple(expected_event_ids),
             owns_opening=owns_opening,
@@ -11406,11 +11417,86 @@ class WorkflowService:
                         "issue_keys": issue_keys,
                         "patch_authority_sha256": patch_authority,
                     },
+                    domain_diagnostic_extractor=(
+                        (
+                            lambda payload: planning_repair_patch_diagnostic_findings(
+                                payload,
+                                authority_sha256=patch_authority,
+                                segment=segment,
+                                evidence_candidates=evidence_candidates,
+                                allowed_anchor_ids=anchor_ids,
+                                current_segment=current,
+                            )
+                        )
+                        if (
+                            patch_authority
+                            and diagnostic_flag_enabled(
+                                PLANNING_REPAIR_EVIDENCE_FLAG
+                            )
+                        ) else None
+                    ),
+                    domain_diagnostic_metadata=(
+                        {
+                            "repair_target_identity_sha256": (
+                                diagnostic_domain_sha256(
+                                    "r1-ptr1-repair-target-scope-v1",
+                                    {
+                                        "segment": segment,
+                                        "anchor_id_sha256s": [
+                                            hashlib.sha256(
+                                                evidence_id.encode("utf-8")
+                                            ).hexdigest()
+                                            for evidence_id in anchor_ids
+                                        ],
+                                    },
+                                )
+                            ),
+                            "repair_target_sha256": patch_authority,
+                            "canonical_repair_target_paths": [
+                                "$.replacements["
+                                + hashlib.sha256(
+                                    evidence_id.encode("utf-8")
+                                ).hexdigest()
+                                + "].replacement"
+                                for evidence_id in anchor_ids
+                            ],
+                            "domain_validator_id": (
+                                "planning_repair_patch.normalize.v1"
+                            ),
+                            "domain_validator_policy_sha256": (
+                                planning_repair_patch_diagnostic_policy_sha256()
+                            ),
+                        }
+                        if (
+                            patch_authority
+                            and diagnostic_flag_enabled(
+                                PLANNING_REPAIR_EVIDENCE_FLAG
+                            )
+                        ) else None
+                    ),
                     expected_event_ids=(
                         () if patch_authority else tuple(event_ids)
                     ),
                     owns_opening=segment == 1,
                     owns_ending=segment == segment_count,
+                ),
+                diagnostic_boundary=(
+                    "planning_repair_patch"
+                    if (
+                        patch_authority
+                        and diagnostic_flag_enabled(
+                            PLANNING_REPAIR_EVIDENCE_FLAG
+                        )
+                    ) else None
+                ),
+                diagnostic_outer_retry_ordinal=(
+                    attempt
+                    if (
+                        patch_authority
+                        and diagnostic_flag_enabled(
+                            PLANNING_REPAIR_EVIDENCE_FLAG
+                        )
+                    ) else None
                 ),
             )
             if patch_authority and not complete(repaired):
@@ -27089,6 +27175,9 @@ class WorkflowService:
                 and (
                     diagnostic_flag_enabled(STRICT_TOOL_FLAG)
                     or diagnostic_flag_enabled(BUDGET_LINEAGE_FLAG)
+                    or diagnostic_flag_enabled(
+                        PLANNING_REPAIR_EVIDENCE_FLAG
+                    )
                 )
             ):
                 binding = self.db.get_role_binding(gateway_role) or {}

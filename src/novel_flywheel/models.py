@@ -20,6 +20,9 @@ from novel_flywheel.model_diagnostics import (
     observe_strict_tool_shape,
     reset_bound_diagnostic_context,
 )
+from novel_flywheel.planning_repair_diagnostics import (
+    observe_provider_content_block_shape,
+)
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.structured_artifacts import (
@@ -544,6 +547,10 @@ class ModelGateway:
         try:
             response = await resolved.adapter.complete(request)
         except Exception as exc:
+            observe_provider_content_block_shape(
+                context=diagnostic_context,
+                exc=exc,
+            )
             if execution_mode == "strict_tool" and response_schema is not None:
                 observe_strict_tool_shape(
                     context=diagnostic_context,
@@ -582,6 +589,10 @@ class ModelGateway:
         finally:
             if diagnostic_token is not None:
                 reset_bound_diagnostic_context(diagnostic_token)
+        observe_provider_content_block_shape(
+            context=diagnostic_context,
+            response=response,
+        )
         if execution_mode == "strict_tool" and response_schema is not None:
             expected_name = str(response_schema.get("name") or "structured_output")
             observe_strict_tool_shape(

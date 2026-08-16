@@ -16,6 +16,7 @@ def c0a_environment(data_root: Path, *, feature_flags: dict[str, bool] | None = 
         "NOVEL_SHORT_CANONICAL_V2": "0",
         "NOVEL_CANONICAL_SHADOW_V1": "0",
         "NOVEL_RELIABILITY_TRACE": "1",
+        "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": "0",
     }
     for name, enabled in (feature_flags or {}).items():
         if name.startswith("NOVEL_"):

@@ -284,6 +284,7 @@ def _validate_c0b_approval_closure(
         "project_short_canonical_v2": False,
         "NOVEL_CANONICAL_SHADOW_V1": False,
         "NOVEL_RELIABILITY_TRACE": True,
+        "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": False,
     }
     checks.append(_result(
         CHECK_NAMES[12], plan["feature_flag_snapshot"] == expected_flags,

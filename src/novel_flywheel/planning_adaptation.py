@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import re
 import unicodedata
@@ -1412,6 +1413,187 @@ def normalize_planning_repair_patch(
         "replacements": normalized,
         "summary": str(value.get("summary") or "").strip(),
     }
+
+
+_PLANNING_REPAIR_DIAGNOSTIC_RULES: dict[str, tuple[str, str, str]] = {
+    "规划修复补丁必须是一个 JSON 对象": (
+        "planning_repair_patch.object_required", "$", "repair_patch_object",
+    ),
+    "规划修复补丁绑定的审核问题已经过期": (
+        "planning_repair_patch.authority_mismatch", "$.authority_sha256",
+        "repair_authority_fresh",
+    ),
+    "规划修复补丁缺少有效分段编号": (
+        "planning_repair_patch.segment_invalid", "$.segment",
+        "repair_segment_integer",
+    ),
+    "规划修复补丁返回了错误的分段编号": (
+        "planning_repair_patch.segment_mismatch", "$.segment",
+        "repair_segment_exact",
+    ),
+    "规划修复补丁必须包含 replacements": (
+        "planning_repair_patch.replacements_required", "$.replacements",
+        "repair_replacements_nonempty",
+    ),
+    "规划修复补丁中的 replacement 格式无效": (
+        "planning_repair_patch.replacement_object_required",
+        "$.replacements[*]", "repair_replacement_object",
+    ),
+    "规划修复补丁引用了未授权或重复的原文锚点": (
+        "planning_repair_patch.anchor_unauthorized_or_duplicate",
+        "$.replacements[*].evidence_id", "repair_anchor_authorized_unique",
+    ),
+    "规划修复补丁的替换内容不能为空": (
+        "planning_repair_patch.replacement_empty",
+        "$.replacements[*].replacement", "repair_replacement_nonempty",
+    ),
+    "规划修复补丁的原文锚点不再唯一": (
+        "planning_repair_patch.anchor_not_unique",
+        "$.replacements[*].evidence_id", "repair_anchor_current_unique",
+    ),
+    "规划修复补丁的原文锚点哈希不匹配": (
+        "planning_repair_patch.source_hash_mismatch",
+        "$.replacements[*].source_sha256", "repair_anchor_source_exact",
+    ),
+    "规划修复补丁不得写入段落标题或因果链协议块": (
+        "planning_repair_patch.protocol_block_forbidden",
+        "$.replacements[*].replacement", "repair_protocol_boundary_preserved",
+    ),
+}
+
+
+def planning_repair_patch_diagnostic_policy_sha256() -> str:
+    """Hash the unchanged authoritative validator source, not its diagnosis."""
+
+    return hashlib.sha256(
+        inspect.getsource(normalize_planning_repair_patch).encode("utf-8")
+    ).hexdigest()
+
+
+def _planning_repair_failure_index(
+    message: str, value: object, *, evidence_candidates: dict[str, str],
+    allowed_anchor_ids: list[str], current_segment: str,
+) -> int | None:
+    """Locate the already-rejected field without making a business decision."""
+
+    if not isinstance(value, dict) or not isinstance(value.get("replacements"), list):
+        return None
+    replacements = value["replacements"]
+    allowed = set(allowed_anchor_ids)
+    seen: set[str] = set()
+    for index, item in enumerate(replacements):
+        if not isinstance(item, dict):
+            if message == "规划修复补丁中的 replacement 格式无效":
+                return index
+            continue
+        evidence_id = str(item.get("evidence_id") or "").strip()
+        old = evidence_candidates.get(evidence_id)
+        replacement = str(item.get("replacement") or "")
+        source_sha256 = str(item.get("source_sha256") or "")
+        expected_source_sha256 = (
+            hashlib.sha256(old.encode("utf-8")).hexdigest() if old else ""
+        )
+        matches = {
+            "规划修复补丁引用了未授权或重复的原文锚点": (
+                evidence_id not in allowed or evidence_id in seen
+            ),
+            "规划修复补丁的替换内容不能为空": (
+                not old or not replacement.strip()
+            ),
+            "规划修复补丁的原文锚点不再唯一": (
+                bool(old) and current_segment.count(old) != 1
+            ),
+            "规划修复补丁的原文锚点哈希不匹配": (
+                bool(source_sha256) and source_sha256 != expected_source_sha256
+            ),
+            "规划修复补丁不得写入段落标题或因果链协议块": (
+                "###" in replacement or "SHORT_CAUSAL_CHAIN" in replacement
+            ),
+        }
+        if matches.get(message) is True:
+            return index
+        seen.add(evidence_id)
+    return None
+
+
+def planning_repair_patch_diagnostic_findings(
+    value: object, *, authority_sha256: str, segment: int,
+    evidence_candidates: dict[str, str], allowed_anchor_ids: list[str],
+    current_segment: str,
+) -> list[dict[str, str]]:
+    """Describe a rejection without changing or replacing the Domain validator.
+
+    The authoritative normalizer runs first.  Only after it raises do we map its
+    unchanged message to a stable machine code and locate the rejected field.
+    This helper never returns a value that can authorize a repair patch.
+    """
+
+    try:
+        normalize_planning_repair_patch(
+            value,
+            authority_sha256=authority_sha256,
+            segment=segment,
+            evidence_candidates=evidence_candidates,
+            allowed_anchor_ids=allowed_anchor_ids,
+            current_segment=current_segment,
+        )
+    except ValueError as exc:
+        message = str(exc)
+        code, path, invariant = _PLANNING_REPAIR_DIAGNOSTIC_RULES.get(
+            message,
+            (
+                "planning_repair_patch.unclassified_domain_rejection",
+                "$", "repair_domain_unknown",
+            ),
+        )
+        index = _planning_repair_failure_index(
+            message, value,
+            evidence_candidates=evidence_candidates,
+            allowed_anchor_ids=allowed_anchor_ids,
+            current_segment=current_segment,
+        )
+        if index is not None:
+            path = path.replace("[*]", f"[{index}]")
+        target: object = value
+        if isinstance(value, dict):
+            if path == "$.authority_sha256":
+                target = value.get("authority_sha256")
+            elif path == "$.segment":
+                target = value.get("segment")
+            elif path == "$.replacements":
+                target = value.get("replacements")
+            elif index is not None and isinstance(value.get("replacements"), list):
+                item = value["replacements"][index]
+                if path.endswith(".evidence_id") and isinstance(item, dict):
+                    target = item.get("evidence_id")
+                elif path.endswith(".source_sha256") and isinstance(item, dict):
+                    target = item.get("source_sha256")
+                elif path.endswith(".replacement") and isinstance(item, dict):
+                    target = item.get("replacement")
+                else:
+                    target = item
+        value_type = (
+            "null" if target is None else
+            "boolean" if isinstance(target, bool) else
+            "integer" if isinstance(target, int) else
+            "object" if isinstance(target, dict) else
+            "array" if isinstance(target, list) else
+            "string" if isinstance(target, str) else
+            "other"
+        )
+        structural_shape = (
+            f"array:length={len(target)}" if isinstance(target, list) else
+            f"object:keys={len(target)}" if isinstance(target, dict) else
+            "scalar"
+        )
+        return [{
+            "rule_code": code,
+            "field_path": path,
+            "invariant_id": invariant,
+            "value_type": value_type,
+            "structural_shape": structural_shape,
+        }]
+    return []
 
 
 def planning_repair_patch_from_segment(

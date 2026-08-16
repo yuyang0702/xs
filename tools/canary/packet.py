@@ -65,6 +65,7 @@ def prepare_c0a_packet(
         "project_short_canonical_v2": False,
         "NOVEL_CANONICAL_SHADOW_V1": False,
         "NOVEL_RELIABILITY_TRACE": True,
+        "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": False,
     }
     with tempfile.TemporaryDirectory(prefix="novel-c0a-plan-") as temporary:
         root = Path(temporary)

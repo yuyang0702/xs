@@ -77,6 +77,7 @@ FEATURE_FLAGS = {
     "NOVEL_RELIABILITY_TRACE": True,
     "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1": True,
     "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1": False,
+    "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": False,
 }
 
 STOP_CONDITIONS = (
@@ -168,6 +169,7 @@ def _diagnostic_environment() -> Iterator[None]:
     values = {
         "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1": "1",
         "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1": "0",
+        "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": "0",
     }
     previous = {name: os.environ.get(name) for name in values}
     os.environ.update(values)

@@ -7,6 +7,11 @@ from novel_flywheel.model_diagnostics import (
     provider_tool_shape_snapshot,
     strict_snapshot_capture_requested,
 )
+from novel_flywheel.planning_repair_diagnostics import (
+    attach_provider_content_snapshot,
+    finalize_provider_content_block_snapshot,
+    safe_capture_provider_content_block_snapshot,
+)
 from novel_flywheel.providers.http import HttpProvider
 
 
@@ -55,6 +60,34 @@ class AnthropicAdapter(HttpProvider):
                 raise
         usage = body.get("usage", {})
         content = body.get("content", [])
+        content_snapshot = safe_capture_provider_content_block_snapshot(
+            adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
+            adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
+            protocol="anthropic",
+            provider_response=body,
+            request_max_output_tokens=request.max_output_tokens,
+            finish_reason=body.get("stop_reason"),
+            output_tokens=usage.get("output_tokens", 0),
+            block_types=[
+                part.get("type") for part in content if isinstance(part, dict)
+            ],
+            text_values=[
+                part.get("text") for part in content
+                if isinstance(part, dict) and part.get("type") == "text"
+            ],
+            tool_arguments=[
+                part.get("input") for part in content
+                if isinstance(part, dict) and part.get("type") == "tool_use"
+            ],
+            tool_argument_presence=any(
+                "input" in part for part in content
+                if isinstance(part, dict) and part.get("type") == "tool_use"
+            ),
+            reasoning_block_count=sum(
+                part.get("type") in {"thinking", "reasoning", "redacted_thinking"}
+                for part in content if isinstance(part, dict)
+            ),
+        )
         snapshot = None
         if strict_snapshot_capture_requested():
             raw_calls = [
@@ -90,7 +123,7 @@ class AnthropicAdapter(HttpProvider):
                 snapshot_status=status,
             )
         try:
-            return ModelResponse(
+            response = ModelResponse(
                 text="".join(part.get("text", "") for part in content if part.get("type") == "text"),
                 tool_calls=[ToolCall(
                     id=part["id"], name=part["name"], arguments=part.get("input") or {},
@@ -110,6 +143,26 @@ class AnthropicAdapter(HttpProvider):
                     } if snapshot is not None else {}),
                 },
             )
+            if content_snapshot is not None:
+                try:
+                    content_snapshot = finalize_provider_content_block_snapshot(
+                        content_snapshot,
+                        normalized_text=response.text,
+                        normalized_tool_call_count=len(response.tool_calls),
+                    )
+                    response = response.model_copy(update={
+                        "provider_state": {
+                            **response.provider_state,
+                            "_r1_ptr1_provider_content_snapshot": (
+                                content_snapshot.model_dump(
+                                    mode="json", by_alias=True,
+                                )
+                            ),
+                        },
+                    })
+                except Exception:
+                    pass
+            return response
         except Exception as exc:
             if snapshot is not None:
                 attach_exception_snapshot(
@@ -117,6 +170,8 @@ class AnthropicAdapter(HttpProvider):
                         snapshot, "adapter_exception_with_snapshot",
                     ),
                 )
+            if content_snapshot is not None:
+                attach_provider_content_snapshot(exc, content_snapshot)
             raise
 
     def _stream_exception_snapshot(self, events: list[dict]):

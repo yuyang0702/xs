@@ -7,6 +7,11 @@ from novel_flywheel.model_diagnostics import (
     provider_tool_shape_snapshot,
     strict_snapshot_capture_requested,
 )
+from novel_flywheel.planning_repair_diagnostics import (
+    attach_provider_content_snapshot,
+    finalize_provider_content_block_snapshot,
+    safe_capture_provider_content_block_snapshot,
+)
 from novel_flywheel.providers.http import HttpProvider
 
 
@@ -64,6 +69,44 @@ class OpenAIResponsesAdapter(HttpProvider):
                 if incomplete_reason in {"max_output_tokens", "max_tokens"}
                 else incomplete_reason or "incomplete"
             )
+        nested_content = [
+            part
+            for item in output if isinstance(item, dict)
+            for part in (item.get("content") or []) if isinstance(part, dict)
+        ]
+        content_snapshot = safe_capture_provider_content_block_snapshot(
+            adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
+            adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
+            protocol="openai-responses",
+            provider_response=body,
+            request_max_output_tokens=request.max_output_tokens,
+            finish_reason=finish_reason,
+            output_tokens=usage.get("output_tokens", 0),
+            block_types=(
+                [
+                    item.get("type") for item in output if isinstance(item, dict)
+                ]
+                + [part.get("type") for part in nested_content]
+                + (["output_text"] if streamed_text else [])
+            ),
+            text_values=([streamed_text] if streamed_text else []) + [
+                part.get("text")
+                for part in nested_content
+                if part.get("type") in {"output_text", "text"}
+            ],
+            tool_arguments=[
+                item.get("arguments") for item in output
+                if isinstance(item, dict) and item.get("type") == "function_call"
+            ],
+            tool_argument_presence=any(
+                "arguments" in item for item in output
+                if isinstance(item, dict) and item.get("type") == "function_call"
+            ),
+            reasoning_block_count=sum(
+                item.get("type") in {"reasoning", "thinking"}
+                for item in output if isinstance(item, dict)
+            ),
+        )
         snapshot = None
         if strict_snapshot_capture_requested():
             raw_calls = [
@@ -96,7 +139,7 @@ class OpenAIResponsesAdapter(HttpProvider):
                 snapshot_status=status,
             )
         try:
-            return ModelResponse(
+            response = ModelResponse(
                 text=_output_text(body) or streamed_text,
                 tool_calls=[ToolCall(
                     id=item.get("call_id") or item.get("id"), name=item["name"],
@@ -120,6 +163,26 @@ class OpenAIResponsesAdapter(HttpProvider):
                     } if snapshot is not None else {}),
                 },
             )
+            if content_snapshot is not None:
+                try:
+                    content_snapshot = finalize_provider_content_block_snapshot(
+                        content_snapshot,
+                        normalized_text=response.text,
+                        normalized_tool_call_count=len(response.tool_calls),
+                    )
+                    response = response.model_copy(update={
+                        "provider_state": {
+                            **response.provider_state,
+                            "_r1_ptr1_provider_content_snapshot": (
+                                content_snapshot.model_dump(
+                                    mode="json", by_alias=True,
+                                )
+                            ),
+                        },
+                    })
+                except Exception:
+                    pass
+            return response
         except Exception as exc:
             if snapshot is not None:
                 attach_exception_snapshot(
@@ -127,6 +190,8 @@ class OpenAIResponsesAdapter(HttpProvider):
                         snapshot, "adapter_exception_with_snapshot",
                     ),
                 )
+            if content_snapshot is not None:
+                attach_provider_content_snapshot(exc, content_snapshot)
             raise
 
     @staticmethod

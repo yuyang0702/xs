@@ -47,6 +47,10 @@ ReliabilityTraceEventType = Literal[
     "authority_evidence_conflict",
     "diagnostic_strict_tool_shape",
     "diagnostic_output_budget_lineage",
+    "diagnostic_planning_repair_domain",
+    "diagnostic_planning_repair_finding_propagation",
+    "diagnostic_provider_content_block_shape",
+    "diagnostic_planning_repair_output_limit",
 ]
 ReliabilitySemanticDomain = Literal[
     "future_normative", "occurred_current", "unknown",
@@ -106,6 +110,18 @@ class ReliabilityTraceEnvelopeV1(BaseModel):
         }),
         "diagnostic_output_budget_lineage": frozenset({
             "schema", "lineage_receipt_sha256", "lineage_event",
+        }),
+        "diagnostic_planning_repair_domain": frozenset({
+            "schema", "receipt_sha256", "domain_result", "failure_count",
+        }),
+        "diagnostic_planning_repair_finding_propagation": frozenset({
+            "schema", "receipt_sha256", "finding_propagation_status",
+        }),
+        "diagnostic_provider_content_block_shape": frozenset({
+            "schema", "snapshot_sha256", "content_block_count",
+        }),
+        "diagnostic_planning_repair_output_limit": frozenset({
+            "schema", "receipt_sha256", "contract_output_limit_action",
         }),
     }
 

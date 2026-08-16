@@ -142,6 +142,7 @@ def prepare_c0b_smoke_packet(
         "project_short_canonical_v2": False,
         "NOVEL_CANONICAL_SHADOW_V1": False,
         "NOVEL_RELIABILITY_TRACE": True,
+        "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": False,
     }
     approval_budget_body = {
         "maximum_model_calls_per_run": 48,

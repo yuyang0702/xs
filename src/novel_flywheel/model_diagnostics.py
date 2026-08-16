@@ -386,6 +386,12 @@ def reset_bound_diagnostic_context(
     _active_diagnostic_context.reset(token)
 
 
+def active_diagnostic_context() -> ModelDiagnosticContextV1 | None:
+    """Expose the immutable diagnostic context to provider-side observers."""
+
+    return _active_diagnostic_context.get()
+
+
 def strict_snapshot_capture_requested() -> bool:
     return diagnostic_flag_enabled(STRICT_TOOL_FLAG) and is_strict_tool_target(
         _active_diagnostic_context.get()

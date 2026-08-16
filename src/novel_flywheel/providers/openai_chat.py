@@ -7,6 +7,11 @@ from novel_flywheel.model_diagnostics import (
     provider_tool_shape_snapshot,
     strict_snapshot_capture_requested,
 )
+from novel_flywheel.planning_repair_diagnostics import (
+    attach_provider_content_snapshot,
+    finalize_provider_content_block_snapshot,
+    safe_capture_provider_content_block_snapshot,
+)
 from novel_flywheel.providers.http import HttpProvider
 
 
@@ -50,6 +55,51 @@ class OpenAIChatAdapter(HttpProvider):
         choice = body["choices"][0]
         usage = body.get("usage", {})
         message = choice["message"]
+        raw_content = message.get("content")
+        raw_tool_calls = message.get("tool_calls", [])
+        raw_tool_calls = raw_tool_calls if isinstance(raw_tool_calls, list) else []
+        chat_blocks = raw_content if isinstance(raw_content, list) else []
+        content_snapshot = safe_capture_provider_content_block_snapshot(
+            adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
+            adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
+            protocol="openai-chat",
+            provider_response=body,
+            request_max_output_tokens=request.max_output_tokens,
+            finish_reason=choice.get("finish_reason"),
+            output_tokens=usage.get("completion_tokens", 0),
+            block_types=(
+                [
+                    str(part.get("type") or "unknown")
+                    for part in chat_blocks if isinstance(part, dict)
+                ]
+                + (["text"] if isinstance(raw_content, str) and raw_content else [])
+                + ["tool_call"] * len(raw_tool_calls)
+                + ["reasoning"] * sum(
+                    bool(message.get(key))
+                    for key in ("reasoning", "reasoning_content", "thinking")
+                )
+            ),
+            text_values=(
+                [raw_content] if isinstance(raw_content, str) and raw_content else []
+            ) + [
+                part.get("text")
+                for part in chat_blocks
+                if isinstance(part, dict)
+                and part.get("type") in {"text", "output_text"}
+            ],
+            tool_arguments=[
+                (call.get("function") or {}).get("arguments")
+                for call in raw_tool_calls if isinstance(call, dict)
+            ],
+            tool_argument_presence=any(
+                "arguments" in (call.get("function") or {})
+                for call in raw_tool_calls if isinstance(call, dict)
+            ),
+            reasoning_block_count=sum(
+                bool(message.get(key))
+                for key in ("reasoning", "reasoning_content", "thinking")
+            ),
+        )
         snapshot = None
         if strict_snapshot_capture_requested():
             raw_calls = message.get("tool_calls", [])
@@ -86,7 +136,7 @@ class OpenAIChatAdapter(HttpProvider):
                 snapshot_status=status,
             )
         try:
-            return ModelResponse(
+            response = ModelResponse(
                 text=message.get("content") or "",
                 tool_calls=[ToolCall(
                     id=call["id"], name=call["function"]["name"],
@@ -107,6 +157,26 @@ class OpenAIChatAdapter(HttpProvider):
                     } if snapshot is not None else {}),
                 },
             )
+            if content_snapshot is not None:
+                try:
+                    content_snapshot = finalize_provider_content_block_snapshot(
+                        content_snapshot,
+                        normalized_text=response.text,
+                        normalized_tool_call_count=len(response.tool_calls),
+                    )
+                    response = response.model_copy(update={
+                        "provider_state": {
+                            **response.provider_state,
+                            "_r1_ptr1_provider_content_snapshot": (
+                                content_snapshot.model_dump(
+                                    mode="json", by_alias=True,
+                                )
+                            ),
+                        },
+                    })
+                except Exception:
+                    pass
+            return response
         except Exception as exc:
             if snapshot is not None:
                 attach_exception_snapshot(
@@ -114,6 +184,8 @@ class OpenAIChatAdapter(HttpProvider):
                         snapshot, "adapter_exception_with_snapshot",
                     ),
                 )
+            if content_snapshot is not None:
+                attach_provider_content_snapshot(exc, content_snapshot)
             raise
 
     @staticmethod

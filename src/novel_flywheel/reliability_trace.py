@@ -33,6 +33,10 @@ TRACE_EVENT_TYPES = (
 DIAGNOSTIC_TRACE_EVENT_TYPES = (
     "diagnostic_strict_tool_shape",
     "diagnostic_output_budget_lineage",
+    "diagnostic_planning_repair_domain",
+    "diagnostic_planning_repair_finding_propagation",
+    "diagnostic_provider_content_block_shape",
+    "diagnostic_planning_repair_output_limit",
 )
 VOLATILE_KEYS = frozenset({
     "created_at", "updated_at", "timestamp", "started_at", "finished_at",

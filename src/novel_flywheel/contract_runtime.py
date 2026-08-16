@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Any, Awaitable, Callable, Literal, Mapping
+from typing import Any, Awaitable, Callable, Literal, Mapping, Sequence
 
 from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
@@ -17,6 +17,12 @@ from novel_flywheel.context_policy import (
     output_limited,
 )
 from novel_flywheel.model_diagnostics import ModelDiagnosticContextV1, emit_budget_lineage
+from novel_flywheel.planning_repair_diagnostics import (
+    PlanningRepairDomainValidationSnapshotV1,
+    observe_domain_validation_snapshot,
+    observe_finding_propagation,
+    observe_output_limit,
+)
 from novel_flywheel.recovery_engine import (
     ProtocolReceiptAttempt,
     RecoveryAction,
@@ -26,6 +32,9 @@ from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
 DomainValidator = Callable[[Mapping[str, Any]], Any]
+DomainDiagnosticExtractor = Callable[
+    [Mapping[str, Any]], Sequence[Mapping[str, Any]]
+]
 TextValidator = Callable[[str], Any]
 AuditSink = Callable[[ArtifactConversionAudit], None]
 AttemptObserver = Callable[[dict[str, Any]], None]
@@ -83,6 +92,8 @@ class ExecutableContractSpec:
     structured_contract: StructuredArtifactContract
     semantic_normalizer: SemanticNormalizer
     domain_validator: DomainValidator
+    domain_diagnostic_extractor: DomainDiagnosticExtractor | None = None
+    domain_diagnostic_metadata: Mapping[str, Any] | None = None
     retry_domain_failures: bool = False
     expected_event_ids: tuple[str, ...] = ()
     owns_opening: bool = True
@@ -595,6 +606,7 @@ async def _dispatch_explicit_route(
     user: str,
     max_output_tokens: int | None,
     structured_contract: StructuredArtifactContract,
+    diagnostic_context: ModelDiagnosticContextV1 | None = None,
 ) -> Any:
     return await dispatch_explicit_model_route(
         gateway,
@@ -604,6 +616,7 @@ async def _dispatch_explicit_route(
         user=user,
         max_output_tokens=max_output_tokens,
         structured_contract=structured_contract,
+        diagnostic_context=diagnostic_context,
     )
 
 
@@ -853,6 +866,7 @@ async def execute_contract_runtime(
     last_receipt: Mapping[str, Any] = {}
     output_limit_seen = False
     last_business_incomplete_reason: str | None = None
+    last_domain_snapshot: PlanningRepairDomainValidationSnapshotV1 | None = None
     attempt_output_tokens = max_output_tokens
     contract_schema = structured_contract.json_schema
 
@@ -959,6 +973,17 @@ async def execute_contract_runtime(
         fallback_attempts=fallback_attempts,
         attempt_routes=attempt_routes,
     )
+
+    def next_route_action(current: ProtocolReceiptAttempt) -> str:
+        if current.attempt_index >= len(attempts):
+            return "terminal"
+        following = attempts[current.attempt_index]
+        return (
+            "retry_same_route"
+            if following.route == current.route
+            else "advance_to_configured_fallback"
+        )
+
     for attempt in attempts:
         attempt_context = (
             replace(
@@ -1008,6 +1033,12 @@ async def execute_contract_runtime(
             (ArtifactConversionError, ContractBusinessOutputIncompleteError),
         ):
             route_system = _protocol_regeneration_system(system)
+        observe_finding_propagation(
+            source=last_domain_snapshot,
+            target_context=attempt_context,
+            system=route_system,
+            user=route_user,
+        )
         try:
             response = (
                 await attempt_executor(
@@ -1023,6 +1054,7 @@ async def execute_contract_runtime(
                     user=route_user,
                     max_output_tokens=attempt_output_tokens,
                     structured_contract=structured_contract,
+                    diagnostic_context=attempt_context,
                 )
             )
             receipt = getattr(response, "receipt", None)
@@ -1096,6 +1128,39 @@ async def execute_contract_runtime(
                 previous_budget = attempt_output_tokens
                 target_budget = expanded_output_budget(previous_budget)
                 cap_values = lineage_cap_values(target_budget)
+                observe_output_limit(
+                    attempt_context,
+                    requested_budget=previous_budget,
+                    effective_budget=previous_budget,
+                    output_tokens=(
+                        int(receipt.get("output_tokens") or 0)
+                        if isinstance(receipt, Mapping) else 0
+                    ),
+                    stop_reason=(
+                        receipt.get("finish_reason")
+                        if isinstance(receipt, Mapping) else None
+                    ),
+                    zero_visible=not bool(
+                        str(getattr(response, "text", response) or "").strip()
+                    ),
+                    parser_reached=True,
+                    strict_tool_reached=bool(
+                        isinstance(receipt, Mapping)
+                        and receipt.get("execution_mode") == "strict_tool"
+                    ),
+                    domain_validator_reached=False,
+                    truncation_classifier_reason=(
+                        incomplete_reason
+                        or str(exc.audit.failure_code or "artifact_conversion")
+                    ),
+                    contract_output_limit_action=(
+                        "terminal_exhausted"
+                        if attempt.is_last else "expand_and_continue"
+                    ),
+                    expansion_before=previous_budget,
+                    expansion_after=target_budget,
+                    next_route_action=next_route_action(attempt),
+                )
                 emit_budget_lineage(
                     attempt_context,
                     lineage_event="expansion_decided",
@@ -1151,6 +1216,36 @@ async def execute_contract_runtime(
                 previous_budget = attempt_output_tokens
                 target_budget = expanded_output_budget(previous_budget)
                 cap_values = lineage_cap_values(target_budget)
+                observe_output_limit(
+                    attempt_context,
+                    requested_budget=previous_budget,
+                    effective_budget=previous_budget,
+                    output_tokens=(
+                        int(receipt.get("output_tokens") or 0)
+                        if isinstance(receipt, Mapping) else 0
+                    ),
+                    stop_reason=(
+                        receipt.get("finish_reason")
+                        if isinstance(receipt, Mapping) else None
+                    ),
+                    zero_visible=not bool(
+                        str(getattr(response, "text", response) or "").strip()
+                    ),
+                    parser_reached=True,
+                    strict_tool_reached=bool(
+                        isinstance(receipt, Mapping)
+                        and receipt.get("execution_mode") == "strict_tool"
+                    ),
+                    domain_validator_reached=False,
+                    truncation_classifier_reason=incomplete_reason,
+                    contract_output_limit_action=(
+                        "terminal_exhausted"
+                        if attempt.is_last else "expand_and_continue"
+                    ),
+                    expansion_before=previous_budget,
+                    expansion_after=target_budget,
+                    next_route_action=next_route_action(attempt),
+                )
                 emit_budget_lineage(
                     attempt_context,
                     lineage_event="expansion_decided",
@@ -1184,6 +1279,25 @@ async def execute_contract_runtime(
         try:
             domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
+            diagnostic_findings: Sequence[Mapping[str, Any]] = ()
+            if execution_spec.domain_diagnostic_extractor is not None:
+                try:
+                    diagnostic_findings = tuple(
+                        execution_spec.domain_diagnostic_extractor(
+                            conversion.payload,
+                        )
+                    )
+                except Exception:
+                    diagnostic_findings = ()
+            observed_domain = observe_domain_validation_snapshot(
+                attempt_context,
+                payload=conversion.payload,
+                domain_result="failed",
+                findings=diagnostic_findings,
+                metadata=execution_spec.domain_diagnostic_metadata or {},
+            )
+            if observed_domain is not None:
+                last_domain_snapshot = observed_domain
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
                 parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
@@ -1249,6 +1363,13 @@ async def execute_contract_runtime(
                 )
                 attempt_output_tokens = target_budget
             continue
+        observe_domain_validation_snapshot(
+            attempt_context,
+            payload=conversion.payload,
+            domain_result="passed",
+            findings=(),
+            metadata=execution_spec.domain_diagnostic_metadata or {},
+        )
         _record_business_outcome(
             gateway, response, structured_contract,
             outcome="valid",

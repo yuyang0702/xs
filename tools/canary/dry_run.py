@@ -388,6 +388,12 @@ async def run_c0a_dry_run(
                                 "NOVEL_RELIABILITY_TRACE": (
                                     os.environ.get("NOVEL_RELIABILITY_TRACE", "0") == "1"
                                 ),
+                                "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": (
+                                    os.environ.get(
+                                        "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1",
+                                        "0",
+                                    ) == "1"
+                                ),
                             },
                             "build_fingerprint": current_runtime.build_fingerprint_sha256,
                             "execution_config_fingerprint": (
