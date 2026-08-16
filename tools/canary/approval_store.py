@@ -29,14 +29,17 @@ def initialize_approval_ledger_v1(
 ) -> dict[str, Any]:
     """Create or verify an empty, exact operational ledger root."""
 
-    requested = root.absolute()
+    requested = Path(os.path.abspath(root))
     requested.mkdir(parents=True, exist_ok=True)
     resolved = requested.resolve(strict=True)
-    if resolved != requested.resolve():
+    if os.path.normcase(str(resolved)) != os.path.normcase(str(requested)):
         raise CanaryApprovalReplay("approval_ledger_path_not_exact")
-    attributes = getattr(resolved.stat(), "st_file_attributes", 0)
-    if attributes & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
-        raise CanaryApprovalReplay("approval_ledger_reparse_point_forbidden")
+    for component in (requested, *requested.parents):
+        attributes = getattr(component.stat(), "st_file_attributes", 0)
+        if attributes & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+            raise CanaryApprovalReplay("approval_ledger_reparse_point_forbidden")
+        if component.parent == component:
+            break
     if not isinstance(ledger_identity, str) or len(ledger_identity) != 64:
         raise CanaryApprovalReplay("approval_ledger_identity_invalid")
     business_entries = [

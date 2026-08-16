@@ -5,7 +5,10 @@ import socket
 import pytest
 import tools.canary.isolation as isolation_module
 
-from tools.canary.approval_store import ApprovalConsumptionStore, CanaryApprovalReplay
+from tools.canary.approval_store import (
+    ApprovalConsumptionStore, CanaryApprovalReplay,
+    initialize_approval_ledger_v1,
+)
 from tools.canary.isolation import (
     CanaryIsolationError,
     SENTINEL_NAME,
@@ -115,6 +118,46 @@ def test_approval_store_is_single_use_and_consumption_is_hash_bound(tmp_path: Pa
     assert consumed["payload"]["consumed_evidence_sha256"] == h("evidence")
     with pytest.raises(CanaryApprovalReplay, match="approval_already_consumed"):
         store.consume(approval, h("evidence-2"))
+
+
+def test_approval_ledger_initializer_is_exact_empty_and_idempotent(
+    tmp_path: Path,
+) -> None:
+    identity = h("new-ledger")
+    first = initialize_approval_ledger_v1(tmp_path, ledger_identity=identity)
+    second = initialize_approval_ledger_v1(tmp_path, ledger_identity=identity)
+    assert first == second
+    assert first["status"] == "exact"
+    assert first["initial_entry_count"] == 0
+    assert ApprovalConsumptionStore(tmp_path).operational_readiness(
+        ledger_identity=identity,
+    )["status"] == "exact"
+
+
+def test_approval_ledger_initializer_rejects_nonempty_or_wrong_identity(
+    tmp_path: Path,
+) -> None:
+    initialize_approval_ledger_v1(tmp_path, ledger_identity=h("ledger-a"))
+    with pytest.raises(CanaryApprovalReplay, match="identity_mismatch"):
+        initialize_approval_ledger_v1(tmp_path, ledger_identity=h("ledger-b"))
+    (tmp_path / "unexpected.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(CanaryApprovalReplay, match="ledger_not_empty"):
+        initialize_approval_ledger_v1(tmp_path, ledger_identity=h("ledger-a"))
+
+
+def test_approval_ledger_initializer_rejects_symlink_root(tmp_path: Path) -> None:
+    target = tmp_path / "target"
+    target.mkdir()
+    link = tmp_path / "link"
+    try:
+        link.symlink_to(target, target_is_directory=True)
+    except OSError:
+        pytest.skip("Windows symlink creation is unavailable")
+    with pytest.raises(
+        CanaryApprovalReplay,
+        match="approval_ledger_(path_not_exact|reparse_point_forbidden)",
+    ):
+        initialize_approval_ledger_v1(link, ledger_identity=h("ledger"))
 
 
 def test_network_sentinel_blocks_dns_and_restores_entry_points() -> None:
