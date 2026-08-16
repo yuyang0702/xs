@@ -1,0 +1,89 @@
+{
+  "schema": "SCR1D3FreshInertRematerializationReceiptV1",
+  "version": 1,
+  "gate": "SHORT_COMPLETION_R1D3_APPROVAL_PACKET_READY",
+  "waiting_gate": "SHORT_COMPLETION_CANARY_WAITING_FOR_NEW_FINAL_USER_AUTHORIZATION",
+  "branch": "sc-r1d3-gate-1/fingerprint-profile-separation-20260816",
+  "materialization_source_head": "302a19fb6ecff2f4e04021d5c1438494771bec37",
+  "collection_profile_id": "production_mirror_short_v1",
+  "identities": {
+    "build_sha256": "771f86c5c735fcc39cb499e9a87014b226ab20c60abf3e148393de1e4268a59a",
+    "execution_config_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+    "runtime_execution_sha256": "1efd51615c3f6274c52042eb4056402db2844ad9d02cc227b3e23ac294ec57e1",
+    "prompt_policy_sha256": "72282e5c12a101592d26d18d15a618afcd6b10688f4d79bac902c9337579d68c",
+    "initial_draft_prompt_sha256": "24ff78bda316093b453844cd276a8105ed1e9a79839f168d944b28883d5befad",
+    "retry_only_draft_prompt_sha256": "c1cde435c0caf77ac98f05aae9f95385f1486250384ff914b8729949283d3171",
+    "r1_d3_readiness_definition_sha256": "e0f3e91d63a754a69b0759a88d77c0625f7925fb0d929f031ec87f96bd800025",
+    "plan_sha256": "876c941ed613adb97eae1a9f585b4bf28b807d921c00f66c4b3969fcdc0b15d5",
+    "approval_candidate_sha256": "bd37c998ffe81b5a2f4fe177e686b614fc834d667dab1ba0d0a64b8944575c03",
+    "authorization_patch_template_sha256": "e7583145ccb6c159af00c6539e0eb64fa913755f21333e03ea1125d94d610908",
+    "validate_only_receipt_sha256": "78db589feaa6011da8cf0b9698cd5a7970a40a781d2f28182a914eb4184371aa",
+    "execution_preview_sha256": "10cc2b746aa08e0c6e29e07fa008a94920aa31fc4e5c5ddb924d5b0960e8d537",
+    "materialization_index_sha256": "659eb01c792af350fe46de7eedef8a85b58777490d804d33ec1797ee43616f2b",
+    "prelaunch_rehearsal_sha256": "c512c5dedf4e81ee05a367cf334b4769b7848cb0312e84cfdb9eaab8208500b8",
+    "launcher_sha256": "4fb1216b5f054038e0ee7ce948dd85b21792d973468ed89d6a8b30834f3f9306"
+  },
+  "same_profile_rehearsal": {
+    "collection_profile_comparison": "exact",
+    "execution_config_semantic_equal": true,
+    "runtime_execution_equal": true,
+    "provenance_known": true,
+    "provenance_equal": false,
+    "observation_status": "equivalent_provenance_variation"
+  },
+  "single_use_cohort_id": "short-completion-r1d3-g1-20260816t154912z",
+  "execution_window": {
+    "not_before": "2026-08-16T16:05:12Z",
+    "not_after": "2026-08-18T16:05:12Z"
+  },
+  "approval_ledger": {
+    "identity": "999c504fc8d923da12a696e03e22aa8ab68f1350ea382fea68780744b49fc426",
+    "path_hash": "32bee3f0bc5f41dd15c4581489b9c7ddf1574ac5844e4c0b80d2f667c3dc07f0",
+    "initial_entry_count": 0,
+    "approval_status": "unreserved",
+    "cohort_status": "unused",
+    "operational_readiness": "exact"
+  },
+  "canary_root_identity": "4d1ef794604da3a5e2d5d4d3de3d6f71641671ebf116f7325975c2d8452a7dbe",
+  "candidate_state": {
+    "execution_authorized": false,
+    "named_approver": "USER_CONFIRMATION_REQUIRED",
+    "usage_status": "unused",
+    "status": "waiting_for_final_user_authorization"
+  },
+  "authorization_state": {
+    "authorization_patch_template_present": true,
+    "confirmed_authorization_patch_present": false,
+    "signed_approval_present": false,
+    "approval_reserved": false,
+    "execution_performed": false
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  },
+  "privacy_status": "exact",
+  "live_parity": {
+    "status": "exact",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_story_sha256": "101221ae2af393e514b2d73c921d97689611de3339e584b1b0ded819a940c745",
+    "canon_sha256": "5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc",
+    "story_state_rows": 6,
+    "story_candidate_rows": 11,
+    "workflow_checkpoint_rows": 917
+  },
+  "first_materialization_attempt": {
+    "status": "blocked_pre_materialization",
+    "reason_code": "single_use_cohort_id_invalid",
+    "formal_artifact_count": 0,
+    "ledger_created": false,
+    "external_actions": 0
+  },
+  "residual_risk_retained": "draft.retry_scope_too_broad",
+  "real_provider_execution": "NOT_EXECUTED"
+}

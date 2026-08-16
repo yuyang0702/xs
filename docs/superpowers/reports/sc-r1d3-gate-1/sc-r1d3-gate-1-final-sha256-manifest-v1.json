@@ -1,0 +1,30 @@
+{
+  "schema": "SCR1D3Gate1FinalSha256ManifestV1",
+  "version": 1,
+  "algorithm": "SHA-256",
+  "encoding_note": "Hashes bind exact file bytes; paths are repository-relative and slash-normalized.",
+  "manifest_self_included": false,
+  "files": [
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-authorization-patch-template-v1.json", "sha256": "6d57028d720bd9511f1353cb442f45391fecbfe02891e07fb95f466cefd42483", "bytes": 2028},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-definitions-v1.json", "sha256": "d13100ae7fb8fc89aa527bbdfed87f65e44ad0e6922aee034ae66e29c5925243", "bytes": 13901},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-execution-preview-v1.json", "sha256": "9064cfda07692b4e4b77443bdc56bf5319f3f40c034d3dbf97e47ebacdf57821", "bytes": 2290},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-final-approval-candidate-v1.json", "sha256": "80354f31149d2c9e7ee185b7e087cd7222dd3f0cc23a2fdd668a8d1dc5996818", "bytes": 4428},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-final-plan-v1.json", "sha256": "40c245e6ccbe41638ba49fe5a9f44d1685df9914bdad117491f1c7765cd7ead6", "bytes": 19703},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-ledger-operational-readiness-v1.json", "sha256": "69f85bd30f2ff169ce93851472272d42e21f51bc78c66f401a2cdd193cb28baa", "bytes": 530},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-materialization-index-v1.json", "sha256": "07c131bccf9a40f51ba13fb626d987c86488f5c0db0ea9c29528909190b617a1", "bytes": 3050},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-pre-launch-semantic-rehearsal-v1.json", "sha256": "25a1caf5d09e745637c9c1123ec2c6dd4391e7769eafc45802b2cdbbad261f2e", "bytes": 2683},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-r1-d3-production-mirror-readiness-v1.json", "sha256": "20f07e0464bebc497cbee299973384ce83a4ba9f1e1746c7c850c3b6c61541e0", "bytes": 3784},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/materialization-v1/short-completion-1-validate-only-receipt-v1.json", "sha256": "7286e2b9566cabc7580a8a21a5dc6c6f3fd855c2ca05a373b1ddcb5ba0572869", "bytes": 8729},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-final-report-v1.md", "sha256": "eee2115496007b2c679bba2a5a198d07047c19009a346c280cba29d51f9668f4", "bytes": 5877},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-privacy-scan-v1.json", "sha256": "dcdc816a21749370d8998b256230aa44cba6937d6b4c39527aab0c440d16a610", "bytes": 617},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-report-v1.md", "sha256": "c6143af23129a9df14ea19fd629279bf77bdf0820fb16a613b76e277510c153c", "bytes": 3666},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-sha256-manifest-v1.json", "sha256": "8866f8e74ecda400a0b67dacf10ebf00f12b5ee8180c425f812adeb1f786a619", "bytes": 774},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-validation-receipt-v1.json", "sha256": "469bd266a89ac3e7650e4deb454191fc2dc25e89830309684c9a7e06b77cdef4", "bytes": 3776},
+    {"path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-rematerialization-receipt-v1.json", "sha256": "36ce96ee4c03314ac0f869ba741634140eb351e1ae8e9b91d0d57dc8df7af0ad", "bytes": 4424}
+  ],
+  "raw_prompt_included": false,
+  "raw_story_text_included": false,
+  "tool_arguments_included": false,
+  "credentials_or_headers_included": false,
+  "private_provider_response_included": false
+}

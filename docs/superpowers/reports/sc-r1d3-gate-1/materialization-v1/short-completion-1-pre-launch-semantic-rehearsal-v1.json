@@ -1,0 +1,58 @@
+{
+  "collection_profile_comparison": {
+    "actual_collection_profile_id": "production_mirror_short_v1",
+    "comparison_status": "exact",
+    "execution_config_comparison": {
+      "collection_profile_id": "production_mirror_short_v1",
+      "equal": true,
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    "expected_collection_profile_id": "production_mirror_short_v1",
+    "runtime_execution_comparison": {
+      "collection_profile_id": "production_mirror_short_v1",
+      "equal": true,
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    "schema": "ExecutionFingerprintCollectionProfileComparisonV1",
+    "version": 1
+  },
+  "collection_profile_id": "production_mirror_short_v1",
+  "component_diff": {
+    "actual_provenance_sha256": "e0b6f7487dc4e6650af08ca82e5114efcd68b41de71cc74e6b6c2efbada2d762",
+    "actual_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+    "differing_component_ids": [
+      "feature_flag_provenance"
+    ],
+    "expected_provenance_sha256": "1f676cbc19a76a3c1300da45ed95718c02892834ba1f9da921b95afb80f94ac5",
+    "expected_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+    "hash_only": true,
+    "policy_version": "runtime-fingerprint-v2",
+    "provenance_equal": false,
+    "provenance_known": true,
+    "semantic_equal": true
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "fake_boundary_count": 1,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "materialization_provenance_sha256": "1f676cbc19a76a3c1300da45ed95718c02892834ba1f9da921b95afb80f94ac5",
+  "materialization_runtime_execution_sha256": "1efd51615c3f6274c52042eb4056402db2844ad9d02cc227b3e23ac294ec57e1",
+  "materialization_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+  "observation_status": "equivalent_provenance_variation",
+  "process_isolation": "independent_subprocess",
+  "raw_values_included": false,
+  "receipt_sha256": "c512c5dedf4e81ee05a367cf334b4769b7848cb0312e84cfdb9eaab8208500b8",
+  "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+  "schema": "PreLaunchSemanticFingerprintRehearsalV1",
+  "status": "exact",
+  "subprocess_provenance_sha256": "e0b6f7487dc4e6650af08ca82e5114efcd68b41de71cc74e6b6c2efbada2d762",
+  "subprocess_runtime_execution_sha256": "1efd51615c3f6274c52042eb4056402db2844ad9d02cc227b3e23ac294ec57e1",
+  "subprocess_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+  "version": 1
+}

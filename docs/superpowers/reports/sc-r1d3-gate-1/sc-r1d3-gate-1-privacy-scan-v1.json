@@ -1,0 +1,20 @@
+{
+  "schema": "SCR1D3MaterializationPrivacyScanV1",
+  "version": 1,
+  "status": "exact",
+  "violation_count": 0,
+  "probe_results": {
+    "fixture_title_present": false,
+    "fixture_premise_present": false,
+    "absolute_repository_path_present": false,
+    "api_key_marker_present": false,
+    "bearer_marker_present": false,
+    "authorization_header_marker_present": false
+  },
+  "raw_prompt_included": false,
+  "raw_story_text_included": false,
+  "tool_arguments_included": false,
+  "credentials_or_headers_included": false,
+  "private_provider_response_included": false,
+  "private_evidence_committed": false
+}

@@ -1,0 +1,45 @@
+{
+  "approval_candidate_sha256": "bd37c998ffe81b5a2f4fe177e686b614fc834d667dab1ba0d0a64b8944575c03",
+  "approval_ledger_identity": "999c504fc8d923da12a696e03e22aa8ab68f1350ea382fea68780744b49fc426",
+  "approval_ledger_initial_entry_count": 0,
+  "approval_ledger_operational_readiness": "exact",
+  "contract_status": "SHORT_COMPLETION_APPROVAL_PROFILE_READY",
+  "definition_sha256": "659eb01c792af350fe46de7eedef8a85b58777490d804d33ec1797ee43616f2b",
+  "execution_collection_profile_id": "production_mirror_short_v1",
+  "execution_performed": false,
+  "execution_window": {
+    "not_after": "2026-08-18T16:05:12Z",
+    "not_before": "2026-08-16T16:05:12Z"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "short-completion-1-authorization-patch-template-v1.json": "6d57028d720bd9511f1353cb442f45391fecbfe02891e07fb95f466cefd42483",
+    "short-completion-1-definitions-v1.json": "d13100ae7fb8fc89aa527bbdfed87f65e44ad0e6922aee034ae66e29c5925243",
+    "short-completion-1-execution-preview-v1.json": "9064cfda07692b4e4b77443bdc56bf5319f3f40c034d3dbf97e47ebacdf57821",
+    "short-completion-1-final-approval-candidate-v1.json": "80354f31149d2c9e7ee185b7e087cd7222dd3f0cc23a2fdd668a8d1dc5996818",
+    "short-completion-1-final-plan-v1.json": "40c245e6ccbe41638ba49fe5a9f44d1685df9914bdad117491f1c7765cd7ead6",
+    "short-completion-1-ledger-operational-readiness-v1.json": "69f85bd30f2ff169ce93851472272d42e21f51bc78c66f401a2cdd193cb28baa",
+    "short-completion-1-pre-launch-semantic-rehearsal-v1.json": "25a1caf5d09e745637c9c1123ec2c6dd4391e7769eafc45802b2cdbbad261f2e",
+    "short-completion-1-r1-d3-production-mirror-readiness-v1.json": "20f07e0464bebc497cbee299973384ce83a4ba9f1e1746c7c850c3b6c61541e0",
+    "short-completion-1-validate-only-receipt-v1.json": "7286e2b9566cabc7580a8a21a5dc6c6f3fd855c2ca05a373b1ddcb5ba0572869"
+  },
+  "launcher_sha256": "4fb1216b5f054038e0ee7ce948dd85b21792d973468ed89d6a8b30834f3f9306",
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "plan_sha256": "876c941ed613adb97eae1a9f585b4bf28b807d921c00f66c4b3969fcdc0b15d5",
+  "prelaunch_semantic_rehearsal_sha256": "c512c5dedf4e81ee05a367cf334b4769b7848cb0312e84cfdb9eaab8208500b8",
+  "prelaunch_semantic_rehearsal_status": "exact",
+  "r1_d3_production_mirror_readiness_sha256": "e0f3e91d63a754a69b0759a88d77c0625f7925fb0d929f031ec87f96bd800025",
+  "schema": "ShortCompletionMaterializationIndexV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "short-completion-r1d3-g1-20260816t154912z",
+  "status": "SHORT_COMPLETION_CANARY_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "78db589feaa6011da8cf0b9698cd5a7970a40a781d2f28182a914eb4184371aa",
+  "version": 1
+}
