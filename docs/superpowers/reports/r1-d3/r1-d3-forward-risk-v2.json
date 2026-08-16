@@ -1,0 +1,163 @@
+{
+  "version": 2,
+  "original_requirement": "Propagate the exact current local Draft validator rejection into the next existing same-scope Draft retry, without changing validator meaning, authority approval, retry topology, route, model, output budget, or any downstream business boundary.",
+  "scope_classification": "closed_world",
+  "operational_definition": "After an existing Draft attempt is rejected specifically as reject_unapproved_mixed_script, Runtime binds the exact current token to its hash-only validator decision, renders a bounded untrusted DraftRetryFindingV1 block into only the next already-permitted retry, and recomputes the block from the next Draft before any later retry.",
+  "forbidden_narrowing": [
+    "Do not turn a rejected token into an approved token or alter the R1-D1 authority projection.",
+    "Do not increase retry, fallback, call, elapsed, or output-token budgets.",
+    "Do not change the first Draft request, Provider adapter, Gateway, Route, model alias, parser, semantic review, Final Review, Maintenance, StoryState, Canon, or Phase 1B.",
+    "Do not persist Draft text, Prompt text, raw Provider responses, credentials, or headers as evidence.",
+    "Do not claim the whole-scope retry drift risk is fixed by this narrow propagation change."
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The only actionable source is the finite mixed_script_decisions list emitted by the unchanged local validator for the current in-memory Draft; only decision=reject_unapproved_mixed_script is eligible, and its token must be recovered by exact SHA-256 binding through the same authoritative tokenizer.",
+  "constraint_traceability": [
+    {
+      "requirement": "Structured, deterministic, bounded, injection-safe current finding",
+      "implementation": "DraftRetryFindingV1, build_draft_retry_findings, and render_actionable_draft_validation_findings use exact token/hash binding, canonical UTF-8 JSON, deterministic sort/dedupe, hard count/length/size bounds, and explicit untrusted-data markers.",
+      "test_paths": [
+        "tests/test_r1_d3_draft_retry_findings.py"
+      ],
+      "evidence": "Tests cover identity, reason, authority status, dedupe, ordering, count/size bounds, control characters, quoted scope data, and canonical serialization."
+    },
+    {
+      "requirement": "Initial Draft Prompt and retry topology remain unchanged",
+      "implementation": "WorkflowService._draft_short_segment_task appends the new block only when retry_findings is non-empty; retry_same_scope retains retry_count >= 2 and recursively uses the same role, route selection, max-output calculation, contract, and scope.",
+      "test_paths": [
+        "tests/test_r1_d3_draft_retry_findings.py",
+        "tests/test_workflows.py"
+      ],
+      "evidence": "The sanitized initial Prompt remains 24ff78bd..., fake calls retain the same primary Draft model and max-output value, ignore-finding still terminates after two retries, and the 13K/20K/30K production-length matrix passes."
+    },
+    {
+      "requirement": "Current finding reaches the retry and stale findings never accumulate",
+      "implementation": "The local validator decisions are converted immediately after each current Draft; retry_same_scope passes that immutable tuple to exactly the recursive retry request, whose next result is validated and converted anew.",
+      "test_paths": [
+        "tests/test_r1_d3_draft_retry_findings.py"
+      ],
+      "evidence": "Production-shaped fake cases prove convergence, unchanged terminal behavior when ignored, AlphaTerm-to-BetaTerm refresh without stale AlphaTerm, and approved SignalKey bypassing the finding path."
+    },
+    {
+      "requirement": "R1-D1 validator and hash-only evidence remain unchanged",
+      "implementation": "prose_quality.py has no diff; the existing mixed_script_decisions are consumed but not altered, and the existing validation receipt persists token hashes and counts only.",
+      "test_paths": [
+        "tests/test_r1_d1_authority_mixed_script.py",
+        "tests/test_r1_d1_draft_workflow.py",
+        "tests/test_r1_d3_draft_retry_findings.py"
+      ],
+      "evidence": "The exact R1-D1 production file SHA-256 remains b5647536..., approved/unapproved/corruption/stale cases retain their prior decisions, and raw rejected terms are absent from validation receipts."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "draft.retry_finding_propagation",
+    "draft.validator_false_positive/authority_approved_latin_term_misclassified",
+    "mixed_script_corruption",
+    "draft prose_invalid whole-scope regeneration",
+    "draft retry scope drift",
+    "semantic receipt protocol exhaustion",
+    "stale Draft checkpoint binding",
+    "output truncation and capacity recovery"
+  ],
+  "projected_failure_mechanisms": [
+    "model ignores the exact actionable finding",
+    "retry replaces the rejected term with a different unapproved term",
+    "duplicate or reordered validator decisions alter retry identity",
+    "malicious model token attempts to escape the JSON data block",
+    "finding count, token length, occurrence count, or serialized size exceeds a hard bound",
+    "approved, stale-authority, or otherwise non-actionable decisions leak into the retry block",
+    "whole-scope regeneration mutates unrelated prose despite minimal-edit instructions"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "initial Draft with one synthetic unapproved token followed by a minimally corrected complete Draft",
+    "three complete Draft attempts retaining the same rejected token",
+    "first Draft containing AlphaTerm then retry containing only new BetaTerm then corrected Draft",
+    "complete Draft containing only authority-approved SignalKey",
+    "complete Draft containing repeated and differently ordered rejected terms",
+    "complete Draft containing ordinary mixed-script corruption zzzzzz"
+  ],
+  "invalid_output_variants_tested": [
+    "retry ignores the current unapproved token until the unchanged retry limit terminates",
+    "retry introduces a new unapproved token and receives a refreshed current-only finding",
+    "stale authority rejects fail closed without being misrepresented as an actionable unapproved finding",
+    "unbound and control-character injection-shaped finding data fails closed"
+  ],
+  "transport_capacity_variants_tested": [
+    "existing complete output-limit result accepted only through independent completeness validation",
+    "existing truncated or incomplete result retains the established retry/split/terminal behavior"
+  ],
+  "model_output_topology_classes_tested": [
+    "single current rejection and one successful same-scope retry",
+    "repeated identical rejection across the full existing retry budget",
+    "changing rejection identity across consecutive retries",
+    "authority-approved token with no retry delta",
+    "multi-item deduplicated and sorted rejection set",
+    "semantic-review crossing after corrected Draft acceptance"
+  ],
+  "unseen_valid_variants_tested": [
+    "sanitized AlphaTerm replacement not present in private Canary evidence",
+    "sanitized BetaTerm refresh after a different prior rejection"
+  ],
+  "unknown_variant_behavior": "Unknown validator reason, missing token binding, ambiguous token hash, invalid scope, or exceeded bound fails closed before constructing an unsafe retry request; it neither approves text nor increases the retry budget.",
+  "invariant_test_paths": [
+    "tests/test_r1_d3_draft_retry_findings.py",
+    "tests/test_r1_d1_authority_mixed_script.py",
+    "tests/test_r1_d1_draft_workflow.py",
+    "tests/test_draft_split.py",
+    "tests/test_workflows.py"
+  ],
+  "why_previous_tests_missed": "R1-D1 proved that current authority can distinguish an approved term from corruption, while R1-D2 proved the remaining Draft was correctly rejected. Neither crossed the next model input boundary and asserted that the exact local rejection survived generic prose_invalid wrapping into the existing retry Prompt.",
+  "sibling_boundaries": [
+    {
+      "boundary": "initial Short Draft request",
+      "disposition": "tested_not_susceptible",
+      "evidence": "retry_findings defaults to an empty tuple and the sanitized initial rendered Prompt remains byte/hash identical."
+    },
+    {
+      "boundary": "same-scope Draft retry after local mixed-script rejection",
+      "disposition": "fixed_and_tested",
+      "evidence": "The current decision is exact-hash-bound, rendered once into the next recursive request, and fake convergence crosses semantic review."
+    },
+    {
+      "boundary": "second same-scope Draft retry",
+      "disposition": "fixed_and_tested",
+      "evidence": "The next current Draft is revalidated and rebuilds a current-only tuple; AlphaTerm does not survive after BetaTerm replaces it."
+    },
+    {
+      "boundary": "Draft split children and recombined segment",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The existing recursive Draft function owns both split and unsplit leaves; related draft-split and workflow suites pass without a topology change."
+    },
+    {
+      "boundary": "Planning, Planning Adaptation, Causal Chain, and Execution Manifest",
+      "disposition": "not_applicable",
+      "evidence": "No source, call site, Prompt, contract, route, or test fixture for these upstream boundaries changed."
+    },
+    {
+      "boundary": "Semantic Review, Final Review, Maintenance, StoryState, and Canon",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The convergence fixture reaches the existing semantic review and the related workflow suite crosses formal-manuscript and committed-StoryState boundaries; no downstream implementation changed."
+    },
+    {
+      "boundary": "Long workflow and Phase 1B Candidate lane",
+      "disposition": "not_applicable",
+      "evidence": "The changed helper is called only inside the existing Short Draft leaf; Long and Phase 1B code paths are unchanged and Phase 1B remains disabled."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_r1_d3_draft_retry_findings.py",
+    "tests/test_workflows.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_r1_d3_draft_retry_findings.py",
+    "tests/test_execution_manifest_workflow.py",
+    "tests/test_workflows.py"
+  ],
+  "remaining_risks": [
+    "draft.retry_scope_too_broad remains: natural model regeneration can still alter unrelated text even though the retry instruction requests minimal edits.",
+    "No new real Provider Canary was authorized or executed; deterministic fake convergence cannot prove a production model will follow the finding.",
+    "The strict change gate classifies this as case_fixed rather than systemically_resolved because only the verified Draft mixed-script propagation family is in scope.",
+    "All future real Canary identities and approval material must be rematerialized against the new Build, Runtime, and Prompt Policy identities."
+  ]
+}

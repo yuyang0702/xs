@@ -1,0 +1,40 @@
+{
+  "schema": "R1D3ChangeContractV1",
+  "version": 1,
+  "phase": "R1-D3",
+  "risk_level": "L3",
+  "parent_head": "d992b1b0c7cfdd957df71f8bdb0d75bf4c9d41ab",
+  "parent_real_canary_evidence_commit": "b20897757f6eec15640ff020256e2163eb91848c",
+  "primary_root_cause": "draft.retry_finding_not_propagated",
+  "secondary_contributors": [
+    "draft.retry_scope_too_broad"
+  ],
+  "allowed_behavior_delta": "Only an already-triggered, already-budgeted same-scope Draft retry receives the current bounded actionable local-validator findings.",
+  "production_files_allowed": [
+    "src/novel_flywheel/workflows.py"
+  ],
+  "production_files_changed": [
+    "src/novel_flywheel/workflows.py"
+  ],
+  "invariants": {
+    "initial_draft_prompt_bytes_unchanged": true,
+    "validator_semantics_unchanged": true,
+    "authority_allowlist_unchanged": true,
+    "retry_upper_bound_unchanged": true,
+    "route_and_model_bindings_unchanged": true,
+    "output_budget_unchanged": true,
+    "planning_and_manifest_unchanged": true,
+    "final_review_and_maintenance_behavior_unchanged": true,
+    "phase_1b_disabled": true,
+    "real_model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0
+  },
+  "explicit_exclusions": [
+    "src/novel_flywheel/prose_quality.py",
+    "src/novel_flywheel/providers/**",
+    "baml_src/**",
+    "live database and project artifacts",
+    "real Canary approval or execution"
+  ]
+}
