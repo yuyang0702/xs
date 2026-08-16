@@ -91,7 +91,14 @@ def test_full_validate_only_closes_all_25_checks_with_zero_external_actions(clos
     ("role_binding_manifest_definition_sha256", "role_route_binding_manifest"),
 ])
 def test_runtime_and_route_mismatches_are_blocked(closure_packet, field, check_name) -> None:
-    replace_plan(closure_packet, lambda plan: plan.__setitem__(field, "f" * 64))
+    def mutate(plan):
+        plan[field] = "f" * 64
+        if field == "approved_execution_config_fingerprint":
+            plan["approved_execution_config_components"]["semantic_sha256"] = (
+                "f" * 64
+            )
+
+    replace_plan(closure_packet, mutate)
     receipt = validate(closure_packet)
     assert receipt["overall_status"] == "blocked"
     assert check(receipt, check_name)["status"] == "blocked"
