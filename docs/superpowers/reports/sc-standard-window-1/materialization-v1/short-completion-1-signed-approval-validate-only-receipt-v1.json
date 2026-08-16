@@ -1,0 +1,247 @@
+{
+  "approval_document_kind": "signed_approval",
+  "approval_identity_sha256": "b479c350db642ed71863cded9eeb0c7a5d12a77fc92114971cf9b787b71281c7",
+  "approval_ledger_operational_readiness": "exact",
+  "approval_ledger_state": "unused",
+  "approval_state": "signed_approval_exact_and_executable",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "ordered_checks": [
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "registered_profile",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "approval_scope",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "plan_canonical_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "approval_document",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "launcher_bytes_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "workload_fixture_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "workload_manifest_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "production_source_byte_revalidation",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "build_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "execution_config_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "runtime_execution_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "provider_descriptor_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "role_route_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "feature_flags",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "phase1b_disabled",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "pa_diagnostic_flags_disabled",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "pricing_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "call_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "token_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "monetary_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "elapsed_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "stop_conditions",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "draft_validator_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "mixed_script_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "final_review_completion_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "maintenance_completion_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "final_artifact_binding_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "final_checkpoint_closure_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "completion_goal_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "canary_root_identity",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "execution_window",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "cohort_unused",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "approval_ledger",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "external_authorization",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "privacy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "91735e0fa33629efd98158189f6272902e95605b7b0ee03c034ac6aa745f7bf8",
+      "name": "live_parity",
+      "reason_code": "exact",
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "parity": {
+    "observation_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "privacy": {
+    "status": "exact",
+    "violation_count": 0
+  },
+  "profile_id": "short_completion_1",
+  "schema": "ShortCompletionApprovalClosureValidationV1",
+  "validation_receipt_sha256": "8fa0715333a83e88edcd60bceea39ca04ce28dae99bff95519c8922f30c2d76a",
+  "version": 1
+}

@@ -1,0 +1,60 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "classification_status": "suggested_not_enforced",
+  "first_divergent_node": {
+    "boundary": "draft_prose_validation",
+    "decision": "reject_unapproved_mixed_script",
+    "decision_count": 3,
+    "model_boundary_ordinal": 20,
+    "provider_finish_reason": "end_turn",
+    "provider_status": "completed",
+    "stage": "draft",
+    "validator": "authority_aware_mixed_script"
+  },
+  "last_legal": {
+    "candidate": "none",
+    "final_quality_checkpoint": "none",
+    "formal_artifact": "none",
+    "rejected_draft_transport_sha256": "44b53f709affff313f60f50f8cc1d7e80b27e6ddd98f0cbdc897fc1a06d40f1e",
+    "validated_upstream_checkpoint_node": "review-execution-segment-01-initial-1",
+    "validated_upstream_output_sha256": "5bbe30899d219624ae55a62e2e79dd66d0581d86ea9e6630c4f1deb9b8a3bc0d"
+  },
+  "next_narrow_task": "R1-D2_DRAFT_MIXED_SCRIPT_REJECTION_CLOSURE",
+  "raw_content_included": false,
+  "receipt_sha256": "cd7d11361bb26c17dfce99936ba5a3c3d1c594b6a8e473946e4d69325c2c2f7f",
+  "recovery_chain": [
+    {
+      "decision_count": 3,
+      "draft_attempt": "initial",
+      "model_boundary_ordinal": 20,
+      "outcome": "rejected"
+    },
+    {
+      "decision_count": 1,
+      "draft_attempt": "scope_retry_1",
+      "model_boundary_ordinal": 21,
+      "outcome": "rejected"
+    },
+    {
+      "decision_count": 2,
+      "draft_attempt": "scope_retry_2",
+      "model_boundary_ordinal": 22,
+      "outcome": "rejected_terminal"
+    }
+  ],
+  "schema": "ShortCompletionFirstDivergenceV1",
+  "short_completion_goal_outcome": "WORKFLOW_TERMINAL",
+  "source_evidence_sha256": "e4f229b8416d40fdde94050a9ba08ee629aebcb42ca340dd6c9540e9a5ef2601",
+  "suggested_failure_family": "draft_authority_aware_mixed_script_rejection_exhausted",
+  "terminal": {
+    "after_model_boundary_ordinal": 22,
+    "automatic_resume_status": "not_approved",
+    "outer_exception_type": "ValueError",
+    "outer_safe_failure_class": "normal_invalid_output",
+    "stored_failure_class": "unknown",
+    "stored_incident_family": "unclassified.8bff54965de2f818",
+    "workflow_supervision_state": "irrecoverable"
+  },
+  "version": 1,
+  "workflow_final_outcome": "WORKFLOW_TERMINAL"
+}

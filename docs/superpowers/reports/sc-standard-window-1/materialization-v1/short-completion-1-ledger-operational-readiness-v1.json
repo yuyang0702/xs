@@ -1,0 +1,14 @@
+{
+  "approval_status": "unreserved",
+  "cohort_status": "unused",
+  "credential_lookup_count": 0,
+  "identity_definition_sha256": "1aa49c51fcde6b71be46c242d21fffdca40c5abd2234229c05d7c97090bb14e1",
+  "initial_entry_count": 0,
+  "ledger_identity": "c90b5240ccd4d005104d41cf93742ff7f7078a0025fb2c142614bf9a9ee52439",
+  "model_call_count": 0,
+  "network_call_count": 0,
+  "paid_model_call_count": 0,
+  "provider_client_creation_count": 0,
+  "schema": "CanaryApprovalLedgerOperationalReadinessV1",
+  "status": "exact"
+}

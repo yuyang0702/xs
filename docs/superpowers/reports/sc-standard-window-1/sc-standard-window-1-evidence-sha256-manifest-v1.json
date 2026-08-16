@@ -1,0 +1,30 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "file_count": 19,
+  "files": {
+    "materialization-v1/short-completion-1-authorization-patch-template-v1.json": "dd92c7dc3720d3c4615a9b9b3ee89b130cae57438bdedd16e5ca24ead1fa91b4",
+    "materialization-v1/short-completion-1-confirmed-authorization-patch-v1.json": "52aa2a622d49ea272d8f4a829a6ed0442efaf82e13b8783c20a4882b971985f6",
+    "materialization-v1/short-completion-1-definitions-v1.json": "8679578d07eba1bf201a64869d5e17d29dfb1aedafe7d1fccb6fb7f894d40420",
+    "materialization-v1/short-completion-1-execution-preview-v1.json": "9b2fc0d150b10e1cfd862cbf8d154faaf3dcfa9e57217c1ec3d5bfbe431f6191",
+    "materialization-v1/short-completion-1-final-approval-candidate-v1.json": "7599aa815009fd73c8b89a5c009fca987fc7dddd727e358887e61168db4393d4",
+    "materialization-v1/short-completion-1-final-plan-v1.json": "a5e025c78787d8db84f3ec1fe17a99b4b83246f47b90be963a508b27197b0ff8",
+    "materialization-v1/short-completion-1-ledger-operational-readiness-v1.json": "9cb4e9e149fb272f2cf2dacac9c0adcbdd6fc40a560a749a2b4bad16dc4ca819",
+    "materialization-v1/short-completion-1-materialization-index-v1.json": "44b7c0291c6da6063f1266721a59c3de11124b9d6c09b558891d9d696f099b8b",
+    "materialization-v1/short-completion-1-pre-launch-semantic-rehearsal-v1.json": "a353efa4e2280f5693955d3430b864b876920563ab4c34f1b015dc31247351c4",
+    "materialization-v1/short-completion-1-signed-approval-v1.json": "4162ea260394719c7d426ab1c7e337cbb0c5a0410b0a6e714c475f35ab341209",
+    "materialization-v1/short-completion-1-signed-approval-validate-only-receipt-v1.json": "71134c9d9bfacead78f4bb4f1fe40f06a14692024dd78ab0bd83a8ebdcb8ef26",
+    "materialization-v1/short-completion-1-validate-only-receipt-v1.json": "9a0c2f8b3b95756afdea137e9e2ff0cd9da5c68fdb267fa545ad2173e89b778b",
+    "sc-standard-window-1-approval-consumed-v1.json": "c7b73949048a9cb89b5d1127e616703a32a89185549ad10ebd4467f3ef2d3130",
+    "sc-standard-window-1-approval-reserved-v1.json": "1c793623a2b146b78b5df4a28308bb6585d02c7fc65f4f06c46f9af5e3ee1232",
+    "sc-standard-window-1-final-report-v1.md": "28ff84c78a627bf0877e2a0f906f370fd0645eca8d273f8c294b01a1614f8351",
+    "sc-standard-window-1-first-divergence-v1.json": "4a35beb2a1c2f532ab12c2f9112d1e863990ee99aa3f556b1d8251db32024b8f",
+    "sc-standard-window-1-model-boundary-ledger-v1.json": "8a95aa1d72eee0bd09299e0483920727bd3c16d70cb8e955f6861286f1dcab09",
+    "sc-standard-window-1-privacy-scan-v1.json": "95a4ea5947bf1d24122c6d2351a45da4a4addc1bf982d0142a21ed86056000ac",
+    "sc-standard-window-1-real-evidence-v1.json": "87b7eca9cc86ab11a6245a7e0fc411a39e889eb6954618161ee1eebe187ad219"
+  },
+  "manifest_sha256": "5b4e4ee101c979691f73d464df38dcd60e102a8b288539b26e31b60758eeb29d",
+  "raw_content_included": false,
+  "schema": "ShortCompletionEvidenceSha256ManifestV1",
+  "source_evidence_sha256": "e4f229b8416d40fdde94050a9ba08ee629aebcb42ca340dd6c9540e9a5ef2601",
+  "version": 1
+}

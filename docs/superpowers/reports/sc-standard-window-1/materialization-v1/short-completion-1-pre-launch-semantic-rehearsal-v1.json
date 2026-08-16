@@ -1,0 +1,36 @@
+{
+  "component_diff": {
+    "actual_provenance_sha256": "e0b6f7487dc4e6650af08ca82e5114efcd68b41de71cc74e6b6c2efbada2d762",
+    "actual_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+    "differing_component_ids": [
+      "feature_flag_provenance"
+    ],
+    "expected_provenance_sha256": "1f676cbc19a76a3c1300da45ed95718c02892834ba1f9da921b95afb80f94ac5",
+    "expected_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+    "hash_only": true,
+    "policy_version": "runtime-fingerprint-v2",
+    "provenance_equal": false,
+    "provenance_known": true,
+    "semantic_equal": true
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "fake_boundary_count": 1,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "materialization_provenance_sha256": "1f676cbc19a76a3c1300da45ed95718c02892834ba1f9da921b95afb80f94ac5",
+  "materialization_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+  "observation_status": "equivalent_provenance_variation",
+  "process_isolation": "independent_subprocess",
+  "raw_values_included": false,
+  "receipt_sha256": "9c9b7741489023c1f1d333a54a2ceb80e7bc218e0e4e3b2d9f6d190922495d3b",
+  "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+  "schema": "PreLaunchSemanticFingerprintRehearsalV1",
+  "status": "exact",
+  "subprocess_provenance_sha256": "e0b6f7487dc4e6650af08ca82e5114efcd68b41de71cc74e6b6c2efbada2d762",
+  "subprocess_semantic_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+  "version": 1
+}

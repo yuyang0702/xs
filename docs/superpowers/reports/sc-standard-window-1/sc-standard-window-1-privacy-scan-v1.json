@@ -1,0 +1,19 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "excluded_private_artifacts": [
+    "canary_database",
+    "canary_project_tree",
+    "story_prose",
+    "prompt_text",
+    "tool_arguments",
+    "credential_and_headers",
+    "raw_provider_response"
+  ],
+  "json_file_count_scanned": 17,
+  "pattern_match_count": 0,
+  "raw_content_included": false,
+  "scanner": "tools.canary.evidence._scan+forbidden_text_pattern_scan",
+  "schema": "ShortCompletionEvidencePrivacyScanV1",
+  "status": "exact",
+  "version": 1
+}
