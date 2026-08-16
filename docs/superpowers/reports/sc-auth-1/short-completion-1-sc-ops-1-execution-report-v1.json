@@ -1,0 +1,134 @@
+{
+  "approval": {
+    "document_usage_status": "unused",
+    "ledger_status_after_attempt": "reserved",
+    "reservation_definition_sha256": "f31b4a8898c377e6205b12dddb6b4e04842f27c92290d0f8ed7cda83587c5e9b",
+    "reservation_file_sha256": "387f1b9ed2b3e82014f9f9b4cc2cc156177245a26853083ec952badd8c5480f2",
+    "signed_approval_sha256": "fd39172fa06afc4991f943c69e7208f532df0ee9f53b1750ad406f04a2c5cb6b",
+    "status": "reserved_not_consumed"
+  },
+  "branch": "sc-auth-1/short-completion-profile-20260816",
+  "call_totals": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "canary_root": {
+    "file_count": 50,
+    "resolved_root_sha256": "6d7edc714d53d228e91d5dcca7d954c83746f89b4571cc8d6d7143f70e881244",
+    "sentinel_sha256": "81105672561f0d0f5a1fef910d0fe0bf842a9aa555f5f0596d39221b1698c348",
+    "stable_root_identity": "ca4dd02f2df09ac6d976104d7435af90816f6829de0272a807f1b7bf080ae2cf",
+    "tree_sha256": "625d3a3c6f71fda3dd75ba1ba0f803ee46d4a01ee8ea42e1de78a274e868bb0f",
+    "validation_status": "exact"
+  },
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "cohort": {
+    "cohort_id": "short-completion-1-20260816t061700z",
+    "consume_status": "absent",
+    "replay_allowed": false,
+    "reserve_status": "present",
+    "status": "reserved"
+  },
+  "completion_evidence": {
+    "evidence_package_status": "not_generated_before_pre_provider_failure",
+    "final_artifact": "not_created",
+    "final_checkpoint": "not_created",
+    "final_review_binding": "not_evaluated",
+    "maintenance_closure": "not_evaluated",
+    "short_workflow_run_count": 0
+  },
+  "cost_totals": {
+    "cny_microunits": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_tokens": 0,
+    "usd_microunits": 0
+  },
+  "execution_attempt": {
+    "elapsed_seconds_observed": 13.55,
+    "launcher_outcome": "CANARY_INFRASTRUCTURE_FAILURE",
+    "production_incident_counted": false,
+    "reason_code": "canary_launcher_unhandled_failure",
+    "second_attempt_performed": false,
+    "workflow_terminal_counted": false
+  },
+  "fingerprint_divergence": {
+    "actual_execution_config_fingerprint": "0a5b452c6d5f081ebeedc9b6c49f8049c9f07eb0ad39cb21432e570d0b8879f3",
+    "actual_runtime_execution_fingerprint": "e2090775927ddeb8a3ae13200d74d3693495b9ad5f95699d13afcbaab31f701e",
+    "build_fingerprint_status": "exact",
+    "difference": [
+      {
+        "actual": {
+          "enabled": false,
+          "status": "set"
+        },
+        "expected": {
+          "enabled": false,
+          "status": "defaulted"
+        },
+        "flag": "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1"
+      },
+      {
+        "actual": {
+          "enabled": false,
+          "status": "set"
+        },
+        "expected": {
+          "enabled": false,
+          "status": "defaulted"
+        },
+        "flag": "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1"
+      }
+    ],
+    "expected_execution_config_fingerprint": "6f047d7fac61794f704b92397addd00475980c3bafab0f21b3ccb8d4e72b2277",
+    "expected_runtime_execution_fingerprint": "c43ad3e4e58f95e8945982df4b6c089b42f8f9c72dc1dd2040ba018e21025cae",
+    "first_divergent_check": "execution_config_fingerprint_pre_launch",
+    "suggested_failure_family": "CANARY_MATERIALIZATION_REAL_RUN_FLAG_PRESENCE_PARITY",
+    "typed_runtime_reason": "execution_config_changed_before_launch"
+  },
+  "head_before_evidence_commit": "27cd3b4de2d7de360f43d29e26b97e4b03286247",
+  "ledger_initialization": {
+    "actual_identity": "13b0dda3b0925f6417cc97bf0ecf61c7c547c80852e21fd4b680c8bff50a019f",
+    "existing_entry_count_before_initialization": 0,
+    "expected_identity": "13b0dda3b0925f6417cc97bf0ecf61c7c547c80852e21fd4b680c8bff50a019f",
+    "initial_entry_count": 0,
+    "outcome": "LEDGER_INITIALIZED_EXACT",
+    "overlap_status": "none",
+    "reparse_status": "none",
+    "resolved_path_hash": "b1fa589a36be8b2081eb1b50c7898c01a3c51cd57bb98a609b780fe41934e090"
+  },
+  "live_parity": {
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "next_gate": "NARROW_FIX_REQUIRED",
+  "next_narrow_task": "Align Short Completion materialization and real-run environment presence semantics for disabled diagnostic flags, then require a newly authorized single-use cohort; do not alter production Runtime behavior.",
+  "privacy": {
+    "absolute_paths_included": false,
+    "credentials_or_headers_included": false,
+    "prompt_or_manuscript_content_included": false,
+    "provider_response_included": false,
+    "status": "exact"
+  },
+  "protected_source_diff_count": 0,
+  "same_window_manual_handling": {
+    "analysis_allowed": true,
+    "same_approval_reexecution_allowed": false,
+    "status": "approval_reserved_replay_blocked"
+  },
+  "schema": "ShortCompletionScOps1ExecutionReportV1",
+  "short_completion_goal_outcome": "NOT_EVALUATED_PRE_PROVIDER_FINGERPRINT_BLOCK",
+  "validate_only": {
+    "approval_ledger_state": "unused",
+    "approval_state": "signed_approval_exact_and_executable",
+    "external_action_counters_all_zero": true,
+    "ordered_check_count": 36,
+    "overall_status": "exact",
+    "validation_receipt_sha256": "64e723c8bc68ecc27157458acf2325cbe4220181fed40b9848b5ac905f1668a0"
+  },
+  "version": 1,
+  "workflow_final_outcome": "CANARY_INFRASTRUCTURE_FAILURE"
+}

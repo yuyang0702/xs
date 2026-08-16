@@ -1,0 +1,36 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "created_at": "2026-08-16T08:49:13Z",
+  "private_hash_bound_evidence": {
+    "approval_reservation_receipt": {
+      "file_sha256": "387f1b9ed2b3e82014f9f9b4cc2cc156177245a26853083ec952badd8c5480f2"
+    },
+    "canary_database": {
+      "file_sha256": "d7403ca0b7609ae776e1c2dc098b45c8b6c7f003293d7438cb715c60675ec0f6",
+      "size_bytes": 552960
+    },
+    "canary_root_sentinel": {
+      "file_sha256": "d5df15b44c354401568754470b86dc86cae3cae6d3685f70973b7c380b9639b1",
+      "size_bytes": 466
+    },
+    "project_mutation_journal": {
+      "file_sha256": "67e6e06e5138463474d8eaffd5724cf2b0419fe06760136aa5f2822dd9ab410e",
+      "size_bytes": 2242
+    },
+    "reliability_trace": {
+      "file_sha256": "cb1eae4a48b6a9a13797589e61c74d340344dcecc012677d6b1001bcb124a326",
+      "size_bytes": 1464
+    }
+  },
+  "public_evidence": {
+    "short-completion-1-confirmed-authorization-patch-v1.json": "496cb819541db90662f40a172c2c1362d33d5ddc3828c92ddafab9991caf9e1b",
+    "short-completion-1-sc-ops-1-execution-report-v1.json": "5c819a59d683645630df1f25a8b48fdb8749a6489def44f4ced74d037f66025e",
+    "short-completion-1-signed-approval-v1.json": "db59a4876c8054363b1e21c1fedf09a34ec00ad824adfc0068c0ef97e037d63e"
+  },
+  "schema": "ShortCompletionScOps1EvidenceSha256ManifestV1",
+  "validate_only_receipt": {
+    "canonical_sha256": "64e723c8bc68ecc27157458acf2325cbe4220181fed40b9848b5ac905f1668a0",
+    "raw_receipt_committed": false
+  },
+  "version": 1
+}
