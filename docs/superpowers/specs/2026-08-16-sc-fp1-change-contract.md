@@ -107,4 +107,3 @@ reserved Ledger remain untouched. No production-data rollback is required.
 No model-output parser, prompt, generated artifact, narrative validator, or formal
 promotion boundary changes. Planning through Maintenance consume the same model
 and business paths; only the pre-provider Canary identity gate changes.
-
