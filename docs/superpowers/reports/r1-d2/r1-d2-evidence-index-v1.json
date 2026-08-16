@@ -1,0 +1,17 @@
+{
+  "schema": "R1D2EvidenceIndexV1",
+  "version": 1,
+  "gate": "R1_D2_ROOT_CAUSE_VERIFIED",
+  "entries": [
+    "docs/superpowers/reports/r1-d2/r1-d2-root-cause-verification-v1.md",
+    "docs/superpowers/reports/r1-d2/r1-d2-root-cause-verification-v1.json",
+    "tests/fixtures/reliability/r1_d2/draft-mixed-script-closure-v1.json",
+    "tests/test_r1_d2_draft_mixed_script_root_cause.py",
+    "tools/diagnostics/r1_d2_draft_mixed_script.py"
+  ],
+  "production_source_modified": false,
+  "raw_private_evidence_committed": false,
+  "real_provider_calls": 0,
+  "paid_model_calls": 0,
+  "network_calls": 0
+}

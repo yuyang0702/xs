@@ -1,0 +1,37 @@
+{
+  "schema": "R1D2DeliverySha256ManifestV1",
+  "version": 1,
+  "source_commit": "b20897757f6eec15640ff020256e2163eb91848c",
+  "algorithm": "sha256",
+  "path_normalization": "repo-relative-forward-slash",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-d2/r1-d2-evidence-index-v1.json",
+      "sha256": "3b4e1622b91a4e82343330a6972ca142393033fa280349342d9a36cb375a6269"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d2/r1-d2-root-cause-verification-v1.json",
+      "sha256": "0d2987dffdcf2b520fab85ce8d527abcc39d7bd2519024b81e102733f150215e"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d2/r1-d2-root-cause-verification-v1.md",
+      "sha256": "3d4eb3e6c65ceb5ccff4fddebf7854f8977395ee2d4dbe1f4279aab2e0c96868"
+    },
+    {
+      "path": "tests/fixtures/reliability/r1_d2/draft-mixed-script-closure-v1.json",
+      "sha256": "5771c1f84dfca51c9f31443ea885f361eba64c177fc8a83bf0df1d0b66f1f8d0"
+    },
+    {
+      "path": "tests/test_r1_d2_draft_mixed_script_root_cause.py",
+      "sha256": "e45df21c6194c0c3099dfec4dd9a4653976c26d1c1fabecc3b579424609cac08"
+    },
+    {
+      "path": "tools/diagnostics/__init__.py",
+      "sha256": "f8582e7bb7f1b5156966d732748dfebb081b843d7ece5b7c9990f7478f4882ca"
+    },
+    {
+      "path": "tools/diagnostics/r1_d2_draft_mixed_script.py",
+      "sha256": "d411a42e7407ab1a68aac618eba00cfbcda54ef84cfbc79232945e1e918e45f0"
+    }
+  ]
+}
