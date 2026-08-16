@@ -1,0 +1,47 @@
+{
+  "schema": "R1D3EvidenceIndexV1",
+  "version": 1,
+  "gate": "R1_D3_NARROW_FIX_READY",
+  "implementation_commit": "148ddc62c8065ea86b0a70e20e9ceffb5d56f141",
+  "artifacts": [
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-change-contract-v1.json",
+      "role": "authorized_scope_and_invariants"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-forward-risk-v2.json",
+      "role": "closed_world_forward_risk"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-strict-change-gate-v1.json",
+      "role": "strict_change_gate_summary"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-clean-room-review-v1.json",
+      "role": "single_agent_review_without_independence_claim"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-prompt-policy-manifest-v1.json",
+      "role": "initial_and_retry_prompt_identity"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-validation-receipt-v1.json",
+      "role": "machine_readable_final_receipt"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-narrow-fix-report-v1.md",
+      "role": "human_readable_final_report"
+    },
+    {
+      "path": "tests/fixtures/reliability/r0f/r1-d3-authorized-protected-source-successor-v1.json",
+      "role": "protected_source_successor_baseline"
+    },
+    {
+      "path": "tests/test_r1_d3_draft_retry_findings.py",
+      "role": "focused_characterization_and_production_shaped_fake_replay"
+    }
+  ],
+  "private_evidence_committed": false,
+  "real_canary_executed": false,
+  "signed_approval_materialized": false
+}

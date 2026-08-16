@@ -1,0 +1,77 @@
+{
+  "schema": "R1D3Sha256ManifestV1",
+  "version": 1,
+  "algorithm": "SHA-256",
+  "encoding_note": "Hashes bind exact file bytes; paths are repository-relative and slash-normalized.",
+  "manifest_self_included": false,
+  "files": [
+    {
+      "path": "docs/maintenance.md",
+      "sha256": "944995e17528225db2f9fbc0446ad0a5c2f3a503af43d044ffa1c4f7b16f000a",
+      "bytes": 259080
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-change-contract-v1.json",
+      "sha256": "bc8f3cc3341cde9fa1586d31b7576989a8f99fa4712cb78daee0e1ac29196076",
+      "bytes": 1396
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-clean-room-review-v1.json",
+      "sha256": "a3854cefb98916a79eab924f24c4073d4ed4ee2a8271453581821802d365993d",
+      "bytes": 734
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-evidence-index-v1.json",
+      "sha256": "afcc639e9613fab34303455368c3eed7a3b95681711517430bdb3663eff4fcc7",
+      "bytes": 1592
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-forward-risk-v2.json",
+      "sha256": "577f544ac35556235f812649fdfb47ee64b651193ecf70edee641cdb7d23e63f",
+      "bytes": 11029
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-narrow-fix-report-v1.md",
+      "sha256": "1b8b13c27ade825286be2505e73d8ef933db18ee06ce96acdca3272c1fe89397",
+      "bytes": 5796
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-prompt-policy-manifest-v1.json",
+      "sha256": "65bdbec4d0b342cf4b1e662b69260e617420a3d676f532de4bbe65d0e69dbbc4",
+      "bytes": 1682
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-strict-change-gate-v1.json",
+      "sha256": "ee5353f4ee6b411a831c94a854a46a1e860c17f30eba39bc2aa67fe1682021d2",
+      "bytes": 571
+    },
+    {
+      "path": "docs/superpowers/reports/r1-d3/r1-d3-validation-receipt-v1.json",
+      "sha256": "70fc7ab976ffd5742a63119ef2a226371bf2ce830c3cf33ef48891be8a09e72f",
+      "bytes": 8925
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "sha256": "b137eaff591c59ea55bdeffe864822858c37796bacb95687d3fc94fe2601ebed",
+      "bytes": 1346071
+    },
+    {
+      "path": "tests/fixtures/reliability/r0f/r1-d3-authorized-protected-source-successor-v1.json",
+      "sha256": "5b93c3c446435d3abb497831a01e7c6775363c1a4331b3094fa07da0476bc591",
+      "bytes": 2227
+    },
+    {
+      "path": "tests/test_r0f_baseline.py",
+      "sha256": "21f56a11eba4f4d2b1cba5a3f3b42c9284dba62f910e4869703ff11dea2f202a",
+      "bytes": 5150
+    },
+    {
+      "path": "tests/test_r1_d3_draft_retry_findings.py",
+      "sha256": "d84c202a975655e64f96b063368542d6c550c08b813139889dd25c606a91bcfb",
+      "bytes": 23353
+    }
+  ],
+  "raw_prompt_included": false,
+  "raw_story_text_included": false,
+  "credentials_or_headers_included": false
+}

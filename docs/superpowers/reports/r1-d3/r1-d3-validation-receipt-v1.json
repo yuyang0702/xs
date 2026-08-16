@@ -1,0 +1,176 @@
+{
+  "schema": "R1D3ValidationReceiptV1",
+  "version": 1,
+  "gate": "R1_D3_NARROW_FIX_READY",
+  "branch": "r1-d3/draft-retry-finding-propagation-20260816",
+  "parent_head": "d992b1b0c7cfdd957df71f8bdb0d75bf4c9d41ab",
+  "implementation_commit": "148ddc62c8065ea86b0a70e20e9ceffb5d56f141",
+  "parent_real_canary_evidence_commit": "b20897757f6eec15640ff020256e2163eb91848c",
+  "production_files_changed": [
+    "src/novel_flywheel/workflows.py"
+  ],
+  "production_call_graph": [
+    "WorkflowService._draft_short_segment_task",
+    "WorkflowService._stage(role=draft)",
+    "WorkflowService._draft_segment_findings",
+    "prose_quality.analyze_prose",
+    "mixed_script_decisions(decision=reject_unapproved_mixed_script)",
+    "build_draft_retry_findings",
+    "retry_same_scope",
+    "WorkflowService._draft_short_segment_task(retry_findings=current tuple)",
+    "render_actionable_draft_validation_findings",
+    "WorkflowService._stage(role=draft, existing retry)",
+    "recompute findings from the new Draft",
+    "accept_node -> WorkflowService._verify_draft_semantic_node"
+  ],
+  "finding_contract": {
+    "schema": "DraftRetryFindingV1",
+    "version": 1,
+    "fields": [
+      "schema",
+      "version",
+      "finding_code",
+      "validator_reason_code",
+      "normalized_item",
+      "occurrence_count",
+      "authority_status",
+      "validator_policy_sha256",
+      "authority_snapshot_reference_sha256",
+      "retry_scope_id",
+      "finding_identity_sha256"
+    ],
+    "eligible_validator_decision": "reject_unapproved_mixed_script",
+    "finding_code": "unapproved_mixed_script",
+    "authority_status": "unapproved",
+    "maximum_findings": 16,
+    "maximum_item_characters": 96,
+    "maximum_occurrences_per_identity": 256,
+    "maximum_serialized_bytes": 4096,
+    "serialization": "canonical UTF-8 JSON with sorted keys and no NaN",
+    "persistence": "process-local retry input only; existing receipt remains hash-only"
+  },
+  "binding_proofs": {
+    "validator_generates_structured_decision": true,
+    "exact_token_recovered_by_current_draft_sha256": true,
+    "same_finding_identity_reaches_retry_builder": true,
+    "retry_input_contains_actionable_finding": true,
+    "next_draft_findings_recomputed": true,
+    "stale_findings_accumulated": false,
+    "no_finding_path_byte_parity": true
+  },
+  "prompt_policy": {
+    "initial_before_sha256": "24ff78bda316093b453844cd276a8105ed1e9a79839f168d944b28883d5befad",
+    "initial_after_sha256": "24ff78bda316093b453844cd276a8105ed1e9a79839f168d944b28883d5befad",
+    "retry_before_sha256": "0cd3ce0e17294da0b4347e2d47f19c55005fb8d06f25b85ba76c4f9f3eef5128",
+    "retry_after_sha256": "c1cde435c0caf77ac98f05aae9f95385f1486250384ff914b8729949283d3171",
+    "manifest_before_sha256": "05f452760954a20eea76825dd82b3e47c985e8d7b21af1329e635b1927478ca4",
+    "manifest_after_sha256": "72282e5c12a101592d26d18d15a618afcd6b10688f4d79bac902c9337579d68c"
+  },
+  "runtime_fingerprints": {
+    "profile": "r1-d3-offline-fingerprint-profile-v1",
+    "build_before_definition_sha256": "b8208b4d96aad1e6ecdb8ee828b29842e6c65b058cc4eaf9963eab9e945f9a1e",
+    "build_before_sha256": "3fab2deb66d00eb5ba33d3a98292a6ef65ed11cd1a416953388b772f317b2c3f",
+    "build_after_definition_sha256": "af8805a959bcc0bd0729c2e9b55d7ebc746947999a215caa6fcf5084080f6a2f",
+    "build_after_sha256": "771f86c5c735fcc39cb499e9a87014b226ab20c60abf3e148393de1e4268a59a",
+    "build_after_status": "verified_git_workspace",
+    "config_before_definition_sha256": "9348721ae25e62ea4fa9a6d4eca9c30b6760493953b248f87cf492cabdff43fc",
+    "config_before_sha256": "3e0ff5f5a05ef8f7a6569cc6ecb3d92b1feb1e502e7ab3c6d51ada024b2434eb",
+    "config_after_definition_sha256": "9348721ae25e62ea4fa9a6d4eca9c30b6760493953b248f87cf492cabdff43fc",
+    "config_after_sha256": "3e0ff5f5a05ef8f7a6569cc6ecb3d92b1feb1e502e7ab3c6d51ada024b2434eb",
+    "runtime_before_definition_sha256": "ae344b71a38cee5b3de47dbfc8162b6bee3d1382b8ee35e65df18109d7e3bf4a",
+    "runtime_before_sha256": "7cc2332f0141fb25518b9d56360d8d57949b8a4d7a2e32ba4189324b5e9ea575",
+    "runtime_after_definition_sha256": "2bc8d0bb793c9b33689bebc9d44498635a1b2c006efcd630a07a6bcf39e3aaf3",
+    "runtime_after_sha256": "d502521d328722226b6b7676c2eb8b89ef9daf6b911caf179a5b60a7084f1d80",
+    "feature_flag_semantic_before_after_sha256": "1a1b11d4a02e6aa9c05d5a615e8a1b8ba4dfdfd8b0e95e0537489dc0bee8ab1e",
+    "credential_material_included": false
+  },
+  "completion_contract_bindings": {
+    "draft_validator_policy_before_after_sha256": "7e9f52cf3c5600423c6abe63a7de6d8449db81bfcd7260585da5d8b59e22fdac",
+    "mixed_script_policy_before_after_sha256": "11c8a15e84c7c76154b60b047f9048468c93d60ee6c383b5b66dadd2c1066d1d",
+    "final_review_before_sha256": "6f3502224b72f4d5946854b12756122e4a5cd8e78a2464748a597e6880b1faca",
+    "final_review_after_sha256": "5f3c3102e16cc269c3364700da53a3ad4fdc53e92cefbfaa1801f0810ddfacc8",
+    "maintenance_before_sha256": "7f9713049b613165f6b56cacb6d0063b20545684ca125abcc72277e62e7aee1b",
+    "maintenance_after_sha256": "cfd4c85b73d3ae93b432ec7b31a4c32bfed9244d4cdd8b511c0c2154cad11c4a",
+    "binding_only_reason": "Final Review and Maintenance definitions include the whole workflows.py production source hash; their code and behavior did not change."
+  },
+  "retry_and_route_parity": {
+    "same_scope_retry_limit_before": 2,
+    "same_scope_retry_limit_after": 2,
+    "maximum_draft_attempts_before": 3,
+    "maximum_draft_attempts_after": 3,
+    "short_canary_total_model_call_upper_bound_before": 48,
+    "short_canary_total_model_call_upper_bound_after": 48,
+    "primary_fallback_schedule_changed": false,
+    "provider_or_model_binding_changed": false,
+    "output_budget_changed": false,
+    "first_terminal_stop_changed": false
+  },
+  "validator_parity": {
+    "prose_quality_source_changed": false,
+    "r1_d1_source_sha256": "b56475366aa7f64edc2f65f03ebf87dc76ed454751661efd0346631888a50789",
+    "approved_term_outcome": "accepted_without_retry_finding",
+    "unapproved_term_outcome": "rejected_with_actionable_finding",
+    "actual_corruption_outcome": "rejected",
+    "stale_authority_outcome": "fail_closed",
+    "r1_d1_regression": "NO"
+  },
+  "fake_replay": {
+    "case_a_convergence": "passed_and_crossed_semantic_review",
+    "case_b_ignore_finding": "terminal_after_same_two_retries",
+    "case_c_new_item": "current_only_finding_refreshed_without_stale_item",
+    "case_d_approved_latin": "accepted_without_retry_finding",
+    "unrelated_text_drift": "sanitized unaffected paragraph hash and event order preserved"
+  },
+  "tests": {
+    "pre_fix_characterization": "1 failed during import because DraftRetryFindingContractError did not exist",
+    "focused": "30 passed in 4.66s",
+    "focused_plus_successor": "33 passed in 5.17s",
+    "related": "465 passed, 1 xfailed in 426.83s",
+    "canary_identity_recovery_after_clean_commit": "87 passed in 338.21s",
+    "full_suite": {
+      "passed": 2828,
+      "skipped": 24,
+      "xfailed": 6,
+      "failed": 1,
+      "errors": 0,
+      "duration_seconds": 1454.41,
+      "new_failures": 0,
+      "pre_existing_failure": "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical"
+    }
+  },
+  "live_parity": {
+    "before_after_exact": true,
+    "database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_story_sha256": "101221ae2af393e514b2d73c921d97689611de3339e584b1b0ded819a940c745",
+    "canon_sha256": "5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc",
+    "candidate_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "checkpoint_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "saga_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "story_state_rows": 6,
+    "story_candidate_rows": 11,
+    "workflow_checkpoint_rows": 917
+  },
+  "external_actions": {
+    "real_model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "credential_lookups": 0,
+    "provider_clients_created": 0,
+    "real_canary_executed": false,
+    "signed_approval_materialized": false
+  },
+  "privacy": {
+    "raw_story_text_included": false,
+    "raw_prompt_included": false,
+    "private_provider_response_included": false,
+    "credentials_or_headers_included": false,
+    "private_evidence_committed": false
+  },
+  "residual_risks": [
+    "draft.retry_scope_too_broad remains characterized; R1-D3 adds minimal-edit instructions but does not enforce a semantic diff contract.",
+    "No real Provider execution proves that a production model converges on the actionable finding.",
+    "Future Short Completion Canary material must use the new Build, Runtime, Prompt Policy, Final Review binding, and Maintenance binding identities."
+  ],
+  "real_short_completion_canary": "NOT_EXECUTED",
+  "new_single_use_approval_required": "YES"
+}

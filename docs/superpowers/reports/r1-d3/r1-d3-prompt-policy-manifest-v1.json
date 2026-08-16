@@ -1,0 +1,45 @@
+{
+  "schema": "R1D3PromptPolicyManifestV1",
+  "version": 1,
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "encoding": "UTF-8",
+  "fixture": {
+    "workload_id": "short-normal-v1",
+    "fixture_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+    "raw_content_included": false
+  },
+  "initial_draft_prompt": {
+    "before_sha256": "24ff78bda316093b453844cd276a8105ed1e9a79839f168d944b28883d5befad",
+    "after_sha256": "24ff78bda316093b453844cd276a8105ed1e9a79839f168d944b28883d5befad",
+    "before_bytes": 1032,
+    "after_bytes": 1032,
+    "status": "byte_identical"
+  },
+  "draft_retry_prompt": {
+    "before_sha256": "0cd3ce0e17294da0b4347e2d47f19c55005fb8d06f25b85ba76c4f9f3eef5128",
+    "after_sha256": "c1cde435c0caf77ac98f05aae9f95385f1486250384ff914b8729949283d3171",
+    "before_bytes": 1119,
+    "after_bytes": 2522,
+    "structured_finding_delta_bytes": 1403,
+    "status": "authorized_retry_only_change"
+  },
+  "overall_canary_prompt_policy": {
+    "domain": "novel-flywheel-canary-prompt-policy-v1",
+    "formula_fields": [
+      "build_fingerprint",
+      "fixture_sha256",
+      "prompt_mutation_allowed"
+    ],
+    "prompt_mutation_allowed": false,
+    "before_sha256": "05f452760954a20eea76825dd82b3e47c985e8d7b21af1329e635b1927478ca4",
+    "after_sha256": "72282e5c12a101592d26d18d15a618afcd6b10688f4d79bac902c9337579d68c",
+    "status": "changed_and_requires_new_canary_binding"
+  },
+  "coverage": {
+    "initial_prompt": "exact_bytes",
+    "retry_instruction": "exact_sanitized_bytes",
+    "production_build": "content_fingerprint",
+    "raw_prompt_persisted": false,
+    "raw_draft_persisted": false
+  }
+}

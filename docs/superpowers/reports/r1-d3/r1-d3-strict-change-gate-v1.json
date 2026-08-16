@@ -1,0 +1,24 @@
+{
+  "schema": "R1D3StrictChangeGateV1",
+  "version": 1,
+  "declared_level": "L3",
+  "automatic_level": "L3",
+  "recommended_level": "L3",
+  "baseline_used": true,
+  "baseline_path_role": "task_local_outside_repository",
+  "forward_risk_version": 2,
+  "scope_classification": "closed_world",
+  "resolution_status": "case_fixed",
+  "core_paths": [
+    "src/novel_flywheel/workflows.py"
+  ],
+  "related_tests": [
+    "tests/test_r1_d3_draft_retry_findings.py"
+  ],
+  "documentation_paths": [
+    "docs/maintenance.md"
+  ],
+  "warnings": [],
+  "blockers": [],
+  "ok": true
+}
