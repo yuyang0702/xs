@@ -1,0 +1,68 @@
+{
+  "approval": {
+    "approval_method": "manual_user_confirmation",
+    "approval_reservation_status": "not_reserved",
+    "approval_usage_status": "unused",
+    "confirmed_authorization_patch_canonical_sha256": "fd2e251bf4073d718ee3d90363765bf393df5f9c4c011b10840a8a8086e13d54",
+    "confirmed_authorization_patch_file_sha256": "496cb819541db90662f40a172c2c1362d33d5ddc3828c92ddafab9991caf9e1b",
+    "named_approver": "project_owner_20260816",
+    "signed_approval_canonical_sha256": "fd39172fa06afc4991f943c69e7208f532df0ee9f53b1750ad406f04a2c5cb6b",
+    "signed_approval_consumption_status": "not_consumed",
+    "signed_approval_file_sha256": "db59a4876c8054363b1e21c1fedf09a34ec00ad824adfc0068c0ef97e037d63e"
+  },
+  "branch": "sc-auth-1/short-completion-profile-20260816",
+  "build_fingerprint": "a3134c453f37791580c98021bf9a42a59a084117216c08a2435ad3438261c25d",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "cohort_id": "short-completion-1-20260816t061700z",
+  "execution": {
+    "canary_root_created": false,
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_workflow_started": false,
+    "second_run_performed": false
+  },
+  "execution_config_fingerprint": "6f047d7fac61794f704b92397addd00475980c3bafab0f21b3ccb8d4e72b2277",
+  "head": "8b27c8b3c0dffa7237b2bf1dee31d1bef74c7531",
+  "live_parity": {
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "next_gate": "CONTINUE_NO_GO",
+  "privacy": {
+    "absolute_paths_in_public_evidence": false,
+    "credentials_or_headers_included": false,
+    "prompt_or_manuscript_content_included": false,
+    "provider_raw_response_included": false,
+    "status": "exact"
+  },
+  "production_source_diff_count": 0,
+  "reason": {
+    "classification": "pre_execution_isolation_setup_mismatch",
+    "first_divergent_node": "approval_ledger_status_read",
+    "reason_code": "approval_ledger_root_absent",
+    "retry_performed": false,
+    "sanitized_detail": "The independently designated Approval Ledger root did not exist when the formal validate-only closure attempted to read its unused state."
+  },
+  "runtime_execution_fingerprint": "c43ad3e4e58f95e8945982df4b6c089b42f8f9c72dc1dd2040ba018e21025cae",
+  "schema": "ShortCompletionPreExecutionBlockReportV1",
+  "short_completion_goal_outcome": "NOT_EVALUATED_PRE_EXECUTION_BLOCK",
+  "signed_approval_validate_only": {
+    "approval_document_kind": "unknown",
+    "approval_ledger_state": "unknown",
+    "approval_state": "unknown",
+    "execution_performed": false,
+    "formal_outcome": "CANARY_BLOCKED_PRE_PROVIDER",
+    "network_call_count": 0,
+    "overall_status": "blocked",
+    "public_reason_code": "approval_ledger_root_absent",
+    "raw_receipt_committed": false,
+    "raw_receipt_privacy_binding_status": "hash_only",
+    "validation_receipt_canonical_sha256": "d0c64f26cd0292c6f679155f6fddc3fc117265f39af91624f40ea57d9c111da6"
+  },
+  "version": 1,
+  "workflow_final_outcome": "SHORT_COMPLETION_CANARY_BLOCKED_PRE_EXECUTION_MISMATCH"
+}
