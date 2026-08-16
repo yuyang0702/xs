@@ -1,0 +1,27 @@
+{
+  "schema": "R1PTR1ValidationReceiptV1",
+  "version": 1,
+  "gate": "R1_PTR1_OBSERVABILITY_READY",
+  "branch": "r1-ptr1/planning-repair-evidence-closure-20260817",
+  "parent_head": "4305858dee4843ce2f83a2cc1ebf1f02f58a3804",
+  "implementation_commit": "97158ccd9cec26506965e784a0d975cf4ba45a13",
+  "diagnostic_only": true,
+  "prompt_changed": false,
+  "route_or_model_changed": false,
+  "retry_or_fallback_changed": false,
+  "output_budget_changed": false,
+  "domain_validator_changed": false,
+  "business_artifact_changed": false,
+  "real_provider_observation": "NOT_EXECUTED",
+  "production_fix": "NOT_IMPLEMENTED",
+  "new_single_use_approval_required_for_observation": true,
+  "full_suite_status": "known_fail_closed_legacy_evidence_and_pre_existing_oracle_only",
+  "new_runtime_regressions": 0,
+  "external_actions": {
+    "provider": 0,
+    "network": 0,
+    "paid_model": 0,
+    "canary": 0
+  },
+  "definition_sha256": "12eedeac3ba83c74d7bb422eb26378fcc7e778a2bcb96c8a866ddb8a25fd4add"
+}

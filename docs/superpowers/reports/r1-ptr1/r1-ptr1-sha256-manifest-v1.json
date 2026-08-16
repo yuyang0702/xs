@@ -1,0 +1,33 @@
+{
+  "schema": "R1PTR1Sha256ManifestV1",
+  "version": 1,
+  "canonicalization_version": "file-bytes-sha256-v1",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr1/r1-ptr1-forward-risk-v2.json",
+      "bytes": 1664,
+      "sha256": "104e100be182b7ab03ee544e9a5dbb54fc54a20f077498d5edf4b510ef97f1e1"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr1/r1-ptr1-observability-evidence-v1.json",
+      "bytes": 6720,
+      "sha256": "1853ea019f9c700a1afd3ad81d41e7d00858c8c670c4b036e13fa838a5890f17"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr1/r1-ptr1-observability-readiness-v1.md",
+      "bytes": 12286,
+      "sha256": "607e5973615bf410d80b27f018a7aa662dddb1edc9d8c6c6df9898c4d3594168"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr1/r1-ptr1-single-review-v1.json",
+      "bytes": 669,
+      "sha256": "27bcfd43472986f458b3090c33ad3547a56ee055b4383512e7541f938372cb51"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr1/r1-ptr1-validation-receipt-v1.json",
+      "bytes": 995,
+      "sha256": "cf66125069a8a5e8ecb7893cacca382f72d86543b61c2e2bd469e46405d324b9"
+    }
+  ],
+  "definition_sha256": "42a6ee0eaa83da8a2d572008db232f43438bd7431dea5672f8d1cb88840929fe"
+}

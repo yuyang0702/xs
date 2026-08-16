@@ -1,0 +1,153 @@
+{
+  "schema": "R1PTR1ObservabilityEvidenceV1",
+  "version": 1,
+  "canonicalization_version": "canonical-json-sort-keys-utf8-v1",
+  "gate": "R1_PTR1_OBSERVABILITY_READY",
+  "parent_head": "4305858dee4843ce2f83a2cc1ebf1f02f58a3804",
+  "implementation_commit": "97158ccd9cec26506965e784a0d975cf4ba45a13",
+  "parent_manifest_sha256": "0d458efdda2f1e176bdca9e3bb87e9e90e8de444264954c6dc95380d53c83a57",
+  "feature_flag": {
+    "name": "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1",
+    "default": false,
+    "diagnostic_only": true,
+    "existing_canary_profiles_explicit_false": true,
+    "existing_canary_profiles_forbid_true": true
+  },
+  "schemas": [
+    "PlanningRepairDomainValidationSnapshotV1",
+    "PlanningRepairFindingPropagationSnapshotV1",
+    "ProviderContentBlockShapeSnapshotV1",
+    "PlanningRepairOutputLimitObservationV1"
+  ],
+  "offline_parity": {
+    "request_manifest_before_sha256": "7f4d224c1c81e98e0b1b95b217414b8678b08ab8ca949cb399837236e363b852",
+    "request_manifest_after_sha256": "7f4d224c1c81e98e0b1b95b217414b8678b08ab8ca949cb399837236e363b852",
+    "prompt_attempt_sha256s_before": [
+      "b69eea99b484b9f5dd23a2e3e65c5d14142068d89462b9ffd148f9a688c6fedb",
+      "b69eea99b484b9f5dd23a2e3e65c5d14142068d89462b9ffd148f9a688c6fedb",
+      "b69eea99b484b9f5dd23a2e3e65c5d14142068d89462b9ffd148f9a688c6fedb",
+      "ff24a9b3f6aa938f27cfb6e25cda6925fe203dea53e96c968eccabf786d63f9e"
+    ],
+    "prompt_attempt_sha256s_after": [
+      "b69eea99b484b9f5dd23a2e3e65c5d14142068d89462b9ffd148f9a688c6fedb",
+      "b69eea99b484b9f5dd23a2e3e65c5d14142068d89462b9ffd148f9a688c6fedb",
+      "b69eea99b484b9f5dd23a2e3e65c5d14142068d89462b9ffd148f9a688c6fedb",
+      "ff24a9b3f6aa938f27cfb6e25cda6925fe203dea53e96c968eccabf786d63f9e"
+    ],
+    "route_sequence_before": [
+      "primary",
+      "primary",
+      "configured_fallback",
+      "configured_fallback"
+    ],
+    "route_sequence_after": [
+      "primary",
+      "primary",
+      "configured_fallback",
+      "configured_fallback"
+    ],
+    "model_sequence_before": [
+      "primary-model",
+      "primary-model",
+      "fallback-model",
+      "fallback-model"
+    ],
+    "model_sequence_after": [
+      "primary-model",
+      "primary-model",
+      "fallback-model",
+      "fallback-model"
+    ],
+    "output_budget_sequence_before": [1977, 1977, 1977, 3954],
+    "output_budget_sequence_after": [1977, 1977, 1977, 3954],
+    "terminal_exception_before": "ContractOutputLimitExhaustedError",
+    "terminal_exception_after": "ContractOutputLimitExhaustedError",
+    "terminal_message_before_sha256": "6a8de9acd3a80775bb3071eb41ac18dccf3f0fe2342bbadb50d1caa105d0ecda",
+    "terminal_message_after_sha256": "6a8de9acd3a80775bb3071eb41ac18dccf3f0fe2342bbadb50d1caa105d0ecda"
+  },
+  "synthetic_event_counts": {
+    "diagnostic_planning_repair_domain": 2,
+    "diagnostic_planning_repair_finding_propagation": 3,
+    "diagnostic_planning_repair_output_limit": 2,
+    "diagnostic_provider_content_block_shape": 4
+  },
+  "runtime_fingerprints": {
+    "before": {
+      "build": "771f86c5c735fcc39cb499e9a87014b226ab20c60abf3e148393de1e4268a59a",
+      "execution_config": "3e0ff5f5a05ef8f7a6569cc6ecb3d92b1feb1e502e7ab3c6d51ada024b2434eb",
+      "runtime_execution": "d502521d328722226b6b7676c2eb8b89ef9daf6b911caf179a5b60a7084f1d80"
+    },
+    "after_flag_disabled": {
+      "build": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+      "execution_config": "71ddad704d5dfa104911856083850a22db4580ba4878d95f31fe12b585429760",
+      "runtime_execution": "4f9c02873d7cd99b3cdc0834a8292fd3fbf121845a3b073cc8e631d36c8c7944"
+    },
+    "after_flag_enabled": {
+      "build": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+      "execution_config": "23885f69268f46c578406299599be8786e4c7d70bf09484d415ad80f211daeb7",
+      "runtime_execution": "539adc71903c7b43cc0a37eb719c2bbe7dc5b9027dbe4a143e4ffa970cc9b72d"
+    }
+  },
+  "domain_validator": {
+    "id": "planning_repair_patch.normalize.v1",
+    "source_sha256_before": "a8c8c366033136494460b3ce65dda072d3a4505fcafe85281d4006c4b0381e3f",
+    "source_sha256_after": "a8c8c366033136494460b3ce65dda072d3a4505fcafe85281d4006c4b0381e3f",
+    "decision_changed": false
+  },
+  "live_parity": {
+    "parent_status": "exact",
+    "parent_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "parent_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "current_live_db_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_manifest_sha256": "585a2c8a435ec714bc839efae4bc92a2a4a3e131198623629e15d51880956908",
+    "canon_manifest_sha256": "d560044730a61382b401643a8159f58e07d919b601b97e931e8785b827bd84b0",
+    "candidate_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "checkpoint_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "saga_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "tests": {
+    "focused": {"passed": 16, "failed": 0},
+    "related_runtime_cluster": {"passed": 330, "failed": 0, "duration_seconds": 105.24},
+    "identity_and_successor_cluster": {"passed": 72, "failed": 0, "duration_seconds": 51.60},
+    "clean_canary_cluster": {"passed": 90, "failed": 0, "duration_seconds": 331.05},
+    "full_suite": {
+      "passed": 2844,
+      "failed": 2,
+      "errors": 20,
+      "skipped": 41,
+      "xfailed": 6,
+      "duration_seconds": 1431.62,
+      "runtime_regressions": 0,
+      "known_failure_families": [
+        "pre_existing_r0_live_db_stale_oracle",
+        "r1_d3_historical_source_manifest_not_current_after_authorized_source_change"
+      ]
+    }
+  },
+  "external_actions": {
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "paid_model_calls": 0,
+    "real_canary_runs": 0,
+    "signed_approvals_materialized": 0,
+    "consumed_cohorts_reused": 0
+  },
+  "privacy": {
+    "prompt_content_included": false,
+    "story_content_included": false,
+    "normalized_payload_included": false,
+    "tool_arguments_included": false,
+    "provider_response_included": false,
+    "credentials_or_headers_included": false,
+    "absolute_paths_included": false
+  },
+  "remaining_evidence_gap": [
+    "real_call_7_exact_domain_rule_path_not_yet_observed",
+    "real_call_8_exact_payload_diff_not_yet_observed",
+    "real_call_9_10_provider_content_block_shape_not_yet_observed"
+  ],
+  "real_provider_observation": "NOT_EXECUTED",
+  "production_fix": "NOT_IMPLEMENTED",
+  "new_single_use_approval_required_for_observation": true,
+  "definition_sha256": "babfd54f033f0ec79302e7b156e1225b1105d034b88e82173ea8295f4277228b"
+}

@@ -1,0 +1,49 @@
+{
+  "schema": "ForwardRiskReportV2",
+  "version": 2,
+  "phase": "R1-PTR1",
+  "resolution_status": "contained_observability_ready_root_cause_open",
+  "model_output_boundary_changed": false,
+  "production_decision_changed": false,
+  "risk_level": "L3",
+  "closed_world": true,
+  "authorized_surface": "planning_repair_hash_only_fail_open_diagnostics",
+  "failure_modes": [
+    {
+      "id": "diagnostic_sink_failure",
+      "containment": "caught_and_dropped_original_business_result_preserved",
+      "evidence": "sink failure test preserves four dispatches and terminal exception"
+    },
+    {
+      "id": "diagnostic_hash_or_schema_failure",
+      "containment": "observer_returns_none_or_false_no_business_authority",
+      "evidence": "typed builders and fail-open observers"
+    },
+    {
+      "id": "provider_snapshot_lookup_gap",
+      "containment": "output observation permits null binding and never invents shape",
+      "evidence": "attempt-id bounded registry and optional snapshot SHA"
+    },
+    {
+      "id": "legacy_canary_identity_reuse",
+      "containment": "new flag explicit false and forbidden in all existing profiles",
+      "evidence": "clean Canary cluster 90/90; old R1-D3 source manifest fails closed"
+    }
+  ],
+  "unresolved": [
+    "real Call 7/8 Domain payload and exact finding",
+    "real Call 9/10 Provider content-block topology",
+    "unique primary root cause"
+  ],
+  "prohibited_conclusions": [
+    "finding_non_propagation_is_the_unique_primary_root_cause",
+    "provider_hidden_cap",
+    "production_fix_completed"
+  ],
+  "external_actions": {
+    "provider": 0,
+    "network": 0,
+    "paid_model": 0,
+    "canary": 0
+  }
+}

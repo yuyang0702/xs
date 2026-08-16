@@ -1,0 +1,17 @@
+{
+  "schema": "R1PTR1SingleReviewV1",
+  "version": 1,
+  "review_mode": "single_agent_clean_room",
+  "independent_review_claimed": false,
+  "parent_head": "4305858dee4843ce2f83a2cc1ebf1f02f58a3804",
+  "implementation_commit": "97158ccd9cec26506965e784a0d975cf4ba45a13",
+  "scope_check": "git_root_parent_manifest_protected_path_and_diff_equivalent_checks",
+  "repository_scripts_absent": [
+    "scripts/check_project_scope.py",
+    "scripts/inspect_change_gate.py"
+  ],
+  "review_findings": [],
+  "behavior_parity": "exact_offline_request_and_terminal_hashes",
+  "privacy_result": "no_raw_business_or_provider_content_in_diagnostic_contracts",
+  "external_actions": 0
+}
