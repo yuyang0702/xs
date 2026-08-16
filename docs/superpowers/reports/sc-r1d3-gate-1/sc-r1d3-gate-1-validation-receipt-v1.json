@@ -1,0 +1,79 @@
+{
+  "schema": "SCR1D3FingerprintProfileSeparationValidationReceiptV1",
+  "version": 1,
+  "gate": "SC_R1D3_FINGERPRINT_PROFILE_SEPARATION_READY",
+  "branch": "sc-r1d3-gate-1/fingerprint-profile-separation-20260816",
+  "parent_head": "4c28b162264d15c9dc020b623782116b7d1a2b6c",
+  "implementation_commit": "e5431ef",
+  "scope": {
+    "production_source_changed": false,
+    "baml_source_changed": false,
+    "canary_only": true
+  },
+  "collection_profiles": {
+    "r1_d3_offline": "r1-d3-offline-fingerprint-profile-v1",
+    "production_mirror_short": "production_mirror_short_v1",
+    "cross_profile_execution_identity_status": "NOT_COMPARABLE_CROSS_COLLECTION_PROFILE",
+    "cross_profile_reason_code": "fingerprint_collection_profile_not_comparable"
+  },
+  "old_erroneous_gate_reproduction": {
+    "build_equal": true,
+    "prompt_policy_equal": true,
+    "execution_config_equal": false,
+    "runtime_execution_equal": false,
+    "old_result": "SHORT_COMPLETION_R1D3_FINGERPRINT_MISMATCH",
+    "root_cause": "execution_config_and_runtime_hashes_from_different_collection_profiles_were_compared_for_equality"
+  },
+  "r1_d3_offline": {
+    "build_sha256": "771f86c5c735fcc39cb499e9a87014b226ab20c60abf3e148393de1e4268a59a",
+    "execution_config_sha256": "3e0ff5f5a05ef8f7a6569cc6ecb3d92b1feb1e502e7ab3c6d51ada024b2434eb",
+    "runtime_execution_sha256": "d502521d328722226b6b7676c2eb8b89ef9daf6b911caf179a5b60a7084f1d80",
+    "prompt_policy_sha256": "72282e5c12a101592d26d18d15a618afcd6b10688f4d79bac902c9337579d68c"
+  },
+  "fresh_production_mirror_observation": {
+    "build_sha256": "771f86c5c735fcc39cb499e9a87014b226ab20c60abf3e148393de1e4268a59a",
+    "execution_config_sha256": "2725078c0b0e56b8739bcff7d395081ac904fc4fb3d706b3b736ccd8d6bc5faa",
+    "runtime_execution_sha256": "1efd51615c3f6274c52042eb4056402db2844ad9d02cc227b3e23ac294ec57e1",
+    "prompt_policy_sha256": "72282e5c12a101592d26d18d15a618afcd6b10688f4d79bac902c9337579d68c",
+    "network_call_count": 0
+  },
+  "corrected_comparisons": {
+    "build": "exact",
+    "prompt_policy": "exact",
+    "cross_profile_execution_config": "not_comparable_by_design",
+    "cross_profile_runtime_execution": "not_comparable_by_design",
+    "same_profile_execution_config_drift": "fail_closed_execution_config_fingerprint_mismatch",
+    "same_profile_runtime_execution_drift": "fail_closed_runtime_execution_fingerprint_mismatch",
+    "unknown_profile": "fail_closed_fingerprint_collection_profile_unknown",
+    "missing_profile": "fail_closed_fingerprint_collection_profile_missing"
+  },
+  "regression_results": {
+    "red_characterization": "collection_error_before_fingerprint_profiles_module_existed",
+    "focused": "26 passed",
+    "compatibility_matrix": "74 passed, 2 skipped",
+    "all_canary": "239 passed, 2 skipped",
+    "full_suite": "2842 passed, 24 skipped, 6 xfailed, 1 failed",
+    "pre_existing_failure": "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+    "new_failures": 0
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  },
+  "live_parity": {
+    "status": "exact",
+    "database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_story_sha256": "101221ae2af393e514b2d73c921d97689611de3339e584b1b0ded819a940c745",
+    "canon_sha256": "5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc",
+    "story_state_rows": 6,
+    "story_candidate_rows": 11,
+    "workflow_checkpoint_rows": 917
+  },
+  "signed_approval_materialized": false,
+  "confirmed_authorization_patch_materialized": false,
+  "approval_reserved": false,
+  "real_canary_executed": false
+}

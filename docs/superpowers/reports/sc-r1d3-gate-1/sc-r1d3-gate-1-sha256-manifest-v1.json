@@ -1,0 +1,22 @@
+{
+  "schema": "SCR1D3Gate1Sha256ManifestV1",
+  "version": 1,
+  "algorithm": "SHA-256",
+  "encoding_note": "Hashes bind exact file bytes; paths are repository-relative and slash-normalized.",
+  "manifest_self_included": false,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-report-v1.md",
+      "sha256": "c6143af23129a9df14ea19fd629279bf77bdf0820fb16a613b76e277510c153c",
+      "bytes": 3666
+    },
+    {
+      "path": "docs/superpowers/reports/sc-r1d3-gate-1/sc-r1d3-gate-1-validation-receipt-v1.json",
+      "sha256": "469bd266a89ac3e7650e4deb454191fc2dc25e89830309684c9a7e06b77cdef4",
+      "bytes": 3776
+    }
+  ],
+  "raw_prompt_included": false,
+  "raw_story_text_included": false,
+  "credentials_or_headers_included": false
+}
