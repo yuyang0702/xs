@@ -1,0 +1,48 @@
+{
+  "schema": "R1PTR0CharacterizationFixtureV1",
+  "version": 1,
+  "raw_content_included": false,
+  "prompt_content_included": false,
+  "tool_arguments_included": false,
+  "absolute_paths_included": false,
+  "parent": {
+    "commit": "d0d9427af9c191aa09f9b1da4fb9881a253f4efc",
+    "evidence_sha256": "d431e377a9924ad8fa1fde8ab3cd278e612ae563adc2e0eca53444284b7c29ab",
+    "manifest_sha256": "c22cecee6d83b52e1a2662c3a3753201f6fb44e3c82a2164b6b2d627f5f3e295",
+    "live_parity_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "cohort_status": "consumed"
+  },
+  "calls": [
+    {"ordinal": 1, "substage": "planning_semantic_v2", "role": "planning", "route_kind": "primary", "execution_mode": "strict_tool", "budget": 7774, "output_tokens": 525, "visible_characters": 2507, "finish_reason": "tool_use", "response_sha256": "acd1f31e46dcb92261d6ddf3493d657da9fa42fcbe2a7bddcca46f54ab524465"},
+    {"ordinal": 2, "substage": "planning_adaptation_initial_review", "role": "review", "route_kind": "primary", "execution_mode": "plain", "budget": 1276, "output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"ordinal": 3, "substage": "planning_adaptation_segment", "role": "review", "route_kind": "primary", "execution_mode": "plain", "budget": 1276, "output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"ordinal": 4, "substage": "planning_adaptation_segment", "role": "review", "route_kind": "primary", "execution_mode": "plain", "budget": 1276, "output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"ordinal": 5, "substage": "planning_adaptation_segment", "role": "review", "route_kind": "primary", "execution_mode": "plain", "budget": 1276, "output_tokens": 1276, "visible_characters": 0, "finish_reason": "max_tokens", "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"ordinal": 6, "substage": "planning_adaptation_segment", "role": "review", "route_kind": "configured_fallback", "execution_mode": "strict_tool", "budget": 1276, "output_tokens": 663, "visible_characters": 2250, "finish_reason": "tool_use", "response_sha256": "853d1a28b6436c9689be6bc5fa70a831795e14d63a663c3a01827b43dc08a526"},
+    {"ordinal": 7, "substage": "planning_repair_patch", "role": "planning", "route_kind": "primary", "execution_mode": "strict_tool", "budget": 1977, "output_tokens": 501, "visible_characters": 1409, "finish_reason": "tool_use", "response_sha256": "fbdb402de68ec4c6db6616cd1397e7e936232dc4291f7ccf85be80d43b27f209"},
+    {"ordinal": 8, "substage": "planning_repair_patch", "role": "planning", "route_kind": "primary", "execution_mode": "strict_tool", "budget": 1977, "output_tokens": 534, "visible_characters": 1378, "finish_reason": "tool_use", "response_sha256": "67759d7b0453548ba44bedf931866f93a66cea2439ac5e65b722c05746e18a1f"},
+    {"ordinal": 9, "substage": "planning_repair_patch", "role": "planning", "route_kind": "configured_fallback", "execution_mode": "plain", "budget": 1977, "output_tokens": 1977, "visible_characters": 0, "finish_reason": "max_tokens", "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"ordinal": 10, "substage": "planning_repair_patch", "role": "planning", "route_kind": "configured_fallback", "execution_mode": "plain", "budget": 3954, "output_tokens": 3954, "visible_characters": 0, "finish_reason": "max_tokens", "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+  ],
+  "repair_characterization": {
+    "first_divergent_ordinal": 7,
+    "call_7_conversion": "exact_json_semantic_valid",
+    "call_8_conversion": "exact_json_semantic_valid",
+    "call_7_exact_domain_finding_status": "unverifiable_not_persisted",
+    "call_8_exact_domain_finding_status": "unverifiable_not_persisted",
+    "call_7_8_system_prompt_hash_equal": true,
+    "call_7_8_user_prompt_hash_equal": true,
+    "targeted_repair_finding_propagation": "partial",
+    "targeted_repair_scope": "field",
+    "fallback_finding_propagation": "partial",
+    "fallback_scope": "targeted_patch"
+  },
+  "size_counterfactual": {
+    "minimal_schema_valid_tokens": 33,
+    "minimal_domain_valid_tokens": 42,
+    "current_required_compact_domain_valid_tokens": 67,
+    "call_9_budget": 1977,
+    "call_10_budget": 3954
+  },
+  "gate": "R1_PTR0_ROOT_CAUSE_NOT_CLOSED"
+}

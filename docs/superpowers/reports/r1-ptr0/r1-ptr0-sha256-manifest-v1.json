@@ -1,0 +1,35 @@
+{
+  "schema": "R1PTR0Sha256ManifestV1",
+  "version": 1,
+  "canonicalization_version": "canonical-json-sort-keys-utf8-v1",
+  "parent_commit": "d0d9427af9c191aa09f9b1da4fb9881a253f4efc",
+  "gate": "R1_PTR0_ROOT_CAUSE_NOT_CLOSED",
+  "entries": [
+    {
+      "path": "tools/diagnostics/r1_ptr0_planning_targeted_repair.py",
+      "sha256": "53e05e01a0f6d058258516eb665acbf593e109e6c598eff7cefe382bbad83961"
+    },
+    {
+      "path": "tests/fixtures/reliability/r1_ptr0/planning-targeted-repair-characterization-v1.json",
+      "sha256": "8292378e32cfe6a3e55292d176ba0a6b9391a82e6eb27f0a097ea8513fc9ded3"
+    },
+    {
+      "path": "tests/test_r1_ptr0_planning_targeted_repair.py",
+      "sha256": "7b8c513200af2668ce994f02f63a45bd4dd42398328773e2e07a3732e9ab91ba"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr0/r1-ptr0-root-cause-evidence-v1.json",
+      "sha256": "dd308fb755760b9c729eb6b3447ecf8ff967c3cb0954218722df7bf6d6854924"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr0/r1-ptr0-root-cause-verification-v1.md",
+      "sha256": "e3d7afe8eff039fec379753b1d64eb1261180d6b7ff035e6642b8d6d26dfa02e"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr0/r1-ptr0-validation-receipt-v1.json",
+      "sha256": "c148c131f31b340c40c531c33f1e2e11ae62c3e6f67915dcf8958ae4f3b9001d"
+    }
+  ],
+  "entry_count": 6,
+  "manifest_sha256": "0d458efdda2f1e176bdca9e3bb87e9e90e8de444264954c6dc95380d53c83a57"
+}

@@ -1,0 +1,66 @@
+{
+  "schema": "R1PTR0ValidationReceiptV1",
+  "version": 1,
+  "canonicalization_version": "canonical-json-sort-keys-utf8-v1",
+  "parent_commit": "d0d9427af9c191aa09f9b1da4fb9881a253f4efc",
+  "branch": "r1-ptr0/planning-targeted-repair-root-cause-20260817",
+  "gate": "R1_PTR0_ROOT_CAUSE_NOT_CLOSED",
+  "first_divergent_node": "call_7_planning_repair_patch_domain_validation",
+  "exact_primary_root_cause": "unresolved_exact_call_7_domain_rejection",
+  "strongest_verified_contributor": "planning.targeted_repair_finding_not_propagated",
+  "terminal_amplifier": "other:planning.fallback_plain_mode_zero_visible_output_limit",
+  "output_budget_expansion_effective": true,
+  "protected_production_paths_changed": false,
+  "second_canary_executed": false,
+  "cohort_reused": false,
+  "external_actions": {
+    "model_calls": 0,
+    "provider_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "canary_runs": 0
+  },
+  "live_parity": {
+    "status": "exact",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "live_db_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3"
+  },
+  "tests": {
+    "focused": {
+      "result": "passed",
+      "passed": 23,
+      "duration_seconds": 0.89
+    },
+    "related_cluster": {
+      "result": "passed_summary_runner_shutdown_hung",
+      "passed": 236,
+      "duration_seconds": 55.92
+    },
+    "full_suite": {
+      "result": "pre_existing_failure_only",
+      "passed": 2865,
+      "failed": 1,
+      "skipped": 24,
+      "xfailed": 6,
+      "duration_seconds": 1550.06,
+      "failure": "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "failure_classification": "pre_existing_stale_r0_baseline",
+      "new_failures": 0
+    }
+  },
+  "missing_evidence": [
+    "call_7_normalized_payload_or_tool_arguments",
+    "call_8_normalized_payload_or_tool_arguments",
+    "typed_domain_finding_rule_code_and_field_path",
+    "call_9_and_call_10_provider_content_block_shape"
+  ],
+  "privacy": {
+    "prompt_content_included": false,
+    "story_content_included": false,
+    "tool_arguments_included": false,
+    "credentials_or_headers_included": false,
+    "absolute_paths_included": false
+  },
+  "definition_sha256": "9dc7d0c422dc7cf852d67b96919541b1a8c480313369121d2c8852fab7eaf734"
+}
