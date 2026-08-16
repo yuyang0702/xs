@@ -15,7 +15,10 @@ from tools.canary.approval_profiles import (
     SHORT_COMPLETION_PROFILE_ID,
     approval_profile,
 )
-from tools.canary.approval_store import ApprovalConsumptionStore, CanaryApprovalReplay
+from tools.canary.approval_store import (
+    ApprovalConsumptionStore, CanaryApprovalReplay,
+    initialize_approval_ledger_v1,
+)
 from tools.canary.artifact_hash import file_sha256, tree_manifest
 from tools.canary.contracts import CanaryContractError
 from tools.canary.short_completion_approval import (
@@ -84,6 +87,21 @@ def test_plan_candidate_patch_and_validate_only_are_exact(materialized) -> None:
     assert len(receipt["ordered_checks"]) >= 32
     assert set(receipt["external_action_counters"].values()) == {0}
     assert materialized["network_call_count"] == 0
+    assert plan["runtime_fingerprint_policy_version"] == "runtime-fingerprint-v2"
+    assert receipt["approval_ledger_operational_readiness"] == "exact"
+    assert materialized["ledger_readiness"]["initial_entry_count"] == 0
+    assert materialized["semantic_rehearsal"]["status"] == "exact"
+    assert materialized["semantic_rehearsal"]["observation_status"] == (
+        "equivalent_provenance_variation"
+    )
+    assert materialized["semantic_rehearsal"]["external_action_counters"] == {
+        "credential_lookup_count": 0,
+        "provider_client_creation_count": 0,
+        "network_call_count": 0,
+        "model_call_count": 0,
+        "paid_model_call_count": 0,
+        "fake_boundary_count": 1,
+    }
 
 
 def test_materialization_has_no_signed_approval_and_is_privacy_safe(materialized) -> None:
@@ -128,6 +146,12 @@ def test_signed_fixture_is_exact_and_single_use(materialized, tmp_path: Path) ->
     signed = materialize_signed_canary_approval(
         SHORT_COMPLETION_PROFILE_ID, candidate, patch, now=NOW,
     )
+    initialize_approval_ledger_v1(
+        tmp_path,
+        ledger_identity=materialized["plan"]["isolation"][
+            "approval_ledger_identity"
+        ],
+    )
     store = ApprovalConsumptionStore(tmp_path)
     reservation = store.reserve(signed)
     assert reservation["payload"]["profile_id"] == SHORT_COMPLETION_PROFILE_ID
@@ -158,6 +182,12 @@ def test_signed_validate_only_is_exact_and_executable(
         path.write_text(json.dumps(value), encoding="utf-8")
     ledger = tmp_path / "ledger"
     ledger.mkdir()
+    initialize_approval_ledger_v1(
+        ledger,
+        ledger_identity=materialized["plan"]["isolation"][
+            "approval_ledger_identity"
+        ],
+    )
     receipt = validate_short_completion_approval_closure(
         plan_path=materialized["paths"]["plan"], approval_path=signed_path,
         source_candidate_path=candidate_path,

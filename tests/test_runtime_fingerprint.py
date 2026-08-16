@@ -17,7 +17,12 @@ from novel_flywheel.runtime_fingerprint import (
 def make_database(tmp_path: Path) -> Database:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_project("book", "Book", "short", tmp_path / "book")
+    project_path = tmp_path / "book"
+    project_path.mkdir()
+    (project_path / "project.json").write_text(
+        json.dumps({"id": "book", "mode": "short"}), encoding="utf-8",
+    )
+    db.save_project("book", "Book", "short", project_path)
     db.save_provider(
         provider_id="provider-secret-id", name="Fixture", protocol="openai",
         base_url="https://user:credential@example.invalid/v1?token=secret",

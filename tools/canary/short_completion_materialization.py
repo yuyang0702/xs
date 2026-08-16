@@ -6,6 +6,8 @@ from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 from typing import Any
 
@@ -15,6 +17,7 @@ from novel_flywheel.runtime_fingerprint_build import (
 )
 
 from .approval_profiles import SHORT_COMPLETION_PROFILE_ID, approval_profile
+from .approval_store import initialize_approval_ledger_v1
 from .artifact_hash import file_sha256, live_parity_manifest
 from .c0b_packet import prepare_c0b_smoke_packet
 from .contracts import build_canary_experiment_plan_v1
@@ -96,6 +99,7 @@ def materialize_short_completion_1(
     *, live_database_path: Path, live_project_root: Path,
     fixture_path: Path, output_root: Path, cohort_id: str,
     run_namespace: str, artifact_root_label: str,
+    approval_ledger_root: Path | None = None,
     now: datetime | None = None,
 ) -> dict[str, Any]:
     """Materialize inert documents only; never sign, reserve, or execute."""
@@ -114,6 +118,8 @@ def materialize_short_completion_1(
         "preview": output_root / "short-completion-1-execution-preview-v1.json",
         "definitions": output_root / "short-completion-1-definitions-v1.json",
         "index": output_root / "short-completion-1-materialization-index-v1.json",
+        "ledger_readiness": output_root / "short-completion-1-ledger-operational-readiness-v1.json",
+        "semantic_rehearsal": output_root / "short-completion-1-pre-launch-semantic-rehearsal-v1.json",
     }
     before = live_parity_manifest(
         database_path=live_database_path, project_root=live_project_root,
@@ -175,6 +181,13 @@ def materialize_short_completion_1(
         }
         payload["short_completion_policy"] = policy
         plan = build_canary_experiment_plan_v1(payload)
+        ledger_root = approval_ledger_root or (
+            output_root.parent / f"approval-ledger-{cohort_id}"
+        )
+        ledger_readiness = initialize_approval_ledger_v1(
+            ledger_root,
+            ledger_identity=plan["isolation"]["approval_ledger_identity"],
+        )
         workload = plan["workloads"][0]
         feature_hash = domain_sha256(
             "novel-flywheel-short-completion-feature-flags-v1",
@@ -280,8 +293,27 @@ def materialize_short_completion_1(
                            ("preview", preview),
                            ("definitions", definitions_document)):
             _write(paths[key], value)
-        ledger = temporary_root / "approval-ledger"
-        ledger.mkdir()
+        _write(paths["ledger_readiness"], ledger_readiness)
+        rehearsal_output = temporary_root / "semantic-rehearsal.json"
+        rehearsal_root = temporary_root / "semantic-rehearsal-root"
+        completed = subprocess.run(
+            [
+                sys.executable, "-m", "tools.canary.semantic_rehearsal",
+                "--plan", str(paths["plan"]),
+                "--fixture", str(fixture_path),
+                "--live-database", str(live_database_path),
+                "--isolated-root", str(rehearsal_root),
+                "--output", str(rehearsal_output),
+            ],
+            cwd=Path(__file__).resolve().parents[2],
+            check=False, capture_output=True, text=True, timeout=120,
+        )
+        if completed.returncode != 0 or not rehearsal_output.is_file():
+            raise RuntimeError("prelaunch_semantic_rehearsal_failed")
+        semantic_rehearsal = json.loads(
+            rehearsal_output.read_text(encoding="utf-8")
+        )
+        _write(paths["semantic_rehearsal"], semantic_rehearsal)
         validation = validate_short_completion_approval_closure(
             plan_path=paths["plan"], approval_path=paths["candidate"],
             source_candidate_path=None, source_authorization_patch_path=None,
@@ -289,7 +321,7 @@ def materialize_short_completion_1(
             live_database_path=live_database_path,
             live_project_root=live_project_root,
             canary_root=temporary_root / "future-canary-root",
-            approval_ledger_root=ledger,
+            approval_ledger_root=ledger_root,
             cli_approved_plan_sha256=plan["plan_sha256"], now=current,
         )
         _write(paths["validate_receipt"], validation)
@@ -315,6 +347,11 @@ def materialize_short_completion_1(
         "execution_window": candidate["execution_window"],
         "validation_receipt_sha256": validation["validation_receipt_sha256"],
         "external_action_counters": validation["external_action_counters"],
+        "approval_ledger_identity": plan["isolation"]["approval_ledger_identity"],
+        "approval_ledger_initial_entry_count": ledger_readiness["initial_entry_count"],
+        "approval_ledger_operational_readiness": ledger_readiness["status"],
+        "prelaunch_semantic_rehearsal_sha256": semantic_rehearsal["receipt_sha256"],
+        "prelaunch_semantic_rehearsal_status": semantic_rehearsal["status"],
         "live_parity_before_sha256": before["parity_sha256"],
         "live_parity_after_sha256": after["parity_sha256"],
         "signed_approval_materialized": False,
@@ -329,6 +366,9 @@ def materialize_short_completion_1(
         "authorization_patch_template": patch_template,
         "validation_receipt": validation, "execution_preview": preview,
         "definitions": definitions_document, "index": index, "paths": paths,
+        "ledger_readiness": ledger_readiness,
+        "semantic_rehearsal": semantic_rehearsal,
+        "approval_ledger_root": ledger_root,
         "network_call_count": sentinel.network_call_count,
         "execution_performed": False,
     }

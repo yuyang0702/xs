@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 from novel_flywheel.db import Database
 from novel_flywheel.runtime_fingerprint import (
@@ -13,8 +14,13 @@ from novel_flywheel.runtime_fingerprint import (
 def make_database(tmp_path: Path) -> Database:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_project("book", "Book", "long", tmp_path / "book")
-    db.save_project("book-2", "Book 2", "long", tmp_path / "book-2")
+    for project_id in ("book", "book-2"):
+        project_path = tmp_path / project_id
+        project_path.mkdir()
+        (project_path / "project.json").write_text(
+            json.dumps({"id": project_id, "mode": "long"}), encoding="utf-8",
+        )
+        db.save_project(project_id, project_id, "long", project_path)
     return db
 
 

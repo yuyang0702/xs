@@ -21,12 +21,94 @@ class CanaryApprovalReplay(RuntimeError):
         self.reason_code = reason_code
 
 
+LEDGER_IDENTITY_FILE = ".approval-ledger-identity-v1.json"
+
+
+def initialize_approval_ledger_v1(
+    root: Path, *, ledger_identity: str,
+) -> dict[str, Any]:
+    """Create or verify an empty, exact operational ledger root."""
+
+    requested = root.absolute()
+    requested.mkdir(parents=True, exist_ok=True)
+    resolved = requested.resolve(strict=True)
+    if resolved != requested.resolve():
+        raise CanaryApprovalReplay("approval_ledger_path_not_exact")
+    attributes = getattr(resolved.stat(), "st_file_attributes", 0)
+    if attributes & 0x400:  # FILE_ATTRIBUTE_REPARSE_POINT
+        raise CanaryApprovalReplay("approval_ledger_reparse_point_forbidden")
+    if not isinstance(ledger_identity, str) or len(ledger_identity) != 64:
+        raise CanaryApprovalReplay("approval_ledger_identity_invalid")
+    business_entries = [
+        item for item in resolved.iterdir() if item.name != LEDGER_IDENTITY_FILE
+    ]
+    if business_entries:
+        raise CanaryApprovalReplay("approval_ledger_not_empty")
+    identity_document = ApprovalConsumptionStore._definition(
+        "CanaryApprovalLedgerIdentityV1", {
+            "ledger_identity": ledger_identity,
+            "initial_entry_count": 0,
+            "business_content_included": False,
+        },
+    )
+    identity_path = resolved / LEDGER_IDENTITY_FILE
+    if identity_path.exists():
+        try:
+            existing = json.loads(identity_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise CanaryApprovalReplay("approval_ledger_identity_invalid") from exc
+        if existing != identity_document:
+            raise CanaryApprovalReplay("approval_ledger_identity_mismatch")
+    else:
+        ApprovalConsumptionStore._exclusive_write(
+            identity_path, identity_document,
+            "approval_ledger_identity_already_exists",
+        )
+    return {
+        "schema": "CanaryApprovalLedgerOperationalReadinessV1",
+        "status": "exact",
+        "ledger_identity": ledger_identity,
+        "identity_definition_sha256": identity_document["definition_sha256"],
+        "initial_entry_count": 0,
+        "cohort_status": "unused",
+        "approval_status": "unreserved",
+        "credential_lookup_count": 0,
+        "provider_client_creation_count": 0,
+        "network_call_count": 0,
+        "model_call_count": 0,
+        "paid_model_call_count": 0,
+    }
+
+
 class ApprovalConsumptionStore:
     def __init__(self, root: Path) -> None:
         self.root = root.resolve(strict=True)
 
     def _path(self, cohort_id: str, suffix: str) -> Path:
         return self.root / f"{cohort_id}.{suffix}.json"
+
+    def operational_readiness(self, *, ledger_identity: str) -> dict[str, Any]:
+        identity_path = self.root / LEDGER_IDENTITY_FILE
+        try:
+            value = json.loads(identity_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise CanaryApprovalReplay(
+                "approval_ledger_operational_readiness_unknown"
+            ) from exc
+        payload = value.get("payload") or {}
+        if payload.get("ledger_identity") != ledger_identity:
+            raise CanaryApprovalReplay("approval_ledger_identity_mismatch")
+        business_entries = [
+            item for item in self.root.iterdir()
+            if item.name != LEDGER_IDENTITY_FILE
+        ]
+        if business_entries:
+            raise CanaryApprovalReplay("approval_ledger_not_empty")
+        return {
+            "status": "exact", "ledger_identity": ledger_identity,
+            "initial_entry_count": 0,
+            "identity_definition_sha256": value.get("definition_sha256"),
+        }
 
     @staticmethod
     def _identity(approval: Mapping[str, Any], *, executable: bool) -> tuple[str, str]:

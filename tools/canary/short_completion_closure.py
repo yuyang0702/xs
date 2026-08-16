@@ -138,6 +138,15 @@ def validate_short_completion_approval_closure(
         state = ApprovalConsumptionStore(approval_ledger_root).status(approval)
         if state["status"] != "unused":
             raise ValueError("approval_already_used")
+        ledger_readiness = None
+        if plan["runtime_fingerprint_policy_version"] == "runtime-fingerprint-v2":
+            ledger_readiness = ApprovalConsumptionStore(
+                approval_ledger_root
+            ).operational_readiness(
+                ledger_identity=plan["isolation"]["approval_ledger_identity"],
+            )
+            if ledger_readiness["status"] != "exact":
+                raise ValueError("approval_ledger_operational_readiness_unknown")
         parity = live_parity_manifest(
             database_path=live_database_path, project_root=live_project_root,
         )
@@ -154,6 +163,9 @@ def validate_short_completion_approval_closure(
                 if kind == "signed_approval" else "disabled_candidate"
             ),
             approval_ledger_state=state["status"],
+            approval_ledger_operational_readiness=(
+                (ledger_readiness or {"status": "legacy_not_required"})["status"]
+            ),
             parity={"status": "exact", "observation_sha256": parity["parity_sha256"]},
             execution_performed=False,
         )
@@ -169,6 +181,7 @@ def validate_short_completion_approval_closure(
             checks, profile_id=SHORT_COMPLETION_PROFILE_ID,
             approval_document_kind="unknown", approval_identity_sha256=None,
             approval_state="unknown", approval_ledger_state="unknown",
+            approval_ledger_operational_readiness="unknown",
             parity={"status": "unknown", "observation_sha256": None},
             execution_performed=False,
         )

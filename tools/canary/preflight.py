@@ -27,14 +27,86 @@ from .gate import BoundaryRequest
 
 
 class CanaryPreflightBlocked(RuntimeError):
-    def __init__(self, reason_code: str) -> None:
+    def __init__(
+        self, reason_code: str, *, component_diff: Mapping[str, Any] | None = None,
+    ) -> None:
         super().__init__(reason_code)
         self.reason_code = reason_code
+        self.component_diff = deepcopy(dict(component_diff or {}))
 
 
 def _require(condition: bool, reason_code: str) -> None:
     if not condition:
         raise CanaryPreflightBlocked(reason_code)
+
+
+def execution_config_component_diff_v2(
+    approved: Mapping[str, Any], observed: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compare V2 hash components without revealing values or source material."""
+
+    expected_components = dict(approved.get("semantic_components") or {})
+    actual_components = dict(observed.get("semantic_components") or {})
+    differing = sorted(
+        key for key in set(expected_components) | set(actual_components)
+        if expected_components.get(key) != actual_components.get(key)
+    )
+    expected_provenance = approved.get("feature_flag_provenance_sha256")
+    actual_provenance = observed.get("feature_flag_provenance_sha256")
+    provenance_known = all(
+        isinstance(value, str) and len(value) == 64
+        for value in (expected_provenance, actual_provenance)
+    )
+    provenance_equal = (
+        provenance_known and expected_provenance == actual_provenance
+    )
+    if provenance_known and not provenance_equal:
+        differing.append("feature_flag_provenance")
+    return {
+        "policy_version": observed.get("policy_version"),
+        "expected_semantic_sha256": approved.get("semantic_sha256"),
+        "actual_semantic_sha256": observed.get("semantic_sha256"),
+        "expected_provenance_sha256": expected_provenance,
+        "actual_provenance_sha256": actual_provenance,
+        "semantic_equal": (
+            approved.get("semantic_sha256") == observed.get("semantic_sha256")
+            and isinstance(approved.get("semantic_sha256"), str)
+        ),
+        "provenance_equal": provenance_equal if provenance_known else None,
+        "provenance_known": provenance_known,
+        "differing_component_ids": sorted(set(differing)),
+        "hash_only": True,
+    }
+
+
+def validate_execution_config_prelaunch_v2(
+    plan: Mapping[str, Any], observed: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Typed V2 semantic gate shared by launcher boundary checks."""
+
+    approved = plan.get("approved_execution_config_components")
+    if not isinstance(approved, Mapping):
+        raise CanaryPreflightBlocked("execution_config_policy_mismatch")
+    if (
+        approved.get("policy_version") != "runtime-fingerprint-v2"
+        or observed.get("policy_version") != "runtime-fingerprint-v2"
+    ):
+        raise CanaryPreflightBlocked("execution_config_policy_mismatch")
+    diff = execution_config_component_diff_v2(approved, observed)
+    if diff["semantic_equal"] is not True:
+        raise CanaryPreflightBlocked(
+            "execution_config_fingerprint_mismatch", component_diff=diff,
+        )
+    if diff["provenance_known"] is not True:
+        raise CanaryPreflightBlocked(
+            "execution_config_provenance_unknown", component_diff=diff,
+        )
+    return {
+        "status": "exact" if diff["provenance_equal"] else (
+            "equivalent_provenance_variation"
+        ),
+        "component_diff": diff,
+    }
 
 
 class ExactBoundaryVerifier:
@@ -136,11 +208,17 @@ class ExactBoundaryVerifier:
             "phase1b_project_flag_enabled")
         _require(snapshot["build_fingerprint"] == plan["approved_build_fingerprint"],
                  "build_changed_during_canary")
-        _require(
-            snapshot["execution_config_fingerprint"]
-            == plan["approved_execution_config_fingerprint"],
-            "execution_config_changed_during_canary",
-        )
+        execution_config_observation = None
+        if plan["runtime_fingerprint_policy_version"] == "runtime-fingerprint-v2":
+            execution_config_observation = validate_execution_config_prelaunch_v2(
+                plan, snapshot.get("execution_config_components") or {},
+            )
+        else:
+            _require(
+                snapshot["execution_config_fingerprint"]
+                == plan["approved_execution_config_fingerprint"],
+                "execution_config_changed_during_canary",
+            )
         _require(
             snapshot["runtime_execution_fingerprint"]
             == plan["expected_runtime_execution_fingerprint"],
@@ -148,7 +226,10 @@ class ExactBoundaryVerifier:
         )
         _require(snapshot["canary_root_validation"].get("validation_status") == "exact",
                  "canary_root_identity_mismatch")
-        return {"snapshot": snapshot, "plan": plan}
+        return {
+            "snapshot": snapshot, "plan": plan,
+            "execution_config_observation": execution_config_observation,
+        }
 
     def run_runtime_preflight(
         self, request: BoundaryRequest, validated: Mapping[str, Any],
@@ -179,6 +260,10 @@ class ExactBoundaryVerifier:
             ),
             "status": "exact",
         }
+        observation = validated.get("execution_config_observation")
+        if isinstance(observation, Mapping):
+            receipt["execution_config_observation_status"] = observation["status"]
+            receipt["execution_config_component_diff"] = observation["component_diff"]
         self.receipts.append(receipt)
         return receipt
 

@@ -37,6 +37,9 @@ def make_database(tmp_path: Path) -> Database:
     db.migrate()
     project = tmp_path / "projects" / "book"
     project.mkdir(parents=True)
+    (project / "project.json").write_text(
+        json.dumps({"id": "book", "mode": "long"}), encoding="utf-8",
+    )
     (project / "story.md").write_text("formal artifact", encoding="utf-8")
     db.save_project("book", "Book", "long", project)
     return db
@@ -91,7 +94,9 @@ def test_sidecar_is_physically_outside_project_and_contains_no_business_text(
     project_root = tmp_path / "projects" / "book"
     assert sidecar_root.is_dir()
     assert not sidecar_root.is_relative_to(project_root)
-    assert list(project_root.rglob("*")) == [project_root / "story.md"]
+    assert set(project_root.rglob("*")) == {
+        project_root / "project.json", project_root / "story.md",
+    }
     serialized = "\n".join(
         path.read_text(encoding="utf-8") for path in sidecar_root.rglob("*.json")
     )

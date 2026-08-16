@@ -9,7 +9,7 @@ import tempfile
 
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
-from novel_flywheel.runtime_fingerprint import collect_runtime_fingerprint
+from novel_flywheel.runtime_fingerprint import collect_runtime_fingerprint_v2
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
 
 from .artifact_hash import file_sha256
@@ -121,7 +121,7 @@ def prepare_c0b_smoke_packet(
                 raise ValueError("production_mirror_route_drift")
             routes = approved_production_routes(db)
             route_hashes = production_route_manifest_hashes(db)
-            runtime = collect_runtime_fingerprint(db, project_id=project.id)
+            runtime = collect_runtime_fingerprint_v2(db, project_id=project.id)
     workload_manifest = {
         "schema": "CanaryWorkloadManifestV1",
         "fixture_sha256": fixture_sha,
@@ -164,7 +164,10 @@ def prepare_c0b_smoke_packet(
         "approved_build_fingerprint": runtime.build_fingerprint_sha256,
         "approved_execution_config_fingerprint": runtime.execution_config_fingerprint_sha256,
         "expected_runtime_execution_fingerprint": runtime.execution_fingerprint_sha256,
-        "runtime_fingerprint_policy_version": "runtime-fingerprint-v1",
+        "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+        "approved_execution_config_components": (
+            runtime.execution_config_component_binding
+        ),
         "launcher_sha256": launcher["launcher_sha256"],
         "workload_manifest_hash": workload_hash,
         "workloads": [{

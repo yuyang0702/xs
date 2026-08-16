@@ -33,6 +33,7 @@ from .approval_dispatch import (
 from .hash_manifest import validate_import_closure
 from .network_sentinel import FailClosedNetworkSentinel
 from .outcomes import blocked_outcome, infrastructure_outcome
+from .preflight import CanaryPreflightBlocked
 from .dry_run import run_c0a_dry_run
 
 
@@ -335,10 +336,14 @@ def main(argv: list[str] | None = None) -> int:
             }
         print(json.dumps(result, ensure_ascii=False, sort_keys=True))
         return real_result_exit_code(result)
-    except (CanaryContractError, CanaryLauncherError) as exc:
+    except (CanaryContractError, CanaryLauncherError, CanaryPreflightBlocked) as exc:
         outcome = blocked_outcome(getattr(exc, "reason_code", "canary_packet_blocked"))
         report = {**asdict(outcome), "outcome": outcome.outcome.value,
-                  "network_call_count": sentinel.network_call_count}
+                  "network_call_count": sentinel.network_call_count,
+                  "provider_boundary_entered": False}
+        component_diff = getattr(exc, "component_diff", None)
+        if component_diff:
+            report["execution_config_component_diff"] = component_diff
         print(json.dumps(report, ensure_ascii=False, sort_keys=True))
         return 2
     except BaseException:

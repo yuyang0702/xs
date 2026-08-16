@@ -37,6 +37,9 @@ PLAN_MODES = frozenset({
     "short_completion",
 })
 RUNTIME_MODES = frozenset({"git_workspace", "packaged"})
+RUNTIME_FINGERPRINT_POLICIES = frozenset({
+    "runtime-fingerprint-v1", "runtime-fingerprint-v2",
+})
 APPROVAL_SCOPES = frozenset({
     "C0A_FAKE_DRY_RUN", "C0B_REAL_PROVIDER_PATH_REACHABILITY",
     "C0C_STATISTICAL_EXPOSURE",
@@ -177,6 +180,11 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
              "plan_canonicalization_unsupported")
     _require(value["canary_mode"] in PLAN_MODES, "canary_mode_unsupported")
     _require(value["runtime_mode"] in RUNTIME_MODES, "runtime_mode_unsupported")
+    _require(
+        value["runtime_fingerprint_policy_version"]
+        in RUNTIME_FINGERPRINT_POLICIES,
+        "runtime_fingerprint_policy_unsupported",
+    )
     for field in (
         "approved_build_fingerprint", "approved_execution_config_fingerprint",
         "expected_runtime_execution_fingerprint", "launcher_sha256",
@@ -184,6 +192,41 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
         "role_binding_manifest_definition_sha256", "plan_sha256",
     ):
         _require_hash(value[field], f"{field}_invalid")
+    if value["runtime_fingerprint_policy_version"] == "runtime-fingerprint-v2":
+        components = value.get("approved_execution_config_components")
+        _require(isinstance(components, Mapping),
+                 "execution_config_components_missing")
+        _require_fields(components, {
+            "policy_version", "semantic_sha256",
+            "feature_flag_provenance_sha256", "semantic_components",
+        }, "execution_config_components")
+        _require(components["policy_version"] == "runtime-fingerprint-v2",
+                 "execution_config_component_policy_mismatch")
+        _require_hash(components["semantic_sha256"],
+                      "execution_config_component_semantic_invalid")
+        _require_hash(components["feature_flag_provenance_sha256"],
+                      "execution_config_component_provenance_invalid")
+        _require(
+            components["semantic_sha256"]
+            == value["approved_execution_config_fingerprint"],
+            "execution_config_component_semantic_mismatch",
+        )
+        semantic_components = components["semantic_components"]
+        _require(
+            isinstance(semantic_components, Mapping)
+            and set(semantic_components) == {
+                "effective_feature_flags", "feature_flag_registry",
+                "installed_dependencies", "python_runtime",
+                "route_role_bindings",
+            },
+            "execution_config_semantic_components_invalid",
+        )
+        for component_hash in semantic_components.values():
+            _require_hash(component_hash,
+                          "execution_config_semantic_component_hash_invalid")
+    else:
+        _require("approved_execution_config_components" not in value,
+                 "execution_config_policy_cross_authorization")
     routes = value["approved_routes"]
     _require(isinstance(routes, list) and routes, "approved_routes_invalid")
     seen_roles: set[str] = set()

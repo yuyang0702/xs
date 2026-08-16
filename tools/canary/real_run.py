@@ -25,6 +25,7 @@ from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.runtime_fingerprint import (
     DefinitionStore, canonical_runtime_bindings, collect_runtime_fingerprint,
+    collect_runtime_fingerprint_v2,
     process_captured_build_fingerprint, runtime_source_revalidation,
     verify_runtime_binding_sidecars,
 )
@@ -70,7 +71,10 @@ from .isolation import create_canary_root, validate_canary_root
 from .monetary import CanaryMonetaryBudgetV1
 from .outcomes import CanaryOutcome, outcome_for_boundary_abort
 from .packet import APPROVED_THIRD_PARTY
-from .preflight import ExactBoundaryVerifier
+from .preflight import (
+    CanaryPreflightBlocked, ExactBoundaryVerifier,
+    validate_execution_config_prelaunch_v2,
+)
 from .provider_matrix import production_price_catalog
 from .real_boundary import (
     classify_provider_capability_failure,
@@ -165,6 +169,11 @@ async def run_registered_real_run(
 ) -> dict:
     started_ns = time.perf_counter_ns()
     plan = validate_canary_experiment_plan_v1(_read_json(plan_path))
+
+    def collect_for_plan(db: Database, project_id: str):
+        if plan["runtime_fingerprint_policy_version"] == "runtime-fingerprint-v2":
+            return collect_runtime_fingerprint_v2(db, project_id=project_id)
+        return collect_runtime_fingerprint(db, project_id=project_id)
     profile = profile_for_plan(plan)
     approval, approval_identity = validate_c0b_real_run_approval(
         plan_path=plan_path, approval_path=approval_path,
@@ -248,13 +257,19 @@ async def run_registered_real_run(
                     "short_canonical_v2", False,
                     scope_type="project", scope_id=project_id,
                 )
-                current = collect_runtime_fingerprint(db, project_id=project_id)
+                current = collect_for_plan(db, project_id)
                 if current.build_fingerprint_sha256 != plan["approved_build_fingerprint"]:
                     raise RuntimeError("build_changed_before_launch")
-                if current.execution_config_fingerprint_sha256 != plan[
+                if plan["runtime_fingerprint_policy_version"] == "runtime-fingerprint-v2":
+                    validate_execution_config_prelaunch_v2(
+                        plan, current.execution_config_component_binding or {},
+                    )
+                elif current.execution_config_fingerprint_sha256 != plan[
                     "approved_execution_config_fingerprint"
                 ]:
-                    raise RuntimeError("execution_config_changed_before_launch")
+                    raise CanaryPreflightBlocked(
+                        "execution_config_fingerprint_mismatch"
+                    )
                 manifest_hashes = production_route_manifest_hashes(db)
                 for field, actual in manifest_hashes.items():
                     if actual != plan[field]:
@@ -291,7 +306,7 @@ async def run_registered_real_run(
                     selected = run_holder.get("run_id")
                     if not selected:
                         raise RuntimeError("canary_run_identity_unavailable")
-                    current_runtime = collect_runtime_fingerprint(db, project_id=project_id)
+                    current_runtime = collect_for_plan(db, project_id)
                     origin, executor, binding_set = _binding_pair(db, selected)
                     sidecars = verify_runtime_binding_sidecars(
                         DefinitionStore(db.path.parent), executor,
@@ -334,6 +349,9 @@ async def run_registered_real_run(
                         "build_fingerprint": current_runtime.build_fingerprint_sha256,
                         "execution_config_fingerprint": current_runtime.execution_config_fingerprint_sha256,
                         "runtime_execution_fingerprint": current_runtime.execution_fingerprint_sha256,
+                        "execution_config_components": (
+                            current_runtime.execution_config_component_binding
+                        ),
                         "origin_binding": origin, "executor_binding": executor,
                         "current_source_revalidation": runtime_source_revalidation(
                             process_build, current_runtime.build,

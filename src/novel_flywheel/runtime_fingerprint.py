@@ -29,6 +29,11 @@ from novel_flywheel.runtime_fingerprint_build import (
 
 STORE_VERSION = "runtime-fingerprint-definition-store-v1"
 STORE_DIRECTORY = "runtime-fingerprints-v1"
+RUNTIME_FINGERPRINT_POLICY_V1 = "runtime-fingerprint-v1"
+RUNTIME_FINGERPRINT_POLICY_V2 = "runtime-fingerprint-v2"
+FEATURE_FLAG_REGISTRY_POLICY_VERSION_V2 = "feature-flag-registry-v2"
+FEATURE_FLAG_BOOLEAN_PARSER_POLICY_V2 = "strict-production-bool-0-1-v2"
+FEATURE_FLAG_PRECEDENCE_POLICY_V2 = "controlled-source-precedence-v2"
 FEATURE_FLAG_ENVIRONMENT_ALLOWLIST = (
     "NOVEL_CANONICAL_SHADOW_V1",
     "NOVEL_RELIABILITY_TRACE",
@@ -41,6 +46,281 @@ PROJECT_METADATA_FLAG_ALLOWLIST = (
     "market_baseline_enabled",
     "optimized_local_review_enabled",
 )
+
+
+class RuntimeFeatureFlagResolutionError(FingerprintUnavailable):
+    """Typed fail-closed error for the V2 controlled-flag resolver."""
+
+
+def _policy_hash(domain: str, payload: Mapping[str, Any]) -> str:
+    return domain_sha256(f"novel-flywheel-feature-flag-policy-v2:{domain}", payload)
+
+
+def _feature_flag_policy_rows_v2() -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for flag_id in FEATURE_FLAG_ENVIRONMENT_ALLOWLIST:
+        source_kind = "environment"
+        source_key = flag_id
+        precedence = ["environment", "default"]
+        parser = FEATURE_FLAG_BOOLEAN_PARSER_POLICY_V2
+        default = False
+        rows.append({
+            "flag_id": flag_id,
+            "source_kind": source_kind,
+            "source_key": source_key,
+            "value_type": "boolean",
+            "default_value": default,
+            "parser_policy_version": parser,
+            "precedence": precedence,
+            "default_policy_sha256": _policy_hash("default", {
+                "flag_id": flag_id, "value_type": "boolean",
+                "default_value": default, "policy_version": "default-policy-v2",
+            }),
+            "parser_policy_sha256": _policy_hash("parser", {
+                "flag_id": flag_id, "parser_policy_version": parser,
+                "accepted_true": ["1"], "accepted_false": ["0"],
+                "missing_uses_default": True,
+            }),
+            "precedence_policy_sha256": _policy_hash("precedence", {
+                "flag_id": flag_id, "precedence": precedence,
+                "policy_version": FEATURE_FLAG_PRECEDENCE_POLICY_V2,
+            }),
+        })
+    rows.append({
+        "flag_id": "project_short_canonical_v2",
+        "source_kind": "database",
+        "source_key": "short_canonical_v2",
+        "value_type": "boolean",
+        "default_value": False,
+        "parser_policy_version": "database-boolean-v2",
+        "precedence": ["project", "global", "default"],
+        "default_policy_sha256": _policy_hash("default", {
+            "flag_id": "project_short_canonical_v2", "value_type": "boolean",
+            "default_value": False, "policy_version": "default-policy-v2",
+        }),
+        "parser_policy_sha256": _policy_hash("parser", {
+            "flag_id": "project_short_canonical_v2",
+            "parser_policy_version": "database-boolean-v2",
+            "accepted_type": "boolean",
+        }),
+        "precedence_policy_sha256": _policy_hash("precedence", {
+            "flag_id": "project_short_canonical_v2",
+            "precedence": ["project", "global", "default"],
+            "policy_version": FEATURE_FLAG_PRECEDENCE_POLICY_V2,
+        }),
+    })
+    for flag_id in PROJECT_METADATA_FLAG_ALLOWLIST:
+        rows.append({
+            "flag_id": flag_id,
+            "source_kind": "project_metadata",
+            "source_key": flag_id,
+            "value_type": "boolean",
+            "default_value": False,
+            "parser_policy_version": "project-metadata-boolean-v2",
+            "precedence": ["project_metadata", "default"],
+            "default_policy_sha256": _policy_hash("default", {
+                "flag_id": flag_id, "value_type": "boolean",
+                "default_value": False, "policy_version": "default-policy-v2",
+            }),
+            "parser_policy_sha256": _policy_hash("parser", {
+                "flag_id": flag_id,
+                "parser_policy_version": "project-metadata-boolean-v2",
+                "accepted_type": "boolean",
+            }),
+            "precedence_policy_sha256": _policy_hash("precedence", {
+                "flag_id": flag_id,
+                "precedence": ["project_metadata", "default"],
+                "policy_version": FEATURE_FLAG_PRECEDENCE_POLICY_V2,
+            }),
+        })
+    return sorted(rows, key=lambda item: item["flag_id"])
+
+
+def feature_flag_registry_definition_v2() -> dict[str, Any]:
+    return make_definition("RuntimeFeatureFlagRegistryV2", {
+        "registry_policy_version": FEATURE_FLAG_REGISTRY_POLICY_VERSION_V2,
+        "parser_policy_version": FEATURE_FLAG_BOOLEAN_PARSER_POLICY_V2,
+        "precedence_policy_version": FEATURE_FLAG_PRECEDENCE_POLICY_V2,
+        "flags": _feature_flag_policy_rows_v2(),
+        "raw_values_included": False,
+    })
+
+
+def _validated_registry_rows_v2(
+    registry_payload: Mapping[str, Any] | None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    canonical = feature_flag_registry_definition_v2()
+    payload = dict(registry_payload or canonical["payload"])
+    if payload.get("registry_policy_version") != FEATURE_FLAG_REGISTRY_POLICY_VERSION_V2:
+        raise RuntimeFeatureFlagResolutionError("feature_flag_registry_policy_unknown")
+    rows = payload.get("flags")
+    if not isinstance(rows, list) or not all(isinstance(row, Mapping) for row in rows):
+        raise RuntimeFeatureFlagResolutionError("feature_flag_registry_incomplete")
+    expected = {row["flag_id"] for row in canonical["payload"]["flags"]}
+    actual = {str(row.get("flag_id")) for row in rows}
+    if actual - expected:
+        raise RuntimeFeatureFlagResolutionError("feature_flag_unregistered")
+    if expected - actual or len(rows) != len(expected):
+        raise RuntimeFeatureFlagResolutionError("feature_flag_registry_incomplete")
+    canonical_by_id = {
+        row["flag_id"]: row for row in canonical["payload"]["flags"]
+    }
+    normalized = [dict(row) for row in sorted(rows, key=lambda item: str(item["flag_id"]))]
+    if any(row != canonical_by_id[row["flag_id"]] for row in normalized):
+        raise RuntimeFeatureFlagResolutionError("feature_flag_registry_policy_mismatch")
+    return canonical, normalized
+
+
+def _shadow_hash(flag_id: str, sources: list[str]) -> str:
+    return domain_sha256(
+        "novel-flywheel-feature-flag-shadowed-sources-v1",
+        {"flag_id": flag_id, "sources": sorted(sources)},
+    )
+
+
+def resolve_feature_flag_snapshots_v2(
+    db: Any, *, project_id: str | None = None,
+    registry_payload: Mapping[str, Any] | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Resolve one typed behavior snapshot and a separate hash-only provenance graph."""
+
+    registry, rows = _validated_registry_rows_v2(registry_payload)
+    env = os.environ if environment is None else environment
+    project = db.get_project(project_id) if project_id else None
+    if project_id and project is None:
+        raise RuntimeFeatureFlagResolutionError(
+            "feature_flag_source_snapshot_incomplete"
+        )
+    metadata: dict[str, Any] = {}
+    if project is not None:
+        try:
+            project_path = Path(str(project["path"])).resolve()
+            metadata_path = (project_path / "project.json").resolve()
+            if metadata_path.parent != project_path or not metadata_path.is_file():
+                raise RuntimeFeatureFlagResolutionError(
+                    "feature_flag_source_snapshot_incomplete"
+                )
+            loaded_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if not isinstance(loaded_metadata, dict):
+                raise RuntimeFeatureFlagResolutionError(
+                    "feature_flag_source_snapshot_incomplete"
+                )
+            metadata = loaded_metadata
+        except RuntimeFeatureFlagResolutionError:
+            raise
+        except (KeyError, OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise RuntimeFeatureFlagResolutionError(
+                "feature_flag_source_snapshot_incomplete"
+            ) from exc
+    semantic_rows: list[dict[str, Any]] = []
+    provenance_rows: list[dict[str, Any]] = []
+    for policy in rows:
+        flag_id = str(policy["flag_id"])
+        source_kind = str(policy["source_kind"])
+        shadowed: list[str] = []
+        if source_kind == "environment":
+            source_key = str(policy["source_key"])
+            present = source_key in env
+            if not present:
+                effective = bool(policy["default_value"])
+                selected_source = "default"
+                presence_state = "defaulted"
+                parse_status = "defaulted"
+            else:
+                raw = env[source_key]
+                if raw not in {"0", "1"}:
+                    raise RuntimeFeatureFlagResolutionError(
+                        "feature_flag_boolean_value_invalid"
+                    )
+                effective = raw == "1"
+                selected_source = "environment"
+                presence_state = "set"
+                parse_status = "exact"
+                shadowed = ["default"]
+        elif source_kind == "database":
+            source_key = str(policy["source_key"])
+            selected = db.feature_flag(
+                source_key, project_id=project_id,
+                default=bool(policy["default_value"]),
+            )
+            if not isinstance(selected.get("enabled"), bool):
+                raise RuntimeFeatureFlagResolutionError(
+                    "feature_flag_boolean_value_invalid"
+                )
+            selected_source = str(selected.get("scope_type") or "unknown")
+            if selected_source not in {"project", "global", "default"}:
+                raise RuntimeFeatureFlagResolutionError(
+                    "feature_flag_precedence_unresolved"
+                )
+            effective = bool(selected["enabled"])
+            presence_state = selected_source if selected_source != "default" else "defaulted"
+            parse_status = "defaulted" if selected_source == "default" else "exact"
+            if selected_source == "project":
+                fallback = db.feature_flag(source_key, project_id=None,
+                                           default=bool(policy["default_value"]))
+                shadowed = [str(fallback.get("scope_type") or "default")]
+            elif selected_source == "global":
+                shadowed = ["default"]
+        elif source_kind == "project_metadata":
+            source_key = str(policy["source_key"])
+            present = source_key in metadata
+            if present and not isinstance(metadata[source_key], bool):
+                raise RuntimeFeatureFlagResolutionError(
+                    "feature_flag_boolean_value_invalid"
+                )
+            effective = (
+                bool(metadata[source_key]) if present
+                else bool(policy["default_value"])
+            )
+            selected_source = "project_metadata" if present else "default"
+            presence_state = "set" if present else "defaulted"
+            parse_status = "exact" if present else "defaulted"
+            shadowed = ["default"] if present else []
+        else:
+            raise RuntimeFeatureFlagResolutionError("feature_flag_unregistered")
+        semantic_rows.append({
+            "flag_id": flag_id,
+            "value_type": "boolean",
+            "effective_value": effective,
+            "default_policy_sha256": policy["default_policy_sha256"],
+            "parser_policy_sha256": policy["parser_policy_sha256"],
+            "precedence_policy_sha256": policy["precedence_policy_sha256"],
+        })
+        provenance_rows.append({
+            "flag_id": flag_id,
+            "source_kind": source_kind,
+            "presence_state": presence_state,
+            "selected_source": selected_source,
+            "raw_value_present": presence_state != "defaulted",
+            "parse_status": parse_status,
+            "shadowed_sources_count": len(shadowed),
+            "shadowed_sources_sha256": _shadow_hash(flag_id, shadowed),
+        })
+    semantic_body = {
+        "registry_policy_version": FEATURE_FLAG_REGISTRY_POLICY_VERSION_V2,
+        "registry_definition_sha256": registry["definition_sha256"],
+        "flags": semantic_rows,
+    }
+    semantic = make_definition("EffectiveFeatureFlagSnapshotV2", {
+        **semantic_body,
+        "semantic_snapshot_sha256": domain_sha256(
+            "novel-flywheel-effective-feature-flag-semantics-v2", semantic_body,
+        ),
+    })
+    provenance_body = {
+        "registry_policy_version": FEATURE_FLAG_REGISTRY_POLICY_VERSION_V2,
+        "registry_definition_sha256": registry["definition_sha256"],
+        "flags": provenance_rows,
+        "raw_values_included": False,
+    }
+    provenance = make_definition("FeatureFlagProvenanceSnapshotV1", {
+        **provenance_body,
+        "provenance_snapshot_sha256": domain_sha256(
+            "novel-flywheel-feature-flag-provenance-v1", provenance_body,
+        ),
+    })
+    return semantic, provenance, registry
 
 
 def _identifier_hash(kind: str, value: str | None) -> str | None:
@@ -59,10 +339,14 @@ def _definition_ref(definition: Mapping[str, Any]) -> dict[str, str]:
 def _definition_category(schema: str) -> str:
     if schema == "RuntimeBuildFingerprintV1":
         return "builds"
-    if schema == "RuntimeExecutionConfigFingerprintV1":
+    if schema in {
+        "RuntimeExecutionConfigFingerprintV1",
+        "RuntimeExecutionConfigFingerprintV2",
+    }:
         return "execution-configs"
     if schema in {
-        "RuntimeExecutionFingerprintV1", "RuntimeFingerprintRunBindingV1",
+        "RuntimeExecutionFingerprintV1", "RuntimeExecutionFingerprintV2",
+        "RuntimeFingerprintRunBindingV1",
     }:
         return "executions"
     if "SourceManifest" in schema or "BuildInputManifest" in schema \
@@ -333,7 +617,7 @@ def _build_parent(
     })
 
 
-def _execution_config_parent(
+def _execution_config_parent_v1(
     feature_flags: Mapping[str, Any], routes: Mapping[str, Any],
 ) -> dict[str, Any]:
     refs = {
@@ -386,9 +670,11 @@ def collect_build_fingerprint(
 def collect_execution_config_fingerprint(
     db: Any, *, project_id: str | None = None,
 ) -> tuple[dict[str, Any], tuple[dict[str, Any], ...]]:
+    """Collect the historical V1 execution config without changing its meaning."""
+
     feature_flags = feature_flag_definition(db, project_id)
     routes = route_role_binding_definition(db)
-    return _execution_config_parent(feature_flags, routes), (feature_flags, routes)
+    return _execution_config_parent_v1(feature_flags, routes), (feature_flags, routes)
 
 
 def combine_runtime_execution_fingerprint(
@@ -422,6 +708,41 @@ class RuntimeFingerprintSnapshotV1:
     children: tuple[dict[str, Any], ...]
 
     @property
+    def policy_version(self) -> str:
+        schema = str(self.execution_config.get("schema") or "")
+        return (
+            RUNTIME_FINGERPRINT_POLICY_V2
+            if schema == "RuntimeExecutionConfigFingerprintV2"
+            else RUNTIME_FINGERPRINT_POLICY_V1
+        )
+
+    @property
+    def feature_flag_semantic_sha256(self) -> str | None:
+        return self.execution_config.get("payload", {}).get(
+            "feature_flag_semantic_sha256"
+        )
+
+    @property
+    def feature_flag_provenance_sha256(self) -> str | None:
+        return self.execution_config.get("payload", {}).get(
+            "feature_flag_provenance_sha256"
+        )
+
+    @property
+    def execution_config_component_binding(self) -> dict[str, Any] | None:
+        if self.policy_version != RUNTIME_FINGERPRINT_POLICY_V2:
+            return None
+        payload = self.execution_config["payload"]
+        return {
+            "policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
+            "semantic_sha256": payload["execution_config_fingerprint_sha256"],
+            "feature_flag_provenance_sha256": payload[
+                "feature_flag_provenance_sha256"
+            ],
+            "semantic_components": dict(payload["semantic_components"]),
+        }
+
+    @property
     def build_fingerprint_sha256(self) -> str:
         return str(self.build["payload"]["build_fingerprint_sha256"])
 
@@ -436,7 +757,7 @@ class RuntimeFingerprintSnapshotV1:
         return str(self.execution["payload"]["execution_fingerprint_sha256"])
 
 
-def collect_runtime_fingerprint(
+def collect_runtime_fingerprint_v1(
     db: Any, *, project_id: str | None = None,
     module_file: Path | None = None,
 ) -> RuntimeFingerprintSnapshotV1:
@@ -450,6 +771,176 @@ def collect_runtime_fingerprint(
         build=build, execution_config=execution_config,
         execution=execution, children=children,
     )
+
+
+def _execution_config_parent_v2(
+    *, effective_flags: Mapping[str, Any],
+    flag_provenance: Mapping[str, Any],
+    flag_registry: Mapping[str, Any], routes: Mapping[str, Any],
+    python_runtime: Mapping[str, Any], dependencies: Mapping[str, Any],
+) -> dict[str, Any]:
+    semantic_components = {
+        "effective_feature_flags": str(
+            effective_flags["payload"]["semantic_snapshot_sha256"]
+        ),
+        "feature_flag_registry": str(flag_registry["definition_sha256"]),
+        "installed_dependencies": str(dependencies["definition_sha256"]),
+        "python_runtime": str(python_runtime["definition_sha256"]),
+        "route_role_bindings": str(routes["definition_sha256"]),
+    }
+    semantic_hash = domain_sha256(
+        "novel-flywheel-runtime-execution-config-semantics-v2",
+        {
+            "policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
+            "semantic_components": semantic_components,
+        },
+    )
+    refs = {
+        "effective_feature_flags": _definition_ref(effective_flags),
+        "feature_flag_provenance": _definition_ref(flag_provenance),
+        "feature_flag_registry": _definition_ref(flag_registry),
+        "installed_dependencies": _definition_ref(dependencies),
+        "python_runtime": _definition_ref(python_runtime),
+        "route_role_bindings": _definition_ref(routes),
+    }
+    return make_definition("RuntimeExecutionConfigFingerprintV2", {
+        "policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
+        "execution_config_fingerprint_sha256": semantic_hash,
+        "feature_flag_semantic_sha256": (
+            effective_flags["payload"]["semantic_snapshot_sha256"]
+        ),
+        "feature_flag_provenance_sha256": (
+            flag_provenance["payload"]["provenance_snapshot_sha256"]
+        ),
+        "semantic_components": semantic_components,
+        "child_definitions": refs,
+        "human_summary": {
+            "role_binding_count": len(routes["payload"]["role_bindings"]),
+            "provider_descriptor_count": len(routes["payload"]["providers"]),
+            "enabled_flag_count": sum(
+                item["effective_value"] is True
+                for item in effective_flags["payload"]["flags"]
+            ),
+            "provenance_in_semantic_hash": False,
+            "credential_material_included": False,
+        },
+    })
+
+
+def collect_execution_config_fingerprint_v2(
+    db: Any, *, project_id: str | None = None,
+    registry_payload: Mapping[str, Any] | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> tuple[dict[str, Any], tuple[dict[str, Any], ...]]:
+    """Canonical V2 resolver shared by materialization and execution."""
+
+    effective, provenance, registry = resolve_feature_flag_snapshots_v2(
+        db, project_id=project_id, registry_payload=registry_payload,
+        environment=environment,
+    )
+    routes = route_role_binding_definition(db)
+    python_runtime = python_runtime_definition()
+    dependencies = installed_dependency_definition()
+    parent = _execution_config_parent_v2(
+        effective_flags=effective, flag_provenance=provenance,
+        flag_registry=registry, routes=routes, python_runtime=python_runtime,
+        dependencies=dependencies,
+    )
+    return parent, (
+        effective, provenance, registry, routes, python_runtime, dependencies,
+    )
+
+
+def combine_runtime_execution_fingerprint_v2(
+    build: Mapping[str, Any], execution_config: Mapping[str, Any],
+) -> dict[str, Any]:
+    semantic = {
+        "build": build["payload"]["build_fingerprint_sha256"],
+        "execution_config": execution_config["payload"][
+            "execution_config_fingerprint_sha256"
+        ],
+        "policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
+    }
+    return make_definition("RuntimeExecutionFingerprintV2", {
+        "policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
+        "build_fingerprint_sha256": semantic["build"],
+        "execution_config_fingerprint_sha256": semantic["execution_config"],
+        "execution_fingerprint_sha256": domain_sha256(
+            "novel-flywheel-runtime-execution-v2", semantic,
+        ),
+        "child_definitions": {
+            "build": _definition_ref(build),
+            "execution_config": _definition_ref(execution_config),
+        },
+    })
+
+
+def collect_runtime_fingerprint_v2(
+    db: Any, *, project_id: str | None = None,
+    module_file: Path | None = None,
+    registry_payload: Mapping[str, Any] | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> RuntimeFingerprintSnapshotV1:
+    build, build_children = collect_build_fingerprint(module_file=module_file)
+    execution_config, config_children = collect_execution_config_fingerprint_v2(
+        db, project_id=project_id, registry_payload=registry_payload,
+        environment=environment,
+    )
+    execution = combine_runtime_execution_fingerprint_v2(build, execution_config)
+    return RuntimeFingerprintSnapshotV1(
+        build=build, execution_config=execution_config, execution=execution,
+        children=(*build_children, *config_children),
+    )
+
+
+def collect_runtime_fingerprint(
+    db: Any, *, project_id: str | None = None,
+    module_file: Path | None = None,
+) -> RuntimeFingerprintSnapshotV1:
+    """Collect the current V2 policy; V1 remains explicit and readable."""
+
+    return collect_runtime_fingerprint_v2(
+        db, project_id=project_id, module_file=module_file,
+    )
+
+
+def runtime_execution_config_component_diff_v2(
+    expected: RuntimeFingerprintSnapshotV1,
+    actual: RuntimeFingerprintSnapshotV1,
+) -> dict[str, Any]:
+    """Return a hash-only V2 diagnostic diff; never expose flag values."""
+
+    expected_payload = expected.execution_config["payload"]
+    actual_payload = actual.execution_config["payload"]
+    expected_components = dict(expected_payload.get("semantic_components") or {})
+    actual_components = dict(actual_payload.get("semantic_components") or {})
+    differing = sorted(
+        component for component in set(expected_components) | set(actual_components)
+        if expected_components.get(component) != actual_components.get(component)
+    )
+    expected_provenance = expected_payload.get("feature_flag_provenance_sha256")
+    actual_provenance = actual_payload.get("feature_flag_provenance_sha256")
+    provenance_equal = (
+        expected_provenance is not None
+        and actual_provenance is not None
+        and expected_provenance == actual_provenance
+    )
+    if not provenance_equal:
+        differing.append("feature_flag_provenance")
+    return {
+        "policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
+        "expected_semantic_sha256": expected.execution_config_fingerprint_sha256,
+        "actual_semantic_sha256": actual.execution_config_fingerprint_sha256,
+        "expected_provenance_sha256": expected_provenance,
+        "actual_provenance_sha256": actual_provenance,
+        "semantic_equal": (
+            expected.execution_config_fingerprint_sha256
+            == actual.execution_config_fingerprint_sha256
+        ),
+        "provenance_equal": provenance_equal,
+        "differing_component_ids": sorted(set(differing)),
+        "hash_only": True,
+    }
 
 
 def persist_runtime_fingerprint(
@@ -589,10 +1080,10 @@ class RuntimeFingerprintRecorderV1:
         epoch = str(observation["execution_epoch"])
         if kind not in {"origin", "executor"}:
             raise ValueError("unsupported runtime binding kind")
-        execution_config, config_children = collect_execution_config_fingerprint(
+        execution_config, config_children = collect_execution_config_fingerprint_v2(
             self.db, project_id=project_id,
         )
-        execution = combine_runtime_execution_fingerprint(
+        execution = combine_runtime_execution_fingerprint_v2(
             self.process_build, execution_config,
         )
         self.store.write_graph(execution_config, config_children)
@@ -609,6 +1100,7 @@ class RuntimeFingerprintRecorderV1:
             "binding_kind": kind,
             "execution_epoch": epoch,
             "binding_status": binding_status,
+            "runtime_fingerprint_policy_version": RUNTIME_FINGERPRINT_POLICY_V2,
             "runtime_execution_fingerprint": execution["payload"][
                 "execution_fingerprint_sha256"
             ],
