@@ -1,0 +1,35 @@
+{
+  "approval_candidate_sha256": "e62b836c13f2de47309bbe1d6a2f9a1222e8b09a6317a7065238b359551fc479",
+  "contract_status": "SHORT_COMPLETION_APPROVAL_PROFILE_READY",
+  "definition_sha256": "50ec7b11e4f9bb4588329337fee40d9ba68560798dab2c65df819838d8e6e82d",
+  "execution_performed": false,
+  "execution_window": {
+    "not_after": "2026-08-18T06:32:00Z",
+    "not_before": "2026-08-16T06:32:00Z"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "short-completion-1-authorization-patch-template-v1.json": "2e6efb7ce78604fd8cad856150b0f1fd5b2432ae3c4915f68a3cc68643cee49b",
+    "short-completion-1-definitions-v1.json": "8679578d07eba1bf201a64869d5e17d29dfb1aedafe7d1fccb6fb7f894d40420",
+    "short-completion-1-execution-preview-v1.json": "7b93249b7332c379880d2307e9e6c43e5e86e11e8cbb34e2506687dbc5924271",
+    "short-completion-1-final-approval-candidate-v1.json": "1f3dba70c44e67b0e1cb22deaebffa9cc4fcf9851317be91570ff4cf216da5cc",
+    "short-completion-1-final-plan-v1.json": "545a1073cbd30995bca1cdce2643d80058a6117572cd12b20a5f57429d0488cc",
+    "short-completion-1-validate-only-receipt-v1.json": "a23a9b32774373166ba286fb94875cc63dab64871dc57237bc4908c2b52491e3"
+  },
+  "launcher_sha256": "7cfd457d4c1e2cf3a4a33e906dfea618d852f0f979c13c8d002636c3e0ad89a5",
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "plan_sha256": "64e121b26d241ce2571f3cbb9ed47e750f3fb22dad542863dce3c97c3bd9adec",
+  "schema": "ShortCompletionMaterializationIndexV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "short-completion-1-20260816t061700z",
+  "status": "SHORT_COMPLETION_CANARY_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "13e0e8fae78e8d5c2f10ed385382aa92041d9796d33fcf5ec881abdbe3c3b411",
+  "version": 1
+}

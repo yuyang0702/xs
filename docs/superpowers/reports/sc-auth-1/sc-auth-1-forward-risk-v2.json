@@ -1,0 +1,100 @@
+{
+  "version": 2,
+  "original_requirement": "Register a closed-world Short Completion real-Canary approval profile and verify exact Final Review, Maintenance, artifact, and checkpoint closure without changing production behavior or executing a real provider.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Only short_completion_1 documents bound to the exact registered scope, current Plan, launcher, workload, fingerprints, route/provider/pricing manifests, flags, budgets, stop manifest, validator policies, completion definitions, cohort, and window may become a Signed Approval; only a hash-only verifier proving the existing production completion artifacts may report SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED.",
+  "forbidden_narrowing": [
+    "Do not treat run.status=completed alone as Short Completion success.",
+    "Do not invent or relax production Final Review or Maintenance semantics.",
+    "Do not change Prompt, route, retry/fallback, validator, production workflow, StoryState, Canon, or Phase 1B.",
+    "Do not create a Signed Approval, reserve a cohort, read credentials, create a provider client, access the network, or invoke a model during materialization."
+  ],
+  "resolution_status": "systemically_resolved",
+  "closed_world_justification": "The profile registry, schemas, outcome enum, completion definitions, production artifact locations, budgets, flags, and stop conditions are finite and exact. Unknown profile/scope/schema and any hash drift fail closed.",
+  "constraint_traceability": [
+    {
+      "requirement": "Closed-world profile and profile-specific approval chain",
+      "implementation": "approval_profiles.py, approval_dispatch.py, and short_completion_approval.py register exact Candidate/Patch/Signed schemas and bindings.",
+      "test_paths": ["tests/canary/test_short_completion_profile.py", "tests/canary/test_short_completion_materialization.py"],
+      "evidence": "Registry is exactly three profiles; unknown/cross-profile values fail; Candidate/Patch cannot execute or reserve; Signed fixture is exact and single-use."
+    },
+    {
+      "requirement": "Exact completion evidence rather than workflow status",
+      "implementation": "short_completion_verification.py reads existing formal manuscript, integrity, quality report/checkpoint, Maintenance receipt, and committed project mutation journal and emits hashes/status only.",
+      "test_paths": ["tests/canary/test_short_completion_verification.py"],
+      "evidence": "Accepted exact binding passes; reject, missing/stale review, revised manuscript, missing/invalid Maintenance, unbound artifact, stale checkpoint, terminal workflow, and unknown parity are typed non-success outcomes."
+    },
+    {
+      "requirement": "Offline materialization and validate-only closure",
+      "implementation": "short_completion_materialization.py and short_completion_closure.py generate inert documents behind FailClosedNetworkSentinel and validate 36 exact checks.",
+      "test_paths": ["tests/canary/test_short_completion_materialization.py"],
+      "evidence": "Credential/client/network/model/paid counters are zero, live parity is exact, privacy scan passes, no Signed Approval is materialized, and policy/route/Prompt/flag drift is blocked."
+    },
+    {
+      "requirement": "Existing C0B and PA profiles remain compatible",
+      "implementation": "Existing profile definitions and stop manifests are unchanged; dispatch adds a third exact branch only.",
+      "test_paths": ["tests/canary/test_c0b_smoke_final_approval_v2.py", "tests/canary/test_pa_goal_stop.py", "tests/canary/test_pa_strict_tool_obs_materialization.py"],
+      "evidence": "Related compatibility cluster passed 88 tests; complete Canary suite passed 217 tests with one skip."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "path reachability incorrectly treated as workflow completion",
+    "accepted tool shape followed by downstream workflow terminal",
+    "stale review receipt bound to an older manuscript",
+    "Maintenance completion unobservable or missing",
+    "checkpoint binding stale or unverifiable",
+    "approval candidate or patch used as executable authority",
+    "single-use cohort replay or cross-profile reuse",
+    "diagnostic feature flag leakage into production-shaped canary"
+  ],
+  "projected_failure_mechanisms": [
+    "Final Review reject or receipt absence",
+    "Final Review hash remains on a pre-revision manuscript",
+    "Maintenance receipt missing or invalid",
+    "formal manuscript absent, empty, or missing from committed journal",
+    "quality checkpoint absent, corrupt, stale, or non-passing",
+    "validator, mixed-script, Prompt, route, pricing, or stop policy drift",
+    "Phase 1B or PA-only diagnostics accidentally enabled",
+    "cohort replay and cross-profile schema/scope confusion",
+    "live isolation mismatch"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "SC-AUTH-1 adds no model call, Prompt, parser, adapter, validator, retry, fallback, or production workflow behavior. The verifier consumes only already-persisted hash/status artifacts after the existing workflow ends.",
+  "why_previous_tests_missed": "The prior c0b_smoke_1 profile intentionally proved only provider-path reachability and mapped run.status=completed directly to WORKFLOW_COMPLETED; it had no profile vocabulary or verifier for Final Review, Maintenance, final artifact, and checkpoint closure.",
+  "sibling_boundaries": [
+    {
+      "boundary": "c0b_smoke_1 path reachability",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Its profile definition, scope, stop manifest, runner handler, and signed schema remain unchanged; compatibility tests pass."
+    },
+    {
+      "boundary": "pa_strict_tool_obs_1 goal-stop",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Strict-tool summary selection remains target-filter based; PA goal-stop and materialization tests pass."
+    },
+    {
+      "boundary": "Short Completion post-run verification",
+      "disposition": "fixed_and_tested",
+      "evidence": "The runner invokes ShortCompletionVerificationV1 only for short_completion_1 and publishes independent workflow and completion outcomes."
+    },
+    {
+      "boundary": "Production Short workflow and formal promotion",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel and baml_src diffs are empty; verification is post-run and read-only."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_short_completion_materialization.py",
+    "tests/canary/test_c0b_smoke_final_approval_v2.py",
+    "tests/canary/test_pa_strict_tool_obs_materialization.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_short_completion_verification.py",
+    "tests/canary/test_short_completion_materialization.py"
+  ],
+  "remaining_risks": [
+    "No real provider or full Short workflow was authorized in SC-AUTH-1; the newly materialized Candidate still requires a future named approval and Signed Approval.",
+    "The verifier depends on the current production quality report, quality checkpoint, Maintenance receipt, and project mutation journal formats; source-byte-bound policy hashes force rematerialization on drift.",
+    "The full suite retains one pre-existing R0E live database hash baseline failure; data/app.db last changed on 2026-08-15 and was not modified by SC-AUTH-1."
+  ]
+}
