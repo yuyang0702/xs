@@ -368,6 +368,14 @@ async def run_registered_real_run(
                             live_roots=all_live_roots,
                         ),
                     }
+                    if profile.profile_id == SHORT_COMPLETION_PROFILE_ID:
+                        from .fingerprint_profiles import (
+                            PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+                        )
+
+                        result["collection_profile_id"] = (
+                            PRODUCTION_MIRROR_SHORT_PROFILE_ID
+                        )
                     capture_micros.append(
                         (time.perf_counter_ns() - capture_started) // 1000
                     )

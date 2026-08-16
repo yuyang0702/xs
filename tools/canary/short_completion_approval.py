@@ -45,6 +45,8 @@ _BOUND_HASH_FIELDS = {
     "final_artifact_policy_sha256", "final_checkpoint_policy_sha256",
     "completion_goal_definition_sha256",
 }
+_R1_D3_BOUND_HASH_FIELD = "r1_d3_production_mirror_readiness_sha256"
+_R1_D3_CONTROL_FIELD = "execution_collection_profile_id"
 _CONTROL_FIELDS = {
     "approved_workload_id", "runtime_mode", "maximum_runs",
     "expected_model_calls", "maximum_total_model_calls",
@@ -61,6 +63,9 @@ _CANDIDATE_FIELDS = {
     "schema", "version", "canonicalization_version", "profile_id",
     "profile_definition_sha256", "approval_scope", *_BOUND_HASH_FIELDS,
     *_CONTROL_FIELDS, "status", "approval_candidate_sha256",
+}
+_R1_D3_CANDIDATE_FIELDS = _CANDIDATE_FIELDS | {
+    _R1_D3_BOUND_HASH_FIELD, _R1_D3_CONTROL_FIELD,
 }
 _PATCH_BOUND_FIELDS = {
     "bound_plan_sha256", "bound_approval_candidate_sha256",
@@ -91,6 +96,9 @@ _SIGNED_FIELDS = _CANDIDATE_FIELDS.difference({
     "schema", "version", "source_candidate_sha256",
     "source_authorization_patch_sha256", "approval_timestamp",
     "signed_approval_sha256",
+}
+_R1_D3_SIGNED_FIELDS = _SIGNED_FIELDS | {
+    _R1_D3_BOUND_HASH_FIELD, _R1_D3_CONTROL_FIELD,
 }
 
 
@@ -164,7 +172,10 @@ def validate_short_completion_candidate_v1(
     expected_launcher_sha256: str | None = None, now: datetime | None = None,
     enforce_time: bool = False,
 ) -> dict[str, Any]:
-    _require(isinstance(value, Mapping) and set(value) == _CANDIDATE_FIELDS,
+    _require(isinstance(value, Mapping) and frozenset(value) in {
+                 frozenset(_CANDIDATE_FIELDS),
+                 frozenset(_R1_D3_CANDIDATE_FIELDS),
+             },
              "approval_candidate_fields_unexpected")
     _require(value["schema"] == SHORT_COMPLETION_CANDIDATE_SCHEMA and
              value["version"] == 1, "approval_schema_mismatch")
@@ -175,6 +186,18 @@ def validate_short_completion_candidate_v1(
         _require(isinstance(value.get(field), str) and
                  _HEX64.fullmatch(str(value[field])) is not None,
                  f"{field}_invalid")
+    if _R1_D3_BOUND_HASH_FIELD in value:
+        from .fingerprint_profiles import PRODUCTION_MIRROR_SHORT_PROFILE_ID
+
+        _require(
+            isinstance(value.get(_R1_D3_BOUND_HASH_FIELD), str)
+            and _HEX64.fullmatch(str(value[_R1_D3_BOUND_HASH_FIELD])) is not None,
+            f"{_R1_D3_BOUND_HASH_FIELD}_invalid",
+        )
+        _require(
+            value.get(_R1_D3_CONTROL_FIELD) == PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+            "target_execution_collection_profile_mismatch",
+        )
     _validate_policy_bindings(value)
     profile = approval_profile(SHORT_COMPLETION_PROFILE_ID)
     for field, expected in profile.budget().items():
@@ -370,12 +393,26 @@ def validate_short_completion_signed_approval_v1(
     expected_launcher_sha256: str | None = None, now: datetime | None = None,
     enforce_time: bool = False,
 ) -> dict[str, Any]:
-    _require(isinstance(value, Mapping) and set(value) == _SIGNED_FIELDS,
+    _require(isinstance(value, Mapping) and frozenset(value) in {
+                 frozenset(_SIGNED_FIELDS), frozenset(_R1_D3_SIGNED_FIELDS),
+             },
              "signed_approval_fields_unexpected")
     _require(value["schema"] == SHORT_COMPLETION_SIGNED_SCHEMA and
              value["version"] == 1, "approval_schema_mismatch")
     _validate_profile(value)
     _validate_policy_bindings(value)
+    if _R1_D3_BOUND_HASH_FIELD in value:
+        from .fingerprint_profiles import PRODUCTION_MIRROR_SHORT_PROFILE_ID
+
+        _require(
+            isinstance(value.get(_R1_D3_BOUND_HASH_FIELD), str)
+            and _HEX64.fullmatch(str(value[_R1_D3_BOUND_HASH_FIELD])) is not None,
+            f"{_R1_D3_BOUND_HASH_FIELD}_invalid",
+        )
+        _require(
+            value.get(_R1_D3_CONTROL_FIELD) == PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+            "target_execution_collection_profile_mismatch",
+        )
     _require(value["execution_authorized"] is True and
              value["phase1b_enabled"] is False,
              "signed_approval_not_executable")
@@ -428,4 +465,18 @@ def validate_short_completion_signed_plan_v1(
         "final_checkpoint_policy_sha256", "completion_goal_definition_sha256",
     ):
         _require(value[field] == policy.get(field), f"{field}_mismatch")
+    readiness_hash = policy.get(_R1_D3_BOUND_HASH_FIELD)
+    if readiness_hash is not None:
+        _require(
+            value.get(_R1_D3_BOUND_HASH_FIELD) == readiness_hash,
+            "r1_d3_production_mirror_readiness_mismatch",
+        )
+        _require(
+            value.get(_R1_D3_CONTROL_FIELD)
+            == policy.get(_R1_D3_CONTROL_FIELD),
+            "target_execution_collection_profile_mismatch",
+        )
+    else:
+        _require(_R1_D3_BOUND_HASH_FIELD not in value,
+                 "r1_d3_production_mirror_readiness_unapproved")
     return value

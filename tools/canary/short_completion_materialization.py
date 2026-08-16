@@ -21,6 +21,11 @@ from .approval_store import initialize_approval_ledger_v1
 from .artifact_hash import file_sha256, live_parity_manifest
 from .c0b_packet import prepare_c0b_smoke_packet
 from .contracts import build_canary_experiment_plan_v1
+from .fingerprint_profiles import (
+    PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+    build_r1_d3_production_mirror_readiness_binding_v1,
+    fingerprint_collection_profile_definitions_v1,
+)
 from .network_sentinel import FailClosedNetworkSentinel
 from .short_completion import COMPLETION_GOAL, completion_contract_bundle_v1
 from .short_completion_approval import (
@@ -120,6 +125,7 @@ def materialize_short_completion_1(
         "index": output_root / "short-completion-1-materialization-index-v1.json",
         "ledger_readiness": output_root / "short-completion-1-ledger-operational-readiness-v1.json",
         "semantic_rehearsal": output_root / "short-completion-1-pre-launch-semantic-rehearsal-v1.json",
+        "r1_d3_readiness": output_root / "short-completion-1-r1-d3-production-mirror-readiness-v1.json",
     }
     before = live_parity_manifest(
         database_path=live_database_path, project_root=live_project_root,
@@ -164,6 +170,19 @@ def materialize_short_completion_1(
             },
         })
         payload["stop_conditions"] = list(profile.stop_condition_policy)
+        readiness = build_r1_d3_production_mirror_readiness_binding_v1(
+            repo_root=Path(__file__).resolve().parents[2],
+            production_plan=payload,
+            draft_validator_policy_sha256=definitions["draft_validator_policy"][
+                "definition_sha256"
+            ],
+            final_review_definition_sha256=definitions["final_review"][
+                "definition_sha256"
+            ],
+            maintenance_definition_sha256=definitions["maintenance"][
+                "definition_sha256"
+            ],
+        )
         policy = {
             "profile_id": profile.profile_id,
             "approval_scope": profile.approval_scope,
@@ -178,6 +197,11 @@ def materialize_short_completion_1(
             "final_checkpoint_policy_sha256": definitions["final_checkpoint"]["definition_sha256"],
             "completion_goal_definition_sha256": definitions["completion_goal"]["definition_sha256"],
             "second_run_allowed": False,
+            "execution_collection_profile_id": PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+            "r1_d3_production_mirror_readiness_sha256": readiness[
+                "definition_sha256"
+            ],
+            "r1_d3_production_mirror_readiness": readiness,
         }
         payload["short_completion_policy"] = policy
         plan = build_canary_experiment_plan_v1(payload)
@@ -218,6 +242,10 @@ def materialize_short_completion_1(
                 "maintenance_definition_sha256", "final_artifact_policy_sha256",
                 "final_checkpoint_policy_sha256", "completion_goal_definition_sha256",
             )},
+            "execution_collection_profile_id": PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+            "r1_d3_production_mirror_readiness_sha256": readiness[
+                "definition_sha256"
+            ],
             "approved_workload_id": workload["workload_id"],
             "runtime_mode": plan["runtime_mode"],
             "maximum_runs": 1, "expected_model_calls": 16,
@@ -257,6 +285,10 @@ def materialize_short_completion_1(
             "bound_plan_sha256": plan["plan_sha256"],
             "bound_candidate_sha256": candidate["approval_candidate_sha256"],
             "bound_patch_template_sha256": patch_template["authorization_patch_template_sha256"],
+            "execution_collection_profile_id": PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+            "r1_d3_production_mirror_readiness_sha256": readiness[
+                "definition_sha256"
+            ],
             "future_signed_approval_schema": profile.signed_approval_schema,
             "future_signed_approval_file": "${SHORT_COMPLETION_SIGNED_APPROVAL}",
             "plan_file": f"{label}/{paths['plan'].name}",
@@ -283,6 +315,10 @@ def materialize_short_completion_1(
         definitions_document = {
             "schema": "ShortCompletionDefinitionBundleV1", "version": 1,
             "definitions": definitions, "budgets": budget_definitions,
+            "fingerprint_collection_profiles": (
+                fingerprint_collection_profile_definitions_v1()
+            ),
+            "r1_d3_production_mirror_readiness": readiness,
         }
         definitions_document["bundle_sha256"] = domain_sha256(
             "novel-flywheel-short-completion-definition-bundle-v1",
@@ -293,6 +329,7 @@ def materialize_short_completion_1(
                            ("preview", preview),
                            ("definitions", definitions_document)):
             _write(paths[key], value)
+        _write(paths["r1_d3_readiness"], readiness)
         _write(paths["ledger_readiness"], ledger_readiness)
         rehearsal_output = temporary_root / "semantic-rehearsal.json"
         rehearsal_root = temporary_root / "semantic-rehearsal-root"
@@ -352,6 +389,10 @@ def materialize_short_completion_1(
         "approval_ledger_operational_readiness": ledger_readiness["status"],
         "prelaunch_semantic_rehearsal_sha256": semantic_rehearsal["receipt_sha256"],
         "prelaunch_semantic_rehearsal_status": semantic_rehearsal["status"],
+        "r1_d3_production_mirror_readiness_sha256": readiness[
+            "definition_sha256"
+        ],
+        "execution_collection_profile_id": PRODUCTION_MIRROR_SHORT_PROFILE_ID,
         "live_parity_before_sha256": before["parity_sha256"],
         "live_parity_after_sha256": after["parity_sha256"],
         "signed_approval_materialized": False,
@@ -368,6 +409,7 @@ def materialize_short_completion_1(
         "definitions": definitions_document, "index": index, "paths": paths,
         "ledger_readiness": ledger_readiness,
         "semantic_rehearsal": semantic_rehearsal,
+        "r1_d3_production_mirror_readiness": readiness,
         "approval_ledger_root": ledger_root,
         "network_call_count": sentinel.network_call_count,
         "execution_performed": False,

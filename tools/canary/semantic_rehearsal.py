@@ -15,6 +15,10 @@ from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from .approval_profiles import SHORT_COMPLETION_PROFILE_ID, approval_profile
 from .descriptors import copy_production_execution_config
 from .environment import c0a_environment
+from .fingerprint_profiles import (
+    PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+    compare_execution_fingerprint_profiles_v1,
+)
 from .network_sentinel import FailClosedNetworkSentinel
 from .preflight import validate_execution_config_prelaunch_v2
 
@@ -54,6 +58,24 @@ def run_rehearsal(
         observation = validate_execution_config_prelaunch_v2(
             plan, runtime.execution_config_component_binding or {},
         )
+        collection_profile_comparison = compare_execution_fingerprint_profiles_v1(
+            {
+                "collection_profile_id": plan["short_completion_policy"].get(
+                    "execution_collection_profile_id"
+                ),
+                "execution_config_sha256": plan[
+                    "approved_execution_config_fingerprint"
+                ],
+                "runtime_execution_sha256": plan[
+                    "expected_runtime_execution_fingerprint"
+                ],
+            },
+            {
+                "collection_profile_id": PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+                "execution_config_sha256": runtime.execution_config_fingerprint_sha256,
+                "runtime_execution_sha256": runtime.execution_fingerprint_sha256,
+            },
+        )
         # This sentinel marks permission to reach a fake boundary.  It never
         # resolves credentials, constructs a provider, or opens the network.
         fake_boundary_count += 1
@@ -71,16 +93,22 @@ def run_rehearsal(
         "status": "exact",
         "process_isolation": "independent_subprocess",
         "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+        "collection_profile_id": PRODUCTION_MIRROR_SHORT_PROFILE_ID,
         "materialization_semantic_sha256": plan[
             "approved_execution_config_fingerprint"
         ],
         "subprocess_semantic_sha256": runtime.execution_config_fingerprint_sha256,
+        "materialization_runtime_execution_sha256": plan[
+            "expected_runtime_execution_fingerprint"
+        ],
+        "subprocess_runtime_execution_sha256": runtime.execution_fingerprint_sha256,
         "materialization_provenance_sha256": plan[
             "approved_execution_config_components"
         ]["feature_flag_provenance_sha256"],
         "subprocess_provenance_sha256": runtime.feature_flag_provenance_sha256,
         "observation_status": observation["status"],
         "component_diff": observation["component_diff"],
+        "collection_profile_comparison": collection_profile_comparison,
         "external_action_counters": counters,
         "raw_values_included": False,
     }

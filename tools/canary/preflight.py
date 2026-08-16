@@ -22,7 +22,7 @@ from .approval_dispatch import (
     validate_registered_signed_plan,
     validate_registered_signed_sources,
 )
-from .approval_profiles import approval_profile
+from .approval_profiles import SHORT_COMPLETION_PROFILE_ID, approval_profile
 from .gate import BoundaryRequest
 
 
@@ -224,11 +224,46 @@ class ExactBoundaryVerifier:
             == plan["expected_runtime_execution_fingerprint"],
             "runtime_execution_changed_during_canary",
         )
+        collection_profile_observation = None
+        if self.expected_profile_id == SHORT_COMPLETION_PROFILE_ID:
+            from .fingerprint_profiles import (
+                FingerprintCollectionProfileError,
+                compare_execution_fingerprint_profiles_v1,
+            )
+
+            try:
+                collection_profile_observation = compare_execution_fingerprint_profiles_v1(
+                    {
+                        "collection_profile_id": plan[
+                            "short_completion_policy"
+                        ].get("execution_collection_profile_id"),
+                        "execution_config_sha256": plan[
+                            "approved_execution_config_fingerprint"
+                        ],
+                        "runtime_execution_sha256": plan[
+                            "expected_runtime_execution_fingerprint"
+                        ],
+                    },
+                    {
+                        "collection_profile_id": snapshot.get(
+                            "collection_profile_id"
+                        ),
+                        "execution_config_sha256": snapshot[
+                            "execution_config_fingerprint"
+                        ],
+                        "runtime_execution_sha256": snapshot[
+                            "runtime_execution_fingerprint"
+                        ],
+                    },
+                )
+            except FingerprintCollectionProfileError as exc:
+                raise CanaryPreflightBlocked(exc.reason_code) from exc
         _require(snapshot["canary_root_validation"].get("validation_status") == "exact",
                  "canary_root_identity_mismatch")
         return {
             "snapshot": snapshot, "plan": plan,
             "execution_config_observation": execution_config_observation,
+            "collection_profile_observation": collection_profile_observation,
         }
 
     def run_runtime_preflight(
@@ -264,6 +299,11 @@ class ExactBoundaryVerifier:
         if isinstance(observation, Mapping):
             receipt["execution_config_observation_status"] = observation["status"]
             receipt["execution_config_component_diff"] = observation["component_diff"]
+        collection = validated.get("collection_profile_observation")
+        if isinstance(collection, Mapping):
+            receipt["collection_profile_comparison_status"] = collection[
+                "comparison_status"
+            ]
         self.receipts.append(receipt)
         return receipt
 

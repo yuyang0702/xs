@@ -22,6 +22,10 @@ from .approval_profiles import SHORT_COMPLETION_PROFILE_ID
 from .approval_store import ApprovalConsumptionStore
 from .artifact_hash import file_sha256, live_parity_manifest
 from .contracts import validate_canary_experiment_plan_v1
+from .fingerprint_profiles import (
+    PRODUCTION_MIRROR_SHORT_PROFILE_ID,
+    validate_r1_d3_production_mirror_readiness_binding_v1,
+)
 from .hash_manifest import validate_import_closure
 from .short_completion import completion_contract_bundle_v1
 
@@ -39,6 +43,7 @@ CHECK_NAMES = (
     "final_review_completion_definition",
     "maintenance_completion_definition", "final_artifact_binding_policy",
     "final_checkpoint_closure_policy", "completion_goal_definition",
+    "r1_d3_production_mirror_readiness",
     "canary_root_identity", "execution_window", "cohort_unused",
     "approval_ledger", "external_authorization", "privacy", "live_parity",
 )
@@ -135,6 +140,30 @@ def validate_short_completion_approval_closure(
         }
         if any(policy.get(key) != digest for key, digest in expected.items()):
             raise ValueError("short_completion_policy_mismatch")
+        readiness_value = policy.get("r1_d3_production_mirror_readiness")
+        if readiness_value is not None:
+            readiness = validate_r1_d3_production_mirror_readiness_binding_v1(
+                readiness_value
+            )
+            if (
+                policy.get("execution_collection_profile_id")
+                != PRODUCTION_MIRROR_SHORT_PROFILE_ID
+                or policy.get("r1_d3_production_mirror_readiness_sha256")
+                != readiness["definition_sha256"]
+                or readiness["production_mirror_build_sha256"]
+                != plan["approved_build_fingerprint"]
+                or readiness["production_mirror_config_sha256"]
+                != plan["approved_execution_config_fingerprint"]
+                or readiness["production_mirror_runtime_sha256"]
+                != plan["expected_runtime_execution_fingerprint"]
+                or readiness["production_mirror_prompt_policy_sha256"]
+                != workload["prompt_policy_manifest_sha256"]
+                or approval.get("r1_d3_production_mirror_readiness_sha256")
+                != readiness["definition_sha256"]
+                or approval.get("execution_collection_profile_id")
+                != PRODUCTION_MIRROR_SHORT_PROFILE_ID
+            ):
+                raise ValueError("r1_d3_production_mirror_readiness_mismatch")
         state = ApprovalConsumptionStore(approval_ledger_root).status(approval)
         if state["status"] != "unused":
             raise ValueError("approval_already_used")
