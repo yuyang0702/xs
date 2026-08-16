@@ -1,0 +1,125 @@
+{
+  "schema": "C0BSC1MaterializationNoGoV1",
+  "version": 1,
+  "status": "SHORT_COMPLETION_CANARY_MATERIALIZATION_BLOCKED_CONTRACT_GAP",
+  "final_gate": "SHORT_COMPLETION_CANARY_MATERIALIZATION_NO_GO",
+  "branch": "c0b-sc1/short-completion-canary-materialization-20260816",
+  "baseline_head": "b683b50779b96240fe909a4d86bf9ec009cdd695",
+  "scope_classification": "closed_world",
+  "authorization": "inert_approval_materialization_only",
+  "materialization_performed": false,
+  "real_canary_executed": false,
+  "approval_profile": {
+    "profile_id": "c0b_smoke_1",
+    "profile_definition_sha256": "5f30d10790b30321f603d3a910d511140154fafcaf61cb193047a0c7f9a1e3e0",
+    "registered_scope": "C0B_REAL_PROVIDER_PATH_REACHABILITY_SMOKE_1",
+    "registered_mode": "c0b_real_path_reachability",
+    "requested_success": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
+    "compatible": false
+  },
+  "hard_contract_gaps": [
+    {
+      "reason_code": "short_completion_scope_not_registered",
+      "problem": "The only reusable C0B profile authorizes Provider path reachability, while the requested approval must authorize and evaluate one complete Short workflow only.",
+      "evidence": [
+        "tools/canary/approval_profiles.py:19",
+        "tools/canary/approval_profiles.py:122",
+        "tools/canary/c0b_packet.py:177"
+      ],
+      "enforcement_gap": "The registered plan treats a controlled Provider capability outcome as success-adjacent evidence instead of requiring the requested completion outcome."
+    },
+    {
+      "reason_code": "short_completion_definitions_not_signed_or_validated",
+      "problem": "The exact Signed Approval field set has no bindings for validator policy, authority-aware mixed-script policy, Final Review success, Maintenance completion, final artifact binding, or checkpoint binding.",
+      "evidence": [
+        "tools/canary/contracts.py:788",
+        "tools/canary/contracts.py:814",
+        "tools/canary/approval_closure.py:53",
+        "tools/canary/approval_closure.py:420"
+      ],
+      "enforcement_gap": "Adding unvalidated report-only hashes would not survive the exact Signed Approval contract and would not become a launcher preflight condition."
+    },
+    {
+      "reason_code": "short_completion_post_run_closure_not_enforced",
+      "problem": "The real runner maps database run status completed directly to WORKFLOW_COMPLETED and does not independently bind the accepted Final Review receipt, reviewed manuscript hash, Maintenance receipt, final artifact hash, and checkpoint state into the Canary outcome.",
+      "evidence": [
+        "tools/canary/real_run.py:550",
+        "tools/canary/launcher.py:313",
+        "src/novel_flywheel/workflows.py:17638",
+        "src/novel_flywheel/workflows.py:17639",
+        "src/novel_flywheel/workflows.py:17800",
+        "src/novel_flywheel/workflows.py:4065"
+      ],
+      "enforcement_gap": "The production workflow has machine pass/fail behavior, but the Canary evidence contract cannot prove the requested exact post-run closure."
+    },
+    {
+      "reason_code": "required_stop_policy_not_representable",
+      "problem": "The registered C0B closure requires its fixed seven-stop manifest and cannot validate the additional policy, privacy, validator, artifact-binding, root-cause, and checkpoint stop conditions required by C0B-SC1.",
+      "evidence": [
+        "tools/canary/approval_closure.py:71",
+        "tools/canary/approval_closure.py:391"
+      ],
+      "enforcement_gap": "Changing the Plan list alone would make the current validate-only closure block rather than enforce the new conditions."
+    }
+  ],
+  "runtime_semantics_observed": {
+    "final_review_machine_outcomes": [
+      "passed",
+      "conditional_pass",
+      "failed"
+    ],
+    "final_review_continuation_requires": "passed",
+    "maintenance_runs_before_formal_promotion": true,
+    "phase1b_required_for_completion": false,
+    "canary_binding_status": "not_representable_by_current_registered_contract"
+  },
+  "artifacts_intentionally_not_created": [
+    "final_plan",
+    "approval_candidate",
+    "authorization_patch_template",
+    "confirmed_authorization_patch",
+    "signed_approval",
+    "execution_command_preview",
+    "single_use_cohort",
+    "execution_window",
+    "approval_ledger_reservation"
+  ],
+  "tests": {
+    "pre_existing_failure_identity": "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+    "pre_materialization_reproduction": "1 failed; expected historical DB sha256 5deb7bdf811c90366ee1342de108c53355cea1c39aff72670bacd99cd5ffab87, current 0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "post_materialization_reproduction": "1 failed; same test and same expected/current DB sha256 values",
+    "r1_d1_focused": "41 passed",
+    "existing_canary_contract_suite": "185 passed, 1 skipped",
+    "full_suite": "1 failed, 2732 passed, 2 skipped, 6 xfailed, 1 warning in 1517.50 seconds",
+    "new_failures": 0
+  },
+  "launcher": {
+    "launcher_sha256": "204a0f445522bba3c7aef054dc8bfbaef64d483f45707b0c70fc96c79967bad6",
+    "dependency_file_count": 36
+  },
+  "live_parity": {
+    "before_sha256": "1ec9d4ef5f6455d20dcce97acaf6cbbd41f2da252c91cd308b2a734e314e9788",
+    "after_sha256": "1ec9d4ef5f6455d20dcce97acaf6cbbd41f2da252c91cd308b2a734e314e9788",
+    "changed": false,
+    "database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "story_state_rows": 6,
+    "story_candidate_rows": 11,
+    "workflow_checkpoint_rows": 917
+  },
+  "external_action_counters": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0
+  },
+  "privacy": {
+    "raw_prompt_included": false,
+    "raw_story_included": false,
+    "provider_response_included": false,
+    "credentials_or_headers_included": false,
+    "absolute_paths_included": false,
+    "project_or_character_names_included": false
+  },
+  "required_future_change_authorization": "A separate code-change task must extend the registered approval profile, Candidate and Signed Approval schemas, validate-only closure, stop policy, and post-run evidence binding before C0B-SC1 can be rematerialized. No such change is authorized in this task."
+}
