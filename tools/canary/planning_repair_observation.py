@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
 import json
@@ -957,3 +958,57 @@ def materialize_planning_repair_observation_1(
         "confirmed_authorization_patch": None,
         "execution_performed": False,
     }
+
+
+def _parse_utc_argument(value: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+            timezone.utc
+        )
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("utc_timestamp_invalid") from exc
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Materialize the disabled R1-PTR2 observation packet",
+    )
+    parser.add_argument("--live-database", type=Path, required=True)
+    parser.add_argument("--live-project-root", type=Path, required=True)
+    parser.add_argument("--workload-fixture", type=Path, required=True)
+    parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--approval-ledger-root", type=Path, required=True)
+    parser.add_argument("--cohort-id", required=True)
+    parser.add_argument("--run-namespace", required=True)
+    parser.add_argument("--artifact-root-label", required=True)
+    parser.add_argument("--materialized-at", type=_parse_utc_argument)
+    args = parser.parse_args(argv)
+    result = materialize_planning_repair_observation_1(
+        live_database_path=args.live_database,
+        live_project_root=args.live_project_root,
+        fixture_path=args.workload_fixture,
+        output_root=args.output_root,
+        approval_ledger_root=args.approval_ledger_root,
+        cohort_id=args.cohort_id,
+        run_namespace=args.run_namespace,
+        artifact_root_label=args.artifact_root_label,
+        now=args.materialized_at,
+    )
+    summary = {
+        "status": result["index"]["status"],
+        "plan_sha256": result["plan"]["plan_sha256"],
+        "approval_candidate_sha256": result["approval_candidate"][
+            "approval_candidate_sha256"
+        ],
+        "validation_status": result["validation_receipt"]["overall_status"],
+        "external_action_counters": result["validation_receipt"][
+            "external_action_counters"
+        ],
+        "execution_performed": False,
+    }
+    print(json.dumps(summary, ensure_ascii=False, sort_keys=True))
+    return 0 if summary["validation_status"] == "exact" else 4
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
