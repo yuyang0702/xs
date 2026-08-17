@@ -1,0 +1,27 @@
+{
+  "schema": "R1PTR2V1Sha256ManifestV1",
+  "version": 1,
+  "canonicalization_version": "file-bytes-sha256-v1",
+  "manifest_self_excluded": true,
+  "files": [
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-authorization-patch-template-v1.json", "bytes": 2486, "sha256": "bdaa4cac7f4c4e7956e31d87a54c6f4bf19363c3c3f0d6abf1253be487dacace"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-definition-bundle-v1.json", "bytes": 9097, "sha256": "a1b473a69a15793665b9c59b682072a2b875d4e8fad278bb449c0f77a716662c"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-execution-preview-v1.json", "bytes": 2297, "sha256": "6024bf448b76591345beed0c3586d591e399d4b44060563c3aa767b2f8b63bdc"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-final-approval-candidate-v1.json", "bytes": 5124, "sha256": "702434493ffd52280077b3ef66fbd60b655870815c8d28e959adf43c60294cf1"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-instrumentation-definition-bundle-v1.json", "bytes": 849, "sha256": "d5936801f982b1c00a0981652c9d3b78081970f75df405d34f61f67c26084212"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-ledger-operational-readiness-v1.json", "bytes": 530, "sha256": "f2f96edc1990320af5215a1c06197b8009c240dbd28d740e059ef03ed5fb114e"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-materialization-index-v1.json", "bytes": 3510, "sha256": "b5e5a1bed4764fb990b3b7503854e977dc83d6a3d8d7b3fa1b6365d9214367ad"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-observation-goal-definition-v1.json", "bytes": 1094, "sha256": "e0feadad4fb28a2513829071fb25010c4391ec52de9893fad509c1a576478078"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-observation-plan-v1.json", "bytes": 16894, "sha256": "1873554b6be9f98b2487f6813e290199cd5c2fce6db3a4074c2c2f4d190b04a4"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-pre-launch-semantic-rehearsal-v1.json", "bytes": 2538, "sha256": "26fcd0b1d2cc06266c72e2483fdda4ed990cbf263e462c675eb4be09353ab1ca"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-signed-closure-rehearsal-v1.json", "bytes": 9583, "sha256": "b14d4650b0e08dff78fe9e4e3bcf974df848320ddbd6e5f4e1d45ee70f78f154"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-change-contract-v1.json", "bytes": 804, "sha256": "1dca1dde8fb591b6673c907d156443d0f90f218c37010dc024bc686dcabb9815"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-final-report-v1.md", "bytes": 7632, "sha256": "6cd60cb26df6f611d6d5dccc482b355c49808716f5125ee0acbe0302aebeb029"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-forward-risk-v2.json", "bytes": 1554, "sha256": "d7ccc70a1685eea87891ac2072814f461307448470c035b720c108d76421a513"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-live-parity-v1.json", "bytes": 452, "sha256": "da95ea85c43eb241aceb9c4a546ff4e5891d2d73149bebc43dc38a3dbe52f9f4"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-privacy-scan-v1.json", "bytes": 376, "sha256": "5d0db3abff5eecab8a316e774e7aaf78f8f462aa8bc4760597a22ace3cb5761e"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-single-review-v1.json", "bytes": 772, "sha256": "e53c814f8f2aeb5220fd9eea77152512c50174ed4946327b3bbbe32ac9f31e25"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-test-results-v1.json", "bytes": 1235, "sha256": "69547af3f209dc9160f79ed0e53dccd4dc315422504e5390e91917b50a4aa6e5"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-validate-only-receipt-v1.json", "bytes": 7575, "sha256": "42b6b9113388c9deb70762be312cd2ad2132c3e8a51ff6206255eac6f24f2a4c"}
+  ]
+}

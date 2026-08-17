@@ -1,0 +1,52 @@
+{
+  "component_diff": {
+    "actual_provenance_sha256": "3fc004c10d4c98a06c26ecd925dcf54adadc44d63ef6da7447c236514b52af2c",
+    "actual_semantic_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+    "differing_component_ids": [],
+    "expected_provenance_sha256": "3fc004c10d4c98a06c26ecd925dcf54adadc44d63ef6da7447c236514b52af2c",
+    "expected_semantic_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+    "hash_only": true,
+    "policy_version": "runtime-fingerprint-v2",
+    "provenance_equal": true,
+    "provenance_known": true,
+    "semantic_equal": true
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "fake_boundary_count": 1,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "materialization_runtime_execution_sha256": "8e3fc9d5fb271ee62f835ebc27165bf0b32254bf3c1f43e2d4b121a6d514413b",
+  "materialization_semantic_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+  "model_request_semantic_status": "unchanged",
+  "observation_status": "exact",
+  "observer_coverage": {
+    "domain_validation": "typed",
+    "finding_propagation": "typed",
+    "output_limit": "typed",
+    "provider_content_block_shape": "typed"
+  },
+  "observer_receipt_sha256s": {
+    "domain_validation": "739ab95b15aac228f1d66dc12d0733c7a0a39f6b71161217bd15c1da35317783",
+    "finding_propagation": "d48ab7fd9aeb5e6c7943ad2de7880af98176590b3cbab425d8c5a3cd930130d4",
+    "output_limit": "782441ad2e033fd4b3e0dc11b01632ef68a72300898806b64ca000701cee5afb",
+    "provider_content_block_shape": "809e147ae3758936dec1e86f63452d6d96757e6a2e673c19339f43539036fb61"
+  },
+  "process_isolation": "independent_subprocess",
+  "production_output_budget_status": "unchanged",
+  "production_target_claimed": false,
+  "raw_values_included": false,
+  "receipt_sha256": "e3a12635555778315ae5f72ff7e8c9beea7bb589e8bda96229f0085c8997c1f9",
+  "retry_fallback_status": "unchanged",
+  "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+  "schema": "PlanningRepairPreLaunchSemanticRehearsalV1",
+  "status": "exact",
+  "subprocess_runtime_execution_sha256": "8e3fc9d5fb271ee62f835ebc27165bf0b32254bf3c1f43e2d4b121a6d514413b",
+  "subprocess_semantic_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+  "synthetic_evidence_only": true,
+  "terminal_behavior_status": "unchanged",
+  "version": 1
+}

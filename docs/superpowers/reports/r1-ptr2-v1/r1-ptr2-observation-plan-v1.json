@@ -1,0 +1,422 @@
+{
+  "approved_build_fingerprint": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+  "approved_dependency_manifest": {
+    "production_package": true,
+    "stdlib": true,
+    "third_party": []
+  },
+  "approved_execution_config_components": {
+    "feature_flag_provenance_sha256": "3fc004c10d4c98a06c26ecd925dcf54adadc44d63ef6da7447c236514b52af2c",
+    "policy_version": "runtime-fingerprint-v2",
+    "semantic_components": {
+      "effective_feature_flags": "dd0932b45abd100650eb6ff47049145ef4d4d51a4aac3fb1249c1350e8aebca0",
+      "feature_flag_registry": "c2cea70e9293d204eefe3788d0a2692cfc023fc61233382624e43f2a9b1f9cf4",
+      "installed_dependencies": "8f2648eb5d1c11972d9c1b3b6b08c7ec2ce2ce8e97914eb24dc6951f86c87c6d",
+      "python_runtime": "301b5253f86e24a42309b61eb2d00335738628e49bc93ac71c125c12c80bfc93",
+      "route_role_bindings": "e18e96aab6029d406d7d28360a6dda374eeae3dccccc3063e8a4e857fc5bf665"
+    },
+    "semantic_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b"
+  },
+  "approved_execution_config_fingerprint": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+  "approved_routes": [
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "role": "planning"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "33578b035711c3e83bec0e33275710b88ad015d4698efee2a00df5585be7a705",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "129841923d22b8f25b3c5e250be780735228f74d3add6173aa3139f6a1b2d955",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "role": "draft"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "role": "review"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "d96e0dab0e68cb82cf334476d2269e525dc243200f7e85c68c716c80620d70d2",
+        "protocol": "openai-responses",
+        "provider_descriptor_hash": "b2c472932b2df51f56731394ea6fc85c17e9c244ac99dd6b17a9c19796e891b5"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "18a7d72baee2244bb375fac5c9dfeff9a06fd7c747899c0dc5b18c926e48735d",
+        "protocol": "openai-responses",
+        "provider_descriptor_hash": "b2c472932b2df51f56731394ea6fc85c17e9c244ac99dd6b17a9c19796e891b5"
+      },
+      "role": "reader_review"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "role": "final_review"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "acb6eef1e1a13879fc3d2aed70e49f3fce523bc57d695c63086bc07c2da53438",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "ac8c8cff45a2535ae7debe3fbc361f165fe0b8cc940e97e3e6f894c29c6a2570",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "e076dfb10a335f60825d4f8222374f6f806c5c13ef5161b4caefb72d49e52977"
+      },
+      "role": "polish"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "ac8c8cff45a2535ae7debe3fbc361f165fe0b8cc940e97e3e6f894c29c6a2570",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "e076dfb10a335f60825d4f8222374f6f806c5c13ef5161b4caefb72d49e52977"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "acb6eef1e1a13879fc3d2aed70e49f3fce523bc57d695c63086bc07c2da53438",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "role": "line_edit"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "role": "maintenance"
+    }
+  ],
+  "budgets": {
+    "call_topology_sha256": "a36eb946c3dae1c1122e78789c8bcc2dd14218e5aedf3e3a3fa63f2cc0af6113",
+    "currency": "MULTI_CURRENCY_NO_FX",
+    "elapsed_budget_sha256": "5b61dc688fcd2756d361b1aff4d2896ecc385ecce1537786c55d152169efdcdc",
+    "expected_model_calls": 8,
+    "gate_wait_timeout_seconds": 120,
+    "maximum_elapsed_seconds": 3600,
+    "maximum_estimated_cost_microunits": 0,
+    "maximum_input_tokens": 500000,
+    "maximum_model_calls_per_run": 16,
+    "maximum_output_tokens": 500000,
+    "maximum_output_tokens_per_call": 32000,
+    "maximum_runs": 1,
+    "maximum_total_model_calls": 16,
+    "monetary_budget": {
+      "approved_fx_snapshot": null,
+      "maximum_cny_cost_microunits": 20000000,
+      "maximum_usd_cost_microunits": 10000000,
+      "schema": "CanaryMonetaryBudgetV1"
+    },
+    "price_catalog_sha256": "053fbf7d5fe203257dfb200e019c0ac4bdb811f09e244db4f37c906c7667649a",
+    "pricing_status": "verified_identity_price_bounded_capability_unknown",
+    "worst_case_chargeable": true
+  },
+  "canary_mode": "planning_repair_observation",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "expected_runtime_execution_fingerprint": "8e3fc9d5fb271ee62f835ebc27165bf0b32254bf3c1f43e2d4b121a6d514413b",
+  "feature_flag_snapshot": {
+    "NOVEL_CANONICAL_SHADOW_V1": false,
+    "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1": false,
+    "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": true,
+    "NOVEL_RELIABILITY_TRACE": true,
+    "NOVEL_SHORT_CANONICAL_V2": false,
+    "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1": false,
+    "project_short_canonical_v2": false
+  },
+  "isolation": {
+    "approval_ledger_identity": "b486bd0298b6ce9a3bb12f9be60126172687d6d724508b2ea6b7304690bc3cc8",
+    "data_root_kind": "canary_ephemeral",
+    "db_path_hash": "bbccc53b4aceeed4adc8344d6515f3bf8ba3bf523e20b0a4d1d50417054cbdc2",
+    "project_root_hash": "dfd4eb9d81f52d38954d6b45c08725888a44c3f0b1b241838f918f6d862d1812",
+    "run_namespace": "planning-repair-observation-1-20260817t052829z-v1",
+    "stable_root_identity": "ad603fa69a8e30db25b3b157dc50c0d5930bc8ae17eb42c84e77858d44293fb8"
+  },
+  "launcher_sha256": "5c38d3be4d72f806bb8ee22879fbe99d2d1f12290d793a8bff993c58cc507c28",
+  "plan_sha256": "c5fdeb3e2f8fa35296172f28ac0637dd65ee4dfe111b9db63e9a4d8b4f96b43d",
+  "planning_repair_observation_policy": {
+    "approval_scope": "PLANNING_REPAIR_SINGLE_REAL_PROVIDER_OBSERVATION_CANARY",
+    "budget_definition_hashes": {
+      "call": "0e46d259cb930c22afdbcbd275a5c6d3bcdcc23a79145ff368bb621316b81619",
+      "elapsed": "5b61dc688fcd2756d361b1aff4d2896ecc385ecce1537786c55d152169efdcdc",
+      "monetary": "cbffa9e9996b926f4ff1bba9a4944f65965ca522972fb4b138e24ff44f034354",
+      "token": "fa3a91e4bc2cff9248463de273572d70350769f90e87416e90994f7d5c7b06bf"
+    },
+    "canary_id": "R1-PTR2-PLANNING-REPAIR-OBSERVATION-1",
+    "domain_validator_policy_sha256": "77111523e334421e7165af4af5fe59176ddd2e575ebb5fe7d2429e9cab05477a",
+    "instrumentation_definition_bundle_sha256": "f8053582e21c7b2f7904d251e28e8707ba93f2b8b012b300b7186977dabcdc06",
+    "instrumentation_definition_sha256s": {
+      "domain_validation": "ce59173e45281e7ae403767dda0f1af90789f07ba9e8dd85f8d841c5f70269ec",
+      "finding_propagation": "0440345f993297956bda2cbf3f0141e75da33b56fef86fa46498762320727b94",
+      "output_limit": "40554c086d28d266e2bd43eb4b89d71abb9e0d8be7698ee0679c54fde98eb2c7",
+      "provider_content_block_shape": "d1c66891f0cdaf4758bde9b0c16f9cce06f0d7c0189cd8450f0676d64a463939"
+    },
+    "observation_goal_definition_sha256": "d9f4b956d9b9dd6906889830eb4e9d9dc3284c431a14c90124df6d798e91dd71",
+    "production_output_budget_mutation_allowed": false,
+    "production_repair_budget_policy_sha256": "a4afb20d6c93a9586f8b5f96b3457b1bc1eecfe22458fefcbdde956b2395325a",
+    "production_retry_fallback_mutation_allowed": false,
+    "profile_definition_sha256": "531ba08c399cae3d2fa4625c0eb02c6e64ce77f94c7ef99a359d2fb80a3b6d40",
+    "profile_id": "planning_repair_observation_1",
+    "prompt_request_parity_definition_sha256": "273aac3fc1ed12d58b7a487a7a88ff13414d621ea15532f4c43616bf77cb0523",
+    "second_run_allowed": false,
+    "synthetic_target_injection_allowed": false,
+    "target": {
+      "boundary": "planning_repair_patch",
+      "contract_id": "planning_repair_patch",
+      "contract_version": 1,
+      "role": "planning",
+      "stage": "planning",
+      "synthetic_target_injection_allowed": false,
+      "target_selection_method": "exact_runtime_diagnostic_context"
+    },
+    "target_filter_sha256": "3e7e25963eea65e85cabf20dc4da160e16448594981d8129956d018d0fd9a9e3",
+    "target_not_exercised_outcome": "PLANNING_REPAIR_OBSERVATION_TARGET_NOT_EXERCISED",
+    "validate_only_closure_definition_sha256": "be85eb380988eb0edc7e04a9277e136c33a61d1195bc39d9cf62487ebd4d6ab9"
+  },
+  "provider_descriptor_definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+  "report_policy": {
+    "full_provider_request_id_included": false,
+    "hash_only": true,
+    "machine_specific_paths_included": false,
+    "raw_content_included": false,
+    "shape_and_count_metadata_allowed": true
+  },
+  "role_binding_manifest_definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+  "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+  "runtime_mode": "git_workspace",
+  "schema": "CanaryExperimentPlanV1",
+  "stop_conditions": [
+    "planning_repair_primary_evidence_captured_safe_stop",
+    "planning_repair_target_not_exercised_safe_stop",
+    "first_workflow_terminal",
+    "fingerprint_mismatch",
+    "production_source_dirty_or_changed",
+    "route_model_protocol_mismatch",
+    "diagnostic_definition_mismatch",
+    "observation_privacy_violation",
+    "budget_exhausted",
+    "approval_expired",
+    "cohort_replay",
+    "live_isolation_violation"
+  ],
+  "version": 1,
+  "workload_manifest_hash": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+  "workloads": [
+    {
+      "controlled_outcomes": [
+        "PRIMARY_EVIDENCE_CAPTURED",
+        "PLANNING_REPAIR_OBSERVATION_TARGET_NOT_EXERCISED",
+        "PLANNING_REPAIR_OBSERVATION_PARTIAL_EVIDENCE"
+      ],
+      "estimated_input_tokens": 36715,
+      "expected_stage_reachability": [
+        "planning",
+        "causal_chain",
+        "execution_manifest",
+        "draft",
+        "review",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fixture_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "maximum_model_calls": 16,
+      "maximum_output_tokens": 500000,
+      "prompt_policy_manifest_sha256": "ebc77e335347f7c6927bd7d081f6be30e3f6e544e4167ddd9c49ec8441b388fd",
+      "success_definition": "PRIMARY_EVIDENCE_CAPTURED",
+      "terminal_outcomes": [
+        "workflow_terminal"
+      ],
+      "weight": 1,
+      "workload_id": "short-normal-v1"
+    }
+  ]
+}

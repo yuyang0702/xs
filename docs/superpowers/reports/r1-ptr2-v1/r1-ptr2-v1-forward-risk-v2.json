@@ -1,0 +1,32 @@
+{
+  "schema": "ForwardRiskReviewV2",
+  "version": 2,
+  "world_model": "closed_world_registered_validate_only_profiles",
+  "resolution_status": "case_fixed",
+  "resolved_case": "planning_repair_observation_closure_v1",
+  "model_output_boundary_changed": false,
+  "not_applicable_evidence": "Only Canary validate-only dispatch and closure validation changed; src and baml diffs are empty.",
+  "historical_families_checked": [
+    "r0_stale_live_database_oracle",
+    "r1_d3_historical_manifest_fail_closed",
+    "approval_profile_dispatch_completeness",
+    "stale_or_replayed_approval",
+    "identity_drift",
+    "ledger_replay",
+    "live_isolation",
+    "privacy"
+  ],
+  "sibling_boundaries_checked": [
+    "c0b_smoke_profile",
+    "pa_strict_tool_observation_profile",
+    "short_completion_profile",
+    "unknown_profile_fail_closed",
+    "real_runner_unchanged",
+    "production_workflow_not_involved"
+  ],
+  "why_prior_tests_missed": "Materialization tested schemas and helper validators but did not drive the PTR2 Signed Approval through the launcher's registered closure dispatcher.",
+  "production_shaped_test": "Sanitized short-normal-v1, fresh runtime fingerprints, offline synthetic Signed Approval, no external action.",
+  "next_boundary": "A future exact Signed Approval may pass validate-only; no real Provider observation was executed here.",
+  "remaining_risk": "The original PTR0 production evidence gap remains unobserved until separately authorized real observation.",
+  "governance_gate": "waiting_for_new_final_user_authorization"
+}

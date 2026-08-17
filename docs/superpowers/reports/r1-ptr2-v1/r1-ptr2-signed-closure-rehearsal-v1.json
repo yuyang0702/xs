@@ -1,0 +1,288 @@
+{
+  "approval_document_kind": "signed_approval",
+  "approval_identity_sha256": "9be2acabca4f0254487c716a9c6ff80136945c00408aee84feeb6715a747bc78",
+  "approval_ledger_state": "unused",
+  "approval_state": "signed_approval_exact_and_executable",
+  "canary_root_candidate_status": "valid_absent_candidate",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "closure_definition_sha256": "be85eb380988eb0edc7e04a9277e136c33a61d1195bc39d9cf62487ebd4d6ab9",
+  "closure_profile_id": "planning_repair_observation_closure_v1",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "live_parity_observation_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "ordered_checks": [
+    {
+      "definition_sha256": "531ba08c399cae3d2fa4625c0eb02c6e64ce77f94c7ef99a359d2fb80a3b6d40",
+      "name": "registered_profile",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "531ba08c399cae3d2fa4625c0eb02c6e64ce77f94c7ef99a359d2fb80a3b6d40",
+      "name": "approval_scope",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "be85eb380988eb0edc7e04a9277e136c33a61d1195bc39d9cf62487ebd4d6ab9",
+      "name": "closure_profile_version",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c5fdeb3e2f8fa35296172f28ac0637dd65ee4dfe111b9db63e9a4d8b4f96b43d",
+      "name": "plan_canonical_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "9be2acabca4f0254487c716a9c6ff80136945c00408aee84feeb6715a747bc78",
+      "name": "approval_document",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "d2ec832380b76e2bdeb2987cf22906f50f9dfcfb7f604280bcee3b3adef2040d",
+      "name": "candidate_binding",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "7f3b5607ab8e22dabf3dbbe76ba814e0daeac8d290cc096e45f8e2ab8c876d66",
+      "name": "authorization_patch_binding",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "7f3b5607ab8e22dabf3dbbe76ba814e0daeac8d290cc096e45f8e2ab8c876d66",
+      "name": "permitted_diff",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c5fdeb3e2f8fa35296172f28ac0637dd65ee4dfe111b9db63e9a4d8b4f96b43d",
+      "name": "signed_plan_binding",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "5c38d3be4d72f806bb8ee22879fbe99d2d1f12290d793a8bff993c58cc507c28",
+      "name": "launcher_bytes_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "798fdb4a3367bebeef9347801a849c1cf131d1373028505b6cc1261f57a9cac2",
+      "name": "materialization_index",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "materialized_file_bytes",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "name": "workload_fixture_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+      "name": "workload_manifest_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+      "name": "production_source_byte_revalidation",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+      "name": "build_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+      "name": "execution_config_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e3fc9d5fb271ee62f835ebc27165bf0b32254bf3c1f43e2d4b121a6d514413b",
+      "name": "runtime_execution_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "runtime_fingerprint_v2",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "273aac3fc1ed12d58b7a487a7a88ff13414d621ea15532f4c43616bf77cb0523",
+      "name": "prompt_request_semantics",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+      "name": "provider_descriptor_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+      "name": "role_route_model_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "3e7e25963eea65e85cabf20dc4da160e16448594981d8129956d018d0fd9a9e3",
+      "name": "target_filter",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "d9f4b956d9b9dd6906889830eb4e9d9dc3284c431a14c90124df6d798e91dd71",
+      "name": "observation_goal",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "77111523e334421e7165af4af5fe59176ddd2e575ebb5fe7d2429e9cab05477a",
+      "name": "domain_validator_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c71e5ac039f00e9ccbd56d5f0041b00955c310f75355217c16920a10b6a0fbdb",
+      "name": "instrumentation_definitions",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "f8053582e21c7b2f7904d251e28e8707ba93f2b8b012b300b7186977dabcdc06",
+      "name": "instrumentation_bundle",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8de583b519cae87fd6114d24558ba49f2f964f33d6bf244bebba9a8f6f3e410c",
+      "name": "diagnostic_feature_flags",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "phase1b_disabled",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "a4afb20d6c93a9586f8b5f96b3457b1bc1eecfe22458fefcbdde956b2395325a",
+      "name": "production_repair_budget_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "retry_fallback_parity",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "synthetic_target_injection_forbidden",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "697f4c7092b111f65f9c2d0b43989fafa74f7783a3822e12724a61d30f0f5d40",
+      "name": "outer_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "5d6f18b7658c0630852e0438cb8fc20286af0eb1372dc583d1247ba3336fe0f6",
+      "name": "stop_conditions",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "approval_execution_window",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "approval_cohort_single_use",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b0e83ad44763b9d1382e3e09b1ed040d08334dcb631c3a6a2070c8399bb5624e",
+      "name": "approval_ledger_identity",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "approval_ledger_business_entry_count",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "ad603fa69a8e30db25b3b157dc50c0d5930bc8ae17eb42c84e77858d44293fb8",
+      "name": "canary_root_binding",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "external_action_authorization",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "32c2d050e7327c9db0ade65d4d9b279c89097c7e0e19b34d60a7499b2fd9de69",
+      "name": "privacy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+      "name": "live_parity",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "external_action_zero",
+      "reason_code": "exact",
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "privacy": {
+    "raw_content_included": false,
+    "status": "exact"
+  },
+  "profile_id": "planning_repair_observation_1",
+  "schema": "PlanningRepairObservationApprovalClosureValidationV1",
+  "validation_receipt_sha256": "7bb236850d882ea9631a799ea4b1a0bee857aede86edb5750bb16bc494f5408b",
+  "version": 1
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "R1PTR2V1SingleReviewV1",
+  "version": 1,
+  "independence_claimed": false,
+  "review_mode": "single_senior_reliability_review",
+  "request_evidence": "R1-PTR2-V1 task contract",
+  "baseline_commit": "92955e069728ecf728c094b830cc8e905077498e",
+  "implementation_commit": "22dee434ae2041bab38d2bc924444bd2a0c4ba94",
+  "core_paths_reviewed_once": [
+    "launcher_registered_closure_dispatch",
+    "planning_repair_profile_specific_closure",
+    "offline_signed_closure_materialization_rehearsal",
+    "exact_and_negative_test_matrix"
+  ],
+  "findings": [],
+  "residuals": [
+    "No real Provider observation was executed.",
+    "Historical full-suite baseline families remain intentionally unfixed."
+  ],
+  "review_status": "accepted_with_recorded_residuals"
+}

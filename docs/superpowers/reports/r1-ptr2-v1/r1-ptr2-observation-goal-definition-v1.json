@@ -1,0 +1,26 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "d9f4b956d9b9dd6906889830eb4e9d9dc3284c431a14c90124df6d798e91dd71",
+  "payload": {
+    "not_exercised_outcome": "PLANNING_REPAIR_OBSERVATION_TARGET_NOT_EXERCISED",
+    "primary_evidence": [
+      "first_real_planning_repair_domain_failure",
+      "next_targeted_repair_finding_propagation"
+    ],
+    "prompt_or_route_mutation_allowed": false,
+    "safe_stop": {
+      "first_terminal": "preserve_typed_root_cause",
+      "primary_plus_amplifier": "before_next_provider_dispatch",
+      "primary_without_amplifier": "before_next_major_stage_dispatch",
+      "target_not_exercised": "before_next_major_stage_dispatch"
+    },
+    "stop_outcome": "CANARY_OBSERVATION_GOAL_REACHED_STOPPED",
+    "synthetic_target_injection_allowed": false,
+    "terminal_amplifier_if_naturally_reached": [
+      "first_plain_fallback_provider_content_block_shape",
+      "first_planning_repair_output_limit"
+    ]
+  },
+  "schema": "PlanningRepairObservationGoalDefinitionV1",
+  "version": 1
+}

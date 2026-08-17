@@ -1,0 +1,13 @@
+{
+  "schema": "R1PTR2V1PrivacyScanV1",
+  "version": 1,
+  "policy": "hash_shape_count_only_v1",
+  "raw_prompt_included": false,
+  "novel_text_included": false,
+  "credential_or_header_included": false,
+  "provider_response_included": false,
+  "absolute_machine_path_included": false,
+  "project_or_character_name_included": false,
+  "violation_count": 0,
+  "status": "exact"
+}

@@ -1,0 +1,251 @@
+{
+  "approval_state": "disabled_candidate_no_signed_approval",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "ordered_checks": [
+    {
+      "definition_sha256": "531ba08c399cae3d2fa4625c0eb02c6e64ce77f94c7ef99a359d2fb80a3b6d40",
+      "name": "profile_scope",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "be85eb380988eb0edc7e04a9277e136c33a61d1195bc39d9cf62487ebd4d6ab9",
+      "name": "validate_only_closure",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "d2ec832380b76e2bdeb2987cf22906f50f9dfcfb7f604280bcee3b3adef2040d",
+      "name": "candidate_contract",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "candidate_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b3c1d92c889b4ded6e152bf642fb59406cdf44df1acef313a29e1207dd219865",
+      "name": "patch_template_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "a9fba595b8f3d0d2a12f10376a5b656b43f943fccb30d909efaacb0925fc4f10",
+      "name": "preview_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+      "name": "current_build",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "6a813386e6e0200c2a8f41a118748702f3eecd3d86117ec5cb7d58d341387d6e",
+      "name": "production_source_clean",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "runtime_fingerprint_v2",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "execution_config_semantic",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "runtime_execution",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8de583b519cae87fd6114d24558ba49f2f964f33d6bf244bebba9a8f6f3e410c",
+      "name": "feature_flags",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "phase1b_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "planning_repair_diagnostic_enabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "strict_tool_observation_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "budget_counterfactual_disabled",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "273aac3fc1ed12d58b7a487a7a88ff13414d621ea15532f4c43616bf77cb0523",
+      "name": "prompt_request_semantics",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+      "name": "route_model_provider",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "3e7e25963eea65e85cabf20dc4da160e16448594981d8129956d018d0fd9a9e3",
+      "name": "target_filter",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "f8053582e21c7b2f7904d251e28e8707ba93f2b8b012b300b7186977dabcdc06",
+      "name": "four_instrumentation_definitions",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "e3a12635555778315ae5f72ff7e8c9beea7bb589e8bda96229f0085c8997c1f9",
+      "name": "observer_rehearsal",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "77111523e334421e7165af4af5fe59176ddd2e575ebb5fe7d2429e9cab05477a",
+      "name": "domain_validator_policy",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "a4afb20d6c93a9586f8b5f96b3457b1bc1eecfe22458fefcbdde956b2395325a",
+      "name": "production_repair_budget_unchanged",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "retry_fallback_unchanged",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "d9f4b956d9b9dd6906889830eb4e9d9dc3284c431a14c90124df6d798e91dd71",
+      "name": "goal_stop_definition",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "697f4c7092b111f65f9c2d0b43989fafa74f7783a3822e12724a61d30f0f5d40",
+      "name": "outer_budget_caps",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "5d6f18b7658c0630852e0438cb8fc20286af0eb1372dc583d1247ba3336fe0f6",
+      "name": "stop_conditions",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "name": "workload",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b0e83ad44763b9d1382e3e09b1ed040d08334dcb631c3a6a2070c8399bb5624e",
+      "name": "ledger",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "cohort_unused",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "b2d64e62888830a241b36d383800efe172a543c3d4e28636c278958be0d6e591",
+      "name": "privacy",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+      "name": "live_parity",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "zero_external_actions",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "signed_approval_absent",
+      "reason_code": null,
+      "status": "exact"
+    },
+    {
+      "definition_sha256": null,
+      "name": "execution_not_performed",
+      "reason_code": null,
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "parity": {
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "privacy": {
+    "documents_scanned": [
+      "candidate",
+      "definitions",
+      "goal",
+      "instrumentation",
+      "ledger",
+      "patch_template",
+      "plan",
+      "preview",
+      "rehearsal"
+    ],
+    "policy": "hash_shape_count_only_v1",
+    "privacy_scan_sha256": "b2d64e62888830a241b36d383800efe172a543c3d4e28636c278958be0d6e591",
+    "status": "exact",
+    "violation_codes": [],
+    "violation_count": 0
+  },
+  "schema": "PlanningRepairObservationValidateOnlyReceiptV1",
+  "validation_receipt_sha256": "cf5904a4a948f82bfe13176d3fedbcc8a36d694f5384163e414969beaa99d0ad",
+  "version": 1
+}

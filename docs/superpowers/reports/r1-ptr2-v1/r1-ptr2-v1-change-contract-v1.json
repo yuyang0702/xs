@@ -1,0 +1,22 @@
+{
+  "schema": "R1PTR2V1ChangeContractV1",
+  "version": 1,
+  "risk_level": "L3",
+  "change_kind": "canary_control_plane_validate_only_dispatch_completeness",
+  "allowed_paths": ["tools/canary/**", "tests/canary/**", "docs/superpowers/reports/r1-ptr2-v1/**"],
+  "changed_code_paths": [
+    "tools/canary/launcher.py",
+    "tools/canary/planning_repair_closure.py",
+    "tools/canary/planning_repair_observation.py",
+    "tests/canary/test_planning_repair_approval_closure.py"
+  ],
+  "forbidden_path_diff": [],
+  "production_business_behavior_changed": false,
+  "model_output_boundary_changed": false,
+  "prompt_changed": false,
+  "route_model_binding_changed": false,
+  "retry_fallback_changed": false,
+  "production_budget_changed": false,
+  "external_action_executed": false,
+  "scope_status": "exact"
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "R1PTR2V1TestResultsV1",
+  "version": 1,
+  "implementation_commit": "22dee434ae2041bab38d2bc924444bd2a0c4ba94",
+  "pre_fix_reproduction": {
+    "outcome": "failed_as_expected",
+    "reason_code": "validate_only_profile_not_supported",
+    "external_action_counters_all_zero": true
+  },
+  "suites": [
+    {"name": "new_profile_closure_matrix", "passed": 32, "failed": 0},
+    {"name": "existing_ptr2_materialization_and_goal", "passed": 11, "failed": 0},
+    {"name": "related_canary_cluster", "passed": 100, "failed": 0},
+    {"name": "post_materialization_ptr2_cluster", "passed": 43, "failed": 0, "seconds": 191.12},
+    {"name": "full_suite", "passed": 2885, "failed": 4, "errors": 20, "skipped": 41, "xfailed": 6, "seconds": 2299.18}
+  ],
+  "known_full_suite_families": [
+    "r0_stale_live_database_oracle",
+    "r1_d3_historical_manifest_fail_closed",
+    "c0b_historical_approval_window_expired"
+  ],
+  "parent_comparison": {
+    "commit": "92955e069728ecf728c094b830cc8e905077498e",
+    "tests": 2,
+    "outcome": "both_failed_with_approval_expired",
+    "proves": "c0b_expiration_family_not_introduced_by_ptr2_v1"
+  },
+  "new_failure_or_error_family": false,
+  "compileall": "passed",
+  "diff_check": "passed"
+}
