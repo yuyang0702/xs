@@ -46,6 +46,7 @@ _BOUND_HASH_FIELDS = {
     "completion_goal_definition_sha256",
 }
 _R1_D3_BOUND_HASH_FIELD = "r1_d3_production_mirror_readiness_sha256"
+_PTR3_BOUND_HASH_FIELD = "ptr3_readiness_sha256"
 _R1_D3_CONTROL_FIELD = "execution_collection_profile_id"
 _CONTROL_FIELDS = {
     "approved_workload_id", "runtime_mode", "maximum_runs",
@@ -65,7 +66,7 @@ _CANDIDATE_FIELDS = {
     *_CONTROL_FIELDS, "status", "approval_candidate_sha256",
 }
 _R1_D3_CANDIDATE_FIELDS = _CANDIDATE_FIELDS | {
-    _R1_D3_BOUND_HASH_FIELD, _R1_D3_CONTROL_FIELD,
+    _R1_D3_BOUND_HASH_FIELD, _PTR3_BOUND_HASH_FIELD, _R1_D3_CONTROL_FIELD,
 }
 _PATCH_BOUND_FIELDS = {
     "bound_plan_sha256", "bound_approval_candidate_sha256",
@@ -98,7 +99,7 @@ _SIGNED_FIELDS = _CANDIDATE_FIELDS.difference({
     "signed_approval_sha256",
 }
 _R1_D3_SIGNED_FIELDS = _SIGNED_FIELDS | {
-    _R1_D3_BOUND_HASH_FIELD, _R1_D3_CONTROL_FIELD,
+    _R1_D3_BOUND_HASH_FIELD, _PTR3_BOUND_HASH_FIELD, _R1_D3_CONTROL_FIELD,
 }
 
 
@@ -197,6 +198,11 @@ def validate_short_completion_candidate_v1(
         _require(
             value.get(_R1_D3_CONTROL_FIELD) == PRODUCTION_MIRROR_SHORT_PROFILE_ID,
             "target_execution_collection_profile_mismatch",
+        )
+        _require(
+            isinstance(value.get(_PTR3_BOUND_HASH_FIELD), str)
+            and _HEX64.fullmatch(str(value[_PTR3_BOUND_HASH_FIELD])) is not None,
+            f"{_PTR3_BOUND_HASH_FIELD}_invalid",
         )
     _validate_policy_bindings(value)
     profile = approval_profile(SHORT_COMPLETION_PROFILE_ID)

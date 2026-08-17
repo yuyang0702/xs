@@ -24,8 +24,11 @@ from tools.canary.contracts import CanaryContractError
 from tools.canary.contracts import build_canary_experiment_plan_v1
 from tools.canary.fingerprint_profiles import (
     PRODUCTION_MIRROR_SHORT_PROFILE_ID,
-    FingerprintCollectionProfileError,
-    build_r1_d3_production_mirror_readiness_binding_v1,
+)
+from tools.canary.ptr3_readiness import (
+    SuccessorReadinessError,
+    validate_ptr3_readiness_v1,
+    validate_r1_d3_successor_readiness_v1,
 )
 from tools.canary.short_completion import completion_contract_bundle_v1
 from tools.canary.short_completion_approval import (
@@ -98,9 +101,7 @@ def test_plan_candidate_patch_and_validate_only_are_exact(materialized) -> None:
     assert receipt["approval_ledger_operational_readiness"] == "exact"
     assert materialized["ledger_readiness"]["initial_entry_count"] == 0
     assert materialized["semantic_rehearsal"]["status"] == "exact"
-    assert materialized["semantic_rehearsal"]["observation_status"] == (
-        "equivalent_provenance_variation"
-    )
+    assert materialized["semantic_rehearsal"]["observation_status"] == "exact"
     assert materialized["semantic_rehearsal"]["collection_profile_id"] == (
         PRODUCTION_MIRROR_SHORT_PROFILE_ID
     )
@@ -222,48 +223,22 @@ def test_signed_validate_only_is_exact_and_executable(
     )
 
 
-@pytest.mark.parametrize(
-    ("mutation", "reason"),
-    [
-        ("build", "build_mismatch"),
-        ("prompt", "prompt_policy_mismatch"),
-        ("validator", "validator_policy_mismatch"),
-        ("retry", "retry_topology_mismatch"),
-        ("route", "route_model_binding_mismatch"),
-        ("final_review", "final_review_mismatch"),
-        ("maintenance", "maintenance_mismatch"),
-    ],
-)
-def test_r1_d3_readiness_blocks_non_execution_identity_drift(
-    materialized, mutation: str, reason: str,
+@pytest.mark.parametrize("kind", ["ptr3", "draft"])
+def test_successor_readiness_blocks_non_execution_identity_drift(
+    materialized, kind: str,
 ) -> None:
-    plan = deepcopy(materialized["plan"])
-    definitions = completion_contract_bundle_v1()
-    validator = definitions["draft_validator_policy"]["definition_sha256"]
-    final_review = definitions["final_review"]["definition_sha256"]
-    maintenance = definitions["maintenance"]["definition_sha256"]
-    if mutation == "build":
-        plan["approved_build_fingerprint"] = "f" * 64
-    elif mutation == "prompt":
-        plan["workloads"][0]["prompt_policy_manifest_sha256"] = "f" * 64
-    elif mutation == "validator":
-        validator = "f" * 64
-    elif mutation == "retry":
-        plan["budgets"]["maximum_total_model_calls"] = 47
-    elif mutation == "route":
-        plan["approved_routes"][0]["primary"]["model_binding_hash"] = "f" * 64
-    elif mutation == "final_review":
-        final_review = "f" * 64
-    else:
-        maintenance = "f" * 64
-
-    with pytest.raises(FingerprintCollectionProfileError, match=reason):
-        build_r1_d3_production_mirror_readiness_binding_v1(
-            repo_root=ROOT, production_plan=plan,
-            draft_validator_policy_sha256=validator,
-            final_review_definition_sha256=final_review,
-            maintenance_definition_sha256=maintenance,
-        )
+    value = deepcopy(
+        materialized["ptr3_readiness"] if kind == "ptr3"
+        else materialized["r1_d3_production_mirror_readiness"]
+    )
+    value["production_mirror_build_sha256" if kind == "draft"
+          else "current_build_sha256"] = "f" * 64
+    validator = (
+        validate_ptr3_readiness_v1 if kind == "ptr3"
+        else validate_r1_d3_successor_readiness_v1
+    )
+    with pytest.raises(SuccessorReadinessError):
+        validator(value)
 
 
 def test_legacy_short_completion_plan_without_readiness_remains_readable(

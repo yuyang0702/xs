@@ -24,7 +24,10 @@ from .artifact_hash import file_sha256, live_parity_manifest
 from .contracts import validate_canary_experiment_plan_v1
 from .fingerprint_profiles import (
     PRODUCTION_MIRROR_SHORT_PROFILE_ID,
-    validate_r1_d3_production_mirror_readiness_binding_v1,
+)
+from .ptr3_readiness import (
+    validate_ptr3_readiness_v1,
+    validate_r1_d3_successor_readiness_v1,
 )
 from .hash_manifest import validate_import_closure
 from .short_completion import completion_contract_bundle_v1
@@ -44,6 +47,7 @@ CHECK_NAMES = (
     "maintenance_completion_definition", "final_artifact_binding_policy",
     "final_checkpoint_closure_policy", "completion_goal_definition",
     "r1_d3_production_mirror_readiness",
+    "ptr3_readiness",
     "canary_root_identity", "execution_window", "cohort_unused",
     "approval_ledger", "external_authorization", "privacy", "live_parity",
 )
@@ -142,7 +146,7 @@ def validate_short_completion_approval_closure(
             raise ValueError("short_completion_policy_mismatch")
         readiness_value = policy.get("r1_d3_production_mirror_readiness")
         if readiness_value is not None:
-            readiness = validate_r1_d3_production_mirror_readiness_binding_v1(
+            readiness = validate_r1_d3_successor_readiness_v1(
                 readiness_value
             )
             if (
@@ -164,6 +168,20 @@ def validate_short_completion_approval_closure(
                 != PRODUCTION_MIRROR_SHORT_PROFILE_ID
             ):
                 raise ValueError("r1_d3_production_mirror_readiness_mismatch")
+            ptr3 = validate_ptr3_readiness_v1(policy.get("ptr3_readiness") or {})
+            if (
+                policy.get("ptr3_readiness_sha256")
+                != ptr3["definition_sha256"]
+                or approval.get("ptr3_readiness_sha256")
+                != ptr3["definition_sha256"]
+                or ptr3["current_build_sha256"]
+                != plan["approved_build_fingerprint"]
+                or ptr3["current_config_sha256"]
+                != plan["approved_execution_config_fingerprint"]
+                or ptr3["current_runtime_sha256"]
+                != plan["expected_runtime_execution_fingerprint"]
+            ):
+                raise ValueError("ptr3_readiness_mismatch")
         state = ApprovalConsumptionStore(approval_ledger_root).status(approval)
         if state["status"] != "unused":
             raise ValueError("approval_already_used")

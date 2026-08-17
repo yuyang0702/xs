@@ -417,7 +417,10 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
         if readiness is not None or readiness_hash is not None:
             from .fingerprint_profiles import (
                 PRODUCTION_MIRROR_SHORT_PROFILE_ID,
-                validate_r1_d3_production_mirror_readiness_binding_v1,
+            )
+            from .ptr3_readiness import (
+                validate_ptr3_readiness_v1,
+                validate_r1_d3_successor_readiness_v1,
             )
 
             _require(
@@ -428,11 +431,19 @@ def validate_canary_experiment_plan_v1(value: Mapping[str, Any]) -> dict[str, An
             _require(isinstance(readiness, Mapping),
                      "r1_d3_production_mirror_readiness_missing")
             validated_readiness = (
-                validate_r1_d3_production_mirror_readiness_binding_v1(readiness)
+                validate_r1_d3_successor_readiness_v1(readiness)
             )
             _require(
                 readiness_hash == validated_readiness["definition_sha256"],
                 "r1_d3_production_mirror_readiness_mismatch",
+            )
+            ptr3 = policy.get("ptr3_readiness")
+            _require(isinstance(ptr3, Mapping), "ptr3_readiness_missing")
+            validated_ptr3 = validate_ptr3_readiness_v1(ptr3)
+            _require(
+                policy.get("ptr3_readiness_sha256")
+                == validated_ptr3["definition_sha256"],
+                "ptr3_readiness_mismatch",
             )
     _scan_forbidden_material(value)
     _require(value["plan_sha256"] == _plan_digest(value), "plan_hash_mismatch")

@@ -282,12 +282,13 @@ def test_new_trace_flag_name_is_stable_and_default_off(monkeypatch) -> None:
         SHORT_COMPLETION_PROFILE_ID,
         approval_profile,
     )
-    for profile_id in (
-        C0B_PROFILE_ID, PA_PROFILE_ID, SHORT_COMPLETION_PROFILE_ID,
-    ):
+    for profile_id in (C0B_PROFILE_ID, PA_PROFILE_ID):
         profile = approval_profile(profile_id)
         assert profile.required_flags()[PLANNING_REPAIR_EVIDENCE_FLAG] is False
         assert PLANNING_REPAIR_EVIDENCE_FLAG in profile.forbidden_feature_flags
+    short = approval_profile(SHORT_COMPLETION_PROFILE_ID)
+    assert short.required_flags()[PLANNING_REPAIR_EVIDENCE_FLAG] is True
+    assert PLANNING_REPAIR_EVIDENCE_FLAG not in short.forbidden_feature_flags
 
 
 class _RouteRegistry:

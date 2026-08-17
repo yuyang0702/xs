@@ -1805,3 +1805,14 @@ execution fingerprints plus a new single-use approval. The current Prompt
 Policy Manifest does not identify dynamic retry-only instructions, so the
 approval packet must additionally bind the R1-PTR3 retry finding contract until
 that manifest coverage gap is closed.
+
+The `short_completion_1` materializer now binds that contract through
+`ShortCompletionPTR3ReadinessBindingV1` and binds retained R1-D3 Draft behavior
+through `R1D3SuccessorReadinessBindingV1`. These Canary-only definitions verify
+the current protected-source successor and current production fingerprints;
+they do not rewrite or relax the historical R1-D3 sealed manifest. The full
+Short profile enables only the already fail-open Planning repair evidence trace
+in addition to ReliabilityTrace. PA budget and strict-tool diagnostics,
+Canonical V2 and Phase 1B remain disabled. Candidate materialization remains
+inert: it does not sign, reserve, read credentials, create Provider clients, or
+perform network/model calls.

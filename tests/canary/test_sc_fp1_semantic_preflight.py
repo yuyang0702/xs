@@ -91,9 +91,11 @@ def test_incident_replay_defaulted_and_explicit_false_are_semantically_exact(
     tmp_path: Path,
 ) -> None:
     db, project_id = _database(tmp_path)
-    with c0a_environment(tmp_path / "materializer"):
-        materialized = collect_runtime_fingerprint_v2(db, project_id=project_id)
     profile = approval_profile(SHORT_COMPLETION_PROFILE_ID)
+    with c0a_environment(
+        tmp_path / "materializer", feature_flags=profile.required_flags(),
+    ):
+        materialized = collect_runtime_fingerprint_v2(db, project_id=project_id)
     with c0a_environment(
         tmp_path / "runner", feature_flags=profile.required_flags(),
     ):
@@ -102,9 +104,9 @@ def test_incident_replay_defaulted_and_explicit_false_are_semantically_exact(
     result = validate_execution_config_prelaunch_v2(
         plan, runner.execution_config_component_binding or {},
     )
-    assert result["status"] == "equivalent_provenance_variation"
+    assert result["status"] == "exact"
     assert result["component_diff"]["semantic_equal"] is True
-    assert result["component_diff"]["provenance_equal"] is False
+    assert result["component_diff"]["provenance_equal"] is True
     assert materialized.execution_config_fingerprint_sha256 == (
         runner.execution_config_fingerprint_sha256
     )
