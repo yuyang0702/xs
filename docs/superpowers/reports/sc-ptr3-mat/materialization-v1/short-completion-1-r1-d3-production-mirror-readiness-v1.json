@@ -1,0 +1,23 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "63c35701c9edc960010874d4d4f4e13d257561461e007bbdbe0735d5048e6fcc",
+  "draft_initial_request_sha256": "df83ea0c1b22e7586b4f91cd3fc50a39e623e4e024bfffe60478ce20bb50b675",
+  "draft_maximum_attempts": 3,
+  "draft_retry_contract_sha256": "d86985951d9518cf9512c83591b62a1e6b9b11478d562b4e378a1cf30bcfe03f",
+  "draft_retry_count_parity": "exact",
+  "draft_retry_scope_too_broad": "residual",
+  "draft_validator_sha256": "7e9f52cf3c5600423c6abe63a7de6d8449db81bfcd7260585da5d8b59e22fdac",
+  "historical_manifest_rewritten": false,
+  "mixed_script_policy_sha256": "11c8a15e84c7c76154b60b047f9048468c93d60ee6c383b5b66dadd2c1066d1d",
+  "production_mirror_build_sha256": "e97060b725a6978f7770c18ec4feb46dd88dc326609355a19d24a1741bcc8bf6",
+  "production_mirror_config_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+  "production_mirror_prompt_policy_sha256": "c341eb13abace08e1f658b1aa1be728de71a5ffc3d32991e493e43ef35fdfabe",
+  "production_mirror_runtime_sha256": "47c4806b9dd97baac1f982e90481f5ad491f89acad33c23d0408c1d946549f60",
+  "ptr3_successor_baseline_sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "readiness_status": "exact",
+  "schema": "R1D3SuccessorReadinessBindingV1",
+  "structured_draft_finding_propagation": "enabled",
+  "version": 1
+}

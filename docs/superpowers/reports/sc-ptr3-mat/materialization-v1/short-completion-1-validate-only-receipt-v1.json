@@ -1,0 +1,259 @@
+{
+  "approval_document_kind": "final_approval_candidate",
+  "approval_identity_sha256": "447392d2c0f822067be93438f76a608d815dce88f7ef1fe9e68eaccc79ca46d4",
+  "approval_ledger_operational_readiness": "exact",
+  "approval_ledger_state": "unused",
+  "approval_state": "disabled_candidate",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "ordered_checks": [
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "registered_profile",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "approval_scope",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "plan_canonical_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "approval_document",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "launcher_bytes_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "workload_fixture_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "workload_manifest_hash",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "production_source_byte_revalidation",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "build_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "execution_config_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "runtime_execution_fingerprint",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "provider_descriptor_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "role_route_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "feature_flags",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "phase1b_disabled",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "pa_diagnostic_flags_disabled",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "pricing_manifest",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "call_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "token_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "monetary_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "elapsed_budget",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "stop_conditions",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "draft_validator_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "mixed_script_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "final_review_completion_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "maintenance_completion_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "final_artifact_binding_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "final_checkpoint_closure_policy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "completion_goal_definition",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "r1_d3_production_mirror_readiness",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "ptr3_readiness",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "canary_root_identity",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "execution_window",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "cohort_unused",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "approval_ledger",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "external_authorization",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "privacy",
+      "reason_code": "exact",
+      "status": "exact"
+    },
+    {
+      "definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+      "name": "live_parity",
+      "reason_code": "exact",
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "parity": {
+    "observation_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "privacy": {
+    "status": "exact",
+    "violation_count": 0
+  },
+  "profile_id": "short_completion_1",
+  "schema": "ShortCompletionApprovalClosureValidationV1",
+  "validation_receipt_sha256": "4d16c0ae22d3ea808339588fca30c094d1fffd11c85d9ee75859d3754e8c7bd5",
+  "version": 1
+}

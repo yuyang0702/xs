@@ -1,0 +1,47 @@
+{
+  "approval_candidate_sha256": "447392d2c0f822067be93438f76a608d815dce88f7ef1fe9e68eaccc79ca46d4",
+  "approval_ledger_identity": "1ec2bbb0aad905caa44b4049d6da902bfb25069aeefae6c794783ad2b4fecb6c",
+  "approval_ledger_initial_entry_count": 0,
+  "approval_ledger_operational_readiness": "exact",
+  "contract_status": "SHORT_COMPLETION_APPROVAL_PROFILE_READY",
+  "definition_sha256": "c5ed4f9f43fda277c839367d00325c61ff4a2754b5d436af8344a97080f7b89e",
+  "execution_collection_profile_id": "production_mirror_short_v1",
+  "execution_performed": false,
+  "execution_window": {
+    "not_after": "2026-08-19T08:53:52Z",
+    "not_before": "2026-08-17T08:53:52Z"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "short-completion-1-authorization-patch-template-v1.json": "dd84c049de414e6867a063d81d38dc90f4446ef4f8a656228b877e6d05f5c870",
+    "short-completion-1-definitions-v1.json": "057c0ac52eb999007b3673673b34fe72f855de91c17b7839f8b8a5561de667dd",
+    "short-completion-1-execution-preview-v1.json": "f1ac2d3241e9c09745eb70bf6850e856aa6646c1e9669bee5c702abac5047148",
+    "short-completion-1-final-approval-candidate-v1.json": "551a217ee09acfdaaf413d3e46de6e23c4fab0038587fc334bab115c0935ed6f",
+    "short-completion-1-final-plan-v1.json": "a8b370e6120478ad409308875c75f3341e9754e0998112319bacff6447b2d3f8",
+    "short-completion-1-ledger-operational-readiness-v1.json": "88e103e7a83424be5181d742d8ce3e5d0577d95cb040d0a29b97065ed5615500",
+    "short-completion-1-pre-launch-semantic-rehearsal-v1.json": "cda1f2e20065cc7a107ef23c958510bcdf7ef16e94b5f667fe27020475c0806d",
+    "short-completion-1-ptr3-readiness-v1.json": "d0995c64c0d68b5072dce0c9da13b622c328903522eb93e44193dbd735571c63",
+    "short-completion-1-r1-d3-production-mirror-readiness-v1.json": "f48e0293e5492e9a3f7719a5c138ed7430fcf2bc58539f2cea73f780a7dd5f71",
+    "short-completion-1-validate-only-receipt-v1.json": "a0e9b09ae5e5cb6abd1d789b493b71e188835290465804328aaf1b40510c73b3"
+  },
+  "launcher_sha256": "0eda89a41138ed8996999b1e57b58b8ee03bc1a862ff50f1c1281840a8415faa",
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "plan_sha256": "516149d6b9335810a31a0964aabaa73cb02477370ad2d9995ac86be659ad39f4",
+  "prelaunch_semantic_rehearsal_sha256": "aa049a6dd11fa3d96472d04a5a57ddfb3600dc53fb3c19f3895ee0ef9b9cdab1",
+  "prelaunch_semantic_rehearsal_status": "exact",
+  "ptr3_readiness_sha256": "efe2ab7808905d74ca4212e3b8db0646f3c0252f55ac2449d6ef2261e391f943",
+  "r1_d3_production_mirror_readiness_sha256": "63c35701c9edc960010874d4d4f4e13d257561461e007bbdbe0735d5048e6fcc",
+  "schema": "ShortCompletionMaterializationIndexV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "short-completion-ptr3-20260817t091500z-002",
+  "status": "SHORT_COMPLETION_CANARY_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "4d16c0ae22d3ea808339588fca30c094d1fffd11c85d9ee75859d3754e8c7bd5",
+  "version": 1
+}
