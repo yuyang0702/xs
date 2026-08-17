@@ -28,8 +28,12 @@ class CanaryObservationGoalReachedStop(asyncio.CancelledError):
 
     reason_code = STOP_REASON
 
-    def __init__(self, *, blocked_boundary_ordinal: int | None = None) -> None:
-        super().__init__(STOP_REASON)
+    def __init__(
+        self, *, blocked_boundary_ordinal: int | None = None,
+        reason_code: str = STOP_REASON,
+    ) -> None:
+        super().__init__(reason_code)
+        self.reason_code = reason_code
         self.blocked_boundary_ordinal = blocked_boundary_ordinal
 
 

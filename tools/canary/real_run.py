@@ -46,7 +46,11 @@ from .approval_dispatch import (
     profile_for_plan, validate_registered_approval_document,
     validate_registered_signed_plan, validate_registered_signed_sources,
 )
-from .approval_profiles import SHORT_COMPLETION_PROFILE_ID
+from .approval_profiles import (
+    PA_PROFILE_ID,
+    PLANNING_REPAIR_OBSERVATION_PROFILE_ID,
+    SHORT_COMPLETION_PROFILE_ID,
+)
 from .descriptors import (
     copy_production_execution_config, production_route_identity,
     production_route_manifest_hashes,
@@ -66,6 +70,7 @@ from .goal_stop import (
     ObservationGoalLatch, STOP_OUTCOME, STOP_REASON,
     capture_reliability_trace_goal,
 )
+from .planning_repair_goal_stop import PlanningRepairObservationGoalLatch
 from .hash_manifest import validate_import_closure
 from .isolation import create_canary_root, validate_canary_root
 from .monetary import CanaryMonetaryBudgetV1
@@ -85,7 +90,7 @@ from .route_policy import ApprovedRoutePolicy
 
 
 def _strict_tool_observation_summary(root: Path, profile) -> dict[str, Any] | None:
-    if not profile.required_target_filter:
+    if profile.profile_id != PA_PROFILE_ID:
         return None
     matches: list[dict[str, Any]] = []
     damaged = 0
@@ -235,6 +240,13 @@ async def run_registered_real_run(
             receipt_path=canary_root / "reports" / "observation-goal-receipt-v1.json",
         )
         if "target_strict_tool_shape_exact_captured" in profile.stop_condition_policy
+        else PlanningRepairObservationGoalLatch(
+            receipt_path=(
+                canary_root / "reports"
+                / "planning-repair-observation-goal-receipt-v1.json"
+            ),
+        )
+        if profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID
         else None
     )
     with (
@@ -573,7 +585,9 @@ async def run_registered_real_run(
     controlled_capability: dict[str, Any] | None = None
     if observation_goal_latch is not None and observation_goal_latch.reached:
         outcome = STOP_OUTCOME
-        reason_code = STOP_REASON
+        reason_code = str(
+            observation_goal_latch.snapshot().get("stop_reason") or STOP_REASON
+        )
     elif status == "completed":
         outcome = CanaryOutcome.WORKFLOW_COMPLETED.value
         reason_code = "production_mirror_short_completed"
@@ -640,10 +654,19 @@ async def run_registered_real_run(
     strict_tool_observation = _strict_tool_observation_summary(
         canary_root, profile,
     )
-    if observation_goal_latch is not None:
+    if (
+        observation_goal_latch is not None
+        and profile.profile_id == PA_PROFILE_ID
+    ):
         strict_tool_observation = observation_goal_latch.observation_summary(
             strict_tool_observation,
         )
+    planning_repair_observation = (
+        observation_goal_latch.snapshot()
+        if profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID
+        and observation_goal_latch is not None
+        else None
+    )
     evidence = build_canary_evidence_package_v1({
         "profile_id": profile.profile_id,
         "plan_sha256": plan["plan_sha256"],
@@ -664,6 +687,7 @@ async def run_registered_real_run(
         },
         "controlled_provider_capability": controlled_capability,
         "strict_tool_observation": strict_tool_observation,
+        "planning_repair_observation": planning_repair_observation,
         "canary_observation_goal": (
             observation_goal_latch.snapshot()
             if observation_goal_latch is not None else None

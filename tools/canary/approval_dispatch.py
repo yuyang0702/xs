@@ -8,6 +8,7 @@ from typing import Any, Callable, Mapping
 from .approval_profiles import (
     C0B_PROFILE_ID,
     PA_PROFILE_ID,
+    PLANNING_REPAIR_OBSERVATION_PROFILE_ID,
     SHORT_COMPLETION_PROFILE_ID,
     CanaryApprovalProfileError,
     CanaryApprovalProfileV1,
@@ -34,6 +35,15 @@ from .pa_approval import (
     validate_pa_signed_approval_sources_v1,
     validate_pa_signed_approval_v1,
 )
+from .planning_repair_approval import (
+    materialize_planning_repair_observation_signed_approval_v1,
+    validate_planning_repair_observation_candidate_v1,
+    validate_planning_repair_observation_patch_template_v1,
+    validate_planning_repair_observation_patch_v1,
+    validate_planning_repair_observation_signed_approval_v1,
+    validate_planning_repair_observation_signed_plan_v1,
+    validate_planning_repair_observation_signed_sources_v1,
+)
 from .short_completion_approval import (
     materialize_short_completion_signed_approval_v1,
     validate_short_completion_candidate_v1,
@@ -48,18 +58,27 @@ from .short_completion_approval import (
 _SIGNERS: Mapping[str, Callable[..., dict[str, Any]]] = {
     C0B_PROFILE_ID: materialize_signed_smoke_approval_v1,
     PA_PROFILE_ID: materialize_pa_signed_approval_v1,
+    PLANNING_REPAIR_OBSERVATION_PROFILE_ID: (
+        materialize_planning_repair_observation_signed_approval_v1
+    ),
     SHORT_COMPLETION_PROFILE_ID: materialize_short_completion_signed_approval_v1,
 }
 
 _SOURCE_VALIDATORS: Mapping[str, Callable[..., dict[str, Any]]] = {
     C0B_PROFILE_ID: validate_signed_smoke_approval_sources_v1,
     PA_PROFILE_ID: validate_pa_signed_approval_sources_v1,
+    PLANNING_REPAIR_OBSERVATION_PROFILE_ID: (
+        validate_planning_repair_observation_signed_sources_v1
+    ),
     SHORT_COMPLETION_PROFILE_ID: validate_short_completion_signed_sources_v1,
 }
 
 _PLAN_VALIDATORS: Mapping[str, Callable[..., dict[str, Any]]] = {
     C0B_PROFILE_ID: validate_signed_smoke_approval_plan_v1,
     PA_PROFILE_ID: validate_pa_signed_approval_plan_v1,
+    PLANNING_REPAIR_OBSERVATION_PROFILE_ID: (
+        validate_planning_repair_observation_signed_plan_v1
+    ),
     SHORT_COMPLETION_PROFILE_ID: validate_short_completion_signed_plan_v1,
 }
 
@@ -96,6 +115,18 @@ def profile_for_plan(plan: Mapping[str, Any]) -> CanaryApprovalProfileV1:
         if policy.get("profile_id") != profile.profile_id:
             raise CanaryContractError("approval_profile_scope_mismatch")
         if policy.get("approval_scope") != profile.approval_scope:
+            raise CanaryContractError("approval_profile_scope_mismatch")
+        if policy.get("profile_definition_sha256") != (
+            profile.profile_definition_sha256
+        ):
+            raise CanaryContractError("approval_profile_hash_mismatch")
+    if profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID:
+        policy = plan.get("planning_repair_observation_policy")
+        if not isinstance(policy, Mapping):
+            raise CanaryContractError("approval_profile_scope_mismatch")
+        if policy.get("profile_id") != profile.profile_id or (
+            policy.get("approval_scope") != profile.approval_scope
+        ):
             raise CanaryContractError("approval_profile_scope_mismatch")
         if policy.get("profile_definition_sha256") != (
             profile.profile_definition_sha256
@@ -146,6 +177,14 @@ def validate_registered_approval_document(
                 now=now,
                 enforce_time=enforce_time,
             )
+        elif profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID:
+            validated = validate_planning_repair_observation_candidate_v1(
+                value,
+                expected_plan_sha256=expected_plan_sha256,
+                expected_launcher_sha256=expected_launcher_sha256,
+                now=now,
+                enforce_time=enforce_time,
+            )
         else:
             validated = validate_short_completion_candidate_v1(
                 value,
@@ -172,6 +211,15 @@ def validate_registered_approval_document(
             validate_pa_authorization_patch_v1(
                 value, now=now, enforce_time=enforce_time,
             )
+        elif (
+            profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID
+            and kind == "authorization_patch_template"
+        ):
+            validate_planning_repair_observation_patch_template_v1(value)
+        elif profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID:
+            validate_planning_repair_observation_patch_v1(
+                value, now=now, enforce_time=enforce_time,
+            )
         elif kind == "authorization_patch_template":
             validate_short_completion_patch_template_v1(value)
         else:
@@ -189,6 +237,14 @@ def validate_registered_approval_document(
         )
     elif profile.profile_id == PA_PROFILE_ID:
         validated = validate_pa_signed_approval_v1(
+            value,
+            expected_plan_sha256=expected_plan_sha256,
+            expected_launcher_sha256=expected_launcher_sha256,
+            now=now,
+            enforce_time=enforce_time,
+        )
+    elif profile.profile_id == PLANNING_REPAIR_OBSERVATION_PROFILE_ID:
+        validated = validate_planning_repair_observation_signed_approval_v1(
             value,
             expected_plan_sha256=expected_plan_sha256,
             expected_launcher_sha256=expected_launcher_sha256,

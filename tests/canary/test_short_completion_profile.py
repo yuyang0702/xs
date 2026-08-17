@@ -96,9 +96,10 @@ def _candidate_payload() -> dict:
     }
 
 
-def test_registry_is_closed_world_with_exact_three_profiles() -> None:
+def test_registry_is_closed_world_with_exact_four_profiles() -> None:
     assert tuple(approval_profile_registry_v1()) == (
-        "c0b_smoke_1", "pa_strict_tool_obs_1", "short_completion_1",
+        "c0b_smoke_1", "pa_strict_tool_obs_1",
+        "planning_repair_observation_1", "short_completion_1",
     )
     assert approval_profile(SHORT_COMPLETION_PROFILE_ID).approval_scope == (
         "SHORT_COMPLETION_SINGLE_REAL_PROVIDER_CANARY"

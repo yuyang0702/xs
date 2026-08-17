@@ -29,6 +29,23 @@ PA_PATCH_SCHEMA = "PAStrictToolObsUserAuthorizationPatchV1"
 PA_PATCH_TEMPLATE_SCHEMA = "PAStrictToolObs1UserAuthorizationPatchTemplateV2"
 PA_SIGNED_SCHEMA = "PAStrictToolObsSignedApprovalV1"
 
+PLANNING_REPAIR_OBSERVATION_PROFILE_ID = "planning_repair_observation_1"
+PLANNING_REPAIR_OBSERVATION_SCOPE = (
+    "PLANNING_REPAIR_SINGLE_REAL_PROVIDER_OBSERVATION_CANARY"
+)
+PLANNING_REPAIR_OBSERVATION_CANDIDATE_SCHEMA = (
+    "PlanningRepairObservationFinalApprovalCandidateV1"
+)
+PLANNING_REPAIR_OBSERVATION_PATCH_SCHEMA = (
+    "PlanningRepairObservationUserAuthorizationPatchV1"
+)
+PLANNING_REPAIR_OBSERVATION_PATCH_TEMPLATE_SCHEMA = (
+    "PlanningRepairObservationUserAuthorizationPatchTemplateV1"
+)
+PLANNING_REPAIR_OBSERVATION_SIGNED_SCHEMA = (
+    "PlanningRepairObservationSignedApprovalV1"
+)
+
 SHORT_COMPLETION_PROFILE_ID = "short_completion_1"
 SHORT_COMPLETION_SCOPE = "SHORT_COMPLETION_SINGLE_REAL_PROVIDER_CANARY"
 SHORT_COMPLETION_CANDIDATE_SCHEMA = "ShortCompletionFinalApprovalCandidateV1"
@@ -48,6 +65,16 @@ PA_TARGET_FILTER = (
     ("strict_tool_route", True),
     ("target_selection_method", "exact_metadata_tuple_not_prompt_text"),
     ("non_target_policy", "excluded_not_target_count_only"),
+)
+
+PLANNING_REPAIR_OBSERVATION_TARGET_FILTER = (
+    ("stage", "planning"),
+    ("boundary", "planning_repair_patch"),
+    ("contract_id", "planning_repair_patch"),
+    ("contract_version", 1),
+    ("role", "planning"),
+    ("target_selection_method", "exact_runtime_diagnostic_context"),
+    ("synthetic_target_injection_allowed", False),
 )
 
 
@@ -257,6 +284,85 @@ _PA = _profile(
     ),
 )
 
+_PLANNING_REPAIR_OBSERVATION = _profile(
+    profile_id=PLANNING_REPAIR_OBSERVATION_PROFILE_ID,
+    approval_scope=PLANNING_REPAIR_OBSERVATION_SCOPE,
+    canary_mode="planning_repair_observation",
+    candidate_schema=PLANNING_REPAIR_OBSERVATION_CANDIDATE_SCHEMA,
+    authorization_patch_schema=PLANNING_REPAIR_OBSERVATION_PATCH_SCHEMA,
+    authorization_patch_template_schema=(
+        PLANNING_REPAIR_OBSERVATION_PATCH_TEMPLATE_SCHEMA
+    ),
+    signed_approval_schema=PLANNING_REPAIR_OBSERVATION_SIGNED_SCHEMA,
+    validate_only_profile="planning_repair_observation_closure_v1",
+    launcher_mode="real_single_use_observation",
+    real_runner_handler="production_mirror_short_planning_repair_observation_v1",
+    required_feature_flags=(
+        ("NOVEL_SHORT_CANONICAL_V2", False),
+        ("project_short_canonical_v2", False),
+        ("NOVEL_CANONICAL_SHADOW_V1", False),
+        ("NOVEL_RELIABILITY_TRACE", True),
+        ("NOVEL_STRICT_TOOL_SHAPE_TRACE_V1", False),
+        ("NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1", False),
+        ("NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1", True),
+    ),
+    forbidden_feature_flags=(
+        "NOVEL_SHORT_CANONICAL_V2", "project_short_canonical_v2",
+        "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1",
+        "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1",
+    ),
+    required_target_filter=PLANNING_REPAIR_OBSERVATION_TARGET_FILTER,
+    required_observation_schema=(
+        ("domain_validation", "PlanningRepairDomainValidationSnapshotV1"),
+        ("finding_propagation", "PlanningRepairFindingPropagationSnapshotV1"),
+        ("provider_content_block_shape", "ProviderContentBlockShapeSnapshotV1"),
+        ("output_limit", "PlanningRepairOutputLimitObservationV1"),
+        ("raw_content_allowed", False),
+    ),
+    allowed_workload_ids=("short-normal-v1",),
+    budget_policy=(
+        ("maximum_runs", 1),
+        ("expected_model_calls", 8),
+        ("maximum_model_calls_per_run", 16),
+        ("maximum_total_model_calls", 16),
+        ("maximum_input_tokens", 500_000),
+        ("maximum_output_tokens", 500_000),
+        ("maximum_output_tokens_per_call", 32_000),
+        ("maximum_usd_cost_microunits", 10_000_000),
+        ("maximum_cny_cost_microunits", 20_000_000),
+        ("maximum_elapsed_seconds", 3_600),
+    ),
+    stop_condition_policy=(
+        "planning_repair_primary_evidence_captured_safe_stop",
+        "planning_repair_target_not_exercised_safe_stop",
+        "first_workflow_terminal",
+        "fingerprint_mismatch",
+        "production_source_dirty_or_changed",
+        "route_model_protocol_mismatch",
+        "diagnostic_definition_mismatch",
+        "observation_privacy_violation",
+        "budget_exhausted",
+        "approval_expired",
+        "cohort_replay",
+        "live_isolation_violation",
+    ),
+    observation_goal_outcomes=(
+        "PRIMARY_EVIDENCE_CAPTURED",
+        "PLANNING_REPAIR_OBSERVATION_TARGET_NOT_EXERCISED",
+        "PLANNING_REPAIR_OBSERVATION_PARTIAL_EVIDENCE",
+    ),
+    workflow_outcomes=(
+        "WORKFLOW_TERMINAL", "CONTROLLED_NONTERMINAL",
+        "CANARY_OBSERVATION_GOAL_REACHED_STOPPED",
+    ),
+    ledger_policy=(
+        ("maximum_reservations", 1),
+        ("identity_fields", "profile_id,signed_approval_sha256,cohort_id"),
+        ("cross_profile_cohort_reuse_allowed", False),
+        ("consume_requires_evidence_sha256", True),
+    ),
+)
+
 _SHORT_COMPLETION = _profile(
     profile_id=SHORT_COMPLETION_PROFILE_ID,
     approval_scope=SHORT_COMPLETION_SCOPE,
@@ -343,6 +449,7 @@ _SHORT_COMPLETION = _profile(
 _REGISTRY = MappingProxyType({
     C0B_PROFILE_ID: _C0B,
     PA_PROFILE_ID: _PA,
+    PLANNING_REPAIR_OBSERVATION_PROFILE_ID: _PLANNING_REPAIR_OBSERVATION,
     SHORT_COMPLETION_PROFILE_ID: _SHORT_COMPLETION,
 })
 

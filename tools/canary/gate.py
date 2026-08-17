@@ -215,9 +215,7 @@ class PreflightGatedGateway:
 
     async def _authorize(self, request: BoundaryRequest) -> None:
         if self.observation_goal_latch is not None:
-            self.observation_goal_latch.raise_if_reached(
-                boundary_ordinal=request.ordinal,
-            )
+            self._raise_if_observation_goal_reached(request)
         observation = RouteObservation(
             stage=request.stage, role=request.role, ordinal=request.ordinal,
             route_kind=request.route_kind,
@@ -248,9 +246,7 @@ class PreflightGatedGateway:
             # all-or-nothing Canary reservation without production state.
             async with self._reservation_lock:
                 if self.observation_goal_latch is not None:
-                    self.observation_goal_latch.raise_if_reached(
-                        boundary_ordinal=request.ordinal,
-                    )
+                    self._raise_if_observation_goal_reached(request)
                 if isinstance(cost, Mapping):
                     assert self.monetary_budget is not None
                     self.monetary_budget.preview(cost)
@@ -341,9 +337,7 @@ class PreflightGatedGateway:
     async def _dispatch(self, request: BoundaryRequest, method: str, *args, **kwargs):
         if self.observation_goal_latch is not None:
             async with self._goal_dispatch_lock:
-                self.observation_goal_latch.raise_if_reached(
-                    boundary_ordinal=request.ordinal,
-                )
+                self._raise_if_observation_goal_reached(request)
                 return await self._dispatch_open(request, method, *args, **kwargs)
         return await self._dispatch_open(request, method, *args, **kwargs)
 
@@ -360,9 +354,7 @@ class PreflightGatedGateway:
                 reason = getattr(exc, "reason_code", "canary_preflight_failed")
                 raise CanaryBoundaryAbort(reason) from exc
         if self.observation_goal_latch is not None:
-            self.observation_goal_latch.raise_if_reached(
-                boundary_ordinal=request.ordinal,
-            )
+            self._raise_if_observation_goal_reached(request)
         self.fake_model_boundary_calls += 1
         ledger_entry = self.boundary_ledger[-1]
 
@@ -430,6 +422,20 @@ class PreflightGatedGateway:
                 billing_receipt_reliable=reliable,
             )
         return result
+
+    def _raise_if_observation_goal_reached(
+        self, request: BoundaryRequest,
+    ) -> None:
+        latch = self.observation_goal_latch
+        if latch is None:
+            return
+        before_dispatch = getattr(latch, "before_dispatch", None)
+        if callable(before_dispatch):
+            before_dispatch(
+                stage=request.stage, boundary_ordinal=request.ordinal,
+            )
+            return
+        latch.raise_if_reached(boundary_ordinal=request.ordinal)
 
     async def complete(
         self, role: str, system: str, user: str,

@@ -82,6 +82,7 @@ def prepare_c0b_smoke_packet(
     *, live_database_path: Path, fixture_path: Path, plan_path: Path,
     approval_path: Path, packet_path: Path, cohort_id: str,
     run_namespace: str, now: datetime | None = None,
+    feature_flags: dict[str, bool] | None = None,
 ) -> tuple[dict, dict, dict]:
     """Copy metadata only; do not touch keyring, registry resolution, or network."""
 
@@ -101,7 +102,7 @@ def prepare_c0b_smoke_packet(
     with tempfile.TemporaryDirectory(prefix="novel-c0b-plan-") as temporary:
         root = Path(temporary)
         cloned_db = root / "app.db"
-        with c0a_environment(root):
+        with c0a_environment(root, feature_flags=feature_flags):
             db = Database(cloned_db)
             db.migrate()
             copy_production_execution_config(Database(live_database_path), db)

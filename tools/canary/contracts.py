@@ -34,7 +34,7 @@ SMOKE_SIGNED_APPROVAL_DOMAIN = "novel-flywheel-c0b-smoke-1-signed-approval-v1"
 PLAN_MODES = frozenset({
     "c0a_fake_dry_run", "c0b_real_path_reachability",
     "c0c_statistical_exposure", "pa_strict_tool_observation",
-    "short_completion",
+    "planning_repair_observation", "short_completion",
 })
 RUNTIME_MODES = frozenset({"git_workspace", "packaged"})
 RUNTIME_FINGERPRINT_POLICIES = frozenset({

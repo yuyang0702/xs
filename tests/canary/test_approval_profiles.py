@@ -3,10 +3,11 @@ from tools.canary.approval_profiles import (
 )
 
 
-def test_profile_registry_contains_only_the_two_approved_profiles() -> None:
+def test_profile_registry_contains_only_the_approved_profiles() -> None:
     registry = approval_profile_registry_v1()
     assert tuple(registry) == (
-        "c0b_smoke_1", "pa_strict_tool_obs_1", "short_completion_1",
+        "c0b_smoke_1", "pa_strict_tool_obs_1",
+        "planning_repair_observation_1", "short_completion_1",
     )
     assert registry["c0b_smoke_1"].approval_scope == (
         "C0B_REAL_PROVIDER_PATH_REACHABILITY_SMOKE_1"
