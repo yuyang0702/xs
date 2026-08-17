@@ -1,0 +1,36 @@
+{
+  "schema": "R1PTR2RealObservationBlockedSha256ManifestV1",
+  "version": 1,
+  "algorithm": "SHA-256",
+  "self_included": false,
+  "materialization_packet_manifest_sha256": "a2ab420832b370494aa097c2eea88e53de583ba5cc165e0f14a91d05c9d11d74",
+  "evidence_canonical_sha256": "65af39170b02e2acb7a102e65b6c29bf871639ceac39add525f328681fbb9e68",
+  "file_count": 5,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-confirmed-authorization-patch-v1.json",
+      "bytes": 2305,
+      "sha256": "512ed01b653b2f27d5fc77b1dbad310f4e915f83f61c8325e30b839457d9387f"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-real-obs-1-blocked-evidence-v1.json",
+      "bytes": 3256,
+      "sha256": "14755f6f61db4abe4cd6cacef76f551decd0d034160a00d36b68c284b81702a5"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-real-obs-1-final-report-v1.md",
+      "bytes": 3829,
+      "sha256": "c44402e8c57de63d29a6fb01b8bfef4496fb71799adeafe987326d47ee107303"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-signed-approval-v1.json",
+      "bytes": 5192,
+      "sha256": "089d849300802105f7b8a4fbfbaa7b46321cadc56c98997dd8aa9ca685b90384"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-signed-approval-validation-receipt-v1.json",
+      "bytes": 1524,
+      "sha256": "9e1f409d64ede053fc96f9eb96ff8baf7ddf3cac676bc2c6fa452907d91fc8f2"
+    }
+  ]
+}

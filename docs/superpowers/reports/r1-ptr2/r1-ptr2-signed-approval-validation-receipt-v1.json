@@ -1,0 +1,36 @@
+{
+  "approval_scope": "PLANNING_REPAIR_SINGLE_REAL_PROVIDER_OBSERVATION_CANARY",
+  "authorization_patch_sha256": "885176ec6e96b0749e0c94ffe9bcd3e53994f54a079ada45b7744cc92de52a92",
+  "canary_root_created": false,
+  "checked_at": "2026-08-17T04:08:27Z",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "launcher_validate_only_outcome": "CANARY_BLOCKED_PRE_PROVIDER",
+  "ledger_state": {
+    "approval_status": "unreserved",
+    "business_entry_count": 0,
+    "cohort_status": "unused"
+  },
+  "live_database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+  "overall_status": "blocked",
+  "plan_sha256": "e430faf5dbfdd64d96adbdc1af2c57707d2ed4230b0d60422d25111e810ed962",
+  "production_incident_counted": false,
+  "profile_id": "planning_repair_observation_1",
+  "provider_boundary_entered": false,
+  "real_provider_observation": "NOT_EXECUTED",
+  "reason_code": "validate_only_profile_not_supported",
+  "receipt_sha256": "2209e14fdc52effde2378a31053e43a95ad396032199aaa6a8fefc78894a8f1e",
+  "schema": "R1PTR2SignedApprovalValidationReceiptV1",
+  "signed_approval_sha256": "18e50ab7daf4eb5baa883382e19cade8971fe6d450152acea4bb55f58279a645",
+  "signed_plan_binding": "exact",
+  "signed_sources_binding": "exact",
+  "typed_contract_materialization": "exact",
+  "version": 1,
+  "workflow_terminal_counted": false
+}
