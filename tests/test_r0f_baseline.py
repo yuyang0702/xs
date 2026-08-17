@@ -36,6 +36,11 @@ R1_PTR1_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr1-authorized-protected-source-successor-v1.json"
 )
+R1_PTR3_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr3-authorized-protected-source-successor-v1.json"
+)
 
 
 def make_database(tmp_path: Path) -> Database:
@@ -141,9 +146,6 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "route_model": 0,
         "retry_fallback_sequence": 0,
     }
-    assert canonical_protected_source_manifest(REPOSITORY) == (
-        r1_ptr1["current_protected_sources"]
-    )
     r1_ptr1_hashes = {
         item["path"]: item["sha256"]
         for item in r1_ptr1["current_protected_sources"]
@@ -158,6 +160,42 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "src/novel_flywheel/contract_runtime.py",
         "src/novel_flywheel/generated_artifacts.py",
         "src/novel_flywheel/models.py",
+        "src/novel_flywheel/workflows.py",
+    }
+    r1_ptr3 = load_baseline(R1_PTR3_SUCCESSOR)
+    assert r1_ptr3["parent_source_head"] == (
+        "ae5361008feab76d02dff726be4196040d3b3d9c"
+    )
+    assert r1_ptr3["implementation_source_head"] == (
+        "a6d16638bdc55c5639979be7e2b50ffb0d927461"
+    )
+    assert r1_ptr3["phase"] == "R1-PTR3"
+    assert r1_ptr3["business_behavior_changed"] is True
+    assert r1_ptr3["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_sequence": 0,
+        "retry_prompt_policy": 1,
+        "route_model": 0,
+    }
+    assert canonical_protected_source_manifest(REPOSITORY) == (
+        r1_ptr3["current_protected_sources"]
+    )
+    ptr3_hashes = {
+        item["path"]: item["sha256"]
+        for item in r1_ptr3["current_protected_sources"]
+    }
+    assert all(
+        item["after_sha256"] == ptr3_hashes[item["path"]]
+        for item in r1_ptr3["authorized_source_deltas"]
+    )
+    assert {
+        item["path"] for item in r1_ptr3["authorized_source_deltas"]
+    } == {
+        "src/novel_flywheel/contract_runtime.py",
         "src/novel_flywheel/workflows.py",
     }
 

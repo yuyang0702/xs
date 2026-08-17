@@ -1,0 +1,33 @@
+{
+  "schema": "R1PTR3TestReceiptV1",
+  "version": 1,
+  "implementation_head": "a6d16638bdc55c5639979be7e2b50ffb0d927461",
+  "gate": "R1_PTR3_PLANNING_REPAIR_FINDING_PROPAGATION_FIX_READY",
+  "focused": {"passed": 22, "failed": 0},
+  "related": {"passed": 178, "skipped": 17, "failed": 0},
+  "full_suite": {
+    "passed": 2890,
+    "skipped": 41,
+    "xfailed": 6,
+    "failed": 5,
+    "errors": 20,
+    "elapsed_seconds": 1872.16,
+    "new_ptr3_runtime_failures": 0
+  },
+  "closed_after_full_suite": [
+    "r1_ptr3_protected_source_successor_missing"
+  ],
+  "pre_existing_or_out_of_scope": [
+    {"count": 2, "reason": "approval_expired_precedes_expected_non_executable_reason"},
+    {"count": 1, "reason": "r1_d3_evidence_manifest_mismatch"},
+    {"count": 20, "reason": "r1_d3_evidence_manifest_mismatch_fixture_cascade"},
+    {"count": 1, "reason": "live_database_hash_differs_from_r0_baseline"}
+  ],
+  "external_counters": {
+    "credential_lookup": 0,
+    "network_calls": 0,
+    "provider_client_creation": 0,
+    "real_model_calls": 0,
+    "paid_model_calls": 0
+  }
+}

@@ -67,17 +67,22 @@ Config semantic
 Runtime execution
 `8e3fc9d5fb271ee62f835ebc27165bf0b32254bf3c1f43e2d4b121a6d514413b`.
 
-After working-tree collection: Build
-`6eedc06f28b630b8a1817016dccb7fa0173b858b458eac7dfa2c268f012be5f3`,
+After clean implementation HEAD collection: Build
+`e97060b725a6978f7770c18ec4feb46dd88dc326609355a19d24a1741bcc8bf6`,
 Config semantic unchanged, Runtime execution
-`ce7f102ce68927c0e6f292774b7c25d3eb8d7417d1f1f1120882535b804d3866`.
+`47c4806b9dd97baac1f982e90481f5ad491f89acad33c23d0408c1d946549f60`.
 These hashes authorize no execution.
 
 ## Verification
 
 - Focused PTR3 + PTR1: 22 passed.
 - Related Contract Runtime/Planning: 178 passed, 17 skipped.
-- Full suite: see final handoff/test receipt after completion.
+- Full suite: 2890 passed, 41 skipped, 6 xfailed, 5 failed, 20 errors in
+  1872.16s. One R1-PTR3 protected-source successor assertion was expected
+  before the successor fixture existed and is now closed. The remaining known
+  failures are out of scope: two expired-approval assertions, one R1-D3 sealed
+  evidence mismatch plus 20 fixture-dependent errors, and one pre-existing live
+  DB parity mismatch. No Planning/PTR3 regression remains.
 - Covered: convergence, exact observer status, ignored finding/retry cap, A->B
   freshness, dedupe, malicious escaping, oversize fail-closed, no-failure call
   parity, budget parity, exact scope binding and unchanged validator semantics.
