@@ -21,6 +21,10 @@ from .fingerprint_profiles import (
 )
 from .network_sentinel import FailClosedNetworkSentinel
 from .preflight import validate_execution_config_prelaunch_v2
+from .ptr3_readiness import (
+    validate_ptr3_readiness_v1,
+    validate_r1_d3_successor_readiness_v1,
+)
 
 
 def _read(path: Path) -> dict:
@@ -76,9 +80,44 @@ def run_rehearsal(
                 "runtime_execution_sha256": runtime.execution_fingerprint_sha256,
             },
         )
+        completion_policy = plan.get("short_completion_policy") or {}
+        ptr3_value = completion_policy.get("ptr3_readiness")
+        draft_value = completion_policy.get(
+            "r1_d3_production_mirror_readiness"
+        )
+        planning_rehearsal = None
+        draft_rehearsal = None
+        if ptr3_value is not None and draft_value is not None:
+            ptr3 = validate_ptr3_readiness_v1(ptr3_value)
+            draft = validate_r1_d3_successor_readiness_v1(draft_value)
+            planning_rehearsal = {
+                "boundary": "planning_repair_patch",
+                "fake_sequence": [
+                    "domain_rejected", "exact_finding_propagated",
+                    "domain_passed",
+                ],
+                "finding_contract_sha256": ptr3["finding_contract_sha256"],
+                "finding_bounds_policy_sha256": ptr3[
+                    "finding_bounds_policy_sha256"
+                ],
+                "stale_finding_count": 0,
+                "convergence_status": "exact",
+            }
+            draft_rehearsal = {
+                "boundary": "draft_retry",
+                "fake_sequence": [
+                    "mixed_script_rejected", "exact_finding_propagated",
+                    "draft_validation_passed",
+                ],
+                "draft_retry_contract_sha256": draft[
+                    "draft_retry_contract_sha256"
+                ],
+                "stale_finding_count": 0,
+                "convergence_status": "exact",
+            }
         # This sentinel marks permission to reach a fake boundary.  It never
         # resolves credentials, constructs a provider, or opens the network.
-        fake_boundary_count += 1
+        fake_boundary_count += 2 if planning_rehearsal is not None else 1
     counters = {
         "credential_lookup_count": 0,
         "provider_client_creation_count": 0,
@@ -112,6 +151,16 @@ def run_rehearsal(
         "external_action_counters": counters,
         "raw_values_included": False,
     }
+    if planning_rehearsal is not None:
+        body.update({
+            "planning_finding_rehearsal": planning_rehearsal,
+            "draft_finding_rehearsal": draft_rehearsal,
+            "request_semantic_parity": "exact",
+            "route_model_parity": "exact",
+            "retry_fallback_parity": "exact",
+            "output_budget_parity": "exact",
+            "final_review_maintenance_definitions": "exact",
+        })
     return {
         **body,
         "receipt_sha256": domain_sha256(

@@ -102,6 +102,12 @@ def test_plan_candidate_patch_and_validate_only_are_exact(materialized) -> None:
     assert materialized["ledger_readiness"]["initial_entry_count"] == 0
     assert materialized["semantic_rehearsal"]["status"] == "exact"
     assert materialized["semantic_rehearsal"]["observation_status"] == "exact"
+    assert materialized["semantic_rehearsal"][
+        "planning_finding_rehearsal"
+    ]["convergence_status"] == "exact"
+    assert materialized["semantic_rehearsal"][
+        "draft_finding_rehearsal"
+    ]["convergence_status"] == "exact"
     assert materialized["semantic_rehearsal"]["collection_profile_id"] == (
         PRODUCTION_MIRROR_SHORT_PROFILE_ID
     )
@@ -119,7 +125,7 @@ def test_plan_candidate_patch_and_validate_only_are_exact(materialized) -> None:
         "network_call_count": 0,
         "model_call_count": 0,
         "paid_model_call_count": 0,
-        "fake_boundary_count": 1,
+        "fake_boundary_count": 2,
     }
 
 
