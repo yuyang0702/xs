@@ -1,0 +1,17 @@
+{
+  "schema": "R1PTR2V1RealObservationAuthorizationBindingV1",
+  "version": 1,
+  "authorization_file_sha256": "579c57f0d3351be81068b210ef641d598d0c31fcef0398192f8e3ab565b32ca0",
+  "authorized_head": "daaae4350bb97a658a84b74286e33ced594d6622",
+  "authorized_plan_sha256": "c5fdeb3e2f8fa35296172f28ac0637dd65ee4dfe111b9db63e9a4d8b4f96b43d",
+  "authorized_candidate_sha256": "d2ec832380b76e2bdeb2987cf22906f50f9dfcfb7f604280bcee3b3adef2040d",
+  "authorized_cohort": "planning-repair-observation-1-20260817t052829z-v1",
+  "named_approver": "project_owner_20260817",
+  "approval_timestamp": "2026-08-17T05:50:04Z",
+  "authorization_patch_sha256": "09ca9401fe7f951a8885325ace0eff25193c7bcaeb99318638d3b68bb4599816",
+  "signed_approval_sha256": "30e125fa2e3ec0b3b1e6020625fad55debbada72f45dd87b4f74a6fefd9f12b5",
+  "maximum_executions": 1,
+  "execution_count": 1,
+  "cohort_state": "consumed",
+  "authorization_status": "consumed_no_replay"
+}

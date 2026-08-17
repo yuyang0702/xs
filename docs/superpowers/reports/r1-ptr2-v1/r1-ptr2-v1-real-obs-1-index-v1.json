@@ -1,0 +1,44 @@
+{
+  "schema": "R1PTR2V1RealObservationIndexV1",
+  "version": 1,
+  "final_gate": "R1_PTR2_V1_OBSERVATION_TARGET_NOT_EXERCISED",
+  "runner_outcome": "CANARY_OBSERVATION_GOAL_REACHED_STOPPED",
+  "reason_code": "planning_repair_observation_goal_safe_stop",
+  "target_exercised": false,
+  "primary_evidence_status": "not_exercised",
+  "terminal_amplifier_status": "not_reexercised",
+  "evidence_sha256": "02a20c331ecc15f34607b45d9f4866cf9e5616f4e7c035bc206984e219d7fd7b",
+  "goal_receipt_sha256": "4096facc14fbe5ac7bab9a1f7a3aee85ee477391bb26bda06efcaacce46539a9",
+  "authorization_patch_sha256": "09ca9401fe7f951a8885325ace0eff25193c7bcaeb99318638d3b68bb4599816",
+  "signed_approval_sha256": "30e125fa2e3ec0b3b1e6020625fad55debbada72f45dd87b4f74a6fefd9f12b5",
+  "signed_validate_only_receipt_sha256": "33745870fa549764afd4936a0a985930904c6c412261f217f8e23d4076cf1953",
+  "closure_check_count": 43,
+  "closure_status": "exact",
+  "counters": {
+    "credential_lookup_count": 1,
+    "provider_client_creation_count": 1,
+    "network_call_count": 1,
+    "model_call_count": 1,
+    "paid_model_call_count": 1
+  },
+  "usage": {
+    "reserved_input_tokens": 1837,
+    "reserved_output_tokens": 7774,
+    "reported_input_tokens": 0,
+    "reported_output_tokens": 863,
+    "actual_cny_cost_microunits": 5903,
+    "actual_usd_cost_microunits": 0,
+    "elapsed_micros": 36787309
+  },
+  "goal_stop": {
+    "first_blocked_boundary_ordinal": 2,
+    "blocked_dispatch_count": 1,
+    "post_goal_budget_reserve_count": 0,
+    "post_goal_provider_client_delta": 0,
+    "post_goal_provider_dispatch_delta": 0
+  },
+  "cohort_state": "consumed",
+  "real_provider_observation_executed": true,
+  "production_business_fix_implemented": false,
+  "second_execution_performed": false
+}

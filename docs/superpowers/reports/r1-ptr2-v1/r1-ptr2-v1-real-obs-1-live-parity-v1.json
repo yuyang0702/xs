@@ -1,0 +1,10 @@
+{
+  "schema": "R1PTR2V1RealObservationLiveParityV1",
+  "version": 1,
+  "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "status": "exact",
+  "production_incident_counted": false,
+  "workflow_terminal_counted": false,
+  "live_mutation_observed": false
+}

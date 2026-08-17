@@ -1,0 +1,13 @@
+{
+  "schema": "R1PTR2V1RealObservationPrivacyScanV1",
+  "version": 1,
+  "policy": "hash_shape_count_only_v1",
+  "raw_prompt_included": false,
+  "raw_model_output_included": false,
+  "raw_tool_arguments_included": false,
+  "credential_or_header_included": false,
+  "full_provider_response_included": false,
+  "absolute_machine_path_included": false,
+  "violation_count": 0,
+  "status": "exact"
+}

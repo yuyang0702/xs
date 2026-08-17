@@ -1,0 +1,23 @@
+{
+  "schema": "R1PTR2V1RealObservationSha256ManifestV1",
+  "version": 1,
+  "canonicalization_version": "file-bytes-sha256-v1",
+  "manifest_self_excluded": true,
+  "parent_packet_manifest_file_sha256": "44cea3548ba2d6adedc0fa7b785bb4f1d2c198b7c04b1cb1a8e1f3ad9d7fbdea",
+  "evidence_canonical_sha256": "02a20c331ecc15f34607b45d9f4866cf9e5616f4e7c035bc206984e219d7fd7b",
+  "files": [
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-confirmed-authorization-patch-v1.json", "bytes": 2330, "sha256": "9b94102d8d70817c32374f90b08e56ac458376356ad4c71a9309d146c8021323"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-signed-approval-v1.json", "bytes": 5277, "sha256": "eb44379e867c43243356865712799c2484aa010865130f781ab2327a72da87b4"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-authorization-binding-v1.json", "bytes": 936, "sha256": "de7f99be635a405886e3257ae6150f084bd5e3fe2474f693eeeb1f655c4051bd"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-consumption-evidence-v1.json", "bytes": 514, "sha256": "8b7272872d43e26e76cdd24bbfd7f3f1f3a7323871f614c70639d2efc98b0d00"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-evidence-package-v1.json", "bytes": 7050, "sha256": "b51984d14e25e922fc1c5292d0dd63ccab0814cfbe5a524edb8bc227b5452623"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-final-report-v1.md", "bytes": 6892, "sha256": "96af67fb328cad7491fdb2e3996df84738dea374b0400e96edef633ab75706fc"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-goal-receipt-v1.json", "bytes": 780, "sha256": "640092b0d815d5c7ddff1ff623233d53b5ff5b776ac4c125be505c2030fa2ff7"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-index-v1.json", "bytes": 1756, "sha256": "1c67cc3857984cad2173840431426c31f5bf2aa69e169adbd91b764c0d729445"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-live-parity-v1.json", "bytes": 377, "sha256": "6257d1354de0a42ecc7adc10684134b17ca42f79c3b220760cef96c2fb3dee6b"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-privacy-scan-v1.json", "bytes": 395, "sha256": "39c7afca728ef32836e85bec62740d4a6fa9d50e84154769935835f646c1ef98"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-reservation-evidence-v1.json", "bytes": 510, "sha256": "ec9f0f5638b6d4664fb463222a43e48b99de2e13af378aa573525a2ece0a8603"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-real-obs-1-trace-summary-v1.json", "bytes": 1102, "sha256": "919dff0ed26bbc73fb7efa68ff93ac1287c8cafddab75ad50b0f2ba76de95bfb"},
+    {"path": "docs/superpowers/reports/r1-ptr2-v1/r1-ptr2-v1-signed-validate-only-receipt-v1.json", "bytes": 9583, "sha256": "3c84a5a4b532a9f5cff01c7bc7d925249a74fe49fe38d6aa324b9ba89f731acd"}
+  ]
+}

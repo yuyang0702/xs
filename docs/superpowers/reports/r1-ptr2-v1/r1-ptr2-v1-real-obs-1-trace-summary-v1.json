@@ -1,0 +1,31 @@
+{
+  "schema": "R1PTR2V1RealObservationTraceSummaryV1",
+  "version": 1,
+  "raw_content_included": false,
+  "planning_boundary": {
+    "ordinal": 1,
+    "stage": "planning",
+    "role": "planning",
+    "route_kind": "primary",
+    "protocol": "anthropic",
+    "finish_reason": "tool_use",
+    "contract_result": "valid",
+    "response_sha256": "abd5415f17cb044a2225767ce2eef8ee14032212ba961ef5a13e8e5d88fe63cf"
+  },
+  "targeted_repair": {
+    "domain_failure_observed": false,
+    "finding_propagation_observed": false,
+    "fallback_shape_observed": false,
+    "output_limit_observed": false
+  },
+  "goal_stop": {
+    "target_outcome": "PLANNING_REPAIR_OBSERVATION_TARGET_NOT_EXERCISED",
+    "blocked_boundary_ordinal": 2,
+    "blocked_dispatch_count": 1,
+    "duplicate_observation_count": 0,
+    "sink_failure_count": 0,
+    "receipt_write_failure_count": 0
+  },
+  "causal_statement": "Initial Planning completed valid; no targeted repair was naturally scheduled; the next Provider boundary was blocked by the Canary goal-stop contract.",
+  "root_cause_status": "not_inferable_target_not_exercised"
+}
