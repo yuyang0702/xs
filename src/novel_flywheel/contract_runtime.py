@@ -16,9 +16,12 @@ from novel_flywheel.context_policy import (
     expanded_output_budget,
     output_limited,
 )
-from novel_flywheel.model_diagnostics import ModelDiagnosticContextV1, emit_budget_lineage
+from novel_flywheel.model_diagnostics import (
+    ModelDiagnosticContextV1, domain_sha256, emit_budget_lineage,
+)
 from novel_flywheel.planning_repair_diagnostics import (
     PlanningRepairDomainValidationSnapshotV1,
+    PlanningRepairRetryFindingContractError,
     observe_domain_validation_snapshot,
     observe_finding_propagation,
     observe_output_limit,
@@ -34,6 +37,9 @@ from novel_flywheel.structured_artifacts import StructuredArtifactContract
 DomainValidator = Callable[[Mapping[str, Any]], Any]
 DomainDiagnosticExtractor = Callable[
     [Mapping[str, Any]], Sequence[Mapping[str, Any]]
+]
+DomainRetryRenderer = Callable[
+    [Sequence[Mapping[str, Any]], Mapping[str, Any], str], str
 ]
 TextValidator = Callable[[str], Any]
 AuditSink = Callable[[ArtifactConversionAudit], None]
@@ -94,6 +100,7 @@ class ExecutableContractSpec:
     domain_validator: DomainValidator
     domain_diagnostic_extractor: DomainDiagnosticExtractor | None = None
     domain_diagnostic_metadata: Mapping[str, Any] | None = None
+    domain_retry_renderer: DomainRetryRenderer | None = None
     retry_domain_failures: bool = False
     expected_event_ids: tuple[str, ...] = ()
     owns_opening: bool = True
@@ -120,6 +127,13 @@ class ExecutableContractSpec:
             raise TypeError("executable contract semantic normalizer must be callable")
         if not callable(self.domain_validator):
             raise TypeError("executable contract domain validator must be callable")
+        if self.domain_retry_renderer is not None and (
+            self.domain_diagnostic_extractor is None
+            or not self.retry_domain_failures
+        ):
+            raise ValueError(
+                "domain retry rendering requires diagnostics and domain retries"
+            )
         if (
             self.retry_domain_failures
             and "minimal_regeneration" not in registration.recovery_ladder
@@ -867,6 +881,8 @@ async def execute_contract_runtime(
     output_limit_seen = False
     last_business_incomplete_reason: str | None = None
     last_domain_snapshot: PlanningRepairDomainValidationSnapshotV1 | None = None
+    pending_domain_findings: tuple[Mapping[str, Any], ...] = ()
+    pending_source_identity: str | None = None
     attempt_output_tokens = max_output_tokens
     contract_schema = structured_contract.json_schema
 
@@ -1033,11 +1049,33 @@ async def execute_contract_runtime(
             (ArtifactConversionError, ContractBusinessOutputIncompleteError),
         ):
             route_system = _protocol_regeneration_system(system)
+        propagated_findings: tuple[Mapping[str, Any], ...] = ()
+        propagated_receipt: str | None = None
+        if pending_domain_findings and execution_spec.domain_retry_renderer:
+            if pending_source_identity is None:
+                raise PlanningRepairRetryFindingContractError(
+                    "pending finding source identity is missing"
+                )
+            finding_block = execution_spec.domain_retry_renderer(
+                pending_domain_findings,
+                execution_spec.domain_diagnostic_metadata or {},
+                pending_source_identity,
+            )
+            route_user = f"{route_user}\n\n{finding_block}"
+            propagated_findings = pending_domain_findings
+            propagated_receipt = (
+                last_domain_snapshot.receipt_sha256
+                if last_domain_snapshot is not None else None
+            )
+            pending_domain_findings = ()
+            pending_source_identity = None
         observe_finding_propagation(
             source=last_domain_snapshot,
             target_context=attempt_context,
             system=route_system,
             user=route_user,
+            propagated_findings=propagated_findings,
+            propagated_finding_receipt_sha256=propagated_receipt,
         )
         try:
             response = (
@@ -1288,7 +1326,21 @@ async def execute_contract_runtime(
                         )
                     )
                 except Exception:
+                    if execution_spec.domain_retry_renderer is not None:
+                        raise
                     diagnostic_findings = ()
+            if execution_spec.domain_retry_renderer is not None:
+                pending_domain_findings = tuple(diagnostic_findings)
+                pending_source_identity = domain_sha256(
+                    "r1-ptr3-domain-attempt-source-v1",
+                    {
+                        "contract_name": contract_name,
+                        "attempt_index": attempt.attempt_index,
+                        "repair_target_identity_sha256": (
+                            execution_spec.domain_diagnostic_metadata or {}
+                        ).get("repair_target_identity_sha256"),
+                    },
+                )
             observed_domain = observe_domain_validation_snapshot(
                 attempt_context,
                 payload=conversion.payload,

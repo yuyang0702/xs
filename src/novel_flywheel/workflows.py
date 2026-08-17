@@ -125,6 +125,7 @@ from novel_flywheel.model_diagnostics import (
 )
 from novel_flywheel.planning_repair_diagnostics import (
     PLANNING_REPAIR_EVIDENCE_FLAG,
+    render_actionable_planning_repair_findings,
 )
 from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
@@ -931,6 +932,10 @@ class WorkflowService:
             Callable[[Mapping[str, Any]], Sequence[Mapping[str, Any]]] | None
         ) = None,
         domain_diagnostic_metadata: Mapping[str, Any] | None = None,
+        domain_retry_renderer: (
+            Callable[[Sequence[Mapping[str, Any]], Mapping[str, Any], str], str]
+            | None
+        ) = None,
         retry_domain_failures: bool = True,
         expected_event_ids: Sequence[str] = (),
         owns_opening: bool = True,
@@ -972,6 +977,7 @@ class WorkflowService:
             domain_validator=validate,
             domain_diagnostic_extractor=domain_diagnostic_extractor,
             domain_diagnostic_metadata=domain_diagnostic_metadata,
+            domain_retry_renderer=domain_retry_renderer,
             retry_domain_failures=retry_domain_failures,
             expected_event_ids=tuple(expected_event_ids),
             owns_opening=owns_opening,
@@ -11428,12 +11434,7 @@ class WorkflowService:
                                 current_segment=current,
                             )
                         )
-                        if (
-                            patch_authority
-                            and diagnostic_flag_enabled(
-                                PLANNING_REPAIR_EVIDENCE_FLAG
-                            )
-                        ) else None
+                        if patch_authority else None
                     ),
                     domain_diagnostic_metadata=(
                         {
@@ -11452,6 +11453,20 @@ class WorkflowService:
                                 )
                             ),
                             "repair_target_sha256": patch_authority,
+                            "repair_scope_identity_sha256": (
+                                diagnostic_domain_sha256(
+                                    "r1-ptr1-repair-target-scope-v1",
+                                    {
+                                        "segment": segment,
+                                        "anchor_id_sha256s": [
+                                            hashlib.sha256(
+                                                evidence_id.encode("utf-8")
+                                            ).hexdigest()
+                                            for evidence_id in anchor_ids
+                                        ],
+                                    },
+                                )
+                            ),
                             "canonical_repair_target_paths": [
                                 "$.replacements["
                                 + hashlib.sha256(
@@ -11467,12 +11482,11 @@ class WorkflowService:
                                 planning_repair_patch_diagnostic_policy_sha256()
                             ),
                         }
-                        if (
-                            patch_authority
-                            and diagnostic_flag_enabled(
-                                PLANNING_REPAIR_EVIDENCE_FLAG
-                            )
-                        ) else None
+                        if patch_authority else None
+                    ),
+                    domain_retry_renderer=(
+                        render_actionable_planning_repair_findings
+                        if patch_authority else None
                     ),
                     expected_event_ids=(
                         () if patch_authority else tuple(event_ids)

@@ -1781,3 +1781,27 @@ carry an expansion target into a later Runtime and does not change any request
 budget. Both observers append through the physically isolated best-effort
 ReliabilityTrace sink; validation, hashing, locking, or write failures are
 discarded and cannot trigger retry, fallback, recovery, or task failure.
+
+## R1-PTR3 Planning targeted-repair findings
+
+The registered `planning_repair_patch` boundary now carries a rejected patch's
+typed Domain findings to exactly the next attempt in the same Contract Runtime
+ladder. The first request is unchanged. A retry-only `Actionable Planning
+Repair Findings` block contains bounded, deterministic JSON with rule, path,
+invariant, validator policy, target/scope and source identities; it contains no
+raw value, story text or normalized payload. The block is untrusted data and
+does not expand the existing patch wire authority.
+
+Each Domain rejection replaces the pending finding set. The pending set is
+consumed before the next dispatch, so it cannot leak into a later retry after a
+transport or protocol failure. More than eight findings, an overlong field, or
+an envelope over 8192 UTF-8 bytes fails closed before Provider dispatch; no
+finding is silently truncated. Route selection, attempt counts, fallback and
+output-budget expansion are unchanged. The existing patch merge is still
+followed by the existing Domain validator.
+
+Any production Canary after this change requires fresh Build and Runtime
+execution fingerprints plus a new single-use approval. The current Prompt
+Policy Manifest does not identify dynamic retry-only instructions, so the
+approval packet must additionally bind the R1-PTR3 retry finding contract until
+that manifest coverage gap is closed.
