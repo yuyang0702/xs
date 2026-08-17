@@ -251,9 +251,14 @@ def _goal_definition() -> dict[str, Any]:
 
 
 def _definitions() -> dict[str, Any]:
+    from .planning_repair_closure import (
+        planning_repair_observation_closure_definition_v1,
+    )
+
     budgets = _budget_definitions()
     instrumentation = _instrumentation_definitions()
     goal = _goal_definition()
+    closure = planning_repair_observation_closure_definition_v1()
     feature = _definition(
         "novel-flywheel-r1-ptr2-feature-flags-v1",
         "PlanningRepairObservationFeatureFlagSnapshotV1", FEATURE_FLAGS,
@@ -298,7 +303,8 @@ def _definitions() -> dict[str, Any]:
     )
     return {
         "budgets": budgets, "instrumentation": instrumentation,
-        "goal": goal, "feature": feature, "target": target,
+        "goal": goal, "closure": closure,
+        "feature": feature, "target": target,
         "stop": stop, "validator": validator,
         "production_budget": production_budget, "prompt": prompt,
     }
@@ -390,6 +396,9 @@ def _build_plan(
             "bundle"
         ]["definition_sha256"],
         "observation_goal_definition_sha256": definitions["goal"][
+            "definition_sha256"
+        ],
+        "validate_only_closure_definition_sha256": definitions["closure"][
             "definition_sha256"
         ],
         "domain_validator_policy_sha256": definitions["validator"][
@@ -616,6 +625,11 @@ def _validate_only(
                and policy["approval_scope"] == PROFILE.approval_scope,
                "approval_profile_scope_mismatch",
                PROFILE.profile_definition_sha256),
+        _check("validate_only_closure",
+               policy.get("validate_only_closure_definition_sha256")
+               == definitions["closure"]["definition_sha256"],
+               "validate_only_closure_definition_mismatch",
+               definitions["closure"]["definition_sha256"]),
         _check("candidate_contract", candidate_valid,
                "approval_candidate_invalid",
                candidate["approval_candidate_sha256"]),
@@ -802,6 +816,7 @@ def materialize_planning_repair_observation_1(
         "instrumentation": output_root / "r1-ptr2-instrumentation-definition-bundle-v1.json",
         "ledger": output_root / "r1-ptr2-ledger-operational-readiness-v1.json",
         "rehearsal": output_root / "r1-ptr2-pre-launch-semantic-rehearsal-v1.json",
+        "closure_rehearsal": output_root / "r1-ptr2-signed-closure-rehearsal-v1.json",
         "definitions": output_root / "r1-ptr2-definition-bundle-v1.json",
     }
     fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
@@ -843,6 +858,7 @@ def materialize_planning_repair_observation_1(
                 "schema": "R1PTR2DefinitionBundleV1", "version": 1,
                 "canonicalization_version": CANONICALIZATION_VERSION,
                 "feature": definitions["feature"],
+                "closure": definitions["closure"],
                 "target": definitions["target"],
                 "stop": definitions["stop"],
                 "validator": definitions["validator"],
@@ -907,7 +923,8 @@ def materialize_planning_repair_observation_1(
         "status": "R1_PTR2_REAL_OBSERVATION_WAITING_FOR_FINAL_USER_AUTHORIZATION",
         "files": {
             path.name: file_sha256(path)
-            for key, path in sorted(paths.items()) if key != "index"
+            for key, path in sorted(paths.items())
+            if key not in {"index", "closure_rehearsal"}
         },
         "plan_sha256": plan["plan_sha256"],
         "approval_candidate_sha256": candidate["approval_candidate_sha256"],
@@ -931,12 +948,87 @@ def materialize_planning_repair_observation_1(
         "external_action_counters": validation["external_action_counters"],
         "privacy_status": privacy["status"],
         "live_parity_status": validation["parity"]["status"],
+        "live_parity_sha256": validation["parity"]["after_sha256"],
+        "privacy_scan_sha256": privacy["privacy_scan_sha256"],
         "real_provider_observation": "NOT_EXECUTED",
         "signed_approval": "ABSENT",
         "confirmed_patch": "ABSENT",
         "new_single_use_approval_required": True,
         "execution_performed": False,
     }
+    index = _sealed(
+        "novel-flywheel-r1-ptr2-materialization-index-v1", index_body,
+        "definition_sha256",
+    )
+    _write(paths["index"], index)
+
+    # Exercise the newly registered signed validate-only handler with a
+    # synthetic authorization that remains local to this materialization.
+    # Neither authorization object is persisted in the approval packet.
+    from .approval_dispatch import materialize_signed_canary_approval
+    from .planning_repair_approval import (
+        materialize_planning_repair_observation_patch_v1,
+    )
+    from .planning_repair_closure import (
+        validate_planning_repair_observation_closure,
+    )
+
+    rehearsal_now = window_start + timedelta(seconds=1)
+    approval_timestamp = _utc(rehearsal_now)
+    synthetic_patch = materialize_planning_repair_observation_patch_v1(
+        template,
+        named_approver="synthetic_validate_only_rehearsal",
+        approval_timestamp=approval_timestamp,
+    )
+    synthetic_signed = materialize_signed_canary_approval(
+        PROFILE_ID,
+        candidate,
+        synthetic_patch,
+        now=rehearsal_now,
+    )
+    with tempfile.TemporaryDirectory(
+        prefix="novel-r1-ptr2-signed-closure-rehearsal-"
+    ) as closure_temporary:
+        closure_root = Path(closure_temporary)
+        patch_path = closure_root / "confirmed-patch.json"
+        signed_path = closure_root / "signed-approval.json"
+        _write(patch_path, synthetic_patch)
+        _write(signed_path, synthetic_signed)
+        signed_closure_rehearsal = (
+            validate_planning_repair_observation_closure(
+                plan_path=paths["plan"],
+                approval_path=signed_path,
+                source_candidate_path=paths["candidate"],
+                source_authorization_patch_path=patch_path,
+                packet_path=paths["index"],
+                workload_fixture_path=fixture_path,
+                live_database_path=live_database_path,
+                live_project_root=live_project_root,
+                canary_root=closure_root / "future-canary-root",
+                approval_ledger_root=approval_ledger_root,
+                cli_approved_plan_sha256=plan["plan_sha256"],
+                now=rehearsal_now,
+            )
+        )
+    _require(
+        signed_closure_rehearsal["overall_status"] == "exact",
+        "signed_validate_only_rehearsal_failed",
+    )
+    _require(
+        signed_closure_rehearsal["external_action_counters"]
+        == EXTERNAL_COUNTERS,
+        "signed_validate_only_rehearsal_external_action_observed",
+    )
+    _write(paths["closure_rehearsal"], signed_closure_rehearsal)
+    index_body.update({
+        "files": {
+            path.name: file_sha256(path)
+            for key, path in sorted(paths.items()) if key != "index"
+        },
+        "signed_validate_only_rehearsal_sha256": (
+            signed_closure_rehearsal["validation_receipt_sha256"]
+        ),
+    })
     index = _sealed(
         "novel-flywheel-r1-ptr2-materialization-index-v1", index_body,
         "definition_sha256",
@@ -949,6 +1041,7 @@ def materialize_planning_repair_observation_1(
         "execution_preview": preview,
         "validation_receipt": validation,
         "semantic_rehearsal": rehearsal,
+        "signed_closure_rehearsal": signed_closure_rehearsal,
         "ledger_readiness": ledger,
         "definition_bundle": definition_bundle,
         "index": index,

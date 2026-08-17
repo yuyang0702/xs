@@ -74,6 +74,11 @@ def _validate_registered_closure(profile_name: str, **kwargs) -> dict:
             validate_short_completion_approval_closure,
         )
         return validate_short_completion_approval_closure(**kwargs)
+    if profile_name == "planning_repair_observation_closure_v1":
+        from .planning_repair_closure import (
+            validate_planning_repair_observation_closure,
+        )
+        return validate_planning_repair_observation_closure(**kwargs)
     raise CanaryLauncherError("validate_only_profile_not_supported")
 
 
