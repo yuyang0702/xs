@@ -1,0 +1,18 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "f8053582e21c7b2f7904d251e28e8707ba93f2b8b012b300b7186977dabcdc06",
+  "payload": {
+    "definitions": {
+      "domain_validation": "ce59173e45281e7ae403767dda0f1af90789f07ba9e8dd85f8d841c5f70269ec",
+      "finding_propagation": "0440345f993297956bda2cbf3f0141e75da33b56fef86fa46498762320727b94",
+      "output_limit": "40554c086d28d266e2bd43eb4b89d71abb9e0d8be7698ee0679c54fde98eb2c7",
+      "provider_content_block_shape": "d1c66891f0cdaf4758bde9b0c16f9cce06f0d7c0189cd8450f0676d64a463939"
+    },
+    "fail_open": true,
+    "feature_flag": "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1",
+    "feature_flag_value": true,
+    "hash_shape_count_only": true
+  },
+  "schema": "PlanningRepairInstrumentationDefinitionBundleV1",
+  "version": 1
+}

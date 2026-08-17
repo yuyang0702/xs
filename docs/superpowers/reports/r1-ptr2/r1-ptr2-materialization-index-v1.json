@@ -1,0 +1,48 @@
+{
+  "approval_candidate_sha256": "ff88de76566b296e11a046a15e6808a5c4ef565c6bf02509ca8e09c473801294",
+  "approval_ledger_identity": "47642ae3ef765830e9d7821fd6d3e8b73c562486d06dca9eafff2e0a136504e0",
+  "approval_ledger_initial_entry_count": 0,
+  "authorization_patch_template_sha256": "d391c7ef83fd9438fb50efb9437742fe6a2dc0be51701066d05954a2b8e3ae99",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "confirmed_patch": "ABSENT",
+  "contract_status": "R1_PTR2_OBSERVATION_APPROVAL_PACKET_READY",
+  "definition_sha256": "596f3184bf0840c0cf9f8537d74bd76902e564a903808f16e25d0430eb46154f",
+  "execution_performed": false,
+  "execution_window": {
+    "not_after": "2026-08-19T00:51:33Z",
+    "not_before": "2026-08-17T00:51:33Z"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "r1-ptr2-authorization-patch-template-v1.json": "7751538f3a19be335265e459e08f310cad9ffa9d04536ec58618450265625549",
+    "r1-ptr2-definition-bundle-v1.json": "1a6036850ba1ce43d7965d97ad0f6574cc4fb8a92f857e01161a6b816b752a7c",
+    "r1-ptr2-execution-preview-v1.json": "65f7df5f53cdaa7c69bd18d32431adf614139c6f85b371449e562f19092e9d59",
+    "r1-ptr2-final-approval-candidate-v1.json": "77c6bd3010a5ff0fe1369efa968220d7dc2f2db2c76e228bf8b7563c16146c42",
+    "r1-ptr2-instrumentation-definition-bundle-v1.json": "d5936801f982b1c00a0981652c9d3b78081970f75df405d34f61f67c26084212",
+    "r1-ptr2-ledger-operational-readiness-v1.json": "5e48fd8dafd1ebb89fd750555cad25c718a3e6c5779b6acb28b6af73718b0419",
+    "r1-ptr2-observation-goal-definition-v1.json": "e0feadad4fb28a2513829071fb25010c4391ec52de9893fad509c1a576478078",
+    "r1-ptr2-observation-plan-v1.json": "21029108749593d491d71a322af6ae5fe19db09614cc6bbcde15cb52c5d3cdac",
+    "r1-ptr2-pre-launch-semantic-rehearsal-v1.json": "26fcd0b1d2cc06266c72e2483fdda4ed990cbf263e462c675eb4be09353ab1ca",
+    "r1-ptr2-validate-only-receipt-v1.json": "0a539e94be1d7d485e02afb371a558b3e00c3dabb0fe48af58d3af08fa307800"
+  },
+  "instrumentation_definition_bundle_sha256": "f8053582e21c7b2f7904d251e28e8707ba93f2b8b012b300b7186977dabcdc06",
+  "live_parity_status": "exact",
+  "new_single_use_approval_required": true,
+  "observation_goal_definition_sha256": "d9f4b956d9b9dd6906889830eb4e9d9dc3284c431a14c90124df6d798e91dd71",
+  "plan_sha256": "e430faf5dbfdd64d96adbdc1af2c57707d2ed4230b0d60422d25111e810ed962",
+  "prelaunch_semantic_rehearsal_sha256": "e3a12635555778315ae5f72ff7e8c9beea7bb589e8bda96229f0085c8997c1f9",
+  "privacy_status": "exact",
+  "real_provider_observation": "NOT_EXECUTED",
+  "schema": "R1PTR2MaterializationIndexV1",
+  "signed_approval": "ABSENT",
+  "single_use_cohort_id": "planning-repair-observation-1-20260817t003633z-a4f10e1",
+  "status": "R1_PTR2_REAL_OBSERVATION_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "validation_receipt_sha256": "0953ff3fc13990ff9e3c2a8c245c7bd631b66ea5621184ab02fb09e805c79529",
+  "version": 1
+}

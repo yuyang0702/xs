@@ -1,0 +1,31 @@
+{
+  "schema": "R1PTR2PrivacyScanV1",
+  "version": 1,
+  "policy": "hash_shape_count_only_v1",
+  "status": "exact",
+  "violation_count": 0,
+  "violation_codes": [],
+  "forbidden_content": {
+    "raw_prompt": false,
+    "raw_story": false,
+    "raw_normalized_payload": false,
+    "raw_tool_arguments": false,
+    "raw_provider_response": false,
+    "credentials_or_headers": false,
+    "private_endpoint": false,
+    "machine_specific_absolute_path": false
+  },
+  "allowed_content": [
+    "sha256",
+    "shape",
+    "count",
+    "field_path",
+    "rule_code",
+    "invariant_id",
+    "token_budget",
+    "typed_status"
+  ],
+  "materializer_scan_sha256": "b2d64e62888830a241b36d383800efe172a543c3d4e28636c278958be0d6e591",
+  "private_raw_evidence_created": false,
+  "real_provider_observation": "NOT_EXECUTED"
+}

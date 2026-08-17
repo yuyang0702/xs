@@ -1,0 +1,62 @@
+{
+  "schema": "ForwardRiskReportV2",
+  "version": 2,
+  "original_requirement": "Materialize one fresh disabled single-use Production-Mirror Planning Repair real-observation approval packet without executing it.",
+  "scope": "closed_world_r1_ptr2_canary_control_plane",
+  "resolution_status": "contained",
+  "model_output_boundary_changed": false,
+  "model_output_boundary_evidence": "No src or baml_src path changed; the Canary-only latch observes typed evidence and blocks only a future Canary dispatch.",
+  "covered_failure_modes": [
+    {
+      "id": "targeted_repair_domain_failure",
+      "coverage": "typed_observer_rehearsed_fake_boundary",
+      "production_evidence": "pending_authorized_single_use_observation"
+    },
+    {
+      "id": "blind_finding_propagation",
+      "coverage": "typed_observer_rehearsed_fake_boundary",
+      "production_evidence": "pending_authorized_single_use_observation"
+    },
+    {
+      "id": "plain_fallback_content_block_shape",
+      "coverage": "natural_reach_only",
+      "production_evidence": "pending_authorized_single_use_observation"
+    },
+    {
+      "id": "planning_repair_output_limit",
+      "coverage": "natural_reach_only",
+      "production_evidence": "pending_authorized_single_use_observation"
+    },
+    {
+      "id": "post_goal_provider_dispatch",
+      "coverage": "canary_goal_stop_and_race_tests",
+      "production_evidence": "not_executed"
+    },
+    {
+      "id": "stale_or_replayed_identity",
+      "coverage": "fresh_build_config_runtime_candidate_cohort_ledger_binding",
+      "production_evidence": "not_executed"
+    }
+  ],
+  "sibling_stage_assessment": {
+    "status": "not_susceptible_by_scope",
+    "reason": "The target filter is exact stage=planning, boundary=planning_repair_patch, contract version 1; no production sibling-stage behavior was changed."
+  },
+  "remaining_gaps": [
+    "No real Provider evidence exists for A, B, C, or D.",
+    "A and B may not naturally occur; target-not-exercised is a controlled observation outcome, not evidence closure.",
+    "C and D are terminal-amplifier observations and are captured only if naturally reached.",
+    "The historical R0 stale oracle and R1-D3 historical manifest fixture family remain fail-closed and unchanged."
+  ],
+  "next_boundary_tests": [
+    "At authorization time, revalidate exact source, build, config, runtime, route, provider, definitions, window, cohort, ledger, and budgets before credential lookup.",
+    "After A plus B or planning target-not-exercised, prove the next major-stage budget reserve, Provider-client creation, and dispatch are zero.",
+    "Preserve typed first-terminal root cause when terminal or block occurs before the observation goal."
+  ],
+  "governance": {
+    "real_provider_observation": "NOT_EXECUTED",
+    "signed_approval": "ABSENT",
+    "confirmed_patch": "ABSENT",
+    "new_single_use_approval_required": true
+  }
+}

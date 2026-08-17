@@ -1,0 +1,89 @@
+{
+  "schema": "R1PTR2Sha256ManifestV1",
+  "version": 1,
+  "algorithm": "SHA-256",
+  "self_included": false,
+  "file_count": 16,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-authorization-patch-template-v1.json",
+      "bytes": 2496,
+      "sha256": "7751538f3a19be335265e459e08f310cad9ffa9d04536ec58618450265625549"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-definition-bundle-v1.json",
+      "bytes": 6986,
+      "sha256": "1a6036850ba1ce43d7965d97ad0f6574cc4fb8a92f857e01161a6b816b752a7c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-execution-preview-v1.json",
+      "bytes": 2282,
+      "sha256": "65f7df5f53cdaa7c69bd18d32431adf614139c6f85b371449e562f19092e9d59"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-final-approval-candidate-v1.json",
+      "bytes": 5129,
+      "sha256": "77c6bd3010a5ff0fe1369efa968220d7dc2f2db2c76e228bf8b7563c16146c42"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-final-report-v1.md",
+      "bytes": 8466,
+      "sha256": "e88816db26843ebf41eaeae4bc9433d3a510d97dd4879fbed2df2c7b4f50765f"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-forward-risk-v2.json",
+      "bytes": 2895,
+      "sha256": "31510a34057ad9d8ad06daae5d003bec2e3f1dbcc416068c691b63a45cc6b938"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-instrumentation-definition-bundle-v1.json",
+      "bytes": 849,
+      "sha256": "d5936801f982b1c00a0981652c9d3b78081970f75df405d34f61f67c26084212"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-ledger-operational-readiness-v1.json",
+      "bytes": 530,
+      "sha256": "5e48fd8dafd1ebb89fd750555cad25c718a3e6c5779b6acb28b6af73718b0419"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-live-parity-v1.json",
+      "bytes": 738,
+      "sha256": "cadd3e7f863691721dcd3932504af4997edbc166b70cc7864a2a52956f75fcd4"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-materialization-index-v1.json",
+      "bytes": 3099,
+      "sha256": "8d36fba54b9e071916c90c49af2523b60af5cda4cdfe460036e48a8ea67db2e2"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-observation-goal-definition-v1.json",
+      "bytes": 1094,
+      "sha256": "e0feadad4fb28a2513829071fb25010c4391ec52de9893fad509c1a576478078"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-observation-plan-v1.json",
+      "bytes": 16783,
+      "sha256": "21029108749593d491d71a322af6ae5fe19db09614cc6bbcde15cb52c5d3cdac"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-pre-launch-semantic-rehearsal-v1.json",
+      "bytes": 2538,
+      "sha256": "26fcd0b1d2cc06266c72e2483fdda4ed990cbf263e462c675eb4be09353ab1ca"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-privacy-scan-v1.json",
+      "bytes": 809,
+      "sha256": "e568ad6ecb6bc79123d2c630b9a3a490b461fa1d6c5485ad129b072f913ddd14"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-test-results-v1.json",
+      "bytes": 1145,
+      "sha256": "511dc92e906988677c7985738053aeed3e7c7c4ad817ac8e78ff81994573a6f8"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr2/r1-ptr2-validate-only-receipt-v1.json",
+      "bytes": 7371,
+      "sha256": "0a539e94be1d7d485e02afb371a558b3e00c3dabb0fe48af58d3af08fa307800"
+    }
+  ]
+}

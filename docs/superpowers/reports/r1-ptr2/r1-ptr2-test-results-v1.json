@@ -1,0 +1,47 @@
+{
+  "schema": "R1PTR2TestResultsV1",
+  "version": 1,
+  "focused": {
+    "scope": "ptr1_ptr2_canary_identity_and_materialization",
+    "passed": 70,
+    "failed": 0,
+    "errors": 0,
+    "status": "passed"
+  },
+  "related": {
+    "scope": "planning_contract_provider_observer_runtime_fingerprint_semantic_preflight",
+    "passed": 209,
+    "failed": 0,
+    "errors": 0,
+    "warnings": 1,
+    "status": "passed"
+  },
+  "full_suite": {
+    "passed": 2855,
+    "failed": 2,
+    "errors": 20,
+    "skipped": 41,
+    "xfailed": 6,
+    "warnings": 1,
+    "elapsed_seconds": 1509.0,
+    "known_failure_families": [
+      {
+        "id": "r0_live_db_stale_oracle",
+        "count_kind": "failure",
+        "count": 1,
+        "status": "pre_existing"
+      },
+      {
+        "id": "r1_d3_historical_manifest_mismatch",
+        "count_kind": "failure_plus_fixture_setup_errors",
+        "failures": 1,
+        "errors": 20,
+        "status": "pre_existing_fail_closed"
+      }
+    ],
+    "new_failure_or_error_families": 0,
+    "historical_manifest_rewritten": false,
+    "fixture_relaxed": false,
+    "status": "baseline_preserved_no_new_family"
+  }
+}

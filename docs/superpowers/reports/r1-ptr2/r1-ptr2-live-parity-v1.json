@@ -1,0 +1,19 @@
+{
+  "schema": "R1PTR2LiveParityV1",
+  "version": 1,
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "scope": "live_database_and_business_artifact_roots",
+  "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+  "status": "exact",
+  "business_mutation_observed": false,
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  }
+}

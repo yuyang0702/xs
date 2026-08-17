@@ -1,0 +1,172 @@
+{
+  "budgets": {
+    "call": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "definition_sha256": "0e46d259cb930c22afdbcbd275a5c6d3bcdcc23a79145ff368bb621316b81619",
+      "payload": {
+        "expected_model_calls": 8,
+        "first_terminal_stop": true,
+        "maximum_model_calls_per_run": 16,
+        "maximum_output_tokens_per_call": 32000,
+        "maximum_runs": 1,
+        "maximum_total_model_calls": 16,
+        "resume_after_terminal": false,
+        "second_run_allowed": false
+      },
+      "schema": "PlanningRepairObservationCallBudgetV1",
+      "version": 1
+    },
+    "elapsed": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "definition_sha256": "5b61dc688fcd2756d361b1aff4d2896ecc385ecce1537786c55d152169efdcdc",
+      "payload": {
+        "maximum_elapsed_seconds": 3600
+      },
+      "schema": "PlanningRepairObservationElapsedBudgetV1",
+      "version": 1
+    },
+    "manifest": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "definition_sha256": "697f4c7092b111f65f9c2d0b43989fafa74f7783a3822e12724a61d30f0f5d40",
+      "payload": {
+        "canary_outer_caps": {
+          "expected_model_calls": 8,
+          "maximum_cny_cost_microunits": 20000000,
+          "maximum_elapsed_seconds": 3600,
+          "maximum_input_tokens": 500000,
+          "maximum_model_calls_per_run": 16,
+          "maximum_output_tokens": 500000,
+          "maximum_output_tokens_per_call": 32000,
+          "maximum_runs": 1,
+          "maximum_total_model_calls": 16,
+          "maximum_usd_cost_microunits": 10000000
+        },
+        "definition_sha256s": {
+          "call": "0e46d259cb930c22afdbcbd275a5c6d3bcdcc23a79145ff368bb621316b81619",
+          "elapsed": "5b61dc688fcd2756d361b1aff4d2896ecc385ecce1537786c55d152169efdcdc",
+          "monetary": "cbffa9e9996b926f4ff1bba9a4944f65965ca522972fb4b138e24ff44f034354",
+          "token": "fa3a91e4bc2cff9248463de273572d70350769f90e87416e90994f7d5c7b06bf"
+        },
+        "production_internal_repair_policy_changed": false
+      },
+      "schema": "PlanningRepairObservationBudgetManifestV1",
+      "version": 1
+    },
+    "monetary": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "definition_sha256": "cbffa9e9996b926f4ff1bba9a4944f65965ca522972fb4b138e24ff44f034354",
+      "payload": {
+        "approved_fx_snapshot": null,
+        "maximum_cny_cost_microunits": 20000000,
+        "maximum_usd_cost_microunits": 10000000
+      },
+      "schema": "PlanningRepairObservationMonetaryBudgetV1",
+      "version": 1
+    },
+    "token": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "definition_sha256": "fa3a91e4bc2cff9248463de273572d70350769f90e87416e90994f7d5c7b06bf",
+      "payload": {
+        "maximum_input_tokens": 500000,
+        "maximum_output_tokens": 500000,
+        "maximum_output_tokens_per_call": 32000,
+        "production_per_attempt_budget_mutation_allowed": false
+      },
+      "schema": "PlanningRepairObservationTokenBudgetV1",
+      "version": 1
+    }
+  },
+  "bundle_sha256": "0ba92ed821c249029419fa5de69f6325bd7f0b95a9deb2599d3f53bf010318ae",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "feature": {
+    "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+    "definition_sha256": "8de583b519cae87fd6114d24558ba49f2f964f33d6bf244bebba9a8f6f3e410c",
+    "payload": {
+      "NOVEL_CANONICAL_SHADOW_V1": false,
+      "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1": false,
+      "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": true,
+      "NOVEL_RELIABILITY_TRACE": true,
+      "NOVEL_SHORT_CANONICAL_V2": false,
+      "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1": false,
+      "project_short_canonical_v2": false
+    },
+    "schema": "PlanningRepairObservationFeatureFlagSnapshotV1",
+    "version": 1
+  },
+  "production_repair_budget_parity": {
+    "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+    "definition_sha256": "a4afb20d6c93a9586f8b5f96b3457b1bc1eecfe22458fefcbdde956b2395325a",
+    "payload": {
+      "characterization_sequence": [
+        1977,
+        1977,
+        1977,
+        3954
+      ],
+      "counterfactual_enabled": false,
+      "runtime_policy_modified_by_canary": false,
+      "source": "r1_ptr1_production_shaped_offline_parity"
+    },
+    "schema": "PlanningRepairProductionBudgetParityV1",
+    "version": 1
+  },
+  "prompt_request_parity": {
+    "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+    "definition_sha256": "273aac3fc1ed12d58b7a487a7a88ff13414d621ea15532f4c43616bf77cb0523",
+    "payload": {
+      "diagnostic_flag_request_semantic_delta": false,
+      "r1_ptr1_request_manifest_sha256": "7f4d224c1c81e98e0b1b95b217414b8678b08ab8ca949cb399837236e363b852",
+      "raw_prompt_included": false
+    },
+    "schema": "PlanningRepairPromptRequestParityBindingV1",
+    "version": 1
+  },
+  "schema": "R1PTR2DefinitionBundleV1",
+  "stop": {
+    "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+    "definition_sha256": "5d6f18b7658c0630852e0438cb8fc20286af0eb1372dc583d1247ba3336fe0f6",
+    "payload": [
+      "planning_repair_primary_evidence_captured_safe_stop",
+      "planning_repair_target_not_exercised_safe_stop",
+      "first_workflow_terminal",
+      "fingerprint_mismatch",
+      "production_source_dirty_or_changed",
+      "route_model_protocol_mismatch",
+      "diagnostic_definition_mismatch",
+      "observation_privacy_violation",
+      "budget_exhausted",
+      "approval_expired",
+      "cohort_replay",
+      "live_isolation_violation"
+    ],
+    "schema": "PlanningRepairObservationStopConditionManifestV1",
+    "version": 1
+  },
+  "target": {
+    "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+    "definition_sha256": "3e7e25963eea65e85cabf20dc4da160e16448594981d8129956d018d0fd9a9e3",
+    "payload": {
+      "boundary": "planning_repair_patch",
+      "contract_id": "planning_repair_patch",
+      "contract_version": 1,
+      "role": "planning",
+      "stage": "planning",
+      "synthetic_target_injection_allowed": false,
+      "target_selection_method": "exact_runtime_diagnostic_context"
+    },
+    "schema": "PlanningRepairObservationTargetFilterV1",
+    "version": 1
+  },
+  "validator": {
+    "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+    "definition_sha256": "77111523e334421e7165af4af5fe59176ddd2e575ebb5fe7d2429e9cab05477a",
+    "payload": {
+      "decision_semantics_changed": false,
+      "diagnostic_policy_sha256": "a8c8c366033136494460b3ce65dda072d3a4505fcafe85281d4006c4b0381e3f",
+      "validator_id": "planning_repair_patch.normalize.v1"
+    },
+    "schema": "PlanningRepairDomainValidatorPolicyBindingV1",
+    "version": 1
+  },
+  "version": 1
+}
