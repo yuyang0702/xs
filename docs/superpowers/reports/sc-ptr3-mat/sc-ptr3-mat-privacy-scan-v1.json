@@ -1,0 +1,18 @@
+{
+  "schema": "SCPTR3MaterializationPrivacyScanV1",
+  "version": 1,
+  "scope": "docs/superpowers/reports/sc-ptr3-mat",
+  "scan_status": "exact",
+  "violation_count": 0,
+  "checks": {
+    "api_keys_or_credentials": 0,
+    "authorization_or_secret_headers": 0,
+    "absolute_paths": 0,
+    "raw_prompt_or_story_content": 0,
+    "raw_tool_arguments": 0,
+    "raw_provider_responses": 0
+  },
+  "content_policy": "hash_shape_count_typed_outcome_and_controlled_alias_only",
+  "real_provider_calls": 0,
+  "full_short_canary_executed": false
+}

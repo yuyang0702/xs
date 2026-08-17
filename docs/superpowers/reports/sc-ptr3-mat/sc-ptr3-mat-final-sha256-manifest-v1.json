@@ -1,0 +1,81 @@
+{
+  "schema": "SCPTR3MaterializationSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "file_bytes",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/approval-ledger-short-completion-ptr3-20260817t091500z-002/.approval-ledger-identity-v1.json",
+      "bytes": 365,
+      "sha256": "86c09ae956500a651f56fe9bb86355ea02ced6299403e65ab982ef0ddfdd8c39"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-authorization-patch-template-v1.json",
+      "bytes": 2030,
+      "sha256": "dd84c049de414e6867a063d81d38dc90f4446ef4f8a656228b877e6d05f5c870"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-definitions-v1.json",
+      "bytes": 13983,
+      "sha256": "057c0ac52eb999007b3673673b34fe72f855de91c17b7839f8b8a5561de667dd"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-execution-preview-v1.json",
+      "bytes": 2371,
+      "sha256": "f1ac2d3241e9c09745eb70bf6850e856aa6646c1e9669bee5c702abac5047148"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-final-approval-candidate-v1.json",
+      "bytes": 4525,
+      "sha256": "551a217ee09acfdaaf413d3e46de6e23c4fab0038587fc334bab115c0935ed6f"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-final-plan-v1.json",
+      "bytes": 19936,
+      "sha256": "a8b370e6120478ad409308875c75f3341e9754e0998112319bacff6447b2d3f8"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-ledger-operational-readiness-v1.json",
+      "bytes": 530,
+      "sha256": "88e103e7a83424be5181d742d8ce3e5d0577d95cb040d0a29b97065ed5615500"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-materialization-index-v1.json",
+      "bytes": 3265,
+      "sha256": "d1b32474f58f0a5f0eed77d8ff7a7d29ee5cbe8adbb94c6e04bf6a991b2cb84b"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-pre-launch-semantic-rehearsal-v1.json",
+      "bytes": 3657,
+      "sha256": "cda1f2e20065cc7a107ef23c958510bcdf7ef16e94b5f667fe27020475c0806d"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-ptr3-readiness-v1.json",
+      "bytes": 2364,
+      "sha256": "d0995c64c0d68b5072dce0c9da13b622c328903522eb93e44193dbd735571c63"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-r1-d3-production-mirror-readiness-v1.json",
+      "bytes": 1485,
+      "sha256": "f48e0293e5492e9a3f7719a5c138ed7430fcf2bc58539f2cea73f780a7dd5f71"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-validate-only-receipt-v1.json",
+      "bytes": 8929,
+      "sha256": "a0e9b09ae5e5cb6abd1d789b493b71e188835290465804328aaf1b40510c73b3"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/sc-ptr3-mat-final-report-v1.md",
+      "bytes": 8052,
+      "sha256": "b6584d0f4924207f4373f4b54733a05fef6f4fc978e6d95d25c45e572fba6e4e"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-mat/sc-ptr3-mat-privacy-scan-v1.json",
+      "bytes": 536,
+      "sha256": "eda9b14ed8e11f96abee958d20c86181417c1fe5e5c35d87b18b7db29d74f0b9"
+    }
+  ],
+  "signed_approval_included": false,
+  "confirmed_authorization_patch_included": false,
+  "real_provider_calls": 0
+}
