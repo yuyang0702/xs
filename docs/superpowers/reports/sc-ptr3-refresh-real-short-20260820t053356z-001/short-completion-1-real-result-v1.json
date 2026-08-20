@@ -1,0 +1,43 @@
+{
+  "schema": "ShortCompletionRealCanaryResultV1",
+  "version": 1,
+  "profile_id": "short_completion_1",
+  "cohort_id": "short-completion-ptr3-20260820t041340z-003",
+  "workflow_final_outcome": "WORKFLOW_TERMINAL",
+  "short_completion_goal_outcome": "WORKFLOW_TERMINAL",
+  "reason_code": "isolated_short_workflow_terminal",
+  "typed_root_cause": "ContractOutputLimitExhaustedError",
+  "safe_failure_class": "output_limit",
+  "first_divergent_node": {
+    "boundary_ordinal": 1,
+    "stage": "planning",
+    "substage": "planning-semantic-v2",
+    "route_kind": "primary",
+    "typed_failure": "ConnectError",
+    "masking_status": "masked_by_authorized_retry_and_fallback"
+  },
+  "terminal_divergent_node": {
+    "boundary_ordinal": 12,
+    "stage": "planning",
+    "substage": "planning-semantic-v2",
+    "route_kind": "configured_fallback",
+    "finish_reason": "max_tokens",
+    "typed_root_cause": "ContractOutputLimitExhaustedError",
+    "masking_status": "unmasked_terminal"
+  },
+  "network_call_count": 12,
+  "paid_model_call_count": 12,
+  "primary_call_count": 6,
+  "configured_fallback_call_count": 6,
+  "planning_targeted_domain_repair_count": 0,
+  "draft_call_count": 0,
+  "maximum_runs": 1,
+  "executed_run_count": 1,
+  "resume_performed": false,
+  "second_run_performed": false,
+  "live_parity_status": "exact",
+  "privacy_status": "exact",
+  "raw_content_included": false,
+  "evidence_sha256": "12603909cc4df1edc5419d2fba6a58c789965843328f7cf5fdafc23488ce4e60",
+  "next_gate": "NARROW_FIX_REQUIRED"
+}

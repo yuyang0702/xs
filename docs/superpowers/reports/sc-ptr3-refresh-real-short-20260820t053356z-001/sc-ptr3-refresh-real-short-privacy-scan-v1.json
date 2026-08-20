@@ -1,0 +1,52 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "credentials_or_headers_included": false,
+  "files": [
+    {
+      "bytes": 9809,
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/sc-ptr3-refresh-real-short-final-report-v1.md",
+      "sha256": "d40de7aa14a5ed0c5ad3074a95433c35062ed05c71c7c71487ae2fcb4543a136",
+      "violation_count": 0
+    },
+    {
+      "bytes": 1934,
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-confirmed-authorization-patch-v1.json",
+      "sha256": "a57e64b738caee75ee9358cc25def867b20120020d41c5d8a102694fbce44700",
+      "violation_count": 0
+    },
+    {
+      "bytes": 34168,
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-real-evidence-v1.json",
+      "sha256": "0b769836dfcdd4b430f7512a229bc0b317fa6db4ed8735030a11e581e898d312",
+      "violation_count": 0
+    },
+    {
+      "bytes": 1515,
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-real-result-v1.json",
+      "sha256": "f1c56b156717aa42735706d29670b6b78d0588d5f82e7c84cea519a5ec0db7b3",
+      "violation_count": 0
+    },
+    {
+      "bytes": 4714,
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-signed-approval-v1.json",
+      "sha256": "180267f6372e531e65f4da9bbc832818409aae63e02d72cefe62e7e8269ebfcd",
+      "violation_count": 0
+    },
+    {
+      "bytes": 8938,
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-signed-validate-only-receipt-v1.json",
+      "sha256": "bb3b42f683741738c966d2109d2d71dfe8a80edf87d58fed836e6aa86fd152b0",
+      "violation_count": 0
+    }
+  ],
+  "privacy_scan_sha256": "19cb62f5dda55d81adef81daa3bb9ffab561f7a14e63b71c4c86da4fa5db7fb0",
+  "raw_prompt_included": false,
+  "raw_provider_content_included": false,
+  "raw_story_included": false,
+  "scanned_file_count": 6,
+  "schema": "SCPTR3RealShortPrivacyScanV1",
+  "status": "exact",
+  "version": 1,
+  "violation_count": 0,
+  "violations": []
+}

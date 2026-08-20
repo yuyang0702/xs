@@ -1,0 +1,60 @@
+{
+  "schema": "SCPTR3RealShortSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "file_bytes",
+  "gate": "NARROW_FIX_REQUIRED",
+  "evidence_canonical_sha256": "12603909cc4df1edc5419d2fba6a58c789965843328f7cf5fdafc23488ce4e60",
+  "signed_approval_sha256": "452843ee1b969ac643917aff9090c42db863300961351adb7260171b6d6d92a5",
+  "cohort_consumed": true,
+  "executed_run_count": 1,
+  "resume_performed": false,
+  "second_run_performed": false,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/approval-ledger-short-completion-ptr3-20260820t041340z-003/short-completion-ptr3-20260820t041340z-003.consumed.json",
+      "bytes": 496,
+      "sha256": "87083fe9322799b6e761d74d87936a4988deaa539c9a4325104e536683ee9c4a"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/approval-ledger-short-completion-ptr3-20260820t041340z-003/short-completion-ptr3-20260820t041340z-003.reserved.json",
+      "bytes": 492,
+      "sha256": "0aae61ae9c81652f449dd5129ca665afae1760e491e2d81be74f68ba7f399e35"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/sc-ptr3-refresh-real-short-final-report-v1.md",
+      "bytes": 9809,
+      "sha256": "d40de7aa14a5ed0c5ad3074a95433c35062ed05c71c7c71487ae2fcb4543a136"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/sc-ptr3-refresh-real-short-privacy-scan-v1.json",
+      "bytes": 2230,
+      "sha256": "1d09cb0da0a10dfc25d3bfe571d1510a3224381ea7395daa201a6601d74c24b8"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-confirmed-authorization-patch-v1.json",
+      "bytes": 1934,
+      "sha256": "a57e64b738caee75ee9358cc25def867b20120020d41c5d8a102694fbce44700"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-real-evidence-v1.json",
+      "bytes": 34168,
+      "sha256": "0b769836dfcdd4b430f7512a229bc0b317fa6db4ed8735030a11e581e898d312"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-real-result-v1.json",
+      "bytes": 1515,
+      "sha256": "f1c56b156717aa42735706d29670b6b78d0588d5f82e7c84cea519a5ec0db7b3"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-signed-approval-v1.json",
+      "bytes": 4714,
+      "sha256": "180267f6372e531e65f4da9bbc832818409aae63e02d72cefe62e7e8269ebfcd"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-signed-validate-only-receipt-v1.json",
+      "bytes": 8938,
+      "sha256": "bb3b42f683741738c966d2109d2d71dfe8a80edf87d58fed836e6aa86fd152b0"
+    }
+  ]
+}
