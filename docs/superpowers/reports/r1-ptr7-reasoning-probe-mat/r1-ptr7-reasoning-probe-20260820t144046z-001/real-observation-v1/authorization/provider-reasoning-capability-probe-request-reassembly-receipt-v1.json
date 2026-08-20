@@ -1,0 +1,13 @@
+{
+  "algorithm": "sha256_seeded_integer_checksum_v1",
+  "expected_final_artifact_sha256": "652b06dec7f1eb4fa760c0f855f651ce278fad97ed78253abf359a342273639f",
+  "fixture_sha256": "15d87e12050cda4c9718b62e1234c9e50aa158f439b4c592827d5847498f404e",
+  "item_count": 512,
+  "raw_prompt_omitted": true,
+  "raw_story_omitted": true,
+  "request_reassembly_receipt_sha256": "020c5787583cafdd43dce22017fb78e8e347b01808065611899cc31fa716ac30",
+  "schema": "ProviderReasoningCapabilityProbeRequestReassemblyReceiptV1",
+  "system_sha256": "49eaac2193a51689a0f1880035bc3634bb1bbb315fe6322422408a05932444fc",
+  "user_sha256": "01f751f0938a81501ba29b32fa7b9bd259fbd953768bd314a0b99884bbb314c9",
+  "version": 1
+}

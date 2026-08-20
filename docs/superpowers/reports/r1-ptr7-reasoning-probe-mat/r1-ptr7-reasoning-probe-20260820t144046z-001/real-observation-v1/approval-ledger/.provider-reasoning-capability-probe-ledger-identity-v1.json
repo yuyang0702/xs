@@ -1,0 +1,7 @@
+{
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "ledger_identity_sha256": "c30e1ea2c84b8af030a62998e49cf6f1e950708eca5fb685638722d58a89d879",
+  "profile_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+  "schema": "ProviderReasoningCapabilityProbeOperationalLedgerIdentityV1",
+  "version": 1
+}

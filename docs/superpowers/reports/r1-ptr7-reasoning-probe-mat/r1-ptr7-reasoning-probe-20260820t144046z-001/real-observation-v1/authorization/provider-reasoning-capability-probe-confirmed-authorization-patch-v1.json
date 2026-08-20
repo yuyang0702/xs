@@ -1,0 +1,32 @@
+{
+  "authorization_record_sha256": "1164dfcb2ad175132ea5645e589dc74497022700e5e566688389f3320994a357",
+  "authorize_credential_lookup": true,
+  "authorize_model_call": true,
+  "authorize_network": true,
+  "authorize_paid_model_call": true,
+  "authorize_provider_client_creation": true,
+  "bound_approval_candidate_sha256": "fdf28472be5db33aca26933175d02b2439abaf66aeb105216c253d54d542b979",
+  "bound_authorization_patch_template_sha256": "feaf8e71f38081e5976c1274a789836dad3e450efb17aacbe43033c6edad34db",
+  "bound_plan_sha256": "322c58857c4e323db00965e97ed6fefe7432dbd9a6f24ebee07ebd9725b2d51b",
+  "confirmed_at": "2026-08-20T15:53:55Z",
+  "confirmed_authorization_patch_sha256": "73ef6cbba6137a17e2cab29cfef627a4e08da9049b1470bdf795e6ddcd4ca789",
+  "draft_review_maintenance_allowed": false,
+  "execution_authorized": true,
+  "execution_window": {
+    "not_after": "2026-08-22T14:40:46Z",
+    "not_before": "2026-08-20T14:40:46Z"
+  },
+  "full_short_allowed": false,
+  "maximum_executions": 1,
+  "maximum_output_tokens": 16000,
+  "maximum_total_model_calls": 1,
+  "production_fix_allowed": false,
+  "profile_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+  "resume_allowed": false,
+  "retry_allowed": false,
+  "schema": "ProviderReasoningCapabilityProbeConfirmedAuthorizationPatchV1",
+  "second_run_allowed": false,
+  "single_use_cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "status": "confirmed_unused",
+  "version": 1
+}
