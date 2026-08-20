@@ -1,0 +1,60 @@
+{
+  "schema": "R1PTR4V1SHA256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "utf8_sorted_path_bytes_sha256_lines",
+  "artifact_count": 10,
+  "evidence_canonical_sha256": "844516d3d45a472134d8c724b817ab2c3a1f9c0f73f95d2b9b4b30322eed2181",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/provider-capability-probe-definition-v1.json",
+      "bytes": 4048,
+      "sha256": "7d017c521ee6aad938f0669eea74c0e73ca697f01cb801e0acdf91595478474a"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/provider-capability-probe-fixture-v1.json",
+      "bytes": 1177,
+      "sha256": "0af08eef20be966eff5c60b0b643095729bdf78d85d140a9f53271a9b278955a"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/provider-capability-probe-observer-schema-identity-v1.json",
+      "bytes": 506,
+      "sha256": "550605441ef875a9ccc5c1ead7fe2d7788e43f9c5459f4535fa96f95df686b1c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/r1-ptr4-v1-behavior-unchanged-proof-v1.json",
+      "bytes": 1544,
+      "sha256": "3cdad3d369ecacecf49c58f646e9c68e08912b5d6d60135f7eb0fa990595ca1c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/r1-ptr4-v1-final-report-v1.md",
+      "bytes": 6803,
+      "sha256": "87e5ca6918a47584ed621dc6cc16435c41727cb200d0c70c04f771083309457a"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/r1-ptr4-v1-forward-risk-v2.json",
+      "bytes": 5465,
+      "sha256": "ae90c91ed5a3c8b1ece5ce414c9737e19e630fbf5b308f6949f56282838f5ace"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/r1-ptr4-v1-offline-test-receipt-v1.json",
+      "bytes": 1511,
+      "sha256": "4cefefa1d9070d09ec6b238f305a9c895b287fcb9acf741eb2b2d68c1d5b6295"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-v1/r1-ptr4-v1-privacy-scan-v1.json",
+      "bytes": 3040,
+      "sha256": "be01c659d388762d87f9e635abde5fff1089a0c8ad3b9c1f231cfa3c5c96d2c0"
+    },
+    {
+      "path": "tests/canary/test_provider_capability_probe_contract.py",
+      "bytes": 7772,
+      "sha256": "77ec37919817fd0c689f65d00831dcb8b86ec1650cea1371a4ba05146c15222d"
+    },
+    {
+      "path": "tools/canary/provider_capability_probe_contract.py",
+      "bytes": 34315,
+      "sha256": "73c819059319d9c746b75fda0832f8dce262f403a985710b6a4933336f59c8a3"
+    }
+  ]
+}

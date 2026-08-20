@@ -1,0 +1,14 @@
+{
+  "schema": "ProviderCapabilityProbeObserverSchemaIdentityV1",
+  "version": 1,
+  "observation_schema_sha256": "d88652767f2d5fe72fce529cdc51c51e7897daa9b16fd869092aa20b30d7dfa3",
+  "schema_bundle_sha256": "5cd49aea924877d123ed48a054c0805bfd8604b0e2cd2443d8a7cd00a7494c3a",
+  "raw_content_allowed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  }
+}

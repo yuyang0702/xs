@@ -1,0 +1,81 @@
+{
+  "schema": "NovelDevCouncilForwardRiskReportV2",
+  "version": 2,
+  "declared_risk_level": "L3",
+  "original_requirement": "Complete only the Canary-only Provider capability probe observation contract for R1-PTR4-V1 without executing a Provider probe, Full Short Canary, or Production Fix.",
+  "scope_classification": "closed_world",
+  "operational_definition": "A future separately authorized single-use Boundary 12 probe can emit only hashes, shapes, counts, and typed statuses before normalization and after the adapter.",
+  "closed_world_justification": "The request names one historical Boundary 12 identity, one planning_semantic_v2 contract, one hash-bound sanitized fixture, one Canary observer, and an explicit finite offline shape matrix.",
+  "forbidden_narrowing": [
+    "No claim that the Provider raw content-block shape is now known.",
+    "No claim that the historical root cause is closed.",
+    "No production runtime behavior change.",
+    "No real Provider, network, model, paid, Full Short, retry, resume, or second-run action."
+  ],
+  "resolution_status": "case_fixed",
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Production and BAML diff counts are zero; the only observer implementation is tools/canary/provider_capability_probe_contract.py and the unchanged source hashes/live parity are bound in r1-ptr4-v1-behavior-unchanged-proof-v1.json.",
+  "historical_incident_families_checked": [
+    "Boundary 1 ConnectError: recovered and preserved as not the primary root cause.",
+    "Boundary 3 semantic_validation_failed: preserved as the first unrecovered divergence.",
+    "Sticky output-limit: preserved as the terminal amplifier.",
+    "Provider content-block shape: remains UNKNOWN until a separately authorized real probe."
+  ],
+  "projected_failure_mechanisms": [
+    "A future Provider returns a tool-only, reasoning-only, mixed, empty, or unknown block topology.",
+    "The adapter loses visible text or tool-argument presence between pre-normalization and post-adapter observation.",
+    "A max_tokens response truncates text or tool arguments while retaining a typed content-block shape.",
+    "A fixture cannot be reconstructed exactly from the sealed sanitized source and request hashes."
+  ],
+  "constraint_traceability": [
+    {
+      "requirement": "Bind Boundary 12 and Provider/route/protocol/model/contract/schema/adapter/parser/strict-tool/output-limit identities.",
+      "implementation": "ProviderCapabilityProbeDefinitionV1 in tools/canary/provider_capability_probe_contract.py",
+      "test_paths": ["tests/canary/test_provider_capability_probe_contract.py"],
+      "evidence": "docs/superpowers/reports/r1-ptr4-v1/provider-capability-probe-definition-v1.json"
+    },
+    {
+      "requirement": "Fail closed instead of guessing an unavailable fixture.",
+      "implementation": "ProviderCapabilityProbeFixtureV1 requires the sealed sanitized workload SHA and emits R1_PTR4_V1_PROBE_FIXTURE_NOT_AVAILABLE on mismatch.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_contract.py"],
+      "evidence": "docs/superpowers/reports/r1-ptr4-v1/provider-capability-probe-fixture-v1.json"
+    },
+    {
+      "requirement": "Store metadata only and keep all external actions at zero.",
+      "implementation": "Strict frozen stdlib records forbid extra raw fields and type all external action counters to zero.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_contract.py"],
+      "evidence": "docs/superpowers/reports/r1-ptr4-v1/provider-capability-probe-observer-schema-identity-v1.json"
+    }
+  ],
+  "why_previous_tests_missed": "Earlier PTR4 evidence reconstructed only adapter-visible output and did not preserve the raw Provider content-block topology before normalization; therefore the missing capability evidence could not distinguish Provider-empty from adapter-loss or truncated typed blocks.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Boundary 1 transport recovery",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Sealed PTR4 boundary reconstruction records recovery; the new observer neither selects routes nor performs transport."
+    },
+    {
+      "boundary": "Boundary 3 semantic validation",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Post-adapter lineage separately records parser, JSON, wire-schema, and semantic-validation reachability without changing validators."
+    },
+    {
+      "boundary": "Boundary 12 configured fallback output limit",
+      "disposition": "fixed_and_tested",
+      "evidence": "The exact Boundary 12 identity is hash-bound and the offline matrix covers text/tool/reasoning/empty/mixed/unknown and adapter-loss shapes."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_provider_capability_probe_contract.py",
+    "tests/providers/test_diagnostic_tool_shapes.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_provider_capability_probe_contract.py",
+    "tests/canary/test_planning_repair_observation_materialization.py"
+  ],
+  "rollback": "Delete only the files added under tools/canary, tests/canary, and docs/superpowers/reports/r1-ptr4-v1 by this task.",
+  "remaining_risks": [
+    "The actual Provider content-block shape and effective Provider output ceiling remain UNKNOWN until a new single-use approval authorizes one real probe.",
+    "This contract does not implement or prove a Production Fix."
+  ]
+}

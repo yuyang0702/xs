@@ -1,0 +1,20 @@
+{
+  "schema": "ProviderCapabilityProbeFixtureV1",
+  "version": 1,
+  "fixture_id": "r1-ptr4-boundary12-short-normal-v1-hash-bound",
+  "source_workload_id": "short-normal-v1",
+  "source_workload_file": "tests/fixtures/canary/short-normal-v1.json",
+  "source_workload_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+  "request_shape_sha256": "6ae94b279d04833e9481e0b57dfdf22cefa19189fb29cf0ed5e577985bc98057",
+  "contract_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+  "tool_schema_sha256": "5424046dc2054fb588e161be0ef09b4badc53b150c78dc9f6ca3866cca590311",
+  "target_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+  "reassembly_system_sha256": "d6ad1c9d2d36a9f9f8703fc89a46f004d569cce9085a50c7d595db4b9330f2aa",
+  "reassembly_user_sha256": "2d339af183abe5980945cc3c2d0ba5abaa82f7b2c43500bbafb53653c60667ed",
+  "fixture_status": "exact_hash_bound",
+  "input_content_embedded": false,
+  "raw_prompt_omitted": true,
+  "raw_story_omitted": true,
+  "raw_tool_arguments_omitted": true,
+  "fixture_sha256": "22ac37e6494de79f542596cd16d5c14b8b25229af5cc1f451957e101b1c87e64"
+}

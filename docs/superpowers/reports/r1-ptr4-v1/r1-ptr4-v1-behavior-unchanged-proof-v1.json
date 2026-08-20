@@ -1,0 +1,29 @@
+{
+  "schema": "R1PTR4V1BehaviorUnchangedProofV1",
+  "version": 1,
+  "baseline_head": "b7d3f5c9c724e2ec6a02fab0c9acc9ab6777c921",
+  "production_diff_file_count": 0,
+  "baml_diff_file_count": 0,
+  "bindings": {
+    "prompt_unchanged": true,
+    "route_unchanged": true,
+    "model_unchanged": true,
+    "retry_unchanged": true,
+    "fallback_unchanged": true,
+    "output_budget_unchanged": true,
+    "validator_unchanged": true,
+    "production_runtime_behavior_unchanged": true
+  },
+  "production_source_sha256": {
+    "src/novel_flywheel/providers/anthropic.py": "7786c0ae46ceeaced450a4d30a09a4c669969bff2be61ca88a6231f36ec4ecf5",
+    "src/novel_flywheel/planning_repair_diagnostics.py": "61a4430d93ba030f94092cddc4d4ee818076cfad94d501316ba7f6286209087d",
+    "src/novel_flywheel/model_output.py": "37d7af8aa7402fab0afe7ea900f5918982ff63629cfd5b9c03cc62be1946c043",
+    "src/novel_flywheel/generated_artifacts.py": "f9a80c9ed2225b341aaf38d25562449799e227f4424a01a733b09705fcd9712c",
+    "src/novel_flywheel/contract_runtime.py": "d925037b12965c1861c87172638ebaf9e2fa9aeb36e317e4efb300a2fa856ce0",
+    "src/novel_flywheel/models.py": "ad1d4f31648c5ecad4fdcb9055f53e4dd725bf436d0da33c50f73d4712fc3fa4",
+    "src/novel_flywheel/workflows.py": "38620f20f7fb7362feec82846f4676c9a8aea1bd29b05e01053a3a01a79d747b"
+  },
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_status": "exact"
+}
