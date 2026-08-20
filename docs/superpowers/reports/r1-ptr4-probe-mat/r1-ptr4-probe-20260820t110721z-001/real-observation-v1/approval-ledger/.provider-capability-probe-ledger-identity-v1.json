@@ -1,0 +1,7 @@
+{
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "ledger_identity_sha256": "408ac0b9de72d4ce31751f12e0adb0ffc6fed6199b829dcaba751c0a43de2821",
+  "profile_id": "r1_ptr4_provider_capability_probe_1",
+  "schema": "ProviderCapabilityProbeOperationalLedgerIdentityV1",
+  "version": 1
+}

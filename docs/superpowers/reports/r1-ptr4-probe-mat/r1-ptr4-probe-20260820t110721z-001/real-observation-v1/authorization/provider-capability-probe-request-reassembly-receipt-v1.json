@@ -1,0 +1,29 @@
+{
+  "base_system_sha256": "64efaf5d938f38c073358772254169da653b76fae69a744f547d72782f5740a8",
+  "contract_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+  "definition_sha256": "6f201a3687d46d7be83f7c9797b03b26abdd346cc897f0f1ef87f0ab57ae5aee",
+  "execution_mode": "plain",
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "fixture_sha256": "22ac37e6494de79f542596cd16d5c14b8b25229af5cc1f451957e101b1c87e64",
+  "protocol": "anthropic",
+  "raw_prompt_omitted": true,
+  "raw_story_omitted": true,
+  "raw_tool_arguments_omitted": true,
+  "request_reassembly_receipt_sha256": "5ba5d6a2acbf600bbd88b7d6c9cae2f1104adcc09775aa3a47c268d23b7de4e8",
+  "requested_max_output_tokens": 8798,
+  "route_kind": "configured_fallback",
+  "schema": "ProviderCapabilityProbeRequestReassemblyReceiptV1",
+  "source_content_embedded": false,
+  "status": "exact",
+  "target_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+  "target_system_sha256": "d6ad1c9d2d36a9f9f8703fc89a46f004d569cce9085a50c7d595db4b9330f2aa",
+  "target_user_sha256": "2d339af183abe5980945cc3c2d0ba5abaa82f7b2c43500bbafb53653c60667ed",
+  "tool_schema_sha256": "5424046dc2054fb588e161be0ef09b4badc53b150c78dc9f6ca3866cca590311",
+  "version": 1
+}

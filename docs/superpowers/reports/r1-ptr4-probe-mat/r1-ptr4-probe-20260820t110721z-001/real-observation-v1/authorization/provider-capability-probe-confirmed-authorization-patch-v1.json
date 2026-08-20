@@ -1,0 +1,32 @@
+{
+  "authorization_record_sha256": "2a14717a1f1e4527b388de01739762712e119e2fdaadbd8e83f153a87eca71f5",
+  "authorize_credential_lookup": true,
+  "authorize_model_call": true,
+  "authorize_network": true,
+  "authorize_paid_model_call": true,
+  "authorize_provider_client_creation": true,
+  "bound_approval_candidate_sha256": "f8e25a05cf8d8f8fa35e4d14f81f6ac4c24d523bedd31de5e39fec4d79677bf3",
+  "bound_authorization_patch_template_sha256": "27167c4eea1c401bd63ecac1d8843e731c479bfa96a3c49327aec31e4d6dd716",
+  "bound_plan_sha256": "6bc5672575098fcd94fe873de4e5fb880c5e396d76f0c49b87b406c1aa899749",
+  "bound_request_reassembly_receipt_sha256": "5ba5d6a2acbf600bbd88b7d6c9cae2f1104adcc09775aa3a47c268d23b7de4e8",
+  "confirmed_at": "2026-08-20T12:47:12Z",
+  "confirmed_authorization_patch_sha256": "53b2d15196da710102bdbd54e6d960db85fbcddf70157b275ae6e778bb6b3d1f",
+  "execution_authorized": true,
+  "execution_window": {
+    "not_after": "2026-08-22T11:22:21Z",
+    "not_before": "2026-08-20T11:22:21Z"
+  },
+  "full_short_allowed": false,
+  "maximum_executions": 1,
+  "maximum_output_tokens": 8798,
+  "maximum_total_model_calls": 1,
+  "production_fix_allowed": false,
+  "profile_id": "r1_ptr4_provider_capability_probe_1",
+  "resume_allowed": false,
+  "retry_allowed": false,
+  "schema": "ProviderCapabilityProbeConfirmedAuthorizationPatchV1",
+  "second_run_allowed": false,
+  "single_use_cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "status": "confirmed_unused",
+  "version": 1
+}

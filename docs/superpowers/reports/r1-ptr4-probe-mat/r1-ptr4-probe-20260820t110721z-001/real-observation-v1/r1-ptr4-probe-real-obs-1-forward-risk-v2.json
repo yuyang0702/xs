@@ -1,0 +1,110 @@
+{
+  "version": 2,
+  "original_requirement": "Materialize an exact Confirmed Authorization Patch and ProviderCapabilityProbeSignedApprovalV1, then after signed validate-only exact perform exactly one real Boundary 12 Provider capability probe with no retry, resume, second probe, Full Short, downstream workflow, or Production Fix.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The authorization names one immutable cohort, one sealed Boundary 12 request identity, one configured-fallback Provider/model route, one approved observer schema, and one maximum external model call. The executor can only validate, reserve, dispatch that exact call once, persist content-free evidence, and terminally consume the cohort.",
+  "operational_definition": "One hash-bound configured-fallback Planning request matching sealed Boundary 12 system/user/contract/tool hashes crosses the existing Anthropic production adapter once; only content-free shape/count/hash metadata is persisted and the cohort is atomically consumed.",
+  "forbidden_narrowing": [
+    "Do not substitute another prompt, route, Provider, model, contract, schema, boundary, output budget, or cohort.",
+    "Do not infer or guess request content from hashes; deterministic reassembly must match both sealed request hashes.",
+    "Do not persist raw Prompt, story, tool arguments, Provider content, credentials, headers, request IDs, model names, or Provider error text.",
+    "Do not retry, resume, execute a second probe, run Full Short, enter Draft/Review/Maintenance, or implement a Production Fix."
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Signed Approval and Confirmed Patch must exist and signed validate-only must be exact before any external action.",
+      "implementation": "provider_capability_probe_real.materialize_signed_authorization and validate_signed_authorization bind the sealed packet, executor, request reassembly, route, window, budget, empty ledger, and zero counters.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_real.py"],
+      "evidence": "authorization/provider-capability-probe-signed-validate-only-receipt-v1.json"
+    },
+    {
+      "requirement": "Execute exactly one real Provider capability probe with no retry, resume, or second run.",
+      "implementation": "execute_real_probe_once reserves an exclusive marker before credential access, caps every external counter at one, consumes on the first terminal result, and rejects replay.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_real.py"],
+      "evidence": "approval-ledger/reserved-v1.json and approval-ledger/consumed-v1.json"
+    },
+    {
+      "requirement": "Reassemble the exact Boundary 12 request without guessing input.",
+      "implementation": "The archived isolated Canary state is copied into a new temporary reconstruction root; four deterministic offline output-limit shapes select the nested packet topology, then the target system/user hashes must match the sealed identities exactly.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_real.py"],
+      "evidence": "authorization/provider-capability-probe-request-reassembly-receipt-v1.json"
+    },
+    {
+      "requirement": "Persist only the approved pre-normalization and post-adapter hash/shape/count/typed status fields.",
+      "implementation": "The canary wraps only the existing adapter post_stream boundary in memory, reduces events/body to block metadata, and passes the approved ProviderCapabilityProbeObservationV1 contract without writing raw content.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_real.py", "tests/canary/test_provider_capability_probe_contract.py"],
+      "evidence": "reports/provider-capability-probe-observation-v1.json"
+    },
+    {
+      "requirement": "Full Short, Draft/Review/Maintenance, and Production Fix remain forbidden.",
+      "implementation": "The executor constructs one ModelRequest directly for the sealed Planning configured-fallback identity and has no workflow runner, mutation, or production-fix path.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_real.py"],
+      "evidence": "reports/provider-capability-probe-real-execution-receipt-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "Boundary 1 ConnectError recovery is not replayed and remains outside this target.",
+    "Boundary 3 semantic_validation_failed remains the first historical unrecovered divergence.",
+    "Sticky output-limit remains the terminal amplifier under observation.",
+    "Boundary 12 configured-fallback max_tokens identity is exact.",
+    "Historical expired approvals cannot authorize this cohort and are not re-dated."
+  ],
+  "projected_failure_mechanisms": [
+    "Sealed packet, executor, route, or request hashes change before dispatch.",
+    "Source reconstruction is unavailable or no longer hashes to Boundary 12.",
+    "Credential or Provider client construction fails before network dispatch.",
+    "Provider transport fails after the single-use cohort is reserved.",
+    "Provider returns an unknown, reasoning-only, tool-only, empty, mixed, or output-limited content-block topology.",
+    "Adapter normalization loses visible text or tool arguments.",
+    "A crash after reservation leaves the cohort non-replayable and requires a new approval."
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_variants_tested": [],
+  "model_output_topology_classes_tested": [],
+  "unseen_valid_variants_tested": [],
+  "invalid_output_variants_tested": [],
+  "transport_capacity_variants_tested": [],
+  "unknown_variant_behavior": "Unknown block labels are replaced by domain-separated hashes and classified UNKNOWN; no content is guessed or promoted.",
+  "model_output_not_applicable_evidence": "No production model-output parser, adapter, validator, Prompt, Route/Model, retry/fallback policy, or budget changed. The added Canary-only observer consumes the already approved V1 schema and never promotes Provider output into narrative authority.",
+  "why_previous_tests_missed": "The earlier materialization proved only an inert descriptor. This separately authorized task adds the missing signed execution latch, exact offline reassembly proof, one-shot operational ledger, and content-free in-memory Provider boundary capture.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Production Planning and generated-artifact validation",
+      "disposition": "not_applicable",
+      "evidence": "No src/novel_flywheel/** or baml_src/** change; probe output is evidence only and never enters production authority."
+    },
+    {
+      "boundary": "Provider/model route selection",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Live configured_fallback hashes and protocol are revalidated before signed materialization, validate-only, and execution."
+    },
+    {
+      "boundary": "Approval replay and interruption",
+      "disposition": "fixed_and_tested",
+      "evidence": "Exclusive reservation/consumption markers and replay tests make any first terminal or interrupted execution non-reusable."
+    },
+    {
+      "boundary": "Full Short, Draft, Review, Maintenance, and Production Fix",
+      "disposition": "not_applicable",
+      "evidence": "The executor exposes no workflow or mutation entry point and the signed scope explicitly forbids each boundary."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_provider_capability_probe_real.py",
+    "tests/canary/test_provider_capability_probe_contract.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_provider_capability_probe_real.py",
+    "tests/canary/test_provider_capability_probe_materialization.py"
+  ],
+  "invariant_test_paths": [
+    "tests/canary/test_provider_capability_probe_real.py",
+    "tests/canary/test_provider_capability_probe_contract.py"
+  ],
+  "remaining_risks": [
+    "A real response shape is nondeterministic and can only be reported, not made successful by retry.",
+    "A failure after reservation consumes this single-use authorization.",
+    "The observation does not implement or prove a Production Fix."
+  ]
+}
