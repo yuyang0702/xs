@@ -1,0 +1,52 @@
+{
+  "capability_classifications": {
+    "capability_bound_output_allocation": "IGNORED",
+    "final_output_reservation": "IGNORED",
+    "reasoning_budget_cap": "IGNORED",
+    "reasoning_output_token_separation": "UNKNOWN"
+  },
+  "classification": "IGNORED",
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "cost": {
+    "actual_cost_microunits": 65591,
+    "currency": "USD",
+    "maximum_cost_microunits": 5000000,
+    "status": "within_budget"
+  },
+  "elapsed_micros": 146407000,
+  "executed_at": "2026-08-20T15:58:20Z",
+  "executed_run_count": 1,
+  "execution_receipt_sha256": "ffa0c405a50e6a91f6d5685788d7003da8bdeec1f5d6b2c78dd9210f5980af99",
+  "external_action_counters": {
+    "credential_lookup_count": 1,
+    "model_call_count": 1,
+    "network_call_count": 1,
+    "paid_model_call_count": 1,
+    "provider_client_creation_count": 1
+  },
+  "failure_type_sha256": null,
+  "full_short_canary": "NOT_EXECUTED",
+  "live_parity": {
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "observation_receipt_sha256": "4c450c36ce203a718dc16475a78d6a5871f7e4cd0ed383888e34488cdb7c1fba",
+  "production_fix": "NOT_IMPLEMENTED",
+  "profile_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+  "raw_prompt_omitted": true,
+  "raw_provider_content_omitted": true,
+  "raw_story_omitted": true,
+  "raw_tool_arguments_omitted": true,
+  "real_provider_probe": "EXECUTED_ONCE",
+  "request_reassembly_receipt_sha256": "020c5787583cafdd43dce22017fb78e8e347b01808065611899cc31fa716ac30",
+  "reservation_receipt_sha256": "c6eb1872d5e83720e5856c469bbb0d582f2966ef91966b208153cb38355a0d98",
+  "resume_performed": false,
+  "retry_performed": false,
+  "schema": "ProviderReasoningCapabilityProbeRealExecutionReceiptV1",
+  "second_run_performed": false,
+  "signed_approval_sha256": "05fe2697031996e376d5922609e6c2daa6f6621cc087e3d3b4b9a39945d413ef",
+  "signed_validate_only_receipt_sha256": "a7ca149d660fd60dad470ca52ddbc2f9018b1bfa67eba433d96e00c5e6298174",
+  "terminal_status": "provider_response_observed",
+  "version": 1
+}

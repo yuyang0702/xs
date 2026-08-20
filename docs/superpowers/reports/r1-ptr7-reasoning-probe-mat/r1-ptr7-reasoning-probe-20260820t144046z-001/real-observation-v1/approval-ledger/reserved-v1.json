@@ -1,0 +1,10 @@
+{
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "profile_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+  "reservation_receipt_sha256": "c6eb1872d5e83720e5856c469bbb0d582f2966ef91966b208153cb38355a0d98",
+  "reserved_at": "2026-08-20T15:55:48Z",
+  "schema": "ProviderReasoningCapabilityProbeReservationV1",
+  "signed_approval_sha256": "05fe2697031996e376d5922609e6c2daa6f6621cc087e3d3b4b9a39945d413ef",
+  "status": "reserved",
+  "version": 1
+}
