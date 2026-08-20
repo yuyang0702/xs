@@ -1,0 +1,66 @@
+{
+  "approval_ledger_identity_sha256": "56e8afd9ffb032742d04f0a31464defc36a4aea69e83239a7b778172470df3e1",
+  "approval_scope": "provider_capability_probe",
+  "approved_execution_mode": "plain",
+  "approved_model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+  "approved_protocol": "anthropic",
+  "approved_provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+  "approved_requested_max_output_tokens": 8798,
+  "approved_route_kind": "configured_fallback",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "budget_definition_sha256": "7878fd86f28ecf58bc3f6cd622c98530cfd6a27d10737a761f4c7c49cd270e85",
+  "canary_root_identity_sha256": "c63fdb13eb2857549d247dd676dacc7295670f5e839ceb6dc793631caa5cbb01",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "excluded_scopes": [
+    "full_short",
+    "draft",
+    "final_review",
+    "maintenance",
+    "planning_root_cause_fix",
+    "production_fix"
+  ],
+  "execution_authorized": false,
+  "execution_window": {
+    "not_after": "2026-08-22T11:22:21Z",
+    "not_before": "2026-08-20T11:22:21Z"
+  },
+  "external_actions_authorized": false,
+  "fixture_definition_sha256": "8d0ea99205f7a511c65a0f8c336701a61fcdb1654f4c2571f3bdce7465b9ff7f",
+  "lineage_definition_sha256": "5a0627650aa2dffacdf01626520cca8e1aef300b309208562cfecbbafb45ecff",
+  "materialized_at": "2026-08-20T11:07:21Z",
+  "observer_definition_bundle_sha256": "05f63b4ff4620ae1c401355675ce03b5ed4d53fef25c258eece2b70842e38659",
+  "observer_schema_sha256": "d88652767f2d5fe72fce529cdc51c51e7897daa9b16fd869092aa20b30d7dfa3",
+  "parent_evidence": {
+    "definition_sha256": "6f201a3687d46d7be83f7c9797b03b26abdd346cc897f0f1ef87f0ab57ae5aee",
+    "fixture_sha256": "22ac37e6494de79f542596cd16d5c14b8b25229af5cc1f451957e101b1c87e64",
+    "observer_schema_sha256": "d88652767f2d5fe72fce529cdc51c51e7897daa9b16fd869092aa20b30d7dfa3",
+    "privacy_status": "exact",
+    "privacy_violation_count": 0,
+    "ptr4": {
+      "canonical_sha256": "e7806b206edbdddf21a1ea74c7d0ebbb327ccedf7216f528c281c4ac2edfdf4c",
+      "file_count": 5,
+      "manifest": "docs/superpowers/reports/r1-ptr4/r1-ptr4-sha256-manifest-v1.json",
+      "status": "exact"
+    },
+    "ptr4_v1": {
+      "canonical_sha256": "844516d3d45a472134d8c724b817ab2c3a1f9c0f73f95d2b9b4b30322eed2181",
+      "file_count": 10,
+      "manifest": "docs/superpowers/reports/r1-ptr4-v1/r1-ptr4-v1-sha256-manifest-v1.json",
+      "status": "exact"
+    },
+    "status": "exact"
+  },
+  "plan_sha256": "6bc5672575098fcd94fe873de4e5fb880c5e396d76f0c49b87b406c1aa899749",
+  "probe_definition_sha256": "6f201a3687d46d7be83f7c9797b03b26abdd346cc897f0f1ef87f0ab57ae5aee",
+  "probe_fixture_sha256": "22ac37e6494de79f542596cd16d5c14b8b25229af5cc1f451957e101b1c87e64",
+  "profile_id": "r1_ptr4_provider_capability_probe_1",
+  "purpose": "observe_boundary_12_provider_shape_and_adapter_visible_loss",
+  "run_namespace": "r1-ptr4-probe-20260820t110721z-001",
+  "schema": "ProviderCapabilityProbePlanV1",
+  "single_use_cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "source_head": "f7f67095a72ede2bce62a583fac1cf43fb620e80",
+  "stop_conditions_sha256": "b24a890f584cbf44e20ca86f2bc2359cc69da3b933322032002a9176e1fb1fd5",
+  "target_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+  "target_definition_sha256": "3104f8ac751176d243782e2a9097cbeac735324d07a17832cd7f0cb1a7c438f1",
+  "version": 1
+}

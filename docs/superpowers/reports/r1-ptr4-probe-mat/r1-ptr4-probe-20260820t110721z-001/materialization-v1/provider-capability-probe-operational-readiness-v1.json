@@ -1,0 +1,21 @@
+{
+  "approval_status": "unreserved_disabled_candidate",
+  "budget_status": "exact",
+  "canary_root_status": "exact_unused",
+  "cohort_status": "unused",
+  "confirmed_patch_status": "ABSENT",
+  "control_plane_status": "exact",
+  "execution_status": "NOT_EXECUTED",
+  "fixture_binding_status": "exact_hash_bound",
+  "ledger_status": "exact_empty",
+  "new_single_use_approval_required": true,
+  "observer_binding_status": "exact",
+  "operational_readiness_sha256": "2e67497f15c7a1431df602b512f9e03a54193e883997917fe71f08f6d69522eb",
+  "parent_evidence_status": "exact",
+  "schema": "ProviderCapabilityProbeOperationalReadinessV1",
+  "signed_approval_status": "ABSENT",
+  "status": "exact",
+  "stop_conditions_status": "exact",
+  "target_binding_status": "exact",
+  "version": 1
+}

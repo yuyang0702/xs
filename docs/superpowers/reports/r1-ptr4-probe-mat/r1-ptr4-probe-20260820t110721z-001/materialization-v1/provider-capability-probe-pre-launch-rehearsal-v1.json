@@ -1,0 +1,23 @@
+{
+  "bound_plan_sha256": "6bc5672575098fcd94fe873de4e5fb880c5e396d76f0c49b87b406c1aa899749",
+  "control_plane_binding_verified": true,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "goal_stop_verified": true,
+  "mode": "independent_fake_only",
+  "observer_classification": "ZERO_VISIBLE_MAX_TOKENS",
+  "observer_receipt_generated": true,
+  "observer_receipt_sha256": "4d50028aaff7feaed2257ec49d6bc9643dabe34c50909110bb0fe738d8c91e2f",
+  "prelaunch_rehearsal_sha256": "05aa7ad113eea3ea3ca3396154e0e8fba3157bea5e76459f74b17d3d4bf7ee72",
+  "privacy_contract_verified": true,
+  "provider_capability_evidence_status": "fake_rehearsal_only",
+  "real_provider_probe": "NOT_EXECUTED",
+  "schema": "ProviderCapabilityProbePreLaunchRehearsalV1",
+  "status": "exact",
+  "version": 1
+}

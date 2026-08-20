@@ -1,0 +1,31 @@
+{
+  "bound_approval_candidate_sha256": "f8e25a05cf8d8f8fa35e4d14f81f6ac4c24d523bedd31de5e39fec4d79677bf3",
+  "bound_authorization_patch_template_sha256": "27167c4eea1c401bd63ecac1d8843e731c479bfa96a3c49327aec31e4d6dd716",
+  "bound_plan_sha256": "6bc5672575098fcd94fe873de4e5fb880c5e396d76f0c49b87b406c1aa899749",
+  "candidate_is_executable": false,
+  "confirmed_patch_materialized": false,
+  "do_not_execute": true,
+  "execution_authorized": false,
+  "execution_preview_sha256": "f67160870d8bd31fb029383754fe2e54e40ace1fcad6afddec1ebdd2f7d46b7b",
+  "execution_window": {
+    "not_after": "2026-08-22T11:22:21Z",
+    "not_before": "2026-08-20T11:22:21Z"
+  },
+  "future_command": "ABSENT_UNTIL_SIGNED_APPROVAL",
+  "future_sequence": [
+    "validate_signed_approval_and_confirmed_patch",
+    "revalidate_parent_evidence_and_live_parity",
+    "reserve_isolated_ledger_once",
+    "reassemble_request_and_require_all_sealed_hashes",
+    "resolve_exact_bound_configured_fallback_identity",
+    "perform_at_most_one_provider_model_network_paid_call",
+    "capture_pre_normalization_hash_shape_count_metadata",
+    "capture_post_adapter_and_parser_lineage",
+    "persist_only_typed_statuses_counts_shapes_and_hashes",
+    "consume_cohort_and_stop_after_first_terminal"
+  ],
+  "schema": "ProviderCapabilityProbeExecutionPreviewV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "version": 1
+}

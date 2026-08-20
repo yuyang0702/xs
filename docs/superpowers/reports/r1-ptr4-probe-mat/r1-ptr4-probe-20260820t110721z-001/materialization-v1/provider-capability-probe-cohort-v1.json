@@ -1,0 +1,14 @@
+{
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "cohort_sha256": "d070ae51e3cd8caafa7c902b910b5d2bda01e6253142cb06457e7e4ea34322b7",
+  "execution_window": {
+    "not_after": "2026-08-22T11:22:21Z",
+    "not_before": "2026-08-20T11:22:21Z"
+  },
+  "materialized_at": "2026-08-20T11:07:21Z",
+  "reservation_status": "unreserved",
+  "run_namespace": "r1-ptr4-probe-20260820t110721z-001",
+  "schema": "ProviderCapabilityProbeCohortV1",
+  "usage_status": "unused",
+  "version": 1
+}

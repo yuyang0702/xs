@@ -1,0 +1,11 @@
+{
+  "canary_root_identity_sha256": "c63fdb13eb2857549d247dd676dacc7295670f5e839ceb6dc793631caa5cbb01",
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "entry_count": 0,
+  "root_label": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/canary-root",
+  "run_namespace": "r1-ptr4-probe-20260820t110721z-001",
+  "schema": "ProviderCapabilityProbeCanaryRootIdentityV1",
+  "status": "unused",
+  "target_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+  "version": 1
+}

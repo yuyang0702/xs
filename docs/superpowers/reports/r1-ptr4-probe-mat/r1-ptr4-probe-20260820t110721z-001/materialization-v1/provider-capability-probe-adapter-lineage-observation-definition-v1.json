@@ -1,0 +1,25 @@
+{
+  "adapter_identity_sha256": "22d5ecd4cdf1313b599ce9fdb12c98b09e21530756b700acda6afc186dd938d5",
+  "lineage_definition_sha256": "5a0627650aa2dffacdf01626520cca8e1aef300b309208562cfecbbafb45ecff",
+  "lineage_receipt_required": true,
+  "output_limit_observer_identity_sha256": "2e56446ac9761b3c6946e9c01ea38f4d049a8c70a48568719f9217c1d4748d94",
+  "parser_identity_sha256": "51eda058a11b2368b116c3672db35935e114af0ab209b6a191dae57fa35718f0",
+  "post_adapter_fields": [
+    "adapter_visible_text",
+    "adapter_visible_characters",
+    "adapter_tool_arguments_present",
+    "parser_reached",
+    "strict_tool_reached",
+    "json_conversion_reached",
+    "wire_schema_reached",
+    "semantic_validation_reached",
+    "output_limit_classifier",
+    "lineage_receipt_sha256",
+    "raw_content_omitted"
+  ],
+  "raw_content_allowed": false,
+  "schema": "ProviderCapabilityProbeAdapterLineageDefinitionV1",
+  "strict_tool_identity_sha256": "f437fc6826409843dbfc05e778b5ce646f841042dcfdba146a5a8016d4efb272",
+  "target_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+  "version": 1
+}

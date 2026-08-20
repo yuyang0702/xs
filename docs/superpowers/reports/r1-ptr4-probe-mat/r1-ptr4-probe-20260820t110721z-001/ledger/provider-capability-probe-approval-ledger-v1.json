@@ -1,0 +1,12 @@
+{
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "entries": [],
+  "entry_count": 0,
+  "ledger_identity_sha256": "56e8afd9ffb032742d04f0a31464defc36a4aea69e83239a7b778172470df3e1",
+  "ledger_label": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/ledger",
+  "reservation_status": "unreserved",
+  "schema": "ProviderCapabilityProbeApprovalLedgerV1",
+  "status": "exact",
+  "usage_status": "unused",
+  "version": 1
+}

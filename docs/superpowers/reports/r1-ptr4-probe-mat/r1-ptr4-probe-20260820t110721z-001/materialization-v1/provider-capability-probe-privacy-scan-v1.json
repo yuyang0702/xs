@@ -1,0 +1,30 @@
+{
+  "credentials_or_headers_included": false,
+  "privacy_scan_sha256": "0f2a7bf61638cd69255ffd2d5d6c5a8a2a51127da11c8ea09b78a3412ba29b6a",
+  "raw_prompt_included": false,
+  "raw_provider_content_included": false,
+  "raw_story_included": false,
+  "raw_tool_arguments_included": false,
+  "scanned_documents": [
+    "budget_definition",
+    "canary_root",
+    "candidate",
+    "cohort",
+    "execution_preview",
+    "fixture_definition",
+    "ledger",
+    "lineage_definition",
+    "observer_bundle",
+    "operational_readiness",
+    "patch_template",
+    "plan",
+    "prelaunch_rehearsal",
+    "stop_conditions",
+    "target_definition"
+  ],
+  "schema": "ProviderCapabilityProbePrivacyScanV1",
+  "status": "exact",
+  "version": 1,
+  "violation_count": 0,
+  "violations": []
+}

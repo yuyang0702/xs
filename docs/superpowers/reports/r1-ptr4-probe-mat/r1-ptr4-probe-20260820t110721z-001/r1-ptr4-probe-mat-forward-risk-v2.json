@@ -1,0 +1,101 @@
+{
+  "schema": "NovelDevCouncilForwardRiskReportV2",
+  "version": 2,
+  "declared_risk_level": "L3",
+  "original_requirement": "Materialize only one fresh disabled single-use Provider Capability Probe approval packet, with exact sealed-evidence bindings and zero external actions; do not create Signed Approval or execute Probe, Full Short, or Production Fix.",
+  "scope_classification": "closed_world",
+  "operational_definition": "One uniquely named R1-PTR4 Boundary 12 configured-fallback control-plane packet exists with a disabled candidate, inert patch template, exact validate-only receipt, unused cohort, empty isolated ledger, unused Canary root, and hash-only observer bindings.",
+  "closed_world_justification": "The request fixes one named Boundary 12 identity, one ProviderCapabilityProbeDefinitionV1, one ProviderCapabilityProbeFixtureV1, one finite classification set, one explicit cohort, and one inert materialization operation.",
+  "forbidden_narrowing": [
+    "Do not treat fake rehearsal as Provider capability evidence.",
+    "Do not treat the packet as a Signed Approval or executable command.",
+    "Do not claim the Provider raw response shape is known.",
+    "Do not reuse or re-date the historical NO-GO or expired approval evidence.",
+    "Do not change Provider/model/route, production runtime, Prompt, retry/fallback, budget policy, or validators."
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Verify both sealed parent evidence sets, privacy, target identity, production cleanliness, and live parity.",
+      "implementation": "verify_probe_materialization_parent_gate and validate-only parent/live-parity checks in tools/canary/provider_capability_probe_materialization.py",
+      "test_paths": ["tests/canary/test_provider_capability_probe_materialization.py"],
+      "evidence": "r1-ptr4-probe-mat-behavior-unchanged-proof-v1.json"
+    },
+    {
+      "requirement": "Create a fresh disabled single-use approval packet with Candidate unused, Approval unreserved, empty ledger, unused cohort, and external actions zero.",
+      "implementation": "materialize_provider_capability_probe_packet creates only inert typed/hash-bound JSON under a unique cohort and rejects non-empty targets.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_materialization.py"],
+      "evidence": "materialization-v1/provider-capability-probe-materialization-index-v1.json"
+    },
+    {
+      "requirement": "Bind Boundary 12, Provider/model/route/protocol, contract/schema, adapter/parser/strict-tool, fixture, and observer lineage.",
+      "implementation": "target, fixture, observer, and adapter-lineage definition artifacts are rebuilt from R1-PTR4-V1 and hash-bound into Plan and Candidate.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_materialization.py"],
+      "evidence": "materialization-v1/provider-capability-probe-target-definition-v1.json"
+    },
+    {
+      "requirement": "Use the stricter formal probe limit when the default packet budget is looser.",
+      "implementation": "Budget Definition fixes maximum_runs=1, maximum_total_model_calls=1, and maximum_output_tokens_per_call=8798.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_materialization.py"],
+      "evidence": "materialization-v1/provider-capability-probe-budget-definition-v1.json"
+    },
+    {
+      "requirement": "Fake rehearsal must prove receipt/privacy/goal-stop/control-plane only and must not count as Provider capability evidence.",
+      "implementation": "The pre-launch rehearsal is typed fake_rehearsal_only and carries NOT_EXECUTED plus zero counters.",
+      "test_paths": ["tests/canary/test_provider_capability_probe_materialization.py"],
+      "evidence": "materialization-v1/provider-capability-probe-pre-launch-rehearsal-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "Boundary 1 ConnectError remains a recovered route-escalation trigger, not the primary root cause.",
+    "Boundary 3 semantic_validation_failed remains the first unrecovered divergence.",
+    "Sticky output-limit remains the terminal amplifier.",
+    "Provider content-block shape remains UNKNOWN until a separately authorized real probe.",
+    "Historical approval-window expiry remains fail-closed and was not re-dated."
+  ],
+  "projected_failure_mechanisms": [
+    "Parent evidence or target identity changes before authorization.",
+    "Fixture reconstruction cannot match sealed request hashes.",
+    "A cohort or ledger is reserved, consumed, or replayed.",
+    "A future patch or Signed Approval broadens route, calls, budget, retry, or scope.",
+    "Observer metadata leaks Prompt, story, tool arguments, Provider content, credentials, or headers."
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only Canary control-plane materialization code and tests were added. ProviderCapabilityProbeObservationV1, production adapters/parsers/validators, src/novel_flywheel/**, and baml_src/** have zero diff.",
+  "why_previous_tests_missed": "The earlier b7d3f5c NO-GO correctly found that no Boundary 12 fixture/observer contract existed. Commit f7f6709 later added the exact R1-PTR4-V1 hash-bound fixture and observer contract; this task consumes that new sealed parent instead of altering the historical NO-GO.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Production Planning workflow and validators",
+      "disposition": "not_applicable",
+      "evidence": "No src/novel_flywheel/** or baml_src/** files changed; the packet is disabled and no executor ran."
+    },
+    {
+      "boundary": "Provider/model route selection",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The materialized target requires the sealed configured_fallback provider/model/protocol hashes and forbids replacement."
+    },
+    {
+      "boundary": "Approval replay and ledger consumption",
+      "disposition": "fixed_and_tested",
+      "evidence": "The materializer requires empty output roots, emits an empty unreserved ledger, and the reuse regression test fails closed."
+    },
+    {
+      "boundary": "Draft, Final Review, Maintenance, Full Short",
+      "disposition": "not_applicable",
+      "evidence": "Plan excluded_scopes and Stop Conditions explicitly forbid all four; no workflow or model call occurred."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_provider_capability_probe_materialization.py",
+    "tests/canary/test_provider_capability_probe_contract.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_provider_capability_probe_materialization.py",
+    "tests/canary/test_isolation_approval_network.py"
+  ],
+  "remaining_risks": [
+    "The Provider raw content-block shape and effective Provider ceiling remain UNKNOWN.",
+    "A future Signed Approval and confirmed patch must be separately materialized and revalidate request reassembly before any external action.",
+    "This packet does not implement a Production Fix."
+  ]
+}

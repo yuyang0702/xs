@@ -1,0 +1,53 @@
+{
+  "approval_candidate_sha256": "f8e25a05cf8d8f8fa35e4d14f81f6ac4c24d523bedd31de5e39fec4d79677bf3",
+  "approval_reservation_status": "unreserved",
+  "authorization_patch_template_sha256": "27167c4eea1c401bd63ecac1d8843e731c479bfa96a3c49327aec31e4d6dd716",
+  "cohort_usage_status": "unused",
+  "confirmed_patch_materialized": false,
+  "contract_status": "R1_PTR4_PROVIDER_CAPABILITY_PROBE_APPROVAL_PACKET_READY",
+  "execution_preview_sha256": "f67160870d8bd31fb029383754fe2e54e40ace1fcad6afddec1ebdd2f7d46b7b",
+  "execution_window": {
+    "not_after": "2026-08-22T11:22:21Z",
+    "not_before": "2026-08-20T11:22:21Z"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "files": {
+    "canary-root/provider-capability-probe-canary-root-identity-v1.json": "3d87e352eff84c40c99047f0d7994998f2e0a253631f962a56bf357577285e75",
+    "ledger/provider-capability-probe-approval-ledger-v1.json": "0e99b2b8eff4ed624ab4996087ccf5fb87063179d1e8daac0372060e9d95099c",
+    "materialization-v1/provider-capability-probe-adapter-lineage-observation-definition-v1.json": "a1009d8d163ae02f05d54164e866fe9331146350a68189cde7214ea6237dd8aa",
+    "materialization-v1/provider-capability-probe-authorization-patch-template-v1.json": "af14142ce30d51fe7d1dd9f6bf9823a1b3c2e41fa989d965bb373ab15227d566",
+    "materialization-v1/provider-capability-probe-budget-definition-v1.json": "dad11e4116e5b26e3f864403d4e89751c485e63af8faba74a5ddecc5cac9eaca",
+    "materialization-v1/provider-capability-probe-cohort-v1.json": "da7f1bbfc3fbbda136cbfb9978aa7284f12972a9a99bdd2ef13d41db558911c3",
+    "materialization-v1/provider-capability-probe-execution-preview-v1.json": "89b116aaaaee922da1e21f4e751e31895445b1f2d709fc9d498c0b75601cca27",
+    "materialization-v1/provider-capability-probe-final-approval-candidate-v1.json": "facbfd78a4a0fc7672ea5a4e65c30e1274495b411cb0327a3d208d77b6ee4ff1",
+    "materialization-v1/provider-capability-probe-fixture-definition-v1.json": "22828c531e969b72adbe4500e5c76f5ac73bcb45ab9f9558b1d546a2c411c7a8",
+    "materialization-v1/provider-capability-probe-observer-definition-bundle-v1.json": "a2726e17e4d5d8defa10a888c9e4b63348254018c30e362e2e1bc575529182a9",
+    "materialization-v1/provider-capability-probe-operational-readiness-v1.json": "7b3e0f0576c9871587c43e1c5cb1f71ac9b847c6056f8acc47b95a61e94858d4",
+    "materialization-v1/provider-capability-probe-plan-v1.json": "e4606b293be480c23ce17b3b7eddcbd20f4ffe5da92f77fafabfc2a485bb55a7",
+    "materialization-v1/provider-capability-probe-pre-launch-rehearsal-v1.json": "1dd2c0f7309f8ebecedb27115c65016197abfd8eb832c1be227cdc987b2aa30f",
+    "materialization-v1/provider-capability-probe-privacy-scan-v1.json": "4ddfda136119923d855071b535745c0929cbc9aba174fa7364590338be545a14",
+    "materialization-v1/provider-capability-probe-stop-conditions-v1.json": "2dd23881d48105ebb0e1736b3a82f7f01f7c5bd4a56e08b8872bf5e58c2b3197",
+    "materialization-v1/provider-capability-probe-target-definition-v1.json": "02a18be9527c4c313527a3062f851f4228f28cb2d591c123521b35a7317c4086",
+    "materialization-v1/provider-capability-probe-validate-only-receipt-v1.json": "8e097e9f7f53120af699110a509c5d2dff2026838220a2eef02866118a37903f"
+  },
+  "fixture_sha256": "22ac37e6494de79f542596cd16d5c14b8b25229af5cc1f451957e101b1c87e64",
+  "ledger_entry_count": 0,
+  "materialization_index_sha256": "2c21368a54eef4312223e130b5db42d1a9d8fce3a97ab142d0619d87f65385dc",
+  "observer_schema_sha256": "d88652767f2d5fe72fce529cdc51c51e7897daa9b16fd869092aa20b30d7dfa3",
+  "plan_sha256": "6bc5672575098fcd94fe873de4e5fb880c5e396d76f0c49b87b406c1aa899749",
+  "probe_definition_sha256": "6f201a3687d46d7be83f7c9797b03b26abdd346cc897f0f1ef87f0ab57ae5aee",
+  "production_fix": "NOT_IMPLEMENTED",
+  "real_provider_probe": "NOT_EXECUTED",
+  "schema": "ProviderCapabilityProbeMaterializationIndexV1",
+  "signed_approval_materialized": false,
+  "single_use_cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "status": "R1_PTR4_PROVIDER_CAPABILITY_PROBE_WAITING_FOR_FINAL_USER_AUTHORIZATION",
+  "validate_only_receipt_sha256": "8d83290ae0558a3d24705d8e72dd9b425d052ff3a2cd33acc86133e808c481a6",
+  "version": 1
+}

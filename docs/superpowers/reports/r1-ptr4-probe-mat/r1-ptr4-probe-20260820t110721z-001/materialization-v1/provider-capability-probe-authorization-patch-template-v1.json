@@ -1,0 +1,17 @@
+{
+  "authorization_patch_template_sha256": "27167c4eea1c401bd63ecac1d8843e731c479bfa96a3c49327aec31e4d6dd716",
+  "authorize_credential_lookup": false,
+  "authorize_model_call": false,
+  "authorize_network": false,
+  "authorize_paid_model_call": false,
+  "authorize_provider_client_creation": false,
+  "bound_approval_candidate_sha256": "f8e25a05cf8d8f8fa35e4d14f81f6ac4c24d523bedd31de5e39fec4d79677bf3",
+  "bound_plan_sha256": "6bc5672575098fcd94fe873de4e5fb880c5e396d76f0c49b87b406c1aa899749",
+  "confirmation_required": true,
+  "confirmed_patch_materialized": false,
+  "execution_authorized": false,
+  "required_user_action": "materialize_a_separate_confirmed_patch_and_signed_approval",
+  "schema": "ProviderCapabilityProbeAuthorizationPatchTemplateV1",
+  "template_status": "unconfirmed",
+  "version": 1
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "R1PTR4ProbeMATBehaviorUnchangedProofV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "f7f67095a72ede2bce62a583fac1cf43fb620e80",
+  "baseline_worktree_status": "clean",
+  "production_diff_file_count": 0,
+  "baml_diff_file_count": 0,
+  "bindings": {
+    "prompt_unchanged": true,
+    "route_unchanged": true,
+    "model_unchanged": true,
+    "retry_unchanged": true,
+    "fallback_unchanged": true,
+    "output_budget_policy_unchanged": true,
+    "validator_unchanged": true,
+    "production_runtime_behavior_unchanged": true,
+    "historical_no_go_evidence_unchanged": true
+  },
+  "parent_evidence": {
+    "r1_ptr4_canonical_sha256": "e7806b206edbdddf21a1ea74c7d0ebbb327ccedf7216f528c281c4ac2edfdf4c",
+    "r1_ptr4_v1_canonical_sha256": "844516d3d45a472134d8c724b817ab2c3a1f9c0f73f95d2b9b4b30322eed2181",
+    "status": "exact",
+    "privacy_status": "exact",
+    "privacy_violation_count": 0
+  },
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_status": "exact",
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  }
+}

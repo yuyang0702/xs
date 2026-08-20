@@ -1,0 +1,53 @@
+{
+  "schema": "R1PTR4ProbeMATOfflineTestReceiptV1",
+  "version": 1,
+  "status": "exact_for_task_scope",
+  "focused_suite": {
+    "command": ".venv/Scripts/python.exe -m pytest tests/canary/test_provider_capability_probe_materialization.py -q",
+    "passed": 15,
+    "failed": 0,
+    "external_actions": 0
+  },
+  "related_suite": {
+    "passed": 65,
+    "skipped": 2,
+    "failed": 0,
+    "external_actions": 0
+  },
+  "extended_related_suite": {
+    "passed": 95,
+    "skipped": 2,
+    "failed": 1,
+    "failure_path": "tests/canary/test_pa_strict_tool_obs_materialization.py::test_registered_patch_is_never_an_executable_document",
+    "failure_reason": "approval_outside_execution_window",
+    "attribution": "pre-existing clock-sensitive historical PA execution window; intentionally not reused or re-dated",
+    "task_related_regression": false
+  },
+  "full_repository_suite": {
+    "command": ".venv/Scripts/python.exe -m pytest -q -x",
+    "passed_before_stop": 261,
+    "failed": 1,
+    "warning_count": 1,
+    "failure_path": "tests/canary/test_c0b_p12_signed_approval.py::test_candidate_and_patch_remain_non_executable",
+    "failure_reason": "approval_expired",
+    "attribution": "pre-existing clock-sensitive historical signed-approval fixture; outside task scope and intentionally not renewed, re-dated, or modified",
+    "task_related_regression": false
+  },
+  "covered_invariants": [
+    "parent manifests and privacy exact",
+    "Boundary 12 target identity exact",
+    "Provider/model/route/protocol exact",
+    "fixture and observer schemas exact",
+    "formal one-call budget overrides looser default",
+    "candidate disabled unused and unreserved",
+    "patch template and execution preview inert",
+    "isolated ledger empty",
+    "canary root unused",
+    "cohort cannot be rematerialized",
+    "fake rehearsal is not Provider capability evidence",
+    "privacy exact",
+    "external actions zero",
+    "repository materialization byte-exact"
+  ],
+  "real_provider_probe": "NOT_EXECUTED"
+}

@@ -1,0 +1,24 @@
+{
+  "conditions": [
+    "stop_after_first_provider_response",
+    "stop_after_first_transport_failure",
+    "stop_on_target_identity_mismatch_before_external_action",
+    "stop_on_request_reassembly_hash_mismatch_before_external_action",
+    "stop_on_budget_or_elapsed_limit",
+    "stop_on_privacy_or_lineage_receipt_failure",
+    "stop_after_terminal_observer_receipt"
+  ],
+  "definition_sha256": "b24a890f584cbf44e20ca86f2bc2359cc69da3b933322032002a9176e1fb1fd5",
+  "draft_allowed": false,
+  "final_review_allowed": false,
+  "full_short_allowed": false,
+  "implicit_fallback_allowed": false,
+  "implicit_primary_allowed": false,
+  "maintenance_allowed": false,
+  "output_expansion_allowed": false,
+  "resume_allowed": false,
+  "retry_allowed": false,
+  "schema": "ProviderCapabilityProbeStopConditionsV1",
+  "second_run_allowed": false,
+  "version": 1
+}

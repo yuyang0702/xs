@@ -1,0 +1,30 @@
+{
+  "schema": "R1PTR4ProbeMATFinalPrivacyScanV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "utf8_sorted_path_bytes_sha256_violation_count_lines",
+  "scan_input_sha256": "0a630315a3149837917ee7abbef8cc4b3481003b34e12544b5d1556d781079df",
+  "status": "exact",
+  "scanned_file_count": 24,
+  "violation_count": 0,
+  "scope": [
+    "tools/canary/provider_capability_probe_materialization.py",
+    "tests/canary/test_provider_capability_probe_materialization.py",
+    "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/**"
+  ],
+  "excluded_self": true,
+  "excluded_final_manifest": true,
+  "credentials_or_headers_included": false,
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "raw_tool_arguments_included": false,
+  "raw_provider_content_included": false,
+  "patterns": [
+    "OpenAI-style secret token",
+    "AWS access-key identifier",
+    "Bearer authorization value",
+    "private-key PEM header",
+    "sealed sanitized fixture business literals"
+  ],
+  "violations": []
+}
