@@ -1,0 +1,14 @@
+{
+  "schema": "R1PTR6FinalPrivacyScanV1",
+  "scope": "docs/superpowers/reports/r1-ptr6/",
+  "status": "exact",
+  "raw_prompt_present": false,
+  "raw_story_present": false,
+  "raw_tool_arguments_present": false,
+  "raw_provider_content_present": false,
+  "credentials_present": false,
+  "provider_endpoint_present": false,
+  "provider_alias_present": false,
+  "model_alias_present": false,
+  "external_actions": 0
+}

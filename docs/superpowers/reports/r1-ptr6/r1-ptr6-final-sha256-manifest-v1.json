@@ -1,0 +1,37 @@
+{
+  "schema": "R1PTR6FinalSHA256ManifestV1",
+  "generated_at_utc": "2026-08-20T14:28:05Z",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr6/r1-ptr6-behavior-unchanged-proof-v1.json",
+      "sha256": "ab7c883d948a6ac54bcefe35c3fd6200cb04eaa875efe7e900b9c33701e408bb",
+      "bytes": 592
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr6/r1-ptr6-candidate-comparison-v1.json",
+      "sha256": "c7295ac7ae234d2b072fea335d338c5fe13f9d3ebe4e97c7ca6cf60780580b7f",
+      "bytes": 3087
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr6/r1-ptr6-final-privacy-scan-v1.json",
+      "sha256": "9a68bbf7e3d82364384db5bb7230b93ea000dfa3aad5b2d5439496c6b2dd2dce",
+      "bytes": 415
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr6/r1-ptr6-final-report-v1.md",
+      "sha256": "2aaf07cf39fa6741673b0f6c143f3d807704cb5eeddc10d9b3cb1221065674ec",
+      "bytes": 7288
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr6/r1-ptr6-narrow-fix-design-v1.json",
+      "sha256": "78e8e1556944174d25bd3fadf5b50a0bbb76c326c0c7a3e6b15a19a40df44492",
+      "bytes": 9365
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr6/r1-ptr6-required-tests-v1.json",
+      "sha256": "b40b3fd1fbcedde44d3eafdf41a031e9348ea8926d9e2c61c645b16c07b338a5",
+      "bytes": 2749
+    }
+  ],
+  "manifest_self_hash": "excluded_by_definition"
+}

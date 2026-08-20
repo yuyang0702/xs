@@ -1,0 +1,51 @@
+{
+  "schema": "R1PTR6RequiredTestsV1",
+  "status": "design_only_not_executed_as_fix",
+  "baseline_offline_tests": {
+    "result": "passed",
+    "passed": 80,
+    "failed": 0,
+    "duration_seconds": 5.38,
+    "external_actions": 0
+  },
+  "future_focused_tests": [
+    "FinalOutputReservationV1 rejects F<=0, F>=T, R<0 and arithmetic mismatch",
+    "property-based allocation proves R+F=T across supported totals and contract sizes",
+    "planning_semantic_v2 whole, segment and nested packet reserve calibration uses existing expected_output_characters and not the 160-character incompleteness floor",
+    "ModelGateway refuses unknown, expired, route-changed and unsupported reasoning-allocation capabilities before adapter invocation",
+    "AnthropicAdapter emits the typed verified reasoning cap while retaining max_tokens=T",
+    "AnthropicAdapter emits no reasoning field for requests without an allocation contract",
+    "Provider parameter rejection and observed cap violation quarantine only the exact route fingerprint",
+    "primary and fallback keep identical retry ordering and total token ceilings",
+    "no Prompt, Model, Route, Retry, schema or validator mutation"
+  ],
+  "future_provider_shape_matrix": {
+    "valid": [
+      "reasoning_then_text_complete",
+      "reasoning_then_tool_complete",
+      "text_only_complete",
+      "tool_only_complete",
+      "mixed_reasoning_text_tool_complete",
+      "provider_reports_separate_reasoning_and_final_usage"
+    ],
+    "invalid": [
+      "reasoning_only_at_total_cap_despite_qualified_limit",
+      "final_text_truncated_inside_reserved_region",
+      "multiple_ambiguous_artifacts",
+      "unknown_machine_control_shape"
+    ],
+    "transport_capacity": [
+      "parameter_rejected_before generation",
+      "stream interrupted after reasoning before final",
+      "normal finish with incomplete final",
+      "output limit with valid complete artifact subject to existing completeness validation"
+    ]
+  },
+  "future_integration_tests": [
+    "production-shaped Boundary 12 fake Provider reproduces REASONING_ONLY before fix and reaches canonical conversion plus planning domain validation with reservation",
+    "real stage assembly retains role binding, route schedule, capacity policy, checkpoint and validators while replacing only the paid network boundary",
+    "current-project isolated read-only snapshot and sanitized isomorphic fixture",
+    "complete short workflow at 13K, 20K and 30K through planning, causal chain, execution manifest, drafting, split/merge, polish, final review and eligible promotion"
+  ],
+  "live_validation": "requires a new disabled single-use probe packet and separate final user authorization after all offline implementation gates are exact"
+}

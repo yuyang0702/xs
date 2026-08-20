@@ -1,0 +1,21 @@
+{
+  "schema": "R1PTR6BehaviorUnchangedProofV1",
+  "baseline_head": "ad3ef1b510b816f27abb252fbd0e7cfbdf5d0b06",
+  "allowed_change_root": "docs/superpowers/reports/r1-ptr6/",
+  "production_runtime": "unchanged",
+  "prompt": "unchanged",
+  "model": "unchanged",
+  "route": "unchanged",
+  "retry": "unchanged",
+  "fallback": "unchanged",
+  "budget": "unchanged",
+  "validator": "unchanged",
+  "src": "unchanged",
+  "baml_src": "unchanged",
+  "configuration": "unchanged",
+  "credential_access": 0,
+  "network_actions": 0,
+  "provider_client_creations": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

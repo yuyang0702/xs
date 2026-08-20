@@ -1,0 +1,154 @@
+{
+  "schema": "R1PTR6NarrowFixDesignV1",
+  "generated_at_utc": "2026-08-20T14:28:05Z",
+  "gate": "R1_PTR6_NARROW_FIX_DESIGN_READY",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "ad3ef1b510b816f27abb252fbd0e7cfbdf5d0b06",
+  "authorization": "design_only",
+  "risk_level": "L3",
+  "scope_classification": "open_world",
+  "resolution_status": "unresolved",
+  "root_cause_reference": {
+    "family": "CAPABILITY_BOUND_REASONING_FINAL_OUTPUT_RESERVATION",
+    "immediate_mechanism": "IMPLICIT_REASONING_CONSUMES_SHARED_COMPLETION_CAP_WITHOUT_FINAL_ARTIFACT_RESERVATION",
+    "ptr5_manifest": "docs/superpowers/reports/r1-ptr5/r1-ptr5-final-sha256-manifest-v1.json",
+    "ptr5_manifest_status": "exact"
+  },
+  "current_budget_model": {
+    "max_tokens": "one shared per-attempt provider completion cap",
+    "reasoning_counts_against_same_cap": "confirmed for the exact Boundary 12 fallback observation",
+    "final_artifact_reservation": "absent",
+    "explicit_reasoning_budget": "absent",
+    "primary_fallback_request_shape": "same application fields and corresponding attempt budgets",
+    "primary_fallback_identity": "different provider/model/endpoint/capability identities",
+    "budget_expansion": "doubles or adds 1024 within existing recovery policy but does not partition reasoning from final output"
+  },
+  "provider_capability_decision": {
+    "observed": {
+      "shared_cap_consumed_by_reasoning": true,
+      "reasoning_only_at_cap": true,
+      "reasoning_block_count": 1,
+      "visible_characters": 0,
+      "tool_calls": 0
+    },
+    "supports_reasoning_budget_limit": "UNKNOWN",
+    "supports_max_reasoning_tokens": "UNKNOWN",
+    "supports_native_final_output_reservation": "UNKNOWN",
+    "application_adapter_supports_reasoning_control_today": false,
+    "reason": "The sealed probe observed response shape only. It did not send or qualify a reasoning-control parameter, and an Anthropic-compatible protocol name does not prove endpoint-specific support.",
+    "required_before_enablement": "a route-fingerprint-bound capability qualification proving the exact parameter is accepted and enforced"
+  },
+  "selected_design": {
+    "name": "FINAL_ARTIFACT_RESERVATION_WITH_CAPABILITY_GUARD_V1",
+    "composition": [
+      "candidate_A_reasoning_budget_plus_final_reservation",
+      "candidate_C_fallback_capability_boundary_as_mandatory_guard"
+    ],
+    "why_selected": "It is the smallest mechanism-level design that can guarantee safety without changing prompt, model identity, route configuration, retry count or total output-token ceiling.",
+    "allocation_contract": {
+      "total_output_tokens_symbol": "T",
+      "final_artifact_reserve_tokens_symbol": "F",
+      "maximum_reasoning_tokens_symbol": "R",
+      "invariants": [
+        "T equals the existing per-attempt max_output_tokens and is never increased by this policy",
+        "F is derived deterministically from the existing expected_output_characters plus the registered artifact schema/topology, never from Provider output",
+        "0 < F < T for a reasoning-enabled eligible route",
+        "R = T - F",
+        "the Provider receives T as the total cap and a verified explicit reasoning cap no greater than R",
+        "a route with unknown, stale, unsupported or violated allocation capability is ineligible before another paid dispatch"
+      ],
+      "guarantee_boundary": "The guarantee is conditional on a current route-bound proof that the Provider enforces the reasoning cap. If that proof is absent, the safe behavior is typed pre-dispatch ineligibility, not an unreserved call.",
+      "non_guarantee": "Reservation guarantees space cannot be consumed by reasoning; it does not guarantee the model will emit a valid or semantically correct artifact. Existing conversion and domain validators remain authoritative."
+    },
+    "reserve_sizing": {
+      "owner": "src/novel_flywheel/context_policy.py",
+      "input": [
+        "existing expected_output_characters",
+        "registered contract identity and schema/topology",
+        "existing total attempt cap"
+      ],
+      "rule": "Introduce a versioned deterministic final-artifact reserve calculator. It must preserve the caller's planning_semantic_v2 expected-output estimate; minimum_business_characters=160 is only a business-incompleteness floor and is not sufficient as the reservation value.",
+      "calibration_requirement": "Calibrate and freeze the planning_semantic_v2 whole, segment and nested-packet reserve using sanitized valid artifacts and invariant-based tests before production enablement.",
+      "forbidden": [
+        "increasing T",
+        "using Provider name/model name as a branch",
+        "deriving F from the Boundary 12 observed number alone",
+        "mechanically truncating final output"
+      ]
+    }
+  },
+  "exact_implementation_owners": [
+    {
+      "file": "src/novel_flywheel/context_policy.py",
+      "owner": "new final_artifact_reserve_tokens() beside scoped_creative_output_budget()",
+      "responsibility": "calculate F without changing T"
+    },
+    {
+      "file": "src/novel_flywheel/domain/models.py",
+      "owner": "ModelRequest",
+      "responsibility": "carry a typed provider-independent output-allocation request; no free-form provider parameters"
+    },
+    {
+      "file": "src/novel_flywheel/contract_runtime.py",
+      "owner": "execute_contract_runtime() and _dispatch_explicit_route()",
+      "responsibility": "bind contract identity, expected final size, T/F/R and route attempt; preserve existing retry schedule"
+    },
+    {
+      "file": "src/novel_flywheel/models.py",
+      "owner": "ModelGateway._complete_resolved() and complete_route()",
+      "responsibility": "enforce current route capability, refuse unknown allocation, and pass the typed allocation to the adapter"
+    },
+    {
+      "file": "src/novel_flywheel/providers/registry.py",
+      "owner": "ProviderRegistry._effective_capabilities()",
+      "responsibility": "make reasoning-allocation capability route-fingerprint-bound, expiring and stale-safe"
+    },
+    {
+      "file": "src/novel_flywheel/providers/anthropic.py",
+      "owner": "AnthropicAdapter.complete()",
+      "responsibility": "serialize only a verified typed reasoning cap and retain max_tokens=T; never invent endpoint support"
+    }
+  ],
+  "smallest_modification_location_answer": "The policy owner is the shared contract-to-provider allocation boundary, not workflows.py and not the planning prompt. context_policy computes the reserve; ModelGateway is the enforcement point; the protocol adapter is only the wire encoder.",
+  "behavior_impacts": {
+    "primary_route": "unchanged when its current capability proves reasoning does not consume the final cap or proves reservation enforcement; otherwise it becomes typed ineligible for reservation-required calls",
+    "configured_fallback": "the observed route must be freshly qualified; if it supports enforcement it keeps the same identity with one bounded parameter, otherwise it cannot safely serve this contract",
+    "retry": "attempt counts, ordering and resume behavior unchanged; no continuation call and no extra retry",
+    "prompt": "unchanged",
+    "model_identity": "unchanged",
+    "route_configuration": "unchanged by the recommended patch; replacing an incapable route is a separate decision",
+    "cost": "per-call maximum and total call budget do not increase; realized output cost may fall, but this is not claimed without evidence",
+    "latency": "no additional call is introduced; successful earlier final emission may reduce latency, while capability refusal may stop earlier"
+  },
+  "failure_and_recovery_semantics": {
+    "capability_unknown_or_stale": "typed pre-dispatch route ineligibility with zero Provider call",
+    "capability_explicitly_unsupported": "typed pre-dispatch route ineligibility; route replacement requires separate authorization",
+    "provider_rejects_parameter": "quarantine the route-fingerprint capability and return a typed capability failure; do not retry with the parameter removed",
+    "provider_violates_qualified_cap": "quarantine the capability and retain the last accepted authority; do not increase tokens or guess",
+    "final_artifact_invalid_with_reservation": "use the unchanged canonical conversion, semantic validation and existing bounded recovery schedule",
+    "terminal": "preserve existing ContractOutputLimitExhaustedError/capability exhaustion distinctions and accepted checkpoints"
+  },
+  "invariants_preserved": [
+    "Prompt bytes and hashes",
+    "model identities",
+    "configured route identities and ordering",
+    "retry/fallback counts",
+    "total output-token ceilings",
+    "planning_semantic_v2 schema and domain validators",
+    "StoryState and formal authority",
+    "checkpoint, resume and promotion rules",
+    "no raw Prompt, story or Provider content in capability receipts"
+  ],
+  "approval": {
+    "fresh_production_change_approval_required": true,
+    "fresh_real_provider_capability_probe_approval_required": true,
+    "fresh_full_short_canary_approval_required": true,
+    "this_design_authorizes_implementation": false,
+    "this_design_authorizes_provider_calls": false
+  },
+  "status": {
+    "design": "ready",
+    "provider_enforcement_capability": "unresolved",
+    "production_fix": "NOT_IMPLEMENTED"
+  }
+}

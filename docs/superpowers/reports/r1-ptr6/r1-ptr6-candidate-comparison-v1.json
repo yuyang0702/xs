@@ -1,0 +1,62 @@
+{
+  "schema": "R1PTR6CandidateComparisonV1",
+  "candidates": [
+    {
+      "id": "A",
+      "name": "Reasoning budget plus final output reservation",
+      "scope": "typed allocation policy in Contract Runtime/Gateway plus protocol-specific adapter encoding",
+      "risk": "medium-high because it changes an authority-critical model request boundary",
+      "compatibility": "compatible only for routes with fresh verified enforcement capability; no provider-name branches",
+      "tests": [
+        "allocation arithmetic and property tests",
+        "protocol payload tests",
+        "provider-ignore/reject/quarantine tests",
+        "production-shaped structured artifact continuation"
+      ],
+      "decision": "RECOMMENDED_CORE",
+      "reason": "Only this candidate directly prevents reasoning from consuming the reserved final region while preserving total tokens."
+    },
+    {
+      "id": "B",
+      "name": "Contract output restructuring",
+      "scope": "split or redesign planning_semantic_v2 output/schema/prompt",
+      "risk": "high; changes contract topology, merge authority and likely call count",
+      "compatibility": "requires migration and can regress planning semantics",
+      "tests": [
+        "new schema and migration tests",
+        "split/merge ownership and whole-story tests",
+        "13K/20K/30K complete-flow tests"
+      ],
+      "decision": "REJECTED",
+      "reason": "It does not prevent each subcall's reasoning from exhausting its cap and violates the requested no-Prompt/no-contract-change boundary."
+    },
+    {
+      "id": "C",
+      "name": "Fallback capability boundary",
+      "scope": "exclude unknown or incapable routes from final-reservation-required contracts",
+      "risk": "low narrative risk but availability can decrease",
+      "compatibility": "safe and provider-independent when keyed by route fingerprint and typed capability",
+      "tests": [
+        "stale/unknown/unsupported pre-dispatch refusal",
+        "primary/fallback schedule preservation",
+        "zero external action on refusal"
+      ],
+      "decision": "REQUIRED_GUARD_NOT_STANDALONE_FIX",
+      "reason": "It prevents another unsafe call but cannot produce the required artifact if no capable route exists; alone it is containment."
+    },
+    {
+      "id": "D",
+      "name": "Force strict tool/JSON output or append a final-only continuation",
+      "scope": "change structured mode or add a second request",
+      "risk": "medium-high; thinking can still consume the cap and continuation changes retry/cost/prompt semantics",
+      "compatibility": "the observed fallback was plain/stale and had no verified strict-tool capability",
+      "tests": [
+        "tool/reasoning coexistence",
+        "continuation authority and duplicate artifact handling"
+      ],
+      "decision": "REJECTED",
+      "reason": "Neither forcing output shape nor adding a continuation guarantees reserved capacity, and both broaden the authorized behavior."
+    }
+  ],
+  "decision": "Implement A only with C as a mandatory capability guard; do not implement B or D."
+}
