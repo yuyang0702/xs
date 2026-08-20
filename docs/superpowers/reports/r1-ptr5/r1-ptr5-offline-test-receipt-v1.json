@@ -1,0 +1,12 @@
+{
+  "schema": "R1PTR5OfflineTestReceiptV1",
+  "executed_at_utc": "2026-08-20T13:55:58Z",
+  "command": ".venv\\Scripts\\python.exe -m pytest tests\\test_contract_runtime.py tests\\test_planning_semantics.py tests\\canary\\test_provider_capability_probe_contract.py tests\\canary\\test_provider_capability_probe_real.py -q",
+  "result": "passed",
+  "passed": 64,
+  "failed": 0,
+  "duration_seconds": 4.91,
+  "execution_mode": "offline_fake_only",
+  "external_actions": 0,
+  "real_provider_calls": 0
+}

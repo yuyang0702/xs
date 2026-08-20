@@ -1,0 +1,15 @@
+{
+  "schema": "R1PTR5FinalPrivacyScanV1",
+  "scope": "docs/superpowers/reports/r1-ptr5/",
+  "status": "exact",
+  "raw_prompt_present": false,
+  "raw_story_present": false,
+  "raw_tool_arguments_present": false,
+  "raw_provider_content_present": false,
+  "credentials_present": false,
+  "provider_endpoint_present": false,
+  "provider_alias_present": false,
+  "model_alias_present": false,
+  "allowed_material": ["hash", "shape", "count", "typed status", "offline code-path conclusion"],
+  "external_actions": 0
+}

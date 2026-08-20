@@ -1,0 +1,136 @@
+{
+  "schema": "R1PTR5RootCauseInvestigationV1",
+  "generated_at_utc": "2026-08-20T13:55:58Z",
+  "gate": "R1_PTR5_ROOT_CAUSE_INVESTIGATION_READY",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "head_before_report_commit": "7e45fb6ccd02c56eb49448f64c0a8ff38b4327ca",
+  "scope": {
+    "mode": "offline_read_only_investigation",
+    "external_actions": 0,
+    "production_fix": "NOT_IMPLEMENTED",
+    "real_provider_calls": 0,
+    "full_short_canary": "NOT_EXECUTED",
+    "source_changes": 0,
+    "baml_source_changes": 0
+  },
+  "evidence_gate": {
+    "starting_worktree": "clean",
+    "sealed_manifests": "exact",
+    "live_parity_at_historical_probe_execution": "exact",
+    "current_live_call_performed": false,
+    "evidence": [
+      {
+        "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-root-cause-decision-v1.json",
+        "sha256": "d42cf7cab3df2be6163478c41a57ad05909c0b77eaa7f823c3bfbfc8b1c13d0e"
+      },
+      {
+        "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-boundary-reconstruction-v1.json",
+        "sha256": "ce27f78dd100786645525be2d0e0abaea4c84215337d80f26b43cf7b388b8cef"
+      },
+      {
+        "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/reports/provider-capability-probe-observation-v1.json",
+        "sha256": "54df3c281d58ff3560739f87eb1cd2fc2560b3ec0ea998fe07028f104600b845"
+      },
+      {
+        "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/reports/provider-capability-probe-real-execution-receipt-v1.json",
+        "sha256": "893aa5710c7d51c075c03bd872010292c469013f017c65a0b005e209a3807251"
+      },
+      {
+        "path": "docs/superpowers/reports/sc-ptr3-refresh-real-short-20260820t053356z-001/short-completion-1-real-evidence-v1.json",
+        "sha256": "0b769836dfcdd4b430f7512a229bc0b317fa6db4ed8735030a11e581e898d312"
+      }
+    ]
+  },
+  "boundary_12_observation": {
+    "route": "configured_fallback",
+    "protocol": "anthropic",
+    "requested_max_output_tokens": 8798,
+    "effective_provider_max_output_tokens": "unknown",
+    "reported_output_tokens": 8798,
+    "finish_reason": "max_tokens",
+    "provider_block_type_sequence": ["thinking"],
+    "reasoning_block_count": 1,
+    "text_block_count": 0,
+    "visible_char_count": 0,
+    "tool_call_count": 0,
+    "unknown_block_count": 0,
+    "zero_visible_before_adapter": true,
+    "raw_shape_classifier": "REASONING_ONLY"
+  },
+  "request_analysis": {
+    "contract": "planning_semantic_v2",
+    "contract_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+    "request_shape": "one canonical JSON artifact with initial_state and a single locally terminal segment containing two owned formal events",
+    "estimated_input_tokens_from_deterministic_local_reconstruction": 1358,
+    "provider_reported_input_tokens": 29,
+    "provider_input_usage_interpretation": "not used as request-size proof; it may reflect provider accounting or cache behavior",
+    "formal_event_count": 2,
+    "owned_event_count": 2,
+    "compact_schema_bytes": 2172,
+    "requires_final_artifact": true,
+    "instruction_complexity": "nontrivial semantic and protocol obligations",
+    "size_conclusion": "the exact Boundary 12 nested request is not too large for an 8798-token completion cap; request complexity can increase reasoning but does not explain a reasoning-only cap exhaustion by itself"
+  },
+  "provider_configuration_analysis": {
+    "thinking_explicitly_enabled_by_application": false,
+    "thinking_budget_configured_by_application": false,
+    "final_output_reserve_configured": false,
+    "reasoning_effort_configured": false,
+    "anthropic_payload_fields_relevant_to_allocation": ["model", "messages", "system", "max_tokens", "stream"],
+    "structured_provider_output_mode_at_boundary_12": "plain",
+    "tool_choice_sent": false,
+    "output_config_sent": false,
+    "provider_declared_max_output_tokens": "unknown",
+    "provider_declared_context_window": "unknown",
+    "primary_and_fallback_same_request_fields": true,
+    "primary_and_fallback_same_budget_for_corresponding_attempts": true,
+    "primary_and_fallback_identity_equal": false,
+    "difference_summary": "provider, model, endpoint and capability history differ; the fallback model emitted the observed implicit reasoning block"
+  },
+  "reasoning_output_allocation_analysis": {
+    "max_tokens_semantics_for_this_exact_observation": "the provider counted thinking inside the completion cap",
+    "evidence": "reported output tokens equal requested max_tokens and the only pre-normalization block is thinking",
+    "configured_separate_reasoning_budget": "absent",
+    "configured_separate_final_output_budget": "absent",
+    "realized_reasoning_tokens": 8798,
+    "realized_visible_final_chars": 0,
+    "reasoning_budget_greater_than_final_output_budget": {
+      "configured_numeric_comparison": "not_defined",
+      "observed_realized_allocation": "yes; reasoning consumed the full shared cap while final visible output was zero"
+    }
+  },
+  "root_cause_decision": {
+    "immediate_mechanism": "IMPLICIT_REASONING_CONSUMES_SHARED_COMPLETION_CAP_WITHOUT_FINAL_ARTIFACT_RESERVATION",
+    "confidence": "case_confirmed",
+    "classification": {
+      "normal_model_behavior": "valid provider behavior but incompatible with this contract's required final artifact under the current allocation contract",
+      "provider_configuration_problem": "contributing control gap",
+      "route_configuration_problem": "contributing capability-description gap",
+      "contract_induced": "possible contributor, not primary cause",
+      "budget_allocation_problem": "primary application-side failure mechanism"
+    },
+    "provider_internal_policy": "unresolved because no explicit local thinking control or provider policy evidence exists",
+    "systemic_resolution_status": "unresolved",
+    "production_recovery_status": "not_implemented"
+  },
+  "answers": {
+    "why_no_final_artifact": "The fallback model spent the entire shared 8798-token completion allowance in a reasoning block and reached max_tokens before emitting text or a tool call.",
+    "did_thinking_fill_output_budget": "Yes for the observed call: output_tokens=8798, requested max_tokens=8798, and the sole block was thinking.",
+    "max_tokens_effect": "For this provider/model route, max_tokens bounded the combined generated output including thinking; there was no separate final-artifact reserve.",
+    "fallback_vs_primary_parameters": "The application request fields and corresponding attempt budgets were the same, but provider/model/endpoint/capability identities differed. No explicit thinking parameter was sent to either route.",
+    "is_planning_semantic_v2_too_large_or_complex": "It is semantically demanding, but the exact nested request was about 1358 estimated input tokens, two events and a 2172-byte compact schema. It is not large enough to be the sole cause of an 8798-token reasoning-only exhaustion.",
+    "reasoning_budget_vs_final_output_budget": "There were no configured separate budgets. The observed allocation was effectively 8798 reasoning tokens versus zero visible final output.",
+    "minimum_fix_direction": "Add capability-bound reasoning/final allocation semantics at the shared gateway/provider boundary: bound reasoning below the unchanged total cap and reserve final-artifact capacity, or mark routes unable to guarantee that contract as ineligible. This is a recommendation only and requires separate production authorization."
+  },
+  "recommended_narrow_fix_family": {
+    "name": "CAPABILITY_BOUND_REASONING_FINAL_OUTPUT_RESERVATION",
+    "status": "RECOMMENDATION_ONLY",
+    "constraints": [
+      "do not change the prompt",
+      "do not change the requested model or route in this investigation",
+      "do not increase the total output budget",
+      "do not disable thinking as a blanket policy",
+      "do not change retry or validator behavior"
+    ]
+  }
+}

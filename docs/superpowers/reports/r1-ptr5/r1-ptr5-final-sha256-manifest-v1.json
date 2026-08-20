@@ -1,0 +1,37 @@
+{
+  "schema": "R1PTR5FinalSHA256ManifestV1",
+  "generated_at_utc": "2026-08-20T13:55:58Z",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr5/r1-ptr5-behavior-unchanged-proof-v1.json",
+      "sha256": "42b669dce513a87c7659d1565fe8bf8412ea39af898b6029c99132f3da89efae",
+      "bytes": 560
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr5/r1-ptr5-boundary3-to-12-recovery-analysis-v1.json",
+      "sha256": "9d994154f28292e33cd5ba712326ffbbd242816ade05c6ec1fb2a2f84811ea1f",
+      "bytes": 3482
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr5/r1-ptr5-final-privacy-scan-v1.json",
+      "sha256": "bc258a72b0ecb732307ced36ef2316fd2e5918d3d06a90f8e9b48ede0e7ecc57",
+      "bytes": 513
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr5/r1-ptr5-final-report-v1.md",
+      "sha256": "8234658438c73d2c416d28aaef95bcdf2ddc58b7076c4687547b121db6f296cc",
+      "bytes": 7609
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr5/r1-ptr5-offline-test-receipt-v1.json",
+      "sha256": "1a0d794bb4342c7529835b622eb54516616a42c4588fd39de9ceb6c1a36c0623",
+      "bytes": 499
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr5/r1-ptr5-root-cause-investigation-v1.json",
+      "sha256": "8b250da3f6bb66c11b74663fac055554ca9e5745e6caadd5d3a5302a8c3e8e43",
+      "bytes": 8013
+    }
+  ],
+  "manifest_self_hash": "excluded_by_definition"
+}

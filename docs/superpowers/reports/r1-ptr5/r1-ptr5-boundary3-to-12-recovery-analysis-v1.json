@@ -1,0 +1,45 @@
+{
+  "schema": "R1PTR5Boundary3To12RecoveryAnalysisV1",
+  "contract_sha256_all_boundaries": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+  "first_unrecovered_divergence": {
+    "boundary": 3,
+    "route": "configured_fallback",
+    "scope": "whole",
+    "max_output_tokens": 7774,
+    "finish_reason": "end_turn",
+    "provider_output_tokens": 7204,
+    "adapter_visible_chars": 1734,
+    "json_candidate_count": 1,
+    "result": "semantic_normalizer_rejected_before_domain_validator"
+  },
+  "boundaries": [
+    {"boundary": 4, "route": "configured_fallback", "scope": "whole", "budget": 7774, "finish_reason": "max_tokens", "visible_chars": 551, "change": "protocol regeneration instruction"},
+    {"boundary": 5, "route": "primary", "scope": "segment", "budget": 7774, "finish_reason": "end_turn", "visible_chars": 27500, "result": "semantic rejection"},
+    {"boundary": 6, "route": "primary", "scope": "segment", "budget": 7774, "finish_reason": "end_turn", "visible_chars": 6819, "result": "semantic rejection after protocol regeneration"},
+    {"boundary": 7, "route": "configured_fallback", "scope": "segment", "budget": 7774, "finish_reason": "max_tokens", "visible_chars": 0, "raw_shape": "not observed in original run"},
+    {"boundary": 8, "route": "configured_fallback", "scope": "segment", "budget": 15548, "finish_reason": "end_turn", "visible_chars": 9847, "result": "semantic rejection"},
+    {"boundary": 9, "route": "primary", "scope": "nested_segment", "budget": 4399, "finish_reason": "end_turn", "visible_chars": 4261, "result": "semantic rejection"},
+    {"boundary": 10, "route": "primary", "scope": "nested_segment", "budget": 4399, "finish_reason": "end_turn", "visible_chars": 2243, "result": "semantic rejection after protocol regeneration"},
+    {"boundary": 11, "route": "configured_fallback", "scope": "nested_segment", "budget": 4399, "finish_reason": "max_tokens", "visible_chars": 0, "raw_shape": "not observed in original run"},
+    {"boundary": 12, "route": "configured_fallback", "scope": "nested_segment", "budget": 8798, "finish_reason": "max_tokens", "visible_chars": 0, "raw_shape": "REASONING_ONLY confirmed by exact probe"}
+  ],
+  "request_evolution": {
+    "contract_changed": false,
+    "boundary_3_to_4": "protocol regeneration system instruction appended",
+    "boundary_4_to_5": "capacity recovery changed ownership to segment scope",
+    "boundary_5_to_6": "protocol regeneration system instruction appended",
+    "boundary_6_to_7": "same request and budget, route changed to fallback",
+    "boundary_7_to_8": "same request, budget doubled",
+    "boundary_8_to_9": "capacity recovery changed ownership to nested segment scope",
+    "boundary_9_to_10": "protocol regeneration system instruction appended",
+    "boundary_10_to_11": "same request and budget, route changed to fallback",
+    "boundary_11_to_12": "same request, budget doubled from 4399 to 8798"
+  },
+  "retry_counts": {
+    "primary_attempts_per_scope": 2,
+    "fallback_attempts_per_scope": 2,
+    "total_observed_boundaries": 12
+  },
+  "terminal_amplifier": "sticky output-limit state converted repeated conversion failure into ContractOutputLimitExhaustedError",
+  "conclusion": "Recovery reduced semantic ownership and increased the shared completion cap, but never changed reasoning/final allocation. Boundary 12 therefore repeated the zero-visible failure with a larger reasoning allowance rather than a protected final-artifact allowance."
+}
