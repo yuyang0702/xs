@@ -1,0 +1,460 @@
+{
+  "approved_build_fingerprint": "e97060b725a6978f7770c18ec4feb46dd88dc326609355a19d24a1741bcc8bf6",
+  "approved_dependency_manifest": {
+    "production_package": true,
+    "stdlib": true,
+    "third_party": []
+  },
+  "approved_execution_config_components": {
+    "feature_flag_provenance_sha256": "3fc004c10d4c98a06c26ecd925dcf54adadc44d63ef6da7447c236514b52af2c",
+    "policy_version": "runtime-fingerprint-v2",
+    "semantic_components": {
+      "effective_feature_flags": "dd0932b45abd100650eb6ff47049145ef4d4d51a4aac3fb1249c1350e8aebca0",
+      "feature_flag_registry": "c2cea70e9293d204eefe3788d0a2692cfc023fc61233382624e43f2a9b1f9cf4",
+      "installed_dependencies": "8f2648eb5d1c11972d9c1b3b6b08c7ec2ce2ce8e97914eb24dc6951f86c87c6d",
+      "python_runtime": "301b5253f86e24a42309b61eb2d00335738628e49bc93ac71c125c12c80bfc93",
+      "route_role_bindings": "e18e96aab6029d406d7d28360a6dda374eeae3dccccc3063e8a4e857fc5bf665"
+    },
+    "semantic_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b"
+  },
+  "approved_execution_config_fingerprint": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+  "approved_routes": [
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "role": "planning"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "33578b035711c3e83bec0e33275710b88ad015d4698efee2a00df5585be7a705",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "129841923d22b8f25b3c5e250be780735228f74d3add6173aa3139f6a1b2d955",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "role": "draft"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "role": "review"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "d96e0dab0e68cb82cf334476d2269e525dc243200f7e85c68c716c80620d70d2",
+        "protocol": "openai-responses",
+        "provider_descriptor_hash": "b2c472932b2df51f56731394ea6fc85c17e9c244ac99dd6b17a9c19796e891b5"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "18a7d72baee2244bb375fac5c9dfeff9a06fd7c747899c0dc5b18c926e48735d",
+        "protocol": "openai-responses",
+        "provider_descriptor_hash": "b2c472932b2df51f56731394ea6fc85c17e9c244ac99dd6b17a9c19796e891b5"
+      },
+      "role": "reader_review"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "role": "final_review"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "acb6eef1e1a13879fc3d2aed70e49f3fce523bc57d695c63086bc07c2da53438",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "ac8c8cff45a2535ae7debe3fbc361f165fe0b8cc940e97e3e6f894c29c6a2570",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "e076dfb10a335f60825d4f8222374f6f806c5c13ef5161b4caefb72d49e52977"
+      },
+      "role": "polish"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "ac8c8cff45a2535ae7debe3fbc361f165fe0b8cc940e97e3e6f894c29c6a2570",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "e076dfb10a335f60825d4f8222374f6f806c5c13ef5161b4caefb72d49e52977"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "acb6eef1e1a13879fc3d2aed70e49f3fce523bc57d695c63086bc07c2da53438",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "f561e5c7d91cd3702925a8bd065ae111d30a6c2bc9ed02aa168ddd15af215e0d"
+      },
+      "role": "line_edit"
+    },
+    {
+      "allowed_stages": [
+        "starting",
+        "planning",
+        "planning_review",
+        "causal_chain",
+        "execution_manifest",
+        "execution_manifest_review",
+        "draft",
+        "draft_validation",
+        "draft_integrity",
+        "review",
+        "reader_review",
+        "quality",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fallback": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6"
+      },
+      "primary": {
+        "maximum_canary_output_tokens": 32000,
+        "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "protocol": "anthropic",
+        "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f"
+      },
+      "role": "maintenance"
+    }
+  ],
+  "budgets": {
+    "call_topology_sha256": "a36eb946c3dae1c1122e78789c8bcc2dd14218e5aedf3e3a3fa63f2cc0af6113",
+    "currency": "MULTI_CURRENCY_NO_FX",
+    "elapsed_budget_sha256": "a3c32156c65c7abe4068a8af9e0f143457f8816013de6543c77410eee1df81a6",
+    "expected_model_calls": 16,
+    "gate_wait_timeout_seconds": 120,
+    "maximum_elapsed_seconds": 7200,
+    "maximum_estimated_cost_microunits": 0,
+    "maximum_input_tokens": 1000000,
+    "maximum_model_calls_per_run": 48,
+    "maximum_output_tokens": 1000000,
+    "maximum_output_tokens_per_call": 32000,
+    "maximum_runs": 1,
+    "maximum_total_model_calls": 48,
+    "monetary_budget": {
+      "approved_fx_snapshot": null,
+      "maximum_cny_cost_microunits": 50000000,
+      "maximum_usd_cost_microunits": 20000000,
+      "schema": "CanaryMonetaryBudgetV1"
+    },
+    "price_catalog_sha256": "053fbf7d5fe203257dfb200e019c0ac4bdb811f09e244db4f37c906c7667649a",
+    "pricing_status": "verified_identity_price_bounded_capability_unknown",
+    "worst_case_chargeable": true
+  },
+  "canary_mode": "short_completion",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "expected_runtime_execution_fingerprint": "47c4806b9dd97baac1f982e90481f5ad491f89acad33c23d0408c1d946549f60",
+  "feature_flag_snapshot": {
+    "NOVEL_CANONICAL_SHADOW_V1": false,
+    "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1": false,
+    "NOVEL_PLANNING_REPAIR_EVIDENCE_TRACE_V1": true,
+    "NOVEL_RELIABILITY_TRACE": true,
+    "NOVEL_SHORT_CANONICAL_V2": false,
+    "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1": false,
+    "project_short_canonical_v2": false
+  },
+  "isolation": {
+    "approval_ledger_identity": "1d2157c2bafae91f572cc83386670655f05d34ce675633b32fa291b9f4d01011",
+    "data_root_kind": "canary_ephemeral",
+    "db_path_hash": "bbccc53b4aceeed4adc8344d6515f3bf8ba3bf523e20b0a4d1d50417054cbdc2",
+    "project_root_hash": "dfd4eb9d81f52d38954d6b45c08725888a44c3f0b1b241838f918f6d862d1812",
+    "run_namespace": "short-completion-ptr3-20260820t041340z-003",
+    "stable_root_identity": "70623552fc44bce3864ccfa168965c916f9f927a550342788c54e1a8cdd1ae7d"
+  },
+  "launcher_sha256": "0eda89a41138ed8996999b1e57b58b8ee03bc1a862ff50f1c1281840a8415faa",
+  "plan_sha256": "6de11f211f940c82e916a6d7eff496faa17790e70707c2c5e5f5550d5d6fc709",
+  "provider_descriptor_definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+  "report_policy": {
+    "hash_only": true,
+    "machine_specific_paths_included": false,
+    "raw_content_included": false
+  },
+  "role_binding_manifest_definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+  "runtime_fingerprint_policy_version": "runtime-fingerprint-v2",
+  "runtime_mode": "git_workspace",
+  "schema": "CanaryExperimentPlanV1",
+  "short_completion_policy": {
+    "approval_scope": "SHORT_COMPLETION_SINGLE_REAL_PROVIDER_CANARY",
+    "completion_goal": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
+    "completion_goal_definition_sha256": "94863ba539cfc2f4167d351c96e491e580e688b3cee0ebac8c253d772c15b422",
+    "draft_validator_policy_sha256": "7e9f52cf3c5600423c6abe63a7de6d8449db81bfcd7260585da5d8b59e22fdac",
+    "execution_collection_profile_id": "production_mirror_short_v1",
+    "final_artifact_policy_sha256": "30b0b195bca3633c923f93982c5cc92324f21c0972e51112a568560135856e78",
+    "final_checkpoint_policy_sha256": "504e83d56d9640d1d3fa9dd6227a92faa0b14d3e1ae21cae291994f383f61086",
+    "final_review_definition_sha256": "ae0bce6d76197dc694bd4d8a86eed1ddead27bf513c09e2cabbf2eb17b533e0c",
+    "maintenance_definition_sha256": "6d198daa391ce5f934a5c7b614f6013b08dbd1f8edec42220f0ad5871c28bbeb",
+    "mixed_script_policy_sha256": "11c8a15e84c7c76154b60b047f9048468c93d60ee6c383b5b66dadd2c1066d1d",
+    "profile_definition_sha256": "8e5dc6481aff28f24ebad544b4f5684c010c76b3f3903d76ad98ccc279136ee4",
+    "profile_id": "short_completion_1",
+    "ptr3_readiness": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "credentials_or_headers_included": false,
+      "current_build_sha256": "e97060b725a6978f7770c18ec4feb46dd88dc326609355a19d24a1741bcc8bf6",
+      "current_config_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+      "current_prompt_policy_sha256": "c341eb13abace08e1f658b1aa1be728de71a5ffc3d32991e493e43ef35fdfabe",
+      "current_runtime_sha256": "47c4806b9dd97baac1f982e90481f5ad491f89acad33c23d0408c1d946549f60",
+      "definition_sha256": "efe2ab7808905d74ca4212e3b8db0646f3c0252f55ac2449d6ef2261e391f943",
+      "expected_stale_finding_count": 0,
+      "finding_bounds_policy_sha256": "ada8f3fde14da93567e76a13d0411cf532e6d7118b981d0ca41af788797eb140",
+      "finding_contract_schema": "PlanningRepairRetryFindingV1",
+      "finding_contract_sha256": "e4c016c5b6fc78093f5842dea1879192da3557c872277abcb38f21af11bb1071",
+      "finding_contract_version": 1,
+      "first_planning_repair_request_sha256": "00c48c9f2269ed7eb1625755c5fd621669988731e2f2ee2ed0d726b03e3e1b89",
+      "historical_call7_primary_root_cause": "unclosed",
+      "initial_planning_request_sha256": "fc1836df086e66b86e4d4c0cfe3c554b53d51fc012f405da2fa3cd8bc94b6c3d",
+      "planning_domain_validator_sha256": "949715c9d33f553db9949357cfa78b9fdfc6f7a0c94bff907e9fdf30ca69344f",
+      "planning_repair_scope_mutation": "residual_unproven",
+      "production_output_budget_parity": "exact",
+      "provider_terminal_amplifier_shape": "residual_unclosed",
+      "ptr3_evidence_commit": "ab458a016caaed2148432c8c67b27734c61fe3ed",
+      "ptr3_report_sha256": "8ec3607d3072defdd18f3bf74fdcd601f5eacfcf57eed68f7daff9bcef864664",
+      "ptr3_successor_baseline_sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+      "ptr3_test_receipt_sha256": "c5d118b4e7545822cfdbe1afad7a6b83b7f8b6817af68c62bcd1f461639d46af",
+      "raw_prompt_included": false,
+      "raw_story_included": false,
+      "readiness_status": "exact",
+      "repair_scope_identity": "exact_hash_bound_current_patch_scope",
+      "retry_after_domain_failure_contract_sha256": "a12c2ad5512371e205a0b63ba1190329ee204a204a3c52462b8b4565e51fe94e",
+      "retry_fallback_parity": "exact",
+      "route_model_parity": "exact",
+      "schema": "ShortCompletionPTR3ReadinessBindingV1",
+      "verified_recovery_defect": "planning.targeted_repair_finding_not_propagated=fixed",
+      "version": 1
+    },
+    "ptr3_readiness_sha256": "efe2ab7808905d74ca4212e3b8db0646f3c0252f55ac2449d6ef2261e391f943",
+    "r1_d3_production_mirror_readiness": {
+      "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+      "definition_sha256": "63c35701c9edc960010874d4d4f4e13d257561461e007bbdbe0735d5048e6fcc",
+      "draft_initial_request_sha256": "df83ea0c1b22e7586b4f91cd3fc50a39e623e4e024bfffe60478ce20bb50b675",
+      "draft_maximum_attempts": 3,
+      "draft_retry_contract_sha256": "d86985951d9518cf9512c83591b62a1e6b9b11478d562b4e378a1cf30bcfe03f",
+      "draft_retry_count_parity": "exact",
+      "draft_retry_scope_too_broad": "residual",
+      "draft_validator_sha256": "7e9f52cf3c5600423c6abe63a7de6d8449db81bfcd7260585da5d8b59e22fdac",
+      "historical_manifest_rewritten": false,
+      "mixed_script_policy_sha256": "11c8a15e84c7c76154b60b047f9048468c93d60ee6c383b5b66dadd2c1066d1d",
+      "production_mirror_build_sha256": "e97060b725a6978f7770c18ec4feb46dd88dc326609355a19d24a1741bcc8bf6",
+      "production_mirror_config_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+      "production_mirror_prompt_policy_sha256": "c341eb13abace08e1f658b1aa1be728de71a5ffc3d32991e493e43ef35fdfabe",
+      "production_mirror_runtime_sha256": "47c4806b9dd97baac1f982e90481f5ad491f89acad33c23d0408c1d946549f60",
+      "ptr3_successor_baseline_sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+      "raw_prompt_included": false,
+      "raw_story_included": false,
+      "readiness_status": "exact",
+      "schema": "R1D3SuccessorReadinessBindingV1",
+      "structured_draft_finding_propagation": "enabled",
+      "version": 1
+    },
+    "r1_d3_production_mirror_readiness_sha256": "63c35701c9edc960010874d4d4f4e13d257561461e007bbdbe0735d5048e6fcc",
+    "second_run_allowed": false,
+    "stop_condition_manifest_hash": "a9af4766c7a5e80b5a8a69dfcd2c97b825d55d4d27889a9166b96b54ad63f027"
+  },
+  "stop_conditions": [
+    "first_workflow_terminal",
+    "fingerprint_mismatch",
+    "production_source_dirty_or_changed",
+    "route_model_protocol_mismatch",
+    "budget_exhausted",
+    "approval_expired",
+    "cohort_replay",
+    "live_isolation_violation",
+    "phase1b_enabled",
+    "prompt_policy_mismatch",
+    "pricing_manifest_mismatch",
+    "draft_validator_policy_mismatch",
+    "authority_aware_mixed_script_policy_mismatch",
+    "final_review_contract_mismatch",
+    "final_review_binding_invalid",
+    "maintenance_definition_mismatch",
+    "final_artifact_binding_failure",
+    "final_checkpoint_closure_failure",
+    "root_cause_masking"
+  ],
+  "version": 1,
+  "workload_manifest_hash": "80a37d9270f7d0dc5f4260e391b0c53d4232c1abda4b859d8dbaf11a07a018ae",
+  "workloads": [
+    {
+      "controlled_outcomes": [],
+      "estimated_input_tokens": 36715,
+      "expected_stage_reachability": [
+        "planning",
+        "causal_chain",
+        "execution_manifest",
+        "draft",
+        "review",
+        "polish",
+        "final_review",
+        "maintenance"
+      ],
+      "fixture_sha256": "c2eff79242ff5a746ff263ff28639c950180ecc0565643e8ffebcdd8d16158d1",
+      "maximum_model_calls": 48,
+      "maximum_output_tokens": 1000000,
+      "prompt_policy_manifest_sha256": "c341eb13abace08e1f658b1aa1be728de71a5ffc3d32991e493e43ef35fdfabe",
+      "success_definition": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
+      "terminal_outcomes": [
+        "workflow_terminal"
+      ],
+      "weight": 1,
+      "workload_id": "short-normal-v1"
+    }
+  ]
+}

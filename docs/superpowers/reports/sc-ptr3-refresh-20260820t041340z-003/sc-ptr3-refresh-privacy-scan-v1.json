@@ -1,0 +1,25 @@
+{
+  "schema": "SCPTR3FreshPrivacyScanV1",
+  "version": 1,
+  "scope": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003",
+  "scan_status": "exact",
+  "policy": "hash_shape_count_only_v1",
+  "privacy_scan_sha256": "058f1d27d1b1ba9d83fb0518734569aa542fad71341fb51183dd2fc884dbe167",
+  "documents_scanned_count": 17,
+  "violation_count": 0,
+  "violation_codes": [],
+  "checks": {
+    "api_keys_or_credentials": 0,
+    "authorization_or_secret_headers": 0,
+    "absolute_paths": 0,
+    "raw_prompt_or_story_content": 0,
+    "raw_tool_arguments": 0,
+    "raw_provider_responses": 0,
+    "fixture_business_content": 0
+  },
+  "content_policy": "hash_shape_count_typed_outcome_and_controlled_alias_only",
+  "real_provider_calls": 0,
+  "full_short_canary_executed": false,
+  "signed_approval_included": false,
+  "confirmed_authorization_patch_included": false
+}

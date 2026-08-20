@@ -1,0 +1,92 @@
+{
+  "schema": "SCPTR3FreshSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "file_bytes",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/approval-ledger-short-completion-ptr3-20260820t041340z-003/.approval-ledger-identity-v1.json",
+      "bytes": 365,
+      "sha256": "45acf3225a0948c62a0f4904f10a7ae7f28efcffaabe3124bbf6a8e9e8be8854"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-authorization-patch-template-v1.json",
+      "bytes": 2030,
+      "sha256": "1c5146defaa8d6684a6f6f0dd702665e610ce494a3f532812d229fd0ceb7948f"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-canary-root-readiness-v1.json",
+      "bytes": 1146,
+      "sha256": "0439ecf40670722e9d023bea4b26589c45fb9f507149a7f440a14d874f5c86ab"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-definitions-v1.json",
+      "bytes": 13983,
+      "sha256": "057c0ac52eb999007b3673673b34fe72f855de91c17b7839f8b8a5561de667dd"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-execution-preview-v1.json",
+      "bytes": 2496,
+      "sha256": "ac7e9e6bdedb99e6ed4b07c5745f7ed577661626ce19a94d5bf1470b37618e37"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-final-approval-candidate-v1.json",
+      "bytes": 4525,
+      "sha256": "6c5b3b68f6afbb026054b6fb079af78f9240b5db39145f319660d084caeb2609"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-final-plan-v1.json",
+      "bytes": 19936,
+      "sha256": "1e4e77fa050e8346ac056e74713a8699d3581d28a9e893f20c28379979a4af6f"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-ledger-operational-readiness-v1.json",
+      "bytes": 530,
+      "sha256": "ed33165b3cd6ba526ceef2798c954f286fb3eebf861803aadb7f700e3cfb775b"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-materialization-index-v1.json",
+      "bytes": 3897,
+      "sha256": "3fbb92361334d47f393bc32d774aca25582f679fa462bb328fbd5a045d346a3a"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-pre-launch-semantic-rehearsal-v1.json",
+      "bytes": 3657,
+      "sha256": "cda1f2e20065cc7a107ef23c958510bcdf7ef16e94b5f667fe27020475c0806d"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-ptr3-readiness-v1.json",
+      "bytes": 2364,
+      "sha256": "d0995c64c0d68b5072dce0c9da13b622c328903522eb93e44193dbd735571c63"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-r1-d3-production-mirror-readiness-v1.json",
+      "bytes": 1485,
+      "sha256": "f48e0293e5492e9a3f7719a5c138ed7430fcf2bc58539f2cea73f780a7dd5f71"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-sealed-evidence-rebinding-v1.json",
+      "bytes": 5931,
+      "sha256": "29751d95364eda9f3728233885f50b62c8791494f5490bf8170b5bd07c1eda3e"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/materialization-v1/short-completion-1-validate-only-receipt-v1.json",
+      "bytes": 8929,
+      "sha256": "5e4c13df7433a9eb94b5f9ebe5d1ef4e445f11fbc2528f67b8257e1d97d6da3b"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/sc-ptr3-refresh-final-report-v1.md",
+      "bytes": 11619,
+      "sha256": "aa1335fb9ba42e79993370868f246107bdf3c5fd2537476052ecdec87934b5f9"
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ptr3-refresh-20260820t041340z-003/sc-ptr3-refresh-privacy-scan-v1.json",
+      "bytes": 865,
+      "sha256": "5dd1984e9d7c297f825a79dde58f0848cdc4808350ef3b04d6dcea4f44cd19a5"
+    }
+  ],
+  "signed_approval_included": false,
+  "confirmed_authorization_patch_included": false,
+  "real_provider_calls": 0,
+  "full_short_canary_executed": false
+}

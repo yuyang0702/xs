@@ -1,0 +1,25 @@
+{
+  "schema": "ShortCompletionCanaryRootReadinessV1",
+  "version": 1,
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "401d6f311153048dc7c72426053178d85d4d216a6ad4789a99df2256c75ec057",
+  "status": "exact",
+  "stable_root_identity": "70623552fc44bce3864ccfa168965c916f9f927a550342788c54e1a8cdd1ae7d",
+  "bound_plan_sha256": "6de11f211f940c82e916a6d7eff496faa17790e70707c2c5e5f5550d5d6fc709",
+  "run_namespace": "short-completion-ptr3-20260820t041340z-003",
+  "data_root_kind": "canary_ephemeral",
+  "db_path_hash": "bbccc53b4aceeed4adc8344d6515f3bf8ba3bf523e20b0a4d1d50417054cbdc2",
+  "project_root_hash": "dfd4eb9d81f52d38954d6b45c08725888a44c3f0b1b241838f918f6d862d1812",
+  "physical_root_materialized": false,
+  "physical_root_state": "absent_until_new_final_user_authorization",
+  "creation_policy": "empty-new-root-only-v1",
+  "live_root_overlap_allowed": false,
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  }
+}

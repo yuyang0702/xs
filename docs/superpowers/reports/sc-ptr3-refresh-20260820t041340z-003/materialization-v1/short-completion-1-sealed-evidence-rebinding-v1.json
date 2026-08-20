@@ -1,0 +1,143 @@
+{
+  "schema": "SCPTR3FreshSealedEvidenceRebindingV1",
+  "version": 1,
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "c977a459b052e93f3b536bb3c69603c42f44ca23b183c136700746c37f02573d",
+  "binding_status": "exact",
+  "repository_baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "0e95591a080644cbb2dc6ac15bd6a3f693ec7ed2",
+    "worktree_clean_before_materialization": true
+  },
+  "historical_authorization": {
+    "cohort_id": "short-completion-ptr3-20260817t091500z-002",
+    "execution_window": {
+      "not_before": "2026-08-17T08:53:52Z",
+      "not_after": "2026-08-19T08:53:52Z"
+    },
+    "status": "expired_historical_sealed_evidence_only",
+    "reused": false,
+    "dates_manually_modified": false
+  },
+  "fresh_packet": {
+    "cohort_id": "short-completion-ptr3-20260820t041340z-003",
+    "execution_window": {
+      "not_before": "2026-08-20T04:30:46Z",
+      "not_after": "2026-08-22T04:30:46Z"
+    },
+    "plan_sha256": "6de11f211f940c82e916a6d7eff496faa17790e70707c2c5e5f5550d5d6fc709",
+    "approval_candidate_sha256": "f8a427655e66d077f730fcb0a39cc884d4571a6a27a1fef63849d0db0ac118f9",
+    "execution_authorized": false,
+    "usage_status": "unused",
+    "approval_status": "unreserved"
+  },
+  "sealed_evidence": [
+    {
+      "name": "SC-PTR3-MAT final report",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/sc-ptr3-mat-final-report-v1.md",
+      "bytes": 8052,
+      "sha256": "b6584d0f4924207f4373f4b54733a05fef6f4fc978e6d95d25c45e572fba6e4e"
+    },
+    {
+      "name": "Final Plan",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-final-plan-v1.json",
+      "bytes": 19936,
+      "sha256": "a8b370e6120478ad409308875c75f3341e9754e0998112319bacff6447b2d3f8"
+    },
+    {
+      "name": "Candidate",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-final-approval-candidate-v1.json",
+      "bytes": 4525,
+      "sha256": "551a217ee09acfdaaf413d3e46de6e23c4fab0038587fc334bab115c0935ed6f"
+    },
+    {
+      "name": "Patch Template",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-authorization-patch-template-v1.json",
+      "bytes": 2030,
+      "sha256": "dd84c049de414e6867a063d81d38dc90f4446ef4f8a656228b877e6d05f5c870"
+    },
+    {
+      "name": "Validate-only Receipt",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-validate-only-receipt-v1.json",
+      "bytes": 8929,
+      "sha256": "a0e9b09ae5e5cb6abd1d789b493b71e188835290465804328aaf1b40510c73b3"
+    },
+    {
+      "name": "Execution Preview",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-execution-preview-v1.json",
+      "bytes": 2371,
+      "sha256": "f1ac2d3241e9c09745eb70bf6850e856aa6646c1e9669bee5c702abac5047148"
+    },
+    {
+      "name": "Materialization Index",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-materialization-index-v1.json",
+      "bytes": 3265,
+      "sha256": "d1b32474f58f0a5f0eed77d8ff7a7d29ee5cbe8adbb94c6e04bf6a991b2cb84b"
+    },
+    {
+      "name": "PTR3 readiness",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-ptr3-readiness-v1.json",
+      "bytes": 2364,
+      "sha256": "d0995c64c0d68b5072dce0c9da13b622c328903522eb93e44193dbd735571c63"
+    },
+    {
+      "name": "R1-D3 successor readiness",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-r1-d3-production-mirror-readiness-v1.json",
+      "bytes": 1485,
+      "sha256": "f48e0293e5492e9a3f7719a5c138ed7430fcf2bc58539f2cea73f780a7dd5f71"
+    },
+    {
+      "name": "Pre-launch Rehearsal",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/materialization-v1/short-completion-1-pre-launch-semantic-rehearsal-v1.json",
+      "bytes": 3657,
+      "sha256": "cda1f2e20065cc7a107ef23c958510bcdf7ef16e94b5f667fe27020475c0806d"
+    },
+    {
+      "name": "SHA manifest",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/sc-ptr3-mat-final-sha256-manifest-v1.json",
+      "bytes": 3569,
+      "sha256": "a5159545ce5390a39cbc5a766585431c95de971fc393d3c38363120382ece139"
+    },
+    {
+      "name": "Privacy Scan",
+      "path": "docs/superpowers/reports/sc-ptr3-mat/sc-ptr3-mat-privacy-scan-v1.json",
+      "bytes": 536,
+      "sha256": "eda9b14ed8e11f96abee958d20c86181417c1fe5e5c35d87b18b7db29d74f0b9"
+    },
+    {
+      "name": "R1-PTR3 final report",
+      "path": "docs/superpowers/reports/r1-ptr3/r1-ptr3-final-report-v1.md",
+      "bytes": 4834,
+      "sha256": "8ec3607d3072defdd18f3bf74fdcd601f5eacfcf57eed68f7daff9bcef864664"
+    },
+    {
+      "name": "R1-PTR3 test receipt",
+      "path": "docs/superpowers/reports/r1-ptr3/r1-ptr3-test-receipt-v1.json",
+      "bytes": 1075,
+      "sha256": "c5d118b4e7545822cfdbe1afad7a6b83b7f8b6817af68c62bcd1f461639d46af"
+    },
+    {
+      "name": "R1-PTR3 successor baseline",
+      "path": "tests/fixtures/reliability/r0f/r1-ptr3-authorized-protected-source-successor-v1.json",
+      "bytes": 2366,
+      "sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c"
+    }
+  ],
+  "readiness_binding": {
+    "ptr3_readiness_status": "exact",
+    "verified_recovery_defect": "planning.targeted_repair_finding_not_propagated=fixed",
+    "historical_call7_primary_root_cause": "unclosed",
+    "planning_repair_scope_mutation": "residual_unproven",
+    "provider_terminal_amplifier_shape": "residual_unclosed",
+    "r1_d3_successor_readiness_status": "exact",
+    "structured_draft_finding_propagation": "enabled",
+    "draft_retry_scope_too_broad": "residual"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  }
+}
