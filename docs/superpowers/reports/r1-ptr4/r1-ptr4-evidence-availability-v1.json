@@ -1,0 +1,38 @@
+{
+  "schema": "R1PTR4EvidenceAvailabilityV1",
+  "version": 1,
+  "parent_evidence_commit": "eedfe33f00effb31c269fe9808fbc607f91a29a0",
+  "parent_evidence_sha256": "12603909cc4df1edc5419d2fba6a58c789965843328f7cf5fdafc23488ce4e60",
+  "sources_read": {
+    "final_report": "exact",
+    "official_evidence_package": "exact",
+    "parent_sha256_manifest": "exact",
+    "parent_privacy_scan": "exact",
+    "model_boundary_ledger": "available_12_boundaries",
+    "budget_and_pricing_ledger": "available",
+    "runtime_preflight_receipts": "available_12_exact",
+    "model_output_observations": "available_for_10_transport_successes",
+    "conversion_audits": "available_8_unique_files_for_10_responses",
+    "reliability_trace": "available",
+    "run_events": "available",
+    "workflow_failure_checkpoints": "available_3",
+    "capability_metadata": "available_but_expired_at_execution",
+    "request_manifests": "hash_only_system_user_contract_bindings_available"
+  },
+  "typed_snapshots": {
+    "planning_repair_domain": "absent_path_not_reached",
+    "finding_propagation": "absent_path_not_reached",
+    "provider_content_block_shape": "absent_capture_scope_not_reached",
+    "planning_repair_output_limit": "absent_capture_scope_not_reached",
+    "strict_tool_shape": "absent_execution_mode_plain_and_flag_disabled",
+    "pa_output_budget_lineage": "absent_profile_flag_disabled"
+  },
+  "privacy": {
+    "raw_provider_content_available": false,
+    "raw_prompt_available": false,
+    "raw_story_available": false,
+    "credentials_or_headers_available": false
+  },
+  "consequence": "provider pre-adapter block topology and adapter projection parity cannot be reconstructed from sealed evidence",
+  "root_cause_gate": "R1_PTR4_PROVIDER_CAPABILITY_EVIDENCE_REQUIRED"
+}

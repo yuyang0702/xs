@@ -1,0 +1,53 @@
+{
+  "schema": "R1PTR4PrivacyScanV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "utf8_sorted_path_bytes_sha256_violation_count_lines",
+  "scan_input_sha256": "342582fc183034446f73eba643c53356b475378150944d072667661247dc6bb7",
+  "status": "exact",
+  "scanned_file_count": 4,
+  "violation_count": 0,
+  "credentials_or_headers_included": false,
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "raw_provider_content_included": false,
+  "patterns": [
+    "OpenAI-style secret token",
+    "AWS access-key identifier",
+    "Bearer authorization value",
+    "Authorization header assignment",
+    "X-API-Key assignment",
+    "quoted API key, secret key, or access token assignment",
+    "private-key PEM header",
+    "raw provider content included=true",
+    "raw prompt included=true",
+    "raw story included=true"
+  ],
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-boundary-reconstruction-v1.json",
+      "bytes": 29520,
+      "sha256": "ce27f78dd100786645525be2d0e0abaea4c84215337d80f26b43cf7b388b8cef",
+      "violation_count": 0
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-evidence-availability-v1.json",
+      "bytes": 1766,
+      "sha256": "5e36396473f984f7bb2736165a092205ab68cbc6f981895c9fbbf2b0094a6719",
+      "violation_count": 0
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-final-report-v1.md",
+      "bytes": 19927,
+      "sha256": "3b1d75d30406a3b1ad2747f4f4f871d6e3e94782ce6a2f7711fa11498e029f99",
+      "violation_count": 0
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-root-cause-decision-v1.json",
+      "bytes": 1625,
+      "sha256": "d42cf7cab3df2be6163478c41a57ad05909c0b77eaa7f823c3bfbfc8b1c13d0e",
+      "violation_count": 0
+    }
+  ],
+  "violations": []
+}

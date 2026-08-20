@@ -1,0 +1,41 @@
+{
+  "schema": "R1PTR4Sha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "file_bytes",
+  "evidence_canonicalization": "utf8_sorted_path_bytes_sha256_lines",
+  "gate": "R1_PTR4_PROVIDER_CAPABILITY_EVIDENCE_REQUIRED",
+  "evidence_canonical_sha256": "e7806b206edbdddf21a1ea74c7d0ebbb327ccedf7216f528c281c4ac2edfdf4c",
+  "parent_evidence_commit": "eedfe33f00effb31c269fe9808fbc607f91a29a0",
+  "parent_evidence_canonical_sha256": "12603909cc4df1edc5419d2fba6a58c789965843328f7cf5fdafc23488ce4e60",
+  "provider_probe_executed": false,
+  "production_fix_implemented": false,
+  "external_action_count": 0,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-boundary-reconstruction-v1.json",
+      "bytes": 29520,
+      "sha256": "ce27f78dd100786645525be2d0e0abaea4c84215337d80f26b43cf7b388b8cef"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-evidence-availability-v1.json",
+      "bytes": 1766,
+      "sha256": "5e36396473f984f7bb2736165a092205ab68cbc6f981895c9fbbf2b0094a6719"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-final-report-v1.md",
+      "bytes": 19927,
+      "sha256": "3b1d75d30406a3b1ad2747f4f4f871d6e3e94782ce6a2f7711fa11498e029f99"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-privacy-scan-v1.json",
+      "bytes": 1812,
+      "sha256": "c7799f8a814329c14a38444cda024b0b307aaa894b05491b1356fe819cbe434b"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4/r1-ptr4-root-cause-decision-v1.json",
+      "bytes": 1625,
+      "sha256": "d42cf7cab3df2be6163478c41a57ad05909c0b77eaa7f823c3bfbfc8b1c13d0e"
+    }
+  ]
+}

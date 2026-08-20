@@ -1,0 +1,44 @@
+{
+  "schema": "R1PTR4RootCauseDecisionV1",
+  "version": 1,
+  "gate": "R1_PTR4_PROVIDER_CAPABILITY_EVIDENCE_REQUIRED",
+  "first_transport_divergence": {
+    "boundary": 1,
+    "typed_failure": "ConnectError",
+    "causal_role": "ROUTE_ESCALATION_TRIGGER",
+    "recovered": true
+  },
+  "first_unrecovered_divergence": {
+    "boundary": 3,
+    "family": "PLANNING_SEMANTIC_V2_PLAIN_MODE_SEMANTIC_VALIDATION_FAILED",
+    "transport_complete": true,
+    "json_candidate_count": 1,
+    "domain_validator_reached": false
+  },
+  "terminal_amplifier": {
+    "boundary": 12,
+    "family": "STICKY_OUTPUT_LIMIT_COLLAPSES_FINAL_ARTIFACT_CONVERSION_FAILURE",
+    "exception": "ContractOutputLimitExhaustedError",
+    "observable_projection_phenotype": "ZERO_VISIBLE_MAX_TOKENS",
+    "provider_shape_class": "UNKNOWN"
+  },
+  "primary_root_cause": null,
+  "secondary_contributors": [
+    "EXPIRED_STRUCTURED_OUTPUT_CAPABILITY_EVIDENCE_FORCED_PLAIN_MODE",
+    "PRIMARY_CONNECT_ERRORS_CONSUMED_TWO_CALLS_AND_TRIGGERED_FALLBACK",
+    "REPEATED_SEMANTIC_NORMALIZER_REJECTION_ACROSS_SMALLER_CAPACITY_PACKETS",
+    "OUTPUT_LIMIT_SEEN_STICKINESS_MASKED_LATER_END_TURN_SEMANTIC_REJECTION",
+    "PROVIDER_CONTENT_BLOCK_SNAPSHOT_NOT_PERSISTED_FOR_PLANNING_SEMANTIC_V2"
+  ],
+  "ptr3_planning_retry_path_exercised": "NO",
+  "recommended_narrow_fix_family": "DEFERRED_PENDING_PROVIDER_CONTENT_BLOCK_SHAPE_AND_FRESH_CAPABILITY_EVIDENCE",
+  "production_fix": "NOT_IMPLEMENTED",
+  "provider_probe": "NOT_EXECUTED",
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}
