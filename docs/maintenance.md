@@ -81,6 +81,22 @@ syntax repair, but local parsing never invents missing facts or chooses between
 multiple candidates. Ambiguity, missing roots, or domain-incomplete content stops or
 continues the explicit recovery ladder before any checkpoint or formal promotion.
 
+Structured final-artifact calls also project the adapter-retained raw response state
+into a provider-neutral, privacy-safe output shape before parser/schema execution.
+When a terminal `max_tokens` response contains
+one or more reasoning/thinking blocks but no text block, tool call, visible text, or
+unknown block, and the adapter projection is exact, Runtime raises
+`reasoning_only_final_artifact_unavailable` before parsing or schema validation. It
+stores `reasoning_only_output_limit` as an immediate negative `final_artifact`
+qualification bound to the exact provider, model, route fingerprint, contract, and
+schema. The remaining attempts for that route are skipped without another Provider
+call or output-budget expansion. Recovery may use only a distinct route already in
+the configured schedule; otherwise Runtime raises the typed
+`final_artifact_capability_exhausted` terminal error while preserving upstream
+authority. Reasoning-plus-text, reasoning-plus-tool, empty content, adapter projection
+loss, and unknown block shapes do not match this guard and retain their existing
+validation or failure paths.
+
 The model/API status distinguishes a protocol-only observation from a
 business-qualified route. Diagnose repeated failures from the stored contract/mode
 outcome rather than repeatedly probing the provider. The deterministic regression

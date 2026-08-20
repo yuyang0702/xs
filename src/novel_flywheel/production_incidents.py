@@ -213,6 +213,17 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "provider.reasoning_only_final_artifact_unavailable",
+        "Provider reasoning exhausted the shared output cap before a final artifact",
+        "Preserve the last accepted authority-bound checkpoint. Record the exact provider, model, route fingerprint, contract and schema as a negative final-artifact capability; never repeat that fingerprint in the same recovery schedule or expand its output budget. Continue only through an already-configured distinct eligible route and re-enter canonical conversion plus the unchanged domain validator. If no route remains, fail closed with the typed final-artifact capability error; do not change Prompt, model, route, retry budget, StoryState, Canon or READY authority.",
+        (
+            r"reasoning-only provider output exhausted without a final artifact",
+            r"final-artifact capability was exhausted across permitted routes",
+            r"reasoning_only_final_artifact_unavailable",
+            r"final_artifact_capability_exhausted",
+        ),
+    ),
+    IncidentDefinition(
         "model.output_truncated",
         "模型输出达到上限或疑似截断",
         "先验证输出闭合性；不完整时只增加一次可验证余量。再次触顶后进入统一语义分包协议：优先沿完整故事段边界递归拆分，再缩小到连续事件；每包绑定权威哈希、唯一有序所有权、只读邻接上下文和前序结果哈希，已验证叶子立即原子检查点。不可再拆的事件切换到已配置备用模型；仍失败则保留所有合格上游和叶子，禁止机械截断或把部分结果晋升为正式资料。所有叶子经确定性无重无漏合并和整链校验后，才允许进入下一道执行清单边界。",

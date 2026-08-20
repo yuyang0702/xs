@@ -1,0 +1,90 @@
+{
+  "schema": "R1PTR9FinalSHA256ManifestV1",
+  "generated_at_utc": "2026-08-20T18:16:25Z",
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "report_files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-change-contract-v1.json",
+      "bytes": 4642,
+      "sha256": "9a6465e99b64667f1cb2de4c6da7c0c3d1fbd7b0284917081906cde9ac745cf3"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-final-privacy-scan-v1.json",
+      "bytes": 1054,
+      "sha256": "d6c9c70f9204b82d9d7f357819876fac910a762489bfd85e5a79a02eddcf656f"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-final-report-v1.md",
+      "bytes": 6818,
+      "sha256": "ab8560f42038ab70c3420360e9b08861051513f5e77b37dcf3246d22d5a6eb5c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-forward-risk-report-v2.json",
+      "bytes": 10626,
+      "sha256": "5cf59f38a7e5a049af8d8a2c68d34ab774672464e571526f3a1530ff1af2e589"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-live-parity-v1.json",
+      "bytes": 1820,
+      "sha256": "1f3135148c86138ba46aae9ffed629684d8fba744b8298a500f7d4578de15215"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-offline-test-receipt-v1.json",
+      "bytes": 3445,
+      "sha256": "3cb3a72adcb1e4686b5dab69828a88d98351bc660aebc38ec82644e5c2cff1ca"
+    }
+  ],
+  "implementation_binding": [
+    {
+      "path": "src/novel_flywheel/provider_output.py",
+      "bytes": 7531,
+      "sha256": "1cc1cbd4204649bd1ae957e99f87b0418bbfdf04bfd16d6eab06804552f1d53b"
+    },
+    {
+      "path": "src/novel_flywheel/domain/models.py",
+      "bytes": 3685,
+      "sha256": "05a6bddfa82f956f5c89b824b3c411e40e8b2b5731e5e3ca945d7aa1a03b77d6"
+    },
+    {
+      "path": "src/novel_flywheel/models.py",
+      "bytes": 54259,
+      "sha256": "209322720d9596f21e6756c4d2b48f56e7f53f3e67f478d0758774bd45b03220"
+    },
+    {
+      "path": "src/novel_flywheel/db.py",
+      "bytes": 161916,
+      "sha256": "d0994c1bcb0b149f3560306c125ba5a5dd41c181cf829e7cfb014ce8589c3bfe"
+    },
+    {
+      "path": "src/novel_flywheel/contract_runtime.py",
+      "bytes": 62905,
+      "sha256": "aab9f4208a9ffdc507ab3a059655533986c445860584185317290e9f425d6eb4"
+    },
+    {
+      "path": "src/novel_flywheel/production_incidents.py",
+      "bytes": 38930,
+      "sha256": "1e251e7e8d649183fc0d5db397e838046167f1b3ff96231e9cda7bd17c1e03bb"
+    },
+    {
+      "path": "tests/test_final_artifact_guard.py",
+      "bytes": 21158,
+      "sha256": "83ea1b02ed724912123679f25843f499a5925004ebbcddb1d089eafbbf6e2257"
+    },
+    {
+      "path": "tests/providers/test_diagnostic_tool_shapes.py",
+      "bytes": 9704,
+      "sha256": "b278d25769bd5f33d5830e0b11a04d41b99a308790c0b890ac3d28d8575a1bc6"
+    },
+    {
+      "path": "tests/fixtures/reliability/r0f/r1-ptr9-authorized-protected-source-successor-v1.json",
+      "bytes": 2723,
+      "sha256": "1f20f9c824043ba5478c206f80eaf6b454b9ce0296b244839da9e929bbf8a380"
+    }
+  ],
+  "report_file_count": 6,
+  "implementation_binding_count": 9,
+  "real_provider_calls": 0,
+  "full_short_canary": "not_executed"
+}

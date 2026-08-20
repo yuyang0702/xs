@@ -19,6 +19,7 @@ from novel_flywheel.context_policy import (
 from novel_flywheel.model_diagnostics import (
     ModelDiagnosticContextV1, domain_sha256, emit_budget_lineage,
 )
+from novel_flywheel.models import FinalArtifactCapabilityError
 from novel_flywheel.planning_repair_diagnostics import (
     PlanningRepairDomainValidationSnapshotV1,
     PlanningRepairRetryFindingContractError,
@@ -81,6 +82,25 @@ class ContractBusinessOutputIncompleteError(RuntimeError):
         )
         self.reason = reason
         self.receipt = dict(receipt)
+
+
+class FinalArtifactCapabilityExhaustedError(RuntimeError):
+    """No distinct eligible route can produce the required final artifact."""
+
+    failure_kind = "final_artifact_unavailable"
+    failure_code = "final_artifact_capability_exhausted"
+
+    def __init__(
+        self,
+        *,
+        receipt: Mapping[str, Any],
+        blocked_route_fingerprints: Mapping[str, str],
+    ) -> None:
+        super().__init__(
+            "final-artifact capability was exhausted across permitted routes"
+        )
+        self.receipt = dict(receipt)
+        self.blocked_route_fingerprints = dict(blocked_route_fingerprints)
 
 
 @dataclass(frozen=True)
@@ -885,6 +905,9 @@ async def execute_contract_runtime(
     pending_source_identity: str | None = None
     attempt_output_tokens = max_output_tokens
     contract_schema = structured_contract.json_schema
+    blocked_route_fingerprints: dict[str, str] = {}
+    final_artifact_failure_seen = False
+    non_final_failure_seen = False
 
     def lineage_cap_values(target: int | None) -> dict[str, Any]:
         after_provider = target
@@ -1012,6 +1035,24 @@ async def execute_contract_runtime(
             )
             if diagnostic_context is not None else None
         )
+        if attempt.route in blocked_route_fingerprints:
+            _observe_attempt(
+                attempt_observer,
+                attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(
+                    str(attempt.attempt_index - 1)
+                    if attempt.attempt_index > 1 else None
+                ),
+                route=attempt.route,
+                route_attempt=attempt.route_attempt,
+                action="skip_negative_final_artifact_capability",
+                outcome="capability_skipped",
+                failure_class="final_artifact_unavailable",
+                error_class="FinalArtifactRouteQuarantinedError",
+                route_fingerprint=blocked_route_fingerprints[attempt.route],
+                model_call_delta=0,
+            )
+            continue
         emit_budget_lineage(
             attempt_context if attempt_executor is None else None,
             lineage_event="request_dispatched",
@@ -1102,20 +1143,50 @@ async def execute_contract_runtime(
                     last_receipt,
                 )
         except Exception as exc:
+            final_artifact_failure = isinstance(
+                exc, FinalArtifactCapabilityError,
+            )
+            failure_class = (
+                "final_artifact_unavailable"
+                if final_artifact_failure else classify_model_failure(exc)
+            )
+            error_receipt = getattr(exc, "receipt", None)
+            provider_call_executed = not (
+                final_artifact_failure
+                and isinstance(error_receipt, Mapping)
+                and error_receipt.get("provider_call_executed") is False
+            )
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
                 parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
                 route=attempt.route, route_attempt=attempt.route_attempt,
                 action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
-                outcome="transport_failure", failure_class=classify_model_failure(exc),
-                error_class=type(exc).__name__, model_call_delta=1,
+                outcome=(
+                    "final_artifact_capability_failure"
+                    if final_artifact_failure else "transport_failure"
+                ),
+                failure_class=failure_class,
+                error_class=type(exc).__name__,
+                model_call_delta=1 if provider_call_executed else 0,
             )
             last_error = exc
+            if isinstance(error_receipt, Mapping):
+                last_receipt = dict(error_receipt)
+            if final_artifact_failure:
+                final_artifact_failure_seen = True
+                fingerprint = str(
+                    (error_receipt or {}).get("route_fingerprint")
+                    if isinstance(error_receipt, Mapping) else ""
+                )
+                if fingerprint:
+                    blocked_route_fingerprints[attempt.route] = fingerprint
+            else:
+                non_final_failure_seen = True
             if attempt.route == "configured_fallback":
                 fallback_error = exc
             else:
                 primary_error = exc
-            if classify_model_failure(exc) == "input_context_overflow":
+            if failure_class == "input_context_overflow":
                 raise
             continue
         try:
@@ -1447,6 +1518,11 @@ async def execute_contract_runtime(
         )
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("structured contract runtime had no executable attempt")
+    if final_artifact_failure_seen and not non_final_failure_seen:
+        raise FinalArtifactCapabilityExhaustedError(
+            receipt=last_receipt,
+            blocked_route_fingerprints=blocked_route_fingerprints,
+        ) from last_error
     if output_limit_seen and (
         isinstance(last_error, ArtifactConversionError)
         or last_business_incomplete_reason is not None

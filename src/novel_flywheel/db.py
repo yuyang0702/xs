@@ -2858,7 +2858,7 @@ class Database:
         valid_outcomes = {
             "valid", "empty_output", "empty_object", "required_fields_missing",
             "underfilled", "protocol_invalid", "output_limited",
-            "semantic_invalid",
+            "semantic_invalid", "reasoning_only_output_limit",
         }
         if outcome not in valid_outcomes:
             raise ValueError("unknown structured route outcome")
@@ -2889,7 +2889,7 @@ class Database:
                 failures += 1
                 severe = outcome in {
                     "empty_output", "empty_object", "required_fields_missing",
-                    "underfilled",
+                    "underfilled", "reasoning_only_output_limit",
                 } or (
                     outcome == "protocol_invalid" and execution_mode != "plain"
                 )

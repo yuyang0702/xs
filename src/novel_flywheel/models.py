@@ -8,7 +8,13 @@ from typing import Literal
 import httpx
 
 from novel_flywheel.db import Database
-from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
+from novel_flywheel.domain.models import (
+    Message,
+    ModelRequest,
+    ModelResponse,
+    ProviderOutputShapeV1,
+    ToolDefinition,
+)
 from novel_flywheel.failure_boundary import (
     project_safe_failure,
     safe_local_validation_message,
@@ -23,6 +29,7 @@ from novel_flywheel.model_diagnostics import (
 from novel_flywheel.planning_repair_diagnostics import (
     observe_provider_content_block_shape,
 )
+from novel_flywheel.provider_output import provider_output_shape_from_response
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.structured_artifacts import (
@@ -83,6 +90,65 @@ class StructuredRouteQuarantinedError(RuntimeError):
     def __init__(self, execution_mode: str) -> None:
         super().__init__("structured route mode is quarantined")
         self.execution_mode = execution_mode
+
+
+class FinalArtifactCapabilityError(RuntimeError):
+    """Safe typed base for route-local final-artifact capability failures."""
+
+    failure_kind = "final_artifact_unavailable"
+
+    def __init__(self, message: str, *, receipt: dict) -> None:
+        super().__init__(message)
+        self.receipt = dict(receipt)
+
+
+class ReasoningOnlyFinalArtifactUnavailableError(FinalArtifactCapabilityError):
+    """Provider exhausted output on reasoning without an artifact projection."""
+
+    failure_code = "reasoning_only_final_artifact_unavailable"
+
+    def __init__(self, *, receipt: dict) -> None:
+        super().__init__(
+            "reasoning-only provider output exhausted without a final artifact",
+            receipt=receipt,
+        )
+
+
+class FinalArtifactRouteQuarantinedError(FinalArtifactCapabilityError):
+    """The exact route/contract fingerprint has negative artifact evidence."""
+
+    failure_code = "final_artifact_route_quarantined"
+
+    def __init__(self, *, receipt: dict) -> None:
+        super().__init__(
+            "final-artifact route capability is quarantined",
+            receipt=receipt,
+        )
+
+
+def _reasoning_only_final_artifact_unavailable(
+    response: ModelResponse,
+) -> ProviderOutputShapeV1 | None:
+    shape = response.output_shape
+    if shape is None:
+        return None
+    if normalize_finish_reason(response.finish_reason) not in {
+        "length", "max_output_tokens", "max_tokens", "model_length",
+    }:
+        return None
+    exact_reasoning_only = all((
+        shape.reasoning_block_count > 0,
+        shape.text_block_count == 0,
+        shape.provider_visible_text_chars == 0,
+        shape.tool_call_count == 0,
+        shape.normalized_visible_text_chars == 0,
+        shape.normalized_tool_call_count == 0,
+        shape.unknown_block_count == 0,
+        shape.content_block_count == shape.reasoning_block_count,
+        shape.adapter_projection_status == "exact",
+        shape.transport_complete,
+    ))
+    return shape if exact_reasoning_only else None
 
 
 class ModelGateway:
@@ -492,6 +558,36 @@ class ModelGateway:
                 if capability == StructuredOutputCapability.JSON_OBJECT
                 else "plain"
             )
+            final_artifact_qualification = (
+                self.db.get_structured_route_qualification(
+                    provider_id=resolved.provider_id,
+                    model_id=resolved.model_id,
+                    route_fingerprint=route_fingerprint,
+                    execution_mode="final_artifact",
+                    contract_name=contract_name,
+                    schema_sha256=schema_sha256,
+                )
+            )
+            if (
+                final_artifact_qualification
+                and final_artifact_qualification.get("status") == "quarantined"
+            ):
+                raise FinalArtifactRouteQuarantinedError(receipt={
+                    "role": role,
+                    "provider_id": resolved.provider_id,
+                    "model_id": resolved.model_id,
+                    "model_name": resolved.model_name,
+                    "route_fingerprint": route_fingerprint,
+                    "execution_mode": "final_artifact",
+                    "contract_name": contract_name,
+                    "schema_sha256": schema_sha256,
+                    "failure_code": "final_artifact_route_quarantined",
+                    "failure_reason": str(
+                        final_artifact_qualification.get("last_failure_reason")
+                        or "negative_final_artifact_capability"
+                    ),
+                    "provider_call_executed": False,
+                })
             qualification = self.db.get_structured_route_qualification(
                 provider_id=resolved.provider_id,
                 model_id=resolved.model_id,
@@ -589,31 +685,15 @@ class ModelGateway:
         finally:
             if diagnostic_token is not None:
                 reset_bound_diagnostic_context(diagnostic_token)
+        output_shape = provider_output_shape_from_response(
+            resolved.adapter, response,
+        )
+        if output_shape is not None and response.output_shape is None:
+            response = response.model_copy(update={"output_shape": output_shape})
         observe_provider_content_block_shape(
             context=diagnostic_context,
             response=response,
         )
-        if execution_mode == "strict_tool" and response_schema is not None:
-            expected_name = str(response_schema.get("name") or "structured_output")
-            observe_strict_tool_shape(
-                context=diagnostic_context,
-                adapter=resolved.adapter,
-                provider_id=resolved.provider_id,
-                model_id=resolved.model_id,
-                request=request,
-                expected_tool=expected_name,
-                response=response,
-            )
-            matching = [
-                call for call in response.tool_calls if call.name == expected_name
-            ]
-            if len(matching) != 1 or len(response.tool_calls) != 1:
-                raise RuntimeError(
-                    "strict structured tool route returned no unique artifact"
-                )
-            response = response.model_copy(update={
-                "text": json.dumps(matching[0].arguments, ensure_ascii=False),
-            })
         receipt = {
             "role": role,
             "provider_id": resolved.provider_id,
@@ -637,6 +717,72 @@ class ModelGateway:
             "contract_name": contract_name or None,
             "schema_sha256": schema_sha256 or None,
         }
+        guarded_shape = (
+            _reasoning_only_final_artifact_unavailable(response)
+            if response_schema is not None else None
+        )
+        if guarded_shape is not None:
+            safe_receipt = {
+                key: value for key, value in receipt.items()
+                if key not in {"request_id", "raw_finish_reason"}
+            }
+            if response.raw_request_id:
+                safe_receipt["request_id_sha256"] = hashlib.sha256(
+                    response.raw_request_id.encode("utf-8")
+                ).hexdigest()
+            guard_receipt = {
+                **safe_receipt,
+                "failure_code": "reasoning_only_final_artifact_unavailable",
+                "capability": f"{contract_name}_final_artifact",
+                "capability_state": "unsupported_or_unreliable",
+                "provider_call_executed": True,
+                "parser_reached": False,
+                "schema_validation_reached": False,
+                "provider_output_shape": guarded_shape.model_dump(
+                    mode="json", by_alias=True,
+                ),
+            }
+            self._record_output_observation(receipt, response.text)
+            try:
+                self.db.save_structured_route_outcome(
+                    provider_id=resolved.provider_id,
+                    model_id=resolved.model_id,
+                    route_fingerprint=route_fingerprint,
+                    execution_mode="final_artifact",
+                    contract_name=contract_name,
+                    schema_sha256=schema_sha256,
+                    outcome="reasoning_only_output_limit",
+                    failure_reason="reasoning_only_max_tokens",
+                    observed_visible_characters=0,
+                    expected_visible_characters=0,
+                )
+                guard_receipt["qualification_memory_status"] = "recorded"
+            except Exception:
+                guard_receipt["qualification_memory_status"] = "write_failed"
+            raise ReasoningOnlyFinalArtifactUnavailableError(
+                receipt=guard_receipt,
+            )
+        if execution_mode == "strict_tool" and response_schema is not None:
+            expected_name = str(response_schema.get("name") or "structured_output")
+            observe_strict_tool_shape(
+                context=diagnostic_context,
+                adapter=resolved.adapter,
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                request=request,
+                expected_tool=expected_name,
+                response=response,
+            )
+            matching = [
+                call for call in response.tool_calls if call.name == expected_name
+            ]
+            if len(matching) != 1 or len(response.tool_calls) != 1:
+                raise RuntimeError(
+                    "strict structured tool route returned no unique artifact"
+                )
+            response = response.model_copy(update={
+                "text": json.dumps(matching[0].arguments, ensure_ascii=False),
+            })
         self._record_output_observation(receipt, response.text)
         if not receipt["transport_complete"]:
             raise TransportInterruptedError(receipt, response.text)

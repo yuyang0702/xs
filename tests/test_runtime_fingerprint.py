@@ -56,7 +56,7 @@ def test_runtime_fingerprint_persists_independently_verifiable_child_graph(
     }
     assert store.verify_graph(snapshot.execution) == {"valid": True, "reason_codes": []}
     assert snapshot.build["payload"]["human_summary"]["contract_count"] == 40
-    assert snapshot.build["payload"]["human_summary"]["incident_family_count"] == 40
+    assert snapshot.build["payload"]["human_summary"]["incident_family_count"] == 41
     assert snapshot.execution_config["payload"]["human_summary"][
         "credential_material_included"
     ] is False

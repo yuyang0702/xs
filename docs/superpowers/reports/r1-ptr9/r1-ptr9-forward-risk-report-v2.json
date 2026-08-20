@@ -1,0 +1,165 @@
+{
+  "version": 2,
+  "original_requirement": "Implement REASONING_ONLY_MAX_TOKENS_GUARD_V1 so an exact reasoning/thinking-only max_tokens provider response becomes a typed failure, records exact route capability negative memory, never repeats the same fingerprint, uses only an existing distinct route, and otherwise fails closed without changing Prompt, Model, Route, contract, retry limits, budget, StoryState, Canon or READY authority.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The authorized detector is an explicitly finite conjunction: output-limit finish, known reasoning blocks present, known text/tool and raw/normalized visible output absent, unknown block count zero, exact adapter projection, and completed transport. The user separately requires unknown shapes not to be inferred, so unseen provider representations intentionally remain outside this typed label rather than broadening acceptance.",
+  "operational_definition": "ModelGateway projects the retained raw state of all three production adapters into one privacy-safe ProviderOutputShapeV1, raises ReasoningOnlyFinalArtifactUnavailableError before parser/schema execution, and quarantines the exact provider/model/fingerprint/contract/schema under final_artifact. Contract Runtime skips the remaining same-route attempts, advances only through its immutable configured route schedule, and raises FinalArtifactCapabilityExhaustedError when no distinct route succeeds.",
+  "forbidden_narrowing": [
+    "No provider, model, route alias, story, genre, project ID, raw error string, or planning-only branch",
+    "No Prompt, business contract, validator, token budget, reasoning setting, model identity, provider identity, configured route order, or retry/fallback limit change",
+    "No inference from parameter acceptance or unknown content blocks",
+    "No parser/schema failure or generic ContractOutputLimitExhaustedError for the exact guarded shape"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Detect reasoning-only plus max_tokens before parser/schema",
+      "implementation": "ProviderOutputShapeV1, provider_output_shape_from_response, and ModelGateway._complete_resolved exact predicate",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/providers/test_diagnostic_tool_shapes.py"],
+      "evidence": "Anthropic, OpenAI Chat, and OpenAI Responses raw reasoning-only envelopes all produce typed pre-parser failures."
+    },
+    {
+      "requirement": "Record exact negative capability fingerprint",
+      "implementation": "Database.save_structured_route_outcome accepts reasoning_only_output_limit under execution_mode=final_artifact",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/test_structured_output_business_qualification.py"],
+      "evidence": "The persisted key binds provider, model, route fingerprint, contract and schema; repeated upsert stays one row and is immediately quarantined."
+    },
+    {
+      "requirement": "Do not repeat the same fingerprint",
+      "implementation": "execute_contract_runtime retains blocked_route_fingerprints and skips later same-route attempts with model_call_delta=0",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/test_contract_runtime.py"],
+      "evidence": "Two planned primary attempts produce exactly one adapter call; a later gateway invocation is blocked before dispatch."
+    },
+    {
+      "requirement": "Use an existing legal alternate route or typed fail-close",
+      "implementation": "Contract Runtime preserves its pre-existing attempt tuple, allows only a distinct configured route, and otherwise raises FinalArtifactCapabilityExhaustedError",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/test_phase1b_production.py"],
+      "evidence": "Production-shaped planning_semantic_v2 crosses canonical/domain validation on configured fallback; no-route case fails typed."
+    },
+    {
+      "requirement": "Preserve normal text/tool/primary behavior and protected narrative authority",
+      "implementation": "Guard runs only for structured responses satisfying the entire exact predicate; validators and workflow authority code are unchanged",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/test_phase1b_production.py", "tests/test_workflows.py"],
+      "evidence": "Normal text, tool, reasoning+text, reasoning+tool and multi-text outputs do not trigger; 13K/20K/30K complete offline flows pass."
+    },
+    {
+      "requirement": "Privacy and zero external actions",
+      "implementation": "Typed receipts omit request IDs/raw finish values and persist only controlled identity, hash, shape, count and typed status",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/providers/test_diagnostic_tool_shapes.py"],
+      "evidence": "Private request identifiers and reasoning content are absent from serialized receipts; all tests use deterministic local adapter stubs."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "All 41 production_incidents.py catalog families through runtime fingerprint/full business suite",
+    "model.output_truncated",
+    "provider.structured_output_business_incomplete",
+    "provider.route_rejected",
+    "provider.connection_failed",
+    "model.context_capacity_preflight",
+    "parser.generated_artifact_shape",
+    "planning.structure_drift",
+    "planning.review_protocol_route_exhausted",
+    "runtime.required_tool_output_missing"
+  ],
+  "projected_failure_mechanisms": [
+    "reasoning consumes a shared output cap before final artifact",
+    "ordinary visible output truncation",
+    "unknown provider block topology",
+    "adapter projection loss",
+    "transport interruption",
+    "route qualification staleness after fingerprint change",
+    "same-route retry amplification",
+    "configured fallback exhaustion",
+    "partial authority promotion"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "Anthropic thinking-only max_tokens envelope",
+    "OpenAI Chat reasoning_content-only max_tokens envelope",
+    "OpenAI Responses reasoning-only incomplete/max_output_tokens envelope",
+    "normal strict JSON text artifact",
+    "normal strict-tool artifact",
+    "reasoning plus visible text at max_tokens",
+    "reasoning plus tool artifact at max_tokens",
+    "multiple visible text blocks"
+  ],
+  "model_output_topology_classes_tested": [
+    "single reasoning block",
+    "single visible text artifact",
+    "single structured tool artifact",
+    "mixed reasoning plus final artifact",
+    "multi-block visible text",
+    "unknown-block mixed envelope"
+  ],
+  "unseen_valid_variants_tested": [
+    "deterministic reasoning-plus-tool hybrid envelope absent from PTR7 production evidence",
+    "deterministic two-text-block envelope absent from PTR7 production evidence"
+  ],
+  "unknown_variant_behavior": "Any unknown block count or adapter projection mismatch prevents the reasoning-only classification. Runtime does not guess that a final artifact is absent; the existing conversion/protocol boundary owns the response.",
+  "invalid_output_variants_tested": [
+    "unknown block mixed with reasoning",
+    "adapter visible-content projection mismatch",
+    "empty response with no reasoning block",
+    "business-incomplete structured object"
+  ],
+  "transport_capacity_variants_tested": [
+    "reasoning-only output-limit exhaustion",
+    "ordinary output-limited incomplete tool artifact with existing budget behavior",
+    "transport interruption followed by same-route recovery"
+  ],
+  "invariant_test_paths": [
+    "tests/test_final_artifact_guard.py",
+    "tests/providers/test_diagnostic_tool_shapes.py",
+    "tests/test_contract_runtime.py",
+    "tests/test_structured_output_business_qualification.py",
+    "tests/test_phase1b_production.py"
+  ],
+  "why_previous_tests_missed": "Earlier output-limit tests modeled truncated text/tool or empty normalized output but did not preserve the raw pre-adapter reasoning block topology. PTR7 supplied the first exact provider evidence that output was entirely reasoning and that accepted provider reservation controls were ignored.",
+  "sibling_boundaries": [
+    {
+      "boundary": "planning structured contracts",
+      "disposition": "fixed_and_tested",
+      "evidence": "Production-shaped planning_semantic_v2 raw-adapter replay reaches canonical conversion and domain validation on the existing fallback."
+    },
+    {
+      "boundary": "causal chain and execution manifest",
+      "disposition": "fixed_and_tested",
+      "evidence": "They use the same Contract Runtime/Gateway structured boundary; 13K/20K/30K complete-flow tests cross both stages."
+    },
+    {
+      "boundary": "draft receipts and split/merge",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No draft validator, contract, prompt, route or ownership code changed; production-length flows preserve exact drafting and reconstruction."
+    },
+    {
+      "boundary": "polish, targeted/manual revision and final review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Only the shared pre-parser capability guard changed; full business suite and production-length flows preserve later-stage validators and authority."
+    },
+    {
+      "boundary": "Canon, StoryState, READY authority and formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No authority writer changed; production-length matrix completes StoryState CAS and formal-candidate gates with deterministic providers."
+    },
+    {
+      "boundary": "Provider capability probes and Canary",
+      "disposition": "not_applicable",
+      "evidence": "Probe/Canary code is outside the Runtime business qualification path and was not modified or executed."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_final_artifact_guard.py",
+    "tests/providers/test_diagnostic_tool_shapes.py",
+    "tests/test_phase1b_production.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_final_artifact_guard.py",
+    "tests/test_phase1b_production.py",
+    "tests/test_workflows.py"
+  ],
+  "remaining_risks": [
+    "Unknown provider block shapes intentionally remain unclassified until a separate evidence-backed adapter update.",
+    "A route with no distinct configured fallback still terminates safely with the typed capability error; the guard cannot manufacture a final artifact.",
+    "The historical R0 live-database file hash predates later authorized state changes and is not restored by this production code task."
+  ]
+}

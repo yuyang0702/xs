@@ -1,0 +1,60 @@
+{
+  "schema": "R1PTR9LiveParityV1",
+  "generated_at_utc": "2026-08-20T18:16:25Z",
+  "overall_status": "exact_against_ptr9_entry_snapshot",
+  "database": {
+    "path": "data/app.db",
+    "entry_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "final_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "changed": false
+  },
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "artifact_manifests": {
+    "formal": {
+      "count": 1,
+      "sha256": "585a2c8a435ec714bc839efae4bc92a2a4a3e131198623629e15d51880956908",
+      "rows": [
+        {
+          "path": "story.md",
+          "bytes": 667,
+          "sha256": "101221ae2af393e514b2d73c921d97689611de3339e584b1b0ded819a940c745"
+        }
+      ]
+    },
+    "canon": {
+      "count": 1,
+      "sha256": "d560044730a61382b401643a8159f58e07d919b601b97e931e8785b827bd84b0",
+      "rows": [
+        {
+          "path": "memory/canon.json",
+          "bytes": 19,
+          "sha256": "5361f3729dd191e987f2494cb7bac1ebf15d9a9837465208262e3ee3f24f49fc"
+        }
+      ]
+    },
+    "candidate": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "checkpoint": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "saga": {
+      "count": 0,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "table_counts": {
+    "story_states": 6,
+    "story_candidates": 11,
+    "workflow_node_checkpoints": 917
+  },
+  "production_authority": {
+    "story_state_changed": false,
+    "canon_changed": false,
+    "formal_manuscript_changed": false,
+    "ready_authority_changed": false
+  },
+  "external_actions": 0
+}

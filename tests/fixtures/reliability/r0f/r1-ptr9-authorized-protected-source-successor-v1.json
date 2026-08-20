@@ -1,0 +1,46 @@
+{
+  "schema": "R1PTR9AuthorizedProtectedSourceSuccessorV1",
+  "version": 1,
+  "phase": "R1-PTR9",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "parent_source_head": "d68b0f7c5566fca9cb2898e14bfdda06f4480a6b",
+  "implementation_source_head": "d68b0f7c5566fca9cb2898e14bfdda06f4480a6b",
+  "implementation_protected_tree_sha256": "71446b917737904cef05760c1c06da570bafb5677e0e91f0715958d08b999513",
+  "uncommitted_authorized_task_delta": true,
+  "authorization_scope": "Runtime reasoning-only max-tokens final-artifact guard, exact negative capability memory, and bounded configured-route recovery",
+  "business_behavior_changed": true,
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "domain_validator": 0,
+    "initial_prompt": 0,
+    "model_call_upper_bound": 0,
+    "output_budget": 0,
+    "retry_fallback_attempt_limits": 0,
+    "same_fingerprint_redispatch": -1,
+    "route_model_identity": 0,
+    "final_artifact_capability_memory": 1
+  },
+  "authorized_source_deltas": [
+    {
+      "path": "src/novel_flywheel/contract_runtime.py",
+      "before_sha256": "d925037b12965c1861c87172638ebaf9e2fa9aeb36e317e4efb300a2fa856ce0",
+      "after_sha256": "aab9f4208a9ffdc507ab3a059655533986c445860584185317290e9f425d6eb4"
+    },
+    {
+      "path": "src/novel_flywheel/models.py",
+      "before_sha256": "ad1d4f31648c5ecad4fdcb9055f53e4dd725bf436d0da33c50f73d4712fc3fa4",
+      "after_sha256": "209322720d9596f21e6756c4d2b48f56e7f53f3e67f478d0758774bd45b03220"
+    }
+  ],
+  "current_protected_sources": [
+    {"path": "src/novel_flywheel/completion_supervisor.py", "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"},
+    {"path": "src/novel_flywheel/contract_runtime.py", "sha256": "aab9f4208a9ffdc507ab3a059655533986c445860584185317290e9f425d6eb4"},
+    {"path": "src/novel_flywheel/generated_artifacts.py", "sha256": "f9a80c9ed2225b341aaf38d25562449799e227f4424a01a733b09705fcd9712c"},
+    {"path": "src/novel_flywheel/long_workflow.py", "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"},
+    {"path": "src/novel_flywheel/models.py", "sha256": "209322720d9596f21e6756c4d2b48f56e7f53f3e67f478d0758774bd45b03220"},
+    {"path": "src/novel_flywheel/prompts.py", "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"},
+    {"path": "src/novel_flywheel/prose_quality.py", "sha256": "b31d292c12ae76670dabb75d4ade38d720d896097151a15e67738015898ba635"},
+    {"path": "src/novel_flywheel/providers/registry.py", "sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"},
+    {"path": "src/novel_flywheel/workflows.py", "sha256": "67eb8ee285e666850d4848b35f3a7c7807f1b742cd6f14cfb1f136c5abd7ce62"}
+  ]
+}

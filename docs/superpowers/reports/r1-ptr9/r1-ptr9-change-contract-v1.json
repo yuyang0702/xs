@@ -1,0 +1,77 @@
+{
+  "schema": "R1PTR9ChangeContractV1",
+  "risk_level": "L3",
+  "requested_outcome": "Implement REASONING_ONLY_MAX_TOKENS_GUARD_V1 in the shared structured Contract Runtime.",
+  "authorization": "implementation",
+  "scope_classification": "closed_world",
+  "operational_definition": "For every supported production adapter projection and structured final-artifact contract, detect the exact finite output shape containing known reasoning but no text, tool, unknown block, or visible artifact at a max-token terminal boundary; emit a typed failure before parsing, remember an exact negative route capability, avoid redispatching the same fingerprint, and use only an already-configured distinct route before typed fail-close.",
+  "forbidden_narrowing": [
+    "no provider-name or model-name branch",
+    "no observed error-string branch",
+    "no planning_semantic_v2-only parser branch",
+    "no prompt, model, route identity, contract, retry-count, fallback-count, or budget change"
+  ],
+  "current_behavior_and_evidence": {
+    "ptr8_manifest": "exact_7_of_7",
+    "boundary_12": "reasoning_only_max_tokens_zero_visible_no_tool",
+    "provider_reasoning_cap": "ignored",
+    "provider_final_reservation": "ignored",
+    "failure_path": "empty normalized text reaches conversion and can become generic ContractOutputLimitExhaustedError with repeated same-route output-budget expansion"
+  },
+  "allowed_changes": [
+    "provider-neutral safe output-shape envelope",
+    "structured-route negative final-artifact capability state",
+    "typed Contract Runtime recovery and terminal errors",
+    "incident catalog",
+    "offline tests",
+    "maintenance and applicable design documentation"
+  ],
+  "protected_unchanged_behavior": [
+    "Prompt bytes and rendering",
+    "model and provider identity",
+    "configured route order and identities",
+    "retry and fallback attempt limits",
+    "token budgets and reasoning settings",
+    "business contracts and validators",
+    "Draft, Final Review, Maintenance, Canon, StoryState, READY authority",
+    "formal manuscript and candidate promotion"
+  ],
+  "authority_impact": {
+    "formal_manuscript": "not_involved",
+    "candidate_and_best_candidate": "read_only",
+    "story_state_and_canon": "not_involved",
+    "outline_causal_manifest_receipts": "read_only",
+    "sqlite_schema": "unchanged",
+    "sqlite_structured_route_qualification_rows": "changed_only_at_runtime_after_exact_failure",
+    "provider_model_bindings": "read_only",
+    "run_events_and_recovery": "changed_typed_classification_only",
+    "credentials_and_private_sources": "not_accessed"
+  },
+  "selected_approach": "ModelGateway centrally projects adapter-retained raw response state into one privacy-safe typed shape. It detects the exact invariant and records a route-fingerprint-bound negative final-artifact qualification. Contract Runtime skips the remaining same-route attempts, advances only through its existing immutable route schedule, and otherwise raises a typed final-artifact capability exhaustion.",
+  "rejected_alternatives": {
+    "typed_fail_close_only": "containment only; would ignore an existing independent fallback",
+    "alternate_contract": "changes business authority and is forbidden",
+    "provider_native_reservation": "PTR7 proved accepted controls were behaviorally ignored",
+    "budget_expansion": "does not reserve final output and is forbidden",
+    "adapter_only_policy": "adapter does not own contract recovery and would diverge by provider"
+  },
+  "rollback_path": "Revert the additive output-shape field, typed errors, final_artifact qualification outcome, and Contract Runtime branch. Existing qualification table rows remain structurally compatible and can be ignored by the prior reader; no manuscript or StoryState migration is required.",
+  "focused_tests": "new tests/test_final_artifact_guard.py",
+  "related_tests": [
+    "tests/test_models.py",
+    "tests/test_contract_runtime.py",
+    "tests/test_structured_output_business_qualification.py",
+    "tests/providers/test_diagnostic_tool_shapes.py",
+    "tests/test_production_incidents.py"
+  ],
+  "full_suite_requirement": true,
+  "resolution_target": "case_fixed_for_the_finite_supported_shape_and_route_topology",
+  "completion_boundary": "A production-shaped reasoning-only primary attempt must avoid parser/schema/generic output-limit handling and continue through canonical conversion and domain validation on an existing distinct fallback. No-route exhaustion must remain typed fail-close.",
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

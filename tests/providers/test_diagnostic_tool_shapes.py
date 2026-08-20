@@ -14,6 +14,7 @@ from novel_flywheel.model_diagnostics import (
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
 from novel_flywheel.providers.openai_responses import OpenAIResponsesAdapter
+from novel_flywheel.provider_output import provider_output_shape_from_response
 
 
 TOOL = ToolDefinition(
@@ -115,6 +116,7 @@ async def test_production_adapters_capture_exact_raw_shape_without_values(
     monkeypatch.setattr(adapter, "post_stream", fake_post_stream)
     response = await complete_with_target_context(adapter, tmp_path)
     value = snapshot(response)
+    output_shape = provider_output_shape_from_response(adapter, response)
     serialized = json.dumps(value, ensure_ascii=False, sort_keys=True)
 
     assert value["snapshot_status"] == "snapshot_exact"
@@ -126,6 +128,9 @@ async def test_production_adapters_capture_exact_raw_shape_without_values(
     assert "private_argument" not in serialized
     assert "private-value" not in serialized
     assert TOOL.name not in serialized
+    assert output_shape.tool_call_count == 1
+    assert output_shape.text_block_count == 0
+    assert output_shape.adapter_projection_status == "exact"
 
 
 @pytest.mark.asyncio
@@ -206,3 +211,58 @@ async def test_anthropic_native_array_is_observed_before_original_validation_err
     assert attached is not None
     assert attached.snapshot_status == "adapter_exception_with_snapshot"
     assert attached.tool_calls[0].argument_shape == "array"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("adapter_kind", ["openai_chat", "openai_responses", "anthropic"])
+async def test_production_adapters_emit_reasoning_only_output_shape(
+    adapter_kind, monkeypatch,
+) -> None:
+    if adapter_kind == "openai_chat":
+        adapter = OpenAIChatAdapter("https://relay.invalid/v1", "secret")
+        body = {
+            "id": "private-request-id",
+            "choices": [{
+                "message": {"content": None, "reasoning_content": "private"},
+                "finish_reason": "max_tokens",
+            }],
+            "usage": {"completion_tokens": 16000},
+        }
+    elif adapter_kind == "openai_responses":
+        adapter = OpenAIResponsesAdapter("https://relay.invalid/v1", "secret")
+        body = {
+            "id": "private-request-id",
+            "status": "incomplete",
+            "incomplete_details": {"reason": "max_output_tokens"},
+            "output": [{"type": "reasoning", "summary": [{"text": "private"}]}],
+            "usage": {"output_tokens": 16000},
+        }
+    else:
+        adapter = AnthropicAdapter("https://relay.invalid/v1", "secret")
+        body = {
+            "id": "private-request-id",
+            "stop_reason": "max_tokens",
+            "content": [{"type": "thinking", "thinking": "private"}],
+            "usage": {"output_tokens": 16000},
+        }
+
+    async def fake_post_stream(*_args, **_kwargs):
+        return [], body
+
+    monkeypatch.setattr(adapter, "post_stream", fake_post_stream)
+    response = await adapter.complete(REQUEST)
+    shape = provider_output_shape_from_response(adapter, response)
+    serialized = shape.model_dump_json()
+
+    assert response.text == ""
+    assert response.tool_calls == []
+    assert shape.finish_reason == "max_tokens"
+    assert shape.reasoning_block_count == 1
+    assert shape.text_block_count == 0
+    assert shape.tool_call_count == 0
+    assert shape.provider_visible_text_chars == 0
+    assert shape.normalized_visible_text_chars == 0
+    assert shape.unknown_block_count == 0
+    assert shape.adapter_projection_status == "exact"
+    assert "private-request-id" not in serialized
+    assert "private" not in serialized

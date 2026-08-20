@@ -1,0 +1,46 @@
+{
+  "schema": "R1PTR9FinalPrivacyScanV1",
+  "generated_at_utc": "2026-08-20T18:16:25Z",
+  "overall_status": "exact",
+  "scope": [
+    "PTR9 production diff",
+    "PTR9 tests and synthetic fixtures",
+    "docs/superpowers/reports/r1-ptr9"
+  ],
+  "raw_prompt": 0,
+  "raw_story": 0,
+  "raw_tool_arguments": 0,
+  "raw_provider_content": 0,
+  "raw_provider_headers": 0,
+  "raw_request_ids": 0,
+  "credentials": 0,
+  "api_keys": 0,
+  "bearer_tokens": 0,
+  "private_endpoints": 0,
+  "provider_calls": 0,
+  "network_calls": 0,
+  "paid_calls": 0,
+  "allowed_synthetic_literals": [
+    "RFC-reserved .invalid test endpoints",
+    "synthetic non-secret test markers"
+  ],
+  "runtime_receipt_policy": {
+    "retained": [
+      "controlled provider/model/route identity",
+      "finish classification",
+      "hash",
+      "shape",
+      "count",
+      "typed status"
+    ],
+    "omitted": [
+      "raw text",
+      "raw reasoning",
+      "raw tool arguments",
+      "raw provider content",
+      "raw headers",
+      "raw request id"
+    ]
+  },
+  "result": "pass"
+}

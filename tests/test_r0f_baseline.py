@@ -41,6 +41,11 @@ R1_PTR3_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr3-authorized-protected-source-successor-v1.json"
 )
+R1_PTR9_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr9-authorized-protected-source-successor-v1.json"
+)
 
 
 def make_database(tmp_path: Path) -> Database:
@@ -181,9 +186,6 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "retry_prompt_policy": 1,
         "route_model": 0,
     }
-    assert canonical_protected_source_manifest(REPOSITORY) == (
-        r1_ptr3["current_protected_sources"]
-    )
     ptr3_hashes = {
         item["path"]: item["sha256"]
         for item in r1_ptr3["current_protected_sources"]
@@ -197,6 +199,40 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     } == {
         "src/novel_flywheel/contract_runtime.py",
         "src/novel_flywheel/workflows.py",
+    }
+    r1_ptr9 = load_baseline(R1_PTR9_SUCCESSOR)
+    assert r1_ptr9["parent_source_head"] == (
+        "d68b0f7c5566fca9cb2898e14bfdda06f4480a6b"
+    )
+    assert r1_ptr9["phase"] == "R1-PTR9"
+    assert r1_ptr9["business_behavior_changed"] is True
+    assert r1_ptr9["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": -1,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 1,
+    }
+    assert canonical_protected_source_manifest(REPOSITORY) == (
+        r1_ptr9["current_protected_sources"]
+    )
+    ptr9_hashes = {
+        item["path"]: item["sha256"]
+        for item in r1_ptr9["current_protected_sources"]
+    }
+    assert all(
+        item["after_sha256"] == ptr9_hashes[item["path"]]
+        for item in r1_ptr9["authorized_source_deltas"]
+    )
+    assert {
+        item["path"] for item in r1_ptr9["authorized_source_deltas"]
+    } == {
+        "src/novel_flywheel/contract_runtime.py",
+        "src/novel_flywheel/models.py",
     }
 
 

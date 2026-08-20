@@ -1,0 +1,93 @@
+{
+  "schema": "R1PTR9OfflineTestReceiptV1",
+  "generated_at_utc": "2026-08-20T18:16:25Z",
+  "overall_status": "exact",
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "runs": [
+    {
+      "name": "ptr9_related_regression_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_models.py tests/test_contract_runtime.py tests/test_structured_output_business_qualification.py tests/providers/test_diagnostic_tool_shapes.py tests/test_production_incidents.py tests/test_final_artifact_guard.py tests/test_r0f_baseline.py tests/test_runtime_fingerprint.py",
+      "result": "passed",
+      "passed": 163,
+      "warnings": 1,
+      "elapsed_seconds": 33.99
+    },
+    {
+      "name": "production_length_matrix",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_phase1b_production.py::test_phase1b_candidate_lane_production_length_matrix",
+      "result": "passed",
+      "passed": 3,
+      "elapsed_seconds": 81.58,
+      "sizes": [13000, 20000, 30000]
+    },
+    {
+      "name": "offline_business_suite",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q --ignore=tests/canary --deselect=tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "result": "passed",
+      "passed": 2651,
+      "skipped": 39,
+      "deselected": 1,
+      "xfailed": 6,
+      "warnings": 1,
+      "elapsed_seconds": 1267.53
+    },
+    {
+      "name": "strict_change_gate",
+      "result": "passed",
+      "declared_level": "L3",
+      "automatic_level": "L3",
+      "warnings": [],
+      "blockers": [],
+      "authority_critical_core_paths": [
+        "src/novel_flywheel/db.py",
+        "src/novel_flywheel/models.py"
+      ]
+    },
+    {
+      "name": "project_scope",
+      "result": "passed",
+      "repository": "novel-flywheel-console",
+      "errors": []
+    }
+  ],
+  "required_cases": {
+    "reasoning_only_max_tokens_recognized": "passed",
+    "normal_text_not_triggered": "passed",
+    "normal_tool_not_triggered": "passed",
+    "unknown_block_not_misclassified": "passed",
+    "negative_capability_fingerprint_effective": "passed",
+    "same_fingerprint_not_recalled": "passed",
+    "existing_distinct_route_selected": "passed",
+    "no_route_typed_fail_close": "passed",
+    "primary_route_regression": "passed",
+    "privacy_and_evidence": "passed"
+  },
+  "provider_envelope_variants": {
+    "anthropic_reasoning_only": "passed",
+    "openai_chat_reasoning_only": "passed",
+    "openai_responses_reasoning_only": "passed",
+    "reasoning_plus_text": "passed_not_triggered",
+    "reasoning_plus_tool": "passed_not_triggered",
+    "multiple_text_blocks": "passed_not_triggered"
+  },
+  "unfiltered_suite_disclosures": [
+    {
+      "status": "pre_existing_out_of_scope_blocker",
+      "boundary": "tests/canary",
+      "reason": "Existing Provider Reasoning Capability Probe real-run module fails the sealed Canary import-closure policy; PTR9 prohibits changing or executing Canary."
+    },
+    {
+      "status": "pre_existing_historical_assertion",
+      "boundary": "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "reason": "The assertion binds an old R0 database hash; current authorized live state predates PTR9 and remains unchanged throughout PTR9."
+    }
+  ],
+  "real_provider_calls": 0,
+  "full_short_canary": "not_executed"
+}

@@ -163,6 +163,38 @@ Each route uses its observed capability: strict tool/schema when proven,
 `json_object` when proven, otherwise plain text plus the same local conversion
 pipeline.  Capability changes alter the route/checkpoint fingerprint.
 
+### 3.1 Final-artifact capability guard
+
+Provider acceptance of a reasoning-budget or final-output-reservation parameter is
+not capability proof. Each production adapter already retains its raw output topology
+inside the internal response state; the shared gateway projects that state into
+`ProviderOutputShapeV1` before any parser or schema execution. The envelope contains
+only controlled block types, unknown-type hashes, counts, finish metadata, normalized
+projection counts, and omission flags.
+It never contains Prompt text, story text, tool arguments, raw Provider content,
+headers, credentials, endpoints, or provider error bodies.
+
+For a structured final-artifact request, the shared gateway recognizes
+`REASONING_ONLY_MAX_TOKENS` only when reasoning exists; raw and normalized text/tool
+counts are both zero; unknown blocks are absent; every content block is reasoning;
+the adapter projection is exact; transport completed; and the normalized finish is
+an output-limit finish. Detection occurs before tool extraction, JSON parsing,
+canonical conversion, schema validation, or domain validation. Other empty,
+truncated, mixed, unknown, or projection-loss shapes remain owned by their existing
+typed boundaries.
+
+The exact provider/model/route-fingerprint/contract/schema key is immediately
+quarantined in the existing `structured_route_qualifications` store under the
+dedicated `final_artifact` execution dimension. This is negative empirical memory,
+not a provider capability declaration and not a new authority store. A scheduled
+retry skips that fingerprint without dispatch; Runtime may advance only to a
+distinct route already present in the immutable configured schedule. That route must
+still pass the same canonical and domain validators. With no eligible route, Runtime
+raises `FinalArtifactCapabilityExhaustedError`; it does not expand output budget,
+change Prompt/model/route/contract, create an alternate contract, or promote partial
+authority. A route-fingerprint or contract/schema change naturally creates a new
+qualification key rather than clearing or over-broadening the prior evidence.
+
 ### 4. Proved adaptation, semantic freeze, and smallest repair
 
 After syntax/adaptation, a complete semantic proposal receives a hash.  A
