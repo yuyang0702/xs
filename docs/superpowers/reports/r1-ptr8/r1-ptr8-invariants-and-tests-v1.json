@@ -1,0 +1,87 @@
+{
+  "schema": "R1PTR8InvariantsAndTestsV1",
+  "invariants": [
+    "Primary-route normal requests are byte-for-byte request-equivalent and generate no qualification write.",
+    "Prompt, model identity, configured route order, retry count, and output budget remain unchanged.",
+    "Normal text and tool outputs reach the existing converter and validators unchanged.",
+    "Draft, Final Review, Maintenance, Canon, StoryState, and READY authority are outside the guard scope and unchanged.",
+    "No response body, prompt, story text, tool arguments, or provider raw content is persisted by the guard.",
+    "A negative qualification is isolated by provider, model, route fingerprint, execution mode, contract, and schema.",
+    "No typed reasoning-only failure can expand output budget or repeat the same fingerprint.",
+    "Accepted checkpoints and authority state survive typed fail-close."
+  ],
+  "required_tests": [
+    {
+      "id": "normal_text_output",
+      "expect": "unchanged conversion and validation; no guard event"
+    },
+    {
+      "id": "normal_tool_output",
+      "expect": "unchanged tool conversion and validation; no guard event"
+    },
+    {
+      "id": "reasoning_only_max_tokens",
+      "expect": "REASONING_ONLY_OUTPUT_LIMIT before conversion; exact quarantine; no budget expansion"
+    },
+    {
+      "id": "empty_response",
+      "expect": "existing empty-output classification, not reasoning-only"
+    },
+    {
+      "id": "adapter_visible_content_loss",
+      "expect": "ADAPTER_FINAL_ARTIFACT_PROJECTION_UNTRUSTED, not reasoning-only"
+    },
+    {
+      "id": "unknown_block_shape",
+      "expect": "UNKNOWN fail-close; no inference that final artifact is absent"
+    },
+    {
+      "id": "primary_route_unaffected",
+      "expect": "request, route, model, budget, receipt, and validator path unchanged"
+    },
+    {
+      "id": "fallback_capability_boundary",
+      "expect": "same fingerprint is skipped; only an existing distinct eligible attempt may run"
+    },
+    {
+      "id": "reasoning_plus_text",
+      "expect": "does not match guard; converter decides completeness"
+    },
+    {
+      "id": "reasoning_plus_tool",
+      "expect": "does not match guard; tool converter decides completeness"
+    },
+    {
+      "id": "route_fingerprint_change",
+      "expect": "old quarantine does not bind to a changed route fingerprint"
+    },
+    {
+      "id": "contract_schema_isolation",
+      "expect": "qualification for planning_semantic_v2 does not leak into another contract or schema"
+    },
+    {
+      "id": "no_remaining_route",
+      "expect": "FinalArtifactCapabilityExhaustedError; checkpoint and authority unchanged"
+    },
+    {
+      "id": "provider_adapter_parity",
+      "expect": "Anthropic, OpenAI Chat, and OpenAI Responses shapes share one typed schema"
+    },
+    {
+      "id": "privacy_and_external_action_zero",
+      "expect": "hash/shape/count/status only; credential, client, network, model, and paid counters remain zero"
+    }
+  ],
+  "systemic_claim_requirements": [
+    "production-shaped isolated Boundary 12 replay",
+    "sanitized isomorphic fake demonstrating distinct-route recovery",
+    "complete 13k, 20k, and 30k planning workflow regression proof",
+    "provider adapter parity suite",
+    "route qualification persistence and isolation suite"
+  ],
+  "this_round": {
+    "production_implementation": false,
+    "real_provider": false,
+    "full_short_canary": false
+  }
+}

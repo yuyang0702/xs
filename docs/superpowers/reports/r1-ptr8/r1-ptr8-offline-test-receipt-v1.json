@@ -1,0 +1,28 @@
+{
+  "schema": "R1PTR8OfflineTestReceiptV1",
+  "status": "exact",
+  "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_contract_runtime.py tests/test_models.py tests/providers/test_diagnostic_tool_shapes.py tests/canary/test_provider_reasoning_capability_probe_materialization.py",
+  "result": {
+    "passed": 66,
+    "failed": 0,
+    "duration_seconds": 28.83
+  },
+  "test_scope": [
+    "contract_runtime",
+    "model_gateway",
+    "provider_content_block_shape",
+    "provider_reasoning_capability_probe_materialization"
+  ],
+  "excluded": [
+    "real_provider_probe_execution",
+    "full_short_canary",
+    "production_fix"
+  ],
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

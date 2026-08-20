@@ -1,0 +1,97 @@
+{
+  "schema": "R1PTR8FinalArtifactGuardDesignV1",
+  "gate": "R1_PTR8_FINAL_ARTIFACT_GUARD_DESIGN_READY",
+  "design_id": "FINAL_ARTIFACT_RESERVATION_WITH_CAPABILITY_GUARD_V1",
+  "status": "design_ready_not_implemented",
+  "evidence": {
+    "ptr5_mechanism": "IMPLICIT_REASONING_CONSUMES_SHARED_COMPLETION_CAP_WITHOUT_FINAL_ARTIFACT_RESERVATION",
+    "ptr7_observation": {
+      "raw_shape": "REASONING_ONLY",
+      "finish_reason": "max_tokens",
+      "output_tokens": 16000,
+      "visible_chars": 0,
+      "tool_call_count": 0,
+      "reasoning_budget_cap": "IGNORED",
+      "final_output_reservation": "IGNORED",
+      "reasoning_output_token_separation": "UNKNOWN"
+    },
+    "conclusion": "Provider-native reasoning control cannot be an enforcement dependency for this route."
+  },
+  "detection": {
+    "typed_status": "REASONING_ONLY_OUTPUT_LIMIT",
+    "scope": "structured Contract Runtime calls whose contract requires a final artifact",
+    "all_required": [
+      "normalized_finish_reason_is_max_tokens_or_length",
+      "reasoning_block_count_gt_0",
+      "text_block_count_eq_0",
+      "provider_visible_text_chars_eq_0",
+      "tool_call_block_count_eq_0",
+      "normalized_visible_text_chars_eq_0",
+      "normalized_tool_call_count_eq_0",
+      "unknown_block_count_eq_0",
+      "content_block_count_eq_reasoning_block_count",
+      "adapter_projection_status_exact",
+      "transport_completed"
+    ],
+    "not_equivalent_to": [
+      "empty_response",
+      "adapter_visible_content_loss",
+      "unknown_block_shape",
+      "ordinary_text_truncation",
+      "ordinary_tool_argument_truncation"
+    ],
+    "false_positive_controls": [
+      "reasoning_plus_text_does_not_match",
+      "reasoning_plus_tool_does_not_match",
+      "unknown_blocks_do_not_match",
+      "projection_mismatch_does_not_match",
+      "a_complete artifact remains subject to existing converter and validators"
+    ]
+  },
+  "recommended_implementation": {
+    "principle": "Observe provider-neutral shape before normalization, classify before conversion, and recover only inside the existing immutable route schedule.",
+    "steps": [
+      "Adapters populate an always-available typed ProviderOutputShapeV1 on ModelResponse without retaining raw content.",
+      "ModelGateway._complete_resolved evaluates the exact predicate for structured final-artifact contracts and raises ReasoningOnlyFinalArtifactError with counts, hashes, finish reason, and receipt identity only.",
+      "The existing structured_route_qualifications store records reasoning_only_output_limit as an immediate negative qualification bound to provider, model, route fingerprint, execution mode, contract, and schema.",
+      "execute_contract_runtime handles the typed error separately from generic output_limit: no output-budget expansion, no repeat of the same route fingerprint, and no sticky output-limit amplification.",
+      "Runtime may continue only to a distinct already-configured eligible attempt. If none remains it raises FinalArtifactCapabilityExhaustedError and preserves accepted checkpoints and authority state."
+    ],
+    "guarantee_boundary": "This guard prevents misclassification and repeated use of a proven incapable fingerprint. It does not manufacture a final artifact or partition provider tokens inside one generation. Success without a terminal result is possible only when the existing schedule contains another eligible distinct route.",
+    "normal_outputs": "Text or tool-bearing outputs continue through the current converter and validators unchanged."
+  },
+  "capability_memory": {
+    "new_registry_required": false,
+    "reuse": "structured_route_qualifications",
+    "new_outcome": "reasoning_only_output_limit",
+    "quarantine_policy": "immediate for the exact binding",
+    "positive_support_inference_from_parameter_acceptance": false,
+    "route_fingerprint_binding_required": true,
+    "binding_fields": [
+      "provider_id",
+      "model_id",
+      "route_fingerprint",
+      "execution_mode",
+      "contract_name",
+      "schema_sha256"
+    ],
+    "historical_ptr7_seed": "No automatic import from report files. Any live qualification seed is a separately approved state mutation."
+  },
+  "unchanged": {
+    "prompt": true,
+    "model_identity": true,
+    "route_configuration": true,
+    "retry_count_and_schedule": true,
+    "output_budget": true,
+    "validator_semantics": true,
+    "provider": true,
+    "production_state_in_this_round": true
+  },
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

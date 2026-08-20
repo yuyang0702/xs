@@ -1,0 +1,23 @@
+{
+  "schema": "R1PTR8FinalPrivacyScanV1",
+  "version": 1,
+  "status": "exact",
+  "scope": "docs/superpowers/reports/r1-ptr8",
+  "violation_count": 0,
+  "raw_prompt_present": false,
+  "raw_story_present": false,
+  "raw_tool_arguments_present": false,
+  "raw_provider_content_present": false,
+  "credentials_present": false,
+  "provider_endpoint_present": false,
+  "provider_error_text_present": false,
+  "persisted_evidence_kinds": [
+    "hash",
+    "shape",
+    "count",
+    "typed_status",
+    "identity_binding",
+    "design_decision",
+    "offline_test_result"
+  ]
+}

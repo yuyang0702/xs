@@ -1,0 +1,108 @@
+{
+  "schema": "R1PTR8OwnerAndRecoveryDecisionV1",
+  "recommended_owner_map": [
+    {
+      "file": "src/novel_flywheel/domain/models.py",
+      "symbol": "ModelResponse",
+      "change_design": "Add optional typed ProviderOutputShapeV1 carrying block counts, visible counts, finish reason, projection status, and privacy-safe hashes.",
+      "role": "provider-neutral observation envelope"
+    },
+    {
+      "file": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "change_design": "Populate ProviderOutputShapeV1 before raw blocks are normalized.",
+      "role": "shape capture only; no recovery policy"
+    },
+    {
+      "file": "src/novel_flywheel/providers/openai_chat.py",
+      "symbol": "OpenAIChatAdapter.complete",
+      "change_design": "Populate the same provider-neutral shape for parity.",
+      "role": "shape capture only; no recovery policy"
+    },
+    {
+      "file": "src/novel_flywheel/providers/openai_responses.py",
+      "symbol": "OpenAIResponsesAdapter.complete",
+      "change_design": "Populate the same provider-neutral shape for parity.",
+      "role": "shape capture only; no recovery policy"
+    },
+    {
+      "file": "src/novel_flywheel/models.py",
+      "symbol": "ModelGateway._complete_resolved",
+      "change_design": "Apply the structured final-artifact predicate after adapter return and before ModelResult conversion; emit ReasoningOnlyFinalArtifactError.",
+      "role": "smallest shared enforcement point"
+    },
+    {
+      "file": "src/novel_flywheel/contract_runtime.py",
+      "symbol": "execute_contract_runtime",
+      "change_design": "Handle the typed failure without budget expansion or same-fingerprint retry; advance only to an existing distinct eligible route or fail closed with FinalArtifactCapabilityExhaustedError.",
+      "role": "recovery owner"
+    },
+    {
+      "file": "src/novel_flywheel/context_policy.py",
+      "symbol": "classify_model_failure",
+      "change_design": "Classify final_artifact_reasoning_only separately from generic output_limit and transport failures.",
+      "role": "typed event and policy classification"
+    },
+    {
+      "file": "src/novel_flywheel/db.py",
+      "symbol": "Database.save_structured_route_outcome",
+      "change_design": "Accept reasoning_only_output_limit and immediately quarantine the exact existing qualification key; no new table or schema is required.",
+      "role": "negative capability memory"
+    }
+  ],
+  "component_answers": {
+    "provider_adapter": "yes, observation only",
+    "contract_runtime": "yes, recovery and typed terminal ownership",
+    "recovery_policy": "yes, but route schedule, retry count, model, and budget remain unchanged",
+    "output_validator": "no; it remains authoritative whenever a candidate artifact exists"
+  },
+  "recovery_options": [
+    {
+      "option": "A_TYPED_FAIL_CLOSE",
+      "decision": "REQUIRED_BASELINE",
+      "risk": "workflow terminates when no eligible distinct route remains",
+      "cost": "no extra call beyond the existing schedule",
+      "compatibility": "high; checkpoint and authority state can be preserved"
+    },
+    {
+      "option": "B_CONTROLLED_RETRY",
+      "decision": "CONDITIONAL_ONLY",
+      "condition": "Use only a distinct already-configured eligible route; never repeat the incapable fingerprint and never add an attempt.",
+      "risk": "another route may also lack final-artifact capability",
+      "cost": "bounded by existing call and retry limits",
+      "compatibility": "preserves route and retry configuration"
+    },
+    {
+      "option": "C_ALTERNATE_CONTRACT",
+      "decision": "REJECTED_FOR_V1",
+      "reason": "changes contract semantics and may alter canonical output authority"
+    },
+    {
+      "option": "D_FALLBACK_CAPABILITY_BOUNDARY",
+      "decision": "RECOMMENDED_WITH_A",
+      "reason": "exact negative qualification prevents repeated selection without trusting provider parameter acceptance"
+    }
+  ],
+  "rejected_placements": [
+    {
+      "placement": "Anthropic adapter only",
+      "reason": "provider-specific policy would create divergent behavior and does not own contract recovery"
+    },
+    {
+      "placement": "Contract Runtime from normalized empty text only",
+      "reason": "raw reasoning, tool, unknown-block, and adapter-loss distinctions have already been erased"
+    },
+    {
+      "placement": "Output validator only",
+      "reason": "too late and unable to distinguish reasoning-only from content loss"
+    },
+    {
+      "placement": "Provider capability declaration only",
+      "reason": "PTR7 proves parameter acceptance does not establish enforcement"
+    },
+    {
+      "placement": "Output budget increase",
+      "reason": "prohibited and does not reserve final-artifact capacity"
+    }
+  ]
+}

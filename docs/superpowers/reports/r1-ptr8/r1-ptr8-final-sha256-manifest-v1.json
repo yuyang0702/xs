@@ -1,0 +1,42 @@
+{
+  "schema": "R1PTR8FinalSHA256ManifestV1",
+  "status": "exact",
+  "algorithm": "sha256",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-behavior-unchanged-proof-v1.json",
+      "bytes": 724,
+      "sha256": "18d4509176f33248e78ed18645a9f185ec2fa194e9fe19f48436772617440c0c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-final-artifact-guard-design-v1.json",
+      "bytes": 4593,
+      "sha256": "892a6463b13dc74bd78277dfb8f1a607fecf37f0c723e3882e852d759f7f90e9"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-final-privacy-scan-v1.json",
+      "bytes": 570,
+      "sha256": "0474c95dd2c42898dd423c517856657a153f8c70a69b1deb338f98d6ed089254"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-final-report-v1.md",
+      "bytes": 6096,
+      "sha256": "20cf3c5eea41f9cc7acdaf13b5b07ecc4a22e1b173a91f960f21fb8dec7c323c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-invariants-and-tests-v1.json",
+      "bytes": 3442,
+      "sha256": "787010a06fb6b44ce2235a21cf3dda5264f05fa51d746eb62d8c5f04cdcd3c47"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-offline-test-receipt-v1.json",
+      "bytes": 768,
+      "sha256": "bb4667c61fa30316a57d67a440e93f4997c839131215f903b8b9bdfab85f153b"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr8/r1-ptr8-owner-and-recovery-decision-v1.json",
+      "bytes": 4796,
+      "sha256": "e529676974b733d840e9d23d4f218f1a54a305b17f64d4693215735feb5339b0"
+    }
+  ]
+}

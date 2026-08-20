@@ -1,0 +1,24 @@
+{
+  "schema": "R1PTR8BehaviorUnchangedProofV1",
+  "round_scope": "design_artifacts_only",
+  "production_diff_expected": 0,
+  "protected_paths": {
+    "src/**": "unchanged",
+    "baml_src/**": "unchanged"
+  },
+  "behavior": {
+    "prompt": "unchanged",
+    "model": "unchanged",
+    "route": "unchanged",
+    "retry": "unchanged",
+    "budget": "unchanged",
+    "validator": "unchanged",
+    "draft": "unchanged",
+    "final_review": "unchanged",
+    "maintenance": "unchanged",
+    "canon": "unchanged",
+    "story_state": "unchanged",
+    "ready_authority": "unchanged"
+  },
+  "future_change_boundary": "Any implementation, test code, qualification seed, or live validation requires a fresh separately bounded approval."
+}
