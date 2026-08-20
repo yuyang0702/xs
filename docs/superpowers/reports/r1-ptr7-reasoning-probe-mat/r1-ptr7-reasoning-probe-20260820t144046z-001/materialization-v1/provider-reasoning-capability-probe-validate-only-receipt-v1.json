@@ -1,0 +1,92 @@
+{
+  "approval_reservation_status": "unreserved",
+  "approval_state": "disabled_candidate",
+  "cohort_usage_status": "unused",
+  "confirmed_patch_status": "ABSENT",
+  "execution_performed": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "ledger_entry_count": 0,
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "ordered_checks": [
+    {
+      "name": "parent_evidence",
+      "status": "exact"
+    },
+    {
+      "name": "provider_identity",
+      "status": "exact"
+    },
+    {
+      "name": "route_identity",
+      "status": "exact"
+    },
+    {
+      "name": "model_identity",
+      "status": "exact"
+    },
+    {
+      "name": "capability_definition",
+      "status": "exact"
+    },
+    {
+      "name": "probe_fixture",
+      "status": "exact"
+    },
+    {
+      "name": "observer",
+      "status": "exact"
+    },
+    {
+      "name": "budget",
+      "status": "exact"
+    },
+    {
+      "name": "stop_conditions",
+      "status": "exact"
+    },
+    {
+      "name": "cohort",
+      "status": "exact"
+    },
+    {
+      "name": "ledger",
+      "status": "exact"
+    },
+    {
+      "name": "privacy",
+      "status": "exact"
+    },
+    {
+      "name": "live_parity",
+      "status": "exact"
+    },
+    {
+      "name": "candidate_inert",
+      "status": "exact"
+    },
+    {
+      "name": "signed_approval_absent",
+      "status": "exact"
+    },
+    {
+      "name": "confirmed_patch_absent",
+      "status": "exact"
+    },
+    {
+      "name": "external_actions_zero",
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "ProviderReasoningCapabilityProbeValidateOnlyReceiptV1",
+  "signed_approval_status": "ABSENT",
+  "validate_only_receipt_sha256": "ebb5721f5502cba87a20da9230611915f51fd59b45d6fe5b862ab4f1d69be968",
+  "version": 1
+}

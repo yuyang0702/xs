@@ -1,0 +1,31 @@
+{
+  "schema": "R1PTR7ProbeMatFinalSHA256ManifestV1",
+  "algorithm": "sha256",
+  "self_entry_omitted": true,
+  "entry_count": 23,
+  "entries": [
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/canary-root/provider-reasoning-capability-probe-canary-root-v1.json", "sha256": "0a56399e5b2443e6a653ebb266cac7210c9fd925a6af58f7bae195eeebed1de1", "bytes": 332},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/ledger/provider-reasoning-capability-probe-ledger-v1.json", "sha256": "1b113a57a6f676b58973c53b71b062758ffde32cd27b02b91378575584483b3c", "bytes": 347},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-authorization-patch-template-v1.json", "sha256": "b1fd18f2b09207c2c6172a93ff41e387faaa9c3398876865e4976dfeea6e9628", "bytes": 575},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-budget-definition-v1.json", "sha256": "e21a90f9bf399e1e521df6d48dbc85f1d7b6e52a2f2f73bcfee00f496131fa13", "bytes": 684},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-cohort-v1.json", "sha256": "d503768e363100715dcf13503d7b74dfc194dd6384002fdf6564be747bc0b892", "bytes": 502},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-definition-v1.json", "sha256": "231648b019d058769ad40368be3c8ae495a0f4dd2391566806f2b148e94490a1", "bytes": 2559},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-execution-preview-v1.json", "sha256": "b09e7509a2bf86cfc4acf1df26f678e31bc138cbb2d0c944b445aa6dac1f4e89", "bytes": 536},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-final-approval-candidate-v1.json", "sha256": "9b42c5f22406f584ee13a564dfd140de19c374559d3f10e6fd287d8d3ac11bbe", "bytes": 1646},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-fixture-definition-v1.json", "sha256": "24d0188505500d8bf28d51ccfe5c6aa64efe40eb6475244cce486cf519fad84a", "bytes": 1316},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-materialization-index-v1.json", "sha256": "624f533222d784101cd55ac83dbc2248c20f23b5e398cded891a6352a99d0bdc", "bytes": 4345},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-observer-definition-v1.json", "sha256": "734be69d2fa309ff5b1aa5a67686059817be1a3e4f16b1541ae45ca6e31145eb", "bytes": 2129},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-plan-v1.json", "sha256": "f93dc1ca81ed4dda6b3df24497db64268b33b385ef52a40af0ce5288cd621f4e", "bytes": 1369},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-pre-launch-rehearsal-v1.json", "sha256": "755e1bc3814b6c49d468ad667d4a5c7ede898d237a6173d33c5892b29de3264c", "bytes": 985},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-privacy-scan-v1.json", "sha256": "71982dfffc442b5f7b9b0ddc15de3f832ffc536ec462523687a5c2cad876af61", "bytes": 648},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-stop-conditions-v1.json", "sha256": "4b71fe10ed9218730afeaa4e44c2b9465989857097aac248dc4faccc54c6f4a4", "bytes": 563},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/materialization-v1/provider-reasoning-capability-probe-validate-only-receipt-v1.json", "sha256": "4e08d3704a6f533170b57b79318deb22ce3564177e6b709d289e819141e47f67", "bytes": 2160},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/r1-ptr7-probe-mat-behavior-unchanged-proof-v1.json", "sha256": "8a0110a7d03ad8319390394e4a91b19357ae02e2545108f2ed4f0189d9c61908", "bytes": 658},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/r1-ptr7-probe-mat-final-privacy-scan-v1.json", "sha256": "b89e784c064f4c9768dac197b6d0528b50fc39a7c93ba1ef6f6229ded3164f7c", "bytes": 492},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/r1-ptr7-probe-mat-final-report-v1.md", "sha256": "19ecc3e370f119458a60240c2378e412ed479ab42e4ea2e0b77843923f978c3d", "bytes": 3936},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/r1-ptr7-probe-mat-forward-risk-v2.json", "sha256": "77c1cad4f7b5e18f23a8a2f6ab3673a378cabe12afcc3ddd7c9f795639cb2303", "bytes": 4546},
+    {"path": "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/r1-ptr7-probe-mat-offline-test-receipt-v1.json", "sha256": "cacab39d9b7bf3638dbe486b52e145821f8ea5eae55131ccc9fe36f6c0e5dc09", "bytes": 806},
+    {"path": "tools/canary/provider_reasoning_capability_probe_materialization.py", "sha256": "f0b473384e0ab3f5ea1f0aac52da7ff326b5d35e54e01482ef85b2a05e0192a1", "bytes": 28120},
+    {"path": "tests/canary/test_provider_reasoning_capability_probe_materialization.py", "sha256": "b319cbd9a2461b8061b09ca712561d870718655800eee9dbc179df3d74e8b94f", "bytes": 7624}
+  ]
+}

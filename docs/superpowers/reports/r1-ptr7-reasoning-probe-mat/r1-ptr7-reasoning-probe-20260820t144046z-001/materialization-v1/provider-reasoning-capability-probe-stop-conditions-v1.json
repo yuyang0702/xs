@@ -1,0 +1,16 @@
+{
+  "no_business_workflow": true,
+  "no_model_substitution": true,
+  "no_provider_switch": true,
+  "no_resume": true,
+  "no_retry": true,
+  "no_second_run": true,
+  "schema": "ProviderReasoningCapabilityProbeStopConditionsV1",
+  "stop_after_first_model_call": true,
+  "stop_conditions_sha256": "ed3b147d81023de6e74b886370f910e83d7779accc1ff2c5324afa979b324a35",
+  "stop_on_budget_limit": true,
+  "stop_on_first_terminal": true,
+  "stop_on_identity_or_parity_mismatch_before_dispatch": true,
+  "stop_on_parameter_rejection": true,
+  "version": 1
+}

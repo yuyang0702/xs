@@ -1,0 +1,88 @@
+{
+  "version": 2,
+  "original_requirement": "Materialize only a fresh disabled single-use Provider reasoning capability probe approval packet bound to the exact fallback Provider, route, model, protocol, and parent contract; do not execute it or change production.",
+  "scope_classification": "closed_world",
+  "operational_definition": "The named exact route identity receives an inert one-call approval candidate and hash-bound synthetic capability fixture; all executable authority remains absent.",
+  "closed_world_justification": "The user explicitly limited this packet to one hash-bound fallback Provider, route, model, protocol, synthetic fixture, cohort, and single execution opportunity; it makes no claim about other Providers or models.",
+  "forbidden_narrowing": [
+    "Do not substitute another Provider or model.",
+    "Do not infer support from parameter acceptance.",
+    "Do not execute a business workflow.",
+    "Do not treat fake rehearsal as Provider evidence."
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "parent evidence exact",
+      "implementation": "verify_parent_evidence_exact",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_materialization.py"],
+      "evidence": "five sealed manifest families verified entry by entry"
+    },
+    {
+      "requirement": "disabled unused unreserved packet",
+      "implementation": "materialize_provider_reasoning_probe_packet",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_materialization.py"],
+      "evidence": "Candidate false/unused/unreserved; Ledger and Canary root empty"
+    },
+    {
+      "requirement": "no guessing",
+      "implementation": "ProviderReasoningCapabilityProbeObserverDefinitionV1 classification rules",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_materialization.py"],
+      "evidence": "accepted-without-enforcement or token separation classifies UNKNOWN"
+    },
+    {
+      "requirement": "external actions zero",
+      "implementation": "materializer has no credential/client/network/model implementation",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_materialization.py"],
+      "evidence": "all five counters zero and live parity exact"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "reasoning_only_shared_output_cap",
+    "zero_visible_max_tokens",
+    "adapter_visible_content_loss",
+    "tool_argument_truncation",
+    "sticky_output_limit_terminal_amplifier"
+  ],
+  "projected_failure_mechanisms": [
+    "stale parent evidence",
+    "identity substitution",
+    "parameter rejection",
+    "parameter ignored",
+    "missing reasoning/final token separation",
+    "approval replay",
+    "unexpected external action"
+  ],
+  "why_previous_tests_missed": "The earlier PTR4 probe observed raw content-block shape but did not request or qualify reasoning allocation control.",
+  "sibling_boundaries": [
+    {
+      "boundary": "production planning/draft/review/maintenance",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No src or baml source is changed and the packet forbids business workflow execution."
+    },
+    {
+      "boundary": "credentials/provider/network",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The materializer exposes no execution path and all action counters remain zero."
+    },
+    {
+      "boundary": "future signed execution",
+      "disposition": "not_applicable",
+      "evidence": "Signed Approval and Confirmed Patch are absent; Candidate execution_authorized=false."
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only canary approval artifacts and an offline fake classification rehearsal are created; no production Provider adapter, parser, validator, route, prompt, or Runtime output boundary changes.",
+  "production_shaped_tests": [
+    "tests/canary/test_provider_reasoning_capability_probe_materialization.py",
+    "tests/canary/test_provider_capability_probe_materialization.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_provider_reasoning_capability_probe_materialization.py",
+    "tests/canary/test_provider_capability_probe_contract.py"
+  ],
+  "remaining_risks": [
+    "Actual Provider support remains UNKNOWN until separately authorized execution.",
+    "A future execution harness must bind the same fixture, observer, identities, budget and stop conditions without changing this candidate."
+  ]
+}

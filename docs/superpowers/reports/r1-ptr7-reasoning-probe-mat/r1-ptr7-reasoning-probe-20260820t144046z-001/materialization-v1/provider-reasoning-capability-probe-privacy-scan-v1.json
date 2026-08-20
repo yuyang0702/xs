@@ -1,0 +1,20 @@
+{
+  "credentials_present": false,
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "privacy_scan_sha256": "0fc2fe85086a5c8f7f16de0c5475c81502741168bb965f2a34ecb3f79d012464",
+  "provider_endpoint_present": false,
+  "raw_prompt_present": false,
+  "raw_provider_content_present": false,
+  "raw_story_present": false,
+  "raw_tool_arguments_present": false,
+  "schema": "ProviderReasoningCapabilityProbePrivacyScanV1",
+  "status": "exact",
+  "version": 1,
+  "violation_count": 0
+}

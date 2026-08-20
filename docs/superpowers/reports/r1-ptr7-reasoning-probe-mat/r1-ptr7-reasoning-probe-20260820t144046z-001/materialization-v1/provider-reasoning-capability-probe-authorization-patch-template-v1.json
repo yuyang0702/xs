@@ -1,0 +1,11 @@
+{
+  "authorization_patch_template_sha256": "feaf8e71f38081e5976c1274a789836dad3e450efb17aacbe43033c6edad34db",
+  "candidate_sha256": "fdf28472be5db33aca26933175d02b2439abaf66aeb105216c253d54d542b979",
+  "confirmed_patch_materialized": false,
+  "execution_authorized": false,
+  "required_future_action": "materialize separate confirmed patch and signed approval after final user authorization",
+  "schema": "ProviderReasoningCapabilityProbeAuthorizationPatchTemplateV1",
+  "signed_approval_materialized": false,
+  "template_status": "unconfirmed",
+  "version": 1
+}

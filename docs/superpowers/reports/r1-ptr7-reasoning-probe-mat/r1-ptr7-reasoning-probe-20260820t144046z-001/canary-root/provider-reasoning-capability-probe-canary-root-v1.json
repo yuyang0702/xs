@@ -1,0 +1,9 @@
+{
+  "canary_root_identity_sha256": "820d38a5677a545001d515bc0bf21173656829aeb95cac53b7e87ca0a0620ab7",
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "entry_count": 0,
+  "production_project_linked": false,
+  "schema": "ProviderReasoningCapabilityProbeCanaryRootV1",
+  "status": "unused",
+  "version": 1
+}

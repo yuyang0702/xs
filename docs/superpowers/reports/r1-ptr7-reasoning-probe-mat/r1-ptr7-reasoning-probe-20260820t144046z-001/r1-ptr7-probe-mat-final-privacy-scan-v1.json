@@ -1,0 +1,16 @@
+{
+  "schema": "R1PTR7ProbeMatFinalPrivacyScanV1",
+  "scope": "R1-PTR7 materializer, tests, and cohort artifacts",
+  "status": "exact",
+  "violation_count": 0,
+  "raw_prompt_present": false,
+  "raw_story_present": false,
+  "raw_tool_arguments_present": false,
+  "raw_provider_content_present": false,
+  "credentials_present": false,
+  "provider_endpoint_present": false,
+  "provider_alias_present": false,
+  "model_alias_present": false,
+  "privacy_pattern_hits": 0,
+  "external_actions": 0
+}

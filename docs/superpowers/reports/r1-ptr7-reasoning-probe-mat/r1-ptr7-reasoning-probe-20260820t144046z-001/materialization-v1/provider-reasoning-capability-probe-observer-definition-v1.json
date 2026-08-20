@@ -1,0 +1,62 @@
+{
+  "fields": {
+    "classifications": [
+      "SUPPORTED",
+      "UNSUPPORTED",
+      "IGNORED",
+      "UNKNOWN"
+    ],
+    "privacy": [
+      "raw_prompt_omitted",
+      "raw_provider_content_omitted",
+      "raw_tool_arguments_omitted",
+      "credentials_omitted"
+    ],
+    "provider": [
+      "provider_identity_sha256",
+      "model_identity_sha256",
+      "route_identity_sha256",
+      "route_kind",
+      "protocol",
+      "requested_reasoning_cap_tokens",
+      "requested_final_reserve_tokens",
+      "parameter_disposition",
+      "finish_reason",
+      "output_tokens",
+      "reasoning_tokens_if_reported",
+      "final_output_tokens_if_reported",
+      "token_separation_reported",
+      "thinking_block_count",
+      "final_text_block_count",
+      "tool_block_count",
+      "visible_characters",
+      "reasoning_characters_if_observable"
+    ],
+    "rules": {
+      "IGNORED": [
+        "parameter accepted but observed reasoning exceeds the requested cap",
+        "reasoning-only max_tokens repeats despite the requested reservation"
+      ],
+      "SUPPORTED": [
+        "parameter accepted",
+        "reasoning is observably bounded at or below the requested cap",
+        "a final text or tool artifact is emitted inside the unchanged total cap",
+        "token separation is reported when the capability claim includes token separation"
+      ],
+      "UNKNOWN": [
+        "parameter accepted but enforcement cannot be observed",
+        "reasoning/final token accounting is not separately exposed",
+        "response shape is insufficient to distinguish support from coincidence"
+      ],
+      "UNSUPPORTED": [
+        "typed parameter rejection",
+        "protocol response states capability unavailable"
+      ]
+    }
+  },
+  "observer_definition_sha256": "b48e877ac61d3fe7be6bb743a09d98787e4ce89f14e1830ff50539afd234cf07",
+  "observer_identity_sha256": "11a8f553a9b5c905b54a7992654eb318424d47b80f21308671da421b386b6992",
+  "raw_content_allowed": false,
+  "schema": "ProviderReasoningCapabilityProbeObserverDefinitionV1",
+  "version": 1
+}

@@ -1,0 +1,15 @@
+{
+  "candidate_is_executable": false,
+  "do_not_execute": true,
+  "execution_authorized": false,
+  "execution_preview_sha256": "3be333efa7640524566611997d585438ff30bd4f67e3ae4bcd948b6a8d060d4f",
+  "expected_max_model_calls": 1,
+  "expected_max_runs": 1,
+  "future_command": "ABSENT_UNTIL_SIGNED_APPROVAL",
+  "model_substitution": false,
+  "production_workflow": false,
+  "provider_switch": false,
+  "real_provider_probe": "NOT_EXECUTED",
+  "schema": "ProviderReasoningCapabilityProbeExecutionPreviewV1",
+  "version": 1
+}

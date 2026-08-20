@@ -1,0 +1,10 @@
+{
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "entries": [],
+  "entry_count": 0,
+  "ledger_identity_sha256": "9cef69ed52472e92dc1114974f193ffc283d39b8246d646161f7a4409d979085",
+  "reservation_status": "unreserved",
+  "schema": "ProviderReasoningCapabilityProbeLedgerV1",
+  "usage_status": "unused",
+  "version": 1
+}

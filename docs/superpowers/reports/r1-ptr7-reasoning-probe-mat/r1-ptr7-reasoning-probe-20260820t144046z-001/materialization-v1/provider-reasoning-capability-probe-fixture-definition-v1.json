@@ -1,0 +1,29 @@
+{
+  "fixture_id": "r1-ptr7-synthetic-allocation-check-v1",
+  "fixture_kind": "non_business_deterministic_checksum",
+  "fixture_sha256": "15d87e12050cda4c9718b62e1234c9e50aa158f439b4c592827d5847498f404e",
+  "model_identity_sha256": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+  "parent_contract_identity_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+  "provider_identity_sha256": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+  "raw_prompt_embedded": false,
+  "raw_story_embedded": false,
+  "raw_tool_arguments_embedded": false,
+  "request_schema_identity_sha256": "49069451445475d5c555b5793ed86bfc0023e128c3d0e4bc1f2ee0b197a4b23b",
+  "route_identity_sha256": "31adb8879560c60a09db4c0955237480ab836f153ff97515fc5911e9fe1d8d34",
+  "schema": "ProviderReasoningCapabilityProbeFixtureV1",
+  "synthetic_recipe": {
+    "algorithm": "sha256_seeded_integer_checksum_v1",
+    "expected_final_artifact_hash_only": true,
+    "final_artifact_schema": {
+      "additionalProperties": false,
+      "required": [
+        "probe_result",
+        "checksum"
+      ],
+      "type": "object"
+    },
+    "item_count": 512,
+    "seed_sha256": "a73e788f9661a35f8afeae3a0e5ff5ff28fa4c2fbac92cfc3f8805e69cbe98a8"
+  },
+  "version": 1
+}

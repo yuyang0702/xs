@@ -1,0 +1,20 @@
+{
+  "schema": "R1PTR7ProbeMatBehaviorUnchangedProofV1",
+  "baseline_head": "941b1fbf9a2e9d361098e69baedfaf01c3425f6c",
+  "prompt": "unchanged",
+  "model": "unchanged",
+  "route": "unchanged",
+  "retry": "unchanged",
+  "budget": "unchanged_in_production",
+  "validator": "unchanged",
+  "src": "unchanged",
+  "baml_src": "unchanged",
+  "production_runtime": "unchanged",
+  "production_configuration": "unchanged",
+  "live_parity_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "network_call_count": 0,
+  "model_call_count": 0,
+  "paid_model_call_count": 0
+}

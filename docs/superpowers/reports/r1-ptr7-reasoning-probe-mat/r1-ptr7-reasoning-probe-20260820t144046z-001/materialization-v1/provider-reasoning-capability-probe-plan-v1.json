@@ -1,0 +1,27 @@
+{
+  "approval_scope": "provider_reasoning_capability_probe",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "budget_sha256": "59ecea001c8d1864740bf64a370f9d05e998fe2761a7e1d2cb52f17f4b435428",
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "definition_sha256": "b871900490c55b18de33376e24e09483b2f852e7988e80656efc97e7986bda44",
+  "execution_window_end_utc": "2026-08-22T14:40:46Z",
+  "execution_window_start_utc": "2026-08-20T14:40:46Z",
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "fixture_sha256": "15d87e12050cda4c9718b62e1234c9e50aa158f439b4c592827d5847498f404e",
+  "full_short_allowed": false,
+  "observer_sha256": "b48e877ac61d3fe7be6bb743a09d98787e4ce89f14e1830ff50539afd234cf07",
+  "only_provider_capability_probe": true,
+  "plan_sha256": "322c58857c4e323db00965e97ed6fefe7432dbd9a6f24ebee07ebd9725b2d51b",
+  "production_fix_allowed": false,
+  "profile_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+  "schema": "ProviderReasoningCapabilityProbePlanV1",
+  "source_head": "941b1fbf9a2e9d361098e69baedfaf01c3425f6c",
+  "stop_conditions_sha256": "ed3b147d81023de6e74b886370f910e83d7779accc1ff2c5324afa979b324a35",
+  "version": 1
+}

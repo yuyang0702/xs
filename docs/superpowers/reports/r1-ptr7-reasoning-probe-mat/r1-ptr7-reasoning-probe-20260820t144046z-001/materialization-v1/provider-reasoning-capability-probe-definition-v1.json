@@ -1,0 +1,57 @@
+{
+  "approval_scope": "provider_reasoning_capability_probe",
+  "business_workflow_allowed": false,
+  "capabilities_under_test": [
+    "reasoning_budget_cap",
+    "final_output_reservation",
+    "reasoning_output_token_separation",
+    "capability_bound_output_allocation"
+  ],
+  "classification_rules": {
+    "IGNORED": [
+      "parameter accepted but observed reasoning exceeds the requested cap",
+      "reasoning-only max_tokens repeats despite the requested reservation"
+    ],
+    "SUPPORTED": [
+      "parameter accepted",
+      "reasoning is observably bounded at or below the requested cap",
+      "a final text or tool artifact is emitted inside the unchanged total cap",
+      "token separation is reported when the capability claim includes token separation"
+    ],
+    "UNKNOWN": [
+      "parameter accepted but enforcement cannot be observed",
+      "reasoning/final token accounting is not separately exposed",
+      "response shape is insufficient to distinguish support from coincidence"
+    ],
+    "UNSUPPORTED": [
+      "typed parameter rejection",
+      "protocol response states capability unavailable"
+    ]
+  },
+  "definition_sha256": "b871900490c55b18de33376e24e09483b2f852e7988e80656efc97e7986bda44",
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "model_substitution_allowed": false,
+  "observer_identity_sha256": "11a8f553a9b5c905b54a7992654eb318424d47b80f21308671da421b386b6992",
+  "one_call_only": true,
+  "production_runtime_used": false,
+  "profile_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+  "provider_switch_allowed": false,
+  "schema": "ProviderReasoningCapabilityProbeDefinitionV1",
+  "target": {
+    "model_identity_sha256": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+    "parent_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+    "parent_contract_identity_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+    "protocol": "anthropic",
+    "provider_identity_sha256": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+    "request_schema_identity_sha256": "49069451445475d5c555b5793ed86bfc0023e128c3d0e4bc1f2ee0b197a4b23b",
+    "route_identity_sha256": "31adb8879560c60a09db4c0955237480ab836f153ff97515fc5911e9fe1d8d34",
+    "route_kind": "configured_fallback"
+  },
+  "version": 1
+}

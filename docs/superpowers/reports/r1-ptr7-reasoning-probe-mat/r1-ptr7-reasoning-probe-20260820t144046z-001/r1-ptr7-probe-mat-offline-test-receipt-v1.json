@@ -1,0 +1,21 @@
+{
+  "schema": "R1PTR7ProbeMatOfflineTestReceiptV1",
+  "focused": {
+    "command": ".venv\\Scripts\\python.exe -m pytest tests\\canary\\test_provider_reasoning_capability_probe_materialization.py -q",
+    "passed": 12,
+    "failed": 0,
+    "duration_seconds": 20.78
+  },
+  "related": {
+    "command": ".venv\\Scripts\\python.exe -m pytest tests\\canary\\test_provider_reasoning_capability_probe_materialization.py tests\\canary\\test_provider_capability_probe_contract.py tests\\canary\\test_provider_capability_probe_materialization.py -q",
+    "passed": 42,
+    "failed": 0,
+    "duration_seconds": 41.77
+  },
+  "execution_mode": "offline_fake_only",
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "network_call_count": 0,
+  "model_call_count": 0,
+  "paid_model_call_count": 0
+}

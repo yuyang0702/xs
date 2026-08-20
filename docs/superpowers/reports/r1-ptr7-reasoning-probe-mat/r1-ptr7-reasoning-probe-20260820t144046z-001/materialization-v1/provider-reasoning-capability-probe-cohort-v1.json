@@ -1,0 +1,12 @@
+{
+  "cohort_id": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "cohort_sha256": "78de7eb2743134e428e149bb4df08db2f8c1ca8b06ea4129512e72b78390a6f4",
+  "execution_window_end_utc": "2026-08-22T14:40:46Z",
+  "execution_window_start_utc": "2026-08-20T14:40:46Z",
+  "reservation_status": "unreserved",
+  "run_namespace": "r1-ptr7-reasoning-probe-20260820t144046z-001",
+  "schema": "ProviderReasoningCapabilityProbeCohortV1",
+  "single_use": true,
+  "usage_status": "unused",
+  "version": 1
+}

@@ -1,0 +1,35 @@
+{
+  "cases": [
+    {
+      "case": "cap_enforced_final_emitted",
+      "classification": "SUPPORTED"
+    },
+    {
+      "case": "parameter_rejected",
+      "classification": "UNSUPPORTED"
+    },
+    {
+      "case": "reasoning_only_max_tokens",
+      "classification": "IGNORED"
+    },
+    {
+      "case": "accepted_no_token_split",
+      "classification": "UNKNOWN"
+    }
+  ],
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "mode": "fake_offline_only",
+  "no_guessing_verified": true,
+  "prelaunch_rehearsal_sha256": "7c39bfd41852c273f5156a2efd23aa6a6794017d6f9c43ec44ae21db701a51f9",
+  "provider_capability_evidence_status": "fake_rehearsal_only",
+  "real_provider_probe": "NOT_EXECUTED",
+  "schema": "ProviderReasoningCapabilityProbePrelaunchRehearsalV1",
+  "status": "exact",
+  "version": 1
+}
