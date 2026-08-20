@@ -1,0 +1,11 @@
+{
+  "schema": "R1PTR7ReasoningProbeRealObs1TestReceiptV1",
+  "version": 1,
+  "status": "passed",
+  "focused_and_related_command": ".venv/Scripts/python.exe -m pytest -q tests/canary/test_provider_reasoning_capability_probe_real.py tests/canary/test_provider_reasoning_capability_probe_materialization.py tests/canary/test_provider_capability_probe_real.py",
+  "focused_and_related_result": "30 passed in 102.43s",
+  "strict_change_gate": "passed",
+  "replay_guard_after_consumption": "operational_ledger_not_unused",
+  "external_actions_during_tests": 0,
+  "production_test_calls": 0
+}

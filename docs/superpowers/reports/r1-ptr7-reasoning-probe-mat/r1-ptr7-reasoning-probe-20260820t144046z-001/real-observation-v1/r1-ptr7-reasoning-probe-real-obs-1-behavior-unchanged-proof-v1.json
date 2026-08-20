@@ -1,0 +1,21 @@
+{
+  "schema": "R1PTR7ReasoningProbeRealObs1BehaviorUnchangedProofV1",
+  "version": 1,
+  "status": "exact",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "pre_execution_head": "a234201917abac9e6ca68c00c0be3b77538571b2",
+  "production_diff_file_count": 0,
+  "src_unchanged": true,
+  "baml_src_unchanged": true,
+  "prompt_unchanged": true,
+  "model_unchanged": true,
+  "route_unchanged": true,
+  "retry_unchanged": true,
+  "budget_unchanged": true,
+  "validator_unchanged": true,
+  "full_short_canary": "NOT_EXECUTED",
+  "draft_final_review_maintenance": "NOT_EXECUTED",
+  "production_fix": "NOT_IMPLEMENTED",
+  "live_parity_before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_parity_after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9"
+}

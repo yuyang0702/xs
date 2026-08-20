@@ -1,0 +1,25 @@
+{
+  "schema": "R1PTR7ReasoningProbeRealObs1FinalSHA256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "self_entry_omitted": true,
+  "entry_count": 16,
+  "entries": [
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/approval-ledger/.provider-reasoning-capability-probe-ledger-identity-v1.json","sha256":"87701a6c46d9f0e0db0bf97eefff9e1e5695bff279d698d7988136e1fde09432","bytes":325},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/approval-ledger/consumed-v1.json","sha256":"727468c94a041fa3792d1b66c0e8596906e827a451c603f23ece341c99ce4c3b","bytes":679},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/approval-ledger/reserved-v1.json","sha256":"6677e7d279179bdd52ed405ac973feb38cfcd90ed6e5457c6ea6896444c1b38e","bytes":479},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/authorization/provider-reasoning-capability-probe-confirmed-authorization-patch-v1.json","sha256":"57611b55027f8a1bac23e96d64383bff9c73e8ea2c96d04a756651bc0b32a570","bytes":1479},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/authorization/provider-reasoning-capability-probe-request-reassembly-receipt-v1.json","sha256":"99d6a54afd0ed3348f348e47fcfc8b1628a561a31c376b942fb8dcbfd69b780d","bytes":709},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/authorization/provider-reasoning-capability-probe-signed-approval-v1.json","sha256":"0b116bd9a003002cbe2371e2075adba22593941597c8c373811d719e536a0cef","bytes":3058},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/authorization/provider-reasoning-capability-probe-signed-validate-only-receipt-v1.json","sha256":"6f84f6ec97028e75579a7561f0cf8612f73feaf98fd750dd07c32385bdafd5a9","bytes":3798},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/r1-ptr7-reasoning-probe-real-obs-1-behavior-unchanged-proof-v1.json","sha256":"91af2e51473dee6c51c09a0ae17a8ca550f33b213cda18c3cbfe6b055630d3dc","bytes":829},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/r1-ptr7-reasoning-probe-real-obs-1-final-privacy-scan-v1.json","sha256":"48daea5407a9123963112af3c84587411d6aec6db85f5e155fe4800838292de4","bytes":528},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/r1-ptr7-reasoning-probe-real-obs-1-final-report-v1.md","sha256":"a1f250f59df1ce8d32bd282f31c04b1ef65e51346c9db88e158a45861c8ddfd6","bytes":3006},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/r1-ptr7-reasoning-probe-real-obs-1-forward-risk-v2.json","sha256":"3ecf5ab5c225163a4fc65a196adde6ad7b56b79f7544470aa10eb8657399c7a2","bytes":4315},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/r1-ptr7-reasoning-probe-real-obs-1-test-receipt-v1.json","sha256":"f8844d9b127257d577767ff13f28e818ecea7f1a03745a802517e5e5193213ec","bytes":586},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/reports/provider-reasoning-capability-probe-observation-v1.json","sha256":"38c6f44b471bd83c35d7f1e77ec885329a0506cdf64d1d390736f93c7ddb8a87","bytes":1839},
+    {"path":"docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/r1-ptr7-reasoning-probe-20260820t144046z-001/real-observation-v1/reports/provider-reasoning-capability-probe-real-execution-receipt-v1.json","sha256":"84541a4928579a62de6191ebf3347ff84c545fb1a1c0276951ff79d759432a75","bytes":2232},
+    {"path":"tools/canary/provider_reasoning_capability_probe_real.py","sha256":"9fa1638b1d0bcbdee2bec0893db1c385d127ad91092fa19f7ee48f103a274eee","bytes":47186},
+    {"path":"tests/canary/test_provider_reasoning_capability_probe_real.py","sha256":"fbf267f0e4f5aac5807056d77156cd253a4eeb3cfd3592ee00d46a91cef45c56","bytes":7864}
+  ]
+}

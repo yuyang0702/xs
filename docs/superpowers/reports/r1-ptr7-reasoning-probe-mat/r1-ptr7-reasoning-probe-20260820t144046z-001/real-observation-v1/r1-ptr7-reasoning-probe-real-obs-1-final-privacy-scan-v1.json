@@ -1,0 +1,21 @@
+{
+  "schema": "R1PTR7ReasoningProbeRealObs1FinalPrivacyScanV1",
+  "version": 1,
+  "status": "exact",
+  "scope": "real-observation-v1",
+  "violation_count": 0,
+  "raw_prompt_present": false,
+  "raw_story_present": false,
+  "raw_tool_arguments_present": false,
+  "raw_provider_content_present": false,
+  "credentials_present": false,
+  "provider_endpoint_present": false,
+  "provider_error_text_present": false,
+  "persisted_observation_kinds": [
+    "hash",
+    "shape",
+    "count",
+    "typed_status",
+    "budget_usage"
+  ]
+}

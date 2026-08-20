@@ -1,0 +1,76 @@
+{
+  "version": 2,
+  "original_requirement": "After exact signed validate-only, execute exactly one sealed Provider reasoning capability probe with no retry, resume, second probe, Full Short, downstream workflow, or Production Fix.",
+  "scope_classification": "closed_world",
+  "operational_definition": "One synthetic Anthropic-protocol request used max_tokens=16000 and thinking budget_tokens=8000 on the exact configured fallback identity; the response was reduced in memory to approved metadata and the cohort was consumed.",
+  "forbidden_narrowing": [
+    "No Provider, route, model, fixture, observer, budget, or cohort substitution.",
+    "No raw Prompt, story, tool arguments, Provider content, credential, endpoint, header, or error text persistence.",
+    "No retry, resume, second probe, Full Short, Draft, Final Review, Maintenance, or Production Fix.",
+    "Accepted-but-unobservable behavior cannot be classified SUPPORTED."
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Signed validate-only exact before external actions",
+      "implementation": "hash/window/route/parity/budget/ledger validation",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_real.py"],
+      "evidence": "authorization/provider-reasoning-capability-probe-signed-validate-only-receipt-v1.json"
+    },
+    {
+      "requirement": "Exactly one request without hidden retry",
+      "implementation": "exclusive reservation plus one direct client.stream request and terminal consumption",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_real.py"],
+      "evidence": "approval-ledger/reserved-v1.json and approval-ledger/consumed-v1.json"
+    },
+    {
+      "requirement": "Content-free observation",
+      "implementation": "in-memory reduction to hashes, counts, booleans, token fields, and classifications",
+      "test_paths": ["tests/canary/test_provider_reasoning_capability_probe_real.py"],
+      "evidence": "reports/provider-reasoning-capability-probe-observation-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "Boundary 12 reasoning-only max_tokens",
+    "sticky output-limit amplification",
+    "configured-fallback identity drift",
+    "single-use approval replay",
+    "hidden transport retry",
+    "raw Provider content leakage"
+  ],
+  "projected_failure_mechanisms": [
+    "sealed identity or parity drift before dispatch",
+    "credential/client failure before network",
+    "parameter rejection, acceptance, ignore, or unobservable enforcement",
+    "transport termination after reservation",
+    "reasoning-only, text, tool, mixed, unknown, or malformed response shape"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_variants_tested": [],
+  "model_output_topology_classes_tested": [],
+  "unseen_valid_variants_tested": [],
+  "invalid_output_variants_tested": [],
+  "transport_capacity_variants_tested": [],
+  "unknown_variant_behavior": "Unobservable enforcement or token separation remains UNKNOWN; no content is guessed.",
+  "model_output_not_applicable_evidence": "No production adapter, parser, Prompt, Route/Model, retry/fallback, validator, or budget changed; canary evidence cannot become narrative authority.",
+  "why_previous_tests_missed": "The inert packet could not observe whether the Provider accepted or enforced the reasoning control.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Production workflow and formal authority",
+      "disposition": "not_applicable",
+      "evidence": "Production diff is zero and no workflow entry point was invoked."
+    },
+    {
+      "boundary": "Approval replay",
+      "disposition": "fixed_and_tested",
+      "evidence": "Post-consumption validate-only returns operational_ledger_not_unused."
+    }
+  ],
+  "production_shaped_tests": ["tests/canary/test_provider_reasoning_capability_probe_real.py"],
+  "next_authoritative_boundary_tests": ["tests/canary/test_provider_reasoning_capability_probe_materialization.py"],
+  "invariant_test_paths": ["tests/canary/test_provider_reasoning_capability_probe_real.py"],
+  "remaining_risks": [
+    "The Provider did not report separate reasoning/final token counts, so token separation remains UNKNOWN.",
+    "This observation does not implement a Production Fix."
+  ]
+}
