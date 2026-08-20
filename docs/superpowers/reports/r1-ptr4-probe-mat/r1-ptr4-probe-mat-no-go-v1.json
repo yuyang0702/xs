@@ -1,0 +1,154 @@
+{
+  "schema": "R1PTR4ProbeMaterializationNoGoV1",
+  "version": 1,
+  "observed_at": "2026-08-20T09:25:03Z",
+  "gate": "R1_PTR4_PROBE_MAT_NO_GO_PROBE_DEFINITION_INCOMPLETE",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "parent_evidence_commit": "ddcc0965ba8cbf6accb932d8898a77232ee8a13c",
+  "parent_evidence": {
+    "status": "exact",
+    "manifest_canonical_sha256": "e7806b206edbdddf21a1ea74c7d0ebbb327ccedf7216f528c281c4ac2edfdf4c",
+    "manifest_mismatch_count": 0,
+    "privacy_status": "exact",
+    "privacy_violation_count": 0,
+    "root_cause_gate": "R1_PTR4_PROVIDER_CAPABILITY_EVIDENCE_REQUIRED"
+  },
+  "formal_probe_contract": {
+    "definition_sha256": "7833ef2a448830056ecea2969c5b595f86157b8764ec3adb2cca9ece74828636",
+    "source": "docs/superpowers/reports/r1-ptr4/r1-ptr4-final-report-v1.md#future-minimal-probe-contract-defined-only-not-executed",
+    "defined_properties": {
+      "single_use": true,
+      "route_policy": "explicit_configured_fallback_only",
+      "maximum_provider_model_network_paid_calls": 1,
+      "implicit_primary_allowed": false,
+      "retry_allowed": false,
+      "implicit_fallback_allowed": false,
+      "expansion_allowed": false,
+      "resume_allowed": false,
+      "full_short_allowed": false,
+      "protocol": "anthropic",
+      "execution_mode": "plain",
+      "requested_max_output_tokens": 8798,
+      "stop_policy": "first_response_or_transport_failure",
+      "raw_business_or_provider_content_persisted": false
+    }
+  },
+  "boundary_12_target": {
+    "identity_sha256": "b3680d9e9949016ad4ab01446ddfbbfa0b6ec4df8cc60a95384f1edd35941357",
+    "identity_status": "exact_hash_bound",
+    "boundary": 12,
+    "role": "planning",
+    "stage": "planning",
+    "substage": "planning-semantic-v2-segment-01-packet-000001-0",
+    "semantic_scope": "nested_semantic_packet",
+    "contract_name": "planning_semantic_v2",
+    "contract_version": 2,
+    "contract_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+    "route_kind": "configured_fallback",
+    "route_attempt": 2,
+    "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+    "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+    "protocol": "anthropic",
+    "execution_mode": "plain",
+    "system_sha256": "d6ad1c9d2d36a9f9f8703fc89a46f004d569cce9085a50c7d595db4b9330f2aa",
+    "user_sha256": "2d339af183abe5980945cc3c2d0ba5abaa82f7b2c43500bbafb53653c60667ed",
+    "request_wire_schema_sha256": "6098e362b6370cbb0d63710f56f355561af549188e1eeaa5d267862f290c95be",
+    "tool_schema_status": "absent_plain_mode",
+    "required_tool_status": "absent_plain_mode",
+    "requested_max_output_tokens": 8798,
+    "local_effective_max_output_tokens": 8798,
+    "effective_provider_max_output_tokens": null,
+    "adapter_id": "anthropic",
+    "adapter_version": 1,
+    "adapter_source_sha256": "7786c0ae46ceeaced450a4d30a09a4c669969bff2be61ca88a6231f36ec4ecf5",
+    "parser_identity": "novel_flywheel.model_output.parse_json_object",
+    "parser_source_sha256": "37d7af8aa7402fab0afe7ea900f5918982ff63629cfd5b9c03cc62be1946c043",
+    "strict_tool_reached": false,
+    "parser_reached": true
+  },
+  "definition_gaps": [
+    {
+      "code": "sanitized_probe_fixture_absent",
+      "evidence": "No committed fixture or private hash-bound fixture definition references the PTR4 nested-packet input SHA or formal probe contract.",
+      "required_to_close": "A reviewed sanitized isomorphic fixture plus deterministic derivation/version and fixture SHA bound to the formal contract."
+    },
+    {
+      "code": "probe_request_derivation_absent",
+      "evidence": "The parent defines only production Planning request assembly with matching proportions; it does not define executable sanitized system/user content or a deterministic assembly input.",
+      "required_to_close": "A formal request-input definition that reconstructs the intended probe without raw story, raw prompt, or ad-hoc prompt invention."
+    },
+    {
+      "code": "typed_observer_target_incompatible",
+      "evidence": "ProviderContentBlockShapeSnapshotV1 fixes substage=planning_repair_patch and safe_capture_provider_content_block_snapshot requires planning_repair_patch contract v1; Boundary 12 is planning_semantic_v2 v2.",
+      "required_to_close": "A separately authorized, production-safe generalization or exact existing observer path that represents planning_semantic_v2 without falsifying target identity."
+    },
+    {
+      "code": "adapter_lineage_receipt_not_executable_for_target",
+      "evidence": "AnthropicAdapter.complete only persists the PTR1 content snapshot when the planning-repair target gate succeeds; no existing canary-only lineage receipt binds Boundary 12 pre-adapter topology to post-adapter/parser reachability.",
+      "required_to_close": "An approved observer/lineage contract that captures the exact target without monkeypatching, synthetic Provider responses, or production semantic changes."
+    }
+  ],
+  "observer_evidence": {
+    "provider_content_block_shape_schema": "ProviderContentBlockShapeSnapshotV1",
+    "provider_content_block_shape_json_schema_sha256": "3a4582e2ce6dbefa67bd6af4a922704fe963783c8b74faebbea7670e7784db83",
+    "observer_source_sha256": "61a4430d93ba030f94092cddc4d4ee818076cfad94d501316ba7f6286209087d",
+    "boundary_12_compatible": false,
+    "fake_evidence_is_provider_capability_evidence": false,
+    "provider_capability_evidence": "NOT_EXECUTED"
+  },
+  "materialization": {
+    "plan": "ABSENT",
+    "candidate": "ABSENT",
+    "authorization_patch_template": "ABSENT",
+    "validate_only_receipt": "ABSENT",
+    "execution_preview": "ABSENT",
+    "materialization_index": "ABSENT",
+    "probe_target_definition": "ABSENT_AS_EXECUTABLE_PACKET_ARTIFACT",
+    "probe_input_fixture_definition": "ABSENT",
+    "provider_route_model_binding": "ABSENT_AS_PACKET_ARTIFACT",
+    "observer_definition_bundle": "ABSENT_AS_EXECUTABLE_PACKET_ARTIFACT",
+    "adapter_lineage_observation_definition": "ABSENT",
+    "budget_definition": "ABSENT",
+    "stop_conditions": "ABSENT",
+    "cohort": "NOT_ALLOCATED",
+    "execution_window": "NOT_ALLOCATED",
+    "ledger": "NOT_CREATED",
+    "ledger_entry_count": 0,
+    "canary_root": "NOT_CREATED",
+    "prelaunch_rehearsal": "NOT_EXECUTED",
+    "signed_approval": "ABSENT",
+    "confirmed_patch": "ABSENT",
+    "execution_performed": false
+  },
+  "protected_boundaries": {
+    "production_source_changed": false,
+    "baml_source_changed": false,
+    "prompt_changed": false,
+    "route_model_changed": false,
+    "retry_fallback_changed": false,
+    "budget_changed": false,
+    "adapter_parser_normalizer_changed": false,
+    "validators_changed": false,
+    "historical_manifest_changed": false
+  },
+  "live_parity": {
+    "status": "exact",
+    "sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9"
+  },
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  },
+  "focused_tests": {
+    "passed": 135,
+    "skipped": 2,
+    "failed": 0,
+    "provider_calls": 0
+  },
+  "production_fix": "NOT_IMPLEMENTED",
+  "real_provider_probe": "NOT_EXECUTED",
+  "new_single_use_approval_required_after_blockers_close": true
+}

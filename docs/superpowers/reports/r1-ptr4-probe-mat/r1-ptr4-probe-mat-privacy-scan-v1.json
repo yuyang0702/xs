@@ -1,0 +1,29 @@
+{
+  "schema": "R1PTR4ProbeMaterializationPrivacyScanV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "utf8_sorted_path_bytes_sha256_violation_count_lines",
+  "scan_input_sha256": "5a3aa9440f96715b514643ff79e03ff25eaf51e194bb7b518a4831b26ce5a906",
+  "status": "exact",
+  "scanned_file_count": 2,
+  "violation_count": 0,
+  "credentials_or_headers_included": false,
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "raw_provider_content_included": false,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-mat-no-go-report-v1.md",
+      "bytes": 6854,
+      "sha256": "fc413c08a00d4ec339cd1f69ad1ddf5bfe9a6b4dce6053c60e1b5fc241d3bf29",
+      "violation_count": 0
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-mat-no-go-v1.json",
+      "bytes": 7386,
+      "sha256": "cdd9834b932aeb9880c40c14cfc64233a274f2a686b1362b1c17ecbbb19e1151",
+      "violation_count": 0
+    }
+  ],
+  "violations": []
+}

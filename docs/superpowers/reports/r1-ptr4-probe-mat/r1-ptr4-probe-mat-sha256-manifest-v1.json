@@ -1,0 +1,34 @@
+{
+  "schema": "R1PTR4ProbeMaterializationSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "canonicalization": "file_bytes",
+  "evidence_canonicalization": "utf8_sorted_path_bytes_sha256_lines",
+  "gate": "R1_PTR4_PROBE_MAT_NO_GO_PROBE_DEFINITION_INCOMPLETE",
+  "evidence_canonical_sha256": "e53c6be23f3c743477179d6fedaecaf2eb59484f3dbfe9c5d60680e8d05b1028",
+  "parent_evidence_commit": "ddcc0965ba8cbf6accb932d8898a77232ee8a13c",
+  "parent_evidence_canonical_sha256": "e7806b206edbdddf21a1ea74c7d0ebbb327ccedf7216f528c281c4ac2edfdf4c",
+  "approval_packet_materialized": false,
+  "signed_approval_materialized": false,
+  "confirmed_patch_materialized": false,
+  "provider_probe_executed": false,
+  "production_fix_implemented": false,
+  "external_action_count": 0,
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-mat-no-go-report-v1.md",
+      "bytes": 6854,
+      "sha256": "fc413c08a00d4ec339cd1f69ad1ddf5bfe9a6b4dce6053c60e1b5fc241d3bf29"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-mat-no-go-v1.json",
+      "bytes": 7386,
+      "sha256": "cdd9834b932aeb9880c40c14cfc64233a274f2a686b1362b1c17ecbbb19e1151"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-mat-privacy-scan-v1.json",
+      "bytes": 1004,
+      "sha256": "6582be93edbd81b2319316f707414aa7a91551fed687effa8a16301a0176c18e"
+    }
+  ]
+}
