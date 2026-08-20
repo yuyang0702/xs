@@ -1,0 +1,48 @@
+{
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "cost": {
+    "actual_cost_microunits": 34879,
+    "currency": "USD",
+    "maximum_cost_microunits": 5000000,
+    "status": "within_budget"
+  },
+  "effective_provider_max_output_tokens": null,
+  "elapsed_micros": 162860000,
+  "executed_at": "2026-08-20T12:53:30Z",
+  "executed_run_count": 1,
+  "execution_receipt_sha256": "a0fb9fab1a99f64fc57ecdc362c490eb308259f3268f9ee2ef499b22b904f82c",
+  "external_action_counters": {
+    "credential_lookup_count": 1,
+    "model_call_count": 1,
+    "network_call_count": 1,
+    "paid_model_call_count": 1,
+    "provider_client_creation_count": 1
+  },
+  "failure_type_sha256": null,
+  "full_short_canary": "NOT_EXECUTED",
+  "input_tokens": 29,
+  "live_parity": {
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "status": "exact"
+  },
+  "observation_receipt_sha256": "665fa85e163e5f7b6cdf4b0b449533a581ba509c6c8e3cf3a3cf7a06617f1bb0",
+  "output_tokens": 8798,
+  "production_fix": "NOT_IMPLEMENTED",
+  "profile_id": "r1_ptr4_provider_capability_probe_1",
+  "raw_prompt_omitted": true,
+  "raw_provider_response_omitted": true,
+  "raw_story_omitted": true,
+  "raw_tool_arguments_omitted": true,
+  "request_reassembly_receipt_sha256": "5ba5d6a2acbf600bbd88b7d6c9cae2f1104adcc09775aa3a47c268d23b7de4e8",
+  "requested_max_output_tokens": 8798,
+  "reservation_receipt_sha256": "036816145c155fc08c94e55c5f87991cf2777257c44b3d320fead78f54e177e5",
+  "resume_performed": false,
+  "retry_performed": false,
+  "schema": "ProviderCapabilityProbeRealExecutionReceiptV1",
+  "second_run_performed": false,
+  "signed_approval_sha256": "052b2253c078c65243805f9b021836eb12afe8e8a51cfd8dae3826f4e6713289",
+  "signed_validate_only_receipt_sha256": "42f2d9ee6c8ea9f1b763a3304ee40af4ba930645f618f4777d240b431ac18fa8",
+  "terminal_status": "provider_response_observed",
+  "version": 1
+}

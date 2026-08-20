@@ -1,0 +1,12 @@
+{
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "consumed_at": "2026-08-20T12:53:30Z",
+  "consumption_receipt_sha256": "e8efb3ccd7c7dcdd0af22be34bfc9ec2e37ba678e4e84d37548d260f64d347f2",
+  "execution_receipt_sha256": "a0fb9fab1a99f64fc57ecdc362c490eb308259f3268f9ee2ef499b22b904f82c",
+  "profile_id": "r1_ptr4_provider_capability_probe_1",
+  "reservation_receipt_sha256": "036816145c155fc08c94e55c5f87991cf2777257c44b3d320fead78f54e177e5",
+  "schema": "ProviderCapabilityProbeConsumptionV1",
+  "signed_approval_sha256": "052b2253c078c65243805f9b021836eb12afe8e8a51cfd8dae3826f4e6713289",
+  "status": "consumed",
+  "version": 1
+}

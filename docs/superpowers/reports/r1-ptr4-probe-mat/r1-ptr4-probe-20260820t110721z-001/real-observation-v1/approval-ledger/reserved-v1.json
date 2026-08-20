@@ -1,0 +1,10 @@
+{
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "profile_id": "r1_ptr4_provider_capability_probe_1",
+  "reservation_receipt_sha256": "036816145c155fc08c94e55c5f87991cf2777257c44b3d320fead78f54e177e5",
+  "reserved_at": "2026-08-20T12:50:41Z",
+  "schema": "ProviderCapabilityProbeReservationV1",
+  "signed_approval_sha256": "052b2253c078c65243805f9b021836eb12afe8e8a51cfd8dae3826f4e6713289",
+  "status": "reserved",
+  "version": 1
+}

@@ -1,0 +1,74 @@
+{
+  "schema": "R1Ptr4ProbeRealObs1FinalSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "cohort_id": "r1-ptr4-probe-20260820t110721z-001",
+  "entry_count": 16,
+  "self_entry_omitted": true,
+  "entries": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/approval-ledger/.provider-capability-probe-ledger-identity-v1.json",
+      "sha256": "4e2fd5ea40a476cddb89f1e35f8637496eada3322ba1783a4b728a7a01f13033"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/approval-ledger/consumed-v1.json",
+      "sha256": "c9130b5600b46baf16fafb7dcbe7b7d96692509630e2fd3e5f74aa1ef6d43ea0"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/approval-ledger/reserved-v1.json",
+      "sha256": "c3865db9c6e93a9fbeca06700c1557ee566a214ff20214a79bb10fa2abd8c5dd"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/authorization/provider-capability-probe-confirmed-authorization-patch-v1.json",
+      "sha256": "1b22cc87a223290c4981535098f99db5e0adb826f38a9d6a5d80a95a1930c330"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/authorization/provider-capability-probe-request-reassembly-receipt-v1.json",
+      "sha256": "988989d37cc5c37513e5c3f1095eca1dc2f2dfcf1d1a67835fcdc5ccde3a823e"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/authorization/provider-capability-probe-signed-approval-v1.json",
+      "sha256": "2499df4c38ea1bdf55d2814e5e269a486cf6b3e6ab95932b33e78b53cca2e2db"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/authorization/provider-capability-probe-signed-validate-only-receipt-v1.json",
+      "sha256": "11a833219ee518326f1868debacedd4e56db56fe3825cdfc313674e823c9b649"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/r1-ptr4-probe-real-obs-1-behavior-unchanged-proof-v1.json",
+      "sha256": "6295682ef29b7173e823d7e11abe2a0bc688482e87efb69b92a8362ce9f4f7ae"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/r1-ptr4-probe-real-obs-1-final-privacy-scan-v1.json",
+      "sha256": "d19a53c462dba30377d80e57991f6cb04a7dd9f06a050b9262ae89a03cc372fb"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/r1-ptr4-probe-real-obs-1-final-report-v1.md",
+      "sha256": "1238c3a0aaec1abebf82f00b584ff93f301bd2e68811f953611f1e68e2018134"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/r1-ptr4-probe-real-obs-1-forward-risk-v2.json",
+      "sha256": "7f017879580afeb7271e6fced9720945620faeddf2a18363060d1becb4e79e37"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/r1-ptr4-probe-real-obs-1-test-receipt-v1.json",
+      "sha256": "44305191d002eaa0d6550abb0390beff0856e5b2e5be40ae5c5f768b66585c76"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/reports/provider-capability-probe-observation-v1.json",
+      "sha256": "54df3c281d58ff3560739f87eb1cd2fc2560b3ec0ea998fe07028f104600b845"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/reports/provider-capability-probe-real-execution-receipt-v1.json",
+      "sha256": "893aa5710c7d51c075c03bd872010292c469013f017c65a0b005e209a3807251"
+    },
+    {
+      "path": "tests/canary/test_provider_capability_probe_real.py",
+      "sha256": "070b9a95e11541402d6847990a9acd3109b9c906ebc4debd6f43777fbe8c95c2"
+    },
+    {
+      "path": "tools/canary/provider_capability_probe_real.py",
+      "sha256": "782a1a739d397c64146b6d77ec879f58a43679d4c3ffe2b653a06dd65b905966"
+    }
+  ]
+}

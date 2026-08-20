@@ -1,0 +1,61 @@
+{
+  "definition_sha256": "6f201a3687d46d7be83f7c9797b03b26abdd346cc897f0f1ef87f0ab57ae5aee",
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_model_call_count": 0,
+    "provider_client_creation_count": 0
+  },
+  "fixture_sha256": "22ac37e6494de79f542596cd16d5c14b8b25229af5cc1f451957e101b1c87e64",
+  "post_adapter": {
+    "adapter_tool_arguments_present": false,
+    "adapter_visible_characters": 0,
+    "adapter_visible_text": false,
+    "json_conversion_reached": false,
+    "lineage_receipt_sha256": "2cf7fc7c4492107bb444b51f5ef83630e4c7899614dc5ca6d17fc6a64ad60539",
+    "output_limit_classifier": "REASONING_ONLY",
+    "parser_reached": true,
+    "raw_content_omitted": true,
+    "semantic_validation_reached": false,
+    "strict_tool_reached": false,
+    "wire_schema_reached": false
+  },
+  "pre_normalization": {
+    "content_block_count": 1,
+    "content_block_type_sequence": [
+      "thinking"
+    ],
+    "effective_provider_max_output_tokens": null,
+    "empty_content": false,
+    "finish_reason": "max_tokens",
+    "finish_reason_sha256": null,
+    "max_tokens": true,
+    "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+    "output_tokens": 8798,
+    "partial_tool_argument_count": 0,
+    "protocol": "anthropic",
+    "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+    "raw_content_omitted": true,
+    "reasoning_block_count": 1,
+    "requested_max_output_tokens": 8798,
+    "route_kind": "configured_fallback",
+    "text_block_count": 0,
+    "tool_argument_byte_length": 0,
+    "tool_arguments_present": false,
+    "tool_call_count": 0,
+    "unknown_block_count": 0,
+    "unknown_block_type_sha256s": [],
+    "visible_text_characters": 0,
+    "zero_visible": true
+  },
+  "provider_capability_evidence_status": "real_probe_observed",
+  "raw_prompt_omitted": true,
+  "raw_provider_response_omitted": true,
+  "raw_story_omitted": true,
+  "raw_tool_arguments_omitted": true,
+  "receipt_sha256": "665fa85e163e5f7b6cdf4b0b449533a581ba509c6c8e3cf3a3cf7a06617f1bb0",
+  "schema": "ProviderCapabilityProbeObservationV1",
+  "target_boundary_identity_sha256": "851b447afba31d2296ebafc223ea4189464920e332693a5a03d5cf0b821675f0",
+  "version": 1
+}

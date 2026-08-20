@@ -1,0 +1,38 @@
+{
+  "schema": "R1Ptr4ProbeRealObs1TestReceiptV1",
+  "version": 1,
+  "executed_at_utc": "2026-08-20",
+  "execution_basis_head": "3a309990b65bde06aa58ee5177264c3bdecf11a2",
+  "targeted_tests": {
+    "command": ".venv/Scripts/python.exe -m pytest -q tests/canary/test_provider_capability_probe_real.py tests/canary/test_provider_capability_probe_contract.py tests/canary/test_provider_capability_probe_materialization.py",
+    "status": "passed",
+    "passed": 39,
+    "failed": 0,
+    "elapsed_seconds": 37.58
+  },
+  "python_compile": {
+    "status": "passed",
+    "files": [
+      "tools/canary/provider_capability_probe_real.py",
+      "tests/canary/test_provider_capability_probe_real.py"
+    ]
+  },
+  "strict_change_gate": {
+    "declared_level": "L3",
+    "status": "passed",
+    "ok": true,
+    "warnings": [],
+    "blockers": []
+  },
+  "full_suite": {
+    "command": ".venv/Scripts/python.exe -m pytest -q -x",
+    "status": "historical_clock_sensitive_failure_only",
+    "passed_before_first_failure": 261,
+    "failed": 1,
+    "failure": "tests/canary/test_c0b_p12_signed_approval.py::test_candidate_and_patch_remain_non_executable",
+    "reason_code": "approval_expired",
+    "assessment": "The failure is caused by an unrelated historical C0B approval window. The expired authorization was not re-dated or modified."
+  },
+  "git_diff_check": "passed",
+  "external_actions_during_tests": 0
+}

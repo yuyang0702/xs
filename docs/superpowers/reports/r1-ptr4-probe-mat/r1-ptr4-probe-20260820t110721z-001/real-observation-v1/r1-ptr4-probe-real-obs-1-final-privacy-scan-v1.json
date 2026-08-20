@@ -1,0 +1,21 @@
+{
+  "schema": "R1Ptr4ProbeRealObs1FinalPrivacyScanV1",
+  "version": 1,
+  "scan_status": "exact",
+  "scope": "real-observation-v1",
+  "json_files_validated_before_final_documents": 10,
+  "credential_pattern_matches": 0,
+  "authorization_header_matches": 0,
+  "api_key_matches": 0,
+  "password_matches": 0,
+  "raw_omission_flag_failures": 0,
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_tool_arguments_persisted": false,
+  "raw_provider_content_persisted": false,
+  "credentials_persisted": false,
+  "headers_persisted": false,
+  "provider_error_text_persisted": false,
+  "persisted_observation_policy": "hash_shape_count_and_typed_status_only",
+  "result": "PASS"
+}

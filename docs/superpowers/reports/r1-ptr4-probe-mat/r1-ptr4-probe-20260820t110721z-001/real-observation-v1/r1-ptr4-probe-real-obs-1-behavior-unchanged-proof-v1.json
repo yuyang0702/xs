@@ -1,0 +1,30 @@
+{
+  "schema": "R1Ptr4ProbeRealObs1BehaviorUnchangedProofV1",
+  "version": 1,
+  "baseline_head": "182bb48f3e3a1bb6a5ccc9ef5e278c29f5246fb2",
+  "execution_basis_head": "3a309990b65bde06aa58ee5177264c3bdecf11a2",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "changed_scope": [
+    "tools/canary/provider_capability_probe_real.py",
+    "tests/canary/test_provider_capability_probe_real.py",
+    "docs/superpowers/reports/r1-ptr4-probe-mat/r1-ptr4-probe-20260820t110721z-001/real-observation-v1/**"
+  ],
+  "production_diff": "none",
+  "src_novel_flywheel_diff": "none",
+  "baml_src_diff": "none",
+  "prompt_unchanged": true,
+  "route_unchanged": true,
+  "model_unchanged": true,
+  "retry_unchanged": true,
+  "fallback_unchanged": true,
+  "output_budget_unchanged": true,
+  "validator_unchanged": true,
+  "full_short_canary": "NOT_EXECUTED",
+  "draft_review_maintenance": "NOT_EXECUTED",
+  "production_fix": "NOT_IMPLEMENTED",
+  "live_parity": {
+    "status": "exact",
+    "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+    "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9"
+  }
+}
