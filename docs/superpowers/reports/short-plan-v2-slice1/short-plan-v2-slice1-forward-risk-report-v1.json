@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "original_requirement": "Implement the sealed EVENT_REALIZATION_UNIT_SHADOW_V1 Phase A as an offline deterministic/replay shadow without changing Planning V1 authority or production behavior.",
+  "scope_classification": "closed_world",
+  "operational_definition": "The exact sealed 26-field artifact, two-field candidate, bounded validator/recovery/assembly/comparison surface and seven-family replay corpus are implemented only in the enumerated Phase A files.",
+  "forbidden_narrowing": ["No claim of full Planning V2 convergence", "No model-backed Phase B", "No authority promotion", "No inferred Call1 rule", "No historical evidence rewrite"],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The sealed Slice1 plan fixes exact fields, owners, files, recovery levels, topology classes and Phase A inputs; broader Planning remains explicitly outside this completion claim.",
+  "constraint_traceability": [
+    {"requirement": "Exact artifact identity and ownership", "implementation": "EventRealizationCandidateV1, EventRealizationInputAuthorityV1 and EventRealizationArtifactV1", "test_paths": ["tests/test_planning_v2_slice1.py"], "evidence": "26 flattened paths; title/narrative only candidate; authority/local injection rejected"},
+    {"requirement": "Lossless validation and bounded recovery", "implementation": "LosslessSliceDiagnosticV1, validate_event_realization_artifact, freeze/patch/impact/no-progress functions", "test_paths": ["tests/test_planning_v2_slice1.py", "tests/test_generated_artifacts.py"], "evidence": "typed rule/path/invariant findings, CAS and maximum closure two"},
+    {"requirement": "Offline replay, privacy and isolation", "implementation": "tools/diagnostics/short_plan_v2_slice1.py", "test_paths": ["tests/test_short_plan_v2_slice1_replay.py", "tests/test_phase1a_shadow_workflows.py"], "evidence": "20 sanitized cases; credential/provider/network/model/paid zero; V1 bytes unchanged"}
+  ],
+  "historical_incident_families_checked": ["latest Short Call1 semantic boundary with exact rule UNKNOWN", "PTR3 targeted repair finding propagation", "Planning semantic/domain rejection", "generated artifact structure drift", "reasoning-only/max_tokens adjacent history"],
+  "projected_failure_mechanisms": ["ambiguous candidate envelope", "candidate authority echo", "truncated or empty transport", "stale parent or repair", "repeated same finding without state change", "dependency closure beyond safe bound"],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": ["canonical title+narrative", "data envelope", "nested result payload", "unseen delivery artifact", "unseen answer content", "response value"],
+  "invalid_output_variants_tested": ["ambiguous multiple candidates", "authority field echo", "narrative below semantic minimum"],
+  "transport_capacity_variants_tested": ["truncated JSON", "empty content"],
+  "model_output_topology_classes_tested": ["root object", "single known wrapper", "nested known wrapper", "unseen single wrapper"],
+  "unseen_valid_variants_tested": ["delivery.artifact", "answer.content"],
+  "unknown_variant_behavior": "Reject typed and losslessly; do not guess a candidate, field, rule or repair.",
+  "why_previous_tests_missed": "Slice1 did not exist; prior tests exercised monolithic V1 and historical canary packets rather than this isolated artifact boundary.",
+  "sibling_boundaries": [
+    {"boundary": "Planning V1 workflow authority", "disposition": "tested_not_susceptible", "evidence": "No workflow/runtime import or writer; related 550-test parity suite passed"},
+    {"boundary": "Draft, StoryState, Canon and READY", "disposition": "tested_not_susceptible", "evidence": "Replay snapshots and import-boundary tests prove no consumer/writer"},
+    {"boundary": "PTR12 provider observer", "disposition": "not_applicable", "evidence": "Provider output and contract_runtime paths untouched; observer remains separate priority"},
+    {"boundary": "model-backed Slice1 Phase B", "disposition": "not_applicable", "evidence": "Not implemented and requires separate authorization"}
+  ],
+  "production_shaped_tests": ["tests/test_planning_v2_slice1.py", "tests/test_short_plan_v2_slice1_replay.py", "tests/test_generated_artifacts.py", "tests/test_workflows.py"],
+  "next_authoritative_boundary_tests": ["tests/test_planning_semantics.py", "tests/test_planning_compiler.py", "tests/test_r1_ptr3_planning_repair_finding_propagation.py", "tests/test_phase1a_shadow_workflows.py"],
+  "invariant_test_paths": ["tests/test_planning_v2_slice1.py", "tests/test_short_plan_v2_slice1_replay.py", "tests/test_generated_artifacts.py", "tests/test_canonical_shadow.py"],
+  "remaining_risks": ["Full Planning V2/Draft/Short convergence is unproven", "Phase B model variability is untested", "PTR12 must be re-gated before a future real Provider or Short run", "Historical approval packets are invalid for the new source/contract identity"]
+}

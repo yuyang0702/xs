@@ -1,0 +1,16 @@
+{
+  "schema": "EventRealizationUnitShadowV1RecoveryReceipt",
+  "version": 1,
+  "overall_status": "exact",
+  "levels": [
+    {"level": 0, "name": "LOCAL_DETERMINISTIC_REPAIR", "max_attempts": 1},
+    {"level": 1, "name": "BOUNDED_FIELD_OR_SUBARTIFACT_PATCH", "max_attempts": 1},
+    {"level": 2, "name": "DEPENDENCY_CLOSURE_PATCH", "max_attempts": 1},
+    {"level": 3, "name": "SLICE1_REGENERATION", "max_attempts": 1}
+  ],
+  "whole_planning_regeneration_allowed": false,
+  "model_retry_allowed_phase_a": false,
+  "same_finding_same_state_behavior": "SLICE1_NO_PROGRESS",
+  "state_change_proof_required": true,
+  "fail_open_with_respect_to_v1_production": true
+}

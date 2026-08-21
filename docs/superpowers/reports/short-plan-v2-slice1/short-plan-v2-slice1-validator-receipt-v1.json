@@ -1,0 +1,18 @@
+{
+  "schema": "EventRealizationUnitShadowV1ValidatorReceipt",
+  "version": 1,
+  "overall_status": "exact",
+  "owner": "src/novel_flywheel/planning_v2_slice1.py::validate_event_realization_artifact",
+  "layers": [
+    {"layer": "structural", "blocking": true},
+    {"layer": "referential", "blocking": true},
+    {"layer": "authority_consistency", "blocking": true},
+    {"layer": "local_semantic", "blocking": true},
+    {"layer": "slice_local_cross_artifact", "blocking": true},
+    {"layer": "deferred_global_closure", "blocking": false}
+  ],
+  "generic_only_finding_allowed": false,
+  "exact_rule_path_invariant_retained": true,
+  "candidate_conversion_gateway": "GeneratedArtifactGateway",
+  "separate_parser_added": false
+}

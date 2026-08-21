@@ -1,0 +1,16 @@
+{
+  "schema": "LosslessSliceDiagnosticV1Receipt",
+  "version": 1,
+  "overall_status": "exact",
+  "diagnostic_schema": "LosslessSliceDiagnosticV1",
+  "retained": [
+    "rule_code", "field_path_json_pointer", "invariant_id", "artifact_id", "artifact_revision",
+    "parent_authority_sha256", "validator_id", "validator_version", "validator_policy_sha256",
+    "dependency_hint_ids", "repair_eligibility", "severity", "exactness_status",
+    "value_type", "structural_shape", "observed_value_sha256"
+  ],
+  "ptr3_projection": "rule/path/invariant compatible",
+  "raw_value_included": false,
+  "raw_story_included": false,
+  "credentials_or_hidden_reasoning_included": false
+}

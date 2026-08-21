@@ -1872,3 +1872,32 @@ This is a Canary evidence-binding rule only. It does not change production
 Planning, retry/fallback topology, output budgets, validators, prompts, routes,
 models, Canon, StoryState, or READY authority, and it grants no execution
 authorization.
+
+## Planning V2 Slice 1 offline shadow
+
+`EVENT_REALIZATION_UNIT_SHADOW_V1` Phase A is an isolated, deterministic replay
+surface. It is not imported by `workflows.py` or `contract_runtime.py`, is not a
+Planning authority, and cannot feed Draft or write READY, StoryState, or Canon.
+The only candidate-owned fields are exact `title` and `narrative`; authority and
+local-derived fields reject candidate ownership rather than being silently
+ignored. Validated artifacts use immutable values, CAS-bound repair, bounded
+dependency closure, and typed no-progress termination.
+
+Run the sanitized corpus locally with an explicit output path:
+
+```powershell
+& .venv\Scripts\python.exe tools\diagnostics\short_plan_v2_slice1.py `
+  --fixture tests\fixtures\reliability\short_plan_v2_slice1\event-realization-shadow-corpus-v1.json `
+  --output $env:TEMP\short-plan-v2-slice1-replay.json
+```
+
+The runner has no credential, Provider, network, model, project writer, or
+production workflow entry point. Its output is hash/count/enum evidence and the
+caller-selected file is its only write. Roll back Phase A by reverting the five
+Slice1 commits in reverse order; V1 authority remains intact throughout.
+
+Model-backed Phase B is not implemented. It requires a separate approval,
+budget, and PTR12 observer re-gate before any future Provider or Full Short run.
+All earlier successor and Canary approval packets that bind pre-Slice1 source
+or contract-set identities must remain fail-closed and must not be refreshed by
+editing historical evidence.

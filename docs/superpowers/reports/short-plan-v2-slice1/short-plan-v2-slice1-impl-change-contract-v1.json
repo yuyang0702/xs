@@ -1,0 +1,27 @@
+{
+  "schema": "EventRealizationUnitShadowV1ImplementationChangeContract",
+  "version": 1,
+  "overall_status": "exact",
+  "parent": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "start_head": "379f2cb68005515fca4610caab67c98daa200975",
+    "planning_v2_design_manifest": "exact",
+    "slice1_plan_manifest": "exact",
+    "privacy": "exact"
+  },
+  "implemented": [
+    "26-field shadow artifact with stable identity and canonical bytes",
+    "two-field closed candidate and exact ownership rejection",
+    "twenty deterministic local derivations",
+    "structural, referential, authority, local semantic and slice-local validation",
+    "lossless typed diagnostics and PTR3-compatible projection",
+    "CAS freeze/thaw, bounded recovery, impact closure and no-progress stop",
+    "deterministic assembly, read-only V1 comparison, replay and metrics"
+  ],
+  "excluded": [
+    "Planning V1 authority wiring", "Draft consumption", "StoryState/Canon/READY mutation",
+    "workflows.py", "contract_runtime.py", "baml_src/**", "Prompt/Model/Route/Retry/Budget changes",
+    "model-backed Phase B", "PTR12 implementation", "real Provider or Full Short execution"
+  ],
+  "external_actions": {"credential": 0, "provider_client": 0, "network": 0, "model": 0, "paid": 0}
+}

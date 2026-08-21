@@ -1,0 +1,12 @@
+{
+  "schema": "NarrativeQualityPreservationV1Receipt",
+  "version": 1,
+  "overall_status": "exact",
+  "creative_fields": ["title", "narrative"],
+  "local_derivation_creative_rewrite_count": 0,
+  "aesthetic_score_used": false,
+  "untargeted_creative_bytes_preserved": true,
+  "draft_required_intent_oracle": "explicit_sanitized_fixture_obligation_ids",
+  "silent_intent_loss_count": 0,
+  "rigid_literary_scoring_added": false
+}

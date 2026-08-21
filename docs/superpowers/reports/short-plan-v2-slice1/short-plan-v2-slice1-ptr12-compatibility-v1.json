@@ -1,0 +1,11 @@
+{
+  "schema": "PlanningV2Slice1PTR12ParallelCompatibilityReceipt",
+  "version": 1,
+  "overall_status": "pass",
+  "ptr12_observer_implementation": "not_started",
+  "provider_output_path_modified": false,
+  "contract_runtime_guard_path_modified": false,
+  "reliability_trace_modified": false,
+  "ptr12_sealed_owner_occupied": false,
+  "next_real_provider_or_short_requires_ptr12_regate": true
+}

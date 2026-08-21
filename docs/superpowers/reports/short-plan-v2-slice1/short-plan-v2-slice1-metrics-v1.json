@@ -1,0 +1,23 @@
+{
+  "schema": "EventRealizationShadowMetricsV1",
+  "version": 1,
+  "overall_status": "exact",
+  "first_pass_validation": 0.8571428571428571,
+  "first_pass_passed": 6,
+  "first_pass_total": 7,
+  "bounded_repair_converged": 1,
+  "bounded_repair_total": 1,
+  "bounded_repair_convergence_rate": 1.0,
+  "llm_call_count": 0,
+  "deterministic_repair_count": 0,
+  "already_valid_field_mutation_count": 0,
+  "freeze_violation_count": 0,
+  "same_failure_without_state_change_count": 1,
+  "same_failure_dispatch_count": 0,
+  "maximum_dependency_closure_size": 2,
+  "slice1_regeneration_count": 1,
+  "semantic_regression_count": 0,
+  "stale_finding_count": 0,
+  "replay_elapsed_milliseconds_observed": 77,
+  "v1_v2_divergence": {"neutral_creative_divergence": 1}
+}

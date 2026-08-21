@@ -1,0 +1,14 @@
+{
+  "schema": "EventRealizationUnitShadowV1LocalDerivationReceipt",
+  "version": 1,
+  "overall_status": "exact",
+  "derived_field_count": 20,
+  "same_input_same_canonical_bytes": true,
+  "stable_ordering": true,
+  "clock_dependent_fields": 0,
+  "random_identifiers": 0,
+  "hidden_model_inference": false,
+  "creative_rewrite_count": 0,
+  "recompute_after_dependency_change": "exact",
+  "owners": ["build_event_realization_artifact", "repair_local_metadata", "assemble_shadow_set"]
+}

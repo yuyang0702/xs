@@ -1,0 +1,28 @@
+{
+  "schema": "EventRealizationUnitShadowV1FinalSha256Manifest",
+  "version": 1,
+  "overall_status": "exact",
+  "self_excluded": true,
+  "entry_count": 19,
+  "files": [
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-artifact-receipt-v1.json", "bytes": 1203, "sha256": "4b668bbb701d85b65d20e29f1f635f3d35c9ba069d354f6115268b11335bfe25"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-diagnostic-receipt-v1.json", "bytes": 689, "sha256": "b812dd5c012bb757d71b6adb78aef4494fb75686d3d28e798f2af51fd6dcb89c"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-final-privacy-scan-v1.json", "bytes": 861, "sha256": "a7d90834ec5fe903d3f2a8c54cab3f2423ba77a0baefe695fa64b3dc85527c41"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-forward-risk-report-v1.json", "bytes": 4995, "sha256": "92c9b503b0c0d916ea47b6f620414c469c80754e06d6c844360d421916e037bc"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-freeze-thaw-receipt-v1.json", "bytes": 591, "sha256": "a6bd1b8a273f92225b68ed3ee8d4e4799bb0c543fa8195d8a9c32e7955004729"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-impact-closure-receipt-v1.json", "bytes": 452, "sha256": "bac604200c62684839e76ddad3f88d3e6d190e199aa923086ef5a6d3b61addd3"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-impl-change-contract-v1.json", "bytes": 1317, "sha256": "9635658c65c3ed6490b99e7e2364dd90874b2776475dee0a1ef44cc3f1c9069e"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-impl-final-report-v1.md", "bytes": 4945, "sha256": "806d57335f58aba332c5b4b65a3a712f9de921217a869af41a381abe308cbe62"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-local-derivation-receipt-v1.json", "bytes": 497, "sha256": "3f1403a56fad4fa4ee849769f678f568f146117d4a57fc1c20586f3f374969e6"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-metrics-v1.json", "bytes": 776, "sha256": "df52c080e1eaec0be1df3af64d3027a6b994858b27230fb8ded9743c1fb5e2b4"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-offline-test-receipt-v1.json", "bytes": 2675, "sha256": "3e17898d1d242b3a645c248bb94febdc54adc60a8df263edb7fc8686e0e91c7f"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-ownership-receipt-v1.json", "bytes": 638, "sha256": "3c52cf1d56be10f8e078465e694a3995a78e881cae0c172568cff6aac52e8e8b"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-ptr12-compatibility-v1.json", "bytes": 404, "sha256": "dacc305c2fc354c417fc7a85ad4389dcdd216444e374be22321f502e27c3f3a3"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-quality-preservation-receipt-v1.json", "bytes": 439, "sha256": "0faea07471d2437e1fd75b286d115ca68b5031e7a334639b0c5e090782fb1f6c"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-recovery-receipt-v1.json", "bytes": 678, "sha256": "2a98307fbdab5636d3210d6b68f220123bbfd903353663a28d7bfe6eee9edb02"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-replay-receipt-v1.json", "bytes": 767, "sha256": "02afa79237fcd1366a22e4c38dd925213b54cc8f9509b2047bb7daf60d0a5275"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-shadow-comparison-receipt-v1.json", "bytes": 517, "sha256": "ac1b8a53db12779f56c5c28258e5861fd6c1582267fb0acd41c3748d30d2f0f9"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-v1-parity-v1.json", "bytes": 632, "sha256": "659830ce3a5e9da0bde4eec5abc189f5e00cd743676c1b407ea67b94978250a4"},
+    {"path": "docs/superpowers/reports/short-plan-v2-slice1/short-plan-v2-slice1-validator-receipt-v1.json", "bytes": 747, "sha256": "d151765976765a1c01a8eb13b22c7c71594566bc17dbab3759a16f553695798f"}
+  ]
+}

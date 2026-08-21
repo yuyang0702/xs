@@ -1,0 +1,20 @@
+{
+  "schema": "PlanningV1Slice1ShadowParityReceipt",
+  "version": 1,
+  "overall_status": "exact",
+  "planning_v1_bytes": "unchanged",
+  "draft_input": "unchanged",
+  "story_state": "unchanged",
+  "canon": "unchanged",
+  "ready": "unchanged",
+  "workflow_result": "unchanged",
+  "prompt": "unchanged",
+  "route_model": "unchanged",
+  "retry_fallback": "unchanged",
+  "output_budget": "unchanged",
+  "production_contract_registry_count": 40,
+  "shadow_contract_registry_separate": true,
+  "runtime_build_fingerprint_child_graph": "exact",
+  "shadow_failure_effect_on_v1": "fail_open",
+  "draft_consumes_slice1": false
+}

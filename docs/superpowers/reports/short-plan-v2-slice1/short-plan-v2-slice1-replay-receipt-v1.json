@@ -1,0 +1,14 @@
+{
+  "schema": "EventRealizationShadowReplayReceiptV1Summary",
+  "version": 1,
+  "overall_status": "exact",
+  "fixture": "tests/fixtures/reliability/short_plan_v2_slice1/event-realization-shadow-corpus-v1.json",
+  "fixture_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+  "case_count": 20,
+  "passed": 20,
+  "families": ["latest_real_short_call1", "ptr3_targeted_repair", "planning_domain_failures", "generated_artifact_shape", "structure_drift", "dependency_impact", "successful_controls"],
+  "call1_exact_failure_rule": "UNKNOWN",
+  "invented_call1_rule_or_repair": false,
+  "output_policy": "caller-selected path only",
+  "external_actions": {"credential": 0, "provider_client": 0, "network": 0, "model": 0, "paid": 0}
+}

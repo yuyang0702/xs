@@ -1,0 +1,13 @@
+{
+  "schema": "ValidatedSubartifactFreezeV1Receipt",
+  "version": 1,
+  "overall_status": "exact",
+  "freeze_owner": "freeze_validated_artifact",
+  "patch_owner": "apply_bounded_candidate_patch",
+  "cas_inputs": ["artifact_id", "artifact_revision", "artifact_sha256", "finding_id"],
+  "thaw_requirements": ["typed trigger", "dependency proof", "impacted set", "version increment", "downstream invalidation"],
+  "stale_patch_behavior": "SLICE1_STALE_REPAIR",
+  "unrelated_frozen_mutation_allowed": false,
+  "already_valid_field_mutation_count": 0,
+  "freeze_violation_count": 0
+}

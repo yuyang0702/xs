@@ -1,0 +1,11 @@
+{
+  "schema": "EventRealizationUnitShadowV1ComparisonReceipt",
+  "version": 1,
+  "overall_status": "exact",
+  "owner": "compare_shadow_to_v1",
+  "classes": ["equivalent_structure", "neutral_creative_divergence", "shadow_structural_improvement", "shadow_regression", "uncomparable_historical_evidence_missing"],
+  "explicit_non_comparable_fields": true,
+  "mutation_performed": false,
+  "authority_promotion": false,
+  "replay_observed": {"neutral_creative_divergence": 1, "semantic_regression_count": 0}
+}

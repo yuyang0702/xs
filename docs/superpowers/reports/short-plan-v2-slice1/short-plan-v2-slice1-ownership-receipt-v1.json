@@ -1,0 +1,15 @@
+{
+  "schema": "EventRealizationUnitShadowV1OwnershipReceipt",
+  "version": 1,
+  "overall_status": "exact",
+  "llm_owned_count": 2,
+  "llm_owned": ["/title", "/narrative"],
+  "authority_copy_count": 4,
+  "authority_copy": ["/parent_authority_sha256", "/formal_event_id", "/formal_event_contract_sha256", "/predecessor_boundary_sha256"],
+  "local_derivation_count": 20,
+  "candidate_extra_behavior": "SLICE1_FIELD_OWNERSHIP_VIOLATION",
+  "silent_ignore": false,
+  "silent_overwrite": false,
+  "authority_source": "EventRealizationInputAuthorityV1",
+  "phase_a_creative_source": ["offline_fixture", "historical_projection"]
+}

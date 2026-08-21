@@ -1,0 +1,13 @@
+{
+  "schema": "SemanticImpactClosureV1Receipt",
+  "version": 1,
+  "overall_status": "exact",
+  "owner": "compute_impact_closure",
+  "mapping": "finding -> affected artifact -> bounded dependency closure -> repair scope -> revalidation scope",
+  "maximum_bounded_closure_size": 2,
+  "local_level": 1,
+  "dependency_level": 2,
+  "unbounded_level": 3,
+  "unbounded_behavior": "SLICE1_REGENERATION",
+  "generic_knowledge_graph_added": false
+}
