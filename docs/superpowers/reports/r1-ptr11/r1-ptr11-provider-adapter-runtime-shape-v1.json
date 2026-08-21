@@ -1,0 +1,49 @@
+{
+  "schema": "R1PTR11ProviderAdapterRuntimeShapeV1",
+  "version": 1,
+  "boundary": 12,
+  "layers": {
+    "provider_raw_response": {
+      "content_blocks": "UNKNOWN",
+      "reasoning_or_thinking_present": "UNKNOWN",
+      "text_block_present": "UNKNOWN",
+      "text_block_empty_whitespace_or_partial": "UNKNOWN",
+      "tool_block_present": "UNKNOWN",
+      "visible_chars": "UNKNOWN",
+      "finish_reason": "max_tokens",
+      "output_tokens": 8798,
+      "status": "RAW_PROVIDER_SHAPE_UNKNOWN"
+    },
+    "adapter_normalized_response": {
+      "normalized_text_chars": 0,
+      "normalized_text_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "normalized_tool_call_count": "UNKNOWN",
+      "provider_state_content_presence_at_runtime": "UNKNOWN_NOT_PERSISTED",
+      "content_loss_merge_or_conversion": "UNKNOWN",
+      "transport_complete": true
+    },
+    "contract_runtime_parser_input": {
+      "characters": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "conversion_method": "rejected",
+      "candidate_count": 0,
+      "conversion_failure_code": "output_truncated",
+      "semantic_valid": false,
+      "terminal_exception": "ContractOutputLimitExhaustedError"
+    }
+  },
+  "guard_observation_layer": "ProviderOutputShapeV1 synthesized after adapter normalization from ModelResponse.provider_state plus normalized text/tool counts, before Contract Runtime parsing.",
+  "terminal_exception_layer": "Contract Runtime after all permitted attempts; it combines local output_limit_seen with the last ArtifactConversionError.",
+  "adapter_contract": {
+    "provider_family": "anthropic",
+    "normal_path_retains_content_in_provider_state": true,
+    "provider_output_shape_projection_owner": "novel_flywheel.provider_output.provider_output_shape_from_response",
+    "shape_projection_failure_policy": "return_none_fail_open_for_observation",
+    "shape_persisted_for_boundary12": false
+  },
+  "conclusion": "The normalized and parser layers are known, but the pre-normalization topology and the actual guard decision inputs are absent. Adapter content loss and predicate mismatch are both unproven.",
+  "raw_prompt_omitted": true,
+  "raw_story_omitted": true,
+  "raw_provider_content_omitted": true,
+  "raw_tool_arguments_omitted": true
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "R1PTR11Boundary12PredicateDecompositionV1",
+  "version": 1,
+  "boundary": 12,
+  "known_receipt": {
+    "contract": "planning_semantic_v2",
+    "route": "configured_fallback",
+    "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+    "request_mode": "plain",
+    "finish_reason": "max_tokens",
+    "requested_output_tokens": 8798,
+    "reported_output_tokens": 8798,
+    "transport_complete": true,
+    "normalized_visible_chars": 0
+  },
+  "predicate": {
+    "reasoning_block_exists": {"value":"UNKNOWN","evidence":"No Boundary 12 ProviderOutputShapeV1 or raw content-block receipt was persisted."},
+    "finish_reason_max_tokens": {"value":"TRUE","evidence":"Sealed ledger and model_output_observations agree on max_tokens."},
+    "visible_chars_zero_pre_adapter": {"value":"UNKNOWN","evidence":"The sealed execution evidence contains only normalized visible characters."},
+    "visible_chars_zero_post_adapter": {"value":"TRUE","evidence":"Read-only isolated database observation records visible_characters=0."},
+    "final_text_absent": {"value":"TRUE_POST_ADAPTER_ONLY","evidence":"The parser input SHA-256 is the empty-byte digest and normalized visible characters are zero; raw provider text-block presence remains unknown."},
+    "tool_call_absent": {"value":"UNKNOWN","evidence":"No normalized tool-call count or raw tool block count was persisted for Boundary 12."},
+    "unknown_block_count_zero": {"value":"UNKNOWN","evidence":"No content block type sequence was persisted."},
+    "content_block_count_equals_reasoning_count": {"value":"UNKNOWN","evidence":"Neither count was persisted."},
+    "adapter_projection_exact": {"value":"UNKNOWN","evidence":"No Boundary 12 shape or projection receipt was persisted."},
+    "transport_complete": {"value":"TRUE","evidence":"model_output_observations records transport_complete=1."}
+  },
+  "guard_result": "not_triggered",
+  "negative_capability_written": false,
+  "which_condition_failed": "UNKNOWN",
+  "logical_bound": "At least one of output_shape availability or the exact shape predicates was false at Runtime; current evidence cannot identify which one.",
+  "guard_behavior": "UNKNOWN",
+  "raw_provider_shape": "UNKNOWN",
+  "raw_content_included": false
+}

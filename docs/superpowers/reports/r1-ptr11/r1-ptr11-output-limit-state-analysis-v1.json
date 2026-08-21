@@ -1,0 +1,25 @@
+{
+  "schema": "R1PTR11OutputLimitStateAnalysisV1",
+  "version": 1,
+  "output_limit_sticky_state": "YES_WITHIN_EACH_CONTRACT_RUNTIME_INSTANCE",
+  "cross_instance_stickiness": "NO",
+  "terminal_error_primary": "NO",
+  "first_output_limit_signal": {"call":3,"finish_reason":"max_tokens","requested_tokens":7774,"output_tokens":7774},
+  "runtime_instances": [
+    {"calls":[1,2,3,4],"initial":false,"set_by":3,"still_true_at_terminal_attempt":true,"last_error":"ArtifactConversionError","runtime_terminal":"ContractOutputLimitExhaustedError","outer_recovery":"capacity_split"},
+    {"calls":[5,6,7,8],"initial":false,"set_by":7,"still_true_at_terminal_attempt":true,"last_error":"ArtifactConversionError","runtime_terminal":"ContractOutputLimitExhaustedError","outer_recovery":"capacity_split"},
+    {"calls":[9,10,11,12],"initial":false,"set_by":11,"still_true_at_terminal_attempt":true,"last_error":"ArtifactConversionError","runtime_terminal":"ContractOutputLimitExhaustedError","outer_recovery":"none_terminal"}
+  ],
+  "failures_before_boundary12": {
+    "semantic_validation_failed_calls":[1,2,4,5,6,8,9,10],
+    "output_truncated_calls":[3,7,11],
+    "domain_rejection_calls":[],
+    "tool_schema_mismatch":"UNKNOWN_NOT_RECORDED",
+    "malformed_or_incomplete_structured_artifact":"YES",
+    "partial_text":"UNKNOWN_AT_RAW_PROVIDER_LAYER"
+  },
+  "terminal_mechanism": "execute_contract_runtime initializes output_limit_seen=false per instance, ORs it with each successful ModelResult receipt, and after exhaustion raises ContractOutputLimitExhaustedError when output_limit_seen is true and the last error is ArtifactConversionError or business output is incomplete.",
+  "primary_failure_chain": "Call 1 semantic_validation_failed; no accepted planning artifact was ever produced. Calls 3/7/11/12 added output-limit failures. Call 12 was itself output-limited, and the local sticky flag caused the final generic terminal reclassification.",
+  "secondary_amplifier": "CONTRACT_RUNTIME_LOCAL_STICKY_OUTPUT_LIMIT_TERMINAL_RECLASSIFICATION",
+  "raw_content_included": false
+}

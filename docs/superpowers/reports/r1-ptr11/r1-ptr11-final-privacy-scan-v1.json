@@ -1,0 +1,11 @@
+{
+  "schema": "R1PTR11FinalPrivacyScanV1",
+  "version": 1,
+  "overall_status": "exact",
+  "scope": ["docs/superpowers/reports/r1-ptr11/**"],
+  "prohibited_content": {"raw_prompt":0,"raw_story":0,"raw_tool_arguments":0,"raw_provider_content":0,"credentials":0,"authorization_headers":0,"provider_request_ids":0,"reasoning_content":0,"unhashed_provider_database_ids":0,"unhashed_model_database_ids":0},
+  "retained_data": ["sealed hashes","route fingerprints","counts","token totals","finish reasons","typed statuses","source owner names","aggregate offline test outcomes"],
+  "privacy_design": "Provider and model database identities are represented only by sealed SHA-256 bindings. No prompt, story, Provider content, tool arguments, request IDs, credentials, or reasoning text is copied from the isolated canary root.",
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0},
+  "new_full_short_canary": "not_executed"
+}

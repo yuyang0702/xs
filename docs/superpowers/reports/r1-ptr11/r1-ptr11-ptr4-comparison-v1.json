@@ -1,0 +1,34 @@
+{
+  "schema": "R1PTR11PTR4ComparisonV1",
+  "version": 1,
+  "historical_ptr4_observation_sha256": "54df3c281d58ff3560739f87eb1cd2fc2560b3ec0ea998fe07028f104600b845",
+  "same_failure_shape_as_ptr4": "UNKNOWN",
+  "identity_comparison": {
+    "provider_sha256": {"ptr4":"98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6","boundary12":"98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6","result":"same"},
+    "model_sha256": {"ptr4":"fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998","boundary12":"fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998","result":"same"},
+    "route_kind": {"ptr4":"configured_fallback","boundary12":"configured_fallback","result":"same"},
+    "protocol": {"ptr4":"anthropic","boundary12":"anthropic","result":"same"}
+  },
+  "shape_comparison": [
+    {"field":"finish_reason","ptr4":"max_tokens","boundary12":"max_tokens","result":"same"},
+    {"field":"output_tokens","ptr4":8798,"boundary12":8798,"result":"same"},
+    {"field":"post_adapter_visible_chars","ptr4":0,"boundary12":0,"result":"same"},
+    {"field":"content_block_count","ptr4":1,"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"content_block_type_sequence","ptr4":["thinking"],"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"reasoning_block_count","ptr4":1,"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"text_block_count","ptr4":0,"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"pre_adapter_visible_chars","ptr4":0,"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"tool_call_block_count","ptr4":0,"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"unknown_block_count","ptr4":0,"boundary12":"UNKNOWN","result":"unknown"},
+    {"field":"adapter_projection_status","ptr4":"exact","boundary12":"UNKNOWN","result":"unknown"}
+  ],
+  "missing_evidence": [
+    "Boundary 12 content_block_count and content_block_type_sequence",
+    "Boundary 12 reasoning/text/tool/unknown block counts",
+    "Boundary 12 pre-adapter visible character count",
+    "Boundary 12 normalized tool-call count",
+    "Boundary 12 adapter projection status",
+    "Boundary 12 ProviderOutputShapeV1 shape_sha256"
+  ],
+  "merge_prohibited": "Matching terminal type, provider/model identity, output cap, and normalized emptiness do not prove matching raw content topology."
+}

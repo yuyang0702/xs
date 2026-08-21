@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "original_requirement": "Perform an offline-only investigation of why the real Short Planning Boundary 12 terminated as ContractOutputLimitExhaustedError while the PTR9 exact reasoning-only guard did not trigger, without changing or executing production behavior.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The task reads one sealed execution, one isolated read-only run database, historical sealed PTR4/PTR7 evidence, and the exact PTR9 source baseline. It writes reports only.",
+  "operational_definition": "Reconstruct all 12 calls, decompose every exact guard predicate, separate raw/adapter/runtime layers, verify sticky state from source and receipts, compare PTR4 field-by-field, and refuse root-cause closure when the actual guard input shape is absent.",
+  "forbidden_narrowing": ["No inference of raw provider shape from terminal type", "No production, BAML, Prompt, Model, Route, Retry, Fallback, Budget, Validator, StoryState, Canon, or READY change", "No Provider/network/model/paid call", "No Short resume or second run", "No claim that PTR4 and Boundary 12 share a failure shape without raw topology evidence"],
+  "resolution_status": "contained",
+  "constraint_traceability": [
+    {"requirement":"Sealed evidence exact","implementation":"Git/blob/manifest and read-only run checks","test_paths":["tests/test_final_artifact_guard.py"],"evidence":"Evidence commit f3b31a57... is HEAD, worktree started clean, all 19 execution manifest entries matched bytes and commit blobs."},
+    {"requirement":"Calls 1-12 reconstructed","implementation":"Ledger, model_output_observations, run events, reliability trace, and conversion audits joined by order/time","test_paths":["tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"Three four-call Runtime groups with exact caps, tokens, finishes, normalized visibility, conversions, and local sticky state."},
+    {"requirement":"Guard wiring verified offline","implementation":"Static review of provider_output.py, models.py, contract_runtime.py, Anthropic adapter, diagnostics and DB qualification flow","test_paths":["tests/test_final_artifact_guard.py","tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"32 focused tests passed."},
+    {"requirement":"No unsupported closure","implementation":"Tri-state predicate table and root-cause decision","test_paths":["tests/test_final_artifact_guard.py"],"evidence":"Raw block topology and persisted guard decision vector are absent; final gate is evidence required."}
+  ],
+  "historical_incident_families_checked": ["provider.reasoning_only_final_artifact_unavailable","model.output_truncated","parser.generated_artifact_shape","planning plan semantic_validation_failed","ContractOutputLimitExhaustedError"],
+  "projected_failure_mechanisms": ["raw reasoning-only shape projected exactly but not persisted", "raw shape contains empty/partial text block", "raw shape contains tool or unknown block", "adapter projection is changed", "provider state content is absent or non-list", "shape construction returns None", "local sticky output-limit masks the last concrete conversion failure"],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No production or test source changed. Existing output-boundary behavior was exercised offline only.",
+  "model_output_variants_tested": ["exact reasoning-only max_tokens", "normal text", "normal tool", "adapter projection loss", "empty provider response", "unknown block shape"],
+  "model_output_topology_classes_tested": ["reasoning-only", "text", "tool", "empty", "unknown", "projection-changed"],
+  "unseen_valid_variants_tested": [],
+  "unknown_variant_behavior": "The exact guard fails closed to existing conversion behavior rather than misclassifying unknown shapes; this does not supply missing production evidence.",
+  "invalid_output_variants_tested": ["reasoning-only max_tokens", "empty max_tokens", "adapter content loss", "unknown block"],
+  "transport_capacity_variants_tested": ["max_tokens with complete transport"],
+  "invariant_test_paths": ["tests/test_final_artifact_guard.py","tests/test_r1_ptr1_planning_repair_observability.py"],
+  "why_previous_tests_missed": "PTR9 tests prove deterministic behavior when ProviderOutputShapeV1 is supplied, but the real Canary evidence profile did not persist the actual shape or predicate vector at Boundary 12, so offline tests cannot decide which real condition failed.",
+  "sibling_boundaries": [
+    {"boundary":"Primary Planning route","disposition":"not_applicable","evidence":"The investigation changes no route behavior; six sealed calls used the primary fingerprint and are reconstructed only."},
+    {"boundary":"Configured fallback Planning route","disposition":"not_applicable","evidence":"The investigation changes no route behavior. Calls 3/7/11/12 were normalized empty at max_tokens, but raw block topology is absent."},
+    {"boundary":"Draft/Final Review/Maintenance","disposition":"not_applicable","evidence":"Planning terminated before downstream stages and the investigation changes no downstream behavior."},
+    {"boundary":"Capability registry","disposition":"not_applicable","evidence":"The investigation does not modify registry semantics; a read-only query shows no structured route qualification rows written by the consumed run."}
+  ],
+  "production_shaped_tests": ["tests/test_final_artifact_guard.py"],
+  "next_authoritative_boundary_tests": ["tests/test_final_artifact_guard.py", "tests/test_r1_ptr1_planning_repair_observability.py"],
+  "remaining_risks": ["A production change based only on normalized emptiness could incorrectly quarantine partial-text, tool, unknown, or projection-changed responses.", "A generic capability probe may reproduce PTR4 but still not identify the exact Boundary 12 topology.", "ContractOutputLimitExhaustedError continues to mask the last concrete conversion code after local output-limit state is set." ]
+}

@@ -1,0 +1,52 @@
+{
+  "schema": "R1PTR11RootCauseDecisionV1",
+  "version": 1,
+  "gate": "R1_PTR11_PROVIDER_OUTPUT_EVIDENCE_REQUIRED",
+  "root_cause_closed": false,
+  "primary_root_cause_status": "UNRESOLVED",
+  "guard_miss_classification": "OBSERVABILITY_GAP",
+  "secondary_amplifier": "CONTRACT_RUNTIME_LOCAL_STICKY_OUTPUT_LIMIT_TERMINAL_RECLASSIFICATION",
+  "guard_behavior": "UNKNOWN",
+  "terminal_error_primary": "NO",
+  "same_failure_shape_as_ptr4": "UNKNOWN",
+  "classification_evidence": [
+    "Boundary 12 guard scope and pre-parser control flow are proven.",
+    "finish_reason=max_tokens, transport_complete=true, and normalized visible chars=0 are proven.",
+    "No Boundary 12 ProviderOutputShapeV1 or guard-decision receipt was persisted.",
+    "Raw reasoning/text/tool/unknown block topology, pre-adapter visibility, normalized tool count, and projection status are unknown.",
+    "Therefore PREDICATE_NOT_MATCHED and REPRESENTATION_MISMATCH remain mutually compatible hypotheses and neither is uniquely supported."
+  ],
+  "missing_evidence": [
+    "guard_input_shape_available boolean",
+    "ProviderOutputShapeV1 shape_sha256",
+    "content_block_count",
+    "content_block_type_sequence",
+    "reasoning_block_count",
+    "text_block_count",
+    "provider_visible_text_chars",
+    "tool_call_count",
+    "unknown_block_count and unknown type hashes",
+    "normalized_visible_text_chars",
+    "normalized_tool_call_count",
+    "adapter_projection_status",
+    "transport_complete at the shape receipt",
+    "per-predicate boolean decision vector",
+    "safe lineage binding raw-shape hash to normalized response and contract attempt"
+  ],
+  "recommended_narrow_fix_family": "E_ADD_HASH_ONLY_RAW_SHAPE_AND_GUARD_DECISION_OBSERVER",
+  "design_only": {
+    "owner": "ModelGateway._complete_resolved with provider_output_shape_from_response and Canary evidence collection",
+    "behavior_change": "none; observation only",
+    "blast_radius": "hash/count/status-only evidence at structured model boundaries",
+    "primary_route_effect": "none",
+    "normal_text_tool_effect": "none",
+    "retry_fallback_effect": "none",
+    "capability_registry_semantics_change": false,
+    "invariants": ["Prompt unchanged","Model unchanged","Route unchanged","Retry/fallback unchanged","Budget unchanged","Validator unchanged","StoryState/Canon/READY unchanged","no raw provider content persisted"],
+    "new_real_probe_necessary": "YES_AFTER_SEPARATE_AUTHORIZATION_IF_EXISTING_RAW_TRANSIENT_STATE_CANNOT_BE_RECOVERED; a generic probe cannot retroactively prove Boundary 12 and should bind the production-shaped route/contract observer."
+  },
+  "production_fix_authorized": false,
+  "production_fix_implemented": false,
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0},
+  "new_full_short_canary": "NOT_EXECUTED"
+}

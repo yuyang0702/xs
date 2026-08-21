@@ -1,0 +1,26 @@
+{
+  "schema": "R1PTR11FinalSHA256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "evidence_commit": "f3b31a57cdf9adc2f888c3582858d8f25b3230cb",
+  "files": [
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-boundary12-predicate-decomposition-v1.json","bytes":2269,"sha256":"4e0be48184896404e9775b7c6cca11e9c9f1dd5c44e002b7d99585b2395084fd"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-call-1-12-reconstruction-v1.json","bytes":11038,"sha256":"8e94fee6aea0455bfd09ed2c44dd7b65bb3d80713d369ef634841dad5a551a4d"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-final-privacy-scan-v1.json","bytes":956,"sha256":"1654d0c258efb173fc9fdda8ea536d9ca6b67e8b0bd219fc37e030129b780253"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-final-report-v1.md","bytes":10427,"sha256":"ff9e3f89b014da9d5875ce64f968e6daf51447ccca26a18f093f351e0f5edf94"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-forward-risk-report-v1.json","bytes":5990,"sha256":"af66a942f36441b3b58d9855c5299c9a171372d2c8a20ac0f65a9e432fc5febc"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-guard-wiring-analysis-v1.json","bytes":3375,"sha256":"ee1fdcad27e6f197fa82539de0f38ed3cb41befe8e0db849e20d2c79d796f32a"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-output-limit-state-analysis-v1.json","bytes":2073,"sha256":"3e2f2702e9fb700a52e1ed1eceb852e896cd37777fbc22b69e7ee8096944262d"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-provider-adapter-runtime-shape-v1.json","bytes":2329,"sha256":"aaa4abb179777e6132e12d34697b64918b3a17f8da9988aee4773bc26ebb4d77"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-ptr4-comparison-v1.json","bytes":2347,"sha256":"2ad40458ed9dc7e96a9a9893e0d8da63b889abb7509b72840d9c5633273685ed"},
+    {"path":"docs/superpowers/reports/r1-ptr11/r1-ptr11-root-cause-decision-v1.json","bytes":2836,"sha256":"4c90a0906bff36dd7ff1cbf6e8a6869f52417adbd060f8471a7a3ed8994a35c7"}
+  ],
+  "file_count": 10,
+  "production_diff": 0,
+  "baml_diff": 0,
+  "privacy_status": "exact",
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0},
+  "new_full_short_canary": "not_executed"
+}

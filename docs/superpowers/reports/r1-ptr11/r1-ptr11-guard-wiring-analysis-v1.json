@@ -1,0 +1,36 @@
+{
+  "schema": "R1PTR11GuardWiringAnalysisV1",
+  "version": 1,
+  "implementation_owner": "src/novel_flywheel/models.py::ModelGateway._complete_resolved",
+  "predicate_owner": "src/novel_flywheel/models.py::_reasoning_only_final_artifact_unavailable",
+  "shape_owner": "src/novel_flywheel/provider_output.py::provider_output_shape_from_response",
+  "negative_capability_owner": "src/novel_flywheel/models.py::ModelGateway._complete_resolved -> Database.save_structured_route_outcome",
+  "alternate_route_owner": "src/novel_flywheel/contract_runtime.py::execute_contract_runtime",
+  "questions": {
+    "boundary12_in_guard_scope": {"answer":"YES","evidence":"planning_semantic_v2 dispatch supplies a structured contract and response_schema; the guard applicability check is response_schema is not None."},
+    "predicate_match_triggers_before_parser_schema": {"answer":"YES","evidence":"ModelGateway attaches output_shape and evaluates the predicate before returning ModelResult; Contract Runtime conversion starts only after that return."},
+    "fallback_bypass_path": {"answer":"NO_FOUND","evidence":"Both explicit primary and configured_fallback attempts use dispatch_explicit_model_route and ModelGateway._complete_resolved."},
+    "plain_vs_tool_difference": {"answer":"YES_BUT_NOT_SCOPE_EXCLUSION","evidence":"Boundary 12 execution_mode is plain. Strict-tool extraction occurs after the guard, so plain mode does not bypass the guard; it does affect which normalized tool evidence exists."},
+    "normalized_response_type_can_invalidate_predicate": {"answer":"YES_POSSIBLE_NOT_PROVEN","evidence":"A missing output_shape, unknown block, text block, tool call, projection change, or incomplete transport makes the exact predicate return false."},
+    "finish_reason_mismatch": {"answer":"NO","evidence":"normalize_finish_reason maps the observed max_tokens to the accepted predicate value."},
+    "whitespace_or_empty_text_can_invalidate": {"answer":"YES_POSSIBLE_NOT_PROVEN","evidence":"text_block_count must be zero; an empty or whitespace text block can fail exact reasoning-only even when normalized visible output is zero or non-useful. Raw text block presence was not recorded."},
+    "partial_final_text_can_invalidate": {"answer":"YES_CORRECTLY","evidence":"Any text block or provider-visible text makes the exact reasoning-only predicate false; current raw evidence cannot establish whether this occurred."}
+  },
+  "control_flow": [
+    "adapter.complete",
+    "provider_output_shape_from_response",
+    "observe_provider_content_block_shape (diagnostic and flag-gated)",
+    "build receipt",
+    "reasoning-only exact guard",
+    "optional strict-tool extraction",
+    "record model output observation",
+    "return ModelResult",
+    "Contract Runtime parser/converter",
+    "local output-limit terminal reclassification after attempt exhaustion"
+  ],
+  "diagnostic_observer_gap": "Provider content-block snapshots are emitted only when the planning-repair diagnostic flag and target context are active. The real Short preflight explicitly kept PA diagnostic flags disabled, and the canonical execution package contains no Boundary 12 provider-shape observation.",
+  "guard_not_reached": "DISPROVED_FOR_NORMAL_RETURN_PATH",
+  "scope_binding_miss": "DISPROVED",
+  "representation_mismatch": "POSSIBLE_NOT_PROVEN",
+  "predicate_not_matched": "POSSIBLE_NOT_PROVEN"
+}
