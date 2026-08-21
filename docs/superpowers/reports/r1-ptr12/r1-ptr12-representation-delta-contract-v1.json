@@ -1,0 +1,35 @@
+{
+  "schema": "RawToNormalizedShapeDeltaV1",
+  "version": 1,
+  "authority": "non_authoritative_observation",
+  "correlation_id": "ModelDiagnosticContextV1.inner_attempt_id",
+  "inputs": ["ProviderRawShapeObservationV1","ProviderOutputShapeV1"],
+  "comparisons": [
+    {"dimension":"BLOCK_TYPE_SEQUENCE","raw":"raw_block_type_sequence/raw_block_type_sequence_sha256","normalized":"content_block_type_sequence/content_block_type_sequence_sha256"},
+    {"dimension":"BLOCK_TYPE_MULTISET","raw":"raw_block_type_multiset","normalized":"derived controlled type multiset"},
+    {"dimension":"REASONING_COUNT","raw":"reasoning_block_count","normalized":"reasoning_block_count"},
+    {"dimension":"TEXT_COUNT","raw":"text_or_final_block_count","normalized":"text_block_count"},
+    {"dimension":"TOOL_COUNT","raw":"tool_block_count","normalized":"tool_call_count"},
+    {"dimension":"VISIBLE_CHAR_COUNT","raw":"raw_visible_char_count","normalized":"normalized_visible_text_chars"},
+    {"dimension":"FINISH_REASON","raw":"finish_reason_raw_class","normalized":"normalized_finish_reason"},
+    {"dimension":"TRANSPORT_COMPLETENESS","raw":"transport_complete","normalized":"transport_complete"}
+  ],
+  "fields": {
+    "raw_shape_fingerprint": "sha256|null",
+    "normalized_shape_fingerprint": "sha256|null",
+    "representation_changed": "enum:YES|NO|UNKNOWN",
+    "changed_dimensions": "ordered_array<ChangedDimensionV1>",
+    "unavailable_dimensions": "ordered_array<ChangedDimensionV1>",
+    "comparison_completeness": "enum:exact|partial|unavailable",
+    "delta_sha256": "sha256"
+  },
+  "ChangedDimensionV1": ["BLOCK_TYPE_SEQUENCE","BLOCK_TYPE_MULTISET","REASONING_COUNT","TEXT_COUNT","TOOL_COUNT","VISIBLE_CHAR_COUNT","FINISH_REASON","TRANSPORT_COMPLETENESS","RAW_SHAPE_UNAVAILABLE","NORMALIZED_SHAPE_UNAVAILABLE"],
+  "classification_rules": {
+    "YES": "at least one comparable dimension differs",
+    "NO": "all required dimensions are available and equal",
+    "UNKNOWN": "neither a difference nor complete equality can be established",
+    "guard_miss_binding": "When a differing dimension changes an exact PTR9 predicate input, include REPRESENTATION_CHANGED in GuardMissReasonV1; otherwise retain the concrete predicate miss reason."
+  },
+  "content_persisted": false,
+  "observer_failure_behavior": "FAIL_OPEN"
+}

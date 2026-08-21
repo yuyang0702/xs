@@ -1,0 +1,26 @@
+{
+  "schema": "R1PTR12FinalSHA256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "baseline_head": "af73f0b520dac7392227cce9e40badcc5b8b63e1",
+  "files": [
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-correlation-design-v1.json","bytes":2522,"sha256":"0e824ac665d0746cb18384f5b7ef85c1f5f347fecd51c9cc0fa956d3fdeaed76"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-final-privacy-scan-v1.json","bytes":1000,"sha256":"14efa54076ab6c95258b44a49b36d23751aea8ecd03e35660d51a9bbc21780fb"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-final-report-v1.md","bytes":13632,"sha256":"e61534df7881ca7325da4c2415d5252a692b2a7814e7e03dd5eae3abbec5e1bc"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-forward-risk-report-v1.json","bytes":6999,"sha256":"97d4ccf528878184e13351492282e6f34693521b6e874a00a455ad91ef4ca9f7"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-guard-decision-contract-v1.json","bytes":3960,"sha256":"4a452f19c0e9afa17b3df2e1ed1e13bb894684883f2026a0678ec6b3d7329b93"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-observer-owner-map-v1.json","bytes":6819,"sha256":"558b48fdaccd58f599d62955493d67d96155c1592936f51c296fb86e9b5fb695"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-privacy-design-v1.json","bytes":2293,"sha256":"e7edcc984346bdc0f7256c76d2658b24197f29732bf441678191f7bedf5d0f83"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-raw-shape-contract-v1.json","bytes":5015,"sha256":"afc2128155f30957df8ca3cce12bebe3483c3609a011783809dadb239fd616be"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-representation-delta-contract-v1.json","bytes":2317,"sha256":"21eb88e36b12ea630ba4797524008840786f0abaa76868694e1d0a6fc41935c9"},
+    {"path":"docs/superpowers/reports/r1-ptr12/r1-ptr12-test-design-v1.json","bytes":6655,"sha256":"59b08a276e54e9e86670557770d7c6ca4120bfa954bff564850b578a66f316fd"}
+  ],
+  "file_count": 10,
+  "production_diff": 0,
+  "baml_diff": 0,
+  "privacy_status": "exact",
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0},
+  "new_full_short_canary": "not_executed"
+}

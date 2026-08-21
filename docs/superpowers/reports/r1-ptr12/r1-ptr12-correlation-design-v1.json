@@ -1,0 +1,43 @@
+{
+  "schema": "R1PTR12CorrelationDesignV1",
+  "version": 1,
+  "canonical_identity": {
+    "source": "src/novel_flywheel/model_diagnostics.py::ModelDiagnosticContextV1.inner_attempt_id",
+    "trace_field": "ReliabilityTraceEnvelopeV1.correlation_id",
+    "decision": "reuse_existing",
+    "second_parallel_identity": false
+  },
+  "deterministic_binding_material": ["run_sha256","stage","boundary","contract_id","contract_version","outer_retry_ordinal","runtime_instance_ordinal","inner_attempt_ordinal","route_kind","route_fingerprint","schema_sha256"],
+  "call_locator": {
+    "external_call_number": "existing Canary BoundaryRequest.ordinal",
+    "reservation_ordinal": "existing Canary budget ledger ordinal",
+    "transport": "execution-local ContextVar set around CanaryGateway._dispatch_open delegate invocation and reset in finally",
+    "status_outside_canary": "null",
+    "identity_role": "locator_only",
+    "not_hashed_from": ["provider request id","prompt","response content","credentials"]
+  },
+  "joined_evidence": [
+    "external call number",
+    "stage and boundary",
+    "contract and schema",
+    "route/provider/model fingerprints",
+    "raw-shape observation",
+    "normalized-shape observation",
+    "representation delta",
+    "guard evaluation",
+    "negative-capability write result",
+    "alternate-route or fail-close disposition",
+    "Contract Runtime output-limit classification",
+    "terminal exception class when present"
+  ],
+  "event_order": [
+    {"sequence_role":"A","event":"diagnostic_provider_raw_shape_v1","writer":"ModelGateway emits the immutable snapshot captured by the provider adapter before normalization"},
+    {"sequence_role":"B","event":"diagnostic_provider_shape_delta_v1","writer":"ModelGateway._complete_resolved"},
+    {"sequence_role":"C1","event":"diagnostic_ptr9_guard_decision_v1/guard_evaluation","writer":"ModelGateway._complete_resolved"},
+    {"sequence_role":"C2","event":"diagnostic_ptr9_guard_decision_v1/recovery_disposition","writer":"contract_runtime.execute_contract_runtime"},
+    {"sequence_role":"D","event":"diagnostic_contract_output_limit_classification_v1","writer":"contract_runtime.execute_contract_runtime"}
+  ],
+  "persistence": "existing BestEffortTraceSink sequence per canonical correlation_id",
+  "raw_provider_request_id_used": false,
+  "determinism_test": "Repeat identical fixture/context construction twice; identity, receipt hashes, and bindings match while timestamp/event_id/trace sequence are excluded from canonical hashes."
+}

@@ -1,0 +1,124 @@
+{
+  "schema": "R1PTR12ObserverOwnerMapV1",
+  "version": 1,
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "af73f0b520dac7392227cce9e40badcc5b8b63e1",
+    "worktree_at_evidence_gate": "clean"
+  },
+  "safe_raw_observer_point_found": true,
+  "owners": {
+    "raw_response_capture": [
+      {
+        "file": "src/novel_flywheel/providers/anthropic.py",
+        "owner": "AnthropicAdapter.complete",
+        "exact_point": "immediately after HttpProvider.post_stream returns and before AnthropicAdapter._aggregate_stream or body content projection",
+        "stream_shape_source": "content_block_start/message_delta headers plus delta lengths only",
+        "nonstream_shape_source": "body content block metadata only"
+      },
+      {
+        "file": "src/novel_flywheel/providers/openai_chat.py",
+        "owner": "OpenAIChatAdapter.complete",
+        "exact_point": "immediately after HttpProvider.post_stream returns and before OpenAIChatAdapter._aggregate_stream or first choice/message projection",
+        "stream_shape_source": "choice delta structural keys and lengths only",
+        "nonstream_shape_source": "first choice/message structural metadata only"
+      },
+      {
+        "file": "src/novel_flywheel/providers/openai_responses.py",
+        "owner": "OpenAIResponsesAdapter.complete",
+        "exact_point": "immediately after HttpProvider.post_stream returns and before OpenAIResponsesAdapter._aggregate_stream, _output_text, or output projection",
+        "stream_shape_source": "response event kinds, item/content kinds, and delta lengths only",
+        "nonstream_shape_source": "body output/content structural metadata only"
+      }
+    ],
+    "raw_shape_builder": {
+      "file": "src/novel_flywheel/provider_output.py",
+      "proposed_owner": "capture_provider_raw_shape_v1",
+      "responsibility": "protocol-aware one-pass extraction of enums, counts, length metadata, completeness, and a metadata-only shape digest"
+    },
+    "raw_capture_transport": {
+      "file": "src/novel_flywheel/model_diagnostics.py",
+      "proposed_owner": "RawShapeCaptureSlotV1 execution-local ContextVar",
+      "responsibility": "ModelGateway opens/resets a per-attempt slot; the adapter deposits one immutable metadata-only snapshot before normalization; ModelGateway emits it with the canonical correlation after adapter return or while re-raising the exact adapter exception",
+      "response_mutation": false
+    },
+    "adapter_normalization": [
+      "AnthropicAdapter._aggregate_stream and AnthropicAdapter.complete -> ModelResponse",
+      "OpenAIChatAdapter._aggregate_stream and OpenAIChatAdapter.complete -> ModelResponse",
+      "OpenAIResponsesAdapter._aggregate_stream/_output_text and OpenAIResponsesAdapter.complete -> ModelResponse"
+    ],
+    "normalized_shape_observer": {
+      "file": "src/novel_flywheel/provider_output.py",
+      "owner": "provider_output_shape_from_response",
+      "hook_owner": "src/novel_flywheel/models.py::ModelGateway._complete_resolved",
+      "exact_point": "after adapter return and ProviderOutputShapeV1 projection, before guard evaluation"
+    },
+    "guard_predicate": {
+      "file": "src/novel_flywheel/models.py",
+      "owner": "_reasoning_only_final_artifact_unavailable"
+    },
+    "guard_scope": {
+      "file": "src/novel_flywheel/models.py",
+      "owner": "ModelGateway._complete_resolved",
+      "current_rule": "response_schema is not None"
+    },
+    "guard_decision_observer": {
+      "file": "src/novel_flywheel/models.py",
+      "proposed_owner": "ModelGateway._complete_resolved",
+      "exact_point": "evaluate and snapshot the existing predicate inputs once, immediately before the existing predicate branch; do not replace or broaden that branch"
+    },
+    "negative_capability_write": {
+      "file": "src/novel_flywheel/models.py",
+      "owner": "ModelGateway._complete_resolved",
+      "storage_owner": "src/novel_flywheel/db.py::Database.save_structured_route_outcome"
+    },
+    "recovery_disposition": {
+      "file": "src/novel_flywheel/contract_runtime.py",
+      "owner": "execute_contract_runtime",
+      "responsibility": "record whether an existing alternate route was considered/selected or typed fail-close was selected"
+    },
+    "output_limit_classification": {
+      "file": "src/novel_flywheel/contract_runtime.py",
+      "owner": "execute_contract_runtime",
+      "state": "output_limit_seen",
+      "terminal": "ContractOutputLimitExhaustedError"
+    },
+    "trace_persistence": {
+      "files": [
+        "src/novel_flywheel/generated_artifacts.py",
+        "src/novel_flywheel/reliability_trace.py"
+      ],
+      "owner": "ReliabilityTraceEnvelopeV1 + emit_observation + BestEffortTraceSink",
+      "failure_behavior": "returns false and never raises into business code"
+    },
+    "canary_call_locator": {
+      "file": "tools/canary/gate.py",
+      "owner": "CanaryGateway._dispatch_open",
+      "existing_values": ["BoundaryRequest.ordinal", "budget reservation ordinal"],
+      "design": "bind the existing BoundaryRequest.ordinal into the active ModelDiagnosticContext through an execution-local ContextVar; it is an optional locator under the canonical inner_attempt_id, not a new identity"
+    }
+  },
+  "call_order": [
+    "CanaryGateway._dispatch_open assigns the existing external boundary ordinal when Canary instrumentation is present",
+    "ModelGateway opens an execution-local metadata capture slot, then Provider adapter invokes HttpProvider.post_stream",
+    "observer point A deposits raw transport/body shape metadata into that slot before aggregation or projection; it does not mutate ModelResponse",
+    "adapter performs protocol-specific aggregation and constructs ModelResponse",
+    "ModelGateway emits the captured A receipt under the canonical correlation, then observer point B projects ProviderOutputShapeV1 and creates RawToNormalizedShapeDeltaV1",
+    "observer point C snapshots current PTR9 scope and predicate inputs, then observes the unchanged predicate decision",
+    "on trigger, existing negative-capability write occurs and its result is observed",
+    "strict-tool extraction, parser/schema conversion, and domain validation continue unchanged",
+    "Contract Runtime emits the recovery disposition and updates its existing local output_limit_seen classification",
+    "terminal exception, if any, is correlated by the same inner_attempt_id and existing boundary locator",
+    "ModelGateway resets the capture slot in finally"
+  ],
+  "coverage": {
+    "planning_primary": true,
+    "planning_repair": true,
+    "configured_fallback": true,
+    "plain_text_mode": true,
+    "tool_mode_when_adapter_supported": true,
+    "current_ptr9_guard_scope": true,
+    "incident_or_provider_hardcoding": false
+  },
+  "no_go": null
+}

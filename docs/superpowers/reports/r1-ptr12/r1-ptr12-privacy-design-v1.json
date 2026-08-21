@@ -1,0 +1,29 @@
+{
+  "schema": "R1PTR12PrivacyDesignV1",
+  "version": 1,
+  "status": "design_exact",
+  "data_minimization": {
+    "persisted": ["controlled enums","counts","booleans","typed statuses","existing non-sensitive ordinals","SHA-256 of structural metadata and classified identifiers"],
+    "never_persisted": ["prompt or request messages","story/manuscript/Canon/StoryState content","raw or final response text","reasoning/thinking content","tool arguments or results","full Provider body or stream event","API keys, Authorization headers, credentials, cookies, secret query parameters","raw Provider request identifiers","exception messages"],
+    "content_hashing": "forbidden; no digest of prompt, response text, reasoning, tool arguments, full body, or event bytes",
+    "unknown_strings": "persist only SHA-256 of the type/class token itself, with bounded cardinality; never hash values nested under content or argument fields",
+    "visible_character_count": "len() only; content is neither copied nor hashed"
+  },
+  "trace_guardrails": {
+    "sink": "src/novel_flywheel/reliability_trace.py::BestEffortTraceSink",
+    "existing_forbidden_key_validation": true,
+    "new_event_payload_models": "extra=forbid and frozen",
+    "serialization": "canonical JSON of metadata-only typed models",
+    "paths": "absolute paths prohibited by existing trace privacy validation",
+    "failure_details": "controlled failure class enum or hash of exception class name only; never exception text"
+  },
+  "streaming_rule": "Observer reads only event kind, block/item kind, finish/status token, usage counters, and length of already-present text deltas; it never accumulates content for telemetry.",
+  "retention_and_authority": {
+    "location": "existing reliability trace root outside story project",
+    "authority": "non-authoritative telemetry",
+    "may_feed_prompt_or_business_state": false,
+    "may_change_guard_or_recovery": false
+  },
+  "privacy_tests": ["forbidden-key recursive scan","sentinel content absent from serialized observation","sentinel secret absent from observation and hashes are metadata-only","unknown type names appear only as hashes","exception message absent on persistence failure"],
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0}
+}

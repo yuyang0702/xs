@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "original_requirement": "Design only a fail-open, privacy-safe raw Provider shape, raw-to-normalized delta, and PTR9 guard-decision observer that closes the PTR11 observability gap without changing production behavior.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The design binds the sealed PTR11 evidence, exact current source owners, existing trace envelope, adapter protocols, PTR9 predicate, capability write, and Contract Runtime recovery/classification flow. No execution or source modification is authorized.",
+  "operational_definition": "At adapter ingress capture metadata-only raw structure; after normalization compare shapes; at the existing guard snapshot every predicate and write outcome; at Contract Runtime complete route/fail-close/output-limit disposition under the same trace identity.",
+  "resolution_status": "contained",
+  "why_not_fixed": "PTR12 is design-only. The observability gap remains in production until a separately authorized PTR13 implementation and offline validation.",
+  "forbidden_narrowing": ["No Boundary 12, DeepSeek, provider, or model hardcoding","No widening of PTR9 predicate or scope","No Prompt, Model, Route, Retry, Fallback, Budget, Validator, Canon, StoryState, or READY change","No content or content-derived digest","No new tracing identity","No claim that observer repairs Short or Call 1 semantics"],
+  "constraint_traceability": [
+    {"requirement":"Locate safe raw, normalized, Guard, capability-write, recovery, and output-limit owners","implementation":"Static owner/call-order map across three adapters, provider_output, ModelGateway, Database, Contract Runtime, and Reliability Trace","test_paths":["tests/test_final_artifact_guard.py","tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"r1-ptr12-observer-owner-map-v1.json; implementation tests are explicitly proposed, not claimed present"},
+    {"requirement":"Persist shape metadata without content","implementation":"ProviderRawShapeObservationV1 with controlled enums, bounded sequences, counts, and metadata-only hashes","test_paths":["tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"r1-ptr12-raw-shape-contract-v1.json and r1-ptr12-privacy-design-v1.json; PTR13 must add the designed observer privacy tests"},
+    {"requirement":"Explain every Guard decision and recovery disposition","implementation":"Two-phase PTR9GuardDecisionObserverV1 with nullable predicates and typed miss reasons","test_paths":["tests/test_final_artifact_guard.py"],"evidence":"r1-ptr12-guard-decision-contract-v1.json; current tests anchor the unchanged Guard behavior"},
+    {"requirement":"Distinguish predicate miss from representation mismatch","implementation":"RawToNormalizedShapeDeltaV1 with YES/NO/UNKNOWN and typed dimensions","test_paths":["tests/test_final_artifact_guard.py","tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"r1-ptr12-representation-delta-contract-v1.json; implementation coverage is deferred to PTR13"},
+    {"requirement":"Fail open and preserve all business behavior","implementation":"Existing best-effort trace sink, non-mutating capture, exact exception re-raise, observer-on/off equivalence matrix","test_paths":["tests/test_final_artifact_guard.py","tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"r1-ptr12-test-design-v1.json cases 15, 17-19, 28-29 and 32; no implementation claim is made"}
+  ],
+  "historical_incident_families_checked": ["PTR4 reasoning-only max_tokens zero-visible","PTR7 Provider reasoning capability ignored","PTR9 exact final-artifact Guard","PTR11 raw-shape and guard-decision observability gap","Contract Runtime local sticky output-limit terminal reclassification","Planning Call 1 semantic validation and repair non-convergence"],
+  "projected_failure_mechanisms": ["adapter aggregation drops a raw reasoning representation","raw shape capture is unavailable","unknown block type forces tri-state UNKNOWN","observer sink drops an event","guard triggers but negative-capability write fails","Contract Runtime recovery disposition is not joined","Canary external ordinal is absent outside Canary"],
+  "controls": ["nullable predicate inputs","typed miss reasons with fixed precedence","metadata-only structural hashing","bounded sequences and unknown hashes","existing fail-open trace sink","two-phase guard/recovery event","existing inner_attempt_id correlation","observer-on/off behavior equivalence tests"],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No source or test file changes in PTR12; the proposed observer is not implemented. Current adapter, ModelGateway, Guard, parser, recovery, route, and output-limit behavior is byte-identical to sealed HEAD af73f0b5.",
+  "why_previous_tests_missed": "PTR9 tests supply ProviderOutputShapeV1 directly and prove exact predicate behavior, while the consumed real Short did not enable or persist the transient raw shape, normalized shape, per-predicate vector, or Guard write decision for Boundary 12.",
+  "sibling_boundaries": [
+    {"boundary":"Planning primary route","disposition":"not_applicable","evidence":"PTR12 changes reports only; the future hook is designed without route literals."},
+    {"boundary":"Planning repair route","disposition":"not_applicable","evidence":"PTR12 changes reports only; existing ModelDiagnosticContext was inspected read-only."},
+    {"boundary":"Configured fallback route","disposition":"not_applicable","evidence":"PTR12 changes reports only and does not alter fallback selection."},
+    {"boundary":"Plain and tool modes","disposition":"not_applicable","evidence":"PTR12 changes reports only; current strict-tool order was inspected read-only."},
+    {"boundary":"Draft, Final Review, Maintenance, Canon, StoryState and READY","disposition":"not_applicable","evidence":"Proposed scope contains no business owner in these boundaries and PTR12 changes reports only."}
+  ],
+  "production_shaped_tests": ["tests/test_final_artifact_guard.py","tests/test_r1_ptr1_planning_repair_observability.py"],
+  "next_authoritative_boundary_tests": ["tests/test_final_artifact_guard.py","tests/canary/test_planning_repair_observation_goal.py"],
+  "remaining_risks": ["Provider protocols may introduce new event shapes; those must classify UNKNOWN, not supported.","Best-effort persistence may leave an evidence gap; missing observations must remain UNKNOWN.","PTR11 historical raw shape cannot be recovered retroactively.","The actual first unrecovered divergence remains Planning Call 1 semantic_validation_failed."],
+  "business_limitation": "This observer can classify future raw shape and guard misses. It does not create an accepted Planning artifact, change recovery convergence, or guarantee Short success.",
+  "next_implementation": "R1-PTR13 — Implement Raw Shape + Guard Decision Observer",
+  "next_business_root_after_observer": "PLANNING_CALL1_SEMANTIC_FAILURE_AND_RECOVERY_CONVERGENCE"
+}
