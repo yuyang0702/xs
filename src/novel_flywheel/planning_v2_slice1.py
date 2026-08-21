@@ -83,6 +83,22 @@ class Slice1CandidateRejected(Slice1ContractError):
         self.findings = tuple(findings)
 
 
+class Slice1FreezeViolationError(Slice1ContractError):
+    code = "SLICE1_FREEZE_VIOLATION"
+
+
+class Slice1StaleRepairError(Slice1ContractError):
+    code = "SLICE1_STALE_REPAIR"
+
+
+class Slice1NoProgressError(Slice1ContractError):
+    code = "SLICE1_NO_PROGRESS"
+
+
+class Slice1AssemblyError(Slice1ContractError):
+    code = "SLICE1_ASSEMBLY_REJECTED"
+
+
 class _Slice1Model(BaseModel):
     model_config = ConfigDict(
         extra="forbid", frozen=True, strict=True, populate_by_name=True,
@@ -246,6 +262,70 @@ class Slice1ValidationReceiptV1(_Slice1Model):
     validator_policy_sha256: str = Field(pattern=SHA256_PATTERN)
     raw_value_included: Literal[False] = False
     raw_story_included: Literal[False] = False
+
+
+class Slice1ImpactClosureV1(_Slice1Model):
+    schema_name: Literal["Slice1ImpactClosureV1"] = Field(
+        default="Slice1ImpactClosureV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    node_types: tuple[str, ...]
+    edge_types: tuple[str, ...]
+    artifact_ids: tuple[str, ...]
+    closure_size: int = Field(ge=1, le=2)
+    repair_level: Literal[1, 2, 3]
+    requires_slice1_regeneration: bool
+    closure_sha256: str = Field(pattern=SHA256_PATTERN)
+
+
+class Slice1RecoveryStateV1(_Slice1Model):
+    schema_name: Literal["Slice1RecoveryStateV1"] = Field(
+        default="Slice1RecoveryStateV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    attempted_signatures: tuple[str, ...] = ()
+    attempt_counts: dict[int, int] = Field(default_factory=dict)
+    whole_planning_regeneration_allowed: Literal[False] = False
+
+
+class EventRealizationShadowSetV1(_Slice1Model):
+    schema_name: Literal["EventRealizationShadowSetV1"] = Field(
+        default="EventRealizationShadowSetV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    parent_authority_sha256: str = Field(pattern=SHA256_PATTERN)
+    ordered_artifacts: tuple[EventRealizationArtifactV1, ...] = Field(min_length=1)
+    coverage_sha256: str = Field(pattern=SHA256_PATTERN)
+    assembly_sha256: str = Field(pattern=SHA256_PATTERN)
+    audit_receipt_sha256: str = Field(pattern=SHA256_PATTERN)
+    shadow_only: Literal[True] = True
+    commit_performed: Literal[False] = False
+    promotion_eligible: Literal[False] = False
+    whole_planning_regeneration_performed: Literal[False] = False
+
+
+class Slice1ComparisonReceiptV1(_Slice1Model):
+    schema_name: Literal["Slice1ComparisonReceiptV1"] = Field(
+        default="Slice1ComparisonReceiptV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    v1_projection_sha256: str = Field(pattern=SHA256_PATTERN)
+    shadow_set_sha256: str = Field(pattern=SHA256_PATTERN)
+    comparable_fields: tuple[str, ...]
+    non_comparable_fields: tuple[str, ...]
+    divergence: Literal[
+        "equivalent_structure", "neutral_creative_divergence",
+        "shadow_structural_improvement", "shadow_regression",
+        "uncomparable_historical_evidence_missing",
+    ]
+    v1_event_count: int = Field(ge=0)
+    shadow_event_count: int = Field(ge=0)
+    semantic_regression_count: int = Field(ge=0)
+    mutation_performed: Literal[False] = False
 
 
 def _authority_ordinals(authority: EventRealizationInputAuthorityV1) -> tuple[int, int]:
@@ -712,6 +792,377 @@ def validation_receipt_sha256(receipt: Slice1ValidationReceiptV1) -> str:
     return canonical_sha256(
         "Slice1ValidationReceiptV1",
         receipt.model_dump(mode="json", by_alias=True),
+    )
+
+
+def freeze_validated_artifact(
+    artifact: EventRealizationArtifactV1,
+    receipt: Slice1ValidationReceiptV1,
+) -> EventRealizationArtifactV1:
+    """Freeze one exact PASS receipt without changing the business payload."""
+
+    if (
+        receipt.status != "PASS"
+        or receipt.findings
+        or receipt.artifact_id != artifact.artifact_id
+        or receipt.artifact_revision != artifact.artifact_revision
+        or receipt.parent_authority_sha256 != artifact.parent_authority_sha256
+        or artifact.freeze_state != "OPEN"
+    ):
+        raise Slice1FreezeViolationError(
+            "only an exact current PASS receipt may freeze a Slice 1 artifact"
+        )
+    values = artifact.model_dump(mode="python", by_alias=True)
+    values.update({
+        "validation_status": "PASS",
+        "validation_receipt_sha256": validation_receipt_sha256(receipt),
+        "freeze_state": "FROZEN",
+    })
+    return EventRealizationArtifactV1.model_validate(values)
+
+
+def repair_local_metadata(
+    artifact: EventRealizationArtifactV1,
+    *, authority: EventRealizationInputAuthorityV1,
+) -> EventRealizationArtifactV1:
+    """Level 0: recompute only derived metadata on an unfrozen artifact."""
+
+    if artifact.freeze_state == "FROZEN":
+        raise Slice1FreezeViolationError(
+            "local deterministic repair cannot rewrite a frozen artifact"
+        )
+    assert_current_parent(artifact, authority.parent_authority_sha256)
+    return build_event_realization_artifact(
+        authority,
+        EventRealizationCandidateV1(
+            title=artifact.title, narrative=artifact.narrative,
+        ),
+        artifact_revision=artifact.artifact_revision,
+        producer_kind=artifact.provenance.producer_kind,
+    )
+
+
+def _thaw_for_bounded_patch(
+    artifact: EventRealizationArtifactV1,
+    *,
+    authority: EventRealizationInputAuthorityV1,
+    finding_revision: int,
+    impacted_artifact_ids: Sequence[str],
+) -> int:
+    if artifact.freeze_state != "FROZEN" or artifact.validation_status != "PASS":
+        raise Slice1FreezeViolationError("bounded patch requires a frozen PASS artifact")
+    if (
+        finding_revision != artifact.artifact_revision
+        or artifact.parent_authority_sha256 != authority.parent_authority_sha256
+        or artifact.artifact_id not in set(impacted_artifact_ids)
+    ):
+        raise Slice1StaleRepairError(
+            "bounded patch does not match the frozen artifact CAS binding"
+        )
+    return artifact.artifact_revision + 1
+
+
+def apply_bounded_candidate_patch(
+    artifact: EventRealizationArtifactV1,
+    *,
+    authority: EventRealizationInputAuthorityV1,
+    finding_revision: int,
+    field_path: Literal["/title", "/narrative"],
+    replacement: str,
+    impacted_artifact_ids: Sequence[str] | None = None,
+) -> EventRealizationArtifactV1:
+    """Level 1/2 fixture patch with CAS, exact ownership, and refreeze."""
+
+    impacted = tuple(impacted_artifact_ids or (artifact.artifact_id,))
+    revision = _thaw_for_bounded_patch(
+        artifact,
+        authority=authority,
+        finding_revision=finding_revision,
+        impacted_artifact_ids=impacted,
+    )
+    values = {"title": artifact.title, "narrative": artifact.narrative}
+    values[field_path.removeprefix("/")] = replacement
+    candidate = EventRealizationCandidateV1.model_validate(values)
+    patched = build_event_realization_artifact(
+        authority, candidate,
+        artifact_revision=revision,
+        producer_kind=artifact.provenance.producer_kind,
+    )
+    receipt = validate_event_realization_artifact(patched, authority)
+    if receipt.status != "PASS":
+        raise Slice1FreezeViolationError(
+            "bounded patch did not produce a valid replacement artifact"
+        )
+    return freeze_validated_artifact(patched, receipt)
+
+
+def compute_impact_closure(
+    *,
+    field_path: str,
+    current: EventRealizationArtifactV1,
+    predecessor: EventRealizationArtifactV1 | None = None,
+    dependency_hint_ids: Sequence[str] = (),
+) -> Slice1ImpactClosureV1:
+    """Return the exact one/two-artifact closure or an L3 escalation marker."""
+
+    hints = tuple(sorted(set(dependency_hint_ids)))
+    known = {current.artifact_id}
+    if predecessor is not None:
+        known.add(predecessor.artifact_id)
+    unknown = set(hints) - known
+    requires_predecessor = bool(
+        predecessor is not None
+        and predecessor.artifact_id in set(hints)
+        and field_path == "/narrative"
+    )
+    if unknown:
+        artifact_ids = (current.artifact_id,)
+        level = 3
+        regenerate = True
+        edges = ("binds_authority", "realizes_event")
+    elif requires_predecessor:
+        artifact_ids = tuple(sorted((predecessor.artifact_id, current.artifact_id)))
+        level = 2
+        regenerate = False
+        edges = (
+            "binds_authority", "realizes_event", "depends_on_predecessor",
+            "immediate_adjacency",
+        )
+    else:
+        artifact_ids = (current.artifact_id,)
+        level = 1
+        regenerate = False
+        edges = ("binds_authority", "realizes_event")
+    proof = {
+        "field_path": field_path,
+        "artifact_ids": artifact_ids,
+        "dependency_hint_ids": hints,
+        "repair_level": level,
+        "requires_slice1_regeneration": regenerate,
+    }
+    return Slice1ImpactClosureV1(
+        node_types=(
+            "authority_snapshot", "formal_event_contract",
+            "predecessor_boundary", "event_realization_artifact",
+        ),
+        edge_types=edges,
+        artifact_ids=artifact_ids,
+        closure_size=len(artifact_ids),
+        repair_level=level,  # type: ignore[arg-type]
+        requires_slice1_regeneration=regenerate,
+        closure_sha256=canonical_sha256("Slice1ImpactClosureProofV1", proof),
+    )
+
+
+def recovery_no_progress_signature(
+    *,
+    artifact: EventRealizationArtifactV1,
+    findings: Sequence[LosslessSliceDiagnosticV1],
+    closure_artifact_ids: Sequence[str],
+) -> str:
+    return canonical_sha256(
+        "Slice1NoProgressSignatureV1",
+        {
+            "parent_authority_sha256": artifact.parent_authority_sha256,
+            "candidate_payload_sha256": artifact.payload_sha256,
+            "finding_ids": sorted(item.finding_id for item in findings),
+            "closure_artifact_ids": sorted(set(closure_artifact_ids)),
+        },
+    )
+
+
+def record_recovery_progress(
+    state: Slice1RecoveryStateV1,
+    *,
+    level: Literal[0, 1, 2, 3],
+    before: EventRealizationArtifactV1,
+    after: EventRealizationArtifactV1,
+    before_findings: Sequence[LosslessSliceDiagnosticV1],
+    after_findings: Sequence[LosslessSliceDiagnosticV1],
+    closure_artifact_ids: Sequence[str],
+) -> Slice1RecoveryStateV1:
+    """Accept one bounded attempt only after strict state/finding progress."""
+
+    signature = recovery_no_progress_signature(
+        artifact=before,
+        findings=before_findings,
+        closure_artifact_ids=closure_artifact_ids,
+    )
+    counts = dict(state.attempt_counts)
+    if counts.get(level, 0) >= 1 or signature in state.attempted_signatures:
+        raise Slice1NoProgressError("Slice 1 recovery level already exhausted")
+    before_ids = {item.finding_id for item in before_findings}
+    after_ids = {item.finding_id for item in after_findings}
+    changed = artifact_sha256(before) != artifact_sha256(after)
+    strict_issue_progress = after_ids < before_ids
+    if not changed or not strict_issue_progress:
+        raise Slice1NoProgressError(
+            "same finding repeated without an artifact state change"
+        )
+    counts[level] = counts.get(level, 0) + 1
+    return Slice1RecoveryStateV1(
+        attempted_signatures=(*state.attempted_signatures, signature),
+        attempt_counts=counts,
+    )
+
+
+def assemble_shadow_set(
+    artifacts: Sequence[EventRealizationArtifactV1],
+    *,
+    parent_authority_sha256: str,
+    expected_event_ids: Sequence[str],
+) -> EventRealizationShadowSetV1:
+    """Assemble frozen units in Runtime authority order without V1 mutation."""
+
+    if not artifacts:
+        raise Slice1AssemblyError("Slice 1 assembly requires at least one artifact")
+    if any(
+        item.parent_authority_sha256 != parent_authority_sha256
+        or item.freeze_state != "FROZEN"
+        or item.validation_status != "PASS"
+        for item in artifacts
+    ):
+        raise Slice1AssemblyError("Slice 1 assembly received stale or unfrozen input")
+    ordered = tuple(sorted(artifacts, key=lambda item: item.formal_event_ordinal))
+    actual_ids = tuple(item.formal_event_id for item in ordered)
+    expected_ids = tuple(expected_event_ids)
+    if (
+        actual_ids != expected_ids
+        or len(actual_ids) != len(set(actual_ids))
+        or tuple(item.formal_event_ordinal for item in ordered)
+        != tuple(range(len(ordered)))
+    ):
+        raise Slice1AssemblyError("Slice 1 assembly coverage/order is not exact")
+    for previous, current in zip(ordered, ordered[1:]):
+        if previous.artifact_id not in current.dependency_artifact_ids:
+            raise Slice1AssemblyError(
+                "Slice 1 assembly is missing its immediate predecessor dependency"
+            )
+    coverage_sha = canonical_sha256("Slice1CoverageV1", actual_ids)
+    member_hashes = tuple(artifact_sha256(item) for item in ordered)
+    assembly_sha = canonical_sha256(
+        "EventRealizationShadowSetPayloadV1",
+        {
+            "parent_authority_sha256": parent_authority_sha256,
+            "coverage_sha256": coverage_sha,
+            "member_sha256": member_hashes,
+        },
+    )
+    audit_sha = canonical_sha256(
+        "Slice1AssemblyAuditV1",
+        {
+            "event_count": len(ordered),
+            "coverage_exact": True,
+            "parent_exact": True,
+            "all_frozen": True,
+            "ordered_artifact_ids": tuple(item.artifact_id for item in ordered),
+        },
+    )
+    return EventRealizationShadowSetV1(
+        parent_authority_sha256=parent_authority_sha256,
+        ordered_artifacts=ordered,
+        coverage_sha256=coverage_sha,
+        assembly_sha256=assembly_sha,
+        audit_receipt_sha256=audit_sha,
+    )
+
+
+def regenerate_slice1_set(
+    authorities: Sequence[EventRealizationInputAuthorityV1],
+    fixture_candidates: Mapping[str, EventRealizationCandidateV1],
+) -> EventRealizationShadowSetV1:
+    """Level 3 offline regeneration of Slice1 only; never whole Planning."""
+
+    if not authorities:
+        raise Slice1AssemblyError("Slice 1 regeneration has no authority units")
+    artifacts: list[EventRealizationArtifactV1] = []
+    for authority in authorities:
+        candidate = fixture_candidates.get(authority.formal_event_id)
+        if candidate is None:
+            raise Slice1AssemblyError("Slice 1 regeneration lacks a fixture candidate")
+        artifact = build_event_realization_artifact(authority, candidate)
+        receipt = validate_event_realization_artifact(artifact, authority)
+        if receipt.status != "PASS":
+            raise Slice1AssemblyError("Slice 1 regenerated candidate did not validate")
+        artifacts.append(freeze_validated_artifact(artifact, receipt))
+    first = authorities[0]
+    return assemble_shadow_set(
+        artifacts,
+        parent_authority_sha256=first.parent_authority_sha256,
+        expected_event_ids=first.formal_event_ids,
+    )
+
+
+def compare_shadow_to_v1(
+    v1_projection: Mapping[str, Any],
+    shadow_set: EventRealizationShadowSetV1,
+    *,
+    shadow_obligation_ids: Mapping[str, Sequence[str]],
+    historical_evidence_available: bool = True,
+) -> Slice1ComparisonReceiptV1:
+    """Create a read-only normalized comparison receipt."""
+
+    v1_hash = canonical_sha256("Slice1V1ComparisonProjectionV1", dict(v1_projection))
+    shadow_hash = canonical_sha256(
+        "EventRealizationShadowSetV1",
+        shadow_set.model_dump(mode="json", by_alias=True),
+    )
+    actual_ids = tuple(item.formal_event_id for item in shadow_set.ordered_artifacts)
+    if not historical_evidence_available:
+        divergence = "uncomparable_historical_evidence_missing"
+        regressions = 0
+        v1_ids: tuple[str, ...] = ()
+    else:
+        v1_ids = tuple(str(item) for item in v1_projection.get("event_ids", ()))
+        v1_counts = dict(v1_projection.get("narrative_meaningful_counts", {}))
+        v1_obligations = {
+            str(key): set(value) for key, value in
+            dict(v1_projection.get("obligation_ids", {})).items()
+        }
+        lost_obligations = sum(
+            len(v1_obligations.get(event_id, set()) - set(
+                shadow_obligation_ids.get(event_id, ()),
+            ))
+            for event_id in actual_ids
+        )
+        lost_richness = sum(
+            1 for item in shadow_set.ordered_artifacts
+            if _meaningful_character_count(item.narrative)
+            < int(v1_counts.get(item.formal_event_id, 0))
+        )
+        regressions = lost_obligations + lost_richness
+        gained_obligations = sum(
+            len(set(shadow_obligation_ids.get(event_id, ())) - v1_obligations.get(event_id, set()))
+            for event_id in actual_ids
+        )
+        if v1_ids != actual_ids or regressions:
+            divergence = "shadow_regression"
+        elif gained_obligations:
+            divergence = "shadow_structural_improvement"
+        elif all(
+            _meaningful_character_count(item.narrative)
+            == int(v1_counts.get(item.formal_event_id, -1))
+            for item in shadow_set.ordered_artifacts
+        ):
+            divergence = "equivalent_structure"
+        else:
+            divergence = "neutral_creative_divergence"
+    return Slice1ComparisonReceiptV1(
+        v1_projection_sha256=v1_hash,
+        shadow_set_sha256=shadow_hash,
+        comparable_fields=(
+            "formal_event_identity", "event_coverage", "local_validation",
+            "narrative_presence", "meaningful_character_count",
+            "explicit_fixture_obligations",
+        ),
+        non_comparable_fields=(
+            "raw_artifact_bytes", "v1_segment_title_vs_slice1_event_title",
+            "future_exit_state", "future_beat_scene_fields",
+        ),
+        divergence=divergence,  # type: ignore[arg-type]
+        v1_event_count=len(v1_ids),
+        shadow_event_count=len(actual_ids),
+        semantic_regression_count=regressions,
     )
 
 
