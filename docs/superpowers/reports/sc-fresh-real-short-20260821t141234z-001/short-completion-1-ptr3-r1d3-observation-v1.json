@@ -1,0 +1,14 @@
+{
+  "schema": "ShortCompletionPTR3R1D3ObservationV1",
+  "version": 1,
+  "ptr3_finding_propagation_exercised": false,
+  "ptr3_targeted_domain_repair_count": 0,
+  "ptr3_marker": "PTR3_PLANNING_RETRY_PATH_NOT_EVIDENCED_BY_THIS_RUN",
+  "ptr3_note": "Planning recovery attempts and semantic rejections occurred, but the canonical short profile produced no exact targeted finding-propagation receipt. Exact finding replacement and stale-finding convergence are therefore not claimed.",
+  "r1_d3_draft_retry_propagation_exercised": false,
+  "r1_d3_marker": "R1_D3_RETRY_PATH_NOT_EXERCISED_BY_THIS_RUN",
+  "r1_d3_note": "Draft was not reached.",
+  "stale_finding_count": null,
+  "stale_finding_status": "not_observed_not_asserted_zero",
+  "raw_content_included": false
+}

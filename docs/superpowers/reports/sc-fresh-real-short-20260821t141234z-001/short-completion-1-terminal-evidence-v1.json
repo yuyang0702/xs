@@ -1,0 +1,41 @@
+{
+  "schema": "ShortCompletionTerminalEvidenceV1",
+  "version": 1,
+  "gate": "SC_FRESH_REAL_SHORT_TERMINAL",
+  "final_classification": "NARROW_FIX_REQUIRED",
+  "workflow_final_outcome": "WORKFLOW_TERMINAL",
+  "short_completion_goal_outcome": "WORKFLOW_TERMINAL",
+  "reason_code": "isolated_short_workflow_terminal",
+  "typed_root_cause": "ContractOutputLimitExhaustedError",
+  "safe_failure_class": "output_limit",
+  "first_divergence": {
+    "boundary_ordinal": 1,
+    "stage": "planning",
+    "route_kind": "primary",
+    "provider_finish_reason": "end_turn",
+    "downstream_result": "semantic_validation_failed"
+  },
+  "first_unrecovered_divergence": {
+    "stage": "planning",
+    "contract": "planning_semantic_v2",
+    "result": "no_domain_valid_candidate_after_bounded_recovery"
+  },
+  "terminal_boundary": {
+    "boundary_ordinal": 12,
+    "stage": "planning",
+    "route_kind": "configured_fallback",
+    "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+    "finish_reason": "max_tokens",
+    "requested_output_tokens": 8798,
+    "provider_reported_output_tokens": 8798,
+    "response_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "masking_status": "unmasked_terminal"
+  },
+  "evidence_sha256": "0bf558fba6a6ffaff2eec512bd4711eb12422b8a16b5b91ac33b1e578a5ce028",
+  "full_short_canary": "EXECUTED_ONCE",
+  "run_count": 1,
+  "second_run_executed": false,
+  "resume_executed": false,
+  "no_automatic_fix": true,
+  "raw_content_included": false
+}

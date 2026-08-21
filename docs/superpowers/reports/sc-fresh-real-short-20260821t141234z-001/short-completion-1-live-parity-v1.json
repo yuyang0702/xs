@@ -1,0 +1,12 @@
+{
+  "schema": "ShortCompletionLiveParityV1",
+  "version": 1,
+  "status": "exact",
+  "before_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "after_sha256": "1e04250acd23ec756f213ad56f03f8194d76d3549771758b8219856a955c43a9",
+  "live_active_run_count_before": 0,
+  "production_incident_counted": false,
+  "production_source_diff_count": 0,
+  "baml_source_diff_count": 0,
+  "raw_content_included": false
+}

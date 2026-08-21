@@ -1,0 +1,30 @@
+{
+  "schema": "ShortCompletionStageProgressionV1",
+  "version": 1,
+  "profile_id": "short_completion_1",
+  "cohort_id": "short-completion-fresh-v2-20260821t055917z-001",
+  "stages": [
+    {"name": "Planning", "status": "FAILED_TERMINAL"},
+    {"name": "Planning Repair", "status": "ENTERED"},
+    {"name": "Causal / Manifest", "status": "NOT_REACHED"},
+    {"name": "Draft", "status": "NOT_REACHED"},
+    {"name": "Draft Repair", "status": "NOT_REACHED"},
+    {"name": "Semantic Review", "status": "NOT_REACHED"},
+    {"name": "Quality", "status": "NOT_REACHED"},
+    {"name": "Final Review", "status": "NOT_REACHED"},
+    {"name": "Maintenance", "status": "NOT_REACHED"},
+    {"name": "Final Artifact", "status": "NOT_REACHED"},
+    {"name": "Final Checkpoint", "status": "NOT_REACHED"}
+  ],
+  "planning_first_real_pass": false,
+  "draft_first_real_entry": false,
+  "planning_conversion_audits": {
+    "total": 9,
+    "semantic_validation_failed": 8,
+    "output_truncated": 1,
+    "domain_valid": 0
+  },
+  "workflow_final_status": "failed",
+  "short_completion_goal_outcome": "WORKFLOW_TERMINAL",
+  "raw_content_included": false
+}

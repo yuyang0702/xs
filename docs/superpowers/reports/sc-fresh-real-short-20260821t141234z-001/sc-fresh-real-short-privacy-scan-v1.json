@@ -1,0 +1,32 @@
+{
+  "schema": "SCFreshRealShortPrivacyScanV1",
+  "version": 1,
+  "status": "exact",
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "scanned_file_count": 16,
+  "violation_count": 0,
+  "violations": [],
+  "credentials_or_headers_included": false,
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "raw_tool_arguments_included": false,
+  "raw_provider_content_included": false,
+  "files": [
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/sc-fresh-exec-authorization-binding-receipt-v1.json","bytes":1604,"sha256":"7a8473cd709afcf07c967a02f199d137b6f874ba1197c032028af20fde4e302e","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/sc-fresh-exec-preflight-receipt-v1.json","bytes":1164,"sha256":"f7a61ae58d5d817e74f2e392c58d72d539e7b548f9eeee7af57b5f9d0c48d7e6","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/sc-fresh-final-user-authorization-receipt-v1.json","bytes":2312,"sha256":"032080c32c56e5f6987cb829c1ca9edadbf8da93eddb515d5339c161485664b1","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/sc-fresh-real-short-final-report-v1.md","bytes":6643,"sha256":"56436b495f1668221bbf4ee51d662b9a2e6472f5a8c4ad1459d434f1bf2477e6","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-budget-cost-receipt-v1.json","bytes":1158,"sha256":"094e2067078608b2a97388bb758bd599f3ce761b89a81c3ff6284b34e170f0fa","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-confirmed-authorization-patch-v1.json","bytes":1774,"sha256":"3a2b6349cd8bdd0558740b4fbc4c87aae81797f2e30bf48e77f4ae7ef5f43281","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-external-call-ledger-summary-v1.json","bytes":8863,"sha256":"b5a7d187bc49cc45395639fc5da433fbbdf863f4c14de9306c3963a6f301bd58","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-live-parity-v1.json","bytes":434,"sha256":"47c6f81d5ad85472069100be3d6a3e33df2c5a15642d6d80055a4863a4e48f15","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-ptr3-r1d3-observation-v1.json","bytes":763,"sha256":"cfa81df240219feb6531799370cef2b747b40667014927d9f4779039189ed6db","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-ptr9-guard-observation-v1.json","bytes":1751,"sha256":"ec9b55a710d117a8622c0b8e35ec129cfc7904569743e75eff6189a125dc4f7b","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-real-evidence-v1.json","bytes":34845,"sha256":"c6006a73c89757036f168eceb6cd39e5ff5d2e35918d93abc15e1da1be38bc2a","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-real-result-v1.json","bytes":1674,"sha256":"82de27b5437d023794ab06ffc1516faf4d0db2dc405b5afad4ad741cfce19a08","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-signed-approval-v1.json","bytes":4336,"sha256":"998151806da32b55b382d8f8b16d0cafe444b246dfbf60d6021dc2740947dd65","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-signed-validate-only-receipt-v1.json","bytes":6952,"sha256":"ea62b199ca2ba8d81bd3326acc7a1ffdf6a5901a5fecfa489fc3fd6944775355","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-stage-progression-v1.json","bytes":1133,"sha256":"e23bfa7fe2bd93eaec1032ee2129c96fb4f95e93cfd0206302845b59dc25c0b3","violation_count":0},
+    {"path":"docs/superpowers/reports/sc-fresh-real-short-20260821t141234z-001/short-completion-1-terminal-evidence-v1.json","bytes":1528,"sha256":"c5d85d3e186be9b9b3b94987ae61b81ee291cc07f69e588b653ca8ba4dcd37fe","violation_count":0}
+  ]
+}

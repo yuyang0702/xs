@@ -1,0 +1,29 @@
+{
+  "schema": "SCFreshExecutionPreflightReceiptV1",
+  "version": 1,
+  "checked_at_utc": "2026-08-21T13:48:42.962071Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "head": "373b566d99770f060a4b2e0f479dfd54bc1357d7",
+  "worktree_status": "clean",
+  "profile_id": "short_completion_1",
+  "cohort_id": "short-completion-fresh-v2-20260821t055917z-001",
+  "execution_window_status": "inside_window",
+  "signed_approval_sha256": "ec59a33c4f223b960df3cf98119ccd4768753f8edcc6f4fe6c1a055fc1aad9df",
+  "confirmed_patch_sha256": "e6c029fa12100d0388a1aacbb9a6b5c2fa759e6e64ccf3901734f3d8829c5307",
+  "source_signed_validate_only_sha256": "885488728a5466401798ae5caa4ec47688de10cf26565119a8124d6482d4ba46",
+  "ordered_check_count": 38,
+  "exact_check_count": 38,
+  "overall_status": "exact",
+  "live_active_run_count": 0,
+  "ledger_state": "unused",
+  "ledger_entry_count": 0,
+  "canary_root_status": "absent_unused",
+  "external_action_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "network_call_count": 0,
+    "model_call_count": 0,
+    "paid_model_call_count": 0
+  },
+  "raw_content_included": false
+}
