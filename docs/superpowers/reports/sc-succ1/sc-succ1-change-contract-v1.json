@@ -1,0 +1,64 @@
+{
+  "schema": "SCSUCC1ChangeContractV1",
+  "generated_at_utc": "2026-08-21T04:30:52Z",
+  "task": "SC-SUCC1-V2 Current PTR3 Successor Evidence Rebinding / Regeneration",
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9",
+    "worktree": "clean",
+    "baseline_file_role": "external_task_baseline"
+  },
+  "declared_change_level": "L3",
+  "scope_classification": "closed_world",
+  "resolution_status": "case_fixed",
+  "selected_design": "PTR3_SUCCESSOR_CURRENT_RUNTIME_V1",
+  "authorized_scope": [
+    "tools/canary/ptr3_readiness.py",
+    "tests/canary/test_ptr3_successor_readiness.py",
+    "tests/canary/test_sc_succ1_current_successor.py",
+    "docs/maintenance.md",
+    "docs/superpowers/reports/sc-succ1/**"
+  ],
+  "forbidden_scope": [
+    "src/**",
+    "baml_src/**",
+    "Prompt",
+    "Model",
+    "Route configuration",
+    "Retry/Fallback production policy",
+    "Output budget",
+    "Validators",
+    "StoryState",
+    "Canon",
+    "READY authority",
+    "Draft",
+    "Final Review",
+    "Maintenance runtime"
+  ],
+  "operational_definition": "The immutable historical R1-PTR3 successor remains ancestor evidence. A separately sealed current-runtime successor binds the authorized commit lineage, current production source bytes, current Build/Config/Runtime/Prompt/route identities, PTR9/PTR10/SC-IC1 evidence, and an exact offline PTR3 semantic revalidation receipt. The materializer validates both eras and never requires historical source bytes to equal current source bytes.",
+  "fail_closed_conditions": [
+    "missing or altered historical evidence",
+    "historical blob or report tree mismatch",
+    "broken sealed ancestry",
+    "missing, stale, altered, or unknown current successor",
+    "current source mismatch",
+    "wrong branch or unapproved HEAD lineage",
+    "wrong Build/Config/Runtime/Prompt/route/model identity",
+    "failed or altered semantic revalidation",
+    "altered PTR9/PTR10/SC-IC1 parent evidence"
+  ],
+  "forbidden_narrowing": [
+    "No mismatch whitelist or bypass",
+    "No rewrite of historical PTR3 evidence",
+    "No acceptance of stale or unknown successor profiles",
+    "No production source or BAML change",
+    "No Provider, network, model, paid call, Fresh packet, approval, or Canary execution"
+  ],
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

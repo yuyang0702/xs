@@ -1,0 +1,95 @@
+{
+  "schema": "SCSUCC1OfflineTestReceiptV1",
+  "generated_at_utc": "2026-08-21T04:30:52Z",
+  "overall_status": "exact",
+  "external_actions": {"credential": 0, "provider_client": 0, "network": 0, "model": 0, "paid": 0},
+  "runs": [
+    {
+      "name": "test_first_red_phase",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_sc_succ1_current_successor.py",
+      "result": "expected_failure_before_implementation",
+      "failed": 19,
+      "reason": "current successor API and artifact did not yet exist"
+    },
+    {
+      "name": "successor_semantic_guard_compatibility_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q PTR3/PTR1/merge/PTR9/SC-IC1/SC-SUCC1/PTR3-readiness focused paths",
+      "result": "passed",
+      "passed": 63,
+      "elapsed_seconds": 23.28
+    },
+    {
+      "name": "short_materializer_related_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_short_completion_materialization.py tests/canary/test_short_completion_profile.py tests/canary/test_short_completion_verification.py tests/canary/test_ptr3_successor_readiness.py tests/canary/test_sc_succ1_current_successor.py",
+      "result": "passed",
+      "passed": 58,
+      "elapsed_seconds": 49.86,
+      "output_scope": "pytest_temporary_directories_only",
+      "repository_fresh_packet_materialized": false
+    },
+    {
+      "name": "offline_business_suite",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q --ignore=tests/canary --deselect=tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "result": "passed",
+      "passed": 2651,
+      "skipped": 39,
+      "deselected": 1,
+      "xfailed": 6,
+      "warnings": 1,
+      "warning_identity": "existing Starlette httpx TestClient deprecation",
+      "elapsed_seconds": 1221.26
+    },
+    {
+      "name": "strict_change_gate",
+      "result": "passed",
+      "declared_level": "L3",
+      "automatic_level": "L1",
+      "warnings": [],
+      "blockers": []
+    },
+    {
+      "name": "syntax_diff_and_scope_checks",
+      "result": "passed",
+      "checks": [
+        "changed Python files compile",
+        "git diff --check has no errors",
+        "git diff --name-only -- src baml_src is empty",
+        "historical PTR3 artifact is absent from changed paths"
+      ]
+    }
+  ],
+  "required_cases": {
+    "historical_ptr3_evidence_immutable": "passed",
+    "historical_artifact_sha_exact": "passed",
+    "historical_blob_tree_exact": "passed",
+    "cross_era_mismatch_identified": "passed",
+    "valid_current_successor": "passed",
+    "stale_successor_fail_closed": "passed",
+    "altered_current_source_fail_closed": "passed",
+    "broken_ancestry_fail_closed": "passed",
+    "missing_historical_fail_closed": "passed",
+    "altered_historical_fail_closed": "passed",
+    "wrong_head_fail_closed": "passed",
+    "wrong_build_config_runtime_fail_closed": "passed",
+    "unknown_profile_fail_closed": "passed",
+    "ptr3_semantic_revalidation": "passed",
+    "ptr9_compatibility": "passed",
+    "ptr10_compatibility": "passed",
+    "sc_ic1_compatibility": "passed",
+    "validate_only_external_actions_zero": "passed"
+  },
+  "live_parity": {
+    "status": "exact",
+    "database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_sha256": "585a2c8a435ec714bc839efae4bc92a2a4a3e131198623629e15d51880956908",
+    "canon_sha256": "d560044730a61382b401643a8159f58e07d919b601b97e931e8785b827bd84b0",
+    "candidate_checkpoint_saga_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "story_states": 6,
+    "story_candidates": 11,
+    "workflow_node_checkpoints": 917
+  },
+  "production_runtime_changed": false,
+  "baml_changed": false,
+  "fresh_packet_materialized": false,
+  "full_short_canary": "not_executed"
+}

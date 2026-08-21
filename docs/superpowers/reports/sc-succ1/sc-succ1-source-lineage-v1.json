@@ -1,0 +1,55 @@
+{
+  "schema": "SCSUCC1SourceLineageV1",
+  "generated_at_utc": "2026-08-21T04:30:52Z",
+  "overall_status": "exact",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9",
+  "historical_ptr3": {
+    "artifact_path": "tests/fixtures/reliability/r0f/r1-ptr3-authorized-protected-source-successor-v1.json",
+    "artifact_sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+    "artifact_blob_id": "7683bc7298dca118c53f5a72cdcc4a85cba26887",
+    "report_tree_id": "f2c9f4a32d26f6b9ab64838fbf58aec1109ee1ba",
+    "implementation_head": "a6d16638bdc55c5639979be7e2b50ffb0d927461",
+    "evidence_commit": "ab458a016caaed2148432c8c67b27734c61fe3ed",
+    "interpretation": "immutable_ancestor_evidence"
+  },
+  "sealed_ancestry": [
+    {"parent": "a6d16638bdc55c5639979be7e2b50ffb0d927461", "commit": "ab458a016caaed2148432c8c67b27734c61fe3ed", "purpose": "seal_ptr3_successor_evidence"},
+    {"parent": "ab458a016caaed2148432c8c67b27734c61fe3ed", "commit": "962f0ad7ad42e629bcca309de4d43ce58a671682", "purpose": "authorized_intervening_lineage_to_ptr8_parent"},
+    {"parent": "962f0ad7ad42e629bcca309de4d43ce58a671682", "commit": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946", "purpose": "seal_ptr9_runtime_guard"},
+    {"parent": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946", "commit": "57915cf68bac8e825c12f1761f555e6024e1020d", "purpose": "seal_ptr10_evidence_only"},
+    {"parent": "57915cf68bac8e825c12f1761f555e6024e1020d", "commit": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9", "purpose": "seal_sc_ic1_canary_control_plane"}
+  ],
+  "cross_era_comparison": {
+    "historical_expected_aggregate_sha256": "ead7727bae076daefc807e1316fb2cf6caa688192f31e45dc214326db92a5f8a",
+    "current_actual_aggregate_sha256": "71446b917737904cef05760c1c06da570bafb5677e0e91f0715958d08b999513",
+    "canonical_newline_hashing": true,
+    "exact_mismatch_files": [
+      {
+        "path": "src/novel_flywheel/contract_runtime.py",
+        "historical_expected_sha256": "d925037b12965c1861c87172638ebaf9e2fa9aeb36e317e4efb300a2fa856ce0",
+        "current_actual_sha256": "aab9f4208a9ffdc507ab3a059655533986c445860584185317290e9f425d6eb4",
+        "introducing_sealed_commit": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946"
+      },
+      {
+        "path": "src/novel_flywheel/models.py",
+        "historical_expected_sha256": "ad1d4f31648c5ecad4fdcb9055f53e4dd725bf436d0da33c50f73d4712fc3fa4",
+        "current_actual_sha256": "209322720d9596f21e6756c4d2b48f56e7f53f3e67f478d0758774bd45b03220",
+        "introducing_sealed_commit": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946"
+      }
+    ]
+  },
+  "old_validator": {
+    "path": "tools/canary/ptr3_readiness.py",
+    "function": "_successor_evidence",
+    "rule": "historical current_protected_sources sha256 compared directly with current worktree source bytes",
+    "failure": "ptr3_successor_source_mismatch",
+    "classification": "invalid_cross_era_exact_source_comparison"
+  },
+  "production_byte_provenance": {
+    "ptr9_introduced_current_mismatch_bytes": true,
+    "ptr10_production_diff": 0,
+    "sc_ic1_production_diff": 0,
+    "unauthorized_source_drift": false
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "SCSUCC1MaterializerBindingV1",
+  "generated_at_utc": "2026-08-21T04:30:52Z",
+  "overall_status": "exact",
+  "implementation": {
+    "path": "tools/canary/ptr3_readiness.py",
+    "sha256": "60a7d5d2a125e21435b6bb1fb2aff1e949f080dc9c5a5878a5c33f3263aa42f2",
+    "entrypoint": "validate_current_ptr3_successor_v1",
+    "materializer_callers": [
+      "build_ptr3_readiness_v1",
+      "build_r1_d3_successor_readiness_v1"
+    ]
+  },
+  "old_rule": {
+    "location": "tools/canary/ptr3_readiness.py::_successor_evidence",
+    "comparison": "historical_source_hash == current_worktree_source_hash",
+    "failure": "ptr3_successor_source_mismatch",
+    "status": "removed_as_cross_era_comparison"
+  },
+  "current_rule": [
+    "historical PTR3 artifact SHA exact",
+    "historical PTR3 artifact Git blob and report tree exact",
+    "historical PTR3 identity and original gate exact",
+    "approved sealed ancestry exact",
+    "fresh current successor schema/profile/seal exact",
+    "current branch and baseline/descendant HEAD exact",
+    "only exact declared successor seal paths may differ after baseline",
+    "current protected production source bytes exact",
+    "PTR9/PTR10/SC-IC1 parent manifest identities exact",
+    "PTR3 semantic revalidation receipt exact",
+    "Build/Config/Runtime/Prompt and Planning route/model identities exact",
+    "PTR9/PTR10/SC-IC1 compatibility statuses pass",
+    "external action counters all zero"
+  ],
+  "fail_closed_cases": [
+    "historical evidence missing or altered",
+    "historical blob/tree changed",
+    "ancestry broken",
+    "fresh successor missing, stale, altered, or unknown",
+    "current source mismatch",
+    "wrong branch or unrelated HEAD/worktree change",
+    "wrong Build/Config/Runtime/Prompt/route/model identity",
+    "semantic receipt missing, altered, or failed",
+    "parent manifest missing or altered",
+    "compatibility not exact",
+    "external action counter nonzero"
+  ],
+  "explicit_non_behaviors": {
+    "mismatch_whitelisted": false,
+    "historical_evidence_rewritten": false,
+    "stale_successor_accepted": false,
+    "unknown_profile_accepted": false,
+    "fresh_packet_materialized": false,
+    "execution_authorized": false
+  },
+  "focused_tests": {
+    "successor_and_semantic_cluster": "63 passed",
+    "short_materializer_cluster": "58 passed"
+  },
+  "external_actions": {"credential": 0, "provider_client": 0, "network": 0, "model": 0, "paid": 0}
+}

@@ -1,0 +1,120 @@
+{
+  "schema": "R1PTR3CurrentRuntimeSuccessorV1",
+  "version": 1,
+  "profile": "ptr3_successor_current_runtime_v1",
+  "created_at_utc": "2026-08-21T04:30:52Z",
+  "readiness_status": "exact",
+  "historical_parent_evidence": {
+    "kind": "immutable_ancestor_evidence",
+    "path": "tests/fixtures/reliability/r0f/r1-ptr3-authorized-protected-source-successor-v1.json",
+    "schema": "R1PTR3AuthorizedProtectedSourceSuccessorV1",
+    "sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+    "blob_id": "7683bc7298dca118c53f5a72cdcc4a85cba26887",
+    "report_tree_id": "f2c9f4a32d26f6b9ab64838fbf58aec1109ee1ba",
+    "implementation_head": "a6d16638bdc55c5639979be7e2b50ffb0d927461",
+    "evidence_commit": "ab458a016caaed2148432c8c67b27734c61fe3ed",
+    "historical_interpretation_changed": false
+  },
+  "current_successor_evidence": {
+    "kind": "fresh_current_runtime_successor",
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "baseline_head": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9",
+    "fingerprints": {
+      "build_sha256": "38ac099757dba906bcbe7d523fe2dd3f664193f2b5ffd3ecae559a17fdedcce4",
+      "config_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+      "runtime_sha256": "3a3c8ec80924c2124cd84b745c1d9d2972c9dad2c48351a9f5b6d8044e75d68c",
+      "prompt_policy_sha256": "82f73e6e9e90788feaa9cea0726e71a239960bead2b0c953ce5517e652dc736a"
+    },
+    "route_model_identity": {
+      "provider_descriptor_definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+      "role_binding_manifest_definition_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+      "planning": {
+        "role": "planning",
+        "primary": {
+          "provider_descriptor_hash": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+          "model_binding_hash": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+          "protocol": "anthropic",
+          "maximum_canary_output_tokens": 32000
+        },
+        "fallback": {
+          "provider_descriptor_hash": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+          "model_binding_hash": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+          "protocol": "anthropic",
+          "maximum_canary_output_tokens": 32000
+        }
+      }
+    },
+    "allowed_successor_seal_paths": [
+      "tools/canary/ptr3_readiness.py",
+      "tests/canary/test_ptr3_successor_readiness.py",
+      "tests/canary/test_sc_succ1_current_successor.py",
+      "docs/maintenance.md",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-change-contract-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-source-lineage-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-current-successor-binding-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-semantic-revalidation-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-materializer-binding-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-offline-test-receipt-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-forward-risk-report-v2.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-final-privacy-scan-v1.json",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-final-report-v1.md",
+      "docs/superpowers/reports/sc-succ1/sc-succ1-final-sha256-manifest-v1.json"
+    ]
+  },
+  "sealed_commit_ancestry": [
+    {"parent": "a6d16638bdc55c5639979be7e2b50ffb0d927461", "commit": "ab458a016caaed2148432c8c67b27734c61fe3ed"},
+    {"parent": "ab458a016caaed2148432c8c67b27734c61fe3ed", "commit": "962f0ad7ad42e629bcca309de4d43ce58a671682"},
+    {"parent": "962f0ad7ad42e629bcca309de4d43ce58a671682", "commit": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946"},
+    {"parent": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946", "commit": "57915cf68bac8e825c12f1761f555e6024e1020d"},
+    {"parent": "57915cf68bac8e825c12f1761f555e6024e1020d", "commit": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9"}
+  ],
+  "source_lineage": {
+    "path": "docs/superpowers/reports/sc-succ1/sc-succ1-source-lineage-v1.json",
+    "sha256": "c5075fea158315ce517733ee5d752c6ea28d7ab11114c2234a2e398baed09417",
+    "overall_status": "exact",
+    "historical_to_current_mismatch": {
+      "historical_aggregate_sha256": "ead7727bae076daefc807e1316fb2cf6caa688192f31e45dc214326db92a5f8a",
+      "current_aggregate_sha256": "71446b917737904cef05760c1c06da570bafb5677e0e91f0715958d08b999513",
+      "files": [
+        {"path": "src/novel_flywheel/contract_runtime.py", "introducing_commit": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946"},
+        {"path": "src/novel_flywheel/models.py", "introducing_commit": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946"}
+      ]
+    }
+  },
+  "current_protected_sources": [
+    {"path": "src/novel_flywheel/completion_supervisor.py", "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"},
+    {"path": "src/novel_flywheel/contract_runtime.py", "sha256": "aab9f4208a9ffdc507ab3a059655533986c445860584185317290e9f425d6eb4"},
+    {"path": "src/novel_flywheel/generated_artifacts.py", "sha256": "f9a80c9ed2225b341aaf38d25562449799e227f4424a01a733b09705fcd9712c"},
+    {"path": "src/novel_flywheel/long_workflow.py", "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"},
+    {"path": "src/novel_flywheel/models.py", "sha256": "209322720d9596f21e6756c4d2b48f56e7f53f3e67f478d0758774bd45b03220"},
+    {"path": "src/novel_flywheel/prompts.py", "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"},
+    {"path": "src/novel_flywheel/prose_quality.py", "sha256": "b56475366aa7f64edc2f65f03ebf87dc76ed454751661efd0346631888a50789"},
+    {"path": "src/novel_flywheel/providers/registry.py", "sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"},
+    {"path": "src/novel_flywheel/workflows.py", "sha256": "38620f20f7fb7362feec82846f4676c9a8aea1bd29b05e01053a3a01a79d747b"},
+    {"path": "src/novel_flywheel/provider_output.py", "sha256": "1cc1cbd4204649bd1ae957e99f87b0418bbfdf04bfd16d6eab06804552f1d53b"},
+    {"path": "src/novel_flywheel/domain/models.py", "sha256": "05a6bddfa82f956f5c89b824b3c411e40e8b2b5731e5e3ca945d7aa1a03b77d6"},
+    {"path": "src/novel_flywheel/db.py", "sha256": "d0994c1bcb0b149f3560306c125ba5a5dd41c181cf829e7cfb014ce8589c3bfe"},
+    {"path": "src/novel_flywheel/production_incidents.py", "sha256": "1e251e7e8d649183fc0d5db397e838046167f1b3ff96231e9cda7bd17c1e03bb"},
+    {"path": "src/novel_flywheel/planning_adaptation.py", "sha256": "9823641b2b8072ffa108025fcdef28b21fdd0026f1db47c89cca9359e46e7ea7"},
+    {"path": "src/novel_flywheel/planning_repair_diagnostics.py", "sha256": "61a4430d93ba030f94092cddc4d4ee818076cfad94d501316ba7f6286209087d"}
+  ],
+  "parent_manifests": [
+    {"identity": "PTR9", "path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-final-sha256-manifest-v1.json", "sha256": "a663594c6dfb298e3b946774e10f6d092c5886cd7d7fd66950c9b245d71e2287"},
+    {"identity": "PTR10", "path": "docs/superpowers/reports/r1-ptr10/r1-ptr10-final-sha256-manifest-v1.json", "sha256": "f30e7bde833787ab3d40d545e7b029b6d1f24ca5563d772733f839e086f4f2c9"},
+    {"identity": "SC-IC1", "path": "docs/superpowers/reports/sc-ic1/sc-ic1-final-sha256-manifest-v1.json", "sha256": "4475e81b49cae3f2887dd1828004a443e157ecffdd06f4413ccb23f061adc120"}
+  ],
+  "semantic_revalidation": {
+    "path": "docs/superpowers/reports/sc-succ1/sc-succ1-semantic-revalidation-v1.json",
+    "sha256": "d28165fcdb113bc1c20fb25d8309385f896c32ad371a418449ef0ae8deaa7f8f",
+    "overall_status": "exact",
+    "required_case_count": 18,
+    "stale_finding_count": 0
+  },
+  "compatibility": {
+    "ptr9": {"guard_identity": "REASONING_ONLY_MAX_TOKENS_GUARD_V1", "negative_capability_preserves_finding": true, "alternate_route_preserves_scope": true, "typed_fail_close_preserves_evidence": true, "status": "pass"},
+    "ptr10": {"guard_recovery_invariants": "exact", "production_source_bytes": "exact", "status": "pass"},
+    "sc_ic1": {"identity": "PROBE_MODULE_IMPORT_ISOLATION_V1", "production_planning_semantics_changed": false, "status": "pass"}
+  },
+  "external_actions": {"credential": 0, "provider_client": 0, "network": 0, "model": 0, "paid": 0},
+  "definition_sha256": "07341e86e4ab78217cb5efe19bc0ce5d369f35fe4eaa0d0d921e3202f188ecea"
+}

@@ -1,0 +1,125 @@
+{
+  "version": 2,
+  "original_requirement": "Replace the invalid cross-era PTR3 source comparison with fresh current successor evidence while preserving historical evidence, proving sealed lineage, revalidating PTR3 semantics, and keeping all execution and production behavior disabled.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The Short materializer has one PTR3 readiness helper, one immutable historical successor artifact, one fresh current successor profile, three named parent baselines, and an exact finite set of source/fingerprint/semantic bindings. Unknown schemas, profiles, paths, ancestry, and identities fail closed.",
+  "operational_definition": "Historical R1-PTR3 evidence is validated as immutable ancestor evidence; R1PTR3CurrentRuntimeSuccessorV1 separately binds the current sealed lineage, production bytes, execution identities, compatibility baselines, and an exact semantic revalidation receipt. The materializer requires both eras and never equates their source snapshots.",
+  "forbidden_narrowing": [
+    "No mismatch whitelist or ignored hash",
+    "No modification or reinterpretation of historical PTR3 evidence",
+    "No stale, unknown, unrelated, or partially validated successor",
+    "No production source, BAML, Prompt, Model, Route, Retry/Fallback, Budget, Validator, Canon, StoryState, READY, Draft, Final Review, or Maintenance runtime change",
+    "No credential, Provider client, network, model, paid call, Fresh packet, cohort, approval, or Canary execution"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Historical PTR3 evidence remains immutable and exact",
+      "implementation": "historical_ptr3_evidence_v1 validates fixed artifact SHA, Git blob, report tree, schema, implementation head, final report and test receipt",
+      "test_paths": ["tests/canary/test_sc_succ1_current_successor.py"],
+      "evidence": "Historical SHA bcba49fe..., blob 7683bc..., and report tree f2c9f4... remain exact. No historical path is changed."
+    },
+    {
+      "requirement": "Fresh current successor binds current bytes and authorized lineage",
+      "implementation": "validate_current_ptr3_successor_v1 plus R1PTR3CurrentRuntimeSuccessorV1",
+      "test_paths": ["tests/canary/test_sc_succ1_current_successor.py", "tests/canary/test_ptr3_successor_readiness.py"],
+      "evidence": "Valid current successor passes; stale source, HEAD, ancestry, schema/profile, fingerprints, semantic and parent evidence fail closed."
+    },
+    {
+      "requirement": "PTR3 semantics are revalidated rather than inferred from hashes",
+      "implementation": "sc-succ1-semantic-revalidation-v1.json is hash-bound by the successor",
+      "test_paths": ["tests/test_r1_ptr3_planning_repair_finding_propagation.py", "tests/test_r1_ptr1_planning_repair_observability.py", "tests/test_planning_adaptation.py"],
+      "evidence": "Exact finding propagation, replacement, stale-count zero, bounds, escaping, validator, merge and unchanged topology tests pass."
+    },
+    {
+      "requirement": "PTR9/PTR10/SC-IC1 remain compatible",
+      "implementation": "Current successor binds their sealed manifests and explicit compatibility records",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/canary/test_sc_ic1_import_closure.py", "tests/canary/test_sc_succ1_current_successor.py"],
+      "evidence": "Guard negative capability, alternate/fail-close behavior and import isolation remain unchanged and passing."
+    },
+    {
+      "requirement": "No external action or production behavior change",
+      "implementation": "Canary-only pure file/Git/hash validation under FailClosedNetworkSentinel",
+      "test_paths": ["tests/canary/test_sc_succ1_current_successor.py", "tests/canary/test_short_completion_materialization.py"],
+      "evidence": "All external counters are zero and git diff for src and baml_src is empty."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "planning.targeted_repair_finding_not_propagated",
+    "ptr3_successor_source_mismatch",
+    "reasoning_only_max_tokens",
+    "negative capability duplicate dispatch",
+    "SC_FRESH_SHORT_NO_GO_LAUNCHER_IMPORT_CLOSURE",
+    "parent evidence drift",
+    "stale approval evidence"
+  ],
+  "projected_failure_mechanisms": [
+    "a later authorized runtime change makes a current successor stale",
+    "a successor seal commit includes an unrelated path",
+    "a parent artifact or manifest is modified",
+    "a source file differs from the current successor receipt",
+    "a plan uses a different Build/Config/Runtime/Prompt/route/model identity",
+    "semantic revalidation receipt is missing or altered",
+    "a new successor schema or profile appears without explicit support",
+    "line endings differ between Git blob and working-tree evidence"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only Canary evidence-binding code, Canary tests, maintenance documentation, and SC-SUCC1 reports change. No production Provider adapter, parser, prompt, contract, validator, route, retry/fallback, budget, or model-output behavior changes.",
+  "model_output_variants_tested": [],
+  "model_output_topology_classes_tested": [],
+  "unseen_valid_variants_tested": [],
+  "unknown_variant_behavior": "Unknown current successor schemas/profiles and unknown committed or dirty paths fail closed.",
+  "invalid_output_variants_tested": [],
+  "transport_capacity_variants_tested": [],
+  "invariant_test_paths": [
+    "tests/canary/test_sc_succ1_current_successor.py",
+    "tests/canary/test_ptr3_successor_readiness.py",
+    "tests/canary/test_short_completion_materialization.py",
+    "tests/test_r1_ptr3_planning_repair_finding_propagation.py",
+    "tests/test_final_artifact_guard.py",
+    "tests/canary/test_sc_ic1_import_closure.py",
+    "offline_business_suite"
+  ],
+  "why_previous_tests_missed": "The original readiness fixture was correct at the R1-PTR3 era, but its helper treated historical current_protected_sources as permanently current. Later authorized PTR9 source changes were sealed and validated, while no test modeled historical ancestor identity separately from a fresh current-runtime successor.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Historical R1-PTR3 successor artifact",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Fixed SHA/blob/tree and original schema/gate are checked without writing the artifact."
+    },
+    {
+      "boundary": "Fresh Short PTR3 and R1-D3 readiness builders",
+      "disposition": "fixed_and_tested",
+      "evidence": "Both builders require the fresh current successor; materializer regression passes in temporary isolated output."
+    },
+    {
+      "boundary": "PTR9/PTR10 final artifact guard",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Guard regression and compatibility bindings pass; no guard source changes."
+    },
+    {
+      "boundary": "SC-IC1 Canary import closure",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Import isolation tests pass and no SC-IC1 implementation file changes."
+    },
+    {
+      "boundary": "Production runtime and BAML",
+      "disposition": "not_applicable",
+      "evidence": "Zero src and baml_src diff."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_r1_ptr3_planning_repair_finding_propagation.py",
+    "tests/test_final_artifact_guard.py",
+    "tests/canary/test_short_completion_materialization.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_short_completion_materialization.py",
+    "tests/canary/test_short_completion_verification.py"
+  ],
+  "remaining_risks": [
+    "The SC-SUCC1 paths remain unsealed until a separate evidence-only seal task commits them.",
+    "Any later production or identity change requires a new current successor rather than editing this one.",
+    "A Fresh Short packet still requires separate materialization and single-use final user authorization."
+  ]
+}

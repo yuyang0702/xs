@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 from pathlib import Path
 
 import pytest
 
 from tools.canary.ptr3_readiness import (
     SuccessorReadinessError,
+    CURRENT_SUCCESSOR_PATH,
     build_ptr3_readiness_v1,
     build_r1_d3_successor_readiness_v1,
+    current_successor_plan_projection,
     validate_ptr3_readiness_v1,
     validate_r1_d3_successor_readiness_v1,
 )
@@ -23,12 +26,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 @pytest.fixture
 def readiness_pair():
-    plan = {
-        "approved_build_fingerprint": "a" * 64,
-        "approved_execution_config_fingerprint": "b" * 64,
-        "expected_runtime_execution_fingerprint": "c" * 64,
-        "workloads": [{"prompt_policy_manifest_sha256": "d" * 64}],
-    }
+    successor = json.loads(CURRENT_SUCCESSOR_PATH.read_text(encoding="utf-8"))
+    plan = current_successor_plan_projection(successor)
     return (
         build_ptr3_readiness_v1(
             repo_root=ROOT, production_plan=plan,

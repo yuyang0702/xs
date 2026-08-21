@@ -1850,3 +1850,25 @@ blocking errors, and import failures are never caught or ignored.
 Do not bypass this boundary with a materialization-time allowlist or monkeypatch.
 New standalone executables require an explicit scope plus import, dependency,
 unknown-profile, and zero-network regression coverage.
+
+## Current PTR3 successor evidence
+
+The historical `R1PTR3AuthorizedProtectedSourceSuccessorV1` document is an
+immutable ancestor receipt. Its source hashes describe the R1-PTR3
+implementation era and must never be compared directly with a later sealed
+Runtime as if both snapshots were contemporaneous.
+
+`R1PTR3CurrentRuntimeSuccessorV1` provides the current binding. The Short
+Completion materializer requires both the exact historical artifact and the
+fresh current successor, then verifies sealed commit ancestry, current
+production source bytes, Build/Config/Runtime/Prompt and Planning route/model
+identities, parent manifests, and the PTR3 semantic revalidation receipt. A
+missing, stale, unknown, altered, or unrelated successor fails closed. The
+successor may survive its own evidence-only sealing commit only when every
+path changed after its baseline HEAD is in its exact sealed-path declaration;
+unrelated committed or working-tree changes remain blocking.
+
+This is a Canary evidence-binding rule only. It does not change production
+Planning, retry/fallback topology, output budgets, validators, prompts, routes,
+models, Canon, StoryState, or READY authority, and it grants no execution
+authorization.

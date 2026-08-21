@@ -1,0 +1,41 @@
+{
+  "schema": "SCSUCC1PTR3SemanticRevalidationV1",
+  "generated_at_utc": "2026-08-21T04:30:52Z",
+  "overall_status": "exact",
+  "semantic_identity": "PLANNING_REPAIR_FINDING_PROPAGATION",
+  "baseline_head": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9",
+  "stale_finding_count": 0,
+  "required_case_count": 18,
+  "cases": [
+    {"id": 1, "requirement": "same-scope next retry receives exact current finding", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_invalid_patch_propagates_exact_finding_then_converges"},
+    {"id": 2, "requirement": "rule/path/invariant propagation is bounded", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_malicious_finding_is_json_escaped_and_oversize_fails_closed"},
+    {"id": 3, "requirement": "fresh finding replaces previous finding", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_fresh_findings_replace_stale_findings"},
+    {"id": 4, "requirement": "stale_finding_count equals zero", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_fresh_findings_replace_stale_findings"},
+    {"id": 5, "requirement": "deterministic dedupe remains intact", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_contract_is_deterministic_deduplicated_and_scope_bound"},
+    {"id": 6, "requirement": "escaping remains deterministic", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_malicious_finding_is_json_escaped_and_oversize_fails_closed"},
+    {"id": 7, "requirement": "invalid finding fails before Provider", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_malicious_finding_is_json_escaped_and_oversize_fails_closed"},
+    {"id": 8, "requirement": "oversize finding fails before Provider", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_malicious_finding_is_json_escaped_and_oversize_fails_closed"},
+    {"id": 9, "requirement": "initial Planning request remains unchanged", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_invalid_patch_propagates_exact_finding_then_converges"},
+    {"id": 10, "requirement": "first repair request contract remains compatible", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_invalid_patch_propagates_exact_finding_then_converges"},
+    {"id": 11, "requirement": "Domain validator still runs", "status": "passed", "test": "tests/test_r1_ptr1_planning_repair_observability.py"},
+    {"id": 12, "requirement": "merge closure still runs", "status": "passed", "test": "tests/test_planning_adaptation.py::test_planning_event_obligation_repair_merges_unique_continuation_item"},
+    {"id": 13, "requirement": "retry topology is not broadened", "status": "passed", "test": "tests/test_r1_ptr3_planning_repair_finding_propagation.py::test_ignored_finding_remains_failure_with_unchanged_retry_cap"},
+    {"id": 14, "requirement": "fallback topology is not broadened", "status": "passed", "test": "tests/test_final_artifact_guard.py"},
+    {"id": 15, "requirement": "provider/model/route identity semantics unchanged", "status": "passed", "test": "tests/canary/test_sc_succ1_current_successor.py"},
+    {"id": 16, "requirement": "PTR9 negative capability does not swallow findings", "status": "passed", "test": "tests/test_final_artifact_guard.py"},
+    {"id": 17, "requirement": "PTR10 guard recovery invariants remain exact", "status": "passed", "test": "tests/test_final_artifact_guard.py"},
+    {"id": 18, "requirement": "SC-IC1 changes only Canary import closure", "status": "passed", "test": "tests/canary/test_sc_ic1_import_closure.py"}
+  ],
+  "invariants": {
+    "initial_request_unchanged": true,
+    "retry_topology_broadened": false,
+    "fallback_topology_broadened": false,
+    "prompt_changed": false,
+    "route_changed": false,
+    "model_changed": false,
+    "validator_changed": false,
+    "production_runtime_changed": false,
+    "baml_changed": false
+  },
+  "external_actions": {"credential": 0, "provider_client": 0, "network": 0, "model": 0, "paid": 0}
+}
