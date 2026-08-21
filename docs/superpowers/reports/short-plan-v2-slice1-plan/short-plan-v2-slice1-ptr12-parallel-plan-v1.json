@@ -1,0 +1,15 @@
+{
+  "schema":"Slice1Ptr12ObserverParallelPlan",
+  "version":1,
+  "sealed_priority":"PARALLEL",
+  "answers":{
+    "slice1_phase_a_depends_on_ptr12":false,
+    "parallel_files_and_owners_possible":true,
+    "required_merge_gate":"before any real model-backed Slice1 shadow or next real Full Short Canary, reassess and default to requiring PTR12 observer implementation/validation",
+    "observer_required_before_next_real_provider_or_short":"YES unless a fresh evidence-backed gate explicitly proves it unnecessary"
+  },
+  "slice1_owner_files":["src/novel_flywheel/planning_v2_slice1.py","tools/diagnostics/short_plan_v2_slice1.py","tests/test_planning_v2_slice1.py","tests/test_short_plan_v2_slice1_replay.py"],
+  "ptr12_owner_boundary":"raw provider shape and guard-decision observer files defined by sealed PTR12 design; must not overlap Slice1 artifact semantics",
+  "sequencing":["implement/validate Slice1 Phase A offline","implement PTR12 independently on its own approval/baseline","rebase and rerun isolation/replay gates","only then materialize a separately authorized Phase B or Short packet"],
+  "current_task_observer_implementation":"NOT_STARTED"
+}

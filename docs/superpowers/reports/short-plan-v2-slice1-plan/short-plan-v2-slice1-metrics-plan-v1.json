@@ -1,0 +1,24 @@
+{
+  "schema":"EventRealizationUnitShadowV1MetricsPlan",
+  "version":1,
+  "collection_stage":"baseline collection; no unsupported percentage thresholds",
+  "metrics":[
+    {"id":1,"name":"first_pass_slice1_validation_pass_rate","unit":"ratio"},
+    {"id":2,"name":"bounded_repair_convergence_rate","unit":"ratio"},
+    {"id":3,"name":"llm_calls_per_successful_slice1","unit":"count","phase_a":"0"},
+    {"id":4,"name":"local_deterministic_repair_count","unit":"count"},
+    {"id":5,"name":"already_valid_field_mutation_count","unit":"count","hard_target":0},
+    {"id":6,"name":"freeze_violation_count","unit":"count","hard_target":0},
+    {"id":7,"name":"same_failure_without_state_change_count","unit":"count","hard_target":0},
+    {"id":8,"name":"dependency_closure_size","unit":"event_artifacts","maximum":2},
+    {"id":9,"name":"full_slice1_regeneration_count","unit":"count"},
+    {"id":10,"name":"semantic_regression_count","unit":"count"},
+    {"id":11,"name":"comparison_divergence_vs_v1","unit":"classified_count"},
+    {"id":12,"name":"token_input_output_usage","unit":"tokens","phase_a":null},
+    {"id":13,"name":"elapsed","unit":"milliseconds","phase_a":null},
+    {"id":14,"name":"stale_finding_count","unit":"count","hard_target":0},
+    {"id":15,"name":"same_failure_dispatch_count","unit":"count","hard_target":0}
+  ],
+  "gate_hard_zeros":["already_valid_field_mutation_count","freeze_violation_count","stale_finding_count","same_failure_dispatch_count","authority_mutation_count","coverage_error_count_on_success"],
+  "phase_a_external_counters":{"credential":0,"provider_client":0,"network":0,"model":0,"paid":0}
+}

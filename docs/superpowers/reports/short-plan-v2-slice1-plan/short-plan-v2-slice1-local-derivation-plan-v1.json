@@ -1,0 +1,16 @@
+{
+  "schema":"EventRealizationUnitShadowV1LocalDerivationPlan",
+  "version":1,
+  "determinism_invariant":"same input bytes -> same derived output bytes",
+  "derivations":[
+    {"name":"identity","inputs":["schema","version","parent_authority_sha256","formal_event_id","formal_event_contract_sha256"],"algorithm":"canonical JSON then sha256-derived stable id","failure":"invalid/missing authority","validation":"recompute exact","recompute_trigger":"authority bytes change"},
+    {"name":"scope_and_ordinals","inputs":["formal authority ordering"],"algorithm":"exact table lookup; no fuzzy match","failure":"missing/duplicate event","validation":"referential exact","recompute_trigger":"authority ordering changes"},
+    {"name":"dependency_set","inputs":["bounded dependency ids"],"algorithm":"deduplicate then Unicode-codepoint sort","failure":"unknown or unbounded dependency","validation":"all dependencies authorized","recompute_trigger":"dependency set changes"},
+    {"name":"canonical_hashes","inputs":["canonical candidate/artifact/receipt bytes"],"algorithm":"SHA-256 lowercase hex","failure":"non-serializable value","validation":"recompute exact","recompute_trigger":"input bytes change"},
+    {"name":"internal_event_record","inputs":["formal_event_id authority copy","candidate narrative"],"algorithm":"construct one-event record and invoke existing compile_planning_event_artifact semantic owner","failure":"existing local event invariant rejects","validation":"exact event ownership and narrative completeness","recompute_trigger":"event id or narrative changes"},
+    {"name":"coverage_and_assembly","inputs":["validated artifacts","formal order"],"algorithm":"exact coverage then sort by formal ordinal and canonical serialize","failure":"gap/duplicate/mixed authority","validation":"coverage exact","recompute_trigger":"member receipt/hash changes"}
+  ],
+  "creative_localization_forbidden":true,
+  "open_semantic_derivations":[],
+  "sealed_design_contradiction":false
+}

@@ -1,0 +1,21 @@
+{
+  "schema":"EventRealizationUnitShadowV1ForwardRiskReport",
+  "version":1,
+  "overall_status":"open_risks_contained_by_shadow_only_phase_a",
+  "risks":[
+    {"risk":"decomposition accidentally loses creative context","detection":"obligation-retention and richness comparison on varied replay fixtures","containment":"keep title/narrative creative and classify loss as regression","rollback":"remove isolated Slice1 module/runner; V1 remains authority"},
+    {"risk":"shadow artifact duplicates authority","detection":"assert commit_performed=false, promotion_eligible=false and no Draft/StoryState/Canon writes","containment":"hash-bind read-only parent; never construct V1 authority object","rollback":"disable/delete registry entry and shadow runner"},
+    {"risk":"dependency closure under-approximates impact","detection":"synthetic adjacent/unbounded closure fixtures and exact dependency proofs","containment":"unknown or >2 scope escalates to full Slice1 regeneration","rollback":"disable L1/L2 repair and retain typed fail-close inside shadow"},
+    {"risk":"freeze prevents legitimate correction","detection":"legitimate authority/predecessor/finding thaw tests","containment":"CAS-bound enumerated thaw reasons with revision increment","rollback":"disable repair and regenerate Slice1 set"},
+    {"risk":"repair ladder over-escalates","detection":"per-level metrics and closure-size receipts","containment":"one attempt per level and exact state-change proof","rollback":"stop at typed shadow failure without V1 impact"},
+    {"risk":"validators migrate global constraints too early","detection":"deferred-global test matrix","containment":"layer F nonblocking and owner-labelled future closure","rollback":"remove disputed validator from blocking stack"},
+    {"risk":"V1/V2 comparison creates false regressions","detection":"explicit uncomparable/neutral classes and fixture oracle requirement","containment":"no raw-byte quality comparison or title equivalence","rollback":"emit measurements without classification"},
+    {"risk":"local derivation encodes hidden semantic assumptions","detection":"audit every derivation for same-bytes determinism and creative dependence","containment":"reclassify any open judgment; design contradiction gate if sealed ownership conflicts","rollback":"remove derivation and stop implementation"},
+    {"risk":"shadow mode accidentally mutates production","detection":"byte snapshots of V1 Planning, Draft input, StoryState, Canon and outcomes","containment":"no workflows.py/contract_runtime.py wiring; offline CLI only","rollback":"revert isolated commits"},
+    {"risk":"model-backed shadow doubles cost","detection":"Phase B token/cost/call metrics","containment":"Phase B excluded until fresh approval, budget and PTR12 gate","rollback":"keep Phase B disabled"},
+    {"risk":"new GeneratedArtifact registration changes generic closure/import behavior","detection":"unknown profile, generic closure and import-isolation regressions","containment":"new name unreferenced and exact-scope only","rollback":"remove registry entry"},
+    {"risk":"existing compiler semantics are too coarse for event obligations","detection":"fixture-oracle failures despite compiler PASS","containment":"retain explicit local obligation adapter in Slice1 rather than weakening compiler","rollback":"typed shadow failure; do not alter V1 compiler"}
+  ],
+  "unresolved_systemic_claim":"Slice1 Phase A does not prove full Planning/Draft/Short convergence or production-length support",
+  "fresh_approval_required_for_phase_b":true
+}

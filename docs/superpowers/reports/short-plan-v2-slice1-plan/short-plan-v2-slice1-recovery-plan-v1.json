@@ -1,0 +1,15 @@
+{
+  "schema":"EventRealizationUnitShadowV1RecoveryPlan",
+  "version":1,
+  "whole_planning_regeneration_allowed":false,
+  "levels":[
+    {"level":0,"name":"local_deterministic_repair","trigger":"serialization wrapper or derived bookkeeping defect with unchanged creative bytes","max_attempts":1,"action":"normalize wrapper or recompute local metadata","freeze":"all creative and unrelated frozen artifacts remain fixed","escalation":"L1","state_change_proof":"target derived hash changes and finding set shrinks"},
+    {"level":1,"name":"single_field_or_artifact_patch","trigger":"exact title or narrative finding local to one event","max_attempts":1,"action":"patch only named candidate field; preserve other field and every unrelated artifact","freeze":"CAS thaw one artifact","escalation":"L2 when dependency hint requires predecessor","state_change_proof":"target payload changes, exact finding removed, no unrelated hash change"},
+    {"level":2,"name":"dependency_closure_patch","trigger":"finding closure is current event plus at most immediate predecessor","max_attempts":1,"action":"patch proven closure of at most two event artifacts","freeze":"thaw only closure members","escalation":"L3 if closure unknown or >2","state_change_proof":"closure receipt changes, issue set monotonically shrinks, outside hashes exact"},
+    {"level":3,"name":"slice1_set_regeneration","trigger":"referential/set failure or unsafe/unbounded closure","max_attempts":1,"action":"regenerate only Slice1 event-realization set from unchanged authority","freeze":"new set revision; V1 untouched","escalation":"terminal typed failure","state_change_proof":"new set payload hash and reduced issue signature"}
+  ],
+  "no_progress_signature":"sha256(parent authority + candidate payload + canonical finding set + closure ids)",
+  "same_failure_rule":"if signature repeats without target or issue-set change, stop immediately; no dispatch/retry",
+  "terminal":"PLANNING_V2_SLICE1_CONVERGENCE_EXHAUSTED",
+  "fail_open_relative_to_v1":true
+}

@@ -1,0 +1,9 @@
+{
+  "schema":"EventRealizationUnitShadowV1ComparisonPlan",
+  "version":1,
+  "internal_deterministic_assembly":{"type":"EventRealizationShadowSetV1","rules":["same parent authority","exact event coverage","unique event ids","sort by formal ordinal","canonical serialization","no PlanningSemanticDraftV2/Markdown/PlanningDocumentIR/Manifest/Draft input creation"]},
+  "comparison_projection":{"compare":["normalized formal-event identity and coverage","local validity status","narrative presence and meaningful-character count","explicit sanitized fixture-oracle obligations","bounded causal/predecessor flags where evidence exists"],"do_not_compare":["raw artifact bytes","V1 segment title versus per-event Slice1 title","unavailable historical raw Call 1 narrative","future exit_state or beat/scene fields"]},
+  "divergence_classes":["equivalent_structure","neutral_creative_divergence","shadow_structural_improvement","shadow_regression","uncomparable_historical_evidence_missing"],
+  "classification_rules":{"improvement":"only an explicit invariant/fixture oracle proves a V1 defect is absent without losing required obligations","regression":"required structural/semantic obligation is lost or richness decreases against an explicit oracle","neutral":"creative wording differs while bounded obligations and validity remain","uncomparable":"sealed evidence lacks the raw or normalized counterpart"},
+  "mutation_effect":"none; comparison receipts cannot alter V1, shadow artifacts, Draft input, StoryState or Canon"
+}

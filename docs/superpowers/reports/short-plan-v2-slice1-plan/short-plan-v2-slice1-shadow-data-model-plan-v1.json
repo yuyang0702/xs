@@ -1,0 +1,18 @@
+{
+  "schema":"EventRealizationUnitShadowV1DataModelPlan",
+  "version":1,
+  "proposed_module":"src/novel_flywheel/planning_v2_slice1.py",
+  "types":[
+    {"name":"EventRealizationCandidateV1","fields":{"title":"StrictStr, 1..120","narrative":"StrictStr, minimum 12 meaningful characters"},"extra":"forbid","purpose":"the only model/fixture-owned shape"},
+    {"name":"EventRealizationInputAuthorityV1","fields":["parent_authority_sha256","formal_event_id","formal_event_ordinal","segment_ordinal","formal_event_contract_sha256","predecessor_boundary_sha256","dependency_artifact_ids","bounded context projections"],"purpose":"read-only exact authority projection"},
+    {"name":"EventRealizationArtifactV1","field_count":26,"frozen":true,"purpose":"non-authoritative validated shadow artifact"},
+    {"name":"EventRealizationShadowSetV1","fields":["parent_authority_sha256","ordered_artifacts","coverage_sha256","assembly_sha256"],"purpose":"deterministic internal assembly only"},
+    {"name":"LosslessSliceDiagnosticV1","purpose":"typed path-preserving finding"},
+    {"name":"Slice1ComparisonReceiptV1","purpose":"non-mutating V1/V2 comparison"}
+  ],
+  "identity":"stable_id(schema, version, parent_authority_sha256, formal_event_id, formal_event_contract_sha256)",
+  "serialization":"UTF-8 canonical JSON, sorted keys, compact separators, Unicode preserved, no NaN; same input bytes imply same output bytes",
+  "persistence":"Phase A writes only caller-selected diagnostics/report outputs; no StoryState, Canon, READY or production Planning persistence",
+  "lifecycle":["project input authority","construct candidate","derive local fields","validate","freeze","compare/replay","optional CAS-controlled thaw","discard or retain as evidence"],
+  "isolation":{"planning_v1_mutated":false,"story_state_mutated":false,"canon_mutated":false,"ready_authority_replaced":false,"draft_consumer":false,"parallel_second_authority":false}
+}

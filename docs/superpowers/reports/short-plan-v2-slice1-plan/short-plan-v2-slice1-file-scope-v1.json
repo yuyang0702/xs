@@ -1,0 +1,46 @@
+{
+  "schema":"EventRealizationUnitShadowV1ExactFileScopePlan",
+  "version":1,
+  "ADD":[
+    {"path":"src/novel_flywheel/planning_v2_slice1.py","purpose":"isolated shadow models, projection, derivation, validators, diagnostics, freeze/recovery, assembly/comparison"},
+    {"path":"tools/diagnostics/short_plan_v2_slice1.py","purpose":"offline replay CLI; no credential/provider imports and caller-selected outputs only"},
+    {"path":"tests/test_planning_v2_slice1.py","purpose":"contract, ownership, validation, diagnostics, recovery, freeze and isolation"},
+    {"path":"tests/test_short_plan_v2_slice1_replay.py","purpose":"offline corpus, metrics, privacy and deterministic evidence"},
+    {"path":"tests/fixtures/reliability/short_plan_v2_slice1/event-realization-shadow-corpus-v1.json","purpose":"sanitized representative replay corpus"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1/**","purpose":"implementation receipts, reports, privacy and SHA manifest after implementation"}
+  ],
+  "MODIFY":[
+    {"path":"src/novel_flywheel/generated_artifacts.py","purpose":"register a new, disabled/unreferenced, closed shadow candidate contract with title+narrative only"},
+    {"path":"tests/test_generated_artifacts.py","purpose":"prove strict registration/conversion and topology behavior"},
+    {"path":"docs/maintenance.md","purpose":"document offline runner, isolation, rollback and absence of V1 wiring"}
+  ],
+  "TEST_EXISTING_WITHOUT_MODIFICATION":[
+    "tests/test_planning_semantics.py",
+    "tests/test_planning_compiler.py",
+    "tests/test_r1_ptr3_planning_repair_finding_propagation.py",
+    "tests/test_canonical_shadow.py",
+    "tests/test_phase1a_shadow_workflows.py",
+    "tests/test_workflows.py"
+  ],
+  "EXPLICIT_NO_MODIFY":[
+    "src/novel_flywheel/workflows.py",
+    "src/novel_flywheel/contract_runtime.py",
+    "src/novel_flywheel/planning_semantics.py",
+    "src/novel_flywheel/planning_compiler.py",
+    "src/novel_flywheel/canonical_shadow.py",
+    "src/novel_flywheel/planning_repair_diagnostics.py",
+    "src/novel_flywheel/planning_recovery.py",
+    "src/novel_flywheel/reliability_trace.py",
+    "baml_src/**",
+    "all V1 prompts/routes/models/retries/fallbacks/budgets/validators"
+  ],
+  "reuse_decisions":{
+    "canonical_json_and_hash_conventions":"reuse behavior/public helpers where safe; do not modify canonical_shadow.py",
+    "event_semantic_owner":"call existing compile_planning_event_artifact after Runtime injects the authority event id",
+    "ptr3_findings":"project to existing shape; no PTR3 refactor",
+    "trace_sink":"not required in Phase A; avoid shared production trace wiring",
+    "workflows_py_required":false,
+    "contract_runtime_py_required":false
+  },
+  "scope_expansion_rule":"any required production workflow/runtime owner change triggers plan review; do not silently expand"
+}

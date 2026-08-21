@@ -1,0 +1,18 @@
+{
+  "schema":"EventRealizationUnitShadowV1GenerationPlan",
+  "version":1,
+  "pipeline":[
+    {"step":1,"name":"read_authority","mode":"local_only","rule":"read exact V1/READY authority without mutation"},
+    {"step":2,"name":"project_slice_input","mode":"local_only","rule":"bounded lossless projection plus hashes"},
+    {"step":3,"name":"obtain_candidate","phase_a":"offline fixture only","phase_b":"one new shadow-only narrow contract may emit title and narrative only"},
+    {"step":4,"name":"derive_local_fields","mode":"local_only","rule":"identity/order/hashes/dependencies/provenance"},
+    {"step":5,"name":"validate","mode":"local_only","rule":"typed stack with lossless findings"},
+    {"step":6,"name":"freeze_or_record_failure","mode":"local_only","rule":"never alter V1 outcome"},
+    {"step":7,"name":"assemble_compare_measure","mode":"local_only","rule":"shadow evidence only"}
+  ],
+  "prompt_contract_strategy":{"phase_a":"C_OFFLINE_FIXTURE_REPLAY","phase_b":"B_NEW_SHADOW_ONLY_NARROW_CONTRACT","reuse_full_planning_prompt":false,"candidate_fields":["title","narrative"],"forbidden_model_fields":["ids","order","indices","hashes","dependencies","authority copies","state transition","unrelated Planning fields"]},
+  "current_v1_generation":"continues byte-for-byte and behaviorally unchanged",
+  "shadow_failure_policy":"FAIL_OPEN_WITH_RESPECT_TO_V1_PRODUCTION",
+  "validator_policy":"strict inside shadow; fail-open applies only to V1 production outcome",
+  "phase_b_preconditions":["Phase A implementation gate passed","offline replay validated","PTR12 readiness reassessed","fresh external-call authorization","separate budget and stop conditions"]
+}

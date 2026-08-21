@@ -1,0 +1,39 @@
+{
+  "schema": "EventRealizationUnitShadowV1ContractPlan",
+  "version": 1,
+  "status": "implementation_plan_only",
+  "business_concept": "One non-authoritative narrative realization for exactly one formal Planning event within one bounded segment packet.",
+  "semantic_boundary": {
+    "unit": "formal_event",
+    "cardinality": "one artifact per formal event",
+    "inherits_from_current_planning": ["segment intent and label context", "event ordering and identity", "event narrative realization", "bounded causal/predecessor context"],
+    "does_not_own": ["event identity", "event order", "segment identity", "authority hashes", "dependency bookkeeping", "state transition or exit_state", "beat allocation", "scene allocation", "global closure", "Draft authority"]
+  },
+  "llm_owned_fields": ["title", "narrative"],
+  "authority_copy_fields": ["parent_authority_sha256", "formal_event_id", "formal_event_contract_sha256", "predecessor_boundary_sha256"],
+  "local_derivation_field_count": 20,
+  "minimum_input_authority": [
+    "exact PlanningAuthoritySnapshot hash",
+    "one exact formal-event contract and ordinal",
+    "bounded READY/StoryState/Canon projections required by that event",
+    "predecessor boundary projection or explicit first-event sentinel",
+    "relevant ending/downstream obligation projection",
+    "source hashes and dependency artifact identifiers"
+  ],
+  "relationships": {
+    "event": "one-to-one realization unit",
+    "beat": "not created or owned; a future stage may decompose the realization",
+    "scene": "not allocated; narrative only supplies realization content",
+    "causal_state": "consumes bounded preconditions but does not author exit_state in Slice 1",
+    "draft": "no direct consumer during shadow; comparison and replay evidence only"
+  },
+  "downstream_consumers": ["Slice 1 deterministic assembly", "shadow V1/V2 comparison", "offline replay metrics"],
+  "draft_authority_forbidden": true,
+  "v1_authority_mutation_forbidden": true,
+  "gate_on_ambiguity": "SHORT_PLAN_V2_SLICE1_PLAN_NO_GO_SLICE_BOUNDARY_AMBIGUOUS",
+  "parent_evidence_binding": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "sealed_head": "5503beba9138fc21a157c072d047cea4b2bff43c",
+    "parent_manifest_entries_exact": 19
+  }
+}

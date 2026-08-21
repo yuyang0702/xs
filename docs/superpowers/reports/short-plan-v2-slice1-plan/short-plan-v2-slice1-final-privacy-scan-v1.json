@@ -1,0 +1,20 @@
+{
+  "schema":"ShortPlanV2Slice1PlanFinalPrivacyScanV1",
+  "version":1,
+  "status":"exact",
+  "scope":"docs/superpowers/reports/short-plan-v2-slice1-plan excluding final SHA manifest until generated",
+  "checks":{
+    "credentials":0,
+    "api_keys":0,
+    "raw_prompt":0,
+    "raw_story_or_manuscript":0,
+    "raw_provider_content":0,
+    "raw_tool_arguments":0,
+    "personal_data":0,
+    "external_urls":0
+  },
+  "allowed_identifiers":["repository-relative paths","sealed branch and commit hashes","schema/type/function names","synthetic fixture descriptions","SHA-256 values"],
+  "diagnostic_policy":"future artifacts store type/shape/count/hash and typed status, not raw story values",
+  "external_actions":{"credential":0,"provider_client":0,"network":0,"model":0,"paid":0},
+  "full_short_canary":"not_executed"
+}

@@ -1,0 +1,28 @@
+{
+  "schema":"EventRealizationUnitShadowV1TestPlan",
+  "version":1,
+  "suites":[
+    {"area":"artifact","cases":["stable identity","deterministic serialization","authority hash binding","stale parent rejection","same bytes same artifact bytes"]},
+    {"area":"ownership","cases":["candidate authority-copy overwrite rejected at exact path","local derivation deterministic","only title/narrative accepted","extra ids/order/hashes forbidden"]},
+    {"area":"validation","cases":["structural failure","referential failure","authority failure","local semantic failure","cross-artifact coverage failure","deferred global invariant not over-enforced"]},
+    {"area":"diagnostics","cases":["exact rule/path/invariant retained","Pydantic path to JSON Pointer","malformed/multiple/unknown shapes distinct","PTR3-compatible projection","raw values absent"]},
+    {"area":"recovery","cases":["L0 local repair","L1 bounded field patch","L2 dependency closure patch","L3 Slice1 regeneration","no-progress detection","repeated finding stop","no whole Planning regeneration"]},
+    {"area":"freeze","cases":["validated fields unchanged","legitimate thaw","revision increment","stale patch rejection","unrelated hash stability"]},
+    {"area":"shadow_isolation","cases":["V1 Planning bytes unchanged","Draft input unchanged","StoryState unchanged","Canon unchanged","Final Review/Maintenance untouched","shadow exception leaves V1 outcome unchanged","no provider-capable import"]},
+    {"area":"replay","cases":["latest Call1 metadata-only case","PTR3 cases","domain/structure failures","dependency-impact cases","successful controls","six valid outputs/four topologies/two unseen wrappers/two invalid/two transport-capacity"]},
+    {"area":"quality","cases":["motivation/conflict/intent/causal obligation retention","terse/verbose/multilingual/genre diversity","no aesthetic hardcode"]},
+    {"area":"privacy","cases":["no secrets","no raw prompt/story/provider content","diagnostics use type/shape/count/hash","external actions zero"]}
+  ],
+  "commands_next_round":[
+    "focused pytest for test_planning_v2_slice1.py, test_short_plan_v2_slice1_replay.py and test_generated_artifacts.py",
+    "adjacent pytest for planning_semantics, planning_compiler, PTR3 findings, canonical shadow and shadow workflows",
+    "full pytest -q",
+    "strict L3 change gate with forward-risk receipt"
+  ],
+  "acceptance_gates":{
+    "implementation":"SHORT_PLAN_V2_SLICE1_IMPLEMENTED_SHADOW_ONLY",
+    "offline_replay":"SHORT_PLAN_V2_SLICE1_OFFLINE_REPLAY_VALIDATED",
+    "implementation_requirements":["V1 production authority unchanged","disabled parity exact","shadow failure fail-open to V1","deterministic derivation","lossless findings","freeze/recovery tests pass","no whole Planning regeneration","replay harness and metrics produced","external actions zero"],
+    "gate_separation":"implementation and real canary must never share one gate"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema":"ValidatedSubartifactFreezeV1Plan",
+  "version":1,
+  "freeze_point":"after structural, referential, authority-consistency and local-semantic PASS; before set assembly/comparison",
+  "freeze_metadata":["artifact_id","artifact_revision","parent_authority_sha256","payload_sha256","dependency_set_sha256","validation_receipt_sha256","validator_policy_sha256","frozen_at_logical_sequence"],
+  "allowed_thaw_reasons":["parent authority changed","formal event contract changed","immediate predecessor dependency changed","exact bounded finding requires correction"],
+  "forbidden_thaw_reasons":["unrelated finding","retry convenience","comparison divergence alone","global deferred finding","new random seed"],
+  "cas_preconditions":["expected artifact revision exact","expected payload hash exact","expected receipt hash exact","finding parent/revision exact","impact closure contains artifact"],
+  "version_rule":"successful legitimate thaw increments artifact_revision exactly once; stale repair is rejected without mutation",
+  "downstream_invalidation":"invalidate only assembly/comparison receipts and artifacts inside proven bounded closure; preserve unrelated frozen payload hashes",
+  "deterministic_recomputation":"derived metadata, closure and assembly hashes recompute from canonical inputs only",
+  "proof_metrics":{"already_valid_field_mutation_target":0,"freeze_violation_target":0,"stale_finding_target":0}
+}

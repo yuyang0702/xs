@@ -1,0 +1,20 @@
+{
+  "schema":"NarrativeQualityPreservationV1Plan",
+  "version":1,
+  "principles":[
+    "title and narrative remain creative fields and are never replaced by mechanical local rules",
+    "field-count reduction is not evidence of quality improvement",
+    "deterministic derivation handles only identity, order, hashes, dependencies and lifecycle",
+    "required character motivation, conflict, event intent, agency and causal preparation remain in the bounded event input/obligation oracle",
+    "comparison records richness loss but cannot promote or mutate either authority",
+    "no aesthetic preference becomes a blocking validator"
+  ],
+  "offline_qualitative_checks":[
+    {"name":"obligation_retention","method":"sanitized fixtures label required motivation/conflict/intent/causal-preparation obligations; compare coverage without prescribing wording","blocking":"regression classification, not V1 outcome"},
+    {"name":"form_diversity","method":"valid terse, verbose, multilingual and genre-varied realizations must all remain acceptable when obligations hold","blocking":"prevents rigid prose-shape validator"},
+    {"name":"richness_signal","method":"record meaningful character count, sentence count and labeled obligation count","blocking":"no universal minimum beyond structural meaningfulness; use for comparison evidence"},
+    {"name":"human_review_matrix","method":"offline reviewers classify missing intent, agency, conflict or causal preparation using fixture labels, not taste scores","blocking":"required before any later authority cutover design"}
+  ],
+  "draft_minimum_protection":"Slice1 does not feed Draft; future integration must prove the sealed Draft minimum contract still carries motivations, conflicts, intentions and causal preparation before cutover",
+  "hardcoded_literary_aesthetics":false
+}

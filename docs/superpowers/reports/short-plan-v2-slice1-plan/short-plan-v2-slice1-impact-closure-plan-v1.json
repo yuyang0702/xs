@@ -1,0 +1,17 @@
+{
+  "schema":"SemanticImpactClosureV1Slice1SubsetPlan",
+  "version":1,
+  "node_types":["authority_snapshot","formal_event_contract","predecessor_boundary","event_realization_artifact"],
+  "edge_types":["binds_authority","realizes_event","depends_on_predecessor","immediate_adjacency"],
+  "closure_algorithm":[
+    "start from finding field path and dependency hints",
+    "map title-only findings to current event artifact",
+    "map narrative-local findings to current event artifact",
+    "map explicit continuity/predecessor findings to current plus immediate predecessor",
+    "sort closure ids deterministically and hash proof",
+    "reject local patch when any required edge is unknown"
+  ],
+  "maximum_closure_scope":{"event_artifacts":2,"relationship":"current plus immediate predecessor"},
+  "escalation":"unknown, non-adjacent, or >2-artifact closure escalates to Level 3 full Slice1 set regeneration, never whole Planning regeneration",
+  "under_approximation_guard":"a validator cannot mark local_repairable without an exact closure proof"
+}

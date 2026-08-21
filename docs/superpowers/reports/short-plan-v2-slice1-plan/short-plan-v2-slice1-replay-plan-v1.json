@@ -1,0 +1,17 @@
+{
+  "schema":"EventRealizationUnitShadowV1ReplayPlan",
+  "version":1,
+  "phase":"offline_sanitized_collection_then_gate",
+  "corpus":[
+    {"case_family":"latest_real_short_call1","source":"sealed chronology, hashes and typed metrics only","privacy":"no raw story/prompt/provider content","expected":"uncomparable_historical_evidence_missing plus no invented field repair","v1_metric":"known semantic failure chronology","slice1_metric":"typed evidence and bounded terminal behavior","pass":"no fabricated shape or success claim"},
+    {"case_family":"ptr3_targeted_repair","source":"sealed/sanitized PTR3 finding-propagation fixtures","privacy":"synthetic values","expected":"exact rule/path propagation, zero stale finding, stop on no progress","v1_metric":"historical repair behavior","slice1_metric":"bounded convergence and mutation counts","pass":"PTR3-compatible projection exact"},
+    {"case_family":"planning_domain_failures","source":"existing planning semantic/domain tests converted to isomorphic sanitized cases","privacy":"synthetic","expected":"local typed finding or deferred global classification","v1_metric":"current validator result","slice1_metric":"layer and path","pass":"no global over-enforcement"},
+    {"case_family":"structure_drift","source":"existing structure-drift fixtures: missing/reordered ownership, independent event body, unrelated mutation","privacy":"synthetic","expected":"exact referential or authority finding","v1_metric":"current structure result","slice1_metric":"coverage/freeze result","pass":"unrelated frozen hash unchanged"},
+    {"case_family":"generated_artifact_shape","source":"sanitized parser fixtures","privacy":"synthetic","expected":"typed wrappers/multiple/unknown-field outcomes","v1_metric":"Gateway conversion class","slice1_metric":"lossless path and shape","pass":"no generic collapse"},
+    {"case_family":"dependency_impact","source":"new sanitized title-local, narrative-local, predecessor-adjacent and unbounded fixtures","privacy":"synthetic","expected":"closure sizes 1,1,2 and Level3 escalation","v1_metric":"not applicable","slice1_metric":"closure size and escalation","pass":"scope never exceeds proof"},
+    {"case_family":"successful_controls","source":"canonical one-event and multi-event plus multilingual/terse/verbose synthetic realizations","privacy":"synthetic","expected":"PASS with deterministic assembly","v1_metric":"current Planning valid control","slice1_metric":"first-pass and byte stability","pass":"same inputs yield same bytes"}
+  ],
+  "model_output_boundary_matrix":{"valid_realizations":6,"topology_classes_minimum":4,"unseen_valid_wrappers":2,"invalid_shapes":2,"capacity_or_transport_cases":2,"unknown_shape_behavior":"typed UNKNOWN/fail-closed inside shadow and fail-open to V1"},
+  "private_project_snapshot":"For the offline replay validation gate, use a read-only hash/shape snapshot plus sanitized isomorphic fixture; do not store manuscript text.",
+  "claim_limit":"Slice1 replay cannot claim complete Short workflow or production-length systemic resolution"
+}

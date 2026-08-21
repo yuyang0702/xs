@@ -1,0 +1,16 @@
+{
+  "schema":"LosslessSliceDiagnosticV1Plan",
+  "version":1,
+  "proposed_owner":"src/novel_flywheel/planning_v2_slice1.py",
+  "fields":["finding_id","rule_code","field_path_json_pointer","invariant_id","artifact_id","parent_authority_sha256","artifact_revision","dependency_hint_ids","validator_id","validator_version","validator_policy_sha256","value_type","structural_shape","observed_value_sha256","repair_eligibility","severity","exactness_status","raw_value_included","raw_story_included"],
+  "conversion_rules":[
+    "Pydantic error locations map deterministically to exact JSON Pointer paths",
+    "top-level syntax failures use $ and typed rule codes",
+    "object_required, multiple_candidates, malformed_json and unknown_field remain distinct",
+    "observed values are represented by shape/type/count/hash only",
+    "no finding may collapse into pathless natural-language summary"
+  ],
+  "ptr3_compatibility":{"method":"project rule_code, field_path, invariant_id, value_type and structural_shape into existing DiagnosticDomainFindingV1","ptr3_refactor":false,"stale_finding_count_target":0},
+  "bounded_repair_sufficiency":"finding identity plus parent/revision/dependency hints forms a CAS-bound repair target",
+  "privacy":{"raw_value_included":false,"raw_story_included":false,"raw_prompt":false,"raw_provider_content":false}
+}

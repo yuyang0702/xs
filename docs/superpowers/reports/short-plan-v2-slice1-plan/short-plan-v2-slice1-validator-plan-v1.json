@@ -1,0 +1,14 @@
+{
+  "schema":"EventRealizationUnitShadowV1ValidatorPlan",
+  "version":1,
+  "finding_shape":"LosslessSliceDiagnosticV1",
+  "layers":[
+    {"layer":"A_STRUCTURAL","owner":"planning_v2_slice1.validate_candidate_structure","invariants":["closed exact object with title and narrative only","strict strings","title 1..120","narrative >=12 meaningful characters","artifact schema/version/hash/freeze shapes exact"],"input":"candidate and artifact","local_repairability":"L0 for wrapper only; L1 for title/narrative","impact":"current artifact","severity":"error","blocks_shadow_pass":true,"deferred":false},
+    {"layer":"B_REFERENTIAL","owner":"planning_v2_slice1.validate_references","invariants":["formal event exists exactly once","event/segment ordinal exact","scope unique","one artifact per formal event"],"input":"authority plus artifact","local_repairability":"deterministic metadata only; otherwise L3","impact":"artifact or full Slice1 set","severity":"error","blocks_shadow_pass":true,"deferred":false},
+    {"layer":"C_AUTHORITY_CONSISTENCY","owner":"planning_v2_slice1.validate_authority_binding","invariants":["parent/event-contract/predecessor/dependency hashes exact","candidate cannot supply authority/local fields"],"input":"authority, candidate, artifact","local_repairability":"never from candidate; stale input rejected","impact":"artifact and dependents","severity":"error","blocks_shadow_pass":true,"deferred":false},
+    {"layer":"D_LOCAL_SEMANTIC","owner":"planning_v2_slice1.validate_local_semantics","invariants":["one meaningful narrative realizes the bound event","existing compile_planning_event_artifact accepts Runtime-injected event id","explicit fixture obligations retained when supplied"],"input":"bounded event contract plus narrative","local_repairability":"L1 or L2","impact":"current plus immediate predecessor only when continuity finding says so","severity":"error","blocks_shadow_pass":true,"deferred":false},
+    {"layer":"E_CROSS_ARTIFACT","owner":"planning_v2_slice1.validate_shadow_set","invariants":["exact ordered coverage","no duplicate/gap/mixed parent","immediate predecessor binding exact"],"input":"full Slice1 shadow set","local_repairability":"L2 if closure <=2 else L3","impact":"bounded closure","severity":"error","blocks_shadow_pass":true,"deferred":false},
+    {"layer":"F_DEFERRED_GLOBAL","owner":"future V2 global closure","invariants":["global actor capability/knowledge/location/relationship","whole-plan time and causal closure","setup/payoff and ending obligations","Draft executability"],"input":"future assembled V2 stages","local_repairability":"not decided in Slice1","impact":"global","severity":"deferred","blocks_shadow_pass":false,"deferred":true}
+  ],
+  "anti_pattern_guards":["no generic-only semantic_validation_failed","no global invariant migration into Slice1","no prose-aesthetic hardcoding"]
+}
