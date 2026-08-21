@@ -1,0 +1,98 @@
+{
+  "schema": "R1PTR10ValidationMatrixV1",
+  "generated_at_utc": "2026-08-20T19:07:21Z",
+  "overall_status": "exact",
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946",
+    "parent": "962f0ad7ad42e629bcca309de4d43ce58a671682",
+    "ptr9_manifest_status": "exact",
+    "ptr9_implementation_binding_checked": 9,
+    "production_source_bytes": "exact",
+    "baml_src_diff": 0
+  },
+  "cases": [
+    {
+      "case": 1,
+      "name": "reasoning_only_max_tokens",
+      "status": "passed",
+      "evidence": "test_reasoning_only_max_tokens_is_typed_before_parser_and_remembered",
+      "result": "REASONING_ONLY_FINAL_ARTIFACT_UNAVAILABLE is raised before parser/schema and the typed qualification is persisted"
+    },
+    {
+      "case": 2,
+      "name": "normal_text_output",
+      "status": "passed",
+      "evidence": "test_normal_text_output_does_not_trigger_guard",
+      "result": "normal text follows the prior conversion and validation path"
+    },
+    {
+      "case": 3,
+      "name": "normal_tool_output",
+      "status": "passed",
+      "evidence": "test_normal_tool_output_does_not_trigger_guard",
+      "result": "normal tool output follows the prior strict-tool path"
+    },
+    {
+      "case": 4,
+      "name": "unknown_block_shape",
+      "status": "passed",
+      "evidence": "test_unknown_block_shape_is_not_misclassified",
+      "result": "UNKNOWN is not inferred as reasoning-only"
+    },
+    {
+      "case": 5,
+      "name": "negative_capability_persistence",
+      "status": "passed",
+      "evidence": [
+        "test_negative_capability_prevents_second_provider_dispatch",
+        "test_negative_capability_state_upsert_is_idempotent"
+      ],
+      "result": "provider/model/route/contract/schema-bound negative capability persists and a matching second request has provider dispatch delta 0"
+    },
+    {
+      "case": 6,
+      "name": "alternate_route_available",
+      "status": "passed",
+      "evidence": [
+        "test_existing_distinct_fallback_recovers_through_domain_boundary",
+        "test_production_shaped_planning_semantic_v2_recovers_on_distinct_route"
+      ],
+      "result": "the existing configured distinct route is selected and the artifact crosses domain validation"
+    },
+    {
+      "case": 7,
+      "name": "no_alternate_route",
+      "status": "passed",
+      "evidence": "test_same_fingerprint_is_not_retried_and_no_route_fails_typed",
+      "result": "the repeated fingerprint is skipped with model_call_delta 0 and Runtime raises FinalArtifactCapabilityExhaustedError"
+    }
+  ],
+  "additional_false_positive_controls": {
+    "reasoning_plus_text": "passed_not_triggered",
+    "reasoning_plus_tool": "passed_not_triggered",
+    "multiple_text_blocks": "passed_not_triggered",
+    "adapter_projection_loss": "passed_not_triggered",
+    "empty_response": "passed_not_triggered",
+    "normal_primary_route": "passed_unaffected"
+  },
+  "invariants": {
+    "primary_route": "exact",
+    "normal_provider_output": "exact",
+    "draft": "exact",
+    "final_review": "exact",
+    "canon": "exact",
+    "story_state": "exact",
+    "ready_authority": "exact",
+    "retry_count_expanded": false,
+    "fallback_scope_expanded": false,
+    "budget_expanded": false
+  },
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

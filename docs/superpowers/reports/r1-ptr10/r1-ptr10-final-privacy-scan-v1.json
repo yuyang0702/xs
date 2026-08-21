@@ -1,0 +1,34 @@
+{
+  "schema": "R1PTR10FinalPrivacyScanV1",
+  "generated_at_utc": "2026-08-20T19:07:21Z",
+  "overall_status": "exact",
+  "scope": [
+    "docs/superpowers/reports/r1-ptr10/**",
+    "tests/test_final_artifact_guard.py",
+    "PTR9 implementation binding paths"
+  ],
+  "prohibited_content": {
+    "raw_prompt": 0,
+    "raw_story": 0,
+    "raw_tool_arguments": 0,
+    "raw_provider_content": 0,
+    "credentials": 0,
+    "authorization_headers": 0,
+    "provider_request_ids": 0,
+    "reasoning_content": 0
+  },
+  "retained_data": [
+    "controlled contract and route semantics",
+    "hashes",
+    "counts",
+    "typed statuses",
+    "test names and aggregate outcomes"
+  ],
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

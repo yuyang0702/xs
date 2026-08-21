@@ -1,0 +1,61 @@
+{
+  "schema": "R1PTR10OfflineTestReceiptV1",
+  "generated_at_utc": "2026-08-20T19:07:21Z",
+  "overall_status": "exact",
+  "baseline_head": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946",
+  "runs": [
+    {
+      "name": "focused_guard_matrix",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_final_artifact_guard.py",
+      "result": "passed",
+      "passed": 16,
+      "elapsed_seconds": 4.71
+    },
+    {
+      "name": "related_regression_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_models.py tests/test_contract_runtime.py tests/test_structured_output_business_qualification.py tests/providers/test_diagnostic_tool_shapes.py tests/test_production_incidents.py tests/test_final_artifact_guard.py tests/test_r0f_baseline.py tests/test_runtime_fingerprint.py",
+      "result": "passed",
+      "passed": 163,
+      "warnings": 1,
+      "elapsed_seconds": 33.39
+    },
+    {
+      "name": "production_length_matrix",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_phase1b_production.py::test_phase1b_candidate_lane_production_length_matrix",
+      "result": "passed",
+      "passed": 3,
+      "elapsed_seconds": 85.41,
+      "target_sizes": [13000, 20000, 30000]
+    },
+    {
+      "name": "offline_business_suite",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q --ignore=tests/canary --deselect=tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "result": "passed",
+      "passed": 2651,
+      "skipped": 39,
+      "deselected": 1,
+      "xfailed": 6,
+      "warnings": 1,
+      "elapsed_seconds": 1252.70
+    }
+  ],
+  "known_baseline_exclusions": [
+    {
+      "boundary": "tests/canary",
+      "reason": "The sealed PTR9 baseline records a pre-existing old real-probe import-closure failure; PTR10 prohibited Canary execution."
+    },
+    {
+      "boundary": "tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "reason": "The sealed PTR9 baseline records this assertion as bound to an obsolete R0 database hash; PTR10 verified current authorized live parity directly."
+    }
+  ],
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "real_provider_calls": 0,
+  "full_short_canary": "not_executed"
+}

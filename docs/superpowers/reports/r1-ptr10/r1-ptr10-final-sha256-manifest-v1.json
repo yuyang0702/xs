@@ -1,0 +1,50 @@
+{
+  "schema": "R1PTR10FinalSHA256ManifestV1",
+  "generated_at_utc": "2026-08-20T19:07:21Z",
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "ptr9_baseline": {
+    "head": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946",
+    "manifest_path": "docs/superpowers/reports/r1-ptr9/r1-ptr9-final-sha256-manifest-v1.json",
+    "manifest_sha256": "a663594c6dfb298e3b946774e10f6d092c5886cd7d7fd66950c9b245d71e2287",
+    "implementation_binding_status": "exact"
+  },
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr10/r1-ptr10-final-privacy-scan-v1.json",
+      "bytes": 794,
+      "sha256": "28353f5db75ea56b5243c03f153d2349cb1a0e7e9b46d8a6ec3eaba26aa7cc8d"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr10/r1-ptr10-final-report-v1.md",
+      "bytes": 4631,
+      "sha256": "28ee75dc4c00dcd3613d0758211d14ceb4b52983fd17e18fe79874355356989e"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr10/r1-ptr10-live-parity-v1.json",
+      "bytes": 1030,
+      "sha256": "abf9872059ea793c9ac7ceff66c5f140efbbe1b791c8160c4899a052d8657aa0"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr10/r1-ptr10-offline-test-receipt-v1.json",
+      "bytes": 2351,
+      "sha256": "24f808024e50b9f10345645dc68b9563ff3125473b46dc4b3c5fc263976bdc0b"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr10/r1-ptr10-validation-matrix-v1.json",
+      "bytes": 3423,
+      "sha256": "a4e4e8b9efcf914220d222ae21be722ab5cf97e92097de35df0955f016eafcc3"
+    }
+  ],
+  "file_count": 5,
+  "production_diff": 0,
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "full_short_canary": "not_executed"
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "R1PTR10LiveParityV1",
+  "generated_at_utc": "2026-08-20T19:07:21Z",
+  "overall_status": "exact",
+  "before_and_after": {
+    "database_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+    "formal_manifest_sha256": "585a2c8a435ec714bc839efae4bc92a2a4a3e131198623629e15d51880956908",
+    "canon_manifest_sha256": "d560044730a61382b401643a8159f58e07d919b601b97e931e8785b827bd84b0",
+    "candidate_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "checkpoint_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "saga_manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "table_counts": {
+      "story_states": 6,
+      "story_candidates": 11,
+      "workflow_node_checkpoints": 917
+    }
+  },
+  "authority_mutations": {
+    "formal_manuscript": 0,
+    "canon": 0,
+    "story_state": 0,
+    "candidate": 0,
+    "checkpoint": 0,
+    "run_history": 0
+  },
+  "status": "exact"
+}
