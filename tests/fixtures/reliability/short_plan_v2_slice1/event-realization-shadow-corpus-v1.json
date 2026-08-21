@@ -1,0 +1,50 @@
+{
+  "schema": "EventRealizationShadowCorpusV1",
+  "version": 1,
+  "authority": {
+    "parent_authority_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "context_projection_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "event_contract_sha256": {
+      "EV-00000001": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "EV-00000002": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    "predecessor_boundary_sha256": {
+      "EV-00000001": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "EV-00000002": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "event_ids": ["EV-00000001", "EV-00000002"],
+    "required_obligation_ids": ["motivation", "conflict", "intent", "causal-preparation"]
+  },
+  "candidates": {
+    "first": {
+      "title": "First bounded realization",
+      "narrative": "PRIVATE_SYNTHETIC_PROSE_MARKER: the first actor chooses a costly path, meets resistance, and creates the next causal handoff."
+    },
+    "second": {
+      "title": "Second bounded realization",
+      "narrative": "The second actor receives the consequence, contests the obstacle, and resolves this bounded event without changing authority."
+    }
+  },
+  "cases": [
+    {"case_id":"valid-canonical","family":"successful_controls","kind":"valid_conversion","topology":"canonical","candidate":"first","expected":"validated"},
+    {"case_id":"valid-data-envelope","family":"generated_artifact_shape","kind":"valid_conversion","topology":"data","candidate":"first","expected":"validated"},
+    {"case_id":"valid-nested-result","family":"generated_artifact_shape","kind":"valid_conversion","topology":"nested_result","candidate":"first","expected":"validated"},
+    {"case_id":"valid-unseen-delivery","family":"generated_artifact_shape","kind":"valid_conversion","topology":"unseen_delivery","candidate":"first","expected":"validated"},
+    {"case_id":"valid-unseen-answer","family":"generated_artifact_shape","kind":"valid_conversion","topology":"unseen_answer","candidate":"first","expected":"validated"},
+    {"case_id":"valid-response-value","family":"successful_controls","kind":"valid_conversion","topology":"response_value","candidate":"first","expected":"validated"},
+    {"case_id":"invalid-ambiguous","family":"generated_artifact_shape","kind":"ambiguous","candidate":"first","expected":"SLICE1_MULTIPLE_CANDIDATES"},
+    {"case_id":"invalid-authority-echo","family":"ptr3_targeted_repair","kind":"ownership_violation","candidate":"first","expected":"SLICE1_FIELD_OWNERSHIP_VIOLATION"},
+    {"case_id":"transport-truncated","family":"generated_artifact_shape","kind":"truncated","expected":"SLICE1_OUTPUT_TRUNCATED"},
+    {"case_id":"transport-empty","family":"generated_artifact_shape","kind":"empty","expected":"SLICE1_OUTPUT_TRUNCATED"},
+    {"case_id":"domain-short-narrative","family":"planning_domain_failures","kind":"semantic_short","expected":"SLICE1_CANDIDATE_FIELD_INVALID"},
+    {"case_id":"latest-call1-unknown","family":"latest_real_short_call1","kind":"call1_unknown","sealed_observation_sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","expected":"CALL1_EXACT_FAILURE_RULE_UNKNOWN"},
+    {"case_id":"ptr3-bounded-repair","family":"ptr3_targeted_repair","kind":"ptr3_repair","candidate":"first","expected":"bounded_repair_converged"},
+    {"case_id":"structure-ordinal-drift","family":"structure_drift","kind":"structure_drift","candidate":"first","expected":"SLICE1_EVENT_ORDINAL_MISMATCH"},
+    {"case_id":"impact-title-local","family":"dependency_impact","kind":"impact","scope":"local","expected":"closure_level_1"},
+    {"case_id":"impact-predecessor-adjacent","family":"dependency_impact","kind":"impact","scope":"adjacent","expected":"closure_level_2"},
+    {"case_id":"impact-unbounded","family":"dependency_impact","kind":"impact","scope":"unbounded","expected":"closure_level_3"},
+    {"case_id":"same-finding-no-progress","family":"ptr3_targeted_repair","kind":"no_progress","candidate":"first","expected":"SLICE1_NO_PROGRESS"},
+    {"case_id":"assembly-comparison-control","family":"successful_controls","kind":"assembly_comparison","expected":"neutral_creative_divergence"},
+    {"case_id":"slice1-regeneration-control","family":"successful_controls","kind":"slice1_regeneration","expected":"slice1_regenerated"}
+  ]
+}
