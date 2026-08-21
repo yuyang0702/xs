@@ -1,0 +1,65 @@
+{
+  "schema": "SCIC1FinalSHA256ManifestV1",
+  "generated_at_utc": "2026-08-21T00:57:15Z",
+  "algorithm": "sha256",
+  "overall_status": "exact",
+  "self_excluded": "docs/superpowers/reports/sc-ic1/sc-ic1-final-sha256-manifest-v1.json",
+  "files": [
+    {
+      "path": "tools/canary/hash_manifest.py",
+      "sha256": "7da001b9c384ab312d82ee63555c79470a8f8578d1738a87c6729be26e8c794d",
+      "size_bytes": 8151
+    },
+    {
+      "path": "tests/canary/test_hash_manifest.py",
+      "sha256": "ce872d53aba0072a67dbe6198f155598d32b103af44d75b1d9e481b2a0ff943c",
+      "size_bytes": 5235
+    },
+    {
+      "path": "tests/canary/test_sc_ic1_import_closure.py",
+      "sha256": "afdcfe89487db11a42089430ea887f4f6dc2d36ea5cd5a5b26ee77e9d981210e",
+      "size_bytes": 2097
+    },
+    {
+      "path": "docs/maintenance.md",
+      "sha256": "aaebc47fe4d3f83201468fa77ef0ae31377ca62f85281d25c55c376a8e3f5ce4",
+      "size_bytes": 263304
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ic1/sc-ic1-change-contract-v1.json",
+      "sha256": "fd646a7bf4422a4623700b38ecf10fbe249100afbc13957dba8d4ec3f2869242",
+      "size_bytes": 1873
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ic1/sc-ic1-import-chain-v1.json",
+      "sha256": "8b112d7b09770f0dc19045742422453a003dfd8b484bae4c8de6e22d2aaa98d6",
+      "size_bytes": 1896
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ic1/sc-ic1-forward-risk-report-v2.json",
+      "sha256": "26b98ff4475af9041161f3c4e5fe23de08b68c6e8a9bc11778d26e81a846afee",
+      "size_bytes": 7804
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ic1/sc-ic1-offline-test-receipt-v1.json",
+      "sha256": "6906df39ffeacce7a2522a14a607b9aa178af61c515801e6a3bb88237f049a4c",
+      "size_bytes": 3784
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ic1/sc-ic1-final-privacy-scan-v1.json",
+      "sha256": "40be4be3a5090e38a96f39774d44a5c500b84a49503f282b326116e896c67c8d",
+      "size_bytes": 750
+    },
+    {
+      "path": "docs/superpowers/reports/sc-ic1/sc-ic1-final-report-v1.md",
+      "sha256": "03be161f895760db273b9c3c669eecc65bd0831ecb9c038dfa131c274894391f",
+      "size_bytes": 3850
+    }
+  ],
+  "file_count": 10,
+  "production_source_file_count": 0,
+  "baml_source_file_count": 0,
+  "real_provider_calls": 0,
+  "full_short_canary": "not_executed",
+  "fresh_packet": "not_materialized"
+}

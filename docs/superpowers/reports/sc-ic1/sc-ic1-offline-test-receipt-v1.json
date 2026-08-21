@@ -1,0 +1,92 @@
+{
+  "schema": "SCIC1OfflineTestReceiptV1",
+  "generated_at_utc": "2026-08-21T00:57:15Z",
+  "overall_status": "exact",
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "runs": [
+    {
+      "name": "hash_manifest_unit_suite",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_hash_manifest.py",
+      "result": "passed",
+      "passed": 12,
+      "elapsed_seconds": 2.47
+    },
+    {
+      "name": "focused_fresh_short_and_launcher_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_hash_manifest.py tests/canary/test_sc_ic1_import_closure.py tests/canary/test_c0b_packet.py tests/canary/test_launcher.py",
+      "result": "passed",
+      "passed": 18,
+      "elapsed_seconds": 21.64
+    },
+    {
+      "name": "related_probe_and_short_regression_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_provider_capability_probe_real.py tests/canary/test_provider_reasoning_capability_probe_real.py tests/canary/test_provider_reasoning_capability_probe_materialization.py tests/canary/test_short_completion_profile.py tests/canary/test_short_completion_verification.py tests/canary/test_approval_profiles.py",
+      "result": "passed",
+      "passed": 51,
+      "elapsed_seconds": 93.37
+    },
+    {
+      "name": "offline_business_suite",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q --ignore=tests/canary --deselect=tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "result": "passed",
+      "passed": 2651,
+      "skipped": 39,
+      "deselected": 1,
+      "xfailed": 6,
+      "warnings": 1,
+      "elapsed_seconds": 1281.05
+    },
+    {
+      "name": "syntax_and_diff_checks",
+      "result": "passed",
+      "checks": [
+        "python -m py_compile changed Python files",
+        "git diff --check",
+        "git diff --name-only -- src baml_src returned empty"
+      ]
+    },
+    {
+      "name": "strict_change_gate",
+      "result": "passed",
+      "declared_level": "L3",
+      "automatic_level": "L1",
+      "warnings": [],
+      "blockers": []
+    }
+  ],
+  "required_cases": {
+    "generic_fresh_short_excludes_probe": "passed",
+    "ptr4_explicit_profile_retains_dependency_closure": "passed",
+    "ptr7_explicit_profile_retains_httpx_dependency": "passed",
+    "unknown_profile_fail_closed": "passed",
+    "missing_dependency_fail_closed": "passed",
+    "unapproved_dependency_fail_closed": "passed",
+    "reachable_excluded_module_fail_closed": "passed",
+    "no_swallowed_import_failure": "passed",
+    "no_import_time_network": "passed",
+    "fresh_short_validate_only_import_closure_exact": "passed",
+    "production_import_graph_unchanged": "passed",
+    "privacy_exact": "passed"
+  },
+  "diagnostic_disclosures": [
+    {
+      "status": "independent_parent_evidence_blocker",
+      "boundary": "tests/canary/test_short_completion_materialization.py",
+      "reason": "After the repaired launcher import closure passes, all 15 materialization setups stop at ptr3_successor_source_mismatch because the historical PTR3 successor fixture predates sealed PTR9 production source bytes. No SC-IC1 file participates in that mismatch."
+    },
+    {
+      "status": "pre_existing_historical_probe_materialization_gate",
+      "boundary": "tests/canary/test_provider_capability_probe_materialization.py",
+      "reason": "The sealed PTR4 materialization fixture stops with R1_PTR4_PROBE_MAT_NO_GO_PROBE_DEFINITION_INCOMPLETE. Explicit PTR4 import-scope closure itself passes and SC-IC1 does not rewrite historical probe evidence."
+    }
+  ],
+  "fresh_packet_materialized": false,
+  "full_short_canary": "not_executed",
+  "real_provider_calls": 0
+}

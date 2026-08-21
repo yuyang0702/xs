@@ -1,0 +1,59 @@
+{
+  "schema": "SCIC1ChangeContractV1",
+  "generated_at_utc": "2026-08-21T00:57:15Z",
+  "task": "SC-IC1 Canary Import Closure Repair",
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946",
+    "baseline_file": "C:\\Users\\yuyan\\AppData\\Local\\Temp\\sc-ic1-baseline-20260821t000821z.json"
+  },
+  "declared_change_level": "L3",
+  "authorized_scope": [
+    "tools/canary/hash_manifest.py",
+    "tests/canary/test_hash_manifest.py",
+    "tests/canary/test_sc_ic1_import_closure.py",
+    "docs/maintenance.md",
+    "docs/superpowers/reports/sc-ic1"
+  ],
+  "forbidden_scope": [
+    "src/**",
+    "baml_src/**",
+    "Prompt",
+    "Model",
+    "Route",
+    "Retry",
+    "Fallback",
+    "Budget",
+    "Validator",
+    "StoryState",
+    "Canon",
+    "READY authority",
+    "Draft",
+    "Final Review",
+    "Maintenance runtime"
+  ],
+  "selected_design": "PROBE_MODULE_IMPORT_ISOLATION_V1",
+  "design_constraints": {
+    "runtime_monkeypatch": false,
+    "temporary_allowlist": false,
+    "swallowed_import_failure": false,
+    "generic_scope_third_party_approval_count": 0,
+    "unknown_profile_behavior": "fail_closed",
+    "reachable_excluded_module_behavior": "fail_closed"
+  },
+  "pre_existing_dirty_paths": [
+    "docs/superpowers/reports/r1-ptr10/r1-ptr10-final-privacy-scan-v1.json",
+    "docs/superpowers/reports/r1-ptr10/r1-ptr10-final-report-v1.md",
+    "docs/superpowers/reports/r1-ptr10/r1-ptr10-final-sha256-manifest-v1.json",
+    "docs/superpowers/reports/r1-ptr10/r1-ptr10-live-parity-v1.json",
+    "docs/superpowers/reports/r1-ptr10/r1-ptr10-offline-test-receipt-v1.json",
+    "docs/superpowers/reports/r1-ptr10/r1-ptr10-validation-matrix-v1.json"
+  ],
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

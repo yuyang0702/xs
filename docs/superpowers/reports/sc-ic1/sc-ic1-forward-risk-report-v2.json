@@ -1,0 +1,119 @@
+{
+  "version": 2,
+  "original_requirement": "Repair the Fresh Short Canary validate-only import closure without approving an unrelated dependency, monkeypatching validation, swallowing import failure, changing production behavior, executing a Provider call, or materializing the Fresh packet.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The Canary control plane has two identified standalone real-probe entrypoints and one generic launcher scope. Each probe has a stable explicit profile identity, while all other current launcher paths use the generic scope. New profiles fail closed until explicitly defined and tested.",
+  "operational_definition": "Generic Canary closure hashes and validates all Canary Python files except the two unreachable standalone real-probe entrypoints, approves no third-party dependency, and rejects any included module that imports either excluded executable. Explicit PTR4 and PTR7 scopes include their own executable, exclude only the other probe executable, and validate their declared dependency set.",
+  "forbidden_narrowing": [
+    "No temporary allowlist passed by the Fresh Short materializer",
+    "No runtime monkeypatch, import hook, exception suppression, or validation bypass",
+    "No broad httpx approval in the generic Canary scope",
+    "No unknown profile fallback to the generic or a permissive scope",
+    "No exclusion once an included module makes a probe entrypoint reachable",
+    "No production runtime, Prompt, Model, Route, Retry, Fallback, Budget, Validator, StoryState, Canon, READY, Draft, Final Review, or Maintenance behavior change"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Fresh Short generic closure excludes unrelated probes",
+      "implementation": "GENERIC_CANARY_IMPORT_SCOPE_ID and exact excluded_relative_paths in tools/canary/hash_manifest.py",
+      "test_paths": ["tests/canary/test_hash_manifest.py", "tests/canary/test_sc_ic1_import_closure.py"],
+      "evidence": "The Fresh Short base plan launcher hash equals a revalidated generic manifest; both probe-only entrypoints are absent and approved_third_party is empty."
+    },
+    {
+      "requirement": "PTR4/PTR7 explicit profiles retain their module dependencies",
+      "implementation": "canary_import_scope_definition and validate_profile_import_closure",
+      "test_paths": ["tests/canary/test_hash_manifest.py"],
+      "evidence": "PTR4 includes its real executable with no third-party approval; PTR7 includes its reasoning executable and records httpx only in that profile."
+    },
+    {
+      "requirement": "Unknown, missing, newly reachable, and unapproved imports fail closed",
+      "implementation": "import_closure_profile_unknown, dependency_not_approved, and excluded_module_reachable errors",
+      "test_paths": ["tests/canary/test_hash_manifest.py"],
+      "evidence": "Synthetic unknown profile, missing dependency, explicit unapproved dependency, and reachable excluded-module cases all raise CanaryDependencyError."
+    },
+    {
+      "requirement": "No import-time or validate-only external action",
+      "implementation": "Pure AST/hash validation and isolated probe-module import checks under FailClosedNetworkSentinel",
+      "test_paths": ["tests/canary/test_hash_manifest.py", "tests/canary/test_sc_ic1_import_closure.py"],
+      "evidence": "Both explicit probe module imports and the Fresh Short base validate-only path record network_call_count=0; credential lookup is fail-closed."
+    },
+    {
+      "requirement": "Production behavior and import graph unchanged",
+      "implementation": "Changes are limited to tools/canary, tests/canary, documentation, and evidence",
+      "test_paths": ["tests/test_runtime_fingerprint.py"],
+      "evidence": "git diff for src and baml_src is empty; 2651 offline business tests pass."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "SC_FRESH_SHORT_NO_GO_LAUNCHER_IMPORT_CLOSURE",
+    "dependency_not_approved",
+    "import_closure_profile_unknown",
+    "excluded_module_reachable",
+    "R1_PTR4_PROBE_MAT_NO_GO_PROBE_DEFINITION_INCOMPLETE",
+    "ptr3_successor_source_mismatch"
+  ],
+  "projected_failure_mechanisms": [
+    "a new generic module imports an excluded probe executable",
+    "a new third-party dependency appears in an included module",
+    "an unknown profile requests a closure",
+    "a probe executable gains a new undeclared dependency",
+    "an excluded executable is renamed without a matching profile update",
+    "a future executable has import-time side effects"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only Canary static import-closure control-plane code, Canary tests, documentation, and SC-IC1 evidence changed. src/novel_flywheel and baml_src have zero diff; Prompt, Provider adapter, parser, validator, route, retry/fallback, budget, and Runtime output behavior are unchanged.",
+  "model_output_variants_tested": [],
+  "model_output_topology_classes_tested": [],
+  "unseen_valid_variants_tested": [],
+  "unknown_variant_behavior": "Not applicable to model output. Unknown Canary import profiles and dependencies fail closed.",
+  "invalid_output_variants_tested": [],
+  "transport_capacity_variants_tested": [],
+  "invariant_test_paths": [
+    "tests/canary/test_hash_manifest.py",
+    "tests/canary/test_sc_ic1_import_closure.py",
+    "tests/canary/test_c0b_packet.py",
+    "tests/canary/test_launcher.py",
+    "offline_business_suite"
+  ],
+  "why_previous_tests_missed": "The original real-launcher closure test expected every Python file in tools/canary to belong to one graph. Adding the later PTR7 standalone executable introduced httpx into that directory, but no test modeled explicit profile reachability versus a generic launcher scope.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Fresh Short generic Canary launcher",
+      "disposition": "fixed_and_tested",
+      "evidence": "Base plan and revalidated generic launcher hashes are exact with no third-party approval."
+    },
+    {
+      "boundary": "PTR4 provider capability probe",
+      "disposition": "fixed_and_tested",
+      "evidence": "Its explicit scope includes its real executable and excludes only PTR7. Historical PTR4 materialization fixtures retain a separate parent-definition gate unrelated to this repair."
+    },
+    {
+      "boundary": "PTR7 provider reasoning capability probe",
+      "disposition": "fixed_and_tested",
+      "evidence": "Its explicit scope includes its real executable and binds httpx only to PTR7."
+    },
+    {
+      "boundary": "Production runtime and baml contracts",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No src or baml_src diff; full offline business suite passes."
+    },
+    {
+      "boundary": "Fresh Short parent evidence chain",
+      "disposition": "not_applicable",
+      "evidence": "After import closure succeeds, the historical PTR3 successor fixture reports ptr3_successor_source_mismatch against the sealed PTR9 source baseline. SC-IC1 does not alter or conceal that independent gate."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_sc_ic1_import_closure.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_sc_ic1_import_closure.py",
+    "tests/canary/test_short_completion_materialization.py"
+  ],
+  "remaining_risks": [
+    "A newly added standalone probe requires an explicit profile definition and regression coverage before use.",
+    "The Fresh Short materializer will next stop at the independent ptr3_successor_source_mismatch until its parent evidence is separately reconciled.",
+    "The historical PTR4 materialization test remains bound to an incomplete probe-definition gate and is not changed by SC-IC1."
+  ]
+}

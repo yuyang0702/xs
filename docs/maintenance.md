@@ -1832,3 +1832,21 @@ in addition to ReliabilityTrace. PA budget and strict-tool diagnostics,
 Canonical V2 and Phase 1B remain disabled. Candidate materialization remains
 inert: it does not sign, reserve, read credentials, create Provider clients, or
 perform network/model calls.
+
+## Canary profile-scoped import closure
+
+The generic Canary launcher manifest excludes the standalone PTR4 and PTR7
+real-probe executables because neither is reachable from Short Completion or
+the other generic launcher paths. This is isolation, not dependency approval:
+the generic scope still permits no third-party import.
+
+The boundary remains fail-closed. If any included Canary module later imports
+an excluded probe executable, closure validation raises
+`excluded_module_reachable`. Explicit PTR4 and PTR7 probe scopes include their
+own executable and validate its dependencies; `httpx` is recorded only in the
+PTR7 reasoning-probe scope. Unknown scopes and unapproved dependencies remain
+blocking errors, and import failures are never caught or ignored.
+
+Do not bypass this boundary with a materialization-time allowlist or monkeypatch.
+New standalone executables require an explicit scope plus import, dependency,
+unknown-profile, and zero-network regression coverage.

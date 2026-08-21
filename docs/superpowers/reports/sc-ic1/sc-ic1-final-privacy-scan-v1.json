@@ -1,0 +1,30 @@
+{
+  "schema": "SCIC1FinalPrivacyScanV1",
+  "generated_at_utc": "2026-08-21T00:57:15Z",
+  "overall_status": "exact",
+  "scope": [
+    "SC-IC1 Canary control-plane diff",
+    "SC-IC1 tests and synthetic fixtures",
+    "docs/superpowers/reports/sc-ic1"
+  ],
+  "raw_prompt": 0,
+  "raw_story": 0,
+  "raw_tool_arguments": 0,
+  "raw_provider_content": 0,
+  "raw_provider_headers": 0,
+  "raw_request_ids": 0,
+  "credentials": 0,
+  "api_keys": 0,
+  "bearer_tokens": 0,
+  "private_endpoints": 0,
+  "provider_calls": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "allowed_synthetic_literals": [
+    "synthetic module and dependency names",
+    "stable public package name httpx",
+    "hashes and typed status only"
+  ],
+  "result": "pass"
+}

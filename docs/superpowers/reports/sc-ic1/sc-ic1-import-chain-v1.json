@@ -1,0 +1,47 @@
+{
+  "schema": "SCIC1ImportChainV1",
+  "generated_at_utc": "2026-08-21T00:57:15Z",
+  "overall_status": "exact",
+  "before": {
+    "chain": [
+      "short_completion_materialization.materialize_short_completion_1",
+      "c0b_packet.prepare_c0b_smoke_packet",
+      "hash_manifest.validate_import_closure",
+      "hash_manifest._files(root).rglob('*.py')",
+      "provider_reasoning_capability_probe_real.py",
+      "import httpx",
+      "dependency_not_approved"
+    ],
+    "root_cause": "The generic Canary closure scanned every Python file under tools/canary even though the standalone PTR4 and PTR7 real-probe executables are not reachable from the Fresh Short launcher graph.",
+    "classification": "static_scope_overreach"
+  },
+  "after": {
+    "generic_scope": {
+      "scope_id": "generic_canary_launcher_v1",
+      "excluded_probe_entrypoints": [
+        "provider_capability_probe_real.py",
+        "provider_reasoning_capability_probe_real.py"
+      ],
+      "approved_third_party": [],
+      "reachability_guard": "excluded_module_reachable"
+    },
+    "ptr4_scope": {
+      "scope_id": "r1_ptr4_provider_capability_probe_1",
+      "included_probe_entrypoint": "provider_capability_probe_real.py",
+      "excluded_probe_entrypoint": "provider_reasoning_capability_probe_real.py",
+      "approved_third_party": []
+    },
+    "ptr7_scope": {
+      "scope_id": "r1_ptr7_provider_reasoning_capability_probe_1",
+      "included_probe_entrypoint": "provider_reasoning_capability_probe_real.py",
+      "excluded_probe_entrypoint": "provider_capability_probe_real.py",
+      "approved_third_party": ["httpx"]
+    },
+    "unknown_profile": "import_closure_profile_unknown",
+    "unapproved_dependency": "dependency_not_approved",
+    "import_time_network_calls": 0
+  },
+  "production_import_graph_changed": false,
+  "fresh_short_import_closure": "exact",
+  "fresh_packet_materialized": false
+}
