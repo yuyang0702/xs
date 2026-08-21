@@ -1,0 +1,65 @@
+{
+  "schema": "SCFreshV2OfflineTestReceiptV1",
+  "generated_at_utc": "2026-08-21T06:25:01Z",
+  "overall_status": "exact",
+  "runs": [
+    {
+      "name": "parent_guard_import_successor_gate",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q tests/test_final_artifact_guard.py tests/canary/test_sc_ic1_import_closure.py tests/canary/test_sc_succ1_current_successor.py",
+      "passed": 36,
+      "result": "passed"
+    },
+    {
+      "name": "post_materialization_related_offline_cluster",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q hash-manifest/import/c0b/launcher/short-profile/short-verification/approval-profile/PTR9-guard paths",
+      "passed": 55,
+      "result": "passed"
+    },
+    {
+      "name": "canonical_packet_validate_only_recheck",
+      "result": "passed",
+      "overall_status": "exact",
+      "ordered_check_count": 38,
+      "approval_state": "disabled_candidate",
+      "ledger_state": "unused",
+      "privacy_violation_count": 0,
+      "external_action_counters": {
+        "credential_lookup_count": 0,
+        "provider_client_creation_count": 0,
+        "network_call_count": 0,
+        "model_call_count": 0,
+        "paid_model_call_count": 0
+      }
+    },
+    {
+      "name": "offline_business_suite",
+      "command": ".venv\\Scripts\\python.exe -m pytest -q --ignore=tests/canary --deselect=tests/test_r0e_reports.py::test_live_db_and_formal_artifact_baseline_remains_r0_identical",
+      "passed": 2651,
+      "skipped": 39,
+      "deselected": 1,
+      "xfailed": 6,
+      "warnings": 1,
+      "warning_identity": "existing Starlette httpx TestClient deprecation",
+      "elapsed_seconds": 1280.48,
+      "result": "passed"
+    }
+  ],
+  "semantic_rehearsal": {
+    "status": "exact",
+    "receipt_sha256": "a2db9d82e8b992dec98c537bb920b2172776985cbb4b781e1a15f3fe3ee77644",
+    "planning_sequence": ["domain_rejected", "exact_finding_propagated", "domain_passed"],
+    "draft_sequence": ["mixed_script_rejected", "exact_finding_propagated", "draft_validation_passed"],
+    "planning_stale_finding_count": 0,
+    "draft_stale_finding_count": 0,
+    "config_runtime_same_profile": "exact",
+    "fake_boundary_count": 2
+  },
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "full_short_canary": "not_executed"
+}

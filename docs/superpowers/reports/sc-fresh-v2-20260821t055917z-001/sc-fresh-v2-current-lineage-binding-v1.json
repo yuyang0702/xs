@@ -1,0 +1,92 @@
+{
+  "schema": "SCFreshV2CurrentLineageBindingV1",
+  "version": 1,
+  "generated_at_utc": "2026-08-21T06:25:01Z",
+  "overall_status": "exact",
+  "packet_binding": {
+    "profile_id": "short_completion_1",
+    "scope": "SHORT_COMPLETION_SINGLE_REAL_PROVIDER_CANARY",
+    "goal": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
+    "cohort_id": "short-completion-fresh-v2-20260821t055917z-001",
+    "plan_sha256": "d32ee3b1a8829bb2cf746af54aa2a1c0d021f3b4697a1c862d946298f8de4661",
+    "approval_candidate_sha256": "cbc09b8794c213e7633f2498cf80903042ef6b13675244190f99640c97869648",
+    "materialization_index_sha256": "6cc17b82e9abd42739303ded4c92e15bda7723eeeddd8856b5a2fd55398363cd"
+  },
+  "sealed_git_baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "14cc675a1d510550fca18104afaf3aa9e7f18878",
+    "direct_parent": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9",
+    "start_worktree_status": "clean"
+  },
+  "ptr9": {
+    "sealed_implementation_head": "7cdb7444902d0737f8cc9094992f7ef9bdb1e946",
+    "manifest_sha256": "a663594c6dfb298e3b946774e10f6d092c5886cd7d7fd66950c9b245d71e2287",
+    "guard_identity": "REASONING_ONLY_MAX_TOKENS_GUARD_V1",
+    "typed_detection": "reasoning_only_max_tokens_zero_visible_no_tool",
+    "negative_capability_persistence": "exact",
+    "same_fingerprint_duplicate_dispatch": "blocked",
+    "alternate_route_policy": "existing_legal_route_only",
+    "no_alternate_route": "typed_fail_close",
+    "status": "exact"
+  },
+  "ptr10": {
+    "validation_evidence_commit": "57915cf68bac8e825c12f1761f555e6024e1020d",
+    "manifest_sha256": "f30e7bde833787ab3d40d545e7b029b6d1f24ca5563d772733f839e086f4f2c9",
+    "guard_recovery_validation": "exact",
+    "production_source_bytes": "exact",
+    "status": "exact"
+  },
+  "sc_ic1": {
+    "sealed_commit": "d8fc9f4ddb13375c7c3d70c7d5adbdfed5298fc9",
+    "manifest_sha256": "4475e81b49cae3f2887dd1828004a443e157ecffdd06f4413ccb23f061adc120",
+    "identity": "PROBE_MODULE_IMPORT_ISOLATION_V1",
+    "generic_short_probe_entrypoints_excluded": true,
+    "unknown_or_unapproved_dependency": "fail_closed",
+    "import_time_network_calls": 0,
+    "status": "exact"
+  },
+  "sc_succ1": {
+    "sealed_commit": "14cc675a1d510550fca18104afaf3aa9e7f18878",
+    "manifest_sha256": "f5cc44d6052db7e4e8557faf60fad0850a0fbf699572b01a5774f601966bfbb5",
+    "current_successor_sha256": "4f4b02055f6f1902701d78e4ef478cf554645127f501ce271b8cc9366b425a1a",
+    "current_successor_definition_sha256": "07341e86e4ab78217cb5efe19bc0ce5d369f35fe4eaa0d0d921e3202f188ecea",
+    "source_lineage_status": "exact",
+    "semantic_revalidation_status": "exact",
+    "stale_finding_count": 0,
+    "status": "exact"
+  },
+  "historical_ptr3": {
+    "successor_sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+    "blob_id": "7683bc7298dca118c53f5a72cdcc4a85cba26887",
+    "report_tree_id": "f2c9f4a32d26f6b9ab64838fbf58aec1109ee1ba",
+    "immutable": true,
+    "historical_source_bytes_required_to_equal_current_ptr9_bytes": false,
+    "status": "exact"
+  },
+  "runtime_bindings": {
+    "build_sha256": "38ac099757dba906bcbe7d523fe2dd3f664193f2b5ffd3ecae559a17fdedcce4",
+    "config_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+    "runtime_sha256": "3a3c8ec80924c2124cd84b745c1d9d2972c9dad2c48351a9f5b6d8044e75d68c",
+    "launcher_sha256": "2f1ce61883d32cbc46c4d90a9cfbdaddeffdfbd293ec36658d012a25f38f1678",
+    "prompt_policy_sha256": "82f73e6e9e90788feaa9cea0726e71a239960bead2b0c953ce5517e652dc736a",
+    "provider_descriptor_definition_sha256": "63dd3656c56f6770bb35114d4c864ec8880780e5866ce33e2226d238cbf56e7f",
+    "role_route_model_binding_manifest_sha256": "b6a011ffe8991685ec8bbe88db629290fb8af6bfd8a798a9a0badf35434a760e",
+    "production_source_bytes": "exact",
+    "baml_diff": 0
+  },
+  "isolation": {
+    "canary_root_identity": "c230e6e1b7bf023a0a2aacdea590792f5b75aa0e7db8933431cd571df260dde8",
+    "approval_ledger_identity": "35dc1a0bf347a7ec1d9b20b1f360e22b2f21dad880bbdecf6c27e675b1ccaf9f",
+    "approval_ledger_identity_definition_sha256": "ec4fb75828147dc35a92b886b24f97451aa35c170d7c28c30f8ac2cda12d38d6",
+    "approval_status": "unreserved",
+    "cohort_status": "unused",
+    "ledger_entry_count": 0
+  },
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

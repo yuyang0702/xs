@@ -1,0 +1,47 @@
+{
+  "schema": "SCFreshV2ChangeContractV1",
+  "generated_at_utc": "2026-08-21T06:25:01Z",
+  "requested_outcome": "Materialize one fresh disabled single-use Short Completion Canary approval packet bound to the current sealed runtime and evidence lineage.",
+  "scope_classification": "closed_world",
+  "authorization": "materialization_and_validate_only",
+  "operational_definition": "Generate canonical short_completion_1 control-plane artifacts, an unused isolated ledger identity, an offline rehearsal, and hash-only evidence without signing, reserving, consuming, or executing the packet.",
+  "allowed_changes": [
+    "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/**"
+  ],
+  "protected_unchanged_behavior": [
+    "src/**",
+    "baml_src/**",
+    "Prompt and Prompt Policy",
+    "Provider, Model, Route, Retry, Fallback and Budget policy",
+    "Validators and completion contracts",
+    "StoryState, Canon, formal manuscript and READY authority",
+    "Final Review, Maintenance, Final Artifact and Final Checkpoint semantics",
+    "sealed PTR9, PTR10, SC-IC1, SC-SUCC1 and historical PTR3 evidence"
+  ],
+  "authority_impact": {
+    "formal_manuscript": "read_only",
+    "current_candidate": "not_involved",
+    "protected_best_candidate": "not_involved",
+    "story_state_and_locked_facts": "read_only",
+    "outline_causal_chain_manifest_receipts": "read_only",
+    "revision_and_terminal_issue_ledger": "not_involved",
+    "project_metadata_and_files": "read_only_hash_only",
+    "sqlite_schema_and_rows": "read_only_hash_only",
+    "provider_model_bindings_and_fallback": "read_only_bound_exactly",
+    "runtime_story_skills_and_context": "read_only",
+    "run_events_checkpoints_resume_rollback": "not_involved",
+    "ui_and_api": "not_involved",
+    "credentials_and_private_sources": "not_accessed"
+  },
+  "selected_approach": "Use tools.canary.short_completion_materialization.materialize_short_completion_1 without modifying its implementation, then add hash-only task evidence and a self-excluding SHA256 manifest.",
+  "forbidden_narrowing": [
+    "Do not lower the completion goal below SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED.",
+    "Do not replace Full Short with Planning-only, Draft-only, observation-only, or a Provider probe.",
+    "Do not treat materialization as final execution authorization."
+  ],
+  "rollback_path": "Before sealing, remove only docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001; no production or live-data rollback is required.",
+  "resolution_status": "case_fixed",
+  "unresolved_user_decisions": [
+    "A separate packet-seal task is required before any final authorization can bind a clean HEAD."
+  ]
+}

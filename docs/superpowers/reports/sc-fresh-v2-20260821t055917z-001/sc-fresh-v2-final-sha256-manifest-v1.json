@@ -1,0 +1,42 @@
+{
+  "schema": "SCFreshV2FinalSHA256ManifestV1",
+  "generated_at_utc": "2026-08-21T06:25:01Z",
+  "algorithm": "sha256",
+  "overall_status": "exact",
+  "self_excluded": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-final-sha256-manifest-v1.json",
+  "files": [
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/approval-ledger-short-completion-fresh-v2-20260821t055917z-001/.approval-ledger-identity-v1.json", "bytes": 365, "sha256": "77036ec618da9f07539631b27625e9c4e113a52a66b096194e55f5d6208d3f73"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-authorization-patch-template-v1.json", "bytes": 2038, "sha256": "84ae290ac36c620edd771051723d160e68f0bb6de5684704a08b40438d1d2fbd"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-definitions-v1.json", "bytes": 14435, "sha256": "3e5b7997632e92c6d4ceaa53489c6a2a74a7f02ff136340600be619c45d41862"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-execution-preview-v1.json", "bytes": 2476, "sha256": "2d546c499eb6c7bd943cba026f37a15f6a9c266041942f001df4e1cbb123ea09"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-final-approval-candidate-v1.json", "bytes": 4529, "sha256": "9ae241228d7b2573fbacb424811e24b652d00341477c82a96e184f59a63e0625"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-final-plan-v1.json", "bytes": 20400, "sha256": "79f8d9fc9b57afbc121b73f9c655d4efa7c3aef834cd704ee46b20113e785eb1"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-ledger-operational-readiness-v1.json", "bytes": 530, "sha256": "78e31c7ac54a81202f13292cdbd38a9650173c79d86630c0dcdfa1f59f855d57"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-materialization-index-v1.json", "bytes": 3269, "sha256": "0f8d14e1c7cd150c0c038f58d5aa7c1c92c5c0ed1ae18da719eaf08026409e6b"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-pre-launch-semantic-rehearsal-v1.json", "bytes": 3657, "sha256": "be01894d51b3417b54a4eae60f4b7fef260b562c1ed310314fc80631f8268a0c"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-ptr3-readiness-v1.json", "bytes": 2808, "sha256": "c0d26f074d0bcb89b0849cdf1e60d968ab32a5b151a5d695fe3712fc712c35ff"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-r1-d3-production-mirror-readiness-v1.json", "bytes": 1485, "sha256": "947412e88f358cb39987930e87075b5da19859f39471a733c7254ac75241dc5a"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/materialization-v1/short-completion-1-validate-only-receipt-v1.json", "bytes": 8929, "sha256": "c444bab7fcce045aaf00965c360b74f545aff9824f2400f93b32ed49a63ee409"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-change-contract-v1.json", "bytes": 2676, "sha256": "2f8f3d2ab17e88a0a481e0db27ca7cc59cd9a4feeb88e4aacc19b68680e8872e"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-current-lineage-binding-v1.json", "bytes": 4402, "sha256": "13a31d4f4414c48dbf8643224cdff1d46d04a78554e56e2f577f49340ed16753"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-final-privacy-scan-v1.json", "bytes": 909, "sha256": "adfe957314499959cd75a186f03ae345f9935d44c94d23a54032abb8bdc3787d"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-final-report-v1.md", "bytes": 4926, "sha256": "09e44b58dbabc64c92a35781f32e1bb78e4aad0d27d1adba141015a32758f07a"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-forward-risk-report-v2.json", "bytes": 5921, "sha256": "9439d6fdc855d37c727f7941ecd7b7ba77666ac837e6692c0985669299ab2e6b"},
+    {"path": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/sc-fresh-v2-offline-test-receipt-v1.json", "bytes": 2346, "sha256": "c3a9b404e7b5156af525b415a16665b82cf53210817a67d8bed38cf3881bbb58"}
+  ],
+  "file_count": 18,
+  "production_source_file_count": 0,
+  "baml_source_file_count": 0,
+  "signed_approval_materialized": false,
+  "confirmed_patch_materialized": false,
+  "ledger_entry_count": 0,
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "full_short_canary": "not_executed",
+  "packet_seal_required": true
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "SCFreshV2FinalPrivacyScanV1",
+  "generated_at_utc": "2026-08-21T06:25:01Z",
+  "overall_status": "exact",
+  "scope": "docs/superpowers/reports/sc-fresh-v2-20260821t055917z-001/**",
+  "scanned_file_count": 19,
+  "findings": {
+    "credentials": 0,
+    "api_keys": 0,
+    "authorization_headers": 0,
+    "private_keys": 0,
+    "personal_absolute_paths": 0,
+    "raw_prompts": 0,
+    "raw_story_content": 0,
+    "raw_provider_content": 0,
+    "raw_tool_arguments": 0,
+    "fixture_title_occurrences": 0,
+    "fixture_premise_occurrences": 0
+  },
+  "policy_markers": {
+    "hash_shape_count_typed_status_only": true,
+    "raw_prompt_included": false,
+    "raw_story_included": false,
+    "raw_provider_content_included": false,
+    "raw_tool_arguments_included": false
+  },
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

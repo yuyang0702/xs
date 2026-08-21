@@ -1,0 +1,23 @@
+{
+  "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+  "definition_sha256": "2743e658019939fddfdfb9df043b6fc9f3d682bfeff8ffd41a4d806929d838d2",
+  "draft_initial_request_sha256": "df83ea0c1b22e7586b4f91cd3fc50a39e623e4e024bfffe60478ce20bb50b675",
+  "draft_maximum_attempts": 3,
+  "draft_retry_contract_sha256": "d86985951d9518cf9512c83591b62a1e6b9b11478d562b4e378a1cf30bcfe03f",
+  "draft_retry_count_parity": "exact",
+  "draft_retry_scope_too_broad": "residual",
+  "draft_validator_sha256": "7e9f52cf3c5600423c6abe63a7de6d8449db81bfcd7260585da5d8b59e22fdac",
+  "historical_manifest_rewritten": false,
+  "mixed_script_policy_sha256": "11c8a15e84c7c76154b60b047f9048468c93d60ee6c383b5b66dadd2c1066d1d",
+  "production_mirror_build_sha256": "38ac099757dba906bcbe7d523fe2dd3f664193f2b5ffd3ecae559a17fdedcce4",
+  "production_mirror_config_sha256": "2c362e4b864a0640e95bd13c219c6dc84ac961b36b7a93fc254d5027589e722b",
+  "production_mirror_prompt_policy_sha256": "82f73e6e9e90788feaa9cea0726e71a239960bead2b0c953ce5517e652dc736a",
+  "production_mirror_runtime_sha256": "3a3c8ec80924c2124cd84b745c1d9d2972c9dad2c48351a9f5b6d8044e75d68c",
+  "ptr3_successor_baseline_sha256": "bcba49fe1b20f1b4cb1f9284b181ede224bb860ce367870e9f3c46152cedda6c",
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "readiness_status": "exact",
+  "schema": "R1D3SuccessorReadinessBindingV1",
+  "structured_draft_finding_propagation": "enabled",
+  "version": 1
+}
