@@ -1,0 +1,24 @@
+{
+  "schema":"ValidatedSubartifactFreezeV1",
+  "version":1,
+  "states":[
+    {"state":"mutable","meaning":"candidate not yet accepted"},
+    {"state":"validated_frozen","meaning":"payload and validation receipt immutable for bound dependencies"},
+    {"state":"thaw_pending","meaning":"typed finding closure and CAS preconditions recorded; no mutation yet"},
+    {"state":"superseded","meaning":"new revision accepted; historical bytes retained"},
+    {"state":"rejected","meaning":"candidate failed and cannot be a merge input"}
+  ],
+  "freeze_requirements":["closed schema pass","stage semantic validator pass","parent/dependency hashes exact","payload and receipt hashes exact","no unresolved finding targets artifact","ledger CAS succeeds"],
+  "thaw_triggers":[
+    {"trigger":"authority revision/hash changed","proof":"changed authority path intersects declared dependency set"},
+    {"trigger":"upstream artifact superseded","proof":"old dependency hash is present in artifact dependency set"},
+    {"trigger":"typed semantic finding","proof":"SEMANTIC_IMPACT_CLOSURE_V1 includes artifact ID/path and bounded closure"},
+    {"trigger":"global closure finding","proof":"validator emits causal path from failing invariant to artifact nodes"}
+  ],
+  "forbidden_triggers":["generic retry","model preference","unscoped quality dissatisfaction","elapsed time","fallback selection","same error without new dependency proof"],
+  "cas":"Thaw request must supply stable artifact_id, expected artifact_revision, expected payload_sha256, expected validation_receipt_sha256 and closure_sha256. Mismatch rejects as stale.",
+  "version_increment":"A changed payload creates artifact_revision + 1. Same bytes reuse the existing revision and do not count as progress.",
+  "invalidation":"Propagate only over the reverse dependency graph. Source artifacts in the closure thaw; deterministic projections/merge/global receipts become stale and recompute. Unrelated frozen artifacts retain hashes and receipts.",
+  "downstream_recomputation":"Stages 3-6 recompute locally wherever possible. Model stages 1-2 rerun only for explicitly thawed units.",
+  "oscillation_guard":"A superseded revision is never overwritten. Returning to a prior payload hash is no progress unless authority/dependency hash changed; repeated issue signature plus unchanged closure and state delta terminates."
+}

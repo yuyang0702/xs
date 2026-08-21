@@ -1,0 +1,23 @@
+{
+  "schema":"PlanningV2GlobalSemanticClosureV1",
+  "version":1,
+  "promotion_rule":"Only PASS on every required invariant can make a future V2 candidate eligible for Draft authority. Shadow mode always records promotion_eligible=false regardless of PASS.",
+  "checks":[
+    {"id":"authority_consistency","stage_level":false,"rule":"all artifacts bind the same current READY/Outline/StoryState/Canon snapshot and cannot mutate it"},
+    {"id":"artifact_completeness","stage_level":false,"rule":"all required stages/scopes and exact formal event coverage exist"},
+    {"id":"referential_integrity","stage_level":false,"rule":"all event, beat, segment, actor, location and dependency references resolve uniquely"},
+    {"id":"temporal_consistency","stage_level":false,"rule":"global order/windows/durations and adjacent boundaries are satisfiable"},
+    {"id":"causal_consistency","stage_level":false,"rule":"every required precondition has an authority input or prior producer; effects precede consumers"},
+    {"id":"actor_capability","stage_level":false,"rule":"actor can perform each planned action at its event"},
+    {"id":"actor_knowledge","stage_level":false,"rule":"knowledge is acquired before use and no impossible disclosure occurs"},
+    {"id":"location_continuity","stage_level":false,"rule":"locations and travel transitions remain possible"},
+    {"id":"relationship_continuity","stage_level":false,"rule":"relationship deltas have producers and persist consistently"},
+    {"id":"scene_preconditions","stage_level":false,"rule":"each scene setup is present and required payoff/ending obligations remain reachable"},
+    {"id":"draft_executability","stage_level":false,"rule":"every Draft segment has exact beat ownership, actionable plan, entry/exit state and future guard"},
+    {"id":"authority_graph_compatibility","stage_level":false,"rule":"Planning IR -> causal chain -> manifest exact coverage and no re-entry"}
+  ],
+  "stage_only_validators":["closed schema/version","single artifact ownership","local narrative minimum","single transition dimension validity","local hash/provenance/freeze invariants"],
+  "global_only_validators":["full authority consistency","whole event coverage","cross-event time/causal/state continuity","ending reachability","Draft authority graph"],
+  "receipt":{"required":["assembly_sha256","snapshot_sha256","validator identity/version/result/evidence hash","finding vector","stale_finding_count","draft_entry_ready","promotion_eligible","closure_sha256"]},
+  "failure_routing":"Each finding must map through SEMANTIC_IMPACT_CLOSURE_V1. Findings with unknown ownership or unbounded closure cannot receive a field patch."
+}

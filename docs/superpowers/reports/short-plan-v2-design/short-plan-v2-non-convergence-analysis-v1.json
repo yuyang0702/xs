@@ -1,0 +1,25 @@
+{
+  "schema": "PlanningNonConvergenceAnalysisV1",
+  "version": 1,
+  "primary_non_convergence_mechanism": "LOSSY_CONVERSION_DIAGNOSTICS_PLUS_WHOLE_ARTIFACT_REGENERATION",
+  "non_convergence_root_not_unique": true,
+  "evidence": [
+    "Call 1 ended normally with visible content but conversion collapsed the exact schema error to semantic_validation_failed.",
+    "The domain compiler and its dependency-aware diagnostics were never reached for Call 1.",
+    "ArtifactConversionError recovery uses a generic protocol regeneration message and re-emits the whole current contract.",
+    "Calls 1,2,4,5,6,8,9,10 repeated semantic_validation_failed; Calls 3,7,11,12 encountered output limits; no accepted Planning artifact emerged.",
+    "Capacity splitting activates after capacity classification, not directly from a schema dependency closure, and each packet still reproduces a complete local semantic object."
+  ],
+  "secondary_non_convergence_mechanisms": [
+    {"mechanism":"HIGH_CARDINALITY_COUPLING","status":"supported","detail":"Only eight leaf paths exist, but segments/events multiply narrative and cross-boundary constraints."},
+    {"mechanism":"NO_VALID_SUBARTIFACT_FREEZE_BEFORE_ROOT_ACCEPTANCE","status":"supported","detail":"A rejected root object yields no independently accepted event/state artifact to preserve."},
+    {"mechanism":"GENERIC_RETRY_CANNOT_PROVE_STATE_CHANGE","status":"supported","detail":"The next attempt is not bound to an issue vector or minimum dependency closure."},
+    {"mechanism":"REPAIR_BUDGET_NOT_PROPORTIONAL_TO_SCOPE","status":"supported","detail":"Whole packet regeneration uses full contract output even when the hidden defect might be local."},
+    {"mechanism":"STICKY_OUTPUT_LIMIT_TERMINAL_AMPLIFICATION","status":"supported","detail":"Earlier output-limit observations can determine the terminal ContractOutputLimitExhaustedError classification."},
+    {"mechanism":"ADJACENT_INVARIANT_BREAKAGE","status":"UNKNOWN","detail":"Exact payload deltas were not retained."},
+    {"mechanism":"VALIDATOR_CONFLICT","status":"UNKNOWN","detail":"Call 1 did not reach multiple domain validators."},
+    {"mechanism":"STALE_LOCAL_STATE","status":"UNKNOWN","detail":"No exact invalid field or state dependency was persisted."}
+  ],
+  "important_nuance": "Existing later Planning repair code already contains monotonic issue-set selection, segment preservation, capacity splitting and deterministic merges. The defect is concentrated at the initial semantic-object boundary and its recovery atomicity; V2 should adapt these strengths rather than replace the entire workflow.",
+  "terminal_chain": "Call1 conversion rejection -> generic whole-contract recovery -> repeated conversion/capacity failures without accepted frozen units -> Call12 max_tokens -> sticky output-limit terminal classification"
+}

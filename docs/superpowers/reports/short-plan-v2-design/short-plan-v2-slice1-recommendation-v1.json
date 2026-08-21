@@ -1,0 +1,13 @@
+{
+  "schema":"ShortPlanV2Slice1RecommendationV1",
+  "version":1,
+  "slice":"EVENT_REALIZATION_UNIT_SHADOW_V1",
+  "goal":"Extract one formal-event narrative realization into a bounded, independently validated/frozen artifact and deterministically merge a set of event units into a shadow event-realization projection.",
+  "why_this_domain":["segments[].events[].narrative is the only unbounded repeated creative leaf and dominates output cardinality","formal event identity/order is already authoritative and can be removed from model output","current capacity split/checkpoint/merge code offers a low-risk implementation seam","Call 1 exact failing field is UNKNOWN, so choosing actor/time/causal as the first failure domain would overclaim evidence"],
+  "scope":["new shadow-only artifact/envelope and ledger","Runtime supplies event identity, ordinal, authority/dependency hashes","model/fake supplies title and narrative only","closed-schema validator preserves structured field errors","deterministic ordered merge","freeze and one-patch/no-progress tests","historical/fake replay comparator"],
+  "out_of_scope":["Planning V1 replacement","Draft authority","state-transition V2","production Prompt/model/route/retry/budget changes","real Provider/Canary","PTR12 observer implementation"],
+  "success_proof":["all event units independently hash-bound","one invalid unit patch leaves every valid unit hash unchanged","duplicate/gap/reorder/mixed authority fails closed","same error with same bytes dispatches no second retry","shadow projection preserves exact formal event coverage","replay metrics emitted"],
+  "rollback":"Remove or disable isolated shadow invocation/artifacts; no V1 authority bytes changed.",
+  "ptr12_observer_implementation_priority":"PARALLEL",
+  "priority_reason":"Slice 1 can prove artifact decomposition, diagnostic preservation, freeze and deterministic merge entirely offline/fake. Raw Provider shape is not a dependency. PTR12 should be implemented before a future real shadow/Canary so Provider representation remains observable, but it must not block Slice 1."
+}

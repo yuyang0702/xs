@@ -1,0 +1,16 @@
+{
+  "schema":"ShortPlanningV2HistoricalReplayPlanV1",
+  "version":1,
+  "matrix":[
+    {"family":"planning.structure_drift","sources":["tests/fixtures/planning_granularity_d7b275.json","tests/fixtures/planning_obligation_protocol_recovery_12b59c6e.json","production incident corpus"],"cases":["missing/reordered event","cross-segment ownership","handoff/entry drift","unrelated segment mutation"]},
+    {"family":"parser.generated_artifact_shape","sources":["generated artifact tests","production incident resolution"],"cases":["wrapper/container variation","duplicate identity","unknown field","truncated/invalid schema","exact location preservation"]},
+    {"family":"PTR3 planning repair","sources":["PTR3 final/test/successor evidence","tests/test_r1_ptr1_planning_repair_observability.py"],"cases":["exact finding propagation","same-scope repair","stale finding zero","no state-change stop"]},
+    {"family":"latest real Short Call1","sources":["sealed R1-PTR11 reconstruction"],"cases":["semantic_validation_failed with exact cause UNKNOWN","21728 visible chars/end_turn","generic conversion failure replay using synthetic issue vectors; never invent historical field"]},
+    {"family":"targeted repair failures","sources":["planning adaptation workflow tests","R0 incident replay harness"],"cases":["broad repair drift","too-narrow closure","adjacent invariant break","stage escalation"]},
+    {"family":"synthetic dependency impact","sources":["new future Slice 1 fixtures"],"cases":["capability","knowledge","location","relationship","time","causal producer/effect","scene setup/payoff","unbounded closure"]}
+  ],
+  "execution_modes":["pure deterministic merge/validator replay","fake model scripted artifact sequences","hash-bound V1 accepted artifact projection","no external action in Slice 1"],
+  "recorded_metrics":["first-pass semantic pass rate","repair convergence rate","average and p95 repair closure size","model calls per accepted Planning","already-valid artifact mutation count","semantic regression count","subtree/stage regeneration count","terminal rate","deterministic/local repair rate","stale_finding_count","same-failure-without-state-change count"],
+  "call1_limitation":"Historical Call 1 cannot prove a field-level V2 repair because its exact validation vector and raw candidate are absent. It can validate chronology, terminal classification and the requirement to preserve diagnostics; field-specific cases must be explicitly synthetic.",
+  "acceptance":"Report per-family results; aggregate success cannot hide a regression in latest-real-Short or authority integrity cohorts."
+}

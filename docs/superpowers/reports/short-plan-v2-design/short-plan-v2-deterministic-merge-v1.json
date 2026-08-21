@@ -1,0 +1,14 @@
+{
+  "schema":"PlanningV2DeterministicMergeV1",
+  "version":1,
+  "owner":"local runtime only",
+  "preconditions":["all required input artifacts validated_frozen","schema/version supported","one exact parent authority hash","dependency hashes exact","stable IDs unique","no stale revision","global event/segment coverage exact"],
+  "ordering":"formal authority event order, then Runtime segment projection; never Provider output order when identities disagree",
+  "field_ownership": {"authority_copy":"copied byte-for-byte or typed projection from snapshot","local_derivation":"recomputed, never accepted from model","llm_fields":"read only from validated owned artifact","hybrid":"use normalized accepted value and bind proposal provenance","audit":"generated after merge"},
+  "conflict_detection":["duplicate stable artifact ID","two writes to same owned semantic path","gap/duplicate/reordered formal event","mixed authority hashes","dependency revision mismatch","unknown field","attempted authority override"],
+  "cas":"Merge specifies expected ledger head, authority revision, exact input artifact revisions and hashes. Any mismatch rejects the whole candidate as stale; there is no partial silent overwrite.",
+  "derived_recomputation":["schema versions","segment kind/index","formal event ordinals and IDs","source/payload hashes","PlanningSegmentIR source hashes","document/topology hashes","future-beat guards","receipt identities"],
+  "normalization":"canonical JSON first; current Markdown/PlanningDocumentIR projections are compatibility views and are reconstructed deterministically.",
+  "receipt":["merge algorithm identity/version","authority hash","ordered input IDs/revisions/hashes","conflict vector","derived output hashes","compiler/topology/manifest candidate hashes","status"],
+  "failure":"Typed conflict/stale rejection. LLM is never called to reconcile a merge conflict."
+}

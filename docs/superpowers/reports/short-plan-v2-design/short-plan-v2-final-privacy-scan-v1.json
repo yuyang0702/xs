@@ -1,0 +1,16 @@
+{
+  "schema":"ShortPlanV2FinalPrivacyScanV1",
+  "version":1,
+  "scope":"docs/superpowers/reports/short-plan-v2-design excluding manifest until generated",
+  "status":"exact",
+  "scanned_categories":["credentials/API keys/tokens","raw Prompt","raw story/provider content","raw tool arguments","personal data","absolute attachment paths","environment secrets"],
+  "findings":[],
+  "allowed_evidence":["source-relative paths","branch/commit hashes","contract/type/function names","sealed evidence filenames and non-content metrics","typed hashes/counters/statuses"],
+  "content_policy":"No real Call 1 provider content was available or reconstructed. Narrative examples are abstract synthetic descriptions, not story text.",
+  "external_actions":{"credential":0,"provider_client":0,"network":0,"model":0,"paid":0},
+  "real_provider_calls":0,
+  "network_calls":0,
+  "model_calls":0,
+  "paid_calls":0,
+  "new_full_short_canary":"not_executed"
+}

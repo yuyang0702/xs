@@ -1,0 +1,37 @@
+{
+  "version":2,
+  "original_requirement":"Design a shadow-only Short Planning V2 that decomposes the current planning contract into authority-bound bounded artifacts, dependency-aware validation/recovery, deterministic merge and global semantic closure, using the sealed real Call 1 non-convergence evidence without changing production.",
+  "scope_classification":"open_world",
+  "closed_world_justification":"Not applicable: the design deliberately spans Planning, compiler/topology, causal/manifest, Draft consumption, recovery, diagnostics and authority boundaries.",
+  "operational_definition":"Map current wire and assembled contracts; preserve unknown historical details; propose seven stages with immutable artifacts, impact closure, bounded recovery and a shadow Slice 1 that cannot become Draft authority.",
+  "resolution_status":"unresolved",
+  "why_not_fixed":"This task is architecture/evidence only. Planning V1 production behavior and the initial semantic-conversion non-convergence remain unchanged until separately authorized implementation and validation.",
+  "forbidden_narrowing":["Do not call an eight-leaf schema small when cardinality and recovery atomicity remain large","Do not infer Call 1 field/rule/entities from semantic_validation_failed","Do not replace READY/StoryState/Canon authority","Do not make V2 prompt decomposition without artifact freeze","Do not treat parser success as semantic success","Do not block offline Slice 1 on PTR12 raw-shape observer"],
+  "constraint_traceability":[
+    {"requirement":"Field-by-field current contract and ownership counts","implementation":"Wire contract map plus separate Runtime assembled-contract map; five deterministic/authority paths leave model output","test_paths":["tests/test_planning_semantics.py","tests/test_planning_compiler.py"],"evidence":"short-plan-v2-current-contract-map-v1.json; short-plan-v2-field-ownership-v1.json"},
+    {"requirement":"Evidence-honest Call 1 analysis","implementation":"Preserve exact observed boundary and mark path/rule/invariant/entities UNKNOWN because normalizer discards ValueError detail","test_paths":["tests/test_generated_artifacts.py","tests/test_final_artifact_guard.py"],"evidence":"short-plan-v2-call1-semantic-dependency-map-v1.json; sealed R1-PTR11"},
+    {"requirement":"Real artifact decomposition and freeze","implementation":"Seven stages, stable envelopes, hash dependencies, CAS revisions and explicit thaw proof","test_paths":["tests/test_planning_semantics.py","tests/test_planning_adaptation_workflow.py"],"evidence":"short-plan-v2-stage-architecture-v1.json; artifact-contracts; freeze-thaw-rules"},
+    {"requirement":"Dependency-aware bounded convergence","implementation":"SEMANTIC_IMPACT_CLOSURE_V1 plus six-level recovery ladder and no-progress terminal","test_paths":["tests/test_planning_adaptation_workflow.py","tests/test_r1_ptr1_planning_repair_observability.py"],"evidence":"short-plan-v2-semantic-impact-closure-v1.json; recovery-ladder"},
+    {"requirement":"Preserve downstream authority and Draft interface","implementation":"Local deterministic merge/global closure and minimum Draft projection compatible with PlanningDocumentIR and ShortExecutionManifest","test_paths":["tests/test_planning_compiler.py","tests/test_workflows.py"],"evidence":"deterministic-merge; global-closure; draft-minimum-contract"},
+    {"requirement":"Safe first slice","implementation":"Event realization artifacts run only in isolated shadow/offline replay; V1 remains sole authority","test_paths":["tests/test_planning_semantics.py","tests/test_planning_adaptation_workflow.py"],"evidence":"slice1-recommendation; shadow-migration; replay-plan"}
+  ],
+  "historical_incident_families_checked":["planning.structure_drift","parser.generated_artifact_shape","PTR3 planning repair finding propagation","latest real Short Call 1 semantic_validation_failed","Planning output-limit/capacity split","PTR9 final-artifact guard","PTR11 Call 1-12 reconstruction","PTR12 observer design"],
+  "projected_failure_mechanisms":["artifact graph adds coordination complexity","incorrect dependency declaration under-invalidates frozen artifacts","over-broad closure erases efficiency","under-broad closure accepts adjacent semantic regressions","compatibility projection diverges from V1 Draft expectations","shadow metrics optimize parse rate instead of semantic correctness","stage proliferation increases baseline calls","model fields leak deterministic IDs","historical Call 1 is overinterpreted"],
+  "controls":["authority hash on every artifact","closed schemas and stable IDs","CAS revision checks","reverse-dependency invalidation","global closure after local validators","bounded recovery/no-progress proof","V1 sole authority in shadow","matched historical replay","UNKNOWN preservation","call/token estimator and hard materialized caps"],
+  "model_output_boundary_changed":false,
+  "model_output_not_applicable_evidence":"Only docs/superpowers/reports/short-plan-v2-design is created. src and baml_src are unchanged; no Prompt, model, route, retry, budget or validator behavior changed.",
+  "why_previous_tests_missed":"Existing tests cover parsing, compilation, capacity packets, targeted later repair and PTR9 output guards. The consumed real Short exposed a conversion-layer diagnostic collapse before domain validation, where no independently frozen artifact or field dependency vector existed.",
+  "sibling_boundaries":[
+    {"boundary":"Planning V1 production authority","disposition":"not_applicable","evidence":"Design reports only; no Runtime cutover."},
+    {"boundary":"Draft and R1-D3 retry","disposition":"not_applicable","evidence":"Draft minimum contract is a design projection; Draft code is unchanged."},
+    {"boundary":"Final Review and Maintenance","disposition":"not_applicable","evidence":"No production flow or authority change."},
+    {"boundary":"Canon, StoryState and READY","disposition":"not_applicable","evidence":"V2 design consumes immutable snapshots and forbids mutation."},
+    {"boundary":"Provider adapters/PTR9/PTR12","disposition":"not_applicable","evidence":"No observer or adapter implementation; PTR12 priority is parallel."}
+  ],
+  "production_shaped_tests":["tests/test_planning_semantics.py","tests/test_planning_compiler.py","tests/test_planning_adaptation_workflow.py","tests/test_final_artifact_guard.py","tests/test_workflows.py"],
+  "next_authoritative_boundary_tests":["future Slice 1 artifact contract tests","future shadow event-unit merge/replay tests","tests/test_planning_semantics.py","tests/test_planning_compiler.py"],
+  "remaining_risks":["Exact historical Call 1 invalid path cannot be recovered retroactively.","Three proposed model-owned leaf classes are design abstractions; Slice 1 must validate real artifact shape and output-size estimates.","A future transition stage may require more typed semantic paths than the current exit_state abstraction.","No production or live parity validation has occurred for V2 because implementation is forbidden."],
+  "business_limitation":"The design does not produce an accepted Planning artifact, enter Draft, repair the consumed real Short, or authorize a Provider call.",
+  "next_implementation":"SHORT_PLAN_V2_SLICE1_IMPLEMENTATION_PLAN",
+  "next_business_root_after_observer":"PLANNING_CALL1_SEMANTIC_FAILURE_AND_RECOVERY_CONVERGENCE"
+}

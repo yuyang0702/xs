@@ -1,0 +1,22 @@
+{
+  "schema":"PlanningV2ArtifactContractsV1",
+  "version":1,
+  "common_envelope": {
+    "required":["schema","version","artifact_id","stage","scope_id","parent_authority_sha256","dependency_artifacts","dependency_set_sha256","artifact_revision","payload","payload_sha256","provenance","validation_status","validation_receipt_sha256","freeze_state"],
+    "identity":"artifact_id = SHA256(schema + stage + scope_id + parent authority hash); revision is not part of stable identity",
+    "serialization":"canonical UTF-8 JSON, sorted keys, normalized finite enums; no hidden process-global fields",
+    "provenance":"producer kind, contract identity, route/model fingerprints when model-produced, source artifact hashes; no raw prompts or provider content",
+    "validation_status":["pending","exact","rejected","stale"],
+    "freeze_state":["mutable","validated_frozen","thaw_pending","superseded","rejected"]
+  },
+  "contracts":[
+    {"name":"PlanningAuthoritySnapshotV1","stage":0,"payload":["authority revision/hash","formal event IDs/order","segment ownership bounds","typed Canon/StoryState/READY projections","ending/constraints hashes"],"model_fields":[],"bounded_by":"current authority snapshot","downstream":"all"},
+    {"name":"EventRealizationArtifactV1","stage":1,"payload":["Runtime event binding","title","narrative"],"model_fields":["title","narrative"],"bounded_by":"one formal event by default; explicitly capped contiguous packet only","downstream":[2,3,4,5]},
+    {"name":"SemanticTransitionArtifactV1","stage":2,"payload":["Runtime dimension/path binding","proposed exit effect","normalized assertion","predecessor receipt"],"model_fields":["proposed_exit_effect"],"bounded_by":"one event and one typed dependency dimension","downstream":[3,4,5]},
+    {"name":"PlanningDependencyClosureV1","stage":3,"payload":["typed nodes","typed edges","topological order","unresolved findings"],"model_fields":[],"bounded_by":"current story event graph","downstream":[4,5,6]},
+    {"name":"DraftMinimumExecutionContractV1","stage":4,"payload":["segment","source event IDs","beat obligations","entry/exit state","actionable plan text","future guard","source hashes"],"model_fields":[],"bounded_by":"one Draft segment","downstream":["Draft shadow","assembly"]},
+    {"name":"PlanningV2AssemblyCandidateV1","stage":5,"payload":["ordered artifact references","PlanningDocumentIR-compatible projection","topology candidate","manifest candidate","merge receipt"],"model_fields":[],"bounded_by":"one Planning run","downstream":[6,"shadow comparator"]},
+    {"name":"PlanningV2GlobalClosureReceiptV1","stage":6,"payload":["assembly hash","validator results","finding vector","Draft readiness","promotion eligibility"],"model_fields":[],"bounded_by":"one assembly candidate","downstream":["metrics","future promotion gate"]}
+  ],
+  "anti_facade_rule":"A prompt split is not an artifact split. A passed artifact must be hash-addressable, independently frozen, independently reusable, and excluded from later model output unless an explicit thaw proof includes it."
+}

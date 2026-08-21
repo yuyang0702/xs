@@ -1,0 +1,21 @@
+{
+  "schema": "PlanningV2FieldOwnershipV1",
+  "version": 1,
+  "denominator": "provider-facing scalar leaf paths in PlanningSemanticDraftV2",
+  "counts": {"current_field_count":8,"current_llm_generated":8,"v2_proposed_llm_generated":3,"move_out_of_llm_contract":5,"authority_copy":1,"local_derivation":4,"llm_semantic_decision":1,"llm_creative_content":2,"hybrid":0,"legacy_redundant":0},
+  "classification": [
+    {"path":"initial_state","owner":"AUTHORITY_COPY","reason":"Entry state is constrained by READY/StoryState/Canon and predecessor authority; model reinvention creates drift."},
+    {"path":"version","owner":"LOCAL_DERIVATION","reason":"Schema version is Runtime protocol metadata."},
+    {"path":"segments[].kind","owner":"LOCAL_DERIVATION","reason":"Continuation/terminal follows canonical position."},
+    {"path":"segments[].segment","owner":"LOCAL_DERIVATION","reason":"Segment number follows canonical order."},
+    {"path":"segments[].events[].formal_event_ordinal","owner":"LOCAL_DERIVATION","reason":"Ordinal comes from exact formal-outline ownership."},
+    {"path":"segments[].exit_state","owner":"LLM_SEMANTIC_DECISION","reason":"Creative realization can determine the resulting state, but Runtime must validate and normalize it against dependencies."},
+    {"path":"segments[].title","owner":"LLM_CREATIVE_CONTENT","reason":"A bounded descriptive label is creative and low authority."},
+    {"path":"segments[].events[].narrative","owner":"LLM_CREATIVE_CONTENT","reason":"Narrative realization is the core creative planning output."}
+  ],
+  "assembled_field_policy": {"authority_hashes":"AUTHORITY_COPY or LOCAL_DERIVATION","event_ids_and_order":"LOCAL_DERIVATION","entry_state_assertions":"AUTHORITY_COPY/local projection","beat identifiers":"LOCAL_DERIVATION","provenance_receipts":"LOCAL_DERIVATION","canon_story_state_mutation":"FORBIDDEN during Planning"},
+  "reuse": ["Contract Runtime dispatch and typed diagnostics","PlanningSemantic packet ownership/checkpoints","Planning compiler and ownership topology","local plan validators","PTR3 exact-finding propagation where domain diagnostics exist","R1-D3 Draft finding propagation","causal checker and ShortExecutionManifest","PTR9 final-artifact guard","CAS/Saga/checkpoints and Reliability Trace"],
+  "adapt": ["semantic normalizer to preserve structured validation locations in a future approved slice","capacity packet model into always-bounded event realization units","monotonic candidate selection into artifact/dependency-closure selection","planning recovery checkpoints into immutable artifact ledger","semantic review into stage and global closure receipts"],
+  "deprecate": ["whole PlanningSemanticDraftV2 regeneration as ordinary semantic recovery","generic protocol retry after a lossy semantic-normalizer failure","mutable free-form Markdown as the primary Planning authority"],
+  "remove_from_llm_contract": ["version","initial_state","segments[].kind","segments[].segment","segments[].events[].formal_event_ordinal"]
+}

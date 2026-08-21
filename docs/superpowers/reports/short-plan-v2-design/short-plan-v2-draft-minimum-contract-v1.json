@@ -1,0 +1,22 @@
+{
+  "schema":"DraftMinimumExecutionContractV1Design",
+  "version":1,
+  "observed_current_consumers":["_draft_short_in_segments loads and re-proves PlanningDocumentIR","render_planning_segment_ir supplies each segment scope","ShortExecutionManifest supplies atomic beats, entry/exit states and future guards","_draft_prose_authority_context projects approved planning/manifest terms"],
+  "draft_required":[
+    {"field":"segment identity/order","source":"local derivation"},
+    {"field":"owned source event IDs and atomic beat IDs","source":"authority/manifest"},
+    {"field":"actionable event/beat narrative obligations","source":"validated event realization and manifest"},
+    {"field":"entry state and predecessor boundary","source":"validated transition/topology"},
+    {"field":"exit requirement/handoff","source":"validated transition/topology"},
+    {"field":"future beat guard","source":"local manifest derivation"},
+    {"field":"heading/brief outline for scoped prose","source":"validated creative artifact/projection"},
+    {"field":"planning/manifest authority hashes","source":"local derivation"}
+  ],
+  "validation_only":["actor capability proof","knowledge timeline","causal producer graph","global temporal proof","Canon conflict detail","global closure finding vector"],
+  "provenance_only":["producer route/model fingerprint","artifact lineage","validator versions","repair history","merge receipt","shadow comparison"],
+  "locally_derived":["schema version","segment kind/index","formal ordinals/event IDs","hashes","topology","future scope digest","display Markdown"],
+  "audit_only":["attempt counters","token/elapsed observations","stale finding history","superseded artifact hashes"],
+  "explicit_exclusions":["raw READY/Canon/StoryState documents","global dependency graph","model bookkeeping","repair prompts","Provider content","fields unrelated to the current Draft segment"],
+  "compatibility_projection":"Stage 4 may render the existing PlanningSegmentIR and ShortExecutionManifest shapes byte-stably for current Draft consumers. V2 internals do not become Draft authority during shadow mode.",
+  "authority":"READY remains project execution authority; Planning consumes but cannot rewrite Canon or StoryState. Promotion stays behind existing authority/CAS/Saga/Maintenance boundaries."
+}

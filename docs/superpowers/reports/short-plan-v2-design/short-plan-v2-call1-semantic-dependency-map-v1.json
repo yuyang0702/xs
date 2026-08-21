@@ -1,0 +1,29 @@
+{
+  "schema": "Call1SemanticFailureDependencyMapV1",
+  "version": 1,
+  "binding": {"execution_evidence":"sealed R1-PTR11 Call 1-12 reconstruction","contract":"planning_semantic_v2","call":1,"status":"semantic_validation_failed","first_divergence":true,"first_unrecovered_divergence":true},
+  "observed": {"route_kind":"primary","execution_mode":"plain","finish_reason":"end_turn","output_tokens":5349,"post_adapter_visible_characters":21728,"conversion_result":"semantic_validation_failed","domain_validator":"not_reached_after_conversion_rejection","draft_entered":false},
+  "unknowns": {
+    "semantic_failure_rule":"UNKNOWN",
+    "exact_field_path":"UNKNOWN",
+    "invariant":"UNKNOWN",
+    "affected_entities":"UNKNOWN",
+    "affected_scenes":"UNKNOWN",
+    "affected_events":"UNKNOWN",
+    "local_or_cross_object":"UNKNOWN",
+    "unrelated_fields_modified_by_retry":"UNKNOWN",
+    "later_new_semantic_failures":"UNKNOWN"
+  },
+  "why_unknown": "normalize_planning_semantic_v2_payload catches model validation ValueError and returns None. GeneratedArtifactGateway persists only semantic_validation_failed; raw Provider content and the Pydantic location/error vector were intentionally not retained.",
+  "dependency_chain": [
+    {"node":"provider-visible candidate","status":"present","evidence":"21728 visible characters and end_turn"},
+    {"node":"semantic normalizer","status":"rejected","evidence":"semantic_validation_failed"},
+    {"node":"structured validation error vector","status":"discarded","evidence":"ValueError is collapsed to None"},
+    {"node":"GeneratedArtifactGateway conversion","status":"typed generic rejection","evidence":"ArtifactConversionError"},
+    {"node":"Planning compiler/domain validator","status":"not reached","evidence":"sealed PTR11"},
+    {"node":"dependency-aware diagnostic extractor","status":"not reached/not configured for this conversion failure","evidence":"domain diagnostic propagation operates after domain validation"},
+    {"node":"repair retry","status":"whole-contract generic regeneration","evidence":"protocol regeneration system; exact field closure unavailable"}
+  ],
+  "repair_scope_assessment": {"actual_dependency_scope":"UNKNOWN","current_retry_scope":"whole bounded request/whole semantic artifact","scope_match":"UNKNOWN and unprovable","exact_finding_received":false,"dependency_information_sufficient":false},
+  "design_constraint": "V2 must retain a typed issue vector containing stage, artifact ID, field path, rule, implicated authority/dependency hashes, and affected-node closure. A generic semantic_validation_failed code is not repair authority."
+}

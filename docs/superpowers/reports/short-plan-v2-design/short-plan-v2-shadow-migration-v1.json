@@ -1,0 +1,22 @@
+{
+  "schema":"ShortPlanningV2ShadowV1",
+  "version":1,
+  "authority":"Planning V1 remains the sole production and Draft authority",
+  "mode":["consume the exact same authority snapshot","run offline fixtures/fakes first; separately approved shadow Provider use is optional later","persist V2 artifacts under isolated shadow root/ledger","never feed V2 outputs to Draft, Canon, StoryState, READY, causal/manifest production files or Maintenance","failures cannot alter V1 recovery or outcome"],
+  "comparison_receipt": {
+    "identity":["authority snapshot hash","corpus/fixture ID","V1 artifact hash","V2 assembly hash","comparator version"],
+    "structure":["formal event coverage/order","segment ownership","Draft minimum field completeness","derived bookkeeping equivalence"],
+    "semantics":["global closure vector","causal/time/actor/knowledge/location/relationship results","ending reachability"],
+    "convergence":["first-pass status","finding sequence","repair closure sizes","frozen hash preservation","no-progress/restart/terminal status"],
+    "efficiency":["model calls","input/output tokens if observable","elapsed","fallback frequency","local repair ratio"],
+    "authority_fields":["v1_authority_unchanged","v2_promotion_eligible_for_future_only","production_mutations=0"]
+  },
+  "promotion_phases":[
+    "Phase A: deterministic historical replay and fake model fixtures",
+    "Phase B: V1-produced accepted inputs replayed through V2 assembly/closure without model calls",
+    "Phase C: separately approved shadow generation with isolated outputs",
+    "Phase D: decision review; any production cutover requires a new implementation and Canary approval"
+  ],
+  "rollback":"Delete/ignore isolated shadow outputs or disable shadow invocation; V1 bytes and checkpoints remain unchanged.",
+  "live_parity":"Not run in this design task. Future shadow validation compares source/config/runtime fingerprints before any external action."
+}

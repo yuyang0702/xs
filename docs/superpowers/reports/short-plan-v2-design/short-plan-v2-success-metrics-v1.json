@@ -1,0 +1,25 @@
+{
+  "schema":"ShortPlanningV2SuccessMetricsV1",
+  "version":1,
+  "correctness":[
+    {"metric":"global_semantic_closure_pass_rate","target_rule":"must pass for every promotion-eligible candidate"},
+    {"metric":"referential_causal_temporal_invariant_failures","target_rule":"zero at promotion"},
+    {"metric":"authority_mutation_or_mixed_hash_count","target_rule":"zero"}
+  ],
+  "convergence":[
+    {"metric":"bounded_repair_success_rate","target_rule":"compare by corpus family to V1; no regression allowed in authority integrity"},
+    {"metric":"oscillating_finding_count","target_rule":"zero"},
+    {"metric":"stale_finding_count","target_rule":"zero"},
+    {"metric":"same_failure_without_state_change","target_rule":"zero dispatched retries"},
+    {"metric":"convergence_budget_exhaustion_rate","target_rule":"strictly measured; improvement required before cutover"}
+  ],
+  "stability":[
+    {"metric":"validated_frozen_artifact_mutation_count","target_rule":"zero unless thaw receipt proves inclusion"},
+    {"metric":"unrelated_artifact_mutation_rate","target_rule":"zero"},
+    {"metric":"stale_merge_rejection_accuracy","target_rule":"all stale/mixed revisions rejected"}
+  ],
+  "efficiency":["model calls per accepted Planning","model output tokens per accepted Planning","elapsed per stage","fallback frequency","whole-stage regeneration rate","local deterministic repair ratio","repair output size / affected artifact output size"],
+  "business":["Draft minimum contract readiness","Draft entry rate in shadow simulation","formal event/beat obligation completeness","Short progression boundary reached in offline harness"],
+  "not_success":["JSON parsing alone","one green fixture","more calls with eventual output","global closure skipped","V2 content preferred subjectively"],
+  "comparison_rule":"Use matched authority/corpus inputs, report distributions and exact failure families. V2 is more convergent only if global correctness is preserved, repeated no-progress calls are eliminated, frozen unrelated mutation is zero, and convergence/terminal metrics improve without hidden stage restarts."
+}

@@ -1,0 +1,28 @@
+{
+  "schema":"SemanticImpactClosureV1",
+  "version":1,
+  "finding_contract": ["finding_code","validator_id/version","stage","artifact_id","field_path","entity/node IDs","authority/dependency hashes","rule/invariant","observed typed value/status","expected constraint","evidence hash"],
+  "graph_dimensions": {
+    "actor":["capability","knowledge","location","relationship"],
+    "time":["predecessor","successor","temporal window","duration/order constraints"],
+    "causal":["precondition","producer/effect","downstream consumer"],
+    "scene":["required setup","realization/payoff","continuity boundary"]
+  },
+  "algorithm":[
+    "Resolve finding path to a typed graph node; unresolved identity is not patchable.",
+    "Add the artifact that owns the model-written value and its validator receipt.",
+    "Traverse required predecessor edges needed to re-prove the invariant, but do not thaw immutable authority nodes.",
+    "Traverse forward effect/consumer edges until a stable boundary whose inputs remain hash-exact.",
+    "Add adjacent scene entry/exit nodes for continuity findings.",
+    "Return repair_nodes, revalidation_nodes, immutable_context_nodes and boundary_assertions separately.",
+    "If node count, depth or ambiguity exceeds materialized caps, classify UNBOUNDED and escalate to subtree/stage; never guess a smaller closure."
+  ],
+  "mapping_examples":[
+    {"finding":"actor capability missing at event E","affected_node":"E.capability_precondition","repair_scope":["producer effect or E realization, whichever validator identifies"],"revalidation_scope":["producer->E causal edge","actor state through first stable successor"]},
+    {"finding":"knowledge used before learned","affected_node":"actor.knowledge@E","repair_scope":["bounded producer/consumer closure"],"revalidation_scope":["knowledge timeline from producer to E"]},
+    {"finding":"location jump","affected_node":"actor.location transition","repair_scope":["transition or explicit travel event subtree"],"revalidation_scope":["predecessor exit","duration/order","successor entry"]},
+    {"finding":"setup without payoff","affected_node":"scene setup/payoff edge","repair_scope":["minimum dominator subtree containing both endpoints"],"revalidation_scope":["scene closure and downstream required obligations"]}
+  ],
+  "closure_receipt":["closure_sha256","finding_sha256","repair artifact IDs/paths","revalidation artifact IDs/validators","immutable context hashes","boundary assertions","bounded status/reason"],
+  "safety":"Exact finding propagation is necessary but not sufficient. A retry may run only when this closure is exact and bounded."
+}
