@@ -600,6 +600,41 @@ ARTIFACT_CONTRACT_REGISTRY: Mapping[str, ArtifactContractRegistration] = {
 }
 
 
+_SHADOW_REGISTRATIONS = (
+    ArtifactContractRegistration(
+        name="planning_event_realization_shadow_v1", phase="planning",
+        semantic_authority=(
+            "EventRealizationCandidateV1 title and narrative only; all identity, "
+            "ordering, authority, dependency and lifecycle fields are Runtime-owned"
+        ),
+        legacy_labels=("Planning V2 Slice 1 offline shadow candidate",),
+        wire_required_fields=("title", "narrative"),
+        wire_closed=True,
+        minimum_business_characters=0,
+        recovery_ladder=("exact_json", "local_syntax_repair"),
+    ),
+)
+
+SHADOW_ARTIFACT_CONTRACT_REGISTRY: Mapping[
+    str, ArtifactContractRegistration
+] = {item.name: item for item in _SHADOW_REGISTRATIONS}
+
+
+def _registered_contract(
+    contract_name: str,
+) -> ArtifactContractRegistration | None:
+    return (
+        ARTIFACT_CONTRACT_REGISTRY.get(contract_name)
+        or SHADOW_ARTIFACT_CONTRACT_REGISTRY.get(contract_name)
+    )
+
+
+def _all_contract_registrations() -> tuple[ArtifactContractRegistration, ...]:
+    return tuple(ARTIFACT_CONTRACT_REGISTRY.values()) + tuple(
+        SHADOW_ARTIFACT_CONTRACT_REGISTRY.values()
+    )
+
+
 _NONEMPTY_ARRAY_FIELDS = {
     "beat_receipts", "beats", "cycles", "event_receipts", "event_reviews",
     "events", "evidence", "groups", "replacements", "scenes", "segments",
@@ -672,7 +707,7 @@ def registered_business_wire_schema(
     names or returned content.
     """
 
-    registration = ARTIFACT_CONTRACT_REGISTRY.get(contract_name)
+    registration = _registered_contract(contract_name)
     if registration is None:
         raise KeyError(f"unregistered generated artifact contract: {contract_name}")
     required = registration.wire_required_fields
@@ -714,7 +749,7 @@ def validate_executable_contract_registry() -> None:
 
     missing = {
         step
-        for registration in ARTIFACT_CONTRACT_REGISTRY.values()
+        for registration in _all_contract_registrations()
         for step in registration.recovery_ladder
         if step not in EXECUTABLE_RECOVERY_STEP_OWNERS
     }
@@ -724,7 +759,7 @@ def validate_executable_contract_registry() -> None:
             + ", ".join(sorted(missing))
         )
     invalid: list[str] = []
-    for registration in ARTIFACT_CONTRACT_REGISTRY.values():
+    for registration in _all_contract_registrations():
         ladder = registration.recovery_ladder
         if not ladder or ladder[0] != "exact_json":
             invalid.append(f"{registration.name}:exact_json_must_be_first")
@@ -898,6 +933,25 @@ PLANNING_EVENT_TOPOLOGY_ADAPTER = ContractAdapterRegistration(
 )
 
 
+SLICE1_EVENT_REALIZATION_ENVELOPE_ADAPTER = ContractAdapterRegistration(
+    name="slice1_event_realization_unique_envelope",
+    version=1,
+    contract_name="planning_event_realization_shadow_v1",
+    source_shapes=(
+        "canonical title-narrative object",
+        "single nested data/result/payload envelope",
+        "single unseen nested descriptive envelope",
+    ),
+    canonical_shape="EventRealizationCandidateV1 title-narrative object",
+    proof_obligation=(
+        "Exactly one nested object satisfies the complete closed candidate "
+        "contract; no second candidate, authority/local field, or machine-control "
+        "field exists. Creative title and narrative bytes remain opaque."
+    ),
+    automatic_conversion=True,
+)
+
+
 PLANNING_SEMANTIC_ENVELOPE_ADAPTER = ContractAdapterRegistration(
     name="planning_semantic_unique_envelope",
     version=1,
@@ -999,6 +1053,24 @@ CONTRACT_ADAPTER_REGISTRY: Mapping[str, tuple[ContractAdapterRegistration, ...]]
     ),
 }
 
+SHADOW_CONTRACT_ADAPTER_REGISTRY: Mapping[
+    str, tuple[ContractAdapterRegistration, ...]
+] = {
+    "planning_event_realization_shadow_v1": (
+        SLICE1_EVENT_REALIZATION_ENVELOPE_ADAPTER,
+    ),
+}
+
+
+def _registered_contract_adapters(
+    contract_name: str,
+) -> tuple[ContractAdapterRegistration, ...]:
+    return (
+        CONTRACT_ADAPTER_REGISTRY.get(contract_name)
+        or SHADOW_CONTRACT_ADAPTER_REGISTRY.get(contract_name)
+        or ()
+    )
+
 
 def _try_semantic_normalizer(
     semantic_normalizer: SemanticNormalizer, value: object,
@@ -1014,6 +1086,7 @@ def _try_semantic_normalizer(
 
 def _unique_semantic_envelope(
     payload: dict[str, Any], semantic_normalizer: SemanticNormalizer,
+    *, transformation_code: str = "planning_semantic_unique_envelope",
 ) -> tuple[dict[str, Any], tuple[str, ...], int] | None:
     """Prove a single complete semantic object inside descriptive wrappers."""
 
@@ -1039,7 +1112,29 @@ def _unique_semantic_envelope(
     if not candidates:
         return None
     path, canonical = candidates[0]
-    return canonical, ("planning_semantic_unique_envelope", f"source:{path}"), 1
+    return canonical, (transformation_code, f"source:{path}"), 1
+
+
+_SLICE1_CANDIDATE_FORBIDDEN_FIELDS = frozenset({
+    "schema", "version", "artifact_id", "artifact_revision", "stage",
+    "scope_id", "shadow_only", "parent_authority_sha256", "formal_event_id",
+    "formal_event_ordinal", "segment_ordinal", "formal_event_contract_sha256",
+    "predecessor_boundary_sha256", "dependency_artifact_ids",
+    "dependency_set_sha256", "payload_sha256", "provenance",
+    "validation_status", "validation_receipt_sha256", "freeze_state",
+    "commit_performed", "promotion_eligible",
+})
+
+
+def _slice1_candidate_forbidden_paths(payload: Mapping[str, Any]) -> tuple[str, ...]:
+    paths: list[str] = []
+    for path, _ in _walk(dict(payload)):
+        if path == "$" or "." not in path:
+            continue
+        key = path.rsplit(".", 1)[-1].split("[", 1)[0]
+        if key in _SLICE1_CANDIDATE_FORBIDDEN_FIELDS:
+            paths.append(path)
+    return tuple(sorted(set(paths)))
 
 
 def _adapt_planning_semantic_root_projection(
@@ -1841,6 +1936,39 @@ def _apply_registered_adapter(
                 "source_path_sha256": canonical_sha256(transformations[1:]),
             }),
         )
+    if descriptor.name == SLICE1_EVENT_REALIZATION_ENVELOPE_ADAPTER.name:
+        semantic_normalizer = context.get("semantic_normalizer")
+        if not callable(semantic_normalizer):
+            return None
+        forbidden = _slice1_candidate_forbidden_paths(payload)
+        unsafe = tuple(sorted(set(_unsafe_machine_control_keys(payload))))
+        if forbidden or unsafe:
+            raise ValueError(
+                "Slice 1 candidate contains Runtime-owned or machine-control fields"
+            )
+        adapted = _unique_semantic_envelope(
+            payload, semantic_normalizer,
+            transformation_code=descriptor.name,
+        )
+        if adapted is None:
+            return None
+        canonical, transformations, candidate_count = adapted
+        return canonical, ContractAdapterAudit(
+            adapter_name=descriptor.name,
+            adapter_version=descriptor.version,
+            contract_name=descriptor.contract_name,
+            source_shape=descriptor.source_shapes[-1],
+            canonical_shape=descriptor.canonical_shape,
+            transformations=transformations,
+            input_sha256=canonical_sha256(payload),
+            output_sha256=canonical_sha256(canonical),
+            proof_sha256=canonical_sha256({
+                "candidate_count": candidate_count,
+                "source_path_sha256": canonical_sha256(transformations[1:]),
+                "forbidden_field_count": 0,
+                "machine_control_count": 0,
+            }),
+        )
     if descriptor.name == PLANNING_SEMANTIC_ROOT_PROJECTION_ADAPTER.name:
         semantic_normalizer = context.get("semantic_normalizer")
         return _adapt_planning_semantic_root_projection(
@@ -1869,12 +1997,12 @@ def adapt_registered_contract(
 ) -> ContractAdaptationResult:
     """Apply registered, proved adapters before authoritative domain validation."""
 
-    if contract_name not in ARTIFACT_CONTRACT_REGISTRY:
+    if _registered_contract(contract_name) is None:
         raise KeyError(f"unregistered generated artifact contract: {contract_name}")
     current = dict(payload)
     audits: list[ContractAdapterAudit] = []
     adapter_context = dict(context or {})
-    for descriptor in CONTRACT_ADAPTER_REGISTRY.get(contract_name, ()):
+    for descriptor in _registered_contract_adapters(contract_name):
         if automatic_only and not descriptor.automatic_conversion:
             continue
         adapted = _apply_registered_adapter(
@@ -2073,7 +2201,7 @@ class GeneratedArtifactGateway:
         owns_opening: bool = True,
         owns_ending: bool = True,
     ) -> ArtifactConversionResult:
-        registration = ARTIFACT_CONTRACT_REGISTRY.get(contract_name)
+        registration = _registered_contract(contract_name)
         if registration is None:
             raise KeyError(f"unregistered generated artifact contract: {contract_name}")
         raw_digest = _raw_sha256(raw)
@@ -2229,7 +2357,10 @@ class GeneratedArtifactGateway:
                 f"$.{key}" for key in sorted(source_root_keys - set(payload))
             )
             if any(
-                audit.adapter_name == PLANNING_SEMANTIC_ENVELOPE_ADAPTER.name
+                audit.adapter_name in {
+                    PLANNING_SEMANTIC_ENVELOPE_ADAPTER.name,
+                    SLICE1_EVENT_REALIZATION_ENVELOPE_ADAPTER.name,
+                }
                 for audit in adaptation.audits
             ):
                 candidate_count = 1

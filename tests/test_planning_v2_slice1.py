@@ -9,11 +9,16 @@ from novel_flywheel.planning_v2_slice1 import (
     EVENT_REALIZATION_ARTIFACT_FIELD_PATHS,
     EventRealizationCandidateV1,
     EventRealizationInputAuthorityV1,
+    Slice1CandidateRejected,
     Slice1StaleParentError,
     artifact_canonical_bytes,
     artifact_sha256,
     assert_current_parent,
     build_event_realization_artifact,
+    convert_event_realization_candidate,
+    project_ptr3_finding,
+    validate_candidate_payload,
+    validate_event_realization_artifact,
 )
 
 
@@ -122,3 +127,64 @@ def test_slice1_module_does_not_import_v1_workflow_or_state_writers() -> None:
     assert "import novel_flywheel.story_state" not in source
     assert "from novel_flywheel.canon import" not in source
     assert "import novel_flywheel.canon\n" not in source
+
+
+def test_candidate_ownership_violation_retains_exact_lossless_finding() -> None:
+    with pytest.raises(Slice1CandidateRejected) as caught:
+        validate_candidate_payload({
+            "title": "Candidate title",
+            "narrative": "A complete narrative with an actor, action, and result.",
+            "formal_event_id": "EV-00000002",
+        }, authority=_authority())
+
+    finding = caught.value.findings[0]
+    assert finding.rule_code == "SLICE1_FIELD_OWNERSHIP_VIOLATION"
+    assert finding.field_path_json_pointer == "/formal_event_id"
+    assert finding.invariant_id == "candidate_contains_only_title_narrative"
+    assert finding.raw_value_included is False
+    assert finding.raw_story_included is False
+    projected = project_ptr3_finding(finding)
+    assert projected.field_path == "/formal_event_id"
+    assert projected.rule_code == finding.rule_code
+
+
+def test_missing_candidate_field_retains_path_instead_of_generic_failure() -> None:
+    with pytest.raises(Slice1CandidateRejected) as caught:
+        validate_candidate_payload({"title": "Only a title"}, authority=_authority())
+    assert caught.value.findings[0].field_path_json_pointer == "/narrative"
+    assert caught.value.findings[0].rule_code == "SLICE1_REQUIRED_FIELD_MISSING"
+
+
+def test_malformed_conversion_retains_typed_top_level_finding() -> None:
+    with pytest.raises(Slice1CandidateRejected) as caught:
+        convert_event_realization_candidate(
+            '{"title":"broken","narrative":', authority=_authority(),
+        )
+    finding = caught.value.findings[0]
+    assert finding.rule_code == "SLICE1_OUTPUT_TRUNCATED"
+    assert finding.field_path_json_pointer == "$"
+    assert finding.rule_code != "semantic_validation_failed"
+
+
+def test_validator_stack_passes_and_defers_global_closure() -> None:
+    artifact = build_event_realization_artifact(_authority(), _candidate())
+    receipt = validate_event_realization_artifact(artifact, _authority())
+
+    assert receipt.status == "PASS"
+    assert receipt.findings == ()
+    assert "draft_executability" in receipt.deferred_global_invariant_ids
+
+
+def test_referential_and_semantic_findings_remain_distinct_and_path_bound() -> None:
+    artifact = build_event_realization_artifact(_authority(), _candidate())
+    damaged = artifact.model_copy(update={
+        "formal_event_ordinal": 99,
+        "narrative": "short",
+    })
+    receipt = validate_event_realization_artifact(damaged, _authority())
+
+    assert receipt.status == "REJECTED"
+    findings = {(item.rule_code, item.field_path_json_pointer) for item in receipt.findings}
+    assert ("SLICE1_EVENT_ORDINAL_MISMATCH", "/formal_event_ordinal") in findings
+    assert ("SLICE1_NARRATIVE_INCOMPLETE", "/narrative") in findings
+    assert all(item.rule_code != "semantic_validation_failed" for item in receipt.findings)

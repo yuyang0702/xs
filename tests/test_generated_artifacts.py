@@ -7,6 +7,8 @@ import pytest
 from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
     CONTRACT_ADAPTER_REGISTRY,
+    SHADOW_ARTIFACT_CONTRACT_REGISTRY,
+    SHADOW_CONTRACT_ADAPTER_REGISTRY,
     EXECUTABLE_RECOVERY_STEP_OWNERS,
     ArtifactContractRegistration,
     ArtifactConversionError,
@@ -17,6 +19,7 @@ from novel_flywheel.generated_artifacts import (
     validate_executable_contract_registry,
 )
 from novel_flywheel.semantic_packets import normalize_causal_packet_payload
+from novel_flywheel.planning_v2_slice1 import normalize_slice1_candidate
 
 
 def _cycle(**changes):
@@ -163,9 +166,9 @@ def test_contract_adapter_architecture_budget_has_declared_single_owners() -> No
             "planning_facet_closed_truth",
             "planning_facet_unique_evidence_quote",
         ),
-        "planning_event_realizations": (
-            "planning_event_topology",
-        ),
+            "planning_event_realizations": (
+                "planning_event_topology",
+            ),
         "planning_semantic_v2": (
             "planning_semantic_unique_envelope",
             "planning_semantic_root_projection",
@@ -665,7 +668,10 @@ def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> N
             )
 
     assert discovered
-    unknown = [item for item in discovered if item[2] not in ARTIFACT_CONTRACT_REGISTRY]
+    registered = set(ARTIFACT_CONTRACT_REGISTRY) | set(
+        SHADOW_ARTIFACT_CONTRACT_REGISTRY
+    )
+    unknown = [item for item in discovered if item[2] not in registered]
     assert unknown == []
 
 
@@ -927,3 +933,73 @@ def test_conversion_audit_is_content_addressed_and_does_not_store_raw_text(tmp_p
     assert secret_marker not in stored
     assert result.audit.raw_sha256 in stored
     assert write_conversion_audit(tmp_path, result.audit) == path
+
+
+def _slice1_candidate() -> dict[str, str]:
+    return {
+        "title": "A bounded realization",
+        "narrative": (
+            "The witness makes a deliberate choice, meets resistance, and "
+            "leaves a causal handoff for the next event."
+        ),
+    }
+
+
+def test_slice1_shadow_candidate_contract_is_closed_and_unreferenced() -> None:
+    registration = SHADOW_ARTIFACT_CONTRACT_REGISTRY[
+        "planning_event_realization_shadow_v1"
+    ]
+    assert registration.wire_required_fields == ("title", "narrative")
+    assert registration.wire_closed is True
+    assert registration.recovery_ladder == ("exact_json", "local_syntax_repair")
+    assert "planning_event_realization_shadow_v1" not in ARTIFACT_CONTRACT_REGISTRY
+    assert "planning_event_realization_shadow_v1" not in CONTRACT_ADAPTER_REGISTRY
+    assert tuple(
+        item.name for item in SHADOW_CONTRACT_ADAPTER_REGISTRY[
+            "planning_event_realization_shadow_v1"
+        ]
+    ) == ("slice1_event_realization_unique_envelope",)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        pytest.param(_slice1_candidate(), id="canonical"),
+        pytest.param({"data": _slice1_candidate()}, id="data-envelope"),
+        pytest.param({"result": {"payload": _slice1_candidate()}}, id="nested-result"),
+        pytest.param({"delivery": {"artifact": _slice1_candidate()}}, id="unseen-delivery"),
+        pytest.param({"answer": {"content": _slice1_candidate()}}, id="unseen-answer"),
+        pytest.param({"response": {"value": _slice1_candidate()}}, id="response-value"),
+    ],
+)
+def test_slice1_candidate_accepts_diverse_unique_topologies(payload) -> None:
+    result = GeneratedArtifactGateway().convert_object(
+        json.dumps(payload, ensure_ascii=False),
+        contract_name="planning_event_realization_shadow_v1",
+        semantic_normalizer=normalize_slice1_candidate,
+    )
+    assert result.payload == _slice1_candidate()
+    assert result.audit.semantic_valid is True
+
+
+def test_slice1_candidate_rejects_ambiguous_complete_candidates() -> None:
+    raw = json.dumps({"left": _slice1_candidate(), "right": _slice1_candidate()})
+    with pytest.raises(ArtifactConversionError) as caught:
+        GeneratedArtifactGateway().convert_object(
+            raw,
+            contract_name="planning_event_realization_shadow_v1",
+            semantic_normalizer=normalize_slice1_candidate,
+        )
+    assert caught.value.audit.failure_code == "ambiguous_semantic_candidates"
+    assert caught.value.audit.candidate_count == 2
+
+
+@pytest.mark.parametrize("field", ["formal_event_id", "artifact_id", "operation"])
+def test_slice1_candidate_rejects_authority_local_or_machine_control_echo(field) -> None:
+    payload = {**_slice1_candidate(), field: "not-candidate-owned"}
+    with pytest.raises(ArtifactConversionError):
+        GeneratedArtifactGateway().convert_object(
+            json.dumps(payload),
+            contract_name="planning_event_realization_shadow_v1",
+            semantic_normalizer=normalize_slice1_candidate,
+        )
