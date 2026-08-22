@@ -1,0 +1,97 @@
+{
+  "schema": "R1PTR12ReviewV2FailureSHA256ManifestV1",
+  "version": 1,
+  "overall_status": "failure_evidence_exact",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "f79edfc078aecad9a0b654448416ee258c8923de",
+  "first_frozen_hard_issue": "STREAM_REASONING_USAGE_LINEAGE_MISMATCH",
+  "second_hard_issue": "DIAGNOSTIC_CONTEXT_CONSTRUCTION_FAIL_OPEN",
+  "manifest_definition": {
+    "algorithm": "sha256",
+    "path_basis": "repository-relative-posix",
+    "byte_domain": "exact_file_bytes",
+    "coverage_root": "docs/superpowers/reports/r1-ptr12-review-v2-failure",
+    "inclusion_rule": "all regular files directly under coverage_root except sha256-manifest-v1.json",
+    "ordering": "path_ascending",
+    "self_excluded": true,
+    "entry_fields": ["path", "bytes", "sha256"]
+  },
+  "manifest_definition_sha256": "a480f72fb6ad254557d9dbced8d845a4e3a94104d7b69739b9f9ce515cbbb95d",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/README.md",
+      "bytes": 900,
+      "sha256": "ce9725f884c7f32607a934fe98d555a9e656ee4550d0b45133ab227d15048ba2"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/offline-review-test-receipt-v1.json",
+      "bytes": 1709,
+      "sha256": "58c62a803046680215b02286d902f1d8f49e5e7a8ab95d76f7edea04bb4c12eb"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/privacy-scan-v1.json",
+      "bytes": 875,
+      "sha256": "4bd0d7d1fd4e440d07add611fcb62dd9a1573660f2ce2922ae3054b95c992067"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/r1-ptr12-review-v2-failure-v1.json",
+      "bytes": 2139,
+      "sha256": "5eb88109785ffb5bab1923fe26c4820876c7897527576320df9316c831f7b79a"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/r1-ptr12-review-v2-stop-report-v1.md",
+      "bytes": 3918,
+      "sha256": "b4c96a8c26aecfb77c9f772dbf51028d43e8ed7996fea09ec5273b5695c0782f"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/r1-ptr12-shard-a-pass-v1.json",
+      "bytes": 1339,
+      "sha256": "7ee797bf6b3d85b3aed8f6a1a929a23604a89d9e717cb3afa0f6cf358e208c3c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/r1-ptr12-shard-b-stream-reasoning-failure-v1.json",
+      "bytes": 2638,
+      "sha256": "97d02c51fc31e270275f5d6166b4537a752836c6d2c2b6a3cedf203074efa441"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/r1-ptr12-shard-c-context-fail-open-failure-v1.json",
+      "bytes": 1797,
+      "sha256": "89536ebbb37493b81b0354a48e12478b1ce73f30496bb206942c147fecb2d3c9"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v2-failure/source-isolation-v1.json",
+      "bytes": 720,
+      "sha256": "a37f18c3d51e9663cd9f3560cc308862bf0216e43c8e58084611a824eac418f2"
+    }
+  ],
+  "file_count": 9,
+  "directory_file_count_including_manifest": 10,
+  "json_parse_exact": true,
+  "privacy_status": "exact",
+  "team_sharded_independent_review_completed": true,
+  "completed_shards": 3,
+  "unrun_shards": 0,
+  "shard_results": {
+    "A": "PASS",
+    "B": "HARD_FAIL",
+    "C": "HARD_FAIL"
+  },
+  "split_review_pass": false,
+  "phase_b_ready": false,
+  "no_automatic_fix": true,
+  "production_source_diff": 0,
+  "test_diff": 0,
+  "fixture_diff": 0,
+  "baml_diff": 0,
+  "historical_evidence_rewritten": false,
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

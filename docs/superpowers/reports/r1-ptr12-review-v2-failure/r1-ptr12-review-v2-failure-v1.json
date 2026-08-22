@@ -1,0 +1,57 @@
+{
+  "schema": "R1PTR12TeamReviewV2FailureV1",
+  "version": 1,
+  "recorded_at_utc": "2026-08-22T17:32:16Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "f79edfc078aecad9a0b654448416ee258c8923de",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "review_result": "R1_PTR12_OBSERVER_IMPLEMENTATION_NARROW_FIX_REQUIRED",
+  "team_sharded_independent_review_completed": true,
+  "completed_shards": 3,
+  "unrun_shards": 0,
+  "shard_results": {
+    "A": "PASS",
+    "B": "HARD_FAIL",
+    "C": "HARD_FAIL"
+  },
+  "previous_review_result_reused_as_pass": false,
+  "split_review_pass": false,
+  "phase_b_ready": false,
+  "no_automatic_fix": true,
+  "first_frozen_hard_issue": "STREAM_REASONING_USAGE_LINEAGE_MISMATCH",
+  "second_hard_issue": "DIAGNOSTIC_CONTEXT_CONSTRUCTION_FAIL_OPEN",
+  "first_fix_family": "PTR12_STREAM_REASONING_USAGE_LINEAGE_FIX_V1",
+  "second_fix_family": "PTR12_DIAGNOSTIC_CONTEXT_CONSTRUCTION_FAIL_OPEN_V1",
+  "second_fix_bundled_with_first": false,
+  "prior_closures": {
+    "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING": "PASS",
+    "TAIL_TRUTHFULNESS_FOR_UNINSPECTED_NESTED_TOPOLOGY": "PASS",
+    "ANTHROPIC_EFFECTIVE_CAP_OBSERVABILITY": "PASS",
+    "requested_max_output_default_case": null,
+    "effective_route_cap_default_case": 8192,
+    "provider_accepted_cap_default_case": "UNKNOWN"
+  },
+  "preserved_invariants": {
+    "structural_bounds": "PASS",
+    "raw_content_persisted_count": 0,
+    "ptr9_guard_predicate_changed": false,
+    "ptr9_business_input_source_changed": false,
+    "negative_capability_behavior": "PASS",
+    "correlation": "PASS",
+    "r0f_successor_chain": "EXACT",
+    "planning_skill_business_isolation": "PASS",
+    "maintenance_documentation": "ACCURATE_NO_PREMATURE_PASS_OR_PHASE_B_CLAIM",
+    "test_policy_weakening": false,
+    "historical_evidence_rewritten": false
+  },
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

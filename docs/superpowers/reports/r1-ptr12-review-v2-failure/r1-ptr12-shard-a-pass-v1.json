@@ -1,0 +1,40 @@
+{
+  "schema": "R1PTR12ReviewV2ShardAPassV1",
+  "version": 1,
+  "reviewed_head": "f79edfc078aecad9a0b654448416ee258c8923de",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "shard": "A",
+  "status": "PASS",
+  "scope": "BOUNDED_CAPTURE_NESTED_TRUTHFULNESS_PRIVACY_AND_FAIL_OPEN_WITHIN_SHARD_A_SCOPE",
+  "structural_bounds": {
+    "max_blocks_inspected": 128,
+    "max_blocks_touched_constant": 128,
+    "total_max_elements_touched": 128,
+    "total_max_touch_calls": 129,
+    "max_controlled_details": 128,
+    "max_unknown_details": 32,
+    "max_hash_input_bytes": 512,
+    "full_topology_precollection": false,
+    "unbounded_dedup_state": false,
+    "unbounded_unknown_hashing": false,
+    "single_global_capture_budget": true,
+    "one_hundred_twenty_ninth_touch_refuses_before_read": true
+  },
+  "nested_tail": {
+    "tail_truthfulness_for_uninspected_nested_topology": "PASS",
+    "unsafe_iterator_count": 0,
+    "false_absence_count": 0,
+    "false_topology_exact_count": 0
+  },
+  "privacy": {
+    "raw_content_persisted_count": 0,
+    "result": "PASS"
+  },
+  "upstream_review_evidence": {
+    "tests": "85 passed",
+    "bounded_cancellation_probes": "PASS",
+    "tests_rerun_by_evidence_seal": false
+  },
+  "provider_output_sha256": "ef0d57089245072a34fb6573079441ce87e9e0dac425bb860c5cc7331c5f03a6",
+  "external_actions": 0
+}

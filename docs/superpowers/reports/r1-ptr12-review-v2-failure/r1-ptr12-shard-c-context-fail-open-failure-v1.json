@@ -1,0 +1,38 @@
+{
+  "schema": "R1PTR12ReviewV2ShardCContextFailOpenFailureV1",
+  "version": 1,
+  "reviewed_head": "f79edfc078aecad9a0b654448416ee258c8923de",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "shard": "C",
+  "status": "HARD_FAIL",
+  "finding_id": "DIAGNOSTIC_CONTEXT_CONSTRUCTION_FAIL_OPEN",
+  "severity": "HARD_FAIL",
+  "first_frozen_hard_issue": false,
+  "location": "src/novel_flywheel/workflows.py:27184",
+  "function": "WorkflowService._stage",
+  "observer_only_operations": [
+    "db.get_role_binding",
+    "db.get_provider",
+    "diagnostic_domain_sha256"
+  ],
+  "expected": "Observer-only context construction failures never alter Provider dispatch or original business behavior.",
+  "actual": {
+    "observer_on": "CAN_TERMINATE_BEFORE_PROVIDER_DISPATCH",
+    "observer_off": "SKIPS_OBSERVER_ONLY_CONTEXT_CONSTRUCTION_AND_CONTINUES",
+    "observer_fail_open": false,
+    "observer_on_off_business_diff_count": "NONZERO_FOR_CONTEXT_CONSTRUCTION_FAILURE"
+  },
+  "failure_class": "OBSERVER_ONLY_CONTEXT_CONSTRUCTION_FAILURE_ALTERS_BUSINESS_EXECUTION",
+  "test_gap": "Existing ON/OFF, sink, schema, and hash tests enter ModelGateway.complete_route after diagnostic context has already been constructed and do not cover WorkflowService._stage context construction.",
+  "blast_radius": "WorkflowService._stage calls with diagnostic_boundary, structured contract, and outer retry ordinal",
+  "upstream_review_evidence": {
+    "tests": "148 passed",
+    "independent_stage_context_construction_probe": "HARD_FAIL_REPRODUCED",
+    "tests_rerun_by_evidence_seal": false
+  },
+  "recommended_fix_family": "PTR12_DIAGNOSTIC_CONTEXT_CONSTRUCTION_FAIL_OPEN_V1",
+  "status_after_evidence_seal": "OPEN",
+  "bundled_with_first_fix": false,
+  "automatic_fix_performed": false,
+  "external_actions": 0
+}

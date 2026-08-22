@@ -1,0 +1,57 @@
+{
+  "schema": "R1PTR12ReviewV2FailureOfflineReviewTestReceiptV1",
+  "version": 1,
+  "recorded_at_utc": "2026-08-22T17:32:16Z",
+  "reviewed_head": "f79edfc078aecad9a0b654448416ee258c8923de",
+  "overall_status": "HARD_FAIL_FINDINGS_EXACT",
+  "results_are_upstream_sealed_review_results": true,
+  "tests_rerun_by_evidence_seal": false,
+  "runs": [
+    {
+      "name": "coordinator_unified_matrix",
+      "result": "199 passed",
+      "external_actions": 0
+    },
+    {
+      "name": "shard_a",
+      "result": "85 passed; bounded/cancellation probes PASS",
+      "review_result": "PASS",
+      "external_actions": 0
+    },
+    {
+      "name": "shard_b",
+      "result": "143 passed, 3 deselected; independent body/stream probe reproduced HARD_FAIL",
+      "review_result": "HARD_FAIL",
+      "external_actions": 0
+    },
+    {
+      "name": "shard_c",
+      "result": "148 passed; independent _stage context-construction probe reproduced HARD_FAIL",
+      "review_result": "HARD_FAIL",
+      "external_actions": 0
+    }
+  ],
+  "evidence_validation_requirements": {
+    "reviewed_head_exact": true,
+    "three_shard_statuses_exact": true,
+    "completed_shards": 3,
+    "unrun_shards": 0,
+    "first_frozen_hard_issue_exact": true,
+    "second_hard_issue_exact": true,
+    "false_pass_state_absent": true,
+    "phase_b_ready": false,
+    "prior_closures_pass": true,
+    "source_test_fixture_baml_isolation": true,
+    "privacy_exact": true
+  },
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

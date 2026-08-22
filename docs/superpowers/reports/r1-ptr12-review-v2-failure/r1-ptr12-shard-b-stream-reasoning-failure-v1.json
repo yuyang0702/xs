@@ -1,0 +1,70 @@
+{
+  "schema": "R1PTR12ReviewV2ShardBStreamReasoningFailureV1",
+  "version": 1,
+  "reviewed_head": "f79edfc078aecad9a0b654448416ee258c8923de",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "shard": "B",
+  "status": "HARD_FAIL",
+  "finding_id": "STREAM_REASONING_USAGE_LINEAGE_MISMATCH",
+  "severity": "HARD_FAIL",
+  "first_frozen_hard_issue": true,
+  "location": "src/novel_flywheel/provider_output.py:445",
+  "function": "capture_provider_raw_shape_v1",
+  "case": "FORMALLY_EQUIVALENT_BODY_STREAM_REASONING_USAGE",
+  "expected_rule": "A formally exposed stream reasoning-token field must be preserved as provider-exposed reasoning usage exactly as its equivalent body field is preserved.",
+  "matrix": [
+    {
+      "protocol": "OPENAI_CHAT",
+      "form": "BODY",
+      "aggregate_output_tokens": 10,
+      "formally_exposed_reasoning_tokens": 4,
+      "expected_provider_exposed_reasoning_usage": "KNOWN/4",
+      "actual_provider_exposed_reasoning_usage": "KNOWN/4"
+    },
+    {
+      "protocol": "OPENAI_CHAT",
+      "form": "STREAM",
+      "aggregate_output_tokens": 10,
+      "formally_exposed_reasoning_tokens": 4,
+      "expected_provider_exposed_reasoning_usage": "KNOWN/4",
+      "actual_provider_exposed_reasoning_usage": "NOT_EXPOSED/null"
+    },
+    {
+      "protocol": "OPENAI_RESPONSES",
+      "form": "BODY",
+      "aggregate_output_tokens": 10,
+      "formally_exposed_reasoning_tokens": 4,
+      "expected_provider_exposed_reasoning_usage": "KNOWN/4",
+      "actual_provider_exposed_reasoning_usage": "KNOWN/4"
+    },
+    {
+      "protocol": "OPENAI_RESPONSES",
+      "form": "STREAM",
+      "aggregate_output_tokens": 10,
+      "formally_exposed_reasoning_tokens": 4,
+      "expected_provider_exposed_reasoning_usage": "KNOWN/4",
+      "actual_provider_exposed_reasoning_usage": "NOT_EXPOSED/null"
+    }
+  ],
+  "root": {
+    "chat_body": "reads completion_tokens_details.reasoning_tokens",
+    "chat_stream": "reads completion_tokens only",
+    "responses_body": "reads output_tokens_details.reasoning_tokens",
+    "responses_stream": "reads output_tokens only"
+  },
+  "failure_class": "PROVIDER_FORMAL_USAGE_LINEAGE_DROPPED_ON_STREAM_PATH",
+  "aggregate_usage_split_inferred": false,
+  "blast_radius": [
+    "OPENAI_CHAT",
+    "OPENAI_RESPONSES",
+    "DEEPSEEK_OPENAI_CHAT_COMPAT_ROUTE"
+  ],
+  "upstream_review_evidence": {
+    "tests": "143 passed, 3 deselected",
+    "independent_body_stream_probe": "HARD_FAIL_REPRODUCED",
+    "tests_rerun_by_evidence_seal": false
+  },
+  "recommended_fix_family": "PTR12_STREAM_REASONING_USAGE_LINEAGE_FIX_V1",
+  "automatic_fix_performed": false,
+  "external_actions": 0
+}
