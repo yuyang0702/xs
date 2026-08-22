@@ -1,0 +1,55 @@
+{
+  "schema": "R1PTR12SharedCaptureExhaustionPropagationAuthorizedProtectedSourceSuccessorV1",
+  "version": 1,
+  "phase": "R1-PTR12-SHARED-CAPTURE-EXHAUSTION-PROPAGATION-FIX",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "parent_source_head": "56dce5deff83d278179a29b2dd01138e92ea9189",
+  "implementation_source_head": "df1e433b33434071df92764563bd0befe2aa6997",
+  "parent_successor": {
+    "path": "tests/fixtures/reliability/r0f/r1-ptr12-diagnostic-context-fail-open-authorized-protected-source-successor-v1.json",
+    "sha256": "4420522de8cd044306969fc1a0db19f9ddc226df3466600496d448d9422fd4b6",
+    "protected_tree_sha256": "c11f763c51eba9fc258b91e0e8b4a16fad0046380ca01fc091bb9641d6258764"
+  },
+  "implementation_protected_tree_sha256": "1dffc840bd403032a0b572ed54ebc0d689bfe3db3bd45f24fc7b3b3306ba9689",
+  "uncommitted_authorized_task_delta": false,
+  "authorization_scope": "PTR12 observer-only shared raw-shape capture exhaustion propagation",
+  "business_behavior_changed": false,
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "domain_validator": 0,
+    "initial_prompt": 0,
+    "model_call_upper_bound": 0,
+    "output_budget": 0,
+    "retry_fallback_attempt_limits": 0,
+    "same_fingerprint_redispatch": 0,
+    "route_model_identity": 0,
+    "final_artifact_capability_memory": 0,
+    "diagnostic_event_types": 0,
+    "shared_capture_budget_count": 1,
+    "per_container_independent_budget_count": 0,
+    "max_successful_touches": 128,
+    "max_rejected_touch_calls": 1,
+    "max_total_touch_calls": 129,
+    "post_exhaustion_redundant_touch_calls": 0,
+    "shared_capture_exhaustion_propagation_status": "PASS"
+  },
+  "authorized_source_deltas": [
+    {
+      "path": "src/novel_flywheel/provider_output.py",
+      "before_sha256": "0405dc32039a074e1484c82b6a94eccaf866d0372e14572be36dbf3bfb1302b7",
+      "after_sha256": "f10b5c240f046405902988b62a95e669b4a465ea4775c8ceabdca80d9725b3ab"
+    }
+  ],
+  "current_protected_sources": [
+    {"path": "src/novel_flywheel/completion_supervisor.py", "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"},
+    {"path": "src/novel_flywheel/contract_runtime.py", "sha256": "fb76b03fdbdd8ad8881e8f1505dd12b0f7d9291b613f97897b8c4dda84499bf5"},
+    {"path": "src/novel_flywheel/generated_artifacts.py", "sha256": "9bcd7f0bf4488b7e2f5c5d8b539eb5b70666e40b272e609ef08c87ec8f90028c"},
+    {"path": "src/novel_flywheel/long_workflow.py", "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"},
+    {"path": "src/novel_flywheel/models.py", "sha256": "9ab2871db20df9444bccf799c0754d8ce1e3013ba66d472f54ce104b3b762856"},
+    {"path": "src/novel_flywheel/prompts.py", "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"},
+    {"path": "src/novel_flywheel/prose_quality.py", "sha256": "b31d292c12ae76670dabb75d4ade38d720d896097151a15e67738015898ba635"},
+    {"path": "src/novel_flywheel/provider_output.py", "sha256": "f10b5c240f046405902988b62a95e669b4a465ea4775c8ceabdca80d9725b3ab"},
+    {"path": "src/novel_flywheel/providers/registry.py", "sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"},
+    {"path": "src/novel_flywheel/workflows.py", "sha256": "5e9613bd7fa332cd89c0122d4fb16b4efa2d36103a96abbf53630f12ddcfd68f"}
+  ]
+}

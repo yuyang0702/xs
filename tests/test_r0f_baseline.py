@@ -85,6 +85,12 @@ R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR = (
     / "r1-ptr12-diagnostic-context-fail-open-"
     "authorized-protected-source-successor-v1.json"
 )
+R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr12-shared-capture-exhaustion-propagation-"
+    "authorized-protected-source-successor-v1.json"
+)
 R1_PTR12_OBSERVER_SCHEMA = (
     "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
 )
@@ -161,6 +167,20 @@ R1_PTR12_DIAGNOSTIC_CONTEXT_IMPLEMENTATION_HEAD = (
 )
 R1_PTR12_DIAGNOSTIC_CONTEXT_PROTECTED_TREE_SHA256 = (
     "c11f763c51eba9fc258b91e0e8b4a16fad0046380ca01fc091bb9641d6258764"
+)
+R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SCHEMA = (
+    "R1PTR12SharedCaptureExhaustionPropagation"
+    "AuthorizedProtectedSourceSuccessorV1"
+)
+R1_PTR12_SHARED_CAPTURE_EXHAUSTION_VERSION = 1
+R1_PTR12_SHARED_CAPTURE_EXHAUSTION_PARENT_HEAD = (
+    "56dce5deff83d278179a29b2dd01138e92ea9189"
+)
+R1_PTR12_SHARED_CAPTURE_EXHAUSTION_IMPLEMENTATION_HEAD = (
+    "df1e433b33434071df92764563bd0befe2aa6997"
+)
+R1_PTR12_SHARED_CAPTURE_EXHAUSTION_PROTECTED_TREE_SHA256 = (
+    "1dffc840bd403032a0b572ed54ebc0d689bfe3db3bd45f24fc7b3b3306ba9689"
 )
 
 
@@ -692,15 +712,12 @@ def _assert_r1_ptr12_diagnostic_context_successor_exact(
         "diagnostic_context_construction_fail_open_status": "PASS",
     }
 
-    current_manifest = ptr12_bounded_capture_protected_source_manifest(
-        REPOSITORY,
-    )
-    assert successor["current_protected_sources"] == current_manifest
+    recorded_manifest = successor["current_protected_sources"]
     tree_sha256 = successor["implementation_protected_tree_sha256"]
     assert isinstance(tree_sha256, str)
     assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
     assert tree_sha256 == R1_PTR12_DIAGNOSTIC_CONTEXT_PROTECTED_TREE_SHA256
-    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+    assert tree_sha256 == _protected_tree_sha256(recorded_manifest)
 
     authorized = successor["authorized_source_deltas"]
     assert authorized == [{
@@ -713,11 +730,113 @@ def _assert_r1_ptr12_diagnostic_context_successor_exact(
         ),
     }]
     current_hashes = {
+        item["path"]: item["sha256"] for item in recorded_manifest
+    }
+    assert authorized[0]["after_sha256"] == current_hashes[
+        authorized[0]["path"]
+    ]
+
+
+def _assert_r1_ptr12_shared_capture_exhaustion_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == R1_PTR12_SHARED_CAPTURE_EXHAUSTION_VERSION
+    assert (
+        successor["parent_source_head"]
+        == R1_PTR12_SHARED_CAPTURE_EXHAUSTION_PARENT_HEAD
+    )
+    assert (
+        successor["implementation_source_head"]
+        == R1_PTR12_SHARED_CAPTURE_EXHAUSTION_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == (
+        "R1-PTR12-SHARED-CAPTURE-EXHAUSTION-PROPAGATION-FIX"
+    )
+    assert successor["business_behavior_changed"] is False
+    assert successor["parent_successor"] == {
+        "path": (
+            "tests/fixtures/reliability/r0f/"
+            "r1-ptr12-diagnostic-context-fail-open-"
+            "authorized-protected-source-successor-v1.json"
+        ),
+        "sha256": (
+            "4420522de8cd044306969fc1a0db19f9ddc226df3466600496d448d9422fd4b6"
+        ),
+        "protected_tree_sha256": (
+            R1_PTR12_DIAGNOSTIC_CONTEXT_PROTECTED_TREE_SHA256
+        ),
+    }
+    assert successor["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": 0,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 0,
+        "diagnostic_event_types": 0,
+        "shared_capture_budget_count": 1,
+        "per_container_independent_budget_count": 0,
+        "max_successful_touches": 128,
+        "max_rejected_touch_calls": 1,
+        "max_total_touch_calls": 129,
+        "post_exhaustion_redundant_touch_calls": 0,
+        "shared_capture_exhaustion_propagation_status": "PASS",
+    }
+
+    current_manifest = ptr12_bounded_capture_protected_source_manifest(
+        REPOSITORY,
+    )
+    assert successor["current_protected_sources"] == current_manifest
+    tree_sha256 = successor["implementation_protected_tree_sha256"]
+    assert isinstance(tree_sha256, str)
+    assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
+    assert tree_sha256 == (
+        R1_PTR12_SHARED_CAPTURE_EXHAUSTION_PROTECTED_TREE_SHA256
+    )
+    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+
+    authorized = successor["authorized_source_deltas"]
+    assert authorized == [{
+        "path": "src/novel_flywheel/provider_output.py",
+        "before_sha256": (
+            "0405dc32039a074e1484c82b6a94eccaf866d0372e14572be36dbf3bfb1302b7"
+        ),
+        "after_sha256": (
+            "f10b5c240f046405902988b62a95e669b4a465ea4775c8ceabdca80d9725b3ab"
+        ),
+    }]
+    current_hashes = {
         item["path"]: item["sha256"] for item in current_manifest
     }
     assert authorized[0]["after_sha256"] == current_hashes[
         authorized[0]["path"]
     ]
+
+
+def _tamper_ptr12_shared_capture_exhaustion_successor(
+    successor: dict[str, Any], case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = "R1PTR12SharedCaptureExhaustionSuccessorV999"
+    elif case == "wrong_version":
+        successor["version"] = 2
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "wrong_protected_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "single_file_hash_tamper":
+        successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    elif case == "wrong_before_hash":
+        successor["authorized_source_deltas"][0]["before_sha256"] = "0" * 64
+    elif case == "wrong_after_hash":
+        successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
+    else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
 
 
 def _tamper_ptr12_diagnostic_context_successor(
@@ -942,6 +1061,12 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     _assert_r1_ptr12_diagnostic_context_successor_exact(
         r1_ptr12_diagnostic_context,
     )
+    r1_ptr12_shared_capture_exhaustion = load_baseline(
+        R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR,
+    )
+    _assert_r1_ptr12_shared_capture_exhaustion_successor_exact(
+        r1_ptr12_shared_capture_exhaustion,
+    )
 
 
 @pytest.mark.parametrize(
@@ -1156,6 +1281,46 @@ def test_r1_ptr12_diagnostic_context_successor_fixture_is_required(
 ) -> None:
     with pytest.raises(FileNotFoundError):
         load_baseline(tmp_path / R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR.name)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "wrong_version",
+        "wrong_implementation",
+        "wrong_protected_tree",
+        "single_file_hash_tamper",
+        "wrong_before_hash",
+        "wrong_after_hash",
+    ),
+)
+def test_r1_ptr12_shared_capture_exhaustion_successor_rejects_tamper(
+    case: str,
+) -> None:
+    successor = copy.deepcopy(load_baseline(
+        R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR,
+    ))
+    _tamper_ptr12_shared_capture_exhaustion_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_r1_ptr12_shared_capture_exhaustion_successor_exact(successor)
+
+
+def test_r1_ptr12_shared_capture_exhaustion_successor_accepts_exact_fixture(
+) -> None:
+    _assert_r1_ptr12_shared_capture_exhaustion_successor_exact(
+        load_baseline(R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR),
+    )
+
+
+def test_r1_ptr12_shared_capture_exhaustion_successor_fixture_is_required(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(
+            tmp_path / R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR.name,
+        )
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(
