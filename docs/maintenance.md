@@ -1914,3 +1914,21 @@ continue to bind raw checkout bytes. Fresh Slice 1 canonical replay receipts are
 V2, record raw hashes only as non-identity diagnostics, and compute their
 cross-platform receipt identity from canonical provenance plus deterministic
 semantic results.
+
+## PTR12 Anthropic effective-cap lineage
+
+The PTR12 raw-shape observer records Anthropic-compatible output-cap lineage
+from two separate sources. `requested_output_cap` remains the caller's explicit
+`ModelRequest.max_output_tokens`; `effective_output_cap` is copied from the
+already-finalized outbound `max_tokens` value. Therefore an omitted caller
+value remains `null` while the existing adapter default is observed as `8192`.
+An explicit override remains both requested and effective.
+
+This is non-authoritative diagnostic metadata. It does not construct or modify
+the request, select a route, change retry or fallback, allocate output budget,
+or feed the PTR9 guard. Sending a value does not prove Provider acceptance, so
+`provider_accepted_cap_status` remains `UNKNOWN` unless a future protocol
+response exposes a formal acknowledgment. Observer failure remains fail-open,
+and only safe integers and typed unknown status may enter ReliabilityTrace;
+prompts, prose, raw Provider content, tool arguments, credentials, headers, and
+private request identifiers remain excluded.
