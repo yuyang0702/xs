@@ -1,0 +1,250 @@
+{
+  "better_writing_tap_layout_observation": "The captured installed source contains ordinary text pointer files under skills/better-writing rather than filesystem symlinks; the canonical root files are present and were copied exactly.",
+  "documentation_only_external_domains": [
+    "arxiv.org",
+    "en.wikipedia.org",
+    "github.com",
+    "img.shields.io",
+    "purl.org",
+    "schemas.openxmlformats.org",
+    "skills.sh",
+    "www.idpf.org",
+    "www.pnas.org",
+    "www.skills.sh",
+    "www.w3.org"
+  ],
+  "documentation_only_external_url_count": 29,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "network_resolution_performed": false,
+  "overall_source_asset_closure": "exact",
+  "runtime_environment_fully_portable": false,
+  "runtime_portability_blockers": [
+    "Node.js is not bundled and is required to execute story-maintenance.",
+    "The optional story CLI and Bun/npx/bunx commands referenced by source documentation are not bundled.",
+    "Nine source packages contain no license file; no license terms were inferred or manufactured."
+  ],
+  "schema": "ProjectSkillDependencyClosureV1",
+  "skills": [
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "optional_external_cli",
+          "name": "story CLI",
+          "status": "not_bundled"
+        },
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required_for_bundled_story_maintenance_fallback"
+        }
+      ],
+      "internal_relative_link_count": 1,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [
+        "story-maintenance"
+      ],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "story-init"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "optional_external_cli",
+          "name": "story CLI",
+          "status": "not_bundled"
+        },
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required_for_bundled_story_maintenance_fallback"
+        }
+      ],
+      "internal_relative_link_count": 4,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [
+        "story-maintenance"
+      ],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "plot-structure"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "optional_external_cli",
+          "name": "story CLI",
+          "status": "not_bundled"
+        },
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required_for_bundled_story_maintenance_fallback"
+        }
+      ],
+      "internal_relative_link_count": 2,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [
+        "story-maintenance"
+      ],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "character-management"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "optional_external_cli",
+          "name": "story CLI",
+          "status": "not_bundled"
+        },
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required_for_bundled_story_maintenance_fallback"
+        }
+      ],
+      "internal_relative_link_count": 5,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [
+        "story-maintenance"
+      ],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "optional_external_cli",
+          "name": "story CLI",
+          "status": "not_bundled"
+        },
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required_for_bundled_story_maintenance_fallback"
+        },
+        {
+          "kind": "documentation_only_optional_installer",
+          "name": "npx or bunx",
+          "status": "not_required_because_source_is_bundled"
+        }
+      ],
+      "internal_relative_link_count": 3,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [
+        "story-maintenance",
+        "better-writing"
+      ],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "chapter-writing"
+    },
+    {
+      "external_runtime_dependencies": [],
+      "internal_relative_link_count": 6,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "novel-writing"
+    },
+    {
+      "external_runtime_dependencies": [],
+      "internal_relative_link_count": 0,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "dialogue"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "optional_external_cli",
+          "name": "story CLI",
+          "status": "not_bundled"
+        },
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required_for_bundled_story_maintenance_fallback"
+        },
+        {
+          "kind": "optional_external_cli",
+          "name": "Bun",
+          "status": "not_bundled"
+        }
+      ],
+      "internal_relative_link_count": 1,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [
+        "story-maintenance"
+      ],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "revision-continuity"
+    },
+    {
+      "external_runtime_dependencies": [],
+      "internal_relative_link_count": 1,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [],
+      "license_files": [
+        "LICENSE"
+      ],
+      "license_status": "MIT_file_present",
+      "skill_id": "humanizer-zh"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "runtime_executable",
+          "name": "Node.js",
+          "status": "required"
+        },
+        {
+          "kind": "node_builtin_modules",
+          "name": "node:fs,node:path,node:buffer",
+          "status": "source_closed_no_npm_package"
+        }
+      ],
+      "internal_relative_link_count": 2,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [],
+      "license_files": [],
+      "license_status": "license_file_absent_in_source_not_inferred",
+      "skill_id": "story-maintenance"
+    },
+    {
+      "external_runtime_dependencies": [
+        {
+          "kind": "validation_only_runtime",
+          "name": "Python 3",
+          "status": "required_only_for_validate_and_evals"
+        },
+        {
+          "kind": "python_standard_library",
+          "name": "json,re,sys,pathlib",
+          "status": "source_closed_no_pip_package"
+        },
+        {
+          "kind": "documentation_only_optional_installer",
+          "name": "npx or bunx",
+          "status": "not_required_for_repo_source"
+        }
+      ],
+      "internal_relative_link_count": 51,
+      "internal_relative_link_missing_count": 0,
+      "internal_skill_dependencies": [],
+      "license_files": [
+        "LICENSE",
+        "skills/better-writing/LICENSE"
+      ],
+      "license_status": "MIT_file_present",
+      "skill_id": "better-writing"
+    }
+  ],
+  "version": 1
+}

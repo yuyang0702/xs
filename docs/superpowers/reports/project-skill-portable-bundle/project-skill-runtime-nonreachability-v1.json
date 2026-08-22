@@ -1,0 +1,192 @@
+{
+  "active_skill_resolution": {
+    "draft": {
+      "optional": [
+        {
+          "content_hash": "51cdceea3f688e5ee57bfee01f3ed4e2b6e4521a831eb7707d58282c48c5bfc7",
+          "skill_id": "better-writing",
+          "source_kind": "user_global_codex_skill"
+        }
+      ],
+      "required": [
+        {
+          "content_hash": "63fff73e7c4779d9d84ecad003883a4baed3d88aedebab47ccc11bcc0c92a2b3",
+          "skill_id": "chapter-writing",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "44bf94f6fe2d049ff322bc2c8489b8548d7b4f237c41c88229e17969306da0b0",
+          "skill_id": "novel-writing",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "f1548bb75946872952adf1e003e9360053fd9d8d0640ec7a7d3663f87fddffde",
+          "skill_id": "dialogue",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    },
+    "final_review": {
+      "optional": [],
+      "required": [
+        {
+          "content_hash": "871b8120d117bcd7cb7f9a8854ebf83b7e7d61e80b493c774e8704126f2bd324",
+          "skill_id": "revision-continuity",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    },
+    "maintenance": {
+      "optional": [],
+      "required": [
+        {
+          "content_hash": "c59ebbaf78b700c032958f236908d82389b8b6bf56c1733b235ece31310a6172",
+          "skill_id": "story-maintenance",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    },
+    "planning": {
+      "optional": [],
+      "required": [
+        {
+          "content_hash": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+          "skill_id": "story-init",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+          "skill_id": "plot-structure",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+          "skill_id": "character-management",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+          "skill_id": "worldbuilding",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    },
+    "polish": {
+      "optional": [
+        {
+          "content_hash": "51cdceea3f688e5ee57bfee01f3ed4e2b6e4521a831eb7707d58282c48c5bfc7",
+          "skill_id": "better-writing",
+          "source_kind": "user_global_codex_skill"
+        }
+      ],
+      "required": [
+        {
+          "content_hash": "7bd195e3bcdcc24f078dfd4e3b3e37e8ac321c36f410a41241fc4175eab1825a",
+          "skill_id": "humanizer-zh",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "f1548bb75946872952adf1e003e9360053fd9d8d0640ec7a7d3663f87fddffde",
+          "skill_id": "dialogue",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "44bf94f6fe2d049ff322bc2c8489b8548d7b4f237c41c88229e17969306da0b0",
+          "skill_id": "novel-writing",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    },
+    "review": {
+      "optional": [],
+      "required": [
+        {
+          "content_hash": "871b8120d117bcd7cb7f9a8854ebf83b7e7d61e80b493c774e8704126f2bd324",
+          "skill_id": "revision-continuity",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    },
+    "revision_plan": {
+      "optional": [],
+      "required": [
+        {
+          "content_hash": "871b8120d117bcd7cb7f9a8854ebf83b7e7d61e80b493c774e8704126f2bd324",
+          "skill_id": "revision-continuity",
+          "source_kind": "user_global_codex_skill"
+        },
+        {
+          "content_hash": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+          "skill_id": "plot-structure",
+          "source_kind": "user_global_codex_skill"
+        }
+      ]
+    }
+  },
+  "active_skill_resolution_parity": "EXACT",
+  "baml_diff": 0,
+  "bundle_commit": "6e2df886ea44c09aa8fb10f89b37e045b0aae33a",
+  "bundle_is_scanner_root": false,
+  "bundle_is_under_project_extra_root": false,
+  "bundle_relative_root": "vendor/novel-skills/source",
+  "bundle_runtime_reachability": "NONE",
+  "current_short_runtime_skill_behavior_changed": false,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "mandatory_extractor_diff": 0,
+  "parent_head": "e8a58d5437366702cacbb2074150e45ab0c133dc",
+  "planning_v1_source_diff": 0,
+  "planning_v2_source_diff": 0,
+  "precopy_content_hashes_match": true,
+  "production_source_diff": 0,
+  "project_extra_root": "<project>/.agents/skills",
+  "prompt_policy_diff": 0,
+  "protected_source_diff_from_parent": "",
+  "protected_source_files": [
+    {
+      "path": "src/novel_flywheel/skills.py",
+      "sha256": "8b8b3098ef24ad67605b67eb95fe76241cf0b429bf9242f61f55da12fb54c024"
+    },
+    {
+      "path": "src/novel_flywheel/prompts.py",
+      "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "sha256": "38620f20f7fb7362feec82846f4676c9a8aea1bd29b05e01053a3a01a79d747b"
+    },
+    {
+      "path": "src/novel_flywheel/context_packet.py",
+      "sha256": "cf60fff80bebf21c4f73e7fc915adc78b42a95e72074200cc4524ab07f623b41"
+    },
+    {
+      "path": "src/novel_flywheel/skill_prompts.py",
+      "sha256": "95e94c72eb33a0f1871f1aab4b3da73874b4aa865ae06b9eb04ea356066f1246"
+    },
+    {
+      "path": "src/novel_flywheel/skill_runtime.py",
+      "sha256": "175effd82bd048c77b27c2a6ef734c0e15321896ce506d152afbe74db9fcad95"
+    }
+  ],
+  "scanner_diff": 0,
+  "scanner_glob": "*/SKILL.md beneath explicit roots",
+  "scanner_roots": [
+    "user_global_codex_skill",
+    "cwd/.agents/skills"
+  ],
+  "schema": "ProjectSkillRuntimeNonreachabilityV1",
+  "skill_prompt_compactor_diff": 0,
+  "stage_skill_registry_diff": 0,
+  "tests": {
+    "better_writing_source_validator": "all repo checks passed",
+    "focused_skill_tests": "100 passed, 1 existing dependency warning",
+    "full_suite": "not_run_no_production_runtime_change_and_live_fixture_safety_not_recharacterized"
+  },
+  "strict_l3": {
+    "blockers": 0,
+    "bundle_commit_replay_changed_path_count": 85,
+    "final_evidence_gate_required": true,
+    "status": "pass",
+    "warnings": 0
+  },
+  "version": 1
+}

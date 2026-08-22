@@ -1,0 +1,117 @@
+{
+  "bundle_file_count": 83,
+  "canonical_hash_mismatch_count": 0,
+  "file_list_mismatch_count": 0,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "global_skills_deleted": false,
+  "global_skills_modified": false,
+  "raw_hash_mismatch_count": 0,
+  "schema": "ProjectSkillCopyParityV1",
+  "skill_count": 11,
+  "skills": [
+    {
+      "bundle_file_count": 1,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "story-init",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 1
+    },
+    {
+      "bundle_file_count": 5,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "plot-structure",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 5
+    },
+    {
+      "bundle_file_count": 3,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "character-management",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 3
+    },
+    {
+      "bundle_file_count": 6,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "worldbuilding",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 6
+    },
+    {
+      "bundle_file_count": 4,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "chapter-writing",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 4
+    },
+    {
+      "bundle_file_count": 8,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "novel-writing",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 8
+    },
+    {
+      "bundle_file_count": 1,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "dialogue",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 1
+    },
+    {
+      "bundle_file_count": 1,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "revision-continuity",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 1
+    },
+    {
+      "bundle_file_count": 4,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "humanizer-zh",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 4
+    },
+    {
+      "bundle_file_count": 2,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "story-maintenance",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 2
+    },
+    {
+      "bundle_file_count": 48,
+      "canonical_hash_mismatch_count": 0,
+      "file_list_exact": true,
+      "raw_hash_mismatch_count": 0,
+      "skill_id": "better-writing",
+      "source_copy_content_parity": "EXACT",
+      "source_file_count": 48
+    }
+  ],
+  "source_copy_content_parity": "EXACT",
+  "source_file_count": 83,
+  "source_kind": "user_global_codex_skill",
+  "source_path_persisted": false,
+  "version": 1
+}

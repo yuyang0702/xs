@@ -1,0 +1,79 @@
+{
+  "active_skill_resolution_parity": "EXACT",
+  "algorithm": "sha256",
+  "baml_diff": 0,
+  "bundle_commit": "6e2df886ea44c09aa8fb10f89b37e045b0aae33a",
+  "bundle_runtime_reachability": "NONE",
+  "directory_file_count_including_manifest": 10,
+  "entry_count": 9,
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client": 0
+  },
+  "files": [
+    {
+      "bytes": 3370,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-copy-parity-v1.json",
+      "sha256": "1dbb10c6aedce6aeeaccd8a92436a9afaf1dcfa0dc4096969ddb4746868e7bfb"
+    },
+    {
+      "bytes": 7767,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-dependency-closure-v1.json",
+      "sha256": "9e6f414fa0458d1715205938549c5add5bbf5d879b9347bdeea988b15858a049"
+    },
+    {
+      "bytes": 730,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-eol-provenance-v1.json",
+      "sha256": "17936f6a10700b1ab5477c71bfbbfd5189729bbacf72391514ac94b92b37bc81"
+    },
+    {
+      "bytes": 62215,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-file-inventory-v1.json",
+      "sha256": "764912e0a1573a276a5edce4c8d8a82e2e32c8a9cf5aafdf2c704efb63442673"
+    },
+    {
+      "bytes": 4223,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-obsolescence-disposition-v1.json",
+      "sha256": "a22afbd76b577e27e3fa94bcf3d0f0a9f86d0efc13ad897d97bcfe433ea5fa34"
+    },
+    {
+      "bytes": 4817,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-portable-bundle-final-report-v1.md",
+      "sha256": "0e112852f2a700117b4c70dc67819d67317833a5287aa155f91ed29ffd259cc4"
+    },
+    {
+      "bytes": 918,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-privacy-scan-v1.json",
+      "sha256": "0c7cccfead71e47e8bbbd94167379c207b052bd3208a28190b6d20dcc09698e0"
+    },
+    {
+      "bytes": 6472,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-runtime-nonreachability-v1.json",
+      "sha256": "dab981ac7a9164109c8a73d887df11be0f3b115421bc14ef874b033250d77663"
+    },
+    {
+      "bytes": 37169,
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-source-lock-v1.json",
+      "sha256": "50b7335e9af1c9c18234191c2b74b013896e2373828017dc12800711ca703881"
+    }
+  ],
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "parent_head": "e8a58d5437366702cacbb2074150e45ab0c133dc",
+  "privacy_status": "exact",
+  "production_diff": 0,
+  "schema": "ProjectSkillFinalSha256ManifestV1",
+  "source_copy_content_parity": "EXACT",
+  "source_lock_definition_sha256": "7eff27680f83f2cac09b7c749f85e74f1c2b030f69dd58a7173dcfdeca0bf906",
+  "strict_l3": {
+    "blockers": 0,
+    "bundle_commit_replay_changed_path_count": 85,
+    "final_evidence_changed_path_count": 10,
+    "status": "pass",
+    "warnings": 0
+  },
+  "version": 1
+}

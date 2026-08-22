@@ -1,0 +1,1558 @@
+{
+  "all_files_utf8": true,
+  "bundle_relative_root": "vendor/novel-skills/source",
+  "file_count": 83,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "schema": "ProjectSkillFileInventoryV1",
+  "skill_count": 11,
+  "skills": [
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "aaaf4eed4c23e27938c7fb0dc841e911ae1148439199e9c1851e06ca50f1eb7e",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 1,
+      "file_type_counts": {
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 7931,
+          "canonical_text_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "story-maintenance/scripts/story.js",
+          "resolved_target": "story-maintenance/scripts/story.js",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "aaaf4eed4c23e27938c7fb0dc841e911ae1148439199e9c1851e06ca50f1eb7e",
+      "references": [],
+      "scripts": [],
+      "skill_id": "story-init",
+      "skill_md_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "skill_scanner_content_hash": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 7931
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "30196bb366772f7b21ce36b2a12080c641cd97daaec4ca9e22d127e8b7b5e37d",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 5,
+      "file_type_counts": {
+        "reference": 4,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 1257,
+          "canonical_text_sha256": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+          "relative_path": "references/arc-template.md"
+        },
+        {
+          "bytes": 454,
+          "canonical_text_sha256": "ca34c4eba78e253cd0f6b315999c596750bbe872279e52007cc8d078caec98d1",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "ca34c4eba78e253cd0f6b315999c596750bbe872279e52007cc8d078caec98d1",
+          "relative_path": "references/promise-template.md"
+        },
+        {
+          "bytes": 483,
+          "canonical_text_sha256": "a432d5f68ea0475faa07fa4fec80f1486a833adf68cbeb174de0948377c313f2",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "a432d5f68ea0475faa07fa4fec80f1486a833adf68cbeb174de0948377c313f2",
+          "relative_path": "references/question-template.md"
+        },
+        {
+          "bytes": 4204,
+          "canonical_text_sha256": "c1c42fa42e5d37f749c326c0451dd0b123ddbebf7e91b19d0c0fd360c33f8e5f",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "c1c42fa42e5d37f749c326c0451dd0b123ddbebf7e91b19d0c0fd360c33f8e5f",
+          "relative_path": "references/structure-models.md"
+        },
+        {
+          "bytes": 4595,
+          "canonical_text_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "references/arc-template.md",
+          "resolved_target": "plot-structure/references/arc-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/promise-template.md",
+          "resolved_target": "plot-structure/references/promise-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/question-template.md",
+          "resolved_target": "plot-structure/references/question-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/structure-models.md",
+          "resolved_target": "plot-structure/references/structure-models.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "30196bb366772f7b21ce36b2a12080c641cd97daaec4ca9e22d127e8b7b5e37d",
+      "references": [
+        "references/arc-template.md",
+        "references/promise-template.md",
+        "references/question-template.md",
+        "references/structure-models.md"
+      ],
+      "scripts": [],
+      "skill_id": "plot-structure",
+      "skill_md_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "skill_scanner_content_hash": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 10993
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "8dbfa6c771d85e7cd4b286297192957f9615ad71f0850b2af09a2a184c6294b4",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 3,
+      "file_type_counts": {
+        "reference": 2,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 1986,
+          "canonical_text_sha256": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+          "relative_path": "references/character-template.md"
+        },
+        {
+          "bytes": 1982,
+          "canonical_text_sha256": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56",
+          "relative_path": "references/relationship-types.md"
+        },
+        {
+          "bytes": 4127,
+          "canonical_text_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "references/character-template.md",
+          "resolved_target": "character-management/references/character-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/relationship-types.md",
+          "resolved_target": "character-management/references/relationship-types.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "8dbfa6c771d85e7cd4b286297192957f9615ad71f0850b2af09a2a184c6294b4",
+      "references": [
+        "references/character-template.md",
+        "references/relationship-types.md"
+      ],
+      "scripts": [],
+      "skill_id": "character-management",
+      "skill_md_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "skill_scanner_content_hash": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 8095
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "872aa758041d06e5e71db83674745c90f9e71b0121c0d3916694ef7a1fdf1378",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 6,
+      "file_type_counts": {
+        "reference": 5,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 663,
+          "canonical_text_sha256": "7471681d588ad288480ae9f7fe10acbeeaa38f0ed0948e7a8e697cdd17b18766",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "7471681d588ad288480ae9f7fe10acbeeaa38f0ed0948e7a8e697cdd17b18766",
+          "relative_path": "references/artifact-template.md"
+        },
+        {
+          "bytes": 644,
+          "canonical_text_sha256": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce",
+          "relative_path": "references/faction-template.md"
+        },
+        {
+          "bytes": 1196,
+          "canonical_text_sha256": "46114544c3b7ca01b101ee7f859684bb1ab3cc7b552b1e709c4f405262dd61d5",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "46114544c3b7ca01b101ee7f859684bb1ab3cc7b552b1e709c4f405262dd61d5",
+          "relative_path": "references/location-template.md"
+        },
+        {
+          "bytes": 1008,
+          "canonical_text_sha256": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b",
+          "relative_path": "references/system-template.md"
+        },
+        {
+          "bytes": 2797,
+          "canonical_text_sha256": "fe747c7e1a156d1c0204ab865a26e8f82ec0588c7b3772481b36861896bcf783",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "fe747c7e1a156d1c0204ab865a26e8f82ec0588c7b3772481b36861896bcf783",
+          "relative_path": "references/world-element-types.md"
+        },
+        {
+          "bytes": 4878,
+          "canonical_text_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "references/artifact-template.md",
+          "resolved_target": "worldbuilding/references/artifact-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/faction-template.md",
+          "resolved_target": "worldbuilding/references/faction-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/location-template.md",
+          "resolved_target": "worldbuilding/references/location-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/system-template.md",
+          "resolved_target": "worldbuilding/references/system-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/world-element-types.md",
+          "resolved_target": "worldbuilding/references/world-element-types.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "872aa758041d06e5e71db83674745c90f9e71b0121c0d3916694ef7a1fdf1378",
+      "references": [
+        "references/artifact-template.md",
+        "references/faction-template.md",
+        "references/location-template.md",
+        "references/system-template.md",
+        "references/world-element-types.md"
+      ],
+      "scripts": [],
+      "skill_id": "worldbuilding",
+      "skill_md_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "skill_scanner_content_hash": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 11186
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "db873c63f909085e821647c6173adb3261ef5a0a3ff6802be55628d8bcfabb27",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 4,
+      "file_type_counts": {
+        "reference": 3,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 1007,
+          "canonical_text_sha256": "1ad1896e09ad84f3fee3e97177c9217c55088bdc7c41e08e2250fc1bcc773739",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "1ad1896e09ad84f3fee3e97177c9217c55088bdc7c41e08e2250fc1bcc773739",
+          "relative_path": "references/chapter-template.md"
+        },
+        {
+          "bytes": 686,
+          "canonical_text_sha256": "0da3cdd511c97c851ef6e8ecfbb91fe48ed85349ce80b4008944df2aa1c84f46",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "0da3cdd511c97c851ef6e8ecfbb91fe48ed85349ce80b4008944df2aa1c84f46",
+          "relative_path": "references/scene-template.md"
+        },
+        {
+          "bytes": 2627,
+          "canonical_text_sha256": "86467e6b843b1ac2c72312a081f87ddde23870d875f9c97ada57d2bf4108b893",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "86467e6b843b1ac2c72312a081f87ddde23870d875f9c97ada57d2bf4108b893",
+          "relative_path": "references/writing-guidelines.md"
+        },
+        {
+          "bytes": 6177,
+          "canonical_text_sha256": "f302204d7fd1b61e99db81bdaff19cb45a5859635f6173404ddd2b985a1df346",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "f302204d7fd1b61e99db81bdaff19cb45a5859635f6173404ddd2b985a1df346",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "references/chapter-template.md",
+          "resolved_target": "chapter-writing/references/chapter-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/scene-template.md",
+          "resolved_target": "chapter-writing/references/scene-template.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/writing-guidelines.md",
+          "resolved_target": "chapter-writing/references/writing-guidelines.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "db873c63f909085e821647c6173adb3261ef5a0a3ff6802be55628d8bcfabb27",
+      "references": [
+        "references/chapter-template.md",
+        "references/scene-template.md",
+        "references/writing-guidelines.md"
+      ],
+      "scripts": [],
+      "skill_id": "chapter-writing",
+      "skill_md_sha256": "f302204d7fd1b61e99db81bdaff19cb45a5859635f6173404ddd2b985a1df346",
+      "skill_scanner_content_hash": "63fff73e7c4779d9d84ecad003883a4baed3d88aedebab47ccc11bcc0c92a2b3",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 10497
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "9322658b1b0fca0b00ea7e59fb070d6ecb8b9888b24aa82b02e8419b5106c06e",
+      "disposition": "MIGRATE_FULL",
+      "executable": false,
+      "file_count": 8,
+      "file_type_counts": {
+        "package_metadata": 1,
+        "reference": 6,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 182,
+          "canonical_text_sha256": "f67dda290258884429b86361708bc4acc12edb8b72dcfc283434b09cbe9ba070",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "package_metadata",
+          "raw_sha256": "f67dda290258884429b86361708bc4acc12edb8b72dcfc283434b09cbe9ba070",
+          "relative_path": "agents/openai.yaml"
+        },
+        {
+          "bytes": 3237,
+          "canonical_text_sha256": "626a4f440458c5a8e7787c401e44f513cf8d2920b284846f50a68ff37093e9f0",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "626a4f440458c5a8e7787c401e44f513cf8d2920b284846f50a68ff37093e9f0",
+          "relative_path": "references/character-introductions.md"
+        },
+        {
+          "bytes": 2660,
+          "canonical_text_sha256": "c9a7b1198b07cb3efbb031f276fa21444bd43afbfd8c486331ed182652a55d7c",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "c9a7b1198b07cb3efbb031f276fa21444bd43afbfd8c486331ed182652a55d7c",
+          "relative_path": "references/planning.md"
+        },
+        {
+          "bytes": 2442,
+          "canonical_text_sha256": "04ef603caf4c575dec694290f7f1cf9c87c203454cd0f5dab43593be715fc8e2",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "04ef603caf4c575dec694290f7f1cf9c87c203454cd0f5dab43593be715fc8e2",
+          "relative_path": "references/realism-constraints.md"
+        },
+        {
+          "bytes": 2234,
+          "canonical_text_sha256": "85479c284655991300a8262c27855dab9d0f36aab342cf160afbfbaac90f4f67",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "85479c284655991300a8262c27855dab9d0f36aab342cf160afbfbaac90f4f67",
+          "relative_path": "references/revision-checklist.md"
+        },
+        {
+          "bytes": 2500,
+          "canonical_text_sha256": "7f3b935335e5d97dbecca123b5b5ad70beb14e7d3e48427c14d86057e6e07fa4",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "7f3b935335e5d97dbecca123b5b5ad70beb14e7d3e48427c14d86057e6e07fa4",
+          "relative_path": "references/scene-and-structure.md"
+        },
+        {
+          "bytes": 2161,
+          "canonical_text_sha256": "8034fe900cc17d5b9856bcbd53b5f1df3edb3d43e0cd13b55286a91aa9a2e6b3",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "8034fe900cc17d5b9856bcbd53b5f1df3edb3d43e0cd13b55286a91aa9a2e6b3",
+          "relative_path": "references/style-fidelity.md"
+        },
+        {
+          "bytes": 7173,
+          "canonical_text_sha256": "59d2cb7f75731989ea9b24c062fb29194773eb62eb980659c55d377467a3cc0f",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "59d2cb7f75731989ea9b24c062fb29194773eb62eb980659c55d377467a3cc0f",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "references/character-introductions.md",
+          "resolved_target": "novel-writing/references/character-introductions.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/planning.md",
+          "resolved_target": "novel-writing/references/planning.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/realism-constraints.md",
+          "resolved_target": "novel-writing/references/realism-constraints.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/revision-checklist.md",
+          "resolved_target": "novel-writing/references/revision-checklist.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/scene-and-structure.md",
+          "resolved_target": "novel-writing/references/scene-and-structure.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/style-fidelity.md",
+          "resolved_target": "novel-writing/references/style-fidelity.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "9322658b1b0fca0b00ea7e59fb070d6ecb8b9888b24aa82b02e8419b5106c06e",
+      "references": [
+        "references/character-introductions.md",
+        "references/planning.md",
+        "references/realism-constraints.md",
+        "references/revision-checklist.md",
+        "references/scene-and-structure.md",
+        "references/style-fidelity.md"
+      ],
+      "scripts": [],
+      "skill_id": "novel-writing",
+      "skill_md_sha256": "59d2cb7f75731989ea9b24c062fb29194773eb62eb980659c55d377467a3cc0f",
+      "skill_scanner_content_hash": "44bf94f6fe2d049ff322bc2c8489b8548d7b4f237c41c88229e17969306da0b0",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 22589
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "9c68de207bb50d3e4815c709da0d72162e64f6a6369638b43344f0eac0b2b432",
+      "disposition": "MIGRATE_FULL",
+      "executable": false,
+      "file_count": 1,
+      "file_type_counts": {
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 1923,
+          "canonical_text_sha256": "54c9e2bc11aafd14f40081ee1bbee748dfe0c263ff8b810d6cb193dad6edd9f6",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "54c9e2bc11aafd14f40081ee1bbee748dfe0c263ff8b810d6cb193dad6edd9f6",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "9c68de207bb50d3e4815c709da0d72162e64f6a6369638b43344f0eac0b2b432",
+      "references": [],
+      "scripts": [],
+      "skill_id": "dialogue",
+      "skill_md_sha256": "54c9e2bc11aafd14f40081ee1bbee748dfe0c263ff8b810d6cb193dad6edd9f6",
+      "skill_scanner_content_hash": "f1548bb75946872952adf1e003e9360053fd9d8d0640ec7a7d3663f87fddffde",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 1923
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "a5daa9e59dfc1deae5244b581452f72567d7ad7e0567ea42bd031f90428f8576",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 1,
+      "file_type_counts": {
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 4493,
+          "canonical_text_sha256": "c6a39a9c03d43ea6ac345f5fa428d11005c1e9cf430b1edff8b824b8b6273da1",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "c6a39a9c03d43ea6ac345f5fa428d11005c1e9cf430b1edff8b824b8b6273da1",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "story-maintenance/scripts/story.js",
+          "resolved_target": "story-maintenance/scripts/story.js",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "a5daa9e59dfc1deae5244b581452f72567d7ad7e0567ea42bd031f90428f8576",
+      "references": [],
+      "scripts": [],
+      "skill_id": "revision-continuity",
+      "skill_md_sha256": "c6a39a9c03d43ea6ac345f5fa428d11005c1e9cf430b1edff8b824b8b6273da1",
+      "skill_scanner_content_hash": "871b8120d117bcd7cb7f9a8854ebf83b7e7d61e80b493c774e8704126f2bd324",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 4493
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "d082d4fc27906dd924b5fb3196d5d3a83a75b9fc54150ed5f75031e1ed1a33bc",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 4,
+      "file_type_counts": {
+        "license": 1,
+        "other_source": 2,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 41,
+          "canonical_text_sha256": "e52aac198acd71945e1730f45cafba41fffda4e2a0d7d6a38175880aae8eabea",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "other_source",
+          "raw_sha256": "e52aac198acd71945e1730f45cafba41fffda4e2a0d7d6a38175880aae8eabea",
+          "relative_path": ".gitignore"
+        },
+        {
+          "bytes": 1063,
+          "canonical_text_sha256": "aa00e74769e1b9d8e7fa7094dbfcca9b129a0ded6dce1cf4da050b99146d2fa7",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "license",
+          "raw_sha256": "aa00e74769e1b9d8e7fa7094dbfcca9b129a0ded6dce1cf4da050b99146d2fa7",
+          "relative_path": "LICENSE"
+        },
+        {
+          "bytes": 7799,
+          "canonical_text_sha256": "60cd3ed8b4753837ca8f8fcebf6076a38591a269d91ea1791aa7448e5a1b1b58",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "other_source",
+          "raw_sha256": "60cd3ed8b4753837ca8f8fcebf6076a38591a269d91ea1791aa7448e5a1b1b58",
+          "relative_path": "README.md"
+        },
+        {
+          "bytes": 18898,
+          "canonical_text_sha256": "e0edbdbc9008644263d5573fb59beac95794e188fd99c35012bfd79e9ae4beeb",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "e0edbdbc9008644263d5573fb59beac95794e188fd99c35012bfd79e9ae4beeb",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "~/.claude/skills/",
+          "resolved_target": "~/.claude/skills/",
+          "source_file": "README.md",
+          "status": "external_runtime_location"
+        }
+      ],
+      "license_file_status": "present",
+      "licenses": [
+        "LICENSE"
+      ],
+      "raw_source_tree_sha256": "d082d4fc27906dd924b5fb3196d5d3a83a75b9fc54150ed5f75031e1ed1a33bc",
+      "references": [],
+      "scripts": [],
+      "skill_id": "humanizer-zh",
+      "skill_md_sha256": "e0edbdbc9008644263d5573fb59beac95794e188fd99c35012bfd79e9ae4beeb",
+      "skill_scanner_content_hash": "7bd195e3bcdcc24f078dfd4e3b3e37e8ac321c36f410a41241fc4175eab1825a",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 27801
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "cf99f2fb61b3cad76bc5a717959aeb60cff2f22f0b3c67664099001b4f43f24d",
+      "disposition": "MIGRATE_EXECUTABLE_ONLY",
+      "executable": true,
+      "file_count": 2,
+      "file_type_counts": {
+        "script": 1,
+        "skill_manifest": 1
+      },
+      "files": [
+        {
+          "bytes": 119638,
+          "canonical_text_sha256": "823a24d92af3d0f89618611dad0a65587a0c806ec22c4727f6dd7aac818f69d6",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "script",
+          "raw_sha256": "823a24d92af3d0f89618611dad0a65587a0c806ec22c4727f6dd7aac818f69d6",
+          "relative_path": "scripts/story.js"
+        },
+        {
+          "bytes": 3904,
+          "canonical_text_sha256": "c9343be1365417b7323eaf98e97c2d9ac413d510bda549a30cd1d2c709b8500e",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "c9343be1365417b7323eaf98e97c2d9ac413d510bda549a30cd1d2c709b8500e",
+          "relative_path": "SKILL.md"
+        }
+      ],
+      "intended_future_role": "EXECUTABLE_ONLY",
+      "internal_relative_links": [
+        {
+          "declared_target": "node scripts/story.js <command>",
+          "resolved_target": "node scripts/story.js <command>",
+          "source_file": "SKILL.md",
+          "status": "pattern_or_example"
+        },
+        {
+          "declared_target": "scripts/story.js",
+          "resolved_target": "story-maintenance/scripts/story.js",
+          "source_file": "SKILL.md",
+          "status": "present"
+        }
+      ],
+      "license_file_status": "absent_in_source",
+      "licenses": [],
+      "raw_source_tree_sha256": "cf99f2fb61b3cad76bc5a717959aeb60cff2f22f0b3c67664099001b4f43f24d",
+      "references": [],
+      "scripts": [
+        "scripts/story.js"
+      ],
+      "skill_id": "story-maintenance",
+      "skill_md_sha256": "c9343be1365417b7323eaf98e97c2d9ac413d510bda549a30cd1d2c709b8500e",
+      "skill_scanner_content_hash": "c59ebbaf78b700c032958f236908d82389b8b6bf56c1733b235ece31310a6172",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 123542
+    },
+    {
+      "assets": [],
+      "canonical_source_tree_sha256": "6581e3e4445ea790644adb785cb3de64990c83a703cdd9b39be6af8e355befc1",
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "executable": false,
+      "file_count": 48,
+      "file_type_counts": {
+        "evaluation_asset": 23,
+        "license": 2,
+        "other_source": 13,
+        "package_metadata": 1,
+        "reference": 6,
+        "script": 1,
+        "skill_manifest": 2
+      },
+      "files": [
+        {
+          "bytes": 349,
+          "canonical_text_sha256": "27833473426e6ce358991b5a7b983ffaf7ede0a1f126b423297b28c76ff46a89",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "other_source",
+          "raw_sha256": "27833473426e6ce358991b5a7b983ffaf7ede0a1f126b423297b28c76ff46a89",
+          "relative_path": ".github/workflows/ci.yml"
+        },
+        {
+          "bytes": 381,
+          "canonical_text_sha256": "2916a625e918202f0f74fbad616945ab78c2aed0c74a7fd9fbd56579af94bf06",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "other_source",
+          "raw_sha256": "2916a625e918202f0f74fbad616945ab78c2aed0c74a7fd9fbd56579af94bf06",
+          "relative_path": ".gitignore"
+        },
+        {
+          "bytes": 254,
+          "canonical_text_sha256": "1cb74602cb6cbd5382501e2abc7608816902e89228225c4d50a16e931c8ed14b",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "package_metadata",
+          "raw_sha256": "1cb74602cb6cbd5382501e2abc7608816902e89228225c4d50a16e931c8ed14b",
+          "relative_path": "agents/openai.yaml"
+        },
+        {
+          "bytes": 5319,
+          "canonical_text_sha256": "5c33018390fab90088e53aa4ef72f4b967df77e6f7a1ecaa2b363db5be068b6d",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "other_source",
+          "raw_sha256": "5c33018390fab90088e53aa4ef72f4b967df77e6f7a1ecaa2b363db5be068b6d",
+          "relative_path": "CHANGELOG.md"
+        },
+        {
+          "bytes": 148,
+          "canonical_text_sha256": "bfb99cc5f28150a1f54900960bab96306ac225d8de08e1c411918ef8feaba571",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "bfb99cc5f28150a1f54900960bab96306ac225d8de08e1c411918ef8feaba571",
+          "relative_path": "evals/examples/chatbot-artefacts.md"
+        },
+        {
+          "bytes": 301,
+          "canonical_text_sha256": "2277988b88e6d11b68244de8fcc1a563a75c2c0b6f6fb28433ab32a7b57434cb",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "2277988b88e6d11b68244de8fcc1a563a75c2c0b6f6fb28433ab32a7b57434cb",
+          "relative_path": "evals/examples/launch-email.md"
+        },
+        {
+          "bytes": 270,
+          "canonical_text_sha256": "19f1c7801914b59a90522a6edf5efe1a6dd97983fd4ad918ddd54b2b22778edd",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "19f1c7801914b59a90522a6edf5efe1a6dd97983fd4ad918ddd54b2b22778edd",
+          "relative_path": "evals/examples/over-signposting.md"
+        },
+        {
+          "bytes": 263,
+          "canonical_text_sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24",
+          "relative_path": "evals/examples/plain-human.md"
+        },
+        {
+          "bytes": 214,
+          "canonical_text_sha256": "4292812a348221012d6e2142290a8c759b941d7d7f05a0a7776544bafb5c704f",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "4292812a348221012d6e2142290a8c759b941d7d7f05a0a7776544bafb5c704f",
+          "relative_path": "evals/examples/quarterly-report.md"
+        },
+        {
+          "bytes": 190,
+          "canonical_text_sha256": "89917a2ad4a7d5fd1340235e911f70db4a7127773e1f53f547376e298ca2b25c",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "89917a2ad4a7d5fd1340235e911f70db4a7127773e1f53f547376e298ca2b25c",
+          "relative_path": "evals/examples/release-notes.md"
+        },
+        {
+          "bytes": 263,
+          "canonical_text_sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18",
+          "relative_path": "evals/examples/voice-preservation.md"
+        },
+        {
+          "bytes": 450,
+          "canonical_text_sha256": "e3828b32fadcf6193018116486efdec9cb53d1643dbb30f57f5f0085fef8ac3b",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "e3828b32fadcf6193018116486efdec9cb53d1643dbb30f57f5f0085fef8ac3b",
+          "relative_path": "evals/fixtures/chatbot-artefacts/checks.json"
+        },
+        {
+          "bytes": 370,
+          "canonical_text_sha256": "d9ad3b4320009b1515c835e4e8984c4f885e9e871720948aaa25966c36880496",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "d9ad3b4320009b1515c835e4e8984c4f885e9e871720948aaa25966c36880496",
+          "relative_path": "evals/fixtures/chatbot-artefacts/input.md"
+        },
+        {
+          "bytes": 540,
+          "canonical_text_sha256": "1dd4b9e7f6f03fb1b9eee4f9d8f95e7037417a2c3d9af81513844a3fb7ba21b6",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "1dd4b9e7f6f03fb1b9eee4f9d8f95e7037417a2c3d9af81513844a3fb7ba21b6",
+          "relative_path": "evals/fixtures/launch-email/checks.json"
+        },
+        {
+          "bytes": 552,
+          "canonical_text_sha256": "d2bedbad6dc9ef75d0332e4ff336e99c70d6e4850e459f396dd8bef53eb3eb27",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "d2bedbad6dc9ef75d0332e4ff336e99c70d6e4850e459f396dd8bef53eb3eb27",
+          "relative_path": "evals/fixtures/launch-email/input.md"
+        },
+        {
+          "bytes": 404,
+          "canonical_text_sha256": "949dc34c86adbba5fc42ecd77952d862f47593d3487a4d34b2e687c762445d11",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "949dc34c86adbba5fc42ecd77952d862f47593d3487a4d34b2e687c762445d11",
+          "relative_path": "evals/fixtures/over-signposting/checks.json"
+        },
+        {
+          "bytes": 536,
+          "canonical_text_sha256": "aa59fdf60b53bd9a7875ba434f51722050ab035038b1278bc6d6942929d8437e",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "aa59fdf60b53bd9a7875ba434f51722050ab035038b1278bc6d6942929d8437e",
+          "relative_path": "evals/fixtures/over-signposting/input.md"
+        },
+        {
+          "bytes": 349,
+          "canonical_text_sha256": "cc1b95c9f8ebe94a0b5cb3164d298e5d858d88d8656aba0012137f027b36fbbf",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "cc1b95c9f8ebe94a0b5cb3164d298e5d858d88d8656aba0012137f027b36fbbf",
+          "relative_path": "evals/fixtures/plain-human/checks.json"
+        },
+        {
+          "bytes": 263,
+          "canonical_text_sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24",
+          "relative_path": "evals/fixtures/plain-human/input.md"
+        },
+        {
+          "bytes": 564,
+          "canonical_text_sha256": "4eee66617a08e3699879f4a2e9d0f24903106457846681c88c6f66739d0b3caa",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "4eee66617a08e3699879f4a2e9d0f24903106457846681c88c6f66739d0b3caa",
+          "relative_path": "evals/fixtures/quarterly-report/checks.json"
+        },
+        {
+          "bytes": 366,
+          "canonical_text_sha256": "2cd270f951b0896d4c08543920fb39ba8017e527acf77e29c5e2db9b2c6150ef",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "2cd270f951b0896d4c08543920fb39ba8017e527acf77e29c5e2db9b2c6150ef",
+          "relative_path": "evals/fixtures/quarterly-report/input.md"
+        },
+        {
+          "bytes": 446,
+          "canonical_text_sha256": "9568ac114513cb678967054c3241341d8f849eb0a342c1b924cd33bc779854e0",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "9568ac114513cb678967054c3241341d8f849eb0a342c1b924cd33bc779854e0",
+          "relative_path": "evals/fixtures/release-notes/checks.json"
+        },
+        {
+          "bytes": 464,
+          "canonical_text_sha256": "dfa068667557fb007d5d7eb8bbab368462ffd97c8d265d5c597c11f9c2510091",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "dfa068667557fb007d5d7eb8bbab368462ffd97c8d265d5c597c11f9c2510091",
+          "relative_path": "evals/fixtures/release-notes/input.md"
+        },
+        {
+          "bytes": 383,
+          "canonical_text_sha256": "cebc74cfebfb7748c8685cde926a10127c39ec2a09c0d5060138c3597d08a424",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "cebc74cfebfb7748c8685cde926a10127c39ec2a09c0d5060138c3597d08a424",
+          "relative_path": "evals/fixtures/voice-preservation/checks.json"
+        },
+        {
+          "bytes": 263,
+          "canonical_text_sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18",
+          "relative_path": "evals/fixtures/voice-preservation/input.md"
+        },
+        {
+          "bytes": 3054,
+          "canonical_text_sha256": "8aa5989f130127f140a8402cc872c251ad6fd6ce38be48897103cbd4f0b3fd8c",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "8aa5989f130127f140a8402cc872c251ad6fd6ce38be48897103cbd4f0b3fd8c",
+          "relative_path": "evals/README.md"
+        },
+        {
+          "bytes": 3392,
+          "canonical_text_sha256": "4cb2e3ca0e9eac4c771a863ccc55cd8bfc01d5141b52d155ffaaf521e74dec47",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "evaluation_asset",
+          "raw_sha256": "4cb2e3ca0e9eac4c771a863ccc55cd8bfc01d5141b52d155ffaaf521e74dec47",
+          "relative_path": "evals/run_evals.py"
+        },
+        {
+          "bytes": 1062,
+          "canonical_text_sha256": "9d7ca7e0934e84cd6d5ba3db51e43d5aed04b93a153ef2ba81e84b44c2f554b9",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "license",
+          "raw_sha256": "9d7ca7e0934e84cd6d5ba3db51e43d5aed04b93a153ef2ba81e84b44c2f554b9",
+          "relative_path": "LICENSE"
+        },
+        {
+          "bytes": 13313,
+          "canonical_text_sha256": "f3e02b2dc0ba4720fa10eb5aebe4e333b0f9018c11be02370c6cb2979fd38fed",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "other_source",
+          "raw_sha256": "f3e02b2dc0ba4720fa10eb5aebe4e333b0f9018c11be02370c6cb2979fd38fed",
+          "relative_path": "README.md"
+        },
+        {
+          "bytes": 15201,
+          "canonical_text_sha256": "7e6c85c8135668192b40f70a8bda79562d91a130b896284ff150bf05d44fa67d",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "7e6c85c8135668192b40f70a8bda79562d91a130b896284ff150bf05d44fa67d",
+          "relative_path": "references/ai-writing-patterns.md"
+        },
+        {
+          "bytes": 4107,
+          "canonical_text_sha256": "b9ed9d1341859f2ea54eefbf1301e9f0e865cecf885aa58707032ad1794faab3",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "b9ed9d1341859f2ea54eefbf1301e9f0e865cecf885aa58707032ad1794faab3",
+          "relative_path": "references/genre-tells.md"
+        },
+        {
+          "bytes": 3115,
+          "canonical_text_sha256": "488f39ebd18dc92c8c20614f266c5c84bf59be124d6336764353c0504953eb36",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "488f39ebd18dc92c8c20614f266c5c84bf59be124d6336764353c0504953eb36",
+          "relative_path": "references/preflight.md"
+        },
+        {
+          "bytes": 2672,
+          "canonical_text_sha256": "1e7866e7dd6ed5786ade5ee642d18f69aeda5ca835a36db68022893c2e3bb59d",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "1e7866e7dd6ed5786ade5ee642d18f69aeda5ca835a36db68022893c2e3bb59d",
+          "relative_path": "references/sources.md"
+        },
+        {
+          "bytes": 9947,
+          "canonical_text_sha256": "085b697bf7160bfc7e1cd0b4845bdfafed4101b31aa7046a0792919e7cfa6e1f",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "085b697bf7160bfc7e1cd0b4845bdfafed4101b31aa7046a0792919e7cfa6e1f",
+          "relative_path": "references/structures-and-phrases.md"
+        },
+        {
+          "bytes": 4996,
+          "canonical_text_sha256": "cc3c0a7f3abd494ec9f4428edfd5cd5dd03b3f235b58bc1eb6199662a1c7a51e",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "reference",
+          "raw_sha256": "cc3c0a7f3abd494ec9f4428edfd5cd5dd03b3f235b58bc1eb6199662a1c7a51e",
+          "relative_path": "references/voice-and-context.md"
+        },
+        {
+          "bytes": 4504,
+          "canonical_text_sha256": "ad3e9226921eb22ef97bf33e27bb2f4ae4a817949aa500c57f4e5febfd43ca6e",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "script",
+          "raw_sha256": "ad3e9226921eb22ef97bf33e27bb2f4ae4a817949aa500c57f4e5febfd43ca6e",
+          "relative_path": "scripts/validate.py"
+        },
+        {
+          "bytes": 5572,
+          "canonical_text_sha256": "a7af6d2ca2c0ec53c237e755a6e5b908a5244210a74cf1a9b75c5e54c97e2d2b",
+          "encoding": "utf-8",
+          "eol": "lf",
+          "file_type": "skill_manifest",
+          "raw_sha256": "a7af6d2ca2c0ec53c237e755a6e5b908a5244210a74cf1a9b75c5e54c97e2d2b",
+          "relative_path": "SKILL.md"
+        },
+        {
+          "bytes": 27,
+          "canonical_text_sha256": "215bd39c9d480b4dc0c5f317c668eed2b3c3c9a56fe359d05f6ac0d2e4b8759a",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "215bd39c9d480b4dc0c5f317c668eed2b3c3c9a56fe359d05f6ac0d2e4b8759a",
+          "relative_path": "skills/better-writing/agents/openai.yaml"
+        },
+        {
+          "bytes": 18,
+          "canonical_text_sha256": "1fd710a35393616a7f8416fb6fea2d9ee31fae4d309e820f9212a9a83885339e",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "1fd710a35393616a7f8416fb6fea2d9ee31fae4d309e820f9212a9a83885339e",
+          "relative_path": "skills/better-writing/CHANGELOG.md"
+        },
+        {
+          "bytes": 13,
+          "canonical_text_sha256": "a2553752ed447e1147617c1b0bc46775232bbc2c9bf4654516721f9d488191d2",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "license",
+          "raw_sha256": "a2553752ed447e1147617c1b0bc46775232bbc2c9bf4654516721f9d488191d2",
+          "relative_path": "skills/better-writing/LICENSE"
+        },
+        {
+          "bytes": 15,
+          "canonical_text_sha256": "4cc4e4c8a5120617ab0800cd8f722a9797f7a9c04d4a159fd42a4419f82c7c30",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "4cc4e4c8a5120617ab0800cd8f722a9797f7a9c04d4a159fd42a4419f82c7c30",
+          "relative_path": "skills/better-writing/README.md"
+        },
+        {
+          "bytes": 42,
+          "canonical_text_sha256": "3cc6190898dfad9ce5424f44022dfc67f17df1c6ba20d05f71664a478691b229",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "3cc6190898dfad9ce5424f44022dfc67f17df1c6ba20d05f71664a478691b229",
+          "relative_path": "skills/better-writing/references/ai-writing-patterns.md"
+        },
+        {
+          "bytes": 34,
+          "canonical_text_sha256": "e6af8f849996a51128aabc0746f53ccde585e16373496561789a2bb58f2455bc",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "e6af8f849996a51128aabc0746f53ccde585e16373496561789a2bb58f2455bc",
+          "relative_path": "skills/better-writing/references/genre-tells.md"
+        },
+        {
+          "bytes": 32,
+          "canonical_text_sha256": "e1d132fbf07bfde7e6616063016cb02edcc39b086f27dc7507ec55f74deafa7f",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "e1d132fbf07bfde7e6616063016cb02edcc39b086f27dc7507ec55f74deafa7f",
+          "relative_path": "skills/better-writing/references/preflight.md"
+        },
+        {
+          "bytes": 30,
+          "canonical_text_sha256": "4a058ed868d8f1d93727e378834aa308c404e5def88dc5dbedbd3628cccad7d0",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "4a058ed868d8f1d93727e378834aa308c404e5def88dc5dbedbd3628cccad7d0",
+          "relative_path": "skills/better-writing/references/sources.md"
+        },
+        {
+          "bytes": 45,
+          "canonical_text_sha256": "885b0b844c19c98aa51ef39ad346cabce51fbe3aaf1325d1ed93768c182ada9a",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "885b0b844c19c98aa51ef39ad346cabce51fbe3aaf1325d1ed93768c182ada9a",
+          "relative_path": "skills/better-writing/references/structures-and-phrases.md"
+        },
+        {
+          "bytes": 40,
+          "canonical_text_sha256": "b95ea183dbdb5cb9897da277a27dfa64bdcdebd38ee6122b4ecaef80be14231e",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "other_source",
+          "raw_sha256": "b95ea183dbdb5cb9897da277a27dfa64bdcdebd38ee6122b4ecaef80be14231e",
+          "relative_path": "skills/better-writing/references/voice-and-context.md"
+        },
+        {
+          "bytes": 14,
+          "canonical_text_sha256": "51e5cba874c5a2ce71c3adf50602abec67bd6e4231d0c666d98eb27a219af837",
+          "encoding": "utf-8",
+          "eol": "none",
+          "file_type": "skill_manifest",
+          "raw_sha256": "51e5cba874c5a2ce71c3adf50602abec67bd6e4231d0c666d98eb27a219af837",
+          "relative_path": "skills/better-writing/SKILL.md"
+        }
+      ],
+      "intended_future_role": "SOURCE_FOR_FUTURE_PROFILE_DESIGN",
+      "internal_relative_links": [
+        {
+          "declared_target": "agents/openai.yaml",
+          "resolved_target": "better-writing/agents/openai.yaml",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "evals/",
+          "resolved_target": "better-writing/evals",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "evals/examples/",
+          "resolved_target": "better-writing/evals/examples",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "evals/run_evals.py",
+          "resolved_target": "better-writing/evals/run_evals.py",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/",
+          "resolved_target": "better-writing/references",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/ai-writing-patterns.md",
+          "resolved_target": "better-writing/references/ai-writing-patterns.md",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/genre-tells.md",
+          "resolved_target": "better-writing/references/genre-tells.md",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/preflight.md",
+          "resolved_target": "better-writing/references/preflight.md",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/sources.md",
+          "resolved_target": "better-writing/references/sources.md",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/structures-and-phrases.md",
+          "resolved_target": "better-writing/references/structures-and-phrases.md",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/voice-and-context.md",
+          "resolved_target": "better-writing/references/voice-and-context.md",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "scripts/validate.py",
+          "resolved_target": "better-writing/scripts/validate.py",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "skills/better-writing/",
+          "resolved_target": "better-writing/skills/better-writing",
+          "source_file": "CHANGELOG.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "./CHANGELOG.md",
+          "resolved_target": "/CHANGELOG.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./LICENSE",
+          "resolved_target": "/LICENSE",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./SKILL.md",
+          "resolved_target": "/SKILL.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./agents/openai.yaml",
+          "resolved_target": "/agents/openai.yaml",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./evals/",
+          "resolved_target": "/evals/",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./evals/README.md",
+          "resolved_target": "/evals/README.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./evals/fixtures/",
+          "resolved_target": "/evals/fixtures/",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/",
+          "resolved_target": "/references/",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/ai-writing-patterns.md",
+          "resolved_target": "/references/ai-writing-patterns.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/genre-tells.md",
+          "resolved_target": "/references/genre-tells.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/preflight.md",
+          "resolved_target": "/references/preflight.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/sources.md",
+          "resolved_target": "/references/sources.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/structures-and-phrases.md",
+          "resolved_target": "/references/structures-and-phrases.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./references/voice-and-context.md",
+          "resolved_target": "/references/voice-and-context.md",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./scripts/validate.py",
+          "resolved_target": "/scripts/validate.py",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "./skills/better-writing/",
+          "resolved_target": "/skills/better-writing/",
+          "source_file": "README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "evals/",
+          "resolved_target": "better-writing/evals",
+          "source_file": "README.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/",
+          "resolved_target": "better-writing/references",
+          "source_file": "README.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "skills/<name>/",
+          "resolved_target": "skills/<name>/",
+          "source_file": "README.md",
+          "status": "pattern_or_example"
+        },
+        {
+          "declared_target": "skills/better-writing/",
+          "resolved_target": "better-writing/skills/better-writing",
+          "source_file": "README.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/ai-writing-patterns.md",
+          "resolved_target": "better-writing/references/ai-writing-patterns.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/genre-tells.md",
+          "resolved_target": "better-writing/references/genre-tells.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/preflight.md",
+          "resolved_target": "better-writing/references/preflight.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/sources.md",
+          "resolved_target": "better-writing/references/sources.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/structures-and-phrases.md",
+          "resolved_target": "better-writing/references/structures-and-phrases.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/voice-and-context.md",
+          "resolved_target": "better-writing/references/voice-and-context.md",
+          "source_file": "SKILL.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "references/",
+          "resolved_target": "better-writing/references",
+          "source_file": "evals/README.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "scripts/validate.py",
+          "resolved_target": "better-writing/scripts/validate.py",
+          "source_file": "evals/README.md",
+          "status": "present"
+        },
+        {
+          "declared_target": "../../CHANGELOG.md",
+          "resolved_target": "/../CHANGELOG.md",
+          "source_file": "skills/better-writing/CHANGELOG.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../README.md",
+          "resolved_target": "/../README.md",
+          "source_file": "skills/better-writing/README.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../SKILL.md",
+          "resolved_target": "/../SKILL.md",
+          "source_file": "skills/better-writing/SKILL.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../agents/openai.yaml",
+          "resolved_target": "/../../agents/openai.yaml",
+          "source_file": "skills/better-writing/agents/openai.yaml",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../references/ai-writing-patterns.md",
+          "resolved_target": "/../../references/ai-writing-patterns.md",
+          "source_file": "skills/better-writing/references/ai-writing-patterns.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../references/genre-tells.md",
+          "resolved_target": "/../../references/genre-tells.md",
+          "source_file": "skills/better-writing/references/genre-tells.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../references/preflight.md",
+          "resolved_target": "/../../references/preflight.md",
+          "source_file": "skills/better-writing/references/preflight.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../references/sources.md",
+          "resolved_target": "/../../references/sources.md",
+          "source_file": "skills/better-writing/references/sources.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../references/structures-and-phrases.md",
+          "resolved_target": "/../../references/structures-and-phrases.md",
+          "source_file": "skills/better-writing/references/structures-and-phrases.md",
+          "status": "outside_source_root"
+        },
+        {
+          "declared_target": "../../../references/voice-and-context.md",
+          "resolved_target": "/../../references/voice-and-context.md",
+          "source_file": "skills/better-writing/references/voice-and-context.md",
+          "status": "outside_source_root"
+        }
+      ],
+      "license_file_status": "present",
+      "licenses": [
+        "LICENSE",
+        "skills/better-writing/LICENSE"
+      ],
+      "raw_source_tree_sha256": "6581e3e4445ea790644adb785cb3de64990c83a703cdd9b39be6af8e355befc1",
+      "references": [
+        "references/ai-writing-patterns.md",
+        "references/genre-tells.md",
+        "references/preflight.md",
+        "references/sources.md",
+        "references/structures-and-phrases.md",
+        "references/voice-and-context.md"
+      ],
+      "scripts": [
+        "scripts/validate.py"
+      ],
+      "skill_id": "better-writing",
+      "skill_md_sha256": "a7af6d2ca2c0ec53c237e755a6e5b908a5244210a74cf1a9b75c5e54c97e2d2b",
+      "skill_scanner_content_hash": "51cdceea3f688e5ee57bfee01f3ed4e2b6e4521a831eb7707d58282c48c5bfc7",
+      "source_kind": "user_global_codex_skill",
+      "templates": [],
+      "total_bytes": 85147
+    }
+  ],
+  "source_kind": "user_global_codex_skill",
+  "symlink_count": 0,
+  "total_bytes": 314197,
+  "version": 1
+}

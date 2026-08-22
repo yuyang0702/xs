@@ -1,0 +1,21 @@
+{
+  "attribute_scope": "vendor/novel-skills only",
+  "canonical_source_bundle_parity": "EXACT",
+  "canonical_text_contract": "UTF8_STRICT_LF_V1",
+  "canonicalization": "CRLF and lone CR normalize to LF; Unicode, trailing spaces, and final newline remain significant.",
+  "existing_source_paths_affected": false,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "git_core_autocrlf": "true",
+  "global_skills_affected": false,
+  "narrow_attribute": "vendor/novel-skills/** text eol=lf",
+  "nul_file_count": 0,
+  "raw_source_bundle_parity": "EXACT",
+  "schema": "ProjectSkillEolProvenanceV1",
+  "source_encoding": "utf-8_strict",
+  "source_eol_file_counts": {
+    "lf": 72,
+    "none": 11
+  },
+  "utf8_failure_count": 0,
+  "version": 1
+}

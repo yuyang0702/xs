@@ -1,0 +1,153 @@
+{
+  "current_existing_project_planning_needs_story_init": false,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "runtime_profile_changed": false,
+  "schema": "ProjectSkillObsolescenceDispositionV1",
+  "section_content_deleted": false,
+  "section_level_future_refactor_metadata": [
+    {
+      "classification": "DEPRECATION_CANDIDATE_SECTION",
+      "section": "existing-project scaffold instructions",
+      "skill_ids": [
+        "story-init"
+      ]
+    },
+    {
+      "classification": "KEEP_AGENT_ONLY",
+      "section": "direct file-write instructions",
+      "skill_ids": [
+        "chapter-writing"
+      ]
+    },
+    {
+      "classification": "LEGACY_COMPAT_ONLY",
+      "section": "manual post-write registry and wordcount instructions",
+      "skill_ids": [
+        "chapter-writing"
+      ]
+    },
+    {
+      "classification": "KEEP_AGENT_ONLY",
+      "section": "non-fiction-only branches for Short",
+      "skill_ids": [
+        "better-writing"
+      ]
+    },
+    {
+      "classification": "DEPRECATION_CANDIDATE_SECTION",
+      "section": "reference-read instructions unreachable in current Short prompt injection",
+      "skill_ids": [
+        "novel-writing",
+        "better-writing"
+      ]
+    },
+    {
+      "classification": "FUTURE_DEDUPLICATION_CANDIDATE",
+      "section": "duplicated anti-slop catalog",
+      "skill_ids": [
+        "humanizer-zh",
+        "better-writing"
+      ]
+    },
+    {
+      "classification": "FUTURE_RUNTIME_PROFILE_EXCLUSION_CANDIDATE",
+      "section": "rigid dash/tricolon/aphorism deletion rules",
+      "skill_ids": [
+        "humanizer-zh"
+      ]
+    },
+    {
+      "classification": "FUTURE_RUNTIME_PROFILE_EXCLUSION_CANDIDATE",
+      "section": "independent 50-point scoring contract",
+      "skill_ids": [
+        "humanizer-zh"
+      ]
+    }
+  ],
+  "skill_content_optimized": false,
+  "skills": [
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "story-init"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "plot-structure"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "character-management"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "chapter-writing"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_FULL",
+      "skill_id": "novel-writing"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_FULL",
+      "skill_id": "dialogue"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "revision-continuity"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "humanizer-zh"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_EXECUTABLE_ONLY",
+      "skill_id": "story-maintenance"
+    },
+    {
+      "content_preserved": true,
+      "disposition": "MIGRATE_BUT_SPLIT_LATER",
+      "skill_id": "better-writing"
+    }
+  ],
+  "story_maintenance": {
+    "command_audit_status": {
+      "add": "PARTIALLY_REPLACED",
+      "build docx": "STILL_UNIQUE",
+      "build epub": "STILL_UNIQUE",
+      "build markdown": "PARTIALLY_REPLACED",
+      "continuity": "PARTIALLY_REPLACED",
+      "doctor": "PARTIALLY_REPLACED",
+      "export": "PARTIALLY_REPLACED",
+      "import": "STILL_UNIQUE",
+      "init": "PARTIALLY_REPLACED",
+      "links": "STILL_UNIQUE",
+      "migrate": "PARTIALLY_REPLACED",
+      "next": "PARTIALLY_REPLACED",
+      "reindex": "STILL_UNIQUE",
+      "remove": "STILL_UNIQUE",
+      "rename": "STILL_UNIQUE",
+      "report": "PARTIALLY_REPLACED",
+      "report --actionable": "PARTIALLY_REPLACED",
+      "validate": "STILL_UNIQUE",
+      "wordcount --write": "STILL_UNIQUE"
+    },
+    "executed_in_this_task": false,
+    "final_status": "KEEP_EXECUTABLE_ONLY",
+    "intended_future_role": "EXECUTABLE_ONLY"
+  },
+  "version": 1,
+  "whole_skill_deprecation_candidates": []
+}

@@ -1,0 +1,31 @@
+{
+  "absolute_source_path_persisted": false,
+  "benign_broad_pattern_note": "The phrase 'It's no secret that' is ordinary prose guidance, not a credential assignment.",
+  "cache_runtime_output_temp_log_hits": 0,
+  "credential_hits": 0,
+  "documentation_external_domains": [
+    "arxiv.org",
+    "en.wikipedia.org",
+    "github.com",
+    "img.shields.io",
+    "purl.org",
+    "schemas.openxmlformats.org",
+    "skills.sh",
+    "www.idpf.org",
+    "www.pnas.org",
+    "www.skills.sh",
+    "www.w3.org"
+  ],
+  "documentation_external_url_count": 29,
+  "email_address_hits": 0,
+  "files_scanned": 83,
+  "generated_at": "2026-08-22T07:58:07Z",
+  "overall_status": "exact",
+  "personal_absolute_path_hits": 0,
+  "private_key_hits": 0,
+  "raw_prompt_or_provider_output_added": false,
+  "scan_findings_persist_raw_content": false,
+  "schema": "ProjectSkillPrivacyScanV1",
+  "user_private_story_data_hits": 0,
+  "version": 1
+}
