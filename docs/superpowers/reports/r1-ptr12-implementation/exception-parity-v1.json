@@ -1,0 +1,10 @@
+{
+  "schema": "R1PTR12ExceptionParityV1",
+  "version": 1,
+  "paths": ["provider parser failure", "malformed content block", "strict-tool mismatch", "output-limit terminal", "adapter exception", "unknown provider response shape"],
+  "compared": ["exception type", "exception message", "traceback propagation", "retry/fallback decision", "provider call count"],
+  "observer_failures": ["schema failure", "hash failure", "emitter failure", "append failure"],
+  "original_exception_object_replaced": false,
+  "business_diff_count": 0,
+  "result": "PASS"
+}

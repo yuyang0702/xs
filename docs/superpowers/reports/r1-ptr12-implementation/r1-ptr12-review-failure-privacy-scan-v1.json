@@ -1,0 +1,35 @@
+{
+  "schema": "R1PTR12ReviewFailurePrivacyScanV1",
+  "version": 1,
+  "scanned_at_utc": "2026-08-22T12:37:15Z",
+  "scope": "all final files under docs/superpowers/reports/r1-ptr12-implementation, including the self-excluded SHA manifest",
+  "forbidden_classes": [
+    "raw Provider response",
+    "Prompt",
+    "novel prose",
+    "reasoning or thinking text",
+    "final answer text",
+    "tool arguments or results",
+    "credentials",
+    "headers",
+    "request identifiers",
+    "private project or character names",
+    "personal absolute paths"
+  ],
+  "allowed_classes": [
+    "boolean",
+    "enum",
+    "count",
+    "SHA-256",
+    "repo-relative path",
+    "commit SHA",
+    "schema and version",
+    "test summary"
+  ],
+  "raw_content_persisted_count": 0,
+  "privacy_match_count": 0,
+  "absolute_machine_path_finding_count": 0,
+  "secret_finding_count": 0,
+  "final_directory_validation": "PASS",
+  "result": "exact"
+}

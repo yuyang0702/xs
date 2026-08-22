@@ -1,0 +1,11 @@
+{
+  "schema": "R1PTR12NegativeCapabilityParityV1",
+  "version": 1,
+  "observer_off": {"creation_criteria": "PTR9 unchanged", "persistence": "unchanged", "dedup": "unchanged", "alternate_selection": "unchanged", "fail_close": "unchanged"},
+  "observer_on": {"creation_criteria": "PTR9 unchanged", "persistence": "unchanged", "dedup": "unchanged", "alternate_selection": "unchanged", "fail_close": "unchanged"},
+  "same_fingerprint_provider_dispatch_count": {"off": 1, "on": 1},
+  "alternate_route_parity": "exact",
+  "typed_fail_close_parity": "exact",
+  "business_diff_count": 0,
+  "result": "PASS"
+}

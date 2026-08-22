@@ -1,0 +1,37 @@
+{
+  "schema": "R1PTR12ImplementationOfflineTestReceiptV1",
+  "version": 1,
+  "recorded_at": "2026-08-22T11:14:58Z",
+  "implementation_commit": "ef2eb22bfad85be5e04855bbf4464318745737ae",
+  "focused": {
+    "command_scope": ["raw shape observer", "guard decision observer", "PTR9 guard", "runtime fingerprint", "Canary ordinal", "protected-source successor"],
+    "result": "66 passed",
+    "exit_code": 0,
+    "duration_seconds": 26.41
+  },
+  "related_cluster": {
+    "result": "291 passed plus separately re-run wheel-build test 1 passed",
+    "exit_code": 0,
+    "note": "The wheel-build test was re-run with the repository virtual environment because the bundled interpreter did not include hatchling."
+  },
+  "full_supported_offline": {
+    "result": "2770 passed, 39 skipped, 1 deselected, 6 xfailed, 1 warning",
+    "exit_code": 0,
+    "duration_seconds": 1237.94,
+    "excluded": ["tests/canary execution tree", "two historical Planning Skill SHA-oracle files", "one historical R0 live-DB oracle"],
+    "exclusion_reason": "Canary execution is prohibited; historical sealed SHA oracles intentionally bind earlier production bytes and were not rewritten after this authorized change. Focused Canary unit tests and fresh protected-source successor tests passed separately.",
+    "warning": "StarletteDeprecationWarning in third-party FastAPI TestClient import"
+  },
+  "static": {"git_diff_check": "PASS", "py_compile": "PASS", "project_scope": "PASS"},
+  "strict_l3": {
+    "automatic_level": "L3",
+    "declared_level": "L3",
+    "blocker_count": 0,
+    "observed_warning_count": 2,
+    "observed_warnings": ["Authority-critical code changed without task-local documentation.", "More than two authority-critical modules changed; require an L3 split review."],
+    "documentation_closure_staged": "A task-local README is now staged; strict gate was not re-declared green because review authorization remains absent.",
+    "green": false,
+    "reason": "No explicit user choice authorizes either team split review or the single-agent review report required by the project skill; no reviewer identity or independence claim was fabricated."
+  },
+  "external_actions": {"credential_lookup": 0, "provider_client_creation": 0, "network": 0, "model": 0, "paid": 0, "real_provider": 0, "full_short_canary": 0, "slice1_phase_b": 0}
+}

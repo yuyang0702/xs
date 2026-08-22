@@ -1,0 +1,10 @@
+{
+  "schema": "R1PTR12HistoricalObservabilityCounterfactualV1",
+  "version": 1,
+  "classification": "COUNTERFACTUAL_ONLY",
+  "historical_boundary12_raw_shape": "UNKNOWN",
+  "historical_same_failure_shape_as_ptr4": "UNKNOWN",
+  "not_historical_evidence": true,
+  "fields_that_would_be_observable_if_enabled": ["block topology", "reasoning/final/tool presence", "finish class", "aggregate usage and typed split availability", "raw-to-normalized delta", "PTR9 predicate receipt", "negative capability disposition", "alternate or fail-close disposition"],
+  "retroactive_inference_performed": false
+}

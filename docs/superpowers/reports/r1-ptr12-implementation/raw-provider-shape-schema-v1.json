@@ -1,0 +1,13 @@
+{
+  "schema": "ProviderRawShapeObservationV1",
+  "version": 1,
+  "canonical_json_schema_sha256": "02d3107f39ed2c5af41cfa63e3d29ab7d8f8de9b285bdb0cb6134fe50d8cb5e4",
+  "observation_points": ["transport_body_pre_normalization", "stream_event_shape_pre_aggregation"],
+  "protocols": ["anthropic", "openai-chat", "openai-responses", "unknown"],
+  "identity_binding": ["correlation_id", "external_call_number", "run_sha256", "stage", "boundary", "contract_id", "contract_version", "schema_sha256", "provider_fingerprint", "model_fingerprint", "route_fingerprint", "outer_retry_ordinal", "runtime_instance_ordinal", "inner_attempt_ordinal"],
+  "shape_fields": ["raw_response_class", "raw_block_count", "raw_block_type_sequence", "raw_block_type_multiset", "reasoning_block_count", "text_or_final_block_count", "tool_block_count", "unknown_block_count", "raw_visible_char_count", "raw_final_text_present", "raw_tool_call_present", "finish_reason_raw_class", "transport_complete", "capture_completeness"],
+  "usage_fields": ["output_token_count", "requested_output_cap", "effective_output_cap", "provider_accepted_cap_status", "provider_exposed_reasoning_usage_status", "provider_exposed_final_usage_status"],
+  "bounds": {"block_type_sequence": 128, "unknown_block_type_hashes": 32},
+  "privacy": {"content_omitted": true, "reasoning_content_omitted": true, "tool_arguments_omitted": true},
+  "aggregate_usage_does_not_imply_reasoning_or_final_split": true
+}

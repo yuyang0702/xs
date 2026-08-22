@@ -1,0 +1,14 @@
+{
+  "schema": "PTR9GuardDecisionObserverV1",
+  "version": 1,
+  "canonical_json_schema_sha256": "ca95d410ecc1ab773ab3e70d551eae085594eb152c4fb9831214f13c417dfe9b",
+  "phases": ["guard_evaluation", "recovery_disposition"],
+  "decision_inputs": ["guard_scope_eligible", "guard_reached", "shape_available", "reasoning_block_exists", "finish_reason_max_tokens", "raw_visible_chars_zero", "normalized_visible_chars_zero", "final_text_absent", "tool_call_absent", "unknown_block_absent", "content_all_reasoning", "projection_exact", "transport_complete"],
+  "decisions": ["TRIGGERED", "NOT_TRIGGERED", "NOT_EVALUATED", "INSUFFICIENT_OBSERVATION", "ERROR_FAIL_OPEN"],
+  "recovery_statuses": ["NOT_APPLICABLE", "NORMAL_RETURN", "ALTERNATE_ROUTE_SELECTED", "TYPED_FAIL_CLOSE", "RUNTIME_CONTINUED_EXISTING_POLICY", "UNKNOWN"],
+  "negative_capability_statuses": ["RECORDED", "WRITE_FAILED", "NOT_REQUIRED", "NOT_REACHED"],
+  "predicate_implementation_reused": "_reasoning_only_final_artifact_unavailable",
+  "predicate_changed": false,
+  "business_return_value": false,
+  "fail_open": true
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "BudgetUsageLineageObservationV1",
+  "version": 1,
+  "carrier_schemas": ["ProviderRawShapeObservationV1", "ContractOutputLimitClassificationObservationV1"],
+  "contract_output_limit_schema_sha256": "c6f101c0f7d9520574351434341b4a1da424bf17e6e42201d5ebf967ebc35dc3",
+  "dimensions": {
+    "outer_hard_cap": "existing budget evidence only",
+    "requested_max_output": "KNOWN when request exposes it",
+    "effective_route_cap": "KNOWN when route resolution exposes it",
+    "provider_accepted_cap": "UNKNOWN unless provider formally exposes acceptance",
+    "actual_aggregate_output_usage": "KNOWN when formal usage exists",
+    "provider_exposed_reasoning_usage": "KNOWN only from formal separate field; otherwise NOT_EXPOSED",
+    "provider_exposed_final_usage": "KNOWN only from formal separate field; otherwise NOT_EXPOSED"
+  },
+  "typed_statuses": ["KNOWN", "NOT_EXPOSED", "UNKNOWN", "NOT_APPLICABLE"],
+  "prohibited_inference": ["outer cap as provider cap", "aggregate output as reasoning usage", "dashboard aggregate as per-call split"]
+}

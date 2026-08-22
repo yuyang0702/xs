@@ -1,0 +1,10 @@
+{
+  "schema": "RawToNormalizedShapeDeltaV1",
+  "version": 1,
+  "canonical_json_schema_sha256": "fe575d7b017a5b24138241f34e380faf7b72c8459edeeac724aff2f64834e631",
+  "bindings": ["correlation_id", "raw_shape_fingerprint", "normalized_shape_fingerprint"],
+  "states": ["EXACT", "VISIBLE_DROPPED", "TOOL_CONVERTED", "BLOCK_DROPPED", "BLOCK_DUPLICATED", "UNKNOWN_TRANSFORMATION"],
+  "representation_changed": ["YES", "NO", "UNKNOWN"],
+  "comparison_completeness": ["exact", "partial", "unavailable"],
+  "business_effect": "none"
+}

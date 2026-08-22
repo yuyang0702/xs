@@ -1,0 +1,17 @@
+{
+  "schema": "R1PTR12ObserverCorrelationMatrixV1",
+  "version": 1,
+  "canonical_identity": "ModelDiagnosticContextV1.inner_attempt_id",
+  "trace_binding": "ReliabilityTraceEnvelopeV1.correlation_id",
+  "rows": [
+    {"observation": "raw provider shape", "inner_attempt_id": "exact", "route_fingerprint": "exact", "contract": "exact", "canary_external_call_ordinal": "when available"},
+    {"observation": "raw-to-normalized delta", "inner_attempt_id": "exact", "raw_shape_fingerprint": "exact", "normalized_shape_fingerprint": "exact"},
+    {"observation": "PTR9 guard decision", "inner_attempt_id": "exact", "route_fingerprint": "exact", "contract_schema": "exact"},
+    {"observation": "recovery disposition", "inner_attempt_id": "exact", "decision_receipt_sha256": "exact"},
+    {"observation": "output-limit classification", "inner_attempt_id": "exact", "aggregate_usage": "typed nullable"}
+  ],
+  "parallel_anonymous_identity_created": false,
+  "random_uuid_used_as_canonical_identity": false,
+  "clock_used_in_deterministic_observation_hash": false,
+  "multi_attempt_dag_correlation": "covered"
+}

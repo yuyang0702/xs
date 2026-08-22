@@ -1,0 +1,11 @@
+{
+  "schema": "R1PTR12ObserverOnOffParityV1",
+  "version": 1,
+  "compared": ["provider request semantic hash", "prompt hash", "max_tokens", "route/model", "retry sequence", "fallback sequence", "parser result", "domain result", "guard result", "negative capability state", "exception type/message", "output bytes/hash", "model call count", "StoryState/Canon writes", "workflow decision"],
+  "allowed_difference": ["diagnostic trace evidence"],
+  "business_diff_count": 0,
+  "observer_failures_tested": ["emitter", "schema", "hash", "append sink"],
+  "observer_off": "exact business baseline",
+  "observer_on": "exact business baseline plus diagnostics",
+  "result": "PASS"
+}

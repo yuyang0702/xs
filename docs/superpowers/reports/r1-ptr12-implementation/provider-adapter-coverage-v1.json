@@ -1,0 +1,16 @@
+{
+  "schema": "R1PTR12ProviderAdapterCoverageV1",
+  "version": 1,
+  "adapters": [
+    {"protocol": "anthropic", "body": "covered", "stream": "covered", "capture_point": "before aggregation"},
+    {"protocol": "openai-chat", "body": "covered", "stream": "covered", "capture_point": "before projection"},
+    {"protocol": "openai-responses", "body": "covered", "stream": "covered", "capture_point": "before projection"}
+  ],
+  "reused_protocol_routes": "covered by protocol adapter",
+  "configured_fallback": "covered through shared ModelGateway and Contract Runtime",
+  "topologies": ["reasoning-only", "visible-final", "tool-only", "mixed", "empty", "unknown", "malformed"],
+  "persistence_bounds": {"block_sequence": 128, "unknown_kind_hashes": 32},
+  "capture_work_bounded": false,
+  "review_failure": "UNBOUNDED_PRE_TRUNCATION_OBSERVER_WORK",
+  "raw_payload_persisted": false
+}

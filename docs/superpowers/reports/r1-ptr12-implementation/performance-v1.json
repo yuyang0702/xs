@@ -1,0 +1,15 @@
+{
+  "schema": "R1PTR12ObserverPerformanceV1",
+  "version": 1,
+  "fixture": "synthetic bounded response; diagnostic sink mocked; 1000 iterations",
+  "unit": "microseconds",
+  "observer_off": {"p50": 2.0, "p95": 3.4, "max": 1207.6},
+  "observer_on_raw_bind_guard_primitive": {"p50": 5082.05, "p95": 6465.7, "max": 7514.4},
+  "prohibited_work": {"network": 0, "database_write": 0, "new_queue": 0, "new_service": 0, "async_retry": 0, "full_response_serialization": 0},
+  "large_content_copy": false,
+  "business_failure_threshold_applied": false,
+  "benchmark_scope": "bounded synthetic fixture only",
+  "capture_work_bound_status": "FAILED_INDEPENDENT_REVIEW",
+  "first_hard_issue": "UNBOUNDED_PRE_TRUNCATION_OBSERVER_WORK",
+  "note": "The benchmark excludes filesystem sink variability and does not establish a CPU or working-memory bound for malformed or high-cardinality topology."
+}

@@ -1,0 +1,165 @@
+{
+  "version": 2,
+  "original_requirement": "Implement the sealed E_ADD_HASH_ONLY_RAW_SHAPE_AND_GUARD_DECISION_OBSERVER design before Planning V2 Slice 1 Phase B, preserving PTR9 and every business invariant while future provider calls become mechanically diagnosable.",
+  "scope_classification": "open_world",
+  "closed_world_justification": null,
+  "operational_definition": "Three production protocol adapters deposit bounded content-free structural metadata before aggregation; ModelGateway binds raw shape, normalized delta, and the unchanged PTR9 predicate vector to ModelDiagnosticContextV1.inner_attempt_id; Contract Runtime appends existing-policy recovery and output-limit classifications through the fail-open ReliabilityTrace sink.",
+  "forbidden_narrowing": [
+    "No provider, model, route, incident, story, project, prompt, or error-string special case",
+    "No raw Prompt, story, reasoning, final text, tool arguments, Provider payload, headers, secrets, paths, or request identifiers",
+    "No PTR9 predicate, negative-capability, retry, fallback, budget, route/model, parser, validator, Planning, Skill, Canon, StoryState, or READY behavior change",
+    "No inference of provider reasoning/final token split when only aggregate usage is exposed",
+    "No historical claim that Boundary 12 matched PTR4"
+  ],
+  "resolution_status": "unresolved",
+  "constraint_traceability": [
+    {
+      "requirement": "Capture provider-neutral raw shape before normalization for every current production protocol",
+      "implementation": "provider_output.capture_provider_raw_shape_v1 plus Anthropic/OpenAI Chat/OpenAI Responses pre-aggregation hooks",
+      "test_paths": ["tests/test_r1_ptr12_provider_output_observer.py", "tests/providers/test_diagnostic_tool_shapes.py"],
+      "evidence": "Body and stream fixtures cover the persisted shape, but independent review found that malformed/high-cardinality capture performs unbounded pre-truncation work."
+    },
+    {
+      "requirement": "Bind observations to exact existing attempt and Canary locator identities",
+      "implementation": "ModelDiagnosticContextV1.inner_attempt_id is ReliabilityTrace correlation_id; Canary BoundaryRequest.ordinal is scoped through a ContextVar locator",
+      "test_paths": ["tests/test_r1_ptr12_provider_output_observer.py", "tests/canary/test_gate_budget.py"],
+      "evidence": "Repeated deterministic contexts yield the same logical attempt identity and Canary ordinal resets in finally."
+    },
+    {
+      "requirement": "Explain every PTR9 trigger or miss without changing the predicate",
+      "implementation": "PTR9GuardDecisionObserverV1 snapshots nullable predicate inputs while ModelGateway still calls _reasoning_only_final_artifact_unavailable",
+      "test_paths": ["tests/test_r1_ptr12_provider_output_observer.py", "tests/test_final_artifact_guard.py"],
+      "evidence": "Exact trigger and reason matrix covers reasoning absent, finish mismatch, visible output, final text, tool, unknown, projection and shape-unavailable paths."
+    },
+    {
+      "requirement": "Observe negative capability, alternate route and typed fail-close with exact business parity",
+      "implementation": "Contract Runtime emits recovery_disposition from the captured guard receipt after its existing route logic decides",
+      "test_paths": ["tests/test_final_artifact_guard.py", "tests/test_r1_ptr12_guard_decision_observability.py"],
+      "evidence": "Same fingerprint dispatch remains one; existing fallback and no-route fail-close outcomes are unchanged with observer on/off."
+    },
+    {
+      "requirement": "Fail open on flag, schema, hash, emitter and append failures",
+      "implementation": "Every capture/build/emit boundary catches Exception locally and callers ignore emission results",
+      "test_paths": ["tests/test_r1_ptr12_guard_decision_observability.py", "tests/test_reliability_trace.py"],
+      "evidence": "Disabled, enabled, sink exception, schema failure and hash failure produce exact request/result/exception/call-count/qualification parity."
+    },
+    {
+      "requirement": "Preserve privacy and usage/budget semantics",
+      "implementation": "Bounded controlled types, counts, nullable typed status and metadata-only hashes only",
+      "test_paths": ["tests/test_r1_ptr12_provider_output_observer.py", "tests/test_r1_ptr12_guard_decision_observability.py"],
+      "evidence": "Sentinels are absent from event bytes; aggregate output 8798 remains aggregate and reasoning/final usage stays NOT_EXPOSED."
+    },
+    {
+      "requirement": "Keep Planning V1/V2 and Runtime Skill sources isolated",
+      "implementation": "No runtime_skill_profiles.py, vendor/novel-skills, planning_v2 Slice1, Prompt, BAML, validator or authority file changed",
+      "test_paths": ["tests/test_planning_v2_slice1.py", "tests/test_runtime_skill_profiles.py"],
+      "evidence": "Functional parity tests pass and direct source/evidence path diffs are zero; old Skill evidence check-only scripts remain intentionally SHA-bound to their sealed pre-change production baseline."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "R1-PTR4 reasoning-only max_tokens provider shape",
+    "R1-PTR9 exact final-artifact guard and negative capability memory",
+    "R1-PTR10 alternate route and typed fail-close recovery",
+    "R1-PTR11 Boundary 12 observability gap",
+    "adapter projection loss",
+    "ordinary visible output truncation",
+    "strict-tool mismatch",
+    "transport/parser failure",
+    "unknown provider block topology",
+    "Contract Runtime sticky output-limit classification"
+  ],
+  "projected_failure_mechanisms": [
+    "provider raw reasoning/final/tool topology",
+    "stream aggregation loss or duplication",
+    "raw-to-normalized visible-content loss",
+    "unknown block or malformed container",
+    "usage and cap lineage unavailable or aggregate-only",
+    "PTR9 scope/predicate miss",
+    "negative-capability write failure",
+    "same-fingerprint suppression",
+    "configured alternate selection",
+    "typed fail-close and sticky output-limit amplification"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "Anthropic thinking-only body and stream",
+    "Anthropic visible-text and tool bodies",
+    "OpenAI Chat reasoning_content body and stream",
+    "OpenAI Chat visible text and function tool bodies",
+    "OpenAI Responses reasoning body and event stream",
+    "OpenAI Responses message/output_text and function-call bodies",
+    "reasoning plus partial final text",
+    "reasoning plus tool",
+    "aggregate usage without reasoning/final split"
+  ],
+  "model_output_topology_classes_tested": [
+    "reasoning-only",
+    "visible/final-only",
+    "tool-only",
+    "mixed reasoning-plus-final or tool",
+    "empty",
+    "unknown or malformed",
+    "body container",
+    "stream event sequence"
+  ],
+  "unseen_valid_variants_tested": [
+    "OpenAI Chat content-part array with reasoning side field",
+    "OpenAI Responses nested message/content output wrapper",
+    "bounded multi-delta stream tool identity",
+    "provider-exposed reasoning usage versus aggregate-only usage"
+  ],
+  "unknown_variant_behavior": "Unknown types persist as a bounded sequence and bounded hash list, but the current capture path still processes the full input topology before persistence truncation; unavailable raw shape remains UNKNOWN/SHAPE_UNAVAILABLE and never infers reasoning-only.",
+  "invalid_output_variants_tested": [
+    "more than 128 blocks and 32 unknown kinds",
+    "malformed adapter response before ModelResponse construction",
+    "raw visible text removed by normalization",
+    "observer schema/hash/sink failures"
+  ],
+  "transport_capacity_variants_tested": [
+    "max_tokens reasoning-only at 8798 aggregate tokens",
+    "ordinary output-limit conversion failure with existing sticky classification",
+    "adapter exception after raw snapshot",
+    "raw snapshot unavailable before adapter exception"
+  ],
+  "invariant_test_paths": [
+    "tests/test_r1_ptr12_provider_output_observer.py",
+    "tests/test_r1_ptr12_guard_decision_observability.py",
+    "tests/test_final_artifact_guard.py",
+    "tests/test_contract_runtime.py",
+    "tests/providers/test_diagnostic_tool_shapes.py",
+    "tests/test_runtime_fingerprint.py",
+    "tests/canary/test_gate_budget.py",
+    "tests/test_planning_v2_slice1.py",
+    "tests/test_runtime_skill_profiles.py",
+    "tests/test_r0f_baseline.py"
+  ],
+  "why_previous_tests_missed": "PTR9 validated the finite normalized ProviderOutputShapeV1 guard, while the consumed Short did not persist the pre-normalization topology, raw-to-normalized delta or predicate receipt. Existing planning-repair diagnostics were target/flag gated and could not close generic Short Boundary 12.",
+  "sibling_boundaries": [
+    {"boundary":"Planning primary and configured fallback","disposition":"fixed_and_tested","evidence":"Both routes traverse ModelGateway and Contract Runtime; route/call parity is exact."},
+    {"boundary":"Draft, Final Review, Maintenance","disposition":"tested_not_susceptible","evidence":"Shared observer is return-value-free and no workflow/validator authority owner changed; full supported offline suite passes after authorized successor rebinding."},
+    {"boundary":"Canon, StoryState, READY and formal promotion","disposition":"tested_not_susceptible","evidence":"No authority store or writer changed and observer has no DB/business return value."},
+    {"boundary":"Planning V2 Slice1 and Skill V2 shadow","disposition":"tested_not_susceptible","evidence":"Relevant source and evidence path diffs are zero; functional offline tests pass."},
+    {"boundary":"Canary","disposition":"fixed_and_tested","evidence":"Existing BoundaryRequest.ordinal is scoped in finally and never becomes canonical identity or authorization."},
+    {"boundary":"Historical Boundary 12","disposition":"not_applicable","evidence":"No raw response was retained; counterfactual fields are explicitly non-evidence."}
+  ],
+  "production_shaped_tests": [
+    "tests/test_r1_ptr12_provider_output_observer.py",
+    "tests/test_r1_ptr12_guard_decision_observability.py",
+    "tests/test_final_artifact_guard.py",
+    "tests/providers/test_diagnostic_tool_shapes.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_contract_runtime.py",
+    "tests/test_planning_v2_slice1.py",
+    "tests/test_runtime_skill_profiles.py",
+    "tests/test_r0f_baseline.py"
+  ],
+  "remaining_risks": [
+    "Hard review failure: raw-shape capture is not single-pass bounded before persistence truncation; malformed/high-cardinality topology can amplify synchronous CPU and working memory.",
+    "Pending independent finding: Anthropic's implicit max_tokens=8192 is not represented as the observer effective cap when no explicit request cap is supplied.",
+    "The observer must be enabled by NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1 in a separately materialized execution profile.",
+    "Provider response classes not represented by the three current protocols remain typed unknown rather than guessed.",
+    "BestEffortTraceSink can drop events under I/O failure; this is reported as a coverage gap and intentionally cannot affect business behavior.",
+    "Historical Boundary 12 raw shape and equivalence to PTR4 remain UNKNOWN."
+  ]
+}

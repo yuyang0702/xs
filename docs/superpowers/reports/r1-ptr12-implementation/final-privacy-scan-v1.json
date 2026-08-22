@@ -1,0 +1,15 @@
+{
+  "schema": "R1PTR12ImplementationFinalPrivacyScanV1",
+  "version": 1,
+  "scanned_at": "2026-08-22T11:14:58Z",
+  "scope": ["PTR12 implementation diagnostic event fields", "PTR12 implementation evidence artifacts", "synthetic observer event serialization tests"],
+  "forbidden_classes": ["prompt content", "novel prose", "reasoning content", "final content", "tool arguments", "tool results", "headers", "credentials", "API keys", "authorization values", "absolute paths", "project names", "character names", "raw provider payload", "request identifiers"],
+  "raw_content_persisted_count": 0,
+  "secret_finding_count": 0,
+  "absolute_machine_path_finding_count": 0,
+  "request_identifier_finding_count": 0,
+  "content_hash_finding_count": 0,
+  "test_source_sentinel_note": "Synthetic privacy sentinels occur only in test inputs and are asserted absent from serialized diagnostic events; test source is not persisted observer evidence.",
+  "false_positive_note": "The substring in task-local is not a secret token prefix.",
+  "result": "PASS"
+}

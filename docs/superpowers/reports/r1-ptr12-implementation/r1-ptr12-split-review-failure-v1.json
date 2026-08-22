@@ -1,0 +1,118 @@
+{
+  "schema": "R1PTR12SplitReviewFailureV1",
+  "version": 1,
+  "recorded_at_utc": "2026-08-22T12:37:15Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "implementation_commit": "ef2eb22bfad85be5e04855bbf4464318745737ae",
+  "successor_closure_head": "0a203088939690c64be7f0169ca2bc54d4d6e0b2",
+  "review_result": "R1_PTR12_OBSERVER_IMPLEMENTATION_NARROW_FIX_REQUIRED",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "team_sharded_independent_review_started": true,
+  "team_sharded_independent_review_completed": false,
+  "review_stopped_on_first_hard_issue": true,
+  "split_review_pass": false,
+  "implementation_pass": false,
+  "phase_b_ready": false,
+  "no_automatic_fix": true,
+  "review_shard_counts": {
+    "started": 3,
+    "completed": 1,
+    "unrun_or_incomplete": 2
+  },
+  "completed_review_shards": [
+    {
+      "reviewer_id": "ptr12_review_anthropic_chat",
+      "independence_claimed": true,
+      "core_paths": [
+        "src/novel_flywheel/providers/anthropic.py",
+        "src/novel_flywheel/providers/openai_chat.py"
+      ],
+      "status": "failing",
+      "first_hard_issue": "BOUNDED_SINGLE_PASS_RAW_SHAPE_CAPTURE",
+      "evidence_basis": [
+        "src/novel_flywheel/provider_output.py:77",
+        "src/novel_flywheel/provider_output.py:247",
+        "src/novel_flywheel/provider_output.py:255",
+        "src/novel_flywheel/provider_output.py:269"
+      ]
+    }
+  ],
+  "unrun_review_shards": [
+    {
+      "reviewer_id": "ptr12_review_models_workflows",
+      "status": "interrupted_after_first_hard_issue_stop_gate",
+      "result_sealed": false,
+      "coverage_claimed": false
+    },
+    {
+      "reviewer_id": "ptr12_review_responses",
+      "status": "interrupted_after_first_hard_issue_stop_gate",
+      "result_sealed": false,
+      "coverage_claimed": false
+    }
+  ],
+  "first_failing_invariant": {
+    "name": "BOUNDED_SINGLE_PASS_RAW_SHAPE_CAPTURE",
+    "failure_class": "UNBOUNDED_PRE_TRUNCATION_OBSERVER_WORK",
+    "recommended_fix_family": "BOUNDED_SINGLE_PASS_RAW_SHAPE_CAPTURE_V1",
+    "location": "src/novel_flywheel/provider_output.py:77",
+    "case": "malformed/high-cardinality block topology",
+    "expected": "single-pass + bounded memory + bounded CPU",
+    "actual": "collect/hash full topology first; truncate only at persistence boundary",
+    "risk": [
+      "synchronous CPU amplification",
+      "working-memory amplification",
+      "latency and cancellation interference",
+      "fail-open or exception-parity interference under extreme topology"
+    ]
+  },
+  "pending_findings": [
+    {
+      "finding_id": "PENDING_FINDING_ANTHROPIC_EFFECTIVE_CAP",
+      "location": "src/novel_flywheel/providers/anthropic.py:28",
+      "observation": "default request sends max_tokens=8192 while observer effective cap is UNKNOWN",
+      "status": "PENDING_INDEPENDENT_REVIEW_CLOSURE"
+    }
+  ],
+  "upstream_test_evidence": {
+    "rerun_by_seal_task": false,
+    "focused": "66 passed",
+    "full_offline": "2770 passed, 39 skipped, 1 deselected, 6 xfailed, 1 warning",
+    "source": "offline-test-receipt-v1.json"
+  },
+  "successor_binding": {
+    "fixture_sha256": "d8f45ea76810ed4f2a1870f4169fa1944d4a66d9f33db367bcbc3c50dcbcf8f9",
+    "registration_test_sha256": "46ef598f760266ca6b473e6b9b114f96be6f7bb3a54a1698186ab32f6052179d",
+    "protected_tree_sha256": "078e4229abd9458b881a4c13a6ded71ad953b9f30297514f5e01a47037f24709",
+    "status": "exact"
+  },
+  "source_isolation": {
+    "production_source_diff": 0,
+    "test_diff": 0,
+    "baml_diff": 0,
+    "planning_v1_diff": 0,
+    "planning_v2_diff": 0,
+    "skill_profile_diff": 0,
+    "ptr9_guard_predicate_diff": 0,
+    "retry_policy_diff": 0,
+    "fallback_policy_diff": 0,
+    "output_budget_policy_diff": 0,
+    "route_model_diff": 0,
+    "prompt_diff": 0
+  },
+  "privacy": {
+    "raw_content_persisted_count": 0,
+    "privacy_match_count": 0
+  },
+  "historical_evidence_rewritten": false,
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "not_started",
+    "full_short_canary": "not_executed"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "R1PTR12PrivacyBoundaryV1",
+  "version": 1,
+  "allowed": ["controlled enum", "boolean", "bounded count", "typed nullable status", "metadata identity hash", "block-kind hash"],
+  "forbidden": ["prompt content", "novel prose", "reasoning content", "final content", "tool arguments", "tool results", "headers", "credentials", "request identifiers", "provider payload", "absolute machine paths", "project or character names"],
+  "content_hashing_allowed": false,
+  "full_response_serialization": false,
+  "raw_content_persisted_count": 0,
+  "secret_finding_count": 0,
+  "unknown_identity_policy": "trusted registry identity or hashed fallback",
+  "result": "PASS"
+}

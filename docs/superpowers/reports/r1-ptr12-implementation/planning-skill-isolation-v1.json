@@ -1,0 +1,18 @@
+{
+  "schema": "R1PTR12PlanningSkillIsolationV1",
+  "version": 1,
+  "baseline_head": "a264ee200c99c6c0a5d03a7aeb398773b4d3f3f5",
+  "implementation_commit": "ef2eb22bfad85be5e04855bbf4464318745737ae",
+  "skill_profile_source_diff": 0,
+  "skill_profile_evidence_diff": 0,
+  "planning_v2_source_diff": 0,
+  "baml_source_diff": 0,
+  "prompt_changed": false,
+  "planning_v1_behavior_diff": 0,
+  "runtime_skill_profiles_changed": false,
+  "vendor_novel_skills_changed": false,
+  "planning_v2_phase_b_started": false,
+  "functional_parity_tests": ["tests/test_planning_v2_slice1.py", "tests/test_runtime_skill_profiles.py"],
+  "sealed_hash_oracle_note": "Two historical Skill evidence check-only tests remain bound to their pre-PTR12 protected-source hashes and were not rewritten; fresh authorized successor evidence binds the current protected tree.",
+  "result": "PASS"
+}

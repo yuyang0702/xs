@@ -1,0 +1,30 @@
+{
+  "schema": "R1PTR12GuardPredicateCaseMatrixV1",
+  "version": 1,
+  "predicate_owner": "novel_flywheel.models._reasoning_only_final_artifact_unavailable",
+  "predicate_changed": false,
+  "cases": [
+    {"id": 1, "shape": "reasoning + max_tokens + visible=0 + no tool", "expected": "TRIGGERED", "actual": "TRIGGERED"},
+    {"id": 2, "shape": "reasoning + stop + visible=0", "expected": "NOT_TRIGGERED:finish_reason_not_max_tokens", "actual": "exact"},
+    {"id": 3, "shape": "reasoning + max_tokens + visible>0", "expected": "NOT_TRIGGERED:visible_output_present", "actual": "exact"},
+    {"id": 4, "shape": "max_tokens + no reasoning + visible=0", "expected": "NOT_TRIGGERED:reasoning_absent", "actual": "exact"},
+    {"id": 5, "shape": "reasoning + max_tokens + tool", "expected": "NOT_TRIGGERED:tool_present", "actual": "exact"},
+    {"id": 6, "shape": "separate reasoning and final blocks", "expected": "NOT_TRIGGERED:final_text_present", "actual": "exact"},
+    {"id": 7, "shape": "aggregate usage only", "expected": "usage split NOT_EXPOSED", "actual": "exact"},
+    {"id": 8, "shape": "raw visible lost after normalization", "expected": "VISIBLE_DROPPED", "actual": "exact"},
+    {"id": 9, "shape": "tool converted to response text", "expected": "TOOL_CONVERTED", "actual": "exact"},
+    {"id": 10, "shape": "malformed raw shape", "expected": "typed unknown; original exception parity", "actual": "exact"},
+    {"id": 11, "shape": "negative capability duplicate", "expected": "same fingerprint suppressed", "actual": "exact"},
+    {"id": 12, "shape": "alternate route available", "expected": "ALTERNATE_ROUTE_SELECTED", "actual": "exact"},
+    {"id": 13, "shape": "alternate route unavailable", "expected": "TYPED_FAIL_CLOSE", "actual": "exact"},
+    {"id": 14, "shape": "observer sink failure", "expected": "ERROR_FAIL_OPEN; business parity", "actual": "exact"},
+    {"id": 15, "shape": "flag off", "expected": "no diagnostic emission", "actual": "exact"},
+    {"id": 16, "shape": "flag on", "expected": "diagnostic-only emission", "actual": "exact"},
+    {"id": 17, "shape": "unknown provider alias", "expected": "hashed untrusted identity", "actual": "exact"},
+    {"id": 18, "shape": "route fingerprint unknown/mismatch", "expected": "INSUFFICIENT_OBSERVATION or exact mismatch reason", "actual": "exact"},
+    {"id": 19, "shape": "same inner_attempt_id", "expected": "correlation exact", "actual": "exact"},
+    {"id": 20, "shape": "multi-attempt retry/fallback DAG", "expected": "attempt identities distinct and parent-bound", "actual": "exact"}
+  ],
+  "reasoning_only_exact_trigger": "PASS",
+  "non_trigger_reason_coverage": "PASS"
+}
