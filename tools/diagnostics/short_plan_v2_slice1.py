@@ -36,8 +36,7 @@ from novel_flywheel.planning_v2_slice1 import (
 )
 from tools.diagnostics.fixture_provenance import (
     CANONICAL_TEXT_LF_V1,
-    canonicalize_fixture_bytes,
-    observe_fixture_provenance,
+    canonicalize_and_observe_fixture,
 )
 
 
@@ -517,7 +516,7 @@ def run_canonical_replay(
 
     binding = _load_provenance_binding(provenance_binding_path)
     raw = fixture_path.read_bytes()
-    observation = observe_fixture_provenance(
+    canonical, observation = canonicalize_and_observe_fixture(
         raw, binding["fixture_provenance_contract"],
     )
     _require_provenance(
@@ -526,9 +525,6 @@ def run_canonical_replay(
         "CANONICAL_FIXTURE_SHA256_MISMATCH",
     )
 
-    canonical = canonicalize_fixture_bytes(
-        raw, binding["fixture_provenance_contract"],
-    )
     try:
         fixture = json.loads(canonical.decode("utf-8", errors="strict"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:

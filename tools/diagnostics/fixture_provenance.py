@@ -85,8 +85,17 @@ def observe_fixture_provenance(
 ) -> dict[str, object]:
     """Build a hash/count-only raw diagnostic plus canonical identity inputs."""
 
+    return canonicalize_and_observe_fixture(raw, contract)[1]
+
+
+def canonicalize_and_observe_fixture(
+    raw: bytes,
+    contract: FixtureProvenanceContract | str,
+) -> tuple[bytes, dict[str, object]]:
+    """Canonicalize once and return bytes plus their hash/count observation."""
+
     canonical = canonicalize_fixture_bytes(raw, contract)
-    return {
+    observation = {
         "fixture_provenance_contract": contract,
         "raw_worktree_sha256": hashlib.sha256(raw).hexdigest(),
         "canonical_fixture_sha256": hashlib.sha256(canonical).hexdigest(),
@@ -95,3 +104,4 @@ def observe_fixture_provenance(
         "observed_eol_shape": detect_eol_shape(raw),
         "canonicalization_applied": canonical != raw,
     }
+    return canonical, observation
