@@ -1,0 +1,50 @@
+{
+  "schema": "R1PTR12FreshReviewOfflineTestReceiptV1",
+  "version": 1,
+  "recorded_at_utc": "2026-08-22T14:18:29Z",
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "overall_status": "HARD_FAIL_FINDINGS_EXACT",
+  "runs": [
+    {
+      "name": "coordinator_offline_matrix",
+      "result": "157 passed",
+      "external_actions": 0
+    },
+    {
+      "name": "shard_a_focused_and_parity",
+      "result": "68 passed, 3 deselected; parity 5 passed; independent adversarial reproducer confirmed hard issue",
+      "external_actions": 0
+    },
+    {
+      "name": "shard_b_effective_cap_reproducer",
+      "result": "deterministic outbound 8192 observed while effective cap receipt remained unknown",
+      "external_actions": 0
+    },
+    {
+      "name": "shard_c_focused_and_adversarial",
+      "result": "60 passed; independent adversarial reproducer confirmed raw/normalized binding hard issue",
+      "external_actions": 0
+    }
+  ],
+  "evidence_validation_requirements": {
+    "three_shard_statuses_exact": true,
+    "three_typed_findings_exact": true,
+    "first_frozen_hard_issue_exact": true,
+    "anthropic_status_not_pending": true,
+    "false_pass_state_absent": true,
+    "phase_b_ready": false,
+    "source_test_fixture_baml_isolation": true,
+    "privacy_exact": true,
+    "reviewed_head_exact": true
+  },
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

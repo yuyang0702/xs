@@ -1,0 +1,55 @@
+{
+  "schema": "R1PTR12FreshTeamReviewFailureV1",
+  "version": 1,
+  "recorded_at_utc": "2026-08-22T14:18:29Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "review_result": "R1_PTR12_OBSERVER_IMPLEMENTATION_NARROW_FIX_REQUIRED",
+  "team_sharded_independent_review_completed": true,
+  "completed_shards": 3,
+  "unrun_shards": 0,
+  "shard_results": {
+    "A": "HARD_FAIL",
+    "B": "HARD_FAIL",
+    "C": "HARD_FAIL"
+  },
+  "previous_failed_review_reused_as_pass": false,
+  "split_review_pass": false,
+  "phase_b_ready": false,
+  "no_automatic_fix": true,
+  "first_frozen_hard_issue": "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING",
+  "typed_findings": [
+    "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING",
+    "TAIL_TRUTHFULNESS_FOR_UNINSPECTED_NESTED_TOPOLOGY",
+    "ANTHROPIC_EFFECTIVE_CAP_OBSERVABILITY"
+  ],
+  "preserved_results": {
+    "bounded_work_limits_present": true,
+    "max_blocks_inspected": 128,
+    "max_blocks_touched": 128,
+    "max_controlled_details": 128,
+    "max_unknown_details": 32,
+    "max_hash_input_bytes": 512,
+    "bounded_capture_overall_review_pass": false,
+    "tail_truthfulness_closed": false,
+    "raw_content_persisted_count": 0,
+    "observer_on_off_covered_case_business_diff_count": 0,
+    "ptr9_production_predicate_changed": false,
+    "negative_capability_existing_tests_pass": true,
+    "correlation_existing_tests_pass": true,
+    "r0f_successor_exact": true,
+    "test_policy_weakening": false,
+    "historical_evidence_rewritten": false
+  },
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

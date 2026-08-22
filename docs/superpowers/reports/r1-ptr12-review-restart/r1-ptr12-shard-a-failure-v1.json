@@ -1,0 +1,33 @@
+{
+  "schema": "R1PTR12ShardAFailureV1",
+  "version": 1,
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "shard": "A",
+  "status": "HARD_FAIL",
+  "finding_id": "TAIL_TRUTHFULNESS_FOR_UNINSPECTED_NESTED_TOPOLOGY",
+  "severity": "HARD_FAIL",
+  "location": "src/novel_flywheel/provider_output.py:305",
+  "function": "capture_provider_raw_shape_v1",
+  "case": "OpenAI Responses with an uninspected nested generator",
+  "expected": "PARTIAL_OR_UNKNOWN_FOR_UNINSPECTED_NESTED_TOPOLOGY",
+  "actual": "TOPOLOGY_EXACT_AND_TEXT_ABSENT",
+  "actual_detail": {
+    "generator_consumed": false,
+    "capture_completeness": "exact",
+    "sequence_omitted_after_limit": false,
+    "raw_final_text_present": false,
+    "raw_visible_chars_zero": true
+  },
+  "structural_bounds": {
+    "max_blocks_inspected": 128,
+    "max_blocks_touched": 128,
+    "max_controlled_details": 128,
+    "max_unknown_details": 32,
+    "max_hash_input_bytes": 512,
+    "work_bound_fixed": true,
+    "tail_truthfulness_closed": false
+  },
+  "privacy_impact": "NO_RAW_CONTENT_LEAK_FOUND",
+  "recommended_fix_family": "NESTED_TOPOLOGY_TAIL_TRUTHFULNESS_FIX_V1",
+  "automatic_fix_performed": false
+}

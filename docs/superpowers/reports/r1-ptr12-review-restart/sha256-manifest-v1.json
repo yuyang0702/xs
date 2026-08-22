@@ -1,0 +1,88 @@
+{
+  "schema": "R1PTR12FreshReviewFailureSHA256ManifestV1",
+  "version": 1,
+  "overall_status": "failure_evidence_exact",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "first_frozen_hard_issue": "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING",
+  "manifest_definition": {
+    "algorithm": "sha256",
+    "path_basis": "repository-relative-posix",
+    "byte_domain": "exact_file_bytes",
+    "coverage_root": "docs/superpowers/reports/r1-ptr12-review-restart",
+    "inclusion_rule": "all regular files directly under coverage_root except sha256-manifest-v1.json",
+    "ordering": "path_ascending",
+    "self_excluded": true,
+    "entry_fields": ["path", "bytes", "sha256"]
+  },
+  "manifest_definition_sha256": "9a269452deb663ec6b4cb46876d1baee1c890b2b0dd6a28e982b1e1bf0d1e9eb",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/README.md",
+      "bytes": 729,
+      "sha256": "5bfeac9b12c664c4606cd5ea1db50fda1fb339c58b0acf2abbe91687c7c60c5a"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/offline-review-test-receipt-v1.json",
+      "bytes": 1601,
+      "sha256": "15ea6102aa201db3a20b9a7df9f0f87a96854e2915a657894a735d9941aac597"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/privacy-scan-v1.json",
+      "bytes": 875,
+      "sha256": "e43d188d6741a55886b9eb80876496e99aa2c6252623f9947b0b1c856794ba4a"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/r1-ptr12-fresh-team-review-failure-v1.json",
+      "bytes": 1892,
+      "sha256": "b174bb1a7a35fb66e3faac8f8dc858803a4d8e5476f86e60ec6f4872b75e8535"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/r1-ptr12-review-restart-stop-report-v1.md",
+      "bytes": 2271,
+      "sha256": "0a023183c3d5a539e19efba4a417ec69cf460091c151147824a1795c0e02b453"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/r1-ptr12-shard-a-failure-v1.json",
+      "bytes": 1173,
+      "sha256": "133e9099e0e1ba736d72eeb8fce3255e655c2fc3ed89058d5545953da080c722"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/r1-ptr12-shard-b-failure-v1.json",
+      "bytes": 1204,
+      "sha256": "ebf0ca00229474646e4c928d66fbf2743ec0aeceb8e89d08b32e4fa60e2136b1"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/r1-ptr12-shard-c-failure-v1.json",
+      "bytes": 1152,
+      "sha256": "be7ea6d82e30dffc49cbb5651453bbf32409201e0d1bfc429bf55ea0ee4dbbda"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-restart/source-isolation-v1.json",
+      "bytes": 720,
+      "sha256": "5d22ede9805cb61062d38acfc5378024b0a922dfbf52a0d14851491318e37589"
+    }
+  ],
+  "file_count": 9,
+  "directory_file_count_including_manifest": 10,
+  "json_parse_exact": true,
+  "privacy_status": "exact",
+  "split_review_pass": false,
+  "phase_b_ready": false,
+  "no_automatic_fix": true,
+  "production_source_diff": 0,
+  "test_diff": 0,
+  "fixture_diff": 0,
+  "baml_diff": 0,
+  "historical_evidence_rewritten": false,
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema": "R1PTR12FreshReviewFailurePrivacyScanV1",
+  "version": 1,
+  "scanned_at_utc": "2026-08-22T14:18:29Z",
+  "scope": "all final files under docs/superpowers/reports/r1-ptr12-review-restart, including the self-excluded manifest",
+  "forbidden_classes": [
+    "raw Provider payload",
+    "Prompt content",
+    "novel prose",
+    "reasoning or final text",
+    "tool arguments or results",
+    "credentials or headers",
+    "private request identifiers",
+    "private absolute paths",
+    "user-home paths"
+  ],
+  "allowed_classes": [
+    "boolean",
+    "typed enum",
+    "bounded count",
+    "SHA-256",
+    "repo-relative path",
+    "commit SHA",
+    "test summary"
+  ],
+  "raw_content_persisted_count": 0,
+  "privacy_match_count": 0,
+  "absolute_machine_path_finding_count": 0,
+  "user_home_path_finding_count": 0,
+  "secret_finding_count": 0,
+  "result": "exact"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "R1PTR12FreshReviewFailureSourceIsolationV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "allowed_evidence_root": "docs/superpowers/reports/r1-ptr12-review-restart",
+  "production_source_diff": 0,
+  "test_diff": 0,
+  "fixture_diff": 0,
+  "baml_diff": 0,
+  "planning_v1_diff": 0,
+  "planning_v2_diff": 0,
+  "skill_profile_diff": 0,
+  "ptr9_business_predicate_diff": 0,
+  "prompt_diff": 0,
+  "route_model_diff": 0,
+  "retry_policy_diff": 0,
+  "fallback_policy_diff": 0,
+  "output_budget_policy_diff": 0,
+  "historical_evidence_rewritten": false,
+  "live_database_touched": false,
+  "result": "exact"
+}

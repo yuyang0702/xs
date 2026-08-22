@@ -1,0 +1,34 @@
+{
+  "schema": "R1PTR12ShardBFailureV1",
+  "version": 1,
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "shard": "B",
+  "status": "HARD_FAIL",
+  "finding_id": "ANTHROPIC_EFFECTIVE_CAP_OBSERVABILITY",
+  "severity": "HARD_FAIL",
+  "location": "src/novel_flywheel/providers/anthropic.py:28",
+  "function": "AnthropicAdapter.complete",
+  "classification": "HARD_OBSERVABILITY_DEFECT",
+  "case": "ModelRequest.max_output_tokens is null",
+  "mechanical_answers": {
+    "adapter_injects_8192": true,
+    "deterministic_before_send": true,
+    "correct_semantic_dimension": "EFFECTIVE_ROUTE_CAP",
+    "legitimate_observer_source": "finalized outbound payload construction",
+    "current_unknown_loses_known_information": true,
+    "provider_acceptance_proven": false
+  },
+  "expected_lineage": {
+    "requested_max_output": null,
+    "effective_route_cap": 8192,
+    "provider_accepted_cap": "UNKNOWN"
+  },
+  "actual_lineage": {
+    "requested_max_output": null,
+    "effective_route_cap": "UNKNOWN",
+    "provider_accepted_cap": "UNKNOWN"
+  },
+  "aggregate_usage_split_inferred": false,
+  "recommended_fix_family": "ANTHROPIC_EFFECTIVE_CAP_LINEAGE_FIX_V1",
+  "automatic_fix_performed": false
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "R1PTR12ShardCFailureV1",
+  "version": 1,
+  "reviewed_head": "3d3fd185ba9a6027ac6c33aa861a869e415a40c6",
+  "shard": "C",
+  "status": "HARD_FAIL",
+  "finding_id": "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING",
+  "severity": "HARD_FAIL",
+  "first_frozen_hard_issue": true,
+  "location": "src/novel_flywheel/model_diagnostics.py:1162",
+  "function": "build_ptr12_guard_decision",
+  "case": "raw Provider shape contains visible text while normalized shape drops it and appears reasoning-only",
+  "expected": {
+    "raw_visible_chars_zero": false,
+    "normalized_visible_chars_zero": true,
+    "representation_changed": "YES"
+  },
+  "actual": {
+    "raw_visible_chars_zero": true,
+    "normalized_visible_chars_zero": true,
+    "representation_changed": "YES",
+    "predicate_all_true": true
+  },
+  "cause": "guard-decision telemetry binds raw_visible_chars_zero from the normalized ProviderOutputShapeV1 instead of the raw observation",
+  "business_predicate_changed": false,
+  "authority": "NON_AUTHORITATIVE_TELEMETRY",
+  "recommended_fix_family": "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING_FIX_V1",
+  "automatic_fix_performed": false
+}
