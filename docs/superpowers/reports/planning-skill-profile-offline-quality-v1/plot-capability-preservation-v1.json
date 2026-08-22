@@ -1,0 +1,135 @@
+{
+  "authority_override_accepted_count": 0,
+  "case_count": 9,
+  "cases": [
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-setup-escalation-payoff",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-delayed-payoff",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT",
+        "PLOT_PACING_INTENT"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-false-lead-authority-consistent",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT",
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-causal-prerequisite",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-tension-with-frozen-event",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-pacing-with-fixed-role",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_PACING_INTENT"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-multi-event-obligation",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT",
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-no-global-restructure",
+      "forbidden_rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 3,
+      "missing_rule_ids": [],
+      "profile": "v2",
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "PLOT_PACING_INTENT"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "plot-structure-adaptation-v1",
+      "forbidden_rule_ids_present": [],
+      "frozen_authority_level": 2,
+      "missing_rule_ids": [],
+      "profile": "v1",
+      "required_rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "status": "covered"
+    }
+  ],
+  "creative_capability_gap_count": 0,
+  "overall_status": "preserved",
+  "schema": "PlotCapabilityPreservationV1",
+  "version": 1
+}

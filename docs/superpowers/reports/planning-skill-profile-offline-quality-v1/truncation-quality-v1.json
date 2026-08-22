@@ -1,0 +1,94 @@
+{
+  "advisory_receipt": {
+    "advisory_characters": 294,
+    "dispatch_allowed": true,
+    "estimated_tokens": 74,
+    "excluded_rule_ids": [
+      "GENERIC_PREFERENCE"
+    ],
+    "included_rule_ids": [
+      "PLOT_STRUCTURE_ADAPTATION",
+      "PLOT_CAUSAL_ESCALATION"
+    ],
+    "input_hash": "a9b7862f949a63bd6f760f30f355470f5044decd0cca4a5d886b79532d101569",
+    "mandatory_characters": 0,
+    "mandatory_overflow": false,
+    "ordering_policy": "priority_then_source_skill_then_section_then_rule_id",
+    "original_characters": 1016,
+    "profile_hash": "not_bound_in_offline_fixture",
+    "receipt_sha256": "bc032dcda1aa250f27096f8e0907a5d4c6ae086bde66117219cd6f1f5f4dca47",
+    "rendered_context_sha256": "0163d29dffd723f5fb94f621c5ce855d9b0cc2bba6b522f47c922608ae9fb684",
+    "schema": "SkillContextTruncationReceiptV1",
+    "source_rule_ids": [
+      "PLOT_STRUCTURE_ADAPTATION",
+      "PLOT_CAUSAL_ESCALATION",
+      "GENERIC_PREFERENCE"
+    ],
+    "status": "ADVISORY_TRUNCATED",
+    "total_characters": 294,
+    "truncation_reason": "advisory_budget_exceeded",
+    "whole_rule_only": true
+  },
+  "authority_budget_boundary": "authority constraints are outside the Skill advisory budget and retain precedence levels 1-5",
+  "authority_dropped_by_skill_budget_count": 0,
+  "core_rule_ids": [
+    "PLOT_STRUCTURE_ADAPTATION",
+    "PLOT_CAUSAL_ESCALATION"
+  ],
+  "creative_core_dropped_before_generic_count": 0,
+  "generic_rule_id": "GENERIC_PREFERENCE",
+  "low_budget_behavior": "whole-rule advisory shedding with hash-bound receipt; mandatory overflow blocks dispatch",
+  "mandatory_complete_receipt": {
+    "advisory_characters": 0,
+    "dispatch_allowed": true,
+    "estimated_tokens": 36,
+    "excluded_rule_ids": [],
+    "included_rule_ids": [
+      "MANDATORY_COMPLETE"
+    ],
+    "input_hash": "40c0213269aab0397fd5dd5dbd2985ac520d3ee1b8701c4cd47b9ad52a570e2a",
+    "mandatory_characters": 142,
+    "mandatory_overflow": false,
+    "ordering_policy": "priority_then_source_skill_then_section_then_rule_id",
+    "original_characters": 142,
+    "profile_hash": "not_bound_in_offline_fixture",
+    "receipt_sha256": "b5056a1d5d68f5a7c1697c306a0b05b4b4370510365910c6f211c35082a70065",
+    "rendered_context_sha256": "fc0cb3a20892f0f9d6bb61da6ccf250bea2c12ddce1f955de752a40494aade79",
+    "schema": "SkillContextTruncationReceiptV1",
+    "source_rule_ids": [
+      "MANDATORY_COMPLETE"
+    ],
+    "status": "NONE",
+    "total_characters": 142,
+    "truncation_reason": "none",
+    "whole_rule_only": true
+  },
+  "mandatory_overflow_receipt": {
+    "advisory_characters": 0,
+    "dispatch_allowed": false,
+    "estimated_tokens": 0,
+    "excluded_rule_ids": [],
+    "included_rule_ids": [],
+    "input_hash": "08cbe5127a5d7e63249c10193bdd5ee00f4e50c561ccb91c8c7a20b0259fc264",
+    "mandatory_characters": 282,
+    "mandatory_overflow": true,
+    "ordering_policy": "priority_then_source_skill_then_section_then_rule_id",
+    "original_characters": 282,
+    "profile_hash": "not_bound_in_offline_fixture",
+    "receipt_sha256": "9f800329029d021f4a5beb29b273b36c352664b4729263fb5289221196bdb650",
+    "rendered_context_sha256": null,
+    "schema": "SkillContextTruncationReceiptV1",
+    "source_rule_ids": [
+      "MANDATORY_OVERFLOW"
+    ],
+    "status": "BLOCKED_MANDATORY_OVERFLOW",
+    "total_characters": 0,
+    "truncation_reason": "mandatory_budget_exceeded",
+    "whole_rule_only": true
+  },
+  "mandatory_partial_truncation_count": 0,
+  "overall_status": "exact",
+  "schema": "TruncationQualityV1",
+  "truncation_unobserved_count": 0,
+  "version": 1
+}

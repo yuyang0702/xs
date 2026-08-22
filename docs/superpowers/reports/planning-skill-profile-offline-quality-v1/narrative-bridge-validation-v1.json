@@ -1,0 +1,180 @@
+{
+  "authority_drift_count": 0,
+  "cases": [
+    {
+      "actual_statuses": {
+        "genre": "present",
+        "pov": "present",
+        "premise": "present",
+        "tense": "present",
+        "theme": "present",
+        "tone": "present"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-all-confirmed",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [
+        "genre",
+        "pov",
+        "premise",
+        "tense",
+        "theme",
+        "tone"
+      ],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "present",
+        "pov": "unspecified",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "unspecified"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-theme-unspecified",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [
+        "genre"
+      ],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "unspecified",
+        "pov": "present",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "unspecified"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-tense-unspecified",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [
+        "pov"
+      ],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "unspecified",
+        "pov": "unspecified",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "unspecified"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-unconfirmed-scaffold-default",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "present",
+        "pov": "unspecified",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "unspecified"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-confirmed-wins-over-scaffold",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [
+        "genre"
+      ],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "unspecified",
+        "pov": "present",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "unspecified"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-narrative-contract-pov-exact",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [
+        "pov"
+      ],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "unspecified",
+        "pov": "unspecified",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "present"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-authority-tone-confirmed",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [
+        "tone"
+      ],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    },
+    {
+      "actual_statuses": {
+        "genre": "unspecified",
+        "pov": "unspecified",
+        "premise": "unspecified",
+        "tense": "unspecified",
+        "theme": "unspecified",
+        "tone": "unspecified"
+      },
+      "authority_mutation": [],
+      "case_id": "bridge-source-missing",
+      "confirmed_value_hash_exact": true,
+      "expected_present": [],
+      "false_confirmations": [],
+      "guess_used": false,
+      "missing_confirmed_fields": [],
+      "status": "exact",
+      "user_questioning": []
+    }
+  ],
+  "false_confirmation_count": 0,
+  "guess_count": 0,
+  "overall_status": "exact",
+  "policy_id": "EXISTING_PROJECT_NARRATIVE_BRIDGE_V1",
+  "schema": "NarrativeBridgeValidationV1",
+  "version": 1
+}

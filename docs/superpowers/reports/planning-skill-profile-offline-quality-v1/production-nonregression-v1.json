@@ -1,0 +1,60 @@
+{
+  "active_skill_resolution_parity": "EXACT",
+  "baml_diff_count": 0,
+  "current_head": "10aa7f083396607a83d81be65ad7e07d510c60c2",
+  "current_production_prompt_changed": false,
+  "current_runtime_skill_source_changed": false,
+  "current_short_skill_behavior_changed": false,
+  "manifest_checks": [
+    {
+      "actual_manifest_sha256": "45c259e0f80704c09ebc40c92de8f1bd81668c1655c72992c6be0415e8258752",
+      "entry_count": 17,
+      "expected_manifest_sha256": "45c259e0f80704c09ebc40c92de8f1bd81668c1655c72992c6be0415e8258752",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/final-sha256-manifest-v1.json",
+      "status": "exact"
+    },
+    {
+      "actual_manifest_sha256": "451a30d3815e1c6e4bdb3e1a1bc1dbec4e4a84061e873f8acca3aee2e2925a3a",
+      "entry_count": 9,
+      "expected_manifest_sha256": "451a30d3815e1c6e4bdb3e1a1bc1dbec4e4a84061e873f8acca3aee2e2925a3a",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-final-sha256-manifest-v1.json",
+      "status": "exact"
+    },
+    {
+      "actual_manifest_sha256": "add19a0b5972af6a0395cce1e683e1455ddbeeed705f9dd7edf88b3b9ab98c06",
+      "entry_count": 19,
+      "expected_manifest_sha256": "add19a0b5972af6a0395cce1e683e1455ddbeeed705f9dd7edf88b3b9ab98c06",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-replay-v2/short-plan-v2-slice1-replay-v2-final-sha256-manifest-v1.json",
+      "status": "exact"
+    }
+  ],
+  "overall_status": "exact",
+  "planning_v1_authority_changed": false,
+  "planning_v2_changed": false,
+  "production_source_diff_count": 0,
+  "prompt_assembly_owners_changed": false,
+  "protected_production_sources": [
+    "src/novel_flywheel/app.py",
+    "src/novel_flywheel/skills.py",
+    "src/novel_flywheel/prompts.py",
+    "src/novel_flywheel/skill_prompts.py",
+    "src/novel_flywheel/context_packet.py",
+    "src/novel_flywheel/workflows.py",
+    "src/novel_flywheel/planning_v2_slice1.py"
+  ],
+  "protected_source_diff_count": 0,
+  "protected_source_diffs": [],
+  "repo_vendor_source_changed": false,
+  "schema": "PlanningSkillProfileProductionNonRegressionV1",
+  "shadow_profile_production_reachable": false,
+  "skill_scanner_gate_changed": false,
+  "stage_registry_changed": false,
+  "start_head": "a377ada959dbfb3ef25cd8956700c6679c228dcb",
+  "version": 1
+}

@@ -1,0 +1,113 @@
+{
+  "false_mandatory_rule_included_count": 0,
+  "historical_occurrence_count": 9,
+  "historical_rows": [
+    {
+      "classification": "TEMPLATE_FALSE_POSITIVE",
+      "occurrence_count": 1,
+      "rule_id": "RULE-3FCD9AEB9A30F19A",
+      "text_sha256": "7f417d70cb3f668822dea060f9d8c90f6147974dad8b33ed4f289adc1ef19a3f",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 1,
+      "rule_id": "RULE-72668C0A0945572B",
+      "text_sha256": "159e5b636c96912f795b9cd6a378913b3ffa81add12afb1b6696daa7bc6c14f6",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "TEMPLATE_FALSE_POSITIVE",
+      "occurrence_count": 1,
+      "rule_id": "RULE-E39AA5723E9297B8",
+      "text_sha256": "e39aa5723e9297b8199af450af3f32562a2a9ad34f200794e81ac8adcb773e94",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "TEMPLATE_FALSE_POSITIVE",
+      "occurrence_count": 1,
+      "rule_id": "RULE-4B1E7AC4A6C3302A",
+      "text_sha256": "16fec4382e1d1247bb5fde87caa670fa18bdc7e65e197600164f9ca07071469f",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 1,
+      "rule_id": "RULE-80208D851D469857",
+      "text_sha256": "b81e46ff8c808901b1fede406936c74af1f2a15f6c5546b2d41a77d19b4ad8d2",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 1,
+      "rule_id": "RULE-CCA1F7BA473A44E0",
+      "text_sha256": "3c2e48e31b1e5d4267af63708be1f1377c3e3d4849f446a57743ea6bd260c121",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 3,
+      "rule_id": "RULE-D337C6BC2BBD6EAE",
+      "text_sha256": "0252144237d8dd95d5aa885d8786fda28c3fa3cff5373853f209b44f33cfc9cd",
+      "true_narrative_invariant": false
+    }
+  ],
+  "historical_unique_hit_count": 7,
+  "overall_status": "exact",
+  "schema": "MandatoryRulePreservationV1",
+  "synthetic_cases": [
+    {
+      "case_id": "synthetic-true-invariant",
+      "classification": "TRUE_NARRATIVE_INVARIANT",
+      "expected_mandatory": true,
+      "included_in_mandatory": true,
+      "render_receipt_status": "NONE",
+      "source_hash_status": "exact",
+      "stage": "planning",
+      "status": "exact"
+    },
+    {
+      "case_id": "generic-preference",
+      "classification": "GENERIC_WRITING_PREFERENCE",
+      "expected_mandatory": false,
+      "included_in_mandatory": false,
+      "render_receipt_status": "not_rendered",
+      "source_hash_status": "exact",
+      "stage": "planning",
+      "status": "exact"
+    },
+    {
+      "case_id": "unknown-rule",
+      "classification": "UNKNOWN",
+      "expected_mandatory": false,
+      "included_in_mandatory": false,
+      "render_receipt_status": "not_rendered",
+      "source_hash_status": "exact",
+      "stage": "planning",
+      "status": "exact"
+    },
+    {
+      "case_id": "stage-mismatch",
+      "classification": "TRUE_NARRATIVE_INVARIANT",
+      "expected_mandatory": false,
+      "included_in_mandatory": false,
+      "render_receipt_status": "not_rendered",
+      "source_hash_status": "exact",
+      "stage": "draft",
+      "status": "exact"
+    },
+    {
+      "case_id": "stale-source-hash",
+      "classification": "TRUE_NARRATIVE_INVARIANT",
+      "expected_mandatory": false,
+      "included_in_mandatory": false,
+      "render_receipt_status": "not_rendered",
+      "source_hash_status": "stale",
+      "stage": "planning",
+      "status": "exact"
+    }
+  ],
+  "true_mandatory_rule_dropped_count": 0,
+  "unknown_rule_auto_promoted_count": 0,
+  "version": 1
+}

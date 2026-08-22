@@ -1,0 +1,138 @@
+{
+  "case_count": 10,
+  "cases": [
+    {
+      "case_id": "v1-simple-plot",
+      "comparison": "PRESERVED",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "PLOT_PACING_INTENT"
+      ],
+      "status": "PRESERVED",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-plot-character",
+      "comparison": "MORE_EXPLICIT",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "CHARACTER_MOTIVATION",
+        "CHARACTER_VOICE"
+      ],
+      "status": "MORE_EXPLICIT",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-plot-world",
+      "comparison": "MORE_EXPLICIT",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "status": "MORE_EXPLICIT",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-plot-character-world",
+      "comparison": "MORE_EXPLICIT",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "CHARACTER_ARC",
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "status": "MORE_EXPLICIT",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-theme-unspecified",
+      "comparison": "NOT_COMPARABLE",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_bridge_unspecified": [
+        "theme"
+      ],
+      "status": "NOT_COMPARABLE",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-tense-unspecified",
+      "comparison": "NOT_COMPARABLE",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_bridge_unspecified": [
+        "tense"
+      ],
+      "status": "NOT_COMPARABLE",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "authority_level": 3,
+      "case_id": "v1-strong-formal-event",
+      "comparison": "PRESERVED",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "status": "PRESERVED",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-relationship-dependency",
+      "comparison": "PRESERVED",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "status": "PRESERVED",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-world-rule-cost",
+      "comparison": "PRESERVED",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "status": "PRESERVED",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    },
+    {
+      "case_id": "v1-payoff-obligation",
+      "comparison": "PRESERVED",
+      "current_skill_semantic_capability": "source_section_present",
+      "missing_bridge_contracts": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "status": "PRESERVED",
+      "v1_profile_semantic_capability": "explicit_rule_or_unspecified_bridge_contract"
+    }
+  ],
+  "future_real_ab_required": true,
+  "not_comparable_count": 2,
+  "overall_status": "exact",
+  "schema": "V1CompatibilityMatrixV1",
+  "v1_profile_explicit_gap_count": 0,
+  "version": 1
+}

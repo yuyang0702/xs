@@ -1,0 +1,205 @@
+{
+  "cases": [
+    {
+      "actual": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "case_id": "actor-only",
+      "expected": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "case_id": "relationship-only",
+      "expected": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "case_id": "knowledge-only",
+      "expected": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "case_id": "state-only",
+      "expected": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "case_id": "dialogue-only",
+      "expected": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "case_id": "location-only",
+      "expected": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "case_id": "world-rule-only",
+      "expected": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "case_id": "faction-only",
+      "expected": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "case_id": "system-only",
+      "expected": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "case_id": "object-only",
+      "expected": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "exclude",
+        "world-creative": "exclude"
+      },
+      "case_id": "no-dependency-exact",
+      "expected": {
+        "character-creative": "exclude",
+        "world-creative": "exclude"
+      },
+      "fail_safe_used": false,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "case_id": "incomplete-metadata",
+      "expected": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "fail_safe_used": true,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "case_id": "stale-authority-revision",
+      "expected": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "fail_safe_used": true,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "case_id": "mixed-revision",
+      "expected": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "fail_safe_used": true,
+      "status": "exact"
+    },
+    {
+      "actual": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "case_id": "legacy-schema-missing-fields",
+      "expected": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "fail_safe_used": true,
+      "status": "exact"
+    }
+  ],
+  "false_negative_character_load_count": 0,
+  "false_negative_world_load_count": 0,
+  "overall_status": "exact",
+  "schema": "ConditionalLoadingQualityV1",
+  "unknown_behavior": "FAIL_SAFE_INCLUDE",
+  "version": 1
+}

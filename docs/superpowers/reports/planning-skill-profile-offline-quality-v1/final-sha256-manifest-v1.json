@@ -1,0 +1,112 @@
+{
+  "algorithm": "sha256",
+  "entry_count": 18,
+  "evidence_parent_head": "10aa7f083396607a83d81be65ad7e07d510c60c2",
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client": 0
+  },
+  "files": [
+    {
+      "bytes": 2438,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/authority-precedence-matrix-v1.json",
+      "sha256": "e66475756c894f7745c08b1dd627b1109d343a4cff8ed6e0fb4bbd9f9eea43db"
+    },
+    {
+      "bytes": 2950,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/character-capability-preservation-v1.json",
+      "sha256": "7b01fccecd81ff0d4945e53f6256c916010a61585eaf8cfcd6f62ab765e3e999"
+    },
+    {
+      "bytes": 5106,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/conditional-loading-quality-v1.json",
+      "sha256": "934a805bf717603a8de3a4b40b5ffae55b9975f7e5e8df38a1c06f7a30f16888"
+    },
+    {
+      "bytes": 5370,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/creative-intent-corpus-v1.json",
+      "sha256": "b17f42b53f399b0f3fefd35dea78b7a10b554905c932ab7b09661b2d7587a53d"
+    },
+    {
+      "bytes": 4090,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/current-vs-shadow-volume-v1.json",
+      "sha256": "737e95b8cfaab7651e8a4cc03ea9e2da3788a3759b01aeab6fae2dd42fbd4775"
+    },
+    {
+      "bytes": 335,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/final-privacy-scan-v1.json",
+      "sha256": "9a7e5faf2b5a60c87233ddf13c4e3088918b2f1ccbf92faeef938819e0afb65c"
+    },
+    {
+      "bytes": 2697,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/final-report-v1.md",
+      "sha256": "95cb58598d5aba45e6b5cfabff72c3607619fabe93d7283858e612e8df88a154"
+    },
+    {
+      "bytes": 4302,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/forward-risk-v1.json",
+      "sha256": "8615925e88dbd7ca7d346e10a37bb46ef77dd9de01ab52c1febdff2b6e23cafc"
+    },
+    {
+      "bytes": 3719,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/mandatory-rule-preservation-v1.json",
+      "sha256": "d65ed92b9028d567d29588799f47919b21ffd7d6cb570237c06eaf39671811f9"
+    },
+    {
+      "bytes": 4772,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/narrative-bridge-validation-v1.json",
+      "sha256": "b848d2698dd1c270b2c19ebacb31d11ff68ad39960b309caa7bb8cb3a2848f5d"
+    },
+    {
+      "bytes": 3770,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/plot-capability-preservation-v1.json",
+      "sha256": "3093c9b21fc377652f7843c3c12b810c612f151e966854b79d0e66ae02feb333"
+    },
+    {
+      "bytes": 2473,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/production-nonregression-v1.json",
+      "sha256": "a9a8de578019d10e067f94010c17153bc4d645a7bc32911a0810608acd1266de"
+    },
+    {
+      "bytes": 847,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/readiness-v1.json",
+      "sha256": "bbe6a2ab2e85128e70abfda43aa78b5ae96f4539333258eca1556a1e7bfc444c"
+    },
+    {
+      "bytes": 775,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/slice1-responsibility-audit-v1.json",
+      "sha256": "70a3284b237066501625bcabf41a91354dc454eb5379a87ac54529c2a2b20237"
+    },
+    {
+      "bytes": 68239,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/source-coverage-matrix-v1.json",
+      "sha256": "e3cd840b629cc7f629374ab05a6b01ac64b2675060a75f1f4f2ab93e9a7d7bdc"
+    },
+    {
+      "bytes": 3568,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/truncation-quality-v1.json",
+      "sha256": "7224ecb20e1ee6c8df07255a1f3509af14fa4ca7eab39880e84ef4d2d13a855e"
+    },
+    {
+      "bytes": 4577,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/v1-compatibility-matrix-v1.json",
+      "sha256": "250a37da1381dd3e7401bcd688981e60d21413487a6e16d17c5d692512d4242f"
+    },
+    {
+      "bytes": 3097,
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/world-capability-preservation-v1.json",
+      "sha256": "aff2b58f99bddcd3d52888ca59da351ae29af4973490e6f68722212c0a62077d"
+    }
+  ],
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "privacy_status": "exact",
+  "schema": "PlanningSkillProfileOfflineQualityFinalSha256ManifestV1",
+  "start_head": "a377ada959dbfb3ef25cd8956700c6679c228dcb",
+  "v1_profile_sha256": "f17fab327c0dbcf066a025585e1c7ea7f07bcb0247e2e26bcf1fe38b6b806b97",
+  "v2_profile_sha256": "743a9a94aa609c6cab1dd322ccbd2be4439316fe87abc3ca273cfe3f14526629",
+  "version": 1
+}

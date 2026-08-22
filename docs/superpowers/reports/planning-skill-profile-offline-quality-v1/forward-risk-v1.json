@@ -1,0 +1,95 @@
+{
+  "closed_world_justification": "the task binds two immutable profile hashes, one sealed four-Skill bundle manifest, and an enumerated offline validation matrix; it neither changes nor generalizes production model-output behavior",
+  "constraint_traceability": [
+    {
+      "evidence": "source-coverage-matrix-v1.json",
+      "implementation": "section parser plus exact profile bindings",
+      "requirement": "all source sections classified",
+      "test_paths": [
+        "tests/test_planning_skill_profile_quality.py"
+      ]
+    },
+    {
+      "evidence": "plot/character/world capability evidence",
+      "implementation": "sanitized rule/policy fixture matrices",
+      "requirement": "creative capabilities preserved without authority override",
+      "test_paths": [
+        "tests/test_planning_skill_profile_quality.py"
+      ]
+    },
+    {
+      "evidence": "bridge/mandatory/precedence/loading/truncation evidence",
+      "implementation": "public resolver and renderer matrices",
+      "requirement": "deterministic non-regression",
+      "test_paths": [
+        "tests/test_planning_skill_profile_quality.py"
+      ]
+    },
+    {
+      "evidence": "production-nonregression-v1.json",
+      "implementation": "task-baseline diff plus shadow check-only replay",
+      "requirement": "production remains unchanged",
+      "test_paths": [
+        "tests/test_planning_skill_profile_shadow.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "must not replace semantic capability evidence with token or character reduction",
+    "must cover every requested plot, character, world, bridge, mandatory, precedence, loading, truncation, V1 compatibility, and creative-signal family",
+    "must not claim real literary quality, production equivalence, PTR12 completion, Phase B readiness, or production cutover"
+  ],
+  "historical_incident_families_checked": [
+    "false mandatory extraction",
+    "Skill authority override",
+    "conditional-load false negative",
+    "partial rule truncation",
+    "runtime-owned responsibility leakage",
+    "source/profile provenance drift"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No src or baml files change; no prompt, route, model, retry, fallback, budget, or validator changes; sanitized fixtures inspect deterministic profile contracts and do not generate prose.",
+  "next_authoritative_boundary_tests": [
+    "tests/test_planning_v2_slice1.py",
+    "tests/test_runtime_skill_profiles.py"
+  ],
+  "operational_definition": "validate the two sealed profile identities against the sealed four-Skill source bundle and sanitized deterministic fixtures",
+  "original_requirement": "independently validate offline semantic capability preservation without production cutover or model calls",
+  "production_shaped_tests": [
+    "tests/test_planning_skill_profile_quality.py",
+    "tests/test_planning_skill_profile_shadow.py"
+  ],
+  "projected_failure_mechanisms": [
+    "stale source hash",
+    "unknown dependency metadata",
+    "same-level precedence conflict",
+    "mandatory overflow",
+    "advisory shedding",
+    "unconfirmed scaffold promotion"
+  ],
+  "remaining_risks": [
+    "offline capability preservation does not prove model-backed literary quality; future current-Skill baseline and A/B remain required"
+  ],
+  "resolution_status": "case_fixed",
+  "schema": "ForwardRiskReportV2",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "production Skill scanner and prompt assembly",
+      "disposition": "tested_not_susceptible",
+      "evidence": "zero src diff and shadow check-only production_reachable=false"
+    },
+    {
+      "boundary": "Planning V2 Slice1 Runtime ownership",
+      "disposition": "tested_not_susceptible",
+      "evidence": "candidate surface remains title+narrative and runtime-owned leak count is zero"
+    },
+    {
+      "boundary": "future production cutover",
+      "disposition": "not_applicable",
+      "evidence": "cutover remains disabled and requires PTR12 plus current-Skill baseline and real A/B"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "the implementation tests proved schema and five coarse coverage fixtures, not the independent section matrix or the full requested quality-preservation corpus"
+}

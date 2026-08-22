@@ -1,0 +1,213 @@
+{
+  "cases": [
+    {
+      "case_id": "intent-causal-tension",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "causal_intent",
+        "escalation"
+      ],
+      "required_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "signals": [
+        "causal_intent",
+        "escalation"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-character-motivation",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "motivation",
+        "relevant_biography"
+      ],
+      "required_rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "signals": [
+        "motivation",
+        "relevant_biography"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-relationship-nuance",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "relationship_nuance"
+      ],
+      "required_rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "signals": [
+        "relationship_nuance"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-character-voice",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "voice"
+      ],
+      "required_rule_ids": [
+        "CHARACTER_VOICE"
+      ],
+      "signals": [
+        "voice"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-world-cost",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "world_cost_limit"
+      ],
+      "required_rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "signals": [
+        "world_cost_limit"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-faction-pressure",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "faction_pressure"
+      ],
+      "required_rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "signals": [
+        "faction_pressure"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-sensory-specificity",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "sensory_specificity",
+        "location_realization"
+      ],
+      "required_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "signals": [
+        "sensory_specificity",
+        "location_realization"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-setup-payoff",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "setup_payoff"
+      ],
+      "required_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "signals": [
+        "setup_payoff"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-pacing",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "pacing_intent"
+      ],
+      "required_rule_ids": [
+        "PLOT_PACING_INTENT"
+      ],
+      "signals": [
+        "pacing_intent"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-pov-tone",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_bridge_present": [
+        "pov",
+        "tone"
+      ],
+      "required_creative_signals": [
+        "pov",
+        "tone"
+      ],
+      "signals": [
+        "pov",
+        "tone"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-theme-ambiguity",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_bridge_unspecified": [
+        "theme"
+      ],
+      "required_creative_signals": [
+        "theme_unspecified"
+      ],
+      "signals": [
+        "theme_unspecified"
+      ],
+      "status": "FULLY_COVERED"
+    },
+    {
+      "case_id": "intent-local-noncanonical-detail",
+      "expected_disposition": "allowed",
+      "missing_present_bridge_fields": [],
+      "missing_rule_ids": [],
+      "missing_unspecified_bridge_fields": [],
+      "required_creative_signals": [
+        "reversible_noncanonical_detail"
+      ],
+      "required_lane": "NON_CANONICAL_DETAIL",
+      "signals": [
+        "reversible_noncanonical_detail"
+      ],
+      "status": "FULLY_COVERED"
+    }
+  ],
+  "contains_real_story_prose": false,
+  "creative_signal_case_count": 12,
+  "creative_signal_fully_covered_count": 12,
+  "creative_signal_gap_count": 0,
+  "creative_signal_unknown_count": 0,
+  "overall_status": "exact",
+  "sanitized": true,
+  "schema": "CreativeIntentCorpusV1",
+  "version": 1
+}

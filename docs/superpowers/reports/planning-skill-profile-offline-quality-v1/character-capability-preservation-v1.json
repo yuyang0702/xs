@@ -1,0 +1,105 @@
+{
+  "authority_override_accepted_count": 0,
+  "case_count": 8,
+  "cases": [
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-motivation-drives-action",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-conflicting-motivation-same-event",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_MOTIVATION",
+        "CHARACTER_ARC"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-relationship-tension",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE",
+        "CHARACTER_MOTIVATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_level": 1,
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-knowledge-boundary-choice",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_level": 1,
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-location-state-constraint",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-voice-distinction",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_VOICE"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-emotional-arc-continuity",
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_ARC",
+        "CHARACTER_MOTIVATION"
+      ],
+      "status": "covered"
+    },
+    {
+      "authority_level": 1,
+      "authority_override_accepted": false,
+      "authority_resolution": "left",
+      "case_id": "character-authority-fact-protected",
+      "creative_override_expected": false,
+      "forbidden_rule_ids_present": [],
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "status": "covered"
+    }
+  ],
+  "creative_capability_gap_count": 0,
+  "overall_status": "preserved",
+  "schema": "CharacterCapabilityPreservationV1",
+  "version": 1
+}

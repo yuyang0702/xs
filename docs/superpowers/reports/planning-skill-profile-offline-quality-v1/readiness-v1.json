@@ -1,0 +1,28 @@
+{
+  "future_model_backed_ab_required": true,
+  "hard_gate_values": {
+    "authority_budget_drop": 0,
+    "authority_override": 0,
+    "character_false_negative": 0,
+    "character_gap": 0,
+    "creative_signal_gap": 0,
+    "false_mandatory": 0,
+    "mandatory_partial": 0,
+    "plot_gap": 0,
+    "runtime_owned_leak": 0,
+    "source_unknown": 0,
+    "true_mandatory_dropped": 0,
+    "v1_explicit_gap": 0,
+    "world_false_negative": 0,
+    "world_gap": 0
+  },
+  "planning_skill_profile_offline_quality_status": "VALIDATED",
+  "privacy_required": "exact",
+  "ptr12_required_before_phase_b": true,
+  "r1_ptr12_observer_implementation_ready": true,
+  "real_literary_quality_claimed": false,
+  "schema": "PlanningSkillProfileOfflineQualityReadinessV1",
+  "slice1_creative_surface_status": "PRESERVED",
+  "strict_l3_required": "pass",
+  "version": 1
+}

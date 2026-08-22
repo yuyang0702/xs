@@ -1,0 +1,101 @@
+{
+  "cases": [
+    {
+      "actual": "left",
+      "case_id": "ready-vs-skill",
+      "expected": "left",
+      "left": 1,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "story-state-vs-skill",
+      "expected": "left",
+      "left": 1,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "confirmed-constraint-vs-skill",
+      "expected": "left",
+      "left": 2,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "frozen-event-vs-plot-suggestion",
+      "expected": "left",
+      "left": 3,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "execution-manifest-vs-skill",
+      "expected": "left",
+      "left": 3,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "stage-schema-vs-skill",
+      "expected": "left",
+      "left": 4,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "runtime-rule-vs-skill",
+      "expected": "left",
+      "left": 5,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "mandatory-creative-vs-advisory",
+      "expected": "left",
+      "left": 6,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "left",
+      "case_id": "advisory-vs-generic",
+      "expected": "left",
+      "left": 7,
+      "right": 8,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact"
+    },
+    {
+      "actual": "equal",
+      "case_id": "same-level-conflict",
+      "expected": "equal",
+      "left": 7,
+      "right": 7,
+      "skill_override_of_level_1_to_5": false,
+      "status": "exact",
+      "typed_handling": "NEEDS_FUTURE_RESOLUTION"
+    }
+  ],
+  "level_1_to_5_override_by_skill_count": 0,
+  "mismatch_count": 0,
+  "overall_status": "exact",
+  "same_level_conflict_behavior": "typed_unknown_or_needs_future_resolution",
+  "schema": "AuthorityPrecedenceMatrixV1",
+  "version": 1
+}

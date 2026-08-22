@@ -1,0 +1,108 @@
+{
+  "authority_override_accepted_count": 0,
+  "case_count": 8,
+  "cases": [
+    {
+      "actual_disposition": "allowed",
+      "authority_override_accepted": false,
+      "case_id": "world-cost-affects-action",
+      "expected_disposition": "allowed",
+      "lane": "DRAMATIZATION",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "allowed",
+      "authority_override_accepted": false,
+      "case_id": "world-faction-pressure-choice",
+      "expected_disposition": "allowed",
+      "lane": "DRAMATIZATION",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "allowed",
+      "authority_override_accepted": false,
+      "case_id": "world-location-constraint",
+      "expected_disposition": "allowed",
+      "lane": "DRAMATIZATION",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY",
+        "WORLD_CURRENT_STATE"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "allowed",
+      "authority_override_accepted": false,
+      "case_id": "world-sensory-no-canon-mutation",
+      "expected_disposition": "allowed",
+      "lane": "SENSORY_REALIZATION",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "allowed",
+      "authority_override_accepted": false,
+      "case_id": "world-reversible-local-detail",
+      "expected_disposition": "allowed",
+      "lane": "NON_CANONICAL_DETAIL",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "proposal_only",
+      "authority_override_accepted": false,
+      "case_id": "world-canonical-proposal-only",
+      "expected_disposition": "proposal_only",
+      "lane": "CANONICAL_FACT_PROPOSAL",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_CURRENT_STATE"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "reject",
+      "authority_override_accepted": false,
+      "case_id": "world-forbidden-free-power",
+      "expected_disposition": "reject",
+      "lane": "FORBIDDEN_AUTHORITY_OVERRIDE",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "status": "covered"
+    },
+    {
+      "actual_disposition": "reject",
+      "authority_override_accepted": false,
+      "case_id": "world-forbidden-location-owner-history",
+      "expected_disposition": "reject",
+      "lane": "FORBIDDEN_AUTHORITY_OVERRIDE",
+      "missing_rule_ids": [],
+      "required_rule_ids": [
+        "WORLD_CURRENT_STATE",
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "status": "covered"
+    }
+  ],
+  "creative_capability_gap_count": 0,
+  "overall_status": "preserved",
+  "schema": "WorldCapabilityPreservationV1",
+  "version": 1
+}

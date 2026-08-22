@@ -1,0 +1,13 @@
+{
+  "absolute_machine_path_count": 0,
+  "credential_count": 0,
+  "files_scanned": 18,
+  "finding_count": 0,
+  "findings": [],
+  "overall_status": "exact",
+  "raw_provider_content_count": 0,
+  "real_story_prose_count": 0,
+  "sanitized_fixture_only": true,
+  "schema": "PlanningSkillProfileOfflineQualityPrivacyScanV1",
+  "version": 1
+}

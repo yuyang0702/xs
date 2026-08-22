@@ -1,0 +1,35 @@
+{
+  "creative_responsibilities": [
+    "title",
+    "narrative",
+    "event_realization_creative_core"
+  ],
+  "model_facing_candidate_fields": [
+    "title",
+    "narrative"
+  ],
+  "overall_status": "exact",
+  "profile_rule_authority_levels": [
+    7
+  ],
+  "profile_rule_owner_set": [
+    "model_creative"
+  ],
+  "runtime_owned_responsibilities": [
+    "identity",
+    "ordinal",
+    "segment_ownership",
+    "authority_copy",
+    "dependency_bookkeeping",
+    "freeze_version",
+    "hash",
+    "deterministic_assembly",
+    "local_derivation",
+    "registry_index_file_writes",
+    "canon_story_state_mutation"
+  ],
+  "runtime_owned_responsibility_leak_count": 0,
+  "schema": "Slice1ResponsibilityAuditV1",
+  "slice1_creative_surface_status": "PRESERVED",
+  "version": 1
+}
