@@ -1,0 +1,50 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayFailureReceiptV1",
+  "version": 1,
+  "overall_status": "narrow_fix_required",
+  "gate": "SHORT_PLAN_V2_SLICE1_REPLAY_NARROW_FIX_REQUIRED",
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "1046670ae81d371cda2e05a8857a942ea59c59a7",
+    "initial_worktree": "clean",
+    "parent_manifest_mismatches": 0,
+    "production_diff": 0,
+    "baml_diff": 0
+  },
+  "first_failing_invariant": {
+    "invariant": "sealed canonical corpus fixture provenance reproduces exactly",
+    "case_id": "canonical-corpus-provenance-before-case-dispatch",
+    "artifact_schema": "EventRealizationShadowReplayReceiptV1",
+    "artifact_version": 1,
+    "field_path": "/fixture_sha256",
+    "expected_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "actual_sha256": "a1442835a44471b9be5c87c4feb4ec89853a3b4348d7215185de62ced4a4fab4",
+    "git_blob_bytes": 4436,
+    "checkout_bytes": 4486,
+    "root_cause_shape": "checkout_line_endings_are_hashed_as_raw_fixture_bytes_without_an_explicit_cross_platform_provenance_contract"
+  },
+  "independent_execution": {
+    "canonical_cli_exit_status": 0,
+    "case_count": 20,
+    "case_pass_count": 20,
+    "run_a_b_equal_with_same_injected_clock": true,
+    "run_a_sha256": "08b58c973e823a939cf38c9a48cab35e2bc680f30461f2e2a3407d333a6746c8",
+    "run_b_sha256": "08b58c973e823a939cf38c9a48cab35e2bc680f30461f2e2a3407d333a6746c8",
+    "call1_exact_failure_rule": "UNKNOWN",
+    "call1_replay_fidelity": "BOUNDARY_LEVEL_ONLY"
+  },
+  "blast_radius": "replay receipt portability and provenance identity across LF/CRLF checkouts",
+  "v1_affected": false,
+  "quality_affected": false,
+  "recommended_narrow_fix_family": "CROSS_PLATFORM_CANONICAL_FIXTURE_PROVENANCE_BINDING_V1",
+  "tests_stopped_after_first_failure": true,
+  "no_automatic_fix": true,
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "new_full_short_canary": "not_executed"
+}

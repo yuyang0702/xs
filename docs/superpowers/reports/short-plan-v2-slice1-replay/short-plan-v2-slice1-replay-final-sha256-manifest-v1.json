@@ -1,0 +1,39 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayFinalSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "overall_status": "exact_failure_evidence",
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "1046670ae81d371cda2e05a8857a942ea59c59a7"
+  },
+  "files": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-replay/short-plan-v2-slice1-replay-failure-receipt-v1.json",
+      "bytes": 2048,
+      "sha256": "e267970f56a069e0ecbeb9ce3deeefc7c58136d9f8c3ff49dfbf465ee9ad6fa3"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-replay/short-plan-v2-slice1-replay-final-privacy-scan-v1.json",
+      "bytes": 665,
+      "sha256": "cd7e06b047081d5d53b1eccd26ad37a85739a7da7fef4845bd85c7c79d53048f"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-replay/short-plan-v2-slice1-replay-final-report-v1.md",
+      "bytes": 3516,
+      "sha256": "b43d08739b2ee4b19c4dfc5e283a70b4427c0120d46d00840b46be11a466c66a"
+    }
+  ],
+  "entry_count": 3,
+  "production_diff": 0,
+  "baml_diff": 0,
+  "privacy_status": "exact",
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}
