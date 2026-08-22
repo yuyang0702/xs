@@ -74,6 +74,11 @@ R1_PTR12_ANTHROPIC_CAP_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr12-anthropic-effective-cap-authorized-protected-source-successor-v1.json"
 )
+R1_PTR12_STREAM_REASONING_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr12-stream-reasoning-usage-authorized-protected-source-successor-v1.json"
+)
 R1_PTR12_OBSERVER_SCHEMA = (
     "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
 )
@@ -124,6 +129,19 @@ R1_PTR12_ANTHROPIC_CAP_IMPLEMENTATION_HEAD = (
 )
 R1_PTR12_ANTHROPIC_CAP_PROTECTED_TREE_SHA256 = (
     "671d0d918ee626cd525b2e0b2c29c254b47326bc540f8c9500fa13294e8b0025"
+)
+R1_PTR12_STREAM_REASONING_SCHEMA = (
+    "R1PTR12StreamReasoningUsageAuthorizedProtectedSourceSuccessorV1"
+)
+R1_PTR12_STREAM_REASONING_VERSION = 1
+R1_PTR12_STREAM_REASONING_PARENT_HEAD = (
+    "93727d4d7e1223a9a4b87848b403f05e8a4b10af"
+)
+R1_PTR12_STREAM_REASONING_IMPLEMENTATION_HEAD = (
+    "1fbc7824f9ad35bdca540ffd3d25955b2c84b766"
+)
+R1_PTR12_STREAM_REASONING_PROTECTED_TREE_SHA256 = (
+    "f8355455accfa8291b6e274318fd27c488840080ddf880744f326deade0acfba"
 )
 
 
@@ -472,15 +490,12 @@ def _assert_r1_ptr12_anthropic_cap_successor_exact(
         "provider_accepted_cap_inferred_from_request": False,
     }
 
-    current_manifest = ptr12_bounded_capture_protected_source_manifest(
-        REPOSITORY,
-    )
-    assert successor["current_protected_sources"] == current_manifest
+    recorded_manifest = successor["current_protected_sources"]
     tree_sha256 = successor["implementation_protected_tree_sha256"]
     assert isinstance(tree_sha256, str)
     assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
     assert tree_sha256 == R1_PTR12_ANTHROPIC_CAP_PROTECTED_TREE_SHA256
-    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+    assert tree_sha256 == _protected_tree_sha256(recorded_manifest)
 
     authorized = successor["authorized_source_deltas"]
     assert authorized == [{
@@ -493,7 +508,7 @@ def _assert_r1_ptr12_anthropic_cap_successor_exact(
         ),
     }]
     current_hashes = {
-        item["path"]: item["sha256"] for item in current_manifest
+        item["path"]: item["sha256"] for item in recorded_manifest
     }
     assert authorized[0]["after_sha256"] == current_hashes[
         authorized[0]["path"]
@@ -509,6 +524,98 @@ def _tamper_ptr12_anthropic_cap_successor(
         successor["version"] = 2
     elif case == "boolean_version":
         successor["version"] = True
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "wrong_protected_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "single_file_hash_tamper":
+        successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    elif case == "wrong_before_hash":
+        successor["authorized_source_deltas"][0]["before_sha256"] = "0" * 64
+    elif case == "wrong_after_hash":
+        successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
+    else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
+
+
+def _assert_r1_ptr12_stream_reasoning_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == R1_PTR12_STREAM_REASONING_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == R1_PTR12_STREAM_REASONING_VERSION
+    assert successor["parent_source_head"] == R1_PTR12_STREAM_REASONING_PARENT_HEAD
+    assert (
+        successor["implementation_source_head"]
+        == R1_PTR12_STREAM_REASONING_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == (
+        "R1-PTR12-STREAM-REASONING-USAGE-LINEAGE-FIX"
+    )
+    assert successor["business_behavior_changed"] is False
+    assert successor["parent_successor"] == {
+        "path": (
+            "tests/fixtures/reliability/r0f/"
+            "r1-ptr12-anthropic-effective-cap-"
+            "authorized-protected-source-successor-v1.json"
+        ),
+        "sha256": (
+            "66445af55c61593b4303c7e2f23d2ceb8f1be0a727ca976bb1707060b3c56a0c"
+        ),
+        "protected_tree_sha256": R1_PTR12_ANTHROPIC_CAP_PROTECTED_TREE_SHA256,
+    }
+    assert successor["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": 0,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 0,
+        "diagnostic_event_types": 0,
+        "formally_exposed_stream_reasoning_usage_preserved": True,
+        "reasoning_usage_inferred_from_aggregate_count": 0,
+        "deepseek_reasoning_usage_inference_from_aggregate": False,
+        "diagnostic_context_construction_fail_open_status": "OPEN",
+    }
+
+    current_manifest = ptr12_bounded_capture_protected_source_manifest(
+        REPOSITORY,
+    )
+    assert successor["current_protected_sources"] == current_manifest
+    tree_sha256 = successor["implementation_protected_tree_sha256"]
+    assert isinstance(tree_sha256, str)
+    assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
+    assert tree_sha256 == R1_PTR12_STREAM_REASONING_PROTECTED_TREE_SHA256
+    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+
+    authorized = successor["authorized_source_deltas"]
+    assert authorized == [{
+        "path": "src/novel_flywheel/provider_output.py",
+        "before_sha256": (
+            "ef0d57089245072a34fb6573079441ce87e9e0dac425bb860c5cc7331c5f03a6"
+        ),
+        "after_sha256": (
+            "0405dc32039a074e1484c82b6a94eccaf866d0372e14572be36dbf3bfb1302b7"
+        ),
+    }]
+    current_hashes = {
+        item["path"]: item["sha256"] for item in current_manifest
+    }
+    assert authorized[0]["after_sha256"] == current_hashes[
+        authorized[0]["path"]
+    ]
+
+
+def _tamper_ptr12_stream_reasoning_successor(
+    successor: dict[str, Any], case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = "R1PTR12StreamReasoningUsageSuccessorV999"
+    elif case == "wrong_version":
+        successor["version"] = 2
     elif case == "wrong_implementation":
         successor["implementation_source_head"] = "0" * 40
     elif case == "wrong_protected_tree":
@@ -714,6 +821,10 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     _assert_r1_ptr12_nested_tail_successor_exact(r1_ptr12_nested_tail)
     r1_ptr12_anthropic_cap = load_baseline(R1_PTR12_ANTHROPIC_CAP_SUCCESSOR)
     _assert_r1_ptr12_anthropic_cap_successor_exact(r1_ptr12_anthropic_cap)
+    r1_ptr12_stream_reasoning = load_baseline(R1_PTR12_STREAM_REASONING_SUCCESSOR)
+    _assert_r1_ptr12_stream_reasoning_successor_exact(
+        r1_ptr12_stream_reasoning,
+    )
 
 
 @pytest.mark.parametrize(
@@ -856,6 +967,41 @@ def test_r1_ptr12_anthropic_cap_successor_fixture_is_required(
 ) -> None:
     with pytest.raises(FileNotFoundError):
         load_baseline(tmp_path / R1_PTR12_ANTHROPIC_CAP_SUCCESSOR.name)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "wrong_version",
+        "wrong_implementation",
+        "wrong_protected_tree",
+        "single_file_hash_tamper",
+        "wrong_before_hash",
+        "wrong_after_hash",
+    ),
+)
+def test_r1_ptr12_stream_reasoning_successor_rejects_tamper(
+    case: str,
+) -> None:
+    successor = copy.deepcopy(load_baseline(R1_PTR12_STREAM_REASONING_SUCCESSOR))
+    _tamper_ptr12_stream_reasoning_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_r1_ptr12_stream_reasoning_successor_exact(successor)
+
+
+def test_r1_ptr12_stream_reasoning_successor_accepts_exact_fixture() -> None:
+    _assert_r1_ptr12_stream_reasoning_successor_exact(
+        load_baseline(R1_PTR12_STREAM_REASONING_SUCCESSOR),
+    )
+
+
+def test_r1_ptr12_stream_reasoning_successor_fixture_is_required(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(tmp_path / R1_PTR12_STREAM_REASONING_SUCCESSOR.name)
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(
