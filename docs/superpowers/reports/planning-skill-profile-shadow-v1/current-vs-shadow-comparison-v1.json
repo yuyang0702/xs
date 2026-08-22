@@ -1,0 +1,32 @@
+{
+  "allowed_labels": [
+    "LESS_OPERATIONAL_NOISE",
+    "FEWER_FALSE_MANDATORY",
+    "CREATIVE_COVERAGE_PRESERVED_BY_FIXTURE",
+    "CREATIVE_COVERAGE_GAP"
+  ],
+  "claims_production_improvement": false,
+  "current": {
+    "compacted_characters": 8927,
+    "false_mandatory_count": 3,
+    "operational_instruction_count": 4,
+    "raw_characters": 21345,
+    "skill_count": 4,
+    "source_kind": "user_global_codex_skill"
+  },
+  "quality_ab_required_before_cutover": true,
+  "result_labels": [
+    "LESS_OPERATIONAL_NOISE",
+    "FEWER_FALSE_MANDATORY",
+    "CREATIVE_COVERAGE_PRESERVED_BY_FIXTURE"
+  ],
+  "schema": "PlanningSkillProfileShadowComparisonV1",
+  "shadow": {
+    "creative_coverage_status": "PRESERVED",
+    "false_mandatory_count": 0,
+    "operational_instruction_count": 0,
+    "profile_id": "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
+    "rendered_characters": 1718
+  },
+  "version": 1
+}

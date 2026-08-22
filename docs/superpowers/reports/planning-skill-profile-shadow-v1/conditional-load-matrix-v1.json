@@ -1,0 +1,575 @@
+{
+  "case_count": 36,
+  "cases": [
+    {
+      "actor_refs_status": "present",
+      "component_outcomes": {
+        "character-creative": "include",
+        "world-creative": "include"
+      },
+      "decision_id": "skill-load-068598877fcb9415666b6548c2d5e363",
+      "deterministic": true,
+      "fail_safe_used": false,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "present"
+    },
+    {
+      "actor_refs_status": "present",
+      "component_outcomes": {
+        "character-creative": "include",
+        "world-creative": "exclude"
+      },
+      "decision_id": "skill-load-f7287dbc84a42e12530efd8ce98e0820",
+      "deterministic": true,
+      "fail_safe_used": false,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management"
+      ],
+      "world_refs_status": "absent"
+    },
+    {
+      "actor_refs_status": "present",
+      "component_outcomes": {
+        "character-creative": "include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-96dd4bc81f58dfa1cfeeb47e9b80d998",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "unknown"
+    },
+    {
+      "actor_refs_status": "present",
+      "component_outcomes": {
+        "character-creative": "include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-4cf236a8b5131e94b4c5035ca8fb6de4",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "missing"
+    },
+    {
+      "actor_refs_status": "present",
+      "component_outcomes": {
+        "character-creative": "include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-51b82baad4c20312bf8d1affd5c692ad",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "stale"
+    },
+    {
+      "actor_refs_status": "present",
+      "component_outcomes": {
+        "character-creative": "include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-7b84033cfe2739856f35cef5edcc58ca",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "mixed"
+    },
+    {
+      "actor_refs_status": "absent",
+      "component_outcomes": {
+        "character-creative": "exclude",
+        "world-creative": "include"
+      },
+      "decision_id": "skill-load-4a0bc9aef55ba26507b0fc7545cc5715",
+      "deterministic": true,
+      "fail_safe_used": false,
+      "included_skill_ids": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "world_refs_status": "present"
+    },
+    {
+      "actor_refs_status": "absent",
+      "component_outcomes": {
+        "character-creative": "exclude",
+        "world-creative": "exclude"
+      },
+      "decision_id": "skill-load-e112cebc83bf6556c4699075a4026eb3",
+      "deterministic": true,
+      "fail_safe_used": false,
+      "included_skill_ids": [
+        "plot-structure"
+      ],
+      "world_refs_status": "absent"
+    },
+    {
+      "actor_refs_status": "absent",
+      "component_outcomes": {
+        "character-creative": "exclude",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-3012d3eb6e6a106b5f8706d40ea9b827",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "world_refs_status": "unknown"
+    },
+    {
+      "actor_refs_status": "absent",
+      "component_outcomes": {
+        "character-creative": "exclude",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-dcc4c2fd621a84b383b879e82edce514",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "world_refs_status": "missing"
+    },
+    {
+      "actor_refs_status": "absent",
+      "component_outcomes": {
+        "character-creative": "exclude",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-cb0e17c7be8afcab5ba5a59c25326139",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "world_refs_status": "stale"
+    },
+    {
+      "actor_refs_status": "absent",
+      "component_outcomes": {
+        "character-creative": "exclude",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-b049b238867c72c0c11cf6a82a8446c9",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "world_refs_status": "mixed"
+    },
+    {
+      "actor_refs_status": "unknown",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "include"
+      },
+      "decision_id": "skill-load-88f1ddd3de354676bcd62e25a761787e",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "present"
+    },
+    {
+      "actor_refs_status": "unknown",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "exclude"
+      },
+      "decision_id": "skill-load-017df6e2b5bbdb8aa468c56d2d632d72",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management"
+      ],
+      "world_refs_status": "absent"
+    },
+    {
+      "actor_refs_status": "unknown",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-72e13889450c4a10a99fe2d6179dad10",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "unknown"
+    },
+    {
+      "actor_refs_status": "unknown",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-ab83e4df4d2e3910173b21406ed5ec0d",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "missing"
+    },
+    {
+      "actor_refs_status": "unknown",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-8c167f6fb8f5ecf84b78d2645dab861a",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "stale"
+    },
+    {
+      "actor_refs_status": "unknown",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-0d4578e5a7daafc75355cb1927b76fab",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "mixed"
+    },
+    {
+      "actor_refs_status": "missing",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "include"
+      },
+      "decision_id": "skill-load-2824b2c2db620718c0e1a614cd366ec0",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "present"
+    },
+    {
+      "actor_refs_status": "missing",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "exclude"
+      },
+      "decision_id": "skill-load-1d6c265a752ad9d257ff798daa917713",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management"
+      ],
+      "world_refs_status": "absent"
+    },
+    {
+      "actor_refs_status": "missing",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-a063b9956143b5883ebf61729c21c528",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "unknown"
+    },
+    {
+      "actor_refs_status": "missing",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-da9728444406b73b18a4c621f39218e1",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "missing"
+    },
+    {
+      "actor_refs_status": "missing",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-4c2153a0e7785b37b3c30255e4f3526c",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "stale"
+    },
+    {
+      "actor_refs_status": "missing",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-803a3435663f9317a57a1fe05d521eea",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "mixed"
+    },
+    {
+      "actor_refs_status": "stale",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "include"
+      },
+      "decision_id": "skill-load-4d998ef4de0cd7f1d266a91b67eaeb42",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "present"
+    },
+    {
+      "actor_refs_status": "stale",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "exclude"
+      },
+      "decision_id": "skill-load-bfbd8b50ed22d49265eb099bfa14be51",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management"
+      ],
+      "world_refs_status": "absent"
+    },
+    {
+      "actor_refs_status": "stale",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-381f9fe256a34ba6e51404596d95bd8c",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "unknown"
+    },
+    {
+      "actor_refs_status": "stale",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-1b729333c8385b93d1d8ee96380c5001",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "missing"
+    },
+    {
+      "actor_refs_status": "stale",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-f223b657927aea5a05e388c0e4c4e2f1",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "stale"
+    },
+    {
+      "actor_refs_status": "stale",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-59837fe306045e59136a0e6500f3791c",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "mixed"
+    },
+    {
+      "actor_refs_status": "mixed",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "include"
+      },
+      "decision_id": "skill-load-857f80be25993e142ace9cc4d0c29f0a",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "present"
+    },
+    {
+      "actor_refs_status": "mixed",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "exclude"
+      },
+      "decision_id": "skill-load-8ae14d8015d20dbe19a6c34f0761bf6e",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management"
+      ],
+      "world_refs_status": "absent"
+    },
+    {
+      "actor_refs_status": "mixed",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-914fbb71dcec506c4a8318440acda8d2",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "unknown"
+    },
+    {
+      "actor_refs_status": "mixed",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-4fb45a878501c5d203ba967ce55eda22",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "missing"
+    },
+    {
+      "actor_refs_status": "mixed",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-fb7d9dccd6489349bc20b3a224828bfb",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "stale"
+    },
+    {
+      "actor_refs_status": "mixed",
+      "component_outcomes": {
+        "character-creative": "fail_safe_include",
+        "world-creative": "fail_safe_include"
+      },
+      "decision_id": "skill-load-fda183b226c4808f78dc7f39598337e7",
+      "deterministic": true,
+      "fail_safe_used": true,
+      "included_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "world_refs_status": "mixed"
+    }
+  ],
+  "conditional_decision_nondeterminism_count": 0,
+  "decision_input_change_changes_identity": true,
+  "llm_decision_count": 0,
+  "schema": "ConditionalLoadMatrixV1",
+  "unknown_missing_stale_mixed_behavior": "fail_safe_include",
+  "version": 1
+}

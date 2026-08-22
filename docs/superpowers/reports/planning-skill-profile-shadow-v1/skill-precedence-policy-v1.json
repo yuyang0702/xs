@@ -1,0 +1,75 @@
+{
+  "fixture_count": 5,
+  "fixtures": [
+    {
+      "name": "frozen_event_vs_plot_suggestion",
+      "winner_level": 3
+    },
+    {
+      "name": "knowledge_boundary_vs_dramatic_suggestion",
+      "winner_level": 1
+    },
+    {
+      "name": "world_rule_cost_vs_free_power_suggestion",
+      "winner_level": 2
+    },
+    {
+      "name": "narrative_contract_pov_vs_skill_template_pov",
+      "winner_level": 4
+    },
+    {
+      "name": "confirmed_tone_vs_generic_style_preference",
+      "winner_level": 2
+    }
+  ],
+  "levels": [
+    {
+      "authority": "ready_and_story_state_canonical_authority",
+      "level": 1,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "confirmed_project_and_narrative_constraints",
+      "level": 2,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "formal_events_and_execution_manifest",
+      "level": 3,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "stage_contract_and_schema_ownership",
+      "level": 4,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "deterministic_runtime_rules",
+      "level": 5,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "skill_mandatory_creative_constraint",
+      "level": 6,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "skill_advisory",
+      "level": 7,
+      "may_be_overridden_by_skill": false
+    },
+    {
+      "authority": "generic_writing_preferences",
+      "level": 8,
+      "may_be_overridden_by_skill": false
+    }
+  ],
+  "lower_number_wins": true,
+  "policy_id": "SKILL_PRECEDENCE_POLICY_V1",
+  "policy_sha256": "3f06e2459a3ac6178942663a869adf1cd00068ead699177ff9c5c40f8a1d61ca",
+  "schema": "SkillPrecedencePolicyV1",
+  "skill_advisory_authority_level": 7,
+  "skill_mandatory_authority_level": 6,
+  "skill_override_of_level_1_to_5_accepted_count": 0,
+  "unknown_conflict_behavior": "block"
+}

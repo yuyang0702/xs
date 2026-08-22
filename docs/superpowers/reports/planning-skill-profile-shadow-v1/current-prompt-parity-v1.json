@@ -1,0 +1,60 @@
+{
+  "current_compacted_characters": 8927,
+  "current_compacted_prompt_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "current_global_prompt_sha256": "26da95882e4abf67a334cfaa3b031568ccbb7d37bce2063f124e61b937294379",
+  "current_raw_characters": 21345,
+  "planning_v1_behavior_changed": false,
+  "planning_v2_behavior_changed": false,
+  "prompt_byte_runtime_replay": "NOT_RUN_SAFE_BOUNDARY",
+  "protected_production_sources": [
+    {
+      "baseline_checkout_sha256": "e475ec46a45e6f8cc8336a4ac98b8da04bbeee6a64ad1fe85db23e4fc8b1802f",
+      "current_sha256": "e475ec46a45e6f8cc8336a4ac98b8da04bbeee6a64ad1fe85db23e4fc8b1802f",
+      "path": "src/novel_flywheel/app.py",
+      "status": "exact"
+    },
+    {
+      "baseline_checkout_sha256": "8b8b3098ef24ad67605b67eb95fe76241cf0b429bf9242f61f55da12fb54c024",
+      "current_sha256": "8b8b3098ef24ad67605b67eb95fe76241cf0b429bf9242f61f55da12fb54c024",
+      "path": "src/novel_flywheel/skills.py",
+      "status": "exact"
+    },
+    {
+      "baseline_checkout_sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc",
+      "current_sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc",
+      "path": "src/novel_flywheel/prompts.py",
+      "status": "exact"
+    },
+    {
+      "baseline_checkout_sha256": "95e94c72eb33a0f1871f1aab4b3da73874b4aa865ae06b9eb04ea356066f1246",
+      "current_sha256": "95e94c72eb33a0f1871f1aab4b3da73874b4aa865ae06b9eb04ea356066f1246",
+      "path": "src/novel_flywheel/skill_prompts.py",
+      "status": "exact"
+    },
+    {
+      "baseline_checkout_sha256": "cf60fff80bebf21c4f73e7fc915adc78b42a95e72074200cc4524ab07f623b41",
+      "current_sha256": "cf60fff80bebf21c4f73e7fc915adc78b42a95e72074200cc4524ab07f623b41",
+      "path": "src/novel_flywheel/context_packet.py",
+      "status": "exact"
+    },
+    {
+      "baseline_checkout_sha256": "38620f20f7fb7362feec82846f4676c9a8aea1bd29b05e01053a3a01a79d747b",
+      "current_sha256": "38620f20f7fb7362feec82846f4676c9a8aea1bd29b05e01053a3a01a79d747b",
+      "path": "src/novel_flywheel/workflows.py",
+      "status": "exact"
+    },
+    {
+      "baseline_checkout_sha256": "72b270452aba43f0b7bb7b1b682b22dae592ec72b5b40fa9a5ac949f1f6c0614",
+      "current_sha256": "72b270452aba43f0b7bb7b1b682b22dae592ec72b5b40fa9a5ac949f1f6c0614",
+      "path": "src/novel_flywheel/planning_v2_slice1.py",
+      "status": "exact"
+    }
+  ],
+  "protected_source_diff_count": 0,
+  "schema": "CurrentPromptParityV1",
+  "sealed_bundle_prompt_sha256": "26da95882e4abf67a334cfaa3b031568ccbb7d37bce2063f124e61b937294379",
+  "shadow_profile_connected_to_prompt": false,
+  "source_copy_prompt_parity": "exact",
+  "status": "exact",
+  "version": 1
+}

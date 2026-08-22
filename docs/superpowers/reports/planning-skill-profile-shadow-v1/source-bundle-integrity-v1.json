@@ -1,0 +1,21 @@
+{
+  "bundle_manifest_sha256": "451a30d3815e1c6e4bdb3e1a1bc1dbec4e4a84061e873f8acca3aee2e2925a3a",
+  "copy_parity": "EXACT",
+  "file_count": 83,
+  "manifest_entry_count": 9,
+  "manifest_mismatch_count": 0,
+  "planning_skill_hashes": {
+    "character-management": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+    "plot-structure": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+    "story-init": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+    "worldbuilding": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678"
+  },
+  "runtime_reachability": "NONE",
+  "schema": "SourceBundleIntegrityV1",
+  "skill_content_changed": false,
+  "skill_count": 11,
+  "status": "exact",
+  "total_bytes": 314197,
+  "version": 1,
+  "whole_skill_deletion_count": 0
+}

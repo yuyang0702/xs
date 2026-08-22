@@ -1,0 +1,1284 @@
+{
+  "advisory_budget": 1800,
+  "advisory_rules": [
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "structure_adaptation"
+      ],
+      "owner": "model_creative",
+      "rule_id": "PLOT_STRUCTURE_ADAPTATION",
+      "schema": "ProfileRuleV1",
+      "skill_id": "plot-structure",
+      "source_section_ids": [
+        "skill-section-a5519b97ed9a0a6d9cec27cd1a9cee08",
+        "skill-section-596b5bca094843e5d1f417cd484c8809",
+        "skill-section-d68aa04223bc5fb128e94038ba31adbd",
+        "skill-section-dba6614884711b5ede742b2a0c9bb88c",
+        "skill-section-e2b17efb0b24d9f90bd3c573b53a4d98",
+        "skill-section-9cefc97522641beaf043e83b860ddf6f",
+        "skill-section-e8d95199278c0b2a10e3d8b44a53b078"
+      ],
+      "text": "Choose and adapt a structure to the story; structure models are guides rather than immutable formulas."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "causal_intent",
+        "escalation"
+      ],
+      "owner": "model_creative",
+      "rule_id": "PLOT_CAUSAL_ESCALATION",
+      "schema": "ProfileRuleV1",
+      "skill_id": "plot-structure",
+      "source_section_ids": [
+        "skill-section-dd70ef5969bc704145e0d1d93526c746",
+        "skill-section-3f71814d5aabcec21bc010f72facb63f",
+        "skill-section-d628d71346dec5ca3f61825000ee6ecc",
+        "skill-section-46cddd095359b4ab27d2e79e368d7550"
+      ],
+      "text": "Within the frozen event role, realize actor choice and action, causal escalation, and the resulting local state change toward resolution."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "setup_payoff"
+      ],
+      "owner": "model_creative",
+      "rule_id": "PLOT_SETUP_PAYOFF_INTENT",
+      "schema": "ProfileRuleV1",
+      "skill_id": "plot-structure",
+      "source_section_ids": [
+        "skill-section-b315701d5f0ecb5aef9b50c3254ddbd1",
+        "skill-section-6ac17c823afd4a0fd2c65cc3aef67266",
+        "skill-section-7aad757ba8a5b31d0f0bdc929a488451",
+        "skill-section-2c0fe21bd64d8f639cb956f61386052a",
+        "skill-section-15c5c641d451278a63c03f887551a545",
+        "skill-section-5a96b50399298ee1443800cef740295c"
+      ],
+      "text": "Preserve deliberate setup, question, foreshadowing, and payoff intent across the plan."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "pacing_intent"
+      ],
+      "owner": "model_creative",
+      "rule_id": "PLOT_PACING_INTENT",
+      "schema": "ProfileRuleV1",
+      "skill_id": "plot-structure",
+      "source_section_ids": [
+        "skill-section-da6072142c2e77d5666c850b854b3f3f"
+      ],
+      "text": "Pace action and progression under the frozen formal event role without changing formal chronology or ownership."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "motivation",
+        "relevant_biography"
+      ],
+      "owner": "model_creative",
+      "rule_id": "CHARACTER_MOTIVATION",
+      "schema": "ProfileRuleV1",
+      "skill_id": "character-management",
+      "source_section_ids": [
+        "skill-section-e3fe2fae772fc3d97eb39643fb3b975c",
+        "skill-section-17042a304f1d005b02b918a38708b4b3",
+        "skill-section-30c4b9e7a010a05a63f55cfd7cc2390c"
+      ],
+      "text": "Realize external wants, internal needs, relevant biography, formative pressures, and their conflict in character action."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "voice"
+      ],
+      "owner": "model_creative",
+      "rule_id": "CHARACTER_VOICE",
+      "schema": "ProfileRuleV1",
+      "skill_id": "character-management",
+      "source_section_ids": [
+        "skill-section-e3fe2fae772fc3d97eb39643fb3b975c",
+        "skill-section-05e6b3956b79f0be030549f169fe6dee"
+      ],
+      "text": "Keep vocabulary, sentence shape, verbal habits, and tone distinct for referenced actors."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "character_arc"
+      ],
+      "owner": "model_creative",
+      "rule_id": "CHARACTER_ARC",
+      "schema": "ProfileRuleV1",
+      "skill_id": "character-management",
+      "source_section_ids": [
+        "skill-section-e3fe2fae772fc3d97eb39643fb3b975c",
+        "skill-section-e0f2ac72a95ad6c4bf03dca1cd4e3f7f"
+      ],
+      "text": "Connect starting state, turning points, and ending state without overriding frozen event outcomes."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "relationship_nuance"
+      ],
+      "owner": "model_creative",
+      "rule_id": "CHARACTER_RELATIONSHIP_NUANCE",
+      "schema": "ProfileRuleV1",
+      "skill_id": "character-management",
+      "source_section_ids": [
+        "skill-section-3dc067ace404b9c958b7bb43fdba49bb",
+        "skill-section-ccadce381855ca07b3b0db5e0beaa73e",
+        "skill-section-1ca9422fd531a74e0c7c58b15e01dad8"
+      ],
+      "text": "Use the referenced relationship role to shape pressure, contrast, trust, and subtext without inventing authority."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "sensory_specificity",
+        "location_realization"
+      ],
+      "owner": "model_creative",
+      "rule_id": "WORLD_SENSORY_SPECIFICITY",
+      "schema": "ProfileRuleV1",
+      "skill_id": "worldbuilding",
+      "source_section_ids": [
+        "skill-section-580d7ca6fc414e36dc77302914a33f0a",
+        "skill-section-7c3f36836984a93e180922aab41b5ede",
+        "skill-section-03cbcb28a0eea7cc996d13a029cc13a7"
+      ],
+      "text": "Propose concrete sensory and interactive location details that remain local to event realization."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "world_cost_limit"
+      ],
+      "owner": "model_creative",
+      "rule_id": "WORLD_COST_AND_LIMIT",
+      "schema": "ProfileRuleV1",
+      "skill_id": "worldbuilding",
+      "source_section_ids": [
+        "skill-section-fd2481e1f316eb41b3ee2b05c4bddb14",
+        "skill-section-f275ede4c8fac45ba71631a97d1698cf",
+        "skill-section-5ae19b293c1191b76e71c9cceb946815",
+        "skill-section-2fba164cb9e1d494b798eb086fc185da",
+        "skill-section-0778418b67b70505a0cb8656e6e156c8"
+      ],
+      "text": "When a system matters, propose specific costs, limits, consequences, and social impact without creating Canon."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "faction_pressure"
+      ],
+      "owner": "model_creative",
+      "rule_id": "WORLD_FACTION_PRESSURE",
+      "schema": "ProfileRuleV1",
+      "skill_id": "worldbuilding",
+      "source_section_ids": [
+        "skill-section-7eb19cbd50a1f320490b4f01e67c6099",
+        "skill-section-9576f99f6ce9bb2de5b067d5b7854012",
+        "skill-section-bc4748cd4fc9d09874ba0f884ef44051",
+        "skill-section-57b13b5d7699d7a6d323dec67dc9701c",
+        "skill-section-8248676e78c29da431cc8d9c76eb3fa5"
+      ],
+      "text": "Use faction purpose, power base, membership, and conflicts as proposal-only local pressure."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "world_current_state"
+      ],
+      "owner": "model_creative",
+      "rule_id": "WORLD_CURRENT_STATE",
+      "schema": "ProfileRuleV1",
+      "skill_id": "worldbuilding",
+      "source_section_ids": [
+        "skill-section-b124f93863065ac22e9680a54850ffd5",
+        "skill-section-c11fb7b6c5465de68f1cad5c7904e79d",
+        "skill-section-c48d11de3396b21fcb034148525e537a",
+        "skill-section-c0d699aa99552cd01159ec7373bc15f4",
+        "skill-section-07c0dad2f6b19854f0a16a9fed9894a9"
+      ],
+      "text": "Ground realization in story-relevant history, culture, and current tensions while preserving existing authority."
+    },
+    {
+      "authority_level": 7,
+      "classification": "advisory_creative",
+      "coverage_categories": [
+        "artifact_realization"
+      ],
+      "owner": "model_creative",
+      "rule_id": "WORLD_ARTIFACT_DETAIL",
+      "schema": "ProfileRuleV1",
+      "skill_id": "worldbuilding",
+      "source_section_ids": [
+        "skill-section-78e7af3e76e28b5f3c0896ceef2bf1d9",
+        "skill-section-47af50cec880384bb06cb67102d6d158",
+        "skill-section-c0d699aa99552cd01159ec7373bc15f4",
+        "skill-section-a87ff75ec75f19a96be145bcd21bb903",
+        "skill-section-07c0dad2f6b19854f0a16a9fed9894a9"
+      ],
+      "text": "Treat an artifact as a proposal-only story element with recognizable form, bounded function, relevant history, and current risk."
+    }
+  ],
+  "authority_hash": "not_bound_in_offline_fixture",
+  "authority_revision": "unknown",
+  "canonical_profile_sha256": "f17fab327c0dbcf066a025585e1c7ea7f07bcb0247e2e26bcf1fe38b6b806b97",
+  "conditional_components": [],
+  "context_budget": 3000,
+  "context_budget_policy": {
+    "advisory_character_budget": 1800,
+    "advisory_overflow_behavior": "truncate_by_whole_rule",
+    "mandatory_character_budget": 1200,
+    "mandatory_overflow_behavior": "block",
+    "maximum_characters": 3000,
+    "policy_id": "SKILL_CONTEXT_BUDGET_POLICY_V1",
+    "policy_sha256": "c2a114f2d0b4513f48f2fc697efc56204d85551b8c9fcc61d15f9f4f756e2042",
+    "schema": "SkillContextBudgetPolicyV1",
+    "whole_rule_only": true
+  },
+  "decision_inputs": [],
+  "decision_result": null,
+  "definition_sha256": "e8cb49e8f078c0df9e23c03c1fc1a61154b322d4d9744c52a5f4b4710f23a2c6",
+  "excluded_section_categories": [
+    "initialization_scaffolding",
+    "filesystem_mutation",
+    "registry_maintenance",
+    "cli_execution",
+    "cross_link_writes",
+    "template_frontmatter"
+  ],
+  "included_rule_ids": [
+    "PLOT_STRUCTURE_ADAPTATION",
+    "PLOT_CAUSAL_ESCALATION",
+    "PLOT_SETUP_PAYOFF_INTENT",
+    "PLOT_PACING_INTENT",
+    "CHARACTER_MOTIVATION",
+    "CHARACTER_VOICE",
+    "CHARACTER_ARC",
+    "CHARACTER_RELATIONSHIP_NUANCE",
+    "WORLD_SENSORY_SPECIFICITY",
+    "WORLD_COST_AND_LIMIT",
+    "WORLD_FACTION_PRESSURE",
+    "WORLD_CURRENT_STATE",
+    "WORLD_ARTIFACT_DETAIL"
+  ],
+  "included_sections": [
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Choosing a Story Structure",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 24,
+      "line_start": 16,
+      "relative_source_path": "plot-structure/SKILL.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-e8d95199278c0b2a10e3d8b44a53b078",
+      "section_sha256": "2dc23e459840afc24d5e52c7fdd81c99f79f1e94471b0548e947b4eb68234b58",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Timeline Management",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 67,
+      "line_start": 54,
+      "relative_source_path": "plot-structure/SKILL.md",
+      "rule_ids": [
+        "PLOT_PACING_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-da6072142c2e77d5666c850b854b3f3f",
+      "section_sha256": "7685d628eb49ff735347f152073859a72224b0dcf4316951f491e8c74748e3af",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Foreshadowing Tracking",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 79,
+      "line_start": 68,
+      "relative_source_path": "plot-structure/SKILL.md",
+      "rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-b315701d5f0ecb5aef9b50c3254ddbd1",
+      "section_sha256": "9279394ed349dfa4c5f4fd6d5b91ac752188ba04d040214c4b3f37176c034e74",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Setup",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 22,
+      "line_start": 19,
+      "relative_source_path": "plot-structure/references/arc-template.md",
+      "rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-dd70ef5969bc704145e0d1d93526c746",
+      "section_sha256": "2dfb0132b207547c05ddc29b5fb80ac18631da626568eb54aa1f9c23a65e432f",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Rising Action",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 30,
+      "line_start": 23,
+      "relative_source_path": "plot-structure/references/arc-template.md",
+      "rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-3f71814d5aabcec21bc010f72facb63f",
+      "section_sha256": "60d2093832ed6339330499aa52bd58a5770e76b9fcbebd06d8dc5f488f2c7d36",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Climax",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 34,
+      "line_start": 31,
+      "relative_source_path": "plot-structure/references/arc-template.md",
+      "rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-d628d71346dec5ca3f61825000ee6ecc",
+      "section_sha256": "eeb8038eb86afdb1a966c4fb9b47dff1fffd3ddb76f128b3cd655264d96f0d11",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Resolution",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 38,
+      "line_start": 35,
+      "relative_source_path": "plot-structure/references/arc-template.md",
+      "rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-46cddd095359b4ab27d2e79e368d7550",
+      "section_sha256": "80c5868617ac64030362dff19f36c823252924c5260d946c46852d9323501b6d",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Foreshadowing",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 53,
+      "line_start": 47,
+      "relative_source_path": "plot-structure/references/arc-template.md",
+      "rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-6ac17c823afd4a0fd2c65cc3aef67266",
+      "section_sha256": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Setup",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 21,
+      "line_start": 18,
+      "relative_source_path": "plot-structure/references/promise-template.md",
+      "rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-7aad757ba8a5b31d0f0bdc929a488451",
+      "section_sha256": "2b3c695963ec578c4c696a1db9a877ccde7092f13180c5777a07c9167cb7e961",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Payoff",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 25,
+      "line_start": 22,
+      "relative_source_path": "plot-structure/references/promise-template.md",
+      "rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-2c0fe21bd64d8f639cb956f61386052a",
+      "section_sha256": "3eac350f1aa515f6055c2907a6f5806d1e81505e45b63f2f61285c1c878632f6",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Question",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 19,
+      "line_start": 16,
+      "relative_source_path": "plot-structure/references/question-template.md",
+      "rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-15c5c641d451278a63c03f887551a545",
+      "section_sha256": "89793ac5971771a063560f9db97856f22225ddbe7e19601821731c4eebd1417a",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Resolution Plan",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 26,
+      "line_start": 24,
+      "relative_source_path": "plot-structure/references/question-template.md",
+      "rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-5a96b50399298ee1443800cef740295c",
+      "section_sha256": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Three-Act Structure",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 20,
+      "line_start": 5,
+      "relative_source_path": "plot-structure/references/structure-models.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-a5519b97ed9a0a6d9cec27cd1a9cee08",
+      "section_sha256": "7c15dfd9be3f35f7b54190d80e0b856034adc4ee27015805fb7dc809917f4c11",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Hero's Journey (Campbell/Vogler)",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 39,
+      "line_start": 21,
+      "relative_source_path": "plot-structure/references/structure-models.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-596b5bca094843e5d1f417cd484c8809",
+      "section_sha256": "f990c5d7dd0b2966130f19271d2e95bda42d22b87067d57f5dec697998d02dfa",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Save the Cat (Snyder)",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 61,
+      "line_start": 40,
+      "relative_source_path": "plot-structure/references/structure-models.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-d68aa04223bc5fb128e94038ba31adbd",
+      "section_sha256": "59c1dff73cf0885ce2c1ddd1a0626ac37a9435e35105dc468a43ed57a6c8606b",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Kishotenketsu",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 72,
+      "line_start": 62,
+      "relative_source_path": "plot-structure/references/structure-models.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-dba6614884711b5ede742b2a0c9bb88c",
+      "section_sha256": "2fde7bf713b2ab55b3432f32cce62c3c0c118cd0688ec2a37bef10b43cb06568",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Five-Act Structure (Shakespeare)",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 84,
+      "line_start": 73,
+      "relative_source_path": "plot-structure/references/structure-models.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-e2b17efb0b24d9f90bd3c573b53a4d98",
+      "section_sha256": "8b4c1d5f93f65644b126041bd4634057b4f4bbb4ecad253544ea1de1bf5a070c",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "always",
+      "classification": "creative_guidance",
+      "heading": "Choosing a Structure",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 93,
+      "line_start": 85,
+      "relative_source_path": "plot-structure/references/structure-models.md",
+      "rule_ids": [
+        "PLOT_STRUCTURE_ADAPTATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-9cefc97522641beaf043e83b860ddf6f",
+      "section_sha256": "143596d445ba38517a32326cd98db95954cd8029d0bb2cd2dd55a55f651c634c",
+      "skill_id": "plot-structure"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Creating a Character",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 40,
+      "line_start": 16,
+      "relative_source_path": "character-management/SKILL.md",
+      "rule_ids": [
+        "CHARACTER_MOTIVATION",
+        "CHARACTER_VOICE",
+        "CHARACTER_ARC"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-e3fe2fae772fc3d97eb39643fb3b975c",
+      "section_sha256": "e67c40d70a251a1f370474a6c2fb488e75a54fc26753bc7c2e6a17e72c27a334",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Backstory",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 39,
+      "line_start": 36,
+      "relative_source_path": "character-management/references/character-template.md",
+      "rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-17042a304f1d005b02b918a38708b4b3",
+      "section_sha256": "599ee49e639532689ed41dcd879b5275344961a251aa1f92f9b73b075354d1e0",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Motivations & Goals",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 43,
+      "line_start": 40,
+      "relative_source_path": "character-management/references/character-template.md",
+      "rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-30c4b9e7a010a05a63f55cfd7cc2390c",
+      "section_sha256": "4b0c80c2f07172268d419d66fd854d21e9c3be2ff18d59be201ca12166bea503",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Voice & Speech Patterns",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 54,
+      "line_start": 48,
+      "relative_source_path": "character-management/references/character-template.md",
+      "rule_ids": [
+        "CHARACTER_VOICE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-05e6b3956b79f0be030549f169fe6dee",
+      "section_sha256": "515acc6ffd2afe5d1ee6ebcd0ac7bd7beae5b9d3c67760d38f9ced50e505e333",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Character Arc",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 60,
+      "line_start": 55,
+      "relative_source_path": "character-management/references/character-template.md",
+      "rule_ids": [
+        "CHARACTER_ARC"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-e0f2ac72a95ad6c4bf03dca1cd4e3f7f",
+      "section_sha256": "39330777067884329784b4b0f7cf41a80c09f14c530564932bc0a4d616fca75b",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Family",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 22,
+      "line_start": 5,
+      "relative_source_path": "character-management/references/relationship-types.md",
+      "rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-3dc067ace404b9c958b7bb43fdba49bb",
+      "section_sha256": "7b6e7f54916c9e48ecb7dd69bd86dd6134c7688bd64f770060ebbc3a174f219c",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Social",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 36,
+      "line_start": 23,
+      "relative_source_path": "character-management/references/relationship-types.md",
+      "rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-ccadce381855ca07b3b0db5e0beaa73e",
+      "section_sha256": "ba861868c24c39b7cbe7d17b8e1acd04dafbdf28556308edc4a82fbcb7670695",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Story Role",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 46,
+      "line_start": 37,
+      "relative_source_path": "character-management/references/relationship-types.md",
+      "rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-1ca9422fd531a74e0c7c58b15e01dad8",
+      "section_sha256": "0d0ba9ddfa67effd143116a4b7852d73cc242957a6ba21cd1151c4e54c2f781c",
+      "skill_id": "character-management"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Creating a Location",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 32,
+      "line_start": 16,
+      "relative_source_path": "worldbuilding/SKILL.md",
+      "rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-580d7ca6fc414e36dc77302914a33f0a",
+      "section_sha256": "ef109ba9fc16ef3e089969322c3555a085bb173acb6ced944fbce15837b7a804",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Creating a System",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 44,
+      "line_start": 33,
+      "relative_source_path": "worldbuilding/SKILL.md",
+      "rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-fd2481e1f316eb41b3ee2b05c4bddb14",
+      "section_sha256": "125ccdb663317b04445f9009f44822c7df74d7687ae0f66a52d8c4456accef27",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Creating A Faction",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 54,
+      "line_start": 45,
+      "relative_source_path": "worldbuilding/SKILL.md",
+      "rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-7eb19cbd50a1f320490b4f01e67c6099",
+      "section_sha256": "af28c989e46fe4d999d526fa038949f75608d1744c109c070773154445423748",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Creating An Artifact",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 64,
+      "line_start": 55,
+      "relative_source_path": "worldbuilding/SKILL.md",
+      "rule_ids": [
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-78e7af3e76e28b5f3c0896ceef2bf1d9",
+      "section_sha256": "3a33e449546bb4edcce526a7b3b3e32603a791f864c8294e89d284329100ad0a",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Description",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 24,
+      "line_start": 21,
+      "relative_source_path": "worldbuilding/references/location-template.md",
+      "rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-7c3f36836984a93e180922aab41b5ede",
+      "section_sha256": "bce1ee06ace005c7b1d7e0e057de7734ef87b10cb7c26031df3117c52a3ae58d",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "History",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 28,
+      "line_start": 25,
+      "relative_source_path": "worldbuilding/references/location-template.md",
+      "rule_ids": [
+        "WORLD_CURRENT_STATE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-b124f93863065ac22e9680a54850ffd5",
+      "section_sha256": "9fd498ba2a8eb6604ca8e18fa08dbf19dda0a4461d0bf566e46e22d5cc6a4b81",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Culture & Customs",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 32,
+      "line_start": 29,
+      "relative_source_path": "worldbuilding/references/location-template.md",
+      "rule_ids": [
+        "WORLD_CURRENT_STATE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-c11fb7b6c5465de68f1cad5c7904e79d",
+      "section_sha256": "5f048817d7ce370ba0007a96903e5b227d3c845c222d04af89a6cc9a6fa1e403",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Notable Features",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 36,
+      "line_start": 33,
+      "relative_source_path": "worldbuilding/references/location-template.md",
+      "rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-03cbcb28a0eea7cc996d13a029cc13a7",
+      "section_sha256": "7303e46d09ff7906790a92401ae11792ed373db0f4075b056ee55b51f00c5ced",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Current State",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 39,
+      "line_start": 37,
+      "relative_source_path": "worldbuilding/references/location-template.md",
+      "rule_ids": [
+        "WORLD_CURRENT_STATE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-c48d11de3396b21fcb034148525e537a",
+      "section_sha256": "62c4d708eaae1cf582b32d00bf68454053acc5fd96636154a96c67d4f701c188",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Rules & Limitations",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 20,
+      "line_start": 17,
+      "relative_source_path": "worldbuilding/references/system-template.md",
+      "rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-f275ede4c8fac45ba71631a97d1698cf",
+      "section_sha256": "925b992a79ebdbc491e4ba69957fe6caad703609ee2768e0b7c8117b9488f884",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Impact on Society",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 31,
+      "line_start": 29,
+      "relative_source_path": "worldbuilding/references/system-template.md",
+      "rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-5ae19b293c1191b76e71c9cceb946815",
+      "section_sha256": "058a0e4813c0130e9ab41d73ec0c0d9f7c403e90e90201b818cf2898cbcb4eb5",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Purpose",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 22,
+      "line_start": 19,
+      "relative_source_path": "worldbuilding/references/faction-template.md",
+      "rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-9576f99f6ce9bb2de5b067d5b7854012",
+      "section_sha256": "24451e13002e9a50866aaa66596b2b346dbc2a51227e8fb2fb667c41148d8f81",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Power Base",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 26,
+      "line_start": 23,
+      "relative_source_path": "worldbuilding/references/faction-template.md",
+      "rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-bc4748cd4fc9d09874ba0f884ef44051",
+      "section_sha256": "d0fe96f0991088fe33eff785e225c68ba48ebae78c8178e5aa934b91b00a20a9",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Members",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 30,
+      "line_start": 27,
+      "relative_source_path": "worldbuilding/references/faction-template.md",
+      "rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-57b13b5d7699d7a6d323dec67dc9701c",
+      "section_sha256": "9a349c40d91e0ad8d121ac304f7cbd4eecfa5b6277a984f2e3750343c87a85ee",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Conflicts",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 33,
+      "line_start": 31,
+      "relative_source_path": "worldbuilding/references/faction-template.md",
+      "rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-8248676e78c29da431cc8d9c76eb3fa5",
+      "section_sha256": "0cef23e02e1c059e5b6c7a91c55b4ecd29949716fa95d821dd090ee4ee1f5223",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Description",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 20,
+      "line_start": 17,
+      "relative_source_path": "worldbuilding/references/artifact-template.md",
+      "rule_ids": [
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-47af50cec880384bb06cb67102d6d158",
+      "section_sha256": "70b514ddb4d44695f8750213544b9e6668deca87606ff909dcacdec884dfe2d4",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Function",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 24,
+      "line_start": 21,
+      "relative_source_path": "worldbuilding/references/artifact-template.md",
+      "rule_ids": [
+        "WORLD_CURRENT_STATE",
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-c0d699aa99552cd01159ec7373bc15f4",
+      "section_sha256": "0054c4d4c9d668d41377165ed94892e4778bf0e791c7c85aaed662fb6489c832",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "History",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 28,
+      "line_start": 25,
+      "relative_source_path": "worldbuilding/references/artifact-template.md",
+      "rule_ids": [
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-a87ff75ec75f19a96be145bcd21bb903",
+      "section_sha256": "4746f155f9eebcfff8551c0199de8a2a180617ede5a87fab3930130607339013",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Current State",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 31,
+      "line_start": 29,
+      "relative_source_path": "worldbuilding/references/artifact-template.md",
+      "rule_ids": [
+        "WORLD_CURRENT_STATE",
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-07c0dad2f6b19854f0a16a9fed9894a9",
+      "section_sha256": "75fbf18a37912e30767daca5b2bc5b374a97aba6977857521fe5737bbb5140c0",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Magic System",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 14,
+      "line_start": 5,
+      "relative_source_path": "worldbuilding/references/world-element-types.md",
+      "rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-2fba164cb9e1d494b798eb086fc185da",
+      "section_sha256": "6a36c8a5339fdc3a5d44cec193aff47bc94caff1e8216861321bf57b3dc1d426",
+      "skill_id": "worldbuilding"
+    },
+    {
+      "applicability": "conditional",
+      "classification": "creative_guidance",
+      "heading": "Technology System",
+      "heading_level": 2,
+      "heading_ordinal": 1,
+      "line_end": 33,
+      "line_start": 25,
+      "relative_source_path": "worldbuilding/references/world-element-types.md",
+      "rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "schema": "SourceSectionBindingV1",
+      "section_id": "skill-section-0778418b67b70505a0cb8656e6e156c8",
+      "section_sha256": "050af8fca57771a57ed52a6e92632a4d4fd1fe28162ab0360e60b4608196bfdd",
+      "skill_id": "worldbuilding"
+    }
+  ],
+  "mandatory_budget": 1200,
+  "mandatory_rules": [],
+  "narrative_bridge": {
+    "bridge_id": "narrative-bridge-058964b1d21d99353a4b30f07468e868",
+    "fields": [
+      {
+        "field_name": "genre",
+        "status": "present",
+        "value_hash": "b0885159dcc618ff5740f07c6a33c321277b6049e57ef71ffc146a07c20a308d"
+      },
+      {
+        "field_name": "premise",
+        "status": "present",
+        "value_hash": "6a9bc66bf751c11130a5f0af0fde32fe9d982d1a4629abf4e85c125fa02a72fd"
+      },
+      {
+        "field_name": "pov",
+        "status": "present",
+        "value_hash": "3284f652fa19ec98ca2ad3ae47916a0b891071044863c0acc147c6748b89e547"
+      },
+      {
+        "field_name": "tone",
+        "status": "present",
+        "value_hash": "eb2d468aeab4dbdee32ec2b187db53790c096dbbde0a9f3927216280120eb3b2"
+      },
+      {
+        "field_name": "theme",
+        "status": "present",
+        "value_hash": "705215bd1f918050a7b16c30d97ca1afd6a53174bc6e2f2ba2924c40ab6f7b98"
+      },
+      {
+        "field_name": "tense",
+        "status": "present",
+        "value_hash": "7e33fb9e8cc341f0386e1b3f30a750c02a42af4df97ee8a2a94215e7a57b672b"
+      }
+    ],
+    "policy_id": "EXISTING_PROJECT_NARRATIVE_BRIDGE_V1",
+    "schema": "ExistingProjectNarrativeBridgeV1",
+    "story_init_loaded": false
+  },
+  "precedence_policy": {
+    "levels": [
+      {
+        "authority": "ready_and_story_state_canonical_authority",
+        "level": 1,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "confirmed_project_and_narrative_constraints",
+        "level": 2,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "formal_events_and_execution_manifest",
+        "level": 3,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "stage_contract_and_schema_ownership",
+        "level": 4,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "deterministic_runtime_rules",
+        "level": 5,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "skill_mandatory_creative_constraint",
+        "level": 6,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "skill_advisory",
+        "level": 7,
+        "may_be_overridden_by_skill": false
+      },
+      {
+        "authority": "generic_writing_preferences",
+        "level": 8,
+        "may_be_overridden_by_skill": false
+      }
+    ],
+    "lower_number_wins": true,
+    "policy_id": "SKILL_PRECEDENCE_POLICY_V1",
+    "policy_sha256": "3f06e2459a3ac6178942663a869adf1cd00068ead699177ff9c5c40f8a1d61ca",
+    "schema": "SkillPrecedencePolicyV1",
+    "skill_advisory_authority_level": 7,
+    "skill_mandatory_authority_level": 6,
+    "unknown_conflict_behavior": "block"
+  },
+  "production_reachable": false,
+  "profile_id": "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
+  "prompt_binding_sha256": "d224988590ac6889ec0aa0298d08abfce4e31200f39313180c221d1bc34553d5",
+  "schema": "RuntimeSkillProfileV1",
+  "shadow_only": true,
+  "slice_id": "not_applicable",
+  "source_bundle_manifest_sha256": "451a30d3815e1c6e4bdb3e1a1bc1dbec4e4a84061e873f8acca3aee2e2925a3a",
+  "source_skill_ids": [
+    "story-init",
+    "plot-structure",
+    "character-management",
+    "worldbuilding"
+  ],
+  "source_skill_sha256": {
+    "character-management": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+    "plot-structure": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+    "story-init": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+    "worldbuilding": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678"
+  },
+  "stage": "planning",
+  "substage": "planning_v1_compat",
+  "truncation_status": "NONE",
+  "version": 1,
+  "world_creative_policy": {
+    "allowed": [
+      "propose_local_location_detail",
+      "propose_sensory_specificity",
+      "propose_world_cost_or_limit",
+      "propose_faction_pressure",
+      "propose_artifact_detail"
+    ],
+    "covered_subjects": [
+      "world_rule_cost",
+      "owner",
+      "location",
+      "power",
+      "historical_state"
+    ],
+    "forbidden": [
+      "write_story_state",
+      "write_canon",
+      "change_ready_authority",
+      "invent_locked_fact",
+      "override_formal_event"
+    ],
+    "formal_write_authority": false,
+    "lanes": [
+      {
+        "canon_authority": false,
+        "classification": "SENSORY_REALIZATION",
+        "constraints": [
+          "does_not_become_canon"
+        ],
+        "disposition": "allowed",
+        "lane_id": "world-lane-2a1d2972a849ba832789c82c338aefa0",
+        "lane_sha256": "2a1d2972a849ba832789c82c338aefa05af0a593ceed8327c867cbf6c6aa6a0a"
+      },
+      {
+        "canon_authority": false,
+        "classification": "DRAMATIZATION",
+        "constraints": [
+          "derive_from_existing_facts"
+        ],
+        "disposition": "allowed",
+        "lane_id": "world-lane-6cb2e546990b00a92ac19b89c49d5bb0",
+        "lane_sha256": "6cb2e546990b00a92ac19b89c49d5bb0dc7fa4f3a1c1f0f2bc9216d7acc67e31"
+      },
+      {
+        "canon_authority": false,
+        "classification": "NON_CANONICAL_DETAIL",
+        "constraints": [
+          "local_and_reversible",
+          "not_a_downstream_causal_prerequisite"
+        ],
+        "disposition": "allowed",
+        "lane_id": "world-lane-ed75a6fe6f8d097a1e2152c105fc44b1",
+        "lane_sha256": "ed75a6fe6f8d097a1e2152c105fc44b1bbee37d533b6dc3a2b4a07acbe91e1fe"
+      },
+      {
+        "canon_authority": false,
+        "classification": "CANONICAL_FACT_PROPOSAL",
+        "constraints": [
+          "never_authority",
+          "requires_separate_confirmation"
+        ],
+        "disposition": "proposal_only",
+        "lane_id": "world-lane-20edb926689d05bc39a19be844b279ce",
+        "lane_sha256": "20edb926689d05bc39a19be844b279ce1a854cafd681fdd4318424824802ea03"
+      },
+      {
+        "canon_authority": false,
+        "classification": "FORBIDDEN_AUTHORITY_OVERRIDE",
+        "constraints": [
+          "preserve_story_state_canon_ready"
+        ],
+        "disposition": "reject",
+        "lane_id": "world-lane-3d143c029729a2a12c72f05181e329cf",
+        "lane_sha256": "3d143c029729a2a12c72f05181e329cfd71ace2e6a7125a0e109bf62f8b69f9b"
+      }
+    ],
+    "policy_id": "WORLD_CREATIVE_PROPOSAL_POLICY_V1",
+    "policy_sha256": "87285ec1ae6022c1d4ca645a0291b14bec3811bc7e2d8518c6758bdf35c7ddca",
+    "proposal_only": true,
+    "schema": "WorldCreativeProposalPolicyV1"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "closed_world_justification": "The finite sealed four-Skill source set, two named profile contracts, fixed shadow resolver states, and offline fixtures are fully enumerated; production adoption is excluded.",
+  "constraint_traceability": [
+    {
+      "evidence": "source-bundle-integrity-v1.json and both profile artifacts",
+      "implementation": "runtime_skill_profiles.verify_source_bundle and exact heading/range binding",
+      "requirement": "exact source and section provenance",
+      "test_paths": [
+        "tests/test_runtime_skill_profiles.py"
+      ]
+    },
+    {
+      "evidence": "mandatory-rule-classification-v2.json and conditional-load-matrix-v1.json",
+      "implementation": "closed classification registry and typed resolver",
+      "requirement": "deterministic mandatory and conditional classification",
+      "test_paths": [
+        "tests/test_runtime_skill_profiles.py"
+      ]
+    },
+    {
+      "evidence": "current-prompt-parity-v1.json and active-skill-resolution-parity-v1.json",
+      "implementation": "new shadow module has no production importer",
+      "requirement": "zero production cutover and current parity",
+      "test_paths": [
+        "tests/test_planning_skill_profile_shadow.py"
+      ]
+    },
+    {
+      "evidence": "creative-coverage-audit-v1.json and planning-v2-slice1-compatibility-v1.json",
+      "implementation": "creative-only level-7 rules and proposal-only world policy",
+      "requirement": "quality and Slice1 authority preservation",
+      "test_paths": [
+        "tests/test_runtime_skill_profiles.py",
+        "tests/test_planning_v2_slice1.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not use fuzzy or LLM section extraction",
+    "Do not promote unknown mandatory rules",
+    "Do not connect profiles to production prompt assembly",
+    "Do not claim quality improvement before A/B cutover evidence"
+  ],
+  "historical_incident_families_checked": [
+    "false mandatory extraction",
+    "Skill operational noise",
+    "stale authority",
+    "prompt capacity truncation",
+    "planning repair scope mutation",
+    "Slice1 Runtime ownership leak"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No prompt, parser, model contract, route, retry, fallback, provider, validator, or production workflow owner is changed; the new compiler is offline and unreachable.",
+  "next_authoritative_boundary_tests": [
+    "tests/test_planning_v2_slice1.py",
+    "tests/test_context_packet.py",
+    "tests/test_skills.py"
+  ],
+  "operational_definition": "Compile exact section-bound creative rules, deterministic conditional decisions, typed precedence and whole-rule budgets, then compare hash-only shadow characteristics while leaving active global Skill resolution unchanged.",
+  "original_requirement": "Implement two deterministic offline Planning Skill profiles and evidence without production cutover.",
+  "production_shaped_tests": [
+    "tests/test_runtime_skill_profiles.py",
+    "tests/test_planning_skill_profile_shadow.py"
+  ],
+  "projected_failure_mechanisms": [
+    "source drift",
+    "unknown classification",
+    "conditional input uncertainty",
+    "mandatory budget overflow",
+    "precedence inversion",
+    "production reachability"
+  ],
+  "remaining_risks": [
+    "Profiles remain shadow-only and have no production quality A/B evidence",
+    "Current mandatory extractor remains unchanged by authorization",
+    "PTR12 is still required before Planning V2 Phase B"
+  ],
+  "resolution_status": "case_fixed",
+  "runtime_dependencies": {
+    "bun_npx_bunx_story_cli_references": "optional_and_unchanged",
+    "node_js": "required_for_existing_story_cli_path"
+  },
+  "runtime_environment_fully_portable": false,
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "Planning V1 prompt",
+      "disposition": "tested_not_susceptible",
+      "evidence": "protected source bytes and current prompt source are exact"
+    },
+    {
+      "boundary": "Planning V2 Slice1",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Replay V2 manifest exact and profile is unconsumed"
+    },
+    {
+      "boundary": "Draft through formal promotion",
+      "disposition": "not_applicable",
+      "evidence": "shadow compiler has no workflow importer or dispatch"
+    },
+    {
+      "boundary": "StoryState, Canon and READY",
+      "disposition": "tested_not_susceptible",
+      "evidence": "zero writers and proposal-only policy"
+    }
+  ],
+  "skill_license_provenance_status": "INCOMPLETE_9_SOURCE_DIRECTORIES_NO_LICENSE",
+  "version": 2,
+  "why_previous_tests_missed": "The prior bundle stage preserved raw Skills but intentionally had no section-bound profile compiler, typed resolver, or profile budget receipt."
+}

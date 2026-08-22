@@ -1,0 +1,103 @@
+{
+  "algorithm": "sha256",
+  "entry_count": 17,
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client": 0
+  },
+  "files": [
+    {
+      "bytes": 295,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/active-skill-resolution-parity-v1.json",
+      "sha256": "b9b5c125873235717789e592e9b77dfab1c7cc5c8c49f5fa78f56a9732ba7840"
+    },
+    {
+      "bytes": 16639,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/conditional-load-matrix-v1.json",
+      "sha256": "e78af104465fc9568a21b3aae18513b766e01d5fc83c38d4211797bed2b1e3d0"
+    },
+    {
+      "bytes": 1286,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/creative-coverage-audit-v1.json",
+      "sha256": "6028506156f81a6308db521c6f75d85138bc8e3dd1192f342349745711050e35"
+    },
+    {
+      "bytes": 2729,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/current-prompt-parity-v1.json",
+      "sha256": "64a0d11d1b3e84848451325990dab6a23273ee448ff76276e9a1fde2b0e6dd77"
+    },
+    {
+      "bytes": 900,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/current-vs-shadow-comparison-v1.json",
+      "sha256": "6cf2ae975a28cc30833334706a8765c33b23f5543f99b0b25e2dd56d761abc34"
+    },
+    {
+      "bytes": 519,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/final-privacy-scan-v1.json",
+      "sha256": "f73945c7f269ea02cc6b821c2d94344e1a87d500ea2b45a586585af774bb3c57"
+    },
+    {
+      "bytes": 4789,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/forward-risk-report-v1.json",
+      "sha256": "eb4ce44a1c7ace9d46b1e7b34d772f11793dbbc8ebd9e467dc304192b23f796d"
+    },
+    {
+      "bytes": 2234,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/mandatory-rule-classification-v2.json",
+      "sha256": "1d40271a312b0466df39a1deacc439fb605918e46f2369bd361136213dad8f55"
+    },
+    {
+      "bytes": 2642,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/planning-skill-profile-shadow-v1-final-report.md",
+      "sha256": "02a65457ed3af44c56b39c0924f65cd3fa8e2c1b78d090466d1fa652329a3c23"
+    },
+    {
+      "bytes": 45717,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/planning-v1-compat-profile-v1.json",
+      "sha256": "097b41341bc0f4faf73dec1f2030579f55335355f0aa9568e784bda3855a9753"
+    },
+    {
+      "bytes": 44111,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/planning-v2-event-realization-profile-v1.json",
+      "sha256": "0eb3b0f928f2b2a5fe182b632dc80b3a1573e51f1ff2f4c9997a3a8587185f58"
+    },
+    {
+      "bytes": 432,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/planning-v2-slice1-compatibility-v1.json",
+      "sha256": "2f91d0c155b98c14e764f2890b5fd16136b8abf760eab2f6397a1fb16eb5d90d"
+    },
+    {
+      "bytes": 30341,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/runtime-skill-profile-schema-v1.json",
+      "sha256": "a8788372fd23a1ccf970315519ed94fa1c449d34c8420b300241024de4fbb9c8"
+    },
+    {
+      "bytes": 622,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/skill-context-budget-policy-v1.json",
+      "sha256": "733b404e751a1c062a2425d59aec6cb98e2aaadcc541584fbc65c1f4c855fef7"
+    },
+    {
+      "bytes": 1602,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/skill-context-truncation-receipt-v1.json",
+      "sha256": "c3da4b9181a7b98744b40874a8b4807cde8417ea0918c29b6965481034a93ebd"
+    },
+    {
+      "bytes": 1935,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/skill-precedence-policy-v1.json",
+      "sha256": "c9d5ff29e505a772ae18aa89596fdb781863632c544ec43b9f3aed3f0846916c"
+    },
+    {
+      "bytes": 825,
+      "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/source-bundle-integrity-v1.json",
+      "sha256": "1abdbc6dc25a1de0abaa4098d7c5d4278159d0f735809da86074aa4b9d9ed2d8"
+    }
+  ],
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "privacy_status": "exact",
+  "schema": "PlanningSkillProfileShadowFinalSha256ManifestV1",
+  "version": 1
+}

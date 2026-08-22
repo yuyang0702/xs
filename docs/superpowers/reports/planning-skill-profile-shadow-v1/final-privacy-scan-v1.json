@@ -1,0 +1,21 @@
+{
+  "absolute_path_match_count": 0,
+  "credential_value_count": 0,
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client": 0
+  },
+  "overall_status": "exact",
+  "provider_content_count": 0,
+  "raw_novel_content_field_count": 0,
+  "raw_prompt_field_count": 0,
+  "scanned_file_count": 16,
+  "schema": "PlanningSkillProfileShadowFinalPrivacyScanV1",
+  "secret_pattern_match_count": 0,
+  "source_path_persisted": false,
+  "version": 1,
+  "violating_files": []
+}

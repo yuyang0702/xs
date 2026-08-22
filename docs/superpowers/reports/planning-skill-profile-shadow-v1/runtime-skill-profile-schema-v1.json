@@ -1,0 +1,1149 @@
+{
+  "absolute_paths_allowed": false,
+  "canonicalization": "canonical-shadow-json-v1",
+  "clock_fields_allowed": false,
+  "json_schema": {
+    "$defs": {
+      "ComponentLoadDecisionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "component_id": {
+            "title": "Component Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "include",
+              "exclude",
+              "fail_safe_include"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "component_id",
+          "outcome",
+          "reason_code"
+        ],
+        "title": "ComponentLoadDecisionV1",
+        "type": "object"
+      },
+      "ConditionalComponentV1": {
+        "additionalProperties": false,
+        "properties": {
+          "component_id": {
+            "title": "Component Id",
+            "type": "string"
+          },
+          "fail_safe_include_states": {
+            "default": [
+              "unknown",
+              "missing",
+              "stale",
+              "mixed"
+            ],
+            "items": {
+              "enum": [
+                "unknown",
+                "missing",
+                "stale",
+                "mixed"
+              ],
+              "type": "string"
+            },
+            "title": "Fail Safe Include States",
+            "type": "array"
+          },
+          "false_states": {
+            "default": [
+              "absent"
+            ],
+            "items": {
+              "const": "absent",
+              "type": "string"
+            },
+            "title": "False States",
+            "type": "array"
+          },
+          "rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rule Ids",
+            "type": "array"
+          },
+          "schema": {
+            "const": "ConditionalComponentV1",
+            "default": "ConditionalComponentV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "section_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Section Ids",
+            "type": "array"
+          },
+          "skill_id": {
+            "enum": [
+              "character-management",
+              "worldbuilding"
+            ],
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "trigger_field": {
+            "enum": [
+              "actor_refs_status",
+              "world_refs_status"
+            ],
+            "title": "Trigger Field",
+            "type": "string"
+          },
+          "true_states": {
+            "default": [
+              "present"
+            ],
+            "items": {
+              "const": "present",
+              "type": "string"
+            },
+            "title": "True States",
+            "type": "array"
+          }
+        },
+        "required": [
+          "component_id",
+          "skill_id",
+          "trigger_field",
+          "rule_ids",
+          "section_ids"
+        ],
+        "title": "ConditionalComponentV1",
+        "type": "object"
+      },
+      "ExistingProjectNarrativeBridgeV1": {
+        "additionalProperties": false,
+        "properties": {
+          "bridge_id": {
+            "title": "Bridge Id",
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/$defs/NarrativeBridgeFieldV1"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "policy_id": {
+            "const": "EXISTING_PROJECT_NARRATIVE_BRIDGE_V1",
+            "default": "EXISTING_PROJECT_NARRATIVE_BRIDGE_V1",
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "ExistingProjectNarrativeBridgeV1",
+            "default": "ExistingProjectNarrativeBridgeV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "story_init_loaded": {
+            "const": false,
+            "default": false,
+            "title": "Story Init Loaded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "bridge_id",
+          "fields"
+        ],
+        "title": "ExistingProjectNarrativeBridgeV1",
+        "type": "object"
+      },
+      "NarrativeBridgeFieldV1": {
+        "additionalProperties": false,
+        "properties": {
+          "field_name": {
+            "enum": [
+              "genre",
+              "premise",
+              "pov",
+              "tone",
+              "theme",
+              "tense"
+            ],
+            "title": "Field Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "present",
+              "unspecified"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value_hash": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Value Hash"
+          }
+        },
+        "required": [
+          "field_name",
+          "status"
+        ],
+        "title": "NarrativeBridgeFieldV1",
+        "type": "object"
+      },
+      "PrecedenceLevelV1": {
+        "additionalProperties": false,
+        "properties": {
+          "authority": {
+            "title": "Authority",
+            "type": "string"
+          },
+          "level": {
+            "maximum": 8,
+            "minimum": 1,
+            "title": "Level",
+            "type": "integer"
+          },
+          "may_be_overridden_by_skill": {
+            "const": false,
+            "default": false,
+            "title": "May Be Overridden By Skill",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "level",
+          "authority"
+        ],
+        "title": "PrecedenceLevelV1",
+        "type": "object"
+      },
+      "ProfileRuleV1": {
+        "additionalProperties": false,
+        "properties": {
+          "authority_level": {
+            "default": 7,
+            "enum": [
+              6,
+              7
+            ],
+            "title": "Authority Level",
+            "type": "integer"
+          },
+          "classification": {
+            "enum": [
+              "advisory_creative",
+              "true_narrative_invariant"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "coverage_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Coverage Categories",
+            "type": "array"
+          },
+          "owner": {
+            "const": "model_creative",
+            "default": "model_creative",
+            "title": "Owner",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "schema": {
+            "const": "ProfileRuleV1",
+            "default": "ProfileRuleV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "skill_id": {
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "source_section_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Section Ids",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "skill_id",
+          "text",
+          "source_section_ids",
+          "classification",
+          "coverage_categories"
+        ],
+        "title": "ProfileRuleV1",
+        "type": "object"
+      },
+      "SkillContextBudgetPolicyV1": {
+        "additionalProperties": false,
+        "properties": {
+          "advisory_character_budget": {
+            "default": 1800,
+            "minimum": 0,
+            "title": "Advisory Character Budget",
+            "type": "integer"
+          },
+          "advisory_overflow_behavior": {
+            "const": "truncate_by_whole_rule",
+            "default": "truncate_by_whole_rule",
+            "title": "Advisory Overflow Behavior",
+            "type": "string"
+          },
+          "mandatory_character_budget": {
+            "default": 1200,
+            "minimum": 1,
+            "title": "Mandatory Character Budget",
+            "type": "integer"
+          },
+          "mandatory_overflow_behavior": {
+            "const": "block",
+            "default": "block",
+            "title": "Mandatory Overflow Behavior",
+            "type": "string"
+          },
+          "maximum_characters": {
+            "default": 3000,
+            "maximum": 3000,
+            "minimum": 1,
+            "title": "Maximum Characters",
+            "type": "integer"
+          },
+          "policy_id": {
+            "const": "SKILL_CONTEXT_BUDGET_POLICY_V1",
+            "default": "SKILL_CONTEXT_BUDGET_POLICY_V1",
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Policy Sha256",
+            "type": "string"
+          },
+          "schema": {
+            "const": "SkillContextBudgetPolicyV1",
+            "default": "SkillContextBudgetPolicyV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "whole_rule_only": {
+            "const": true,
+            "default": true,
+            "title": "Whole Rule Only",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "policy_sha256"
+        ],
+        "title": "SkillContextBudgetPolicyV1",
+        "type": "object"
+      },
+      "SkillLoadDecisionInputsV1": {
+        "additionalProperties": false,
+        "properties": {
+          "actor_ref_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actor Ref Count"
+          },
+          "actor_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Actor Refs",
+            "type": "array"
+          },
+          "actor_refs_status": {
+            "enum": [
+              "present",
+              "absent",
+              "unknown",
+              "missing",
+              "stale",
+              "mixed"
+            ],
+            "title": "Actor Refs Status",
+            "type": "string"
+          },
+          "authority_hash": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Authority Hash",
+            "type": "string"
+          },
+          "authority_revision": {
+            "minimum": 1,
+            "title": "Authority Revision",
+            "type": "integer"
+          },
+          "character_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Character Refs",
+            "type": "array"
+          },
+          "dialogue_required": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Dialogue Required"
+          },
+          "faction_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Faction Refs",
+            "type": "array"
+          },
+          "formal_event_dependency_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Formal Event Dependency Refs",
+            "type": "array"
+          },
+          "knowledge_state_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Knowledge State Refs",
+            "type": "array"
+          },
+          "location_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Location Refs",
+            "type": "array"
+          },
+          "object_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Object Refs",
+            "type": "array"
+          },
+          "relationship_dependency_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Relationship Dependency Refs",
+            "type": "array"
+          },
+          "schema": {
+            "const": "SkillLoadDecisionInputsV1",
+            "default": "SkillLoadDecisionInputsV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "slice_dependency_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Slice Dependency Refs",
+            "type": "array"
+          },
+          "system_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "System Refs",
+            "type": "array"
+          },
+          "world_ref_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "World Ref Count"
+          },
+          "world_refs_status": {
+            "enum": [
+              "present",
+              "absent",
+              "unknown",
+              "missing",
+              "stale",
+              "mixed"
+            ],
+            "title": "World Refs Status",
+            "type": "string"
+          },
+          "world_rule_refs": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "World Rule Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "authority_revision",
+          "authority_hash",
+          "actor_refs_status",
+          "world_refs_status"
+        ],
+        "title": "SkillLoadDecisionInputsV1",
+        "type": "object"
+      },
+      "SkillLoadDecisionV1": {
+        "additionalProperties": false,
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/$defs/ComponentLoadDecisionV1"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "decision_id": {
+            "title": "Decision Id",
+            "type": "string"
+          },
+          "fail_safe_used": {
+            "title": "Fail Safe Used",
+            "type": "boolean"
+          },
+          "included_skill_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Included Skill Ids",
+            "type": "array"
+          },
+          "inputs": {
+            "$ref": "#/$defs/SkillLoadDecisionInputsV1"
+          },
+          "schema": {
+            "const": "SkillLoadDecisionV1",
+            "default": "SkillLoadDecisionV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "version": {
+            "const": 1,
+            "default": 1,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "decision_id",
+          "inputs",
+          "components",
+          "included_skill_ids",
+          "fail_safe_used"
+        ],
+        "title": "SkillLoadDecisionV1",
+        "type": "object"
+      },
+      "SkillPrecedencePolicyV1": {
+        "additionalProperties": false,
+        "properties": {
+          "levels": {
+            "items": {
+              "$ref": "#/$defs/PrecedenceLevelV1"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "lower_number_wins": {
+            "const": true,
+            "default": true,
+            "title": "Lower Number Wins",
+            "type": "boolean"
+          },
+          "policy_id": {
+            "const": "SKILL_PRECEDENCE_POLICY_V1",
+            "default": "SKILL_PRECEDENCE_POLICY_V1",
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Policy Sha256",
+            "type": "string"
+          },
+          "schema": {
+            "const": "SkillPrecedencePolicyV1",
+            "default": "SkillPrecedencePolicyV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "skill_advisory_authority_level": {
+            "const": 7,
+            "default": 7,
+            "title": "Skill Advisory Authority Level",
+            "type": "integer"
+          },
+          "skill_mandatory_authority_level": {
+            "const": 6,
+            "default": 6,
+            "title": "Skill Mandatory Authority Level",
+            "type": "integer"
+          },
+          "unknown_conflict_behavior": {
+            "const": "block",
+            "default": "block",
+            "title": "Unknown Conflict Behavior",
+            "type": "string"
+          }
+        },
+        "required": [
+          "levels",
+          "policy_sha256"
+        ],
+        "title": "SkillPrecedencePolicyV1",
+        "type": "object"
+      },
+      "SourceSectionBindingV1": {
+        "additionalProperties": false,
+        "properties": {
+          "applicability": {
+            "enum": [
+              "always",
+              "conditional"
+            ],
+            "title": "Applicability",
+            "type": "string"
+          },
+          "classification": {
+            "enum": [
+              "creative_guidance",
+              "template_content"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "heading": {
+            "title": "Heading",
+            "type": "string"
+          },
+          "heading_level": {
+            "maximum": 6,
+            "minimum": 1,
+            "title": "Heading Level",
+            "type": "integer"
+          },
+          "heading_ordinal": {
+            "minimum": 1,
+            "title": "Heading Ordinal",
+            "type": "integer"
+          },
+          "line_end": {
+            "minimum": 1,
+            "title": "Line End",
+            "type": "integer"
+          },
+          "line_start": {
+            "minimum": 1,
+            "title": "Line Start",
+            "type": "integer"
+          },
+          "relative_source_path": {
+            "title": "Relative Source Path",
+            "type": "string"
+          },
+          "rule_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rule Ids",
+            "type": "array"
+          },
+          "schema": {
+            "const": "SourceSectionBindingV1",
+            "default": "SourceSectionBindingV1",
+            "title": "Schema",
+            "type": "string"
+          },
+          "section_id": {
+            "title": "Section Id",
+            "type": "string"
+          },
+          "section_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Section Sha256",
+            "type": "string"
+          },
+          "skill_id": {
+            "title": "Skill Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "section_id",
+          "skill_id",
+          "relative_source_path",
+          "heading",
+          "heading_level",
+          "heading_ordinal",
+          "line_start",
+          "line_end",
+          "section_sha256",
+          "rule_ids",
+          "classification",
+          "applicability"
+        ],
+        "title": "SourceSectionBindingV1",
+        "type": "object"
+      },
+      "WorldCreativeProposalLaneV1": {
+        "additionalProperties": false,
+        "properties": {
+          "canon_authority": {
+            "const": false,
+            "default": false,
+            "title": "Canon Authority",
+            "type": "boolean"
+          },
+          "classification": {
+            "enum": [
+              "SENSORY_REALIZATION",
+              "DRAMATIZATION",
+              "NON_CANONICAL_DETAIL",
+              "CANONICAL_FACT_PROPOSAL",
+              "FORBIDDEN_AUTHORITY_OVERRIDE"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "constraints": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Constraints",
+            "type": "array"
+          },
+          "disposition": {
+            "enum": [
+              "allowed",
+              "proposal_only",
+              "reject"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "lane_id": {
+            "title": "Lane Id",
+            "type": "string"
+          },
+          "lane_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Lane Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lane_id",
+          "classification",
+          "disposition",
+          "constraints",
+          "lane_sha256"
+        ],
+        "title": "WorldCreativeProposalLaneV1",
+        "type": "object"
+      },
+      "WorldCreativeProposalPolicyV1": {
+        "additionalProperties": false,
+        "properties": {
+          "allowed": {
+            "default": [
+              "propose_local_location_detail",
+              "propose_sensory_specificity",
+              "propose_world_cost_or_limit",
+              "propose_faction_pressure",
+              "propose_artifact_detail"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Allowed",
+            "type": "array"
+          },
+          "covered_subjects": {
+            "default": [
+              "world_rule_cost",
+              "owner",
+              "location",
+              "power",
+              "historical_state"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Subjects",
+            "type": "array"
+          },
+          "forbidden": {
+            "default": [
+              "write_story_state",
+              "write_canon",
+              "change_ready_authority",
+              "invent_locked_fact",
+              "override_formal_event"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Forbidden",
+            "type": "array"
+          },
+          "formal_write_authority": {
+            "const": false,
+            "default": false,
+            "title": "Formal Write Authority",
+            "type": "boolean"
+          },
+          "lanes": {
+            "items": {
+              "$ref": "#/$defs/WorldCreativeProposalLaneV1"
+            },
+            "title": "Lanes",
+            "type": "array"
+          },
+          "policy_id": {
+            "const": "WORLD_CREATIVE_PROPOSAL_POLICY_V1",
+            "default": "WORLD_CREATIVE_PROPOSAL_POLICY_V1",
+            "title": "Policy Id",
+            "type": "string"
+          },
+          "policy_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Policy Sha256",
+            "type": "string"
+          },
+          "proposal_only": {
+            "const": true,
+            "default": true,
+            "title": "Proposal Only",
+            "type": "boolean"
+          },
+          "schema": {
+            "const": "WorldCreativeProposalPolicyV1",
+            "default": "WorldCreativeProposalPolicyV1",
+            "title": "Schema",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lanes",
+          "policy_sha256"
+        ],
+        "title": "WorldCreativeProposalPolicyV1",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "properties": {
+      "advisory_budget": {
+        "minimum": 0,
+        "title": "Advisory Budget",
+        "type": "integer"
+      },
+      "advisory_rules": {
+        "items": {
+          "$ref": "#/$defs/ProfileRuleV1"
+        },
+        "title": "Advisory Rules",
+        "type": "array"
+      },
+      "authority_hash": {
+        "title": "Authority Hash",
+        "type": "string"
+      },
+      "authority_revision": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "const": "unknown",
+            "type": "string"
+          }
+        ],
+        "title": "Authority Revision"
+      },
+      "canonical_profile_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Canonical Profile Sha256",
+        "type": "string"
+      },
+      "conditional_components": {
+        "items": {
+          "$ref": "#/$defs/ConditionalComponentV1"
+        },
+        "title": "Conditional Components",
+        "type": "array"
+      },
+      "context_budget": {
+        "maximum": 3000,
+        "minimum": 1,
+        "title": "Context Budget",
+        "type": "integer"
+      },
+      "context_budget_policy": {
+        "$ref": "#/$defs/SkillContextBudgetPolicyV1"
+      },
+      "decision_inputs": {
+        "items": {
+          "$ref": "#/$defs/SkillLoadDecisionInputsV1"
+        },
+        "title": "Decision Inputs",
+        "type": "array"
+      },
+      "decision_result": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/SkillLoadDecisionV1"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "definition_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Definition Sha256",
+        "type": "string"
+      },
+      "excluded_section_categories": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Excluded Section Categories",
+        "type": "array"
+      },
+      "included_rule_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Included Rule Ids",
+        "type": "array"
+      },
+      "included_sections": {
+        "items": {
+          "$ref": "#/$defs/SourceSectionBindingV1"
+        },
+        "title": "Included Sections",
+        "type": "array"
+      },
+      "mandatory_budget": {
+        "minimum": 1,
+        "title": "Mandatory Budget",
+        "type": "integer"
+      },
+      "mandatory_rules": {
+        "items": {
+          "$ref": "#/$defs/ProfileRuleV1"
+        },
+        "title": "Mandatory Rules",
+        "type": "array"
+      },
+      "narrative_bridge": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/ExistingProjectNarrativeBridgeV1"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "precedence_policy": {
+        "$ref": "#/$defs/SkillPrecedencePolicyV1"
+      },
+      "production_reachable": {
+        "const": false,
+        "default": false,
+        "title": "Production Reachable",
+        "type": "boolean"
+      },
+      "profile_id": {
+        "enum": [
+          "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
+          "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1"
+        ],
+        "title": "Profile Id",
+        "type": "string"
+      },
+      "prompt_binding_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Prompt Binding Sha256",
+        "type": "string"
+      },
+      "schema": {
+        "const": "RuntimeSkillProfileV1",
+        "default": "RuntimeSkillProfileV1",
+        "title": "Schema",
+        "type": "string"
+      },
+      "shadow_only": {
+        "const": true,
+        "default": true,
+        "title": "Shadow Only",
+        "type": "boolean"
+      },
+      "slice_id": {
+        "enum": [
+          "not_applicable",
+          "EVENT_REALIZATION_UNIT_SHADOW_V1"
+        ],
+        "title": "Slice Id",
+        "type": "string"
+      },
+      "source_bundle_manifest_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Source Bundle Manifest Sha256",
+        "type": "string"
+      },
+      "source_skill_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Source Skill Ids",
+        "type": "array"
+      },
+      "source_skill_sha256": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "title": "Source Skill Sha256",
+        "type": "object"
+      },
+      "stage": {
+        "const": "planning",
+        "default": "planning",
+        "title": "Stage",
+        "type": "string"
+      },
+      "substage": {
+        "enum": [
+          "planning_v1_compat",
+          "planning_v2_event_realization"
+        ],
+        "title": "Substage",
+        "type": "string"
+      },
+      "truncation_status": {
+        "enum": [
+          "NONE",
+          "ADVISORY_TRUNCATED",
+          "ADVISORY_SHED"
+        ],
+        "title": "Truncation Status",
+        "type": "string"
+      },
+      "version": {
+        "const": 1,
+        "default": 1,
+        "title": "Version",
+        "type": "integer"
+      },
+      "world_creative_policy": {
+        "$ref": "#/$defs/WorldCreativeProposalPolicyV1"
+      }
+    },
+    "required": [
+      "profile_id",
+      "substage",
+      "slice_id",
+      "source_bundle_manifest_sha256",
+      "source_skill_ids",
+      "source_skill_sha256",
+      "included_sections",
+      "included_rule_ids",
+      "mandatory_rules",
+      "advisory_rules",
+      "excluded_section_categories",
+      "conditional_components",
+      "decision_inputs",
+      "decision_result",
+      "authority_revision",
+      "authority_hash",
+      "precedence_policy",
+      "context_budget_policy",
+      "world_creative_policy",
+      "narrative_bridge",
+      "context_budget",
+      "mandatory_budget",
+      "advisory_budget",
+      "truncation_status",
+      "prompt_binding_sha256",
+      "definition_sha256",
+      "canonical_profile_sha256"
+    ],
+    "title": "RuntimeSkillProfileV1",
+    "type": "object"
+  },
+  "random_identity_allowed": false,
+  "schema": "RuntimeSkillProfileSchemaEvidenceV1",
+  "status": "exact",
+  "version": 1
+}

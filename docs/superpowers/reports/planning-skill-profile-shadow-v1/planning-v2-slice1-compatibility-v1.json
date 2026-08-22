@@ -1,0 +1,14 @@
+{
+  "canon_write_count": 0,
+  "event_unit_mutated": false,
+  "profile_consumed_by_slice1": false,
+  "ready_authority_change_count": 0,
+  "replay_v2_manifest_entry_count": 19,
+  "replay_v2_manifest_mismatch_count": 0,
+  "runtime_owned_responsibility_leak_count": 0,
+  "schema": "PlanningV2Slice1CompatibilityV1",
+  "slice_id": "EVENT_REALIZATION_UNIT_SHADOW_V1",
+  "status": "exact",
+  "story_state_write_count": 0,
+  "version": 1
+}

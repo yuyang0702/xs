@@ -1,0 +1,64 @@
+{
+  "false_mandatory_rule_included_count": 0,
+  "occurrence_count": 9,
+  "operational_instruction_count": 4,
+  "rules": [
+    {
+      "classification": "TEMPLATE_FALSE_POSITIVE",
+      "occurrence_count": 1,
+      "rule_id": "RULE-3FCD9AEB9A30F19A",
+      "text_sha256": "7f417d70cb3f668822dea060f9d8c90f6147974dad8b33ed4f289adc1ef19a3f",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 1,
+      "rule_id": "RULE-72668C0A0945572B",
+      "text_sha256": "159e5b636c96912f795b9cd6a378913b3ffa81add12afb1b6696daa7bc6c14f6",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "TEMPLATE_FALSE_POSITIVE",
+      "occurrence_count": 1,
+      "rule_id": "RULE-E39AA5723E9297B8",
+      "text_sha256": "e39aa5723e9297b8199af450af3f32562a2a9ad34f200794e81ac8adcb773e94",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "TEMPLATE_FALSE_POSITIVE",
+      "occurrence_count": 1,
+      "rule_id": "RULE-4B1E7AC4A6C3302A",
+      "text_sha256": "16fec4382e1d1247bb5fde87caa670fa18bdc7e65e197600164f9ca07071469f",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 1,
+      "rule_id": "RULE-80208D851D469857",
+      "text_sha256": "b81e46ff8c808901b1fede406936c74af1f2a15f6c5546b2d41a77d19b4ad8d2",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 1,
+      "rule_id": "RULE-CCA1F7BA473A44E0",
+      "text_sha256": "3c2e48e31b1e5d4267af63708be1f1377c3e3d4849f446a57743ea6bd260c121",
+      "true_narrative_invariant": false
+    },
+    {
+      "classification": "OPERATIONAL_INSTRUCTION",
+      "occurrence_count": 3,
+      "rule_id": "RULE-D337C6BC2BBD6EAE",
+      "text_sha256": "0252144237d8dd95d5aa885d8786fda28c3fa3cff5373853f209b44f33cfc9cd",
+      "true_narrative_invariant": false
+    }
+  ],
+  "schema": "MandatoryRuleClassificationV2",
+  "status": "exact",
+  "template_false_positive_count": 3,
+  "true_narrative_invariant_count": 0,
+  "unique_hit_count": 7,
+  "unknown_count": 0,
+  "unknown_materialization_behavior": "fail_closed",
+  "version": 2
+}

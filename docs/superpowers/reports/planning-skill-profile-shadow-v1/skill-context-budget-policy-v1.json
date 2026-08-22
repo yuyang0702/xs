@@ -1,0 +1,15 @@
+{
+  "advisory_character_budget": 1800,
+  "advisory_overflow_behavior": "truncate_by_whole_rule",
+  "authority_constraint_budget": "LOSSLESS_CAPACITY_BOUND",
+  "mandatory_character_budget": 1200,
+  "mandatory_creative_rule_budget": "COMPLETE_OR_BLOCK",
+  "mandatory_overflow_behavior": "block",
+  "maximum_characters": 3000,
+  "partial_rule_truncation_count": 0,
+  "policy_id": "SKILL_CONTEXT_BUDGET_POLICY_V1",
+  "policy_sha256": "c2a114f2d0b4513f48f2fc697efc56204d85551b8c9fcc61d15f9f4f756e2042",
+  "schema": "SkillContextBudgetPolicyV1",
+  "skill_advisory_budget": "DETERMINISTIC_REMAINDER",
+  "whole_rule_only": true
+}
