@@ -1,0 +1,84 @@
+{
+  "schema": "R1PTR12ReviewV3FailureSHA256ManifestV1",
+  "version": 1,
+  "generated_at_utc": "2026-08-22T20:03:41Z",
+  "overall_status": "failure_evidence_exact",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "475267be5a4004cac93efb0f9aa029fc55e303e6",
+  "first_frozen_hard_issue": "TOTAL_MAX_TOUCH_CALLS_BOUND_VIOLATION",
+  "recommended_fix_family": "PROPAGATE_SHARED_CAPTURE_EXHAUSTION_ACROSS_ENCLOSING_STREAM_LOOPS_V1",
+  "manifest_definition": {
+    "algorithm": "sha256",
+    "path_basis": "repository-relative-posix",
+    "byte_domain": "exact_file_bytes",
+    "coverage_root": "docs/superpowers/reports/r1-ptr12-review-v3-failure",
+    "inclusion_rule": "all regular files directly under coverage_root except sha256-manifest-v1.json",
+    "ordering": "path_ascending",
+    "self_excluded": true,
+    "entry_fields": ["path", "bytes", "sha256"]
+  },
+  "manifest_definition_canonicalization": "utf8-json-compact-keys-lexicographically-sorted-no-trailing-newline",
+  "manifest_definition_sha256": "38650a87f6f572d47d7275d67857d30f73408ba3399670d35613416c2cd89647",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/README.md",
+      "bytes": 856,
+      "sha256": "c7cefc2a5a5744bf07ca18c485ae61b5f0526c4a84e2f6046099a0a536116f48"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/offline-review-test-receipt-v1.json",
+      "bytes": 888,
+      "sha256": "8ca4dd762088194282c9ae969ce72837c09f09a34facb9748a026ced28000744"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/privacy-scan-v1.json",
+      "bytes": 472,
+      "sha256": "63aa438b963e44ad51c2d876f704fa26e35145183549bf68770f66fcfd88ae8b"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/r1-ptr12-review-v3-failure-v1.json",
+      "bytes": 1546,
+      "sha256": "6f4ad6f54501f8631965c809e3c2f00286ad1d6bb955a4ce6c418d21eec52136"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/r1-ptr12-review-v3-stop-report-v1.md",
+      "bytes": 2385,
+      "sha256": "27afc12186d3fc14db84cd25ea7fe645a9d3af5fb1ea67053c14f12515654263"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/r1-ptr12-shard-a-structural-touch-call-bound-failure-v1.json",
+      "bytes": 1717,
+      "sha256": "99996068d9b2910a380184534c317059c8c6866a007791180b4fb324732fc98c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-review-v3-failure/source-isolation-v1.json",
+      "bytes": 632,
+      "sha256": "e079bd573362bc1a3dca6f0278aa2e038812c5f6c629def1c04f6853e10266eb"
+    }
+  ],
+  "file_count": 7,
+  "directory_file_count_including_manifest": 8,
+  "split_review_pass": false,
+  "phase_b_ready": false,
+  "no_automatic_fix": true,
+  "pass_manifest": false,
+  "team_sharded_independent_review_completed": false,
+  "shard_results": {
+    "A": "HARD_FAIL",
+    "B": "INTERRUPTED_STRICT_STOP",
+    "C": "INTERRUPTED_STRICT_STOP"
+  },
+  "completed_shards": 1,
+  "interrupted_or_incomplete_shards": 2,
+  "unrun_shards": 0,
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "schema": "R1PTR12ReviewV3ShardAStructuralTouchCallBoundFailureV1",
+  "version": 1,
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "reviewed_head": "475267be5a4004cac93efb0f9aa029fc55e303e6",
+  "shard": "A",
+  "result": "HARD_FAIL",
+  "severity": "HARD_FAIL",
+  "previous_review_result_reused_as_pass": false,
+  "finding_id": "TOTAL_MAX_TOUCH_CALLS_BOUND_VIOLATION",
+  "first_frozen_hard_issue": "TOTAL_MAX_TOUCH_CALLS_BOUND_VIOLATION",
+  "invariant": "TOTAL_MAX_TOUCH_CALLS<=129",
+  "location": {
+    "path": "src/novel_flywheel/provider_output.py",
+    "function": "capture_provider_raw_shape_v1",
+    "event_touch_line": 393,
+    "choice_touch_line": 429,
+    "tool_call_touch_line": 449
+  },
+  "case": {
+    "protocol": "openai-chat",
+    "shape": "two stream events; first event has two choices; first choice has 127 tool-call deltas",
+    "expected_max_touch_calls": 129,
+    "actual_touch_calls": 131,
+    "successful_touches": 128,
+    "rejected_touch_calls": 3,
+    "capture_completeness": "partial",
+    "sequence_omitted_after_limit": true
+  },
+  "total_max_elements_touched_still_holds": true,
+  "failure_class": "SHARED_CAPTURE_EXHAUSTION_NOT_PROPAGATED_TO_ENCLOSING_STREAM_LOOPS",
+  "mechanism": "the first rejected touch breaks only the innermost tool loop; the enclosing choice and event loops each attempt one additional rejected touch",
+  "blast_radius": "high-cardinality OpenAI Chat streams with nested tool deltas and additional choices or events",
+  "total_max_elements_touched": 128,
+  "privacy_impact_observed": "none_in_synthetic_reproduction",
+  "recommended_narrow_fix_family": "PROPAGATE_SHARED_CAPTURE_EXHAUSTION_ACROSS_ENCLOSING_STREAM_LOOPS_V1",
+  "no_automatic_fix": true
+}

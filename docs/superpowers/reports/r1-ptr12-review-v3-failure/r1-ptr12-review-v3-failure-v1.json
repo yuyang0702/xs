@@ -1,0 +1,42 @@
+{
+  "schema": "R1PTR12TeamShardedIndependentReviewV3FailureV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "475267be5a4004cac93efb0f9aa029fc55e303e6",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "result": "R1_PTR12_OBSERVER_IMPLEMENTATION_NARROW_FIX_REQUIRED",
+  "first_frozen_hard_issue": "TOTAL_MAX_TOUCH_CALLS_BOUND_VIOLATION",
+  "recommended_fix_family": "PROPAGATE_SHARED_CAPTURE_EXHAUSTION_ACROSS_ENCLOSING_STREAM_LOOPS_V1",
+  "shards": {
+    "A": "HARD_FAIL",
+    "B": "INTERRUPTED_STRICT_STOP",
+    "C": "INTERRUPTED_STRICT_STOP"
+  },
+  "team_sharded_independent_review_completed": false,
+  "completed_shards": 1,
+  "interrupted_or_incomplete_shards": 2,
+  "unrun_shards": 0,
+  "split_review_pass": false,
+  "phase_b_ready": false,
+  "pass_evidence_created": false,
+  "previous_review_result_reused_as_pass": false,
+  "no_automatic_fix": true,
+  "known_v2_findings_reopened_by_this_review": [],
+  "known_v2_findings_not_re_adjudicated_after_strict_stop": [
+    "RAW_NORMALIZED_GUARD_DECISION_INPUT_BINDING",
+    "TAIL_TRUTHFULNESS_FOR_UNINSPECTED_NESTED_TOPOLOGY",
+    "ANTHROPIC_EFFECTIVE_CAP_OBSERVABILITY",
+    "STREAM_REASONING_USAGE_LINEAGE",
+    "DIAGNOSTIC_CONTEXT_CONSTRUCTION_FAIL_OPEN"
+  ],
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema": "R1PTR12ReviewV3FailureOfflineTestReceiptV1",
+  "version": 1,
+  "reviewed_head": "475267be5a4004cac93efb0f9aa029fc55e303e6",
+  "overall_status": "hard_fail",
+  "first_frozen_hard_issue": "TOTAL_MAX_TOUCH_CALLS_BOUND_VIOLATION",
+  "coordinator_related_matrix": {
+    "result": "285 passed",
+    "external_actions": 0
+  },
+  "r0f_exact_tamper_parity": {
+    "result": "66 passed",
+    "external_actions": 0
+  },
+  "sealed_manifest_recheck": {
+    "manifest_count": 6,
+    "entry_count": 66,
+    "mismatch_count": 0
+  },
+  "shard_a_adversarial_reproduction": {
+    "result": "HARD_FAIL",
+    "expected_max_touch_calls": 129,
+    "actual_touch_calls": 131,
+    "total_elements_touched": 128,
+    "total_max_elements_touched_still_holds": true
+  },
+  "full_suite": "not_run_after_strict_stop",
+  "provider_calls": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}
