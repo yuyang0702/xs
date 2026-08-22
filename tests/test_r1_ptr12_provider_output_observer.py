@@ -744,6 +744,280 @@ def test_aggregate_usage_is_not_inferred_as_reasoning_or_final(monkeypatch) -> N
     assert snapshot["provider_exposed_final_usage"] is None
 
 
+@pytest.mark.parametrize(
+    ("protocol", "body", "events"),
+    [
+        (
+            "openai-chat",
+            {
+                "choices": [{"finish_reason": "stop", "message": {"content": "PRIVATE"}}],
+                "usage": {
+                    "completion_tokens": 10,
+                    "completion_tokens_details": {"reasoning_tokens": 4},
+                },
+            },
+            [{
+                "choices": [{"finish_reason": "stop", "delta": {"content": "PRIVATE"}}],
+                "usage": {
+                    "completion_tokens": 10,
+                    "completion_tokens_details": {"reasoning_tokens": 4},
+                },
+            }],
+        ),
+        (
+            "openai-responses",
+            {
+                "status": "completed",
+                "output": [],
+                "usage": {
+                    "output_tokens": 10,
+                    "output_tokens_details": {"reasoning_tokens": 4},
+                },
+            },
+            [{
+                "type": "response.completed",
+                "response": {
+                    "status": "completed",
+                    "usage": {
+                        "output_tokens": 10,
+                        "output_tokens_details": {"reasoning_tokens": 4},
+                    },
+                },
+            }],
+        ),
+    ],
+)
+def test_stream_reasoning_usage_lineage_matches_equivalent_body(
+    monkeypatch, protocol, body, events,
+) -> None:
+    body_snapshot = _capture(monkeypatch, protocol=protocol, body=body)
+    stream_snapshot = _capture(monkeypatch, protocol=protocol, events=events)
+
+    for snapshot in (body_snapshot, stream_snapshot):
+        assert snapshot["output_token_count"] == 10
+        assert snapshot["provider_exposed_reasoning_usage_status"] == "KNOWN"
+        assert snapshot["provider_exposed_reasoning_usage"] == 4
+
+
+@pytest.mark.parametrize(
+    ("protocol", "events"),
+    [
+        (
+            "openai-chat",
+            [{"choices": [], "usage": {"completion_tokens": 10}}],
+        ),
+        (
+            "openai-responses",
+            [{
+                "type": "response.completed",
+                "response": {"status": "completed", "usage": {"output_tokens": 10}},
+            }],
+        ),
+    ],
+)
+def test_stream_reasoning_usage_lineage_never_infers_from_aggregate(
+    monkeypatch, protocol, events,
+) -> None:
+    snapshot = _capture(monkeypatch, protocol=protocol, events=events)
+
+    assert snapshot["output_token_count"] == 10
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "NOT_EXPOSED"
+    assert snapshot["provider_exposed_reasoning_usage"] is None
+
+
+@pytest.mark.parametrize(
+    ("protocol", "events"),
+    [
+        (
+            "openai-chat",
+            [{
+                "choices": [],
+                "usage": {
+                    "completion_tokens": 10,
+                    "completion_tokens_details": {"reasoning_tokens": 0},
+                },
+            }],
+        ),
+        (
+            "openai-responses",
+            [{
+                "type": "response.completed",
+                "response": {
+                    "status": "completed",
+                    "usage": {
+                        "output_tokens": 10,
+                        "output_tokens_details": {"reasoning_tokens": 0},
+                    },
+                },
+            }],
+        ),
+    ],
+)
+def test_stream_reasoning_usage_lineage_preserves_explicit_zero(
+    monkeypatch, protocol, events,
+) -> None:
+    snapshot = _capture(monkeypatch, protocol=protocol, events=events)
+
+    assert snapshot["output_token_count"] == 10
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "KNOWN"
+    assert snapshot["provider_exposed_reasoning_usage"] == 0
+
+
+@pytest.mark.parametrize(
+    ("protocol", "events"),
+    [
+        ("openai-chat", [{"choices": []}]),
+        (
+            "openai-responses",
+            [{"type": "response.completed", "response": {"status": "completed"}}],
+        ),
+    ],
+)
+def test_stream_reasoning_usage_lineage_handles_missing_usage(
+    monkeypatch, protocol, events,
+) -> None:
+    snapshot = _capture(monkeypatch, protocol=protocol, events=events)
+
+    assert snapshot["output_token_count"] is None
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "NOT_EXPOSED"
+    assert snapshot["provider_exposed_reasoning_usage"] is None
+
+
+@pytest.mark.parametrize(
+    ("protocol", "events"),
+    [
+        (
+            "openai-chat",
+            [{
+                "choices": [],
+                "usage": {
+                    "completion_tokens": 10,
+                    "completion_tokens_details": {"reasoning_tokens": "malformed"},
+                },
+            }],
+        ),
+        (
+            "openai-responses",
+            [{
+                "type": "response.completed",
+                "response": {
+                    "status": "completed",
+                    "usage": {
+                        "output_tokens": 10,
+                        "output_tokens_details": {"reasoning_tokens": "malformed"},
+                    },
+                },
+            }],
+        ),
+    ],
+)
+def test_stream_reasoning_usage_lineage_marks_malformed_formal_field_unknown(
+    monkeypatch, protocol, events,
+) -> None:
+    snapshot = _capture(monkeypatch, protocol=protocol, events=events)
+
+    assert snapshot["output_token_count"] == 10
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "UNKNOWN"
+    assert snapshot["provider_exposed_reasoning_usage"] is None
+
+
+def test_stream_reasoning_usage_lineage_rejects_custom_detail_mapping_fail_open(
+    monkeypatch,
+) -> None:
+    details = _TrapMapping()
+    snapshot = _capture(monkeypatch, protocol="openai-chat", events=[{
+        "choices": [],
+        "usage": {
+            "completion_tokens": 10,
+            "completion_tokens_details": details,
+        },
+    }])
+
+    assert details.access_count == 0
+    assert snapshot["output_token_count"] == 10
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "UNKNOWN"
+    assert snapshot["provider_exposed_reasoning_usage"] is None
+
+
+@pytest.mark.parametrize("protocol", ["openai-chat", "openai-responses"])
+def test_stream_reasoning_usage_lineage_uses_latest_formal_value_without_summing(
+    monkeypatch, protocol,
+) -> None:
+    if protocol == "openai-chat":
+        events = [
+            {
+                "choices": [],
+                "usage": {
+                    "completion_tokens": 6,
+                    "completion_tokens_details": {"reasoning_tokens": 2},
+                },
+            },
+            {"choices": [], "usage": {"completion_tokens": 10}},
+            {
+                "choices": [],
+                "usage": {
+                    "completion_tokens": 10,
+                    "completion_tokens_details": {"reasoning_tokens": 4},
+                },
+            },
+            {"choices": [], "usage": {"completion_tokens": 10}},
+        ]
+    else:
+        events = [
+            {
+                "type": "response.completed",
+                "response": {
+                    "status": "completed",
+                    "usage": {
+                        "output_tokens": 6,
+                        "output_tokens_details": {"reasoning_tokens": 2},
+                    },
+                },
+            },
+            {
+                "type": "response.completed",
+                "response": {"status": "completed", "usage": {"output_tokens": 10}},
+            },
+            {
+                "type": "response.completed",
+                "response": {
+                    "status": "completed",
+                    "usage": {
+                        "output_tokens": 10,
+                        "output_tokens_details": {"reasoning_tokens": 4},
+                    },
+                },
+            },
+            {
+                "type": "response.completed",
+                "response": {"status": "completed", "usage": {"output_tokens": 10}},
+            },
+        ]
+
+    snapshot = _capture(monkeypatch, protocol=protocol, events=events)
+
+    assert snapshot["output_token_count"] == 10
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "KNOWN"
+    assert snapshot["provider_exposed_reasoning_usage"] == 4
+
+
+def test_deepseek_compat_stream_reasoning_lineage_uses_shared_chat_path(
+    monkeypatch,
+) -> None:
+    from novel_flywheel.providers.registry import ADAPTERS
+
+    assert ADAPTERS["openai-chat"] is OpenAIChatAdapter
+    snapshot = _capture(monkeypatch, protocol="openai-chat", events=[{
+        "choices": [],
+        "usage": {
+            "completion_tokens": 10,
+            "completion_tokens_details": {"reasoning_tokens": 4},
+        },
+    }])
+    assert snapshot["provider_exposed_reasoning_usage_status"] == "KNOWN"
+    assert snapshot["provider_exposed_reasoning_usage"] == 4
+
+
 def test_flag_off_has_no_capture(monkeypatch) -> None:
     monkeypatch.delenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", raising=False)
     assert open_ptr12_raw_shape_capture() is None

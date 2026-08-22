@@ -170,6 +170,24 @@ def _safe_nonnegative_int(value: object) -> int | None:
     return value if type(value) is int and value >= 0 else None
 
 
+def _formal_reasoning_usage(
+    usage: dict[str, Any], *, details_key: str,
+) -> tuple[str, int | None]:
+    """Read only an explicitly exposed reasoning-usage field."""
+
+    if details_key not in usage:
+        return "NOT_EXPOSED", None
+    details = _exact_dict(usage.get(details_key))
+    if details is None:
+        return "UNKNOWN", None
+    if "reasoning_tokens" not in details:
+        return "NOT_EXPOSED", None
+    value = _safe_nonnegative_int(details.get("reasoning_tokens"))
+    if value is None:
+        return "UNKNOWN", None
+    return "KNOWN", value
+
+
 def _safe_text_length(value: object) -> int | None:
     return len(value) if type(value) is str else None
 
@@ -213,6 +231,7 @@ def capture_provider_raw_shape_v1(
         output_tokens: int | None = None
         transport_complete: bool | None = None
         reasoning_usage: int | None = None
+        reasoning_usage_status = "NOT_EXPOSED"
         final_usage: int | None = None
         observation_point = "transport_body_pre_normalization"
         response_class = "response_body"
@@ -292,9 +311,9 @@ def capture_provider_raw_shape_v1(
                 finish_reason = choice.get("finish_reason")
                 usage = _exact_dict(body.get("usage")) or {}
                 output_tokens = _safe_nonnegative_int(usage.get("completion_tokens"))
-                details = usage.get("completion_tokens_details")
-                details = _exact_dict(details) or {}
-                reasoning_usage = _safe_nonnegative_int(details.get("reasoning_tokens"))
+                reasoning_usage_status, reasoning_usage = _formal_reasoning_usage(
+                    usage, details_key="completion_tokens_details",
+                )
                 transport_complete = finish_reason is not None
             elif safe_protocol == "openai-responses":
                 output = body.get("output")
@@ -348,9 +367,9 @@ def capture_provider_raw_shape_v1(
                     finish_reason = incomplete_reason
                 usage = _exact_dict(body.get("usage")) or {}
                 output_tokens = _safe_nonnegative_int(usage.get("output_tokens"))
-                details = usage.get("output_tokens_details")
-                details = _exact_dict(details) or {}
-                reasoning_usage = _safe_nonnegative_int(details.get("reasoning_tokens"))
+                reasoning_usage_status, reasoning_usage = _formal_reasoning_usage(
+                    usage, details_key="output_tokens_details",
+                )
                 transport_complete = _bounded_normalized_token(
                     body.get("status"),
                 ) in {
@@ -446,6 +465,12 @@ def capture_provider_raw_shape_v1(
                     output_tokens = _safe_nonnegative_int(
                         usage.get("completion_tokens"),
                     ) or output_tokens
+                    status, value = _formal_reasoning_usage(
+                        usage, details_key="completion_tokens_details",
+                    )
+                    if status != "NOT_EXPOSED":
+                        reasoning_usage_status = status
+                        reasoning_usage = value
                 elif safe_protocol == "openai-responses":
                     if kind in {"response.output_item.added", "response.content_part.added"}:
                         item = event.get("item")
@@ -478,6 +503,12 @@ def capture_provider_raw_shape_v1(
                         output_tokens = _safe_nonnegative_int(
                             usage.get("output_tokens"),
                         ) or output_tokens
+                        status, value = _formal_reasoning_usage(
+                            usage, details_key="output_tokens_details",
+                        )
+                        if status != "NOT_EXPOSED":
+                            reasoning_usage_status = status
+                            reasoning_usage = value
             if len(safe_events) > capture.touched:
                 capture.tail_unknown = True
             transport_complete = finish_reason is not None
@@ -531,9 +562,7 @@ def capture_provider_raw_shape_v1(
             "requested_output_cap": safe_requested_output_cap,
             "effective_output_cap": safe_effective_output_cap,
             "provider_accepted_cap_status": "UNKNOWN",
-            "provider_exposed_reasoning_usage_status": (
-                "KNOWN" if isinstance(reasoning_usage, int) else "NOT_EXPOSED"
-            ),
+            "provider_exposed_reasoning_usage_status": reasoning_usage_status,
             "provider_exposed_reasoning_usage": reasoning_usage if isinstance(reasoning_usage, int) else None,
             "provider_exposed_final_usage_status": (
                 "KNOWN" if isinstance(final_usage, int) else "NOT_EXPOSED"
