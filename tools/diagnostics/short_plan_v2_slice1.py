@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -33,6 +34,11 @@ from novel_flywheel.planning_v2_slice1 import (
     validate_candidate_payload,
     validate_event_realization_artifact,
 )
+from tools.diagnostics.fixture_provenance import (
+    CANONICAL_TEXT_LF_V1,
+    canonicalize_fixture_bytes,
+    observe_fixture_provenance,
+)
 
 
 ZERO_EXTERNAL_ACTIONS = {
@@ -42,6 +48,95 @@ ZERO_EXTERNAL_ACTIONS = {
     "model": 0,
     "paid": 0,
 }
+
+SLICE1_SEALED_IMPLEMENTATION_SHA256 = (
+    "1046670ae81d371cda2e05a8857a942ea59c59a7"
+)
+PROVENANCE_BINDING_SCHEMA = "EventRealizationShadowCorpusProvenanceBindingV1"
+PROVENANCE_BINDING_KEYS = {
+    "schema",
+    "version",
+    "fixture_id",
+    "fixture_logical_path",
+    "fixture_path_identity_sha256",
+    "fixture_provenance_contract",
+    "expected_canonical_fixture_sha256",
+    "corpus_schema",
+    "case_identity_sha256",
+    "case_count",
+    "parent_sealed_implementation_sha256",
+}
+
+
+class Slice1ReplayProvenanceError(ValueError):
+    """Typed, content-free failure raised before semantic case dispatch."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+def _require_provenance(condition: bool, code: str) -> None:
+    if not condition:
+        raise Slice1ReplayProvenanceError(code)
+
+
+def _is_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _load_provenance_binding(path: Path) -> dict[str, Any]:
+    try:
+        value = json.loads(path.read_bytes().decode("utf-8", errors="strict"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Slice1ReplayProvenanceError(
+            "SLICE1_PROVENANCE_BINDING_INVALID",
+        ) from exc
+    _require_provenance(
+        isinstance(value, dict) and set(value) == PROVENANCE_BINDING_KEYS,
+        "SLICE1_PROVENANCE_BINDING_INVALID",
+    )
+    _require_provenance(
+        value["schema"] == PROVENANCE_BINDING_SCHEMA and value["version"] == 1,
+        "SLICE1_PROVENANCE_BINDING_VERSION_UNSUPPORTED",
+    )
+    _require_provenance(
+        value["fixture_provenance_contract"] == CANONICAL_TEXT_LF_V1,
+        "SLICE1_PROVENANCE_CONTRACT_UNSUPPORTED",
+    )
+    _require_provenance(
+        all(_is_sha256(value[key]) for key in (
+            "fixture_path_identity_sha256",
+            "expected_canonical_fixture_sha256",
+            "case_identity_sha256",
+        )),
+        "SLICE1_PROVENANCE_BINDING_INVALID",
+    )
+    logical_path = value["fixture_logical_path"]
+    _require_provenance(
+        isinstance(logical_path, str)
+        and hashlib.sha256(logical_path.encode("utf-8")).hexdigest()
+        == value["fixture_path_identity_sha256"],
+        "SLICE1_FIXTURE_PATH_IDENTITY_MISMATCH",
+    )
+    _require_provenance(
+        value["parent_sealed_implementation_sha256"]
+        == SLICE1_SEALED_IMPLEMENTATION_SHA256,
+        "SLICE1_PARENT_IMPLEMENTATION_IDENTITY_MISMATCH",
+    )
+    _require_provenance(
+        isinstance(value["fixture_id"], str) and bool(value["fixture_id"]),
+        "SLICE1_PROVENANCE_BINDING_INVALID",
+    )
+    _require_provenance(
+        isinstance(value["case_count"], int) and value["case_count"] > 0,
+        "SLICE1_PROVENANCE_BINDING_INVALID",
+    )
+    return value
 
 
 def _authority(
@@ -394,6 +489,130 @@ def run_replay(
     }
 
 
+def _canonical_receipt_identity_sha256(receipt: Mapping[str, Any]) -> str:
+    """Hash only platform-independent replay identity fields.
+
+    Raw checkout observations remain in the stored receipt for diagnostics, and
+    wall-clock elapsed time remains an efficiency observation. Neither is part
+    of the cross-platform canonical receipt identity.
+    """
+
+    projection = copy.deepcopy(dict(receipt))
+    projection.pop("canonical_receipt_identity_sha256", None)
+    fixture_provenance = projection["fixture_provenance"]
+    fixture_provenance.pop("diagnostic_raw_observation", None)
+    projection["metrics"].pop("replay_elapsed_milliseconds", None)
+    return canonical_sha256(
+        "EventRealizationShadowReplayReceiptIdentityV2", projection,
+    )
+
+
+def run_canonical_replay(
+    fixture_path: Path,
+    provenance_binding_path: Path,
+    *,
+    clock: Callable[[], float] = time.perf_counter,
+) -> dict[str, Any]:
+    """Validate canonical provenance before dispatching any semantic case."""
+
+    binding = _load_provenance_binding(provenance_binding_path)
+    raw = fixture_path.read_bytes()
+    observation = observe_fixture_provenance(
+        raw, binding["fixture_provenance_contract"],
+    )
+    _require_provenance(
+        observation["canonical_fixture_sha256"]
+        == binding["expected_canonical_fixture_sha256"],
+        "CANONICAL_FIXTURE_SHA256_MISMATCH",
+    )
+
+    canonical = canonicalize_fixture_bytes(
+        raw, binding["fixture_provenance_contract"],
+    )
+    try:
+        fixture = json.loads(canonical.decode("utf-8", errors="strict"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise Slice1ReplayProvenanceError(
+            "SLICE1_CANONICAL_CORPUS_INVALID",
+        ) from exc
+    _require_provenance(
+        isinstance(fixture, dict)
+        and fixture.get("schema") == binding["corpus_schema"],
+        "SLICE1_CORPUS_IDENTITY_MISMATCH",
+    )
+    cases = fixture.get("cases")
+    _require_provenance(
+        isinstance(cases, list) and len(cases) == binding["case_count"],
+        "SLICE1_CORPUS_CASE_IDENTITY_MISMATCH",
+    )
+    try:
+        case_ids = [case["case_id"] for case in cases]
+    except (KeyError, TypeError) as exc:
+        raise Slice1ReplayProvenanceError(
+            "SLICE1_CORPUS_CASE_IDENTITY_MISMATCH",
+        ) from exc
+    _require_provenance(
+        all(isinstance(case_id, str) and case_id for case_id in case_ids)
+        and canonical_sha256(
+            "EventRealizationShadowCorpusCaseIdentityV1", case_ids,
+        ) == binding["case_identity_sha256"],
+        "SLICE1_CORPUS_CASE_IDENTITY_MISMATCH",
+    )
+
+    historical = run_replay(fixture_path, clock=clock)
+    diagnostic = {
+        "identity_critical": False,
+        "raw_worktree_sha256": observation["raw_worktree_sha256"],
+        "raw_byte_length": observation["raw_byte_length"],
+        "observed_eol_shape": observation["observed_eol_shape"],
+        "canonicalization_applied": observation["canonicalization_applied"],
+    }
+    receipt: dict[str, Any] = {
+        "schema": "EventRealizationShadowReplayReceiptV2",
+        "version": 2,
+        "phase": historical["phase"],
+        "fixture_provenance": {
+            "fixture_path_identity_sha256": binding[
+                "fixture_path_identity_sha256"
+            ],
+            "fixture_provenance_contract": binding[
+                "fixture_provenance_contract"
+            ],
+            "canonical_fixture_sha256": observation[
+                "canonical_fixture_sha256"
+            ],
+            "canonical_byte_length": observation["canonical_byte_length"],
+            "diagnostic_raw_observation": diagnostic,
+        },
+        "corpus_identity": {
+            "fixture_id": binding["fixture_id"],
+            "corpus_schema": binding["corpus_schema"],
+            "case_identity_sha256": binding["case_identity_sha256"],
+            "parent_sealed_implementation_sha256": binding[
+                "parent_sealed_implementation_sha256"
+            ],
+        },
+        "case_count": historical["case_count"],
+        "cases": historical["cases"],
+        "metrics": historical["metrics"],
+        "quality_preservation": historical["quality_preservation"],
+        "call1_exact_failure_rule": historical["call1_exact_failure_rule"],
+        "planning_v1_authority_changed": historical[
+            "planning_v1_authority_changed"
+        ],
+        "draft_consumes_slice1": historical["draft_consumes_slice1"],
+        "story_state_mutated": historical["story_state_mutated"],
+        "canon_mutated": historical["canon_mutated"],
+        "ready_mutated": historical["ready_mutated"],
+        "external_actions": historical["external_actions"],
+        "overall_status": historical["overall_status"],
+    }
+    receipt["canonical_receipt_identity_sha256"] = (
+        _canonical_receipt_identity_sha256(receipt)
+    )
+    return receipt
+
+
 def write_receipt(path: Path, receipt: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     encoded = (
@@ -413,13 +632,25 @@ def _parser() -> argparse.ArgumentParser:
         description="Run the offline Planning V2 Slice 1 replay corpus",
     )
     parser.add_argument("--fixture", required=True, type=Path)
+    parser.add_argument(
+        "--provenance-binding",
+        type=Path,
+        help=(
+            "explicit sidecar selecting a versioned canonical provenance "
+            "contract; omission preserves historical V1 raw-byte semantics"
+        ),
+    )
     parser.add_argument("--output", required=True, type=Path)
     return parser
 
 
 def main() -> int:
     args = _parser().parse_args()
-    receipt = run_replay(args.fixture)
+    receipt = (
+        run_canonical_replay(args.fixture, args.provenance_binding)
+        if args.provenance_binding is not None
+        else run_replay(args.fixture)
+    )
     write_receipt(args.output, receipt)
     return 0 if receipt["overall_status"] == "exact" else 1
 

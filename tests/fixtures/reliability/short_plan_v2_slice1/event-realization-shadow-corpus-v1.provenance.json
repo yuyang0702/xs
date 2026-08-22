@@ -1,0 +1,13 @@
+{
+  "schema": "EventRealizationShadowCorpusProvenanceBindingV1",
+  "version": 1,
+  "fixture_id": "event-realization-shadow-corpus-v1",
+  "fixture_logical_path": "tests/fixtures/reliability/short_plan_v2_slice1/event-realization-shadow-corpus-v1.json",
+  "fixture_path_identity_sha256": "9b61786d7051d1450cd54490974cd658613bb09cc462fbec69dd93ffa8e4f324",
+  "fixture_provenance_contract": "CANONICAL_TEXT_LF_V1",
+  "expected_canonical_fixture_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+  "corpus_schema": "EventRealizationShadowCorpusV1",
+  "case_identity_sha256": "df6822745628fd70c2c0f5af92d88fae2ab558f1dfdf3224a654e89c496542c0",
+  "case_count": 20,
+  "parent_sealed_implementation_sha256": "1046670ae81d371cda2e05a8857a942ea59c59a7"
+}

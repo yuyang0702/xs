@@ -1901,3 +1901,16 @@ budget, and PTR12 observer re-gate before any future Provider or Full Short run.
 All earlier successor and Canary approval packets that bind pre-Slice1 source
 or contract-set identities must remain fail-closed and must not be refreshed by
 editing historical evidence.
+
+## Offline fixture provenance
+
+Offline diagnostic fixtures that need cross-platform content identity must opt in
+through an explicit sidecar binding. `CANONICAL_TEXT_LF_V1` strictly decodes
+UTF-8, maps CRLF and lone CR to LF, and preserves every other code point,
+leading/trailing space, and final-newline presence. Untyped or binary artifacts
+remain `RAW_BYTES_V1`; file extensions, operating-system names, Git objects, and
+local Git configuration do not select a contract. Historical replay V1 receipts
+continue to bind raw checkout bytes. Fresh Slice 1 canonical replay receipts are
+V2, record raw hashes only as non-identity diagnostics, and compute their
+cross-platform receipt identity from canonical provenance plus deterministic
+semantic results.
