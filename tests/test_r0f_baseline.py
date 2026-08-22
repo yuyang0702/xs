@@ -69,6 +69,11 @@ R1_PTR12_NESTED_TAIL_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr12-nested-tail-truthfulness-authorized-protected-source-successor-v1.json"
 )
+R1_PTR12_ANTHROPIC_CAP_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr12-anthropic-effective-cap-authorized-protected-source-successor-v1.json"
+)
 R1_PTR12_OBSERVER_SCHEMA = (
     "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
 )
@@ -106,6 +111,19 @@ R1_PTR12_NESTED_TAIL_IMPLEMENTATION_HEAD = (
 )
 R1_PTR12_NESTED_TAIL_PROTECTED_TREE_SHA256 = (
     "fcf39949ad80e755d0e21883aaaa6c1a65b3f2ad8d0079701526255d3a788289"
+)
+R1_PTR12_ANTHROPIC_CAP_SCHEMA = (
+    "R1PTR12AnthropicEffectiveCapAuthorizedProtectedSourceSuccessorV1"
+)
+R1_PTR12_ANTHROPIC_CAP_VERSION = 1
+R1_PTR12_ANTHROPIC_CAP_PARENT_HEAD = (
+    "776d5e581c50c1527064fedb987a03f77315db4a"
+)
+R1_PTR12_ANTHROPIC_CAP_IMPLEMENTATION_HEAD = (
+    "14cc284604293fcf3f4f8340956470cdb92211c2"
+)
+R1_PTR12_ANTHROPIC_CAP_PROTECTED_TREE_SHA256 = (
+    "671d0d918ee626cd525b2e0b2c29c254b47326bc540f8c9500fa13294e8b0025"
 )
 
 
@@ -363,15 +381,17 @@ def _assert_r1_ptr12_nested_tail_successor_exact(
         "false_topology_exact_from_uninspected_nested": 0,
     }
 
-    current_manifest = ptr12_bounded_capture_protected_source_manifest(
-        REPOSITORY,
-    )
-    assert successor["current_protected_sources"] == current_manifest
+    recorded_manifest = successor["current_protected_sources"]
     tree_sha256 = successor["implementation_protected_tree_sha256"]
     assert isinstance(tree_sha256, str)
     assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
     assert tree_sha256 == R1_PTR12_NESTED_TAIL_PROTECTED_TREE_SHA256
-    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+    assert tree_sha256 == _protected_tree_sha256(recorded_manifest)
+    current_paths = {
+        item["path"]
+        for item in ptr12_bounded_capture_protected_source_manifest(REPOSITORY)
+    }
+    assert {item["path"] for item in recorded_manifest} == current_paths
 
     authorized = successor["authorized_source_deltas"]
     assert authorized == [{
@@ -383,10 +403,10 @@ def _assert_r1_ptr12_nested_tail_successor_exact(
             "1d95525945120440f0ae927f347bc7ffb7361345ebb076239e97964f4d267d85"
         ),
     }]
-    current_hashes = {
-        item["path"]: item["sha256"] for item in current_manifest
+    recorded_hashes = {
+        item["path"]: item["sha256"] for item in recorded_manifest
     }
-    assert authorized[0]["after_sha256"] == current_hashes[
+    assert authorized[0]["after_sha256"] == recorded_hashes[
         authorized[0]["path"]
     ]
 
@@ -406,6 +426,99 @@ def _tamper_ptr12_nested_tail_successor(
         successor["implementation_protected_tree_sha256"] = "0" * 64
     elif case == "single_file_hash_tamper":
         successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
+
+
+def _assert_r1_ptr12_anthropic_cap_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == R1_PTR12_ANTHROPIC_CAP_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == R1_PTR12_ANTHROPIC_CAP_VERSION
+    assert successor["parent_source_head"] == R1_PTR12_ANTHROPIC_CAP_PARENT_HEAD
+    assert (
+        successor["implementation_source_head"]
+        == R1_PTR12_ANTHROPIC_CAP_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == (
+        "R1-PTR12-ANTHROPIC-EFFECTIVE-CAP-LINEAGE-FIX"
+    )
+    assert successor["business_behavior_changed"] is False
+    assert successor["parent_successor"] == {
+        "path": (
+            "tests/fixtures/reliability/r0f/"
+            "r1-ptr12-nested-tail-truthfulness-"
+            "authorized-protected-source-successor-v1.json"
+        ),
+        "sha256": (
+            "dd91b7ee4de110194908580f62894e5fcc6931a2ce14acbbb3a80b285f6ef517"
+        ),
+        "protected_tree_sha256": R1_PTR12_NESTED_TAIL_PROTECTED_TREE_SHA256,
+    }
+    assert successor["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": 0,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 0,
+        "diagnostic_event_types": 0,
+        "anthropic_default_max_tokens": 8192,
+        "anthropic_request_kwargs_diff_count": 0,
+        "provider_accepted_cap_inferred_from_request": False,
+    }
+
+    current_manifest = ptr12_bounded_capture_protected_source_manifest(
+        REPOSITORY,
+    )
+    assert successor["current_protected_sources"] == current_manifest
+    tree_sha256 = successor["implementation_protected_tree_sha256"]
+    assert isinstance(tree_sha256, str)
+    assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
+    assert tree_sha256 == R1_PTR12_ANTHROPIC_CAP_PROTECTED_TREE_SHA256
+    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+
+    authorized = successor["authorized_source_deltas"]
+    assert authorized == [{
+        "path": "src/novel_flywheel/provider_output.py",
+        "before_sha256": (
+            "1d95525945120440f0ae927f347bc7ffb7361345ebb076239e97964f4d267d85"
+        ),
+        "after_sha256": (
+            "ef0d57089245072a34fb6573079441ce87e9e0dac425bb860c5cc7331c5f03a6"
+        ),
+    }]
+    current_hashes = {
+        item["path"]: item["sha256"] for item in current_manifest
+    }
+    assert authorized[0]["after_sha256"] == current_hashes[
+        authorized[0]["path"]
+    ]
+
+
+def _tamper_ptr12_anthropic_cap_successor(
+    successor: dict[str, Any], case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = "R1PTR12AnthropicEffectiveCapSuccessorV999"
+    elif case == "wrong_version":
+        successor["version"] = 2
+    elif case == "boolean_version":
+        successor["version"] = True
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "wrong_protected_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "single_file_hash_tamper":
+        successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    elif case == "wrong_before_hash":
+        successor["authorized_source_deltas"][0]["before_sha256"] = "0" * 64
+    elif case == "wrong_after_hash":
+        successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
     else:  # pragma: no cover - test data is a closed tuple below
         raise ValueError(f"unknown tamper case: {case}")
 
@@ -599,6 +712,8 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     _assert_r1_ptr12_bounded_capture_successor_exact(r1_ptr12_bounded)
     r1_ptr12_nested_tail = load_baseline(R1_PTR12_NESTED_TAIL_SUCCESSOR)
     _assert_r1_ptr12_nested_tail_successor_exact(r1_ptr12_nested_tail)
+    r1_ptr12_anthropic_cap = load_baseline(R1_PTR12_ANTHROPIC_CAP_SUCCESSOR)
+    _assert_r1_ptr12_anthropic_cap_successor_exact(r1_ptr12_anthropic_cap)
 
 
 @pytest.mark.parametrize(
@@ -705,6 +820,42 @@ def test_r1_ptr12_nested_tail_successor_fixture_is_required(
 ) -> None:
     with pytest.raises(FileNotFoundError):
         load_baseline(tmp_path / R1_PTR12_NESTED_TAIL_SUCCESSOR.name)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "wrong_version",
+        "boolean_version",
+        "wrong_implementation",
+        "wrong_protected_tree",
+        "single_file_hash_tamper",
+        "wrong_before_hash",
+        "wrong_after_hash",
+    ),
+)
+def test_r1_ptr12_anthropic_cap_successor_rejects_tamper(
+    case: str,
+) -> None:
+    successor = copy.deepcopy(load_baseline(R1_PTR12_ANTHROPIC_CAP_SUCCESSOR))
+    _tamper_ptr12_anthropic_cap_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_r1_ptr12_anthropic_cap_successor_exact(successor)
+
+
+def test_r1_ptr12_anthropic_cap_successor_accepts_exact_fixture() -> None:
+    _assert_r1_ptr12_anthropic_cap_successor_exact(
+        load_baseline(R1_PTR12_ANTHROPIC_CAP_SUCCESSOR),
+    )
+
+
+def test_r1_ptr12_anthropic_cap_successor_fixture_is_required(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(tmp_path / R1_PTR12_ANTHROPIC_CAP_SUCCESSOR.name)
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(
