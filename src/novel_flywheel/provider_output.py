@@ -113,10 +113,12 @@ class _BoundedRawShapeCapture:
         self.controlled: list[str] = []
         self.unknown_hashes: list[str] = []
         self.tail_unknown = False
+        self.limit_reached = False
 
     def touch(self) -> bool:
         if self.touched >= MAX_BLOCKS_TOUCHED:
             self.tail_unknown = True
+            self.limit_reached = True
             return False
         self.touched += 1
         return True
@@ -128,6 +130,7 @@ class _BoundedRawShapeCapture:
             MAX_BLOCKS_INSPECTED, MAX_CONTROLLED_DETAILS,
         ):
             self.tail_unknown = True
+            self.limit_reached = True
             return
         fingerprint_unknown = len(self.unknown_hashes) < MAX_UNKNOWN_DETAILS
         controlled, unknown_hash = _controlled_block_type(
@@ -152,6 +155,7 @@ class _BoundedRawShapeCapture:
             self.observe(value, count_raw=False)
         if remaining < safe_count:
             self.tail_unknown = True
+            self.limit_reached = True
 
 
 def _exact_dict(value: object) -> dict[str, Any] | None:
@@ -302,8 +306,15 @@ def capture_provider_raw_shape_v1(
                         item.get("type") if item is not None else None,
                         count_raw=False,
                     )
-                    nested = _exact_sequence(item.get("content")) if item is not None else None
+                    if item is None:
+                        capture.tail_unknown = True
+                        continue
+                    raw_nested = item.get("content")
+                    if raw_nested is None:
+                        continue
+                    nested = _exact_sequence(raw_nested)
                     if nested is None:
+                        capture.tail_unknown = True
                         continue
                     capture.raw_count += len(nested)
                     for part_index in range(len(nested)):
@@ -464,10 +475,10 @@ def capture_provider_raw_shape_v1(
             if len(safe_events) > capture.touched:
                 capture.tail_unknown = True
             transport_complete = finish_reason is not None
-        sequence_omitted = capture.tail_unknown or (
+        sequence_omitted = capture.limit_reached or (
             capture.raw_count > len(capture.controlled)
         )
-        if sequence_omitted and capture_completeness != "unavailable":
+        if capture.tail_unknown and capture_completeness != "unavailable":
             capture_completeness = "partial"
         finish_class, finish_hash = _controlled_raw_finish(finish_reason)
         multiset = dict(sorted(Counter(capture.controlled).items()))

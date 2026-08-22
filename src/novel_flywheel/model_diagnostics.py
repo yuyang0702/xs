@@ -1051,7 +1051,7 @@ def observe_ptr12_shape_delta(
             raw_payload = raw_shape.model_dump(mode="python")
             normalized_payload = normalized_shape.model_dump(mode="python")
             topology_tail_unknown = (
-                raw_shape.capture_completeness == "unavailable"
+                raw_shape.capture_completeness != "exact"
                 or raw_shape.sequence_omitted_after_limit
             )
             for dimension, raw_key, normalized_key in _DELTA_DIMENSIONS:

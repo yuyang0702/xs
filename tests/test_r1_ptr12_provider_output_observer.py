@@ -273,6 +273,230 @@ def test_high_cardinality_nested_containers_share_one_work_budget(
     assert snapshot["sequence_omitted_after_limit"] is True
 
 
+@pytest.mark.parametrize(
+    ("nested_item", "unknown_presence_field"),
+    [
+        ({"type": "output_text", "text": "PRIVATE_TEXT"}, "raw_final_text_present"),
+        ({"type": "function_call", "arguments": "PRIVATE_ARGS"}, "raw_tool_call_present"),
+    ],
+)
+def test_openai_responses_nested_generator_is_not_consumed_and_absence_is_unknown(
+    monkeypatch, nested_item, unknown_presence_field,
+) -> None:
+    iteration_count = 0
+
+    def nested_generator():
+        nonlocal iteration_count
+        iteration_count += 1
+        yield nested_item
+
+    nested = nested_generator()
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{"type": "message", "content": nested}],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert iteration_count == 0
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["sequence_omitted_after_limit"] is False
+    assert snapshot["raw_visible_char_count"] is None
+    assert snapshot["raw_visible_chars_zero"] is None
+    assert snapshot["raw_final_text_present"] is None
+    assert snapshot["raw_tool_call_present"] is None
+    assert snapshot[unknown_presence_field] is None
+    assert snapshot["reasoning_block_count"] == 0
+
+
+def test_poison_nested_generator_is_never_touched(monkeypatch) -> None:
+    iteration_count = 0
+
+    def poison_nested_generator():
+        nonlocal iteration_count
+        iteration_count += 1
+        raise AssertionError("poison nested generator was consumed")
+        yield {"type": "output_text", "text": "PRIVATE_TEXT"}
+
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{
+            "type": "message", "content": poison_nested_generator(),
+        }],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert iteration_count == 0
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_final_text_present"] is None
+
+
+@pytest.mark.parametrize(
+    ("nested", "expected_text", "expected_tool", "expected_visible_zero"),
+    [
+        ([{"type": "output_text", "text": "x"}], True, False, False),
+        ([], False, False, True),
+    ],
+)
+def test_small_safe_nested_containers_allow_exact_presence_or_absence(
+    monkeypatch, nested, expected_text, expected_tool, expected_visible_zero,
+) -> None:
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{"type": "message", "content": nested}],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert snapshot["capture_completeness"] == "exact"
+    assert snapshot["raw_final_text_present"] is expected_text
+    assert snapshot["raw_tool_call_present"] is expected_tool
+    assert snapshot["raw_visible_chars_zero"] is expected_visible_zero
+
+
+def test_large_nested_container_uses_one_global_touch_budget(
+    monkeypatch,
+) -> None:
+    touch_attempts = 0
+    original_touch = provider_output._BoundedRawShapeCapture.touch
+
+    def counted_touch(capture):
+        nonlocal touch_attempts
+        touch_attempts += 1
+        return original_touch(capture)
+
+    monkeypatch.setattr(
+        provider_output._BoundedRawShapeCapture, "touch", counted_touch,
+    )
+    nested = [
+        {"type": "thinking"}
+        for _index in range(provider_output.MAX_BLOCKS_TOUCHED + 10)
+    ]
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{"type": "message", "content": nested}],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert touch_attempts <= provider_output.MAX_BLOCKS_TOUCHED + 1
+    assert len(snapshot["raw_block_type_sequence"]) <= (
+        provider_output.MAX_BLOCKS_INSPECTED
+    )
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_final_text_present"] is None
+    assert snapshot["raw_tool_call_present"] is None
+
+
+def test_positive_before_nested_cutoff_stays_true(monkeypatch) -> None:
+    nested = (
+        [{"type": "output_text", "text": "x"}]
+        + [{"type": "thinking"} for _index in range(
+            provider_output.MAX_BLOCKS_TOUCHED + 10
+        )]
+    )
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{"type": "message", "content": nested}],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_final_text_present"] is True
+    assert snapshot["raw_visible_chars_zero"] is False
+    assert snapshot["raw_tool_call_present"] is None
+
+
+def test_tool_after_nested_cutoff_remains_unknown(monkeypatch) -> None:
+    nested = [
+        {"type": "thinking"}
+        for _index in range(provider_output.MAX_BLOCKS_TOUCHED - 1)
+    ] + [{"type": "function_call", "arguments": "PRIVATE_ARGS"}]
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{"type": "message", "content": nested}],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_tool_call_present"] is None
+
+
+def test_outer_positive_text_survives_unsafe_nested_unknown(monkeypatch) -> None:
+    iteration_count = 0
+
+    def nested_generator():
+        nonlocal iteration_count
+        iteration_count += 1
+        yield {"type": "thinking"}
+
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [
+            {"type": "output_text", "text": "x"},
+            {"type": "message", "content": nested_generator()},
+        ],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert iteration_count == 0
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_final_text_present"] is True
+
+
+def test_nested_raw_unknown_does_not_backfill_from_normalized_visible_text(
+    monkeypatch, tmp_path,
+) -> None:
+    iteration_count = 0
+
+    def nested_generator():
+        nonlocal iteration_count
+        iteration_count += 1
+        yield {"type": "output_text", "text": "x"}
+
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [{"type": "message", "content": nested_generator()}],
+        "usage": {"output_tokens": 1},
+    })
+    assert iteration_count == 0
+    raw = bind_ptr12_raw_shape_observation(
+        _context(tmp_path), snapshot=snapshot,
+        provider_id="provider", model_id="model",
+        route_fingerprint="a" * 64, schema_sha256="b" * 64,
+        request_mode="plain",
+    )
+    normalized = _shape("message", "output_text", visible=1)
+    delta = observe_ptr12_shape_delta(
+        _context(tmp_path), raw_shape=raw, normalized_shape=normalized,
+        normalized_finish_reason="max_tokens",
+    )
+    decision = build_ptr12_guard_decision(
+        _context(tmp_path), shape=normalized, raw_shape=raw, delta=delta,
+        finish_reason="max_tokens", scope_eligible=True,
+        guard_triggered=False, provider_id="provider", model_id="model",
+        route_fingerprint="a" * 64,
+        contract_identity="planning_semantic_v2", schema_sha256="b" * 64,
+    )
+
+    assert raw.raw_visible_chars_zero is None
+    assert normalized.normalized_visible_text_chars == 1
+    assert delta.comparison_completeness == "partial"
+    assert "VISIBLE_CHAR_COUNT" in delta.unavailable_dimensions
+    assert decision.raw_visible_chars_zero is None
+    assert decision.normalized_visible_chars_zero is False
+    assert decision.predicate_all_true is False
+
+
+def test_malformed_nested_item_is_not_introspected(monkeypatch) -> None:
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body={
+        "status": "completed",
+        "output": [_PoisonMapping(type="message")],
+        "usage": {"output_tokens": 1},
+    })
+
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_final_text_present"] is None
+    assert snapshot["raw_tool_call_present"] is None
+
+
 def test_repeated_tool_entries_are_bounded_without_entry_access(monkeypatch) -> None:
     tools = [{"function": {"arguments": "PRIVATE"}} for _ in range(10_001)]
     tools.append(_PoisonMapping())
