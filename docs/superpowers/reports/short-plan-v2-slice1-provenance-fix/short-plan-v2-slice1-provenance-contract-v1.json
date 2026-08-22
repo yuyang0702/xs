@@ -1,0 +1,45 @@
+{
+  "schema": "CanonicalFixtureProvenanceContractV1",
+  "version": 1,
+  "selected_strategy": "EXPLICIT_CANONICAL_TEXT_PROVENANCE",
+  "contract_identity": "CANONICAL_TEXT_LF_V1",
+  "strategy_comparison": [
+    {
+      "strategy": "WORKTREE_RAW_BYTES",
+      "decision": "rejected",
+      "reason": "checkout EOL conversion changes identity"
+    },
+    {
+      "strategy": "GIT_BLOB_BYTES",
+      "decision": "rejected",
+      "reason": "requires Git object availability and does not support copied fixtures"
+    },
+    {
+      "strategy": "EXPLICIT_CANONICAL_TEXT_PROVENANCE",
+      "decision": "selected",
+      "reason": "explicit sidecar eligibility, repository-independent, content-addressed and cross-platform"
+    }
+  ],
+  "eligibility": "only an explicit provenance sidecar may select the text contract",
+  "canonicalization": [
+    "read raw bytes",
+    "strict UTF-8 decode",
+    "map CRLF to LF",
+    "map lone CR to LF",
+    "preserve every non-EOL code point",
+    "preserve leading and trailing whitespace",
+    "preserve final-newline presence or absence",
+    "UTF-8 encode",
+    "SHA-256 canonical bytes"
+  ],
+  "binary_untyped_contract": "RAW_BYTES_V1",
+  "extension_inference": false,
+  "os_or_path_branching": false,
+  "git_dependency": false,
+  "receipt_evolution": {
+    "historical": "EventRealizationShadowReplayReceiptV1 retains raw checkout fixture_sha256 semantics",
+    "fresh": "EventRealizationShadowReplayReceiptV2 carries explicit fixture provenance and canonical receipt identity",
+    "raw_diagnostic_identity_critical": false,
+    "elapsed_time_identity_critical": false
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "ShortPlanV2Slice1ProvenanceFixOfflineTestReceiptV1",
+  "version": 1,
+  "overall_status": "exact",
+  "pre_change": {
+    "existing_replay_tests": "7 passed",
+    "new_provenance_test_initial_state": "collection failed because the contract module did not exist"
+  },
+  "focused_provenance_and_replay": {
+    "status": "pass",
+    "passed": 19
+  },
+  "focused_slice1_cluster": {
+    "status": "pass",
+    "passed": 118
+  },
+  "related_planning_ptr3_v1_story_state": {
+    "status": "pass",
+    "passed": 167,
+    "elapsed_seconds": 31.58
+  },
+  "supported_offline_suite": {
+    "status": "pass",
+    "passed": 2998,
+    "skipped": 41,
+    "deselected": 6,
+    "xfailed": 6,
+    "warnings": 1,
+    "elapsed_seconds": 2093.46
+  },
+  "historical_exclusion_semantics_changed": false,
+  "strict_l3": {
+    "status": "pass",
+    "warnings": 0,
+    "blockers": 0
+  },
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

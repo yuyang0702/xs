@@ -1,0 +1,23 @@
+{
+  "schema": "ShortPlanV2Slice1V1QualityParityV1",
+  "version": 1,
+  "overall_status": "exact",
+  "production_source_diff": 0,
+  "baml_diff": 0,
+  "planning_v1_bytes": "unchanged",
+  "slice1_artifact_semantics": "unchanged",
+  "title_semantics": "unchanged",
+  "narrative_semantics": "unchanged",
+  "local_derivation_field_count": 20,
+  "local_derivation_semantics": "unchanged",
+  "validators": "unchanged",
+  "freeze_thaw": "unchanged",
+  "recovery_ladder": "unchanged",
+  "draft_input": "unchanged",
+  "story_state": "unchanged",
+  "canon": "unchanged",
+  "ready": "unchanged",
+  "quality_affected": false,
+  "v1_affected": false,
+  "changed_boundary": "offline fixture provenance hashing and replay control-plane receipt binding only"
+}

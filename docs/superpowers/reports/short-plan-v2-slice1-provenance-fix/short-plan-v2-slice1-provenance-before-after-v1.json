@@ -1,0 +1,26 @@
+{
+  "schema": "ShortPlanV2Slice1ProvenanceBeforeAfterV1",
+  "version": 1,
+  "baseline_head": "0430a7692ba1cd3b3b1d86fb5e7993967979f208",
+  "implementation_head": "e4182715779a8d01b2d051daf7aab9156fa77ab8",
+  "failure_class": "CROSS_PLATFORM_EOL_PROVENANCE_MISMATCH",
+  "before": {
+    "receipt_schema": "EventRealizationShadowReplayReceiptV1",
+    "fixture_identity_semantics": "raw working-tree bytes",
+    "sealed_lf_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "windows_crlf_sha256": "a1442835a44471b9be5c87c4feb4ec89853a3b4348d7215185de62ced4a4fab4",
+    "cross_platform_exact": false
+  },
+  "after": {
+    "receipt_schema": "EventRealizationShadowReplayReceiptV2",
+    "fixture_provenance_contract": "CANONICAL_TEXT_LF_V1",
+    "canonical_lf_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "canonical_crlf_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "canonical_receipt_identity_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5",
+    "cross_platform_exact": true,
+    "raw_diagnostic_preserved": true,
+    "pre_dispatch_binding": true
+  },
+  "historical_failure_evidence_modified": false,
+  "original_fixture_content_modified": false
+}

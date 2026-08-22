@@ -1,0 +1,51 @@
+{
+  "schema": "ShortPlanV2Slice1CrossPlatformTestReceiptV1",
+  "version": 1,
+  "overall_status": "exact",
+  "canonical_fixture": {
+    "raw_windows_sha256": "a1442835a44471b9be5c87c4feb4ec89853a3b4348d7215185de62ced4a4fab4",
+    "raw_windows_bytes": 4486,
+    "canonical_lf_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "canonical_crlf_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "canonical_bytes": 4436,
+    "receipt_identity_lf_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5",
+    "receipt_identity_crlf_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5"
+  },
+  "eol_matrix": {
+    "LF": "same canonical bytes",
+    "CRLF": "same canonical bytes",
+    "CR": "same canonical bytes",
+    "MIXED": "same canonical bytes"
+  },
+  "final_newline": {
+    "preserved": true,
+    "with_final_newline_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+    "without_final_newline_sha256": "9ada4203de30283cbbee9360e9e9e341905b55ec91421b1dc0fe34448f32710a",
+    "different": true
+  },
+  "trailing_space": {
+    "preserved": true,
+    "variant_sha256": "3a32c5a752367fc670c1c055c1a97cbb981a02e03037bff0fb7821a8685596de",
+    "different": true
+  },
+  "unicode": {
+    "normalization_performed": false,
+    "nfc_sha256": "9c7d7bd56550020f6f0426f797f7e07c4463ca8ba9200295522de6aa412a2575",
+    "nfd_sha256": "9e6f29e15177a53b442e5ed33cd44e27024b31b257e0e2608bb2b09934b8dbb5",
+    "different": true
+  },
+  "binary_untyped": {
+    "contract": "RAW_BYTES_V1",
+    "canonicalization_applied": false,
+    "raw_sha256": "6375a1044d294c4efc761ce86b9c48d451d11bcf9ef4b586f56d833edb18f6da"
+  },
+  "invalid_utf8": {
+    "status": "typed_fail",
+    "code": "CANONICAL_TEXT_PROVENANCE_DECODE_ERROR"
+  },
+  "pre_dispatch_mismatch": {
+    "status": "typed_fail",
+    "code": "CANONICAL_FIXTURE_SHA256_MISMATCH",
+    "semantic_dispatch": false
+  }
+}

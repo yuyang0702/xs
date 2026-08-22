@@ -1,0 +1,33 @@
+{
+  "schema": "ShortPlanV2Slice1ProvenanceFixFinalSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "overall_status": "exact",
+  "baseline_head": "0430a7692ba1cd3b3b1d86fb5e7993967979f208",
+  "implementation_head": "e893b3a269a1cd1f9aca1c2d29fb650a5e95b044",
+  "files": [
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-cross-platform-test-receipt-v1.json","bytes":1972,"sha256":"61779a6a554a7ebdea129a6b7787c39c043b0802f8d19d4c76ca8035806b7c3c"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-final-privacy-scan-v1.json","bytes":599,"sha256":"1a6a23ac68c2aad3996f4752e2405d749efc7b73ed1a7f810626224145f4e123"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-forward-risk-report-v1.json","bytes":4979,"sha256":"69688067b73ab1a54ff397fa9eb131bc0d57016612a6b7191fd46d64445ceecf"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-historical-compatibility-v1.json","bytes":817,"sha256":"6e1dbf0f6ff4b3e633715f20415fdcfbf48b7d0bd93bef190334b53382f9c6c0"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-offline-test-receipt-v1.json","bytes":998,"sha256":"28c857d22aef3bf8181f1454477e85e118b9926bfadb18400afe42e16f07233b"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-provenance-before-after-v1.json","bytes":1272,"sha256":"ae8d4ce6c9f4a0d13e66933cf20a9b9e7b6ef333de11c0db3cc435209ebedb26"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-provenance-contract-v1.json","bytes":1610,"sha256":"4a19f9e44a57392a27eebea017b13f894877df85e401a44a5edb694ebeaa5921"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-provenance-fix-final-report-v1.md","bytes":3613,"sha256":"990ffc2d0ebe7ac915989cda882009a9c45d60a73e03247edf6b8e77cdc63fa0"},
+    {"path":"docs/superpowers/reports/short-plan-v2-slice1-provenance-fix/short-plan-v2-slice1-v1-quality-parity-v1.json","bytes":742,"sha256":"dac551c2a9c310deab3fdcf3fe712178e8930f8b69971b2fd2babc2a3698aa1c"}
+  ],
+  "entry_count": 9,
+  "production_diff": 0,
+  "baml_diff": 0,
+  "privacy_status": "exact",
+  "historical_failure_evidence_modified": false,
+  "external_actions": {
+    "credential": 0,
+    "provider_client": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  },
+  "new_full_short_canary": "not_executed"
+}

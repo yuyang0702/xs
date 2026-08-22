@@ -1,0 +1,98 @@
+{
+  "version": 2,
+  "original_requirement": "Implement CROSS_PLATFORM_CANONICAL_FIXTURE_PROVENANCE_BINDING_V1 without changing Slice 1 semantics, V1 authority, fixture business content or sealed failure evidence.",
+  "scope_classification": "closed_world",
+  "operational_definition": "An explicitly sidecar-declared UTF-8 text fixture has one CANONICAL_TEXT_LF_V1 identity across LF, CRLF, lone CR and mixed-EOL checkouts; historical V1 raw receipts remain unchanged and fresh V2 receipts separate raw diagnostics from canonical identity.",
+  "forbidden_narrowing": [
+    "No Windows-only branch",
+    "No extension-based text inference",
+    "No Git object dependency",
+    "No expected-hash rewrite",
+    "No fixture business-payload mutation",
+    "No offline replay validation PASS claim"
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The task names one versioned fixture provenance contract and one Slice 1 replay owner; broader repository file hashing and model-backed Phase B are explicitly excluded.",
+  "constraint_traceability": [
+    {
+      "requirement": "LF and CRLF produce one canonical fixture identity",
+      "implementation": "tools/diagnostics/fixture_provenance.py",
+      "test_paths": ["tests/test_short_plan_v2_slice1_provenance.py"],
+      "evidence": "LF, CRLF, CR and mixed variants canonicalize to the sealed 6ff08d fixture hash"
+    },
+    {
+      "requirement": "Fresh receipt identity is platform-independent while raw diagnostics remain visible",
+      "implementation": "run_canonical_replay and EventRealizationShadowReplayReceiptV2",
+      "test_paths": ["tests/test_short_plan_v2_slice1_provenance.py"],
+      "evidence": "LF and CRLF receipts share canonical identity 6f841a while raw hashes differ"
+    },
+    {
+      "requirement": "Historical V1 and story authority remain unchanged",
+      "implementation": "run_replay remains the unbound V1 path; sidecar opt-in selects V2",
+      "test_paths": ["tests/test_short_plan_v2_slice1_replay.py", "tests/test_planning_v2_slice1.py", "tests/test_story_state.py"],
+      "evidence": "V1 raw fixture_sha256 semantics pass; production and BAML diffs are zero"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "CROSS_PLATFORM_EOL_PROVENANCE_MISMATCH",
+    "Slice 1 historical raw-byte replay receipt compatibility",
+    "PTR3 planning finding propagation",
+    "Planning V1 authority and StoryState isolation"
+  ],
+  "projected_failure_mechanisms": [
+    "CRLF checkout conversion",
+    "lone CR or mixed EOL",
+    "final-newline loss",
+    "trailing-space trimming",
+    "Unicode normalization",
+    "binary text misclassification",
+    "invalid UTF-8",
+    "stale canonical hash",
+    "stale parent or case identity"
+  ],
+  "why_previous_tests_missed": "The V1 replay tests asserted same-checkout determinism and did not compare the sealed LF fixture hash with a Windows core.autocrlf working tree.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Planning V1 and Slice 1 semantic artifact construction",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No src or baml file changed; focused Slice1 and related Planning suites passed"
+    },
+    {
+      "boundary": "Draft, StoryState, Canon and READY",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Replay remains offline shadow-only and the related StoryState/V1 cluster passed"
+    },
+    {
+      "boundary": "historical V1 receipts and sealed replay failure evidence",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Unbound runner remains V1 raw semantics and sealed failure directory has no diff"
+    },
+    {
+      "boundary": "binary or untyped fixtures",
+      "disposition": "tested_not_susceptible",
+      "evidence": "RAW_BYTES_V1 returns bytes unchanged and no extension inference exists"
+    },
+    {
+      "boundary": "Phase B, Provider observer and Full Short",
+      "disposition": "not_applicable",
+      "evidence": "No provider-capable import or production workflow hook was added"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The final diff changes only offline fixture byte provenance, a diagnostic replay CLI/receipt, a sidecar, tests and maintenance documentation; model output parsing, prompts, validators and Runtime dispatch are unchanged.",
+  "production_shaped_tests": [
+    "tests/test_short_plan_v2_slice1_provenance.py",
+    "tests/test_short_plan_v2_slice1_replay.py",
+    "tests/test_planning_v2_slice1.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_generated_artifacts.py",
+    "tests/test_r1_ptr3_planning_repair_finding_propagation.py",
+    "tests/test_story_state.py"
+  ],
+  "remaining_risks": [
+    "The prior independent offline replay remains failed and must be restarted as a new task",
+    "Phase B remains unauthorized",
+    "Other repository fixtures remain on their existing provenance contracts unless explicitly migrated"
+  ]
+}

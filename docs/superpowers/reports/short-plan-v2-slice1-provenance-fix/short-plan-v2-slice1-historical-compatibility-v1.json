@@ -1,0 +1,25 @@
+{
+  "schema": "ShortPlanV2Slice1HistoricalCompatibilityV1",
+  "version": 1,
+  "overall_status": "exact",
+  "historical_receipt": {
+    "schema": "EventRealizationShadowReplayReceiptV1",
+    "version": 1,
+    "fixture_sha256_semantics": "raw working-tree bytes",
+    "still_readable": true,
+    "silently_rewritten": false
+  },
+  "fresh_receipt": {
+    "schema": "EventRealizationShadowReplayReceiptV2",
+    "version": 2,
+    "fixture_provenance_contract": "CANONICAL_TEXT_LF_V1",
+    "canonical_identity_explicit": true,
+    "raw_observation_non_identity": true
+  },
+  "sealed_failure_evidence": {
+    "path": "docs/superpowers/reports/short-plan-v2-slice1-replay",
+    "modified": false,
+    "gate_retained": "SHORT_PLAN_V2_SLICE1_REPLAY_NARROW_FIX_REQUIRED"
+  },
+  "offline_replay_validation_reclassified": false
+}
