@@ -1,0 +1,8 @@
+{
+  "cases": [
+    {"actor_refs_status": "present", "world_refs_status": "present", "character": "include", "world": "include", "fail_safe": false},
+    {"actor_refs_status": "absent", "world_refs_status": "absent", "character": "exclude", "world": "exclude", "fail_safe": false},
+    {"actor_refs_status": "unknown", "world_refs_status": "missing", "character": "fail_safe_include", "world": "fail_safe_include", "fail_safe": true},
+    {"actor_refs_status": "stale", "world_refs_status": "mixed", "character": "fail_safe_include", "world": "fail_safe_include", "fail_safe": true}
+  ]
+}

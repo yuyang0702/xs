@@ -1,0 +1,20 @@
+{
+  "required": [
+    "artifact_realization",
+    "causal_intent",
+    "character_arc",
+    "escalation",
+    "faction_pressure",
+    "location_realization",
+    "motivation",
+    "pacing_intent",
+    "relationship_nuance",
+    "relevant_biography",
+    "sensory_specificity",
+    "setup_payoff",
+    "structure_adaptation",
+    "voice",
+    "world_cost_limit",
+    "world_current_state"
+  ]
+}

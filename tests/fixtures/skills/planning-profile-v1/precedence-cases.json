@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {"left": 1, "right": 7, "winner": "left"},
+    {"left": 7, "right": 2, "winner": "right"},
+    {"left": 3, "right": 7, "winner": "left"},
+    {"left": 7, "right": 4, "winner": "right"},
+    {"left": 5, "right": 7, "winner": "left"},
+    {"left": 6, "right": 7, "winner": "left"},
+    {"left": 7, "right": 8, "winner": "left"},
+    {"left": 7, "right": 7, "winner": "equal"},
+    {"left": 0, "right": 7, "winner": "block"},
+    {"left": null, "right": 7, "winner": "block"}
+  ]
+}
