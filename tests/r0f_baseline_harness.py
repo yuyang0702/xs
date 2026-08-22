@@ -22,6 +22,10 @@ R1D1_PROTECTED_SOURCE_PATHS = tuple(sorted({
     *PROTECTED_SOURCE_PATHS,
     "src/novel_flywheel/prose_quality.py",
 }))
+R1_PTR12_BOUNDED_CAPTURE_PROTECTED_SOURCE_PATHS = tuple(sorted({
+    *R1D1_PROTECTED_SOURCE_PATHS,
+    "src/novel_flywheel/provider_output.py",
+}))
 
 DIAGNOSTIC_EVENT_TYPES = frozenset({
     "runtime_fingerprint_binding_v1",
@@ -40,11 +44,11 @@ def protected_source_manifest(repository: Path) -> list[dict[str, Any]]:
     ]
 
 
-def canonical_protected_source_manifest(repository: Path) -> list[dict[str, Any]]:
-    """Hash source bytes independently of checkout newline policy."""
-
+def _canonical_source_manifest(
+    repository: Path, paths: tuple[str, ...],
+) -> list[dict[str, Any]]:
     rows = []
-    for relative in R1D1_PROTECTED_SOURCE_PATHS:
+    for relative in paths:
         content = (repository / relative).read_bytes()
         canonical = content.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
         rows.append({
@@ -52,6 +56,22 @@ def canonical_protected_source_manifest(repository: Path) -> list[dict[str, Any]
             "sha256": hashlib.sha256(canonical).hexdigest(),
         })
     return rows
+
+
+def canonical_protected_source_manifest(repository: Path) -> list[dict[str, Any]]:
+    """Hash historical protected bytes independently of newline policy."""
+
+    return _canonical_source_manifest(repository, R1D1_PROTECTED_SOURCE_PATHS)
+
+
+def ptr12_bounded_capture_protected_source_manifest(
+    repository: Path,
+) -> list[dict[str, Any]]:
+    """Hash the current lineage, including provider_output.py."""
+
+    return _canonical_source_manifest(
+        repository, R1_PTR12_BOUNDED_CAPTURE_PROTECTED_SOURCE_PATHS,
+    )
 
 
 def business_run_projection(run: dict[str, Any], events: list[dict[str, Any]]) -> dict:

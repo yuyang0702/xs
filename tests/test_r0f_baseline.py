@@ -15,6 +15,7 @@ from r0f_baseline_harness import (
     business_run_projection,
     canonical_protected_source_manifest,
     load_baseline,
+    ptr12_bounded_capture_protected_source_manifest,
 )
 
 
@@ -58,6 +59,11 @@ R1_PTR12_OBSERVER_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr12-observer-authorized-protected-source-successor-v1.json"
 )
+R1_PTR12_BOUNDED_CAPTURE_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr12-bounded-capture-authorized-protected-source-successor-v1.json"
+)
 R1_PTR12_OBSERVER_SCHEMA = (
     "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
 )
@@ -70,6 +76,18 @@ R1_PTR12_OBSERVER_IMPLEMENTATION_HEAD = (
 )
 R1_PTR12_OBSERVER_PROTECTED_TREE_SHA256 = (
     "078e4229abd9458b881a4c13a6ded71ad953b9f30297514f5e01a47037f24709"
+)
+R1_PTR12_BOUNDED_CAPTURE_SCHEMA = (
+    "R1PTR12BoundedCaptureAuthorizedProtectedSourceSuccessorV1"
+)
+R1_PTR12_BOUNDED_CAPTURE_PARENT_HEAD = (
+    "536204b6c503548d7045147ac015d4e465bf50ab"
+)
+R1_PTR12_BOUNDED_CAPTURE_IMPLEMENTATION_HEAD = (
+    "3db95cd58fcdc74bd03b9a517f607b5bc765bbcd"
+)
+R1_PTR12_BOUNDED_CAPTURE_PROTECTED_TREE_SHA256 = (
+    "573b09cafe1fd8fb0e43394610ce558007309026e3d434aa7677582116bbe08c"
 )
 
 
@@ -166,6 +184,121 @@ def _tamper_ptr12_successor(
         successor["implementation_source_head"] = "0" * 40
     elif case == "tampered_individual_hash":
         successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
+
+
+def _assert_r1_ptr12_bounded_capture_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == R1_PTR12_BOUNDED_CAPTURE_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == 1
+    assert (
+        successor["parent_source_head"]
+        == R1_PTR12_BOUNDED_CAPTURE_PARENT_HEAD
+    )
+    assert (
+        successor["implementation_source_head"]
+        == R1_PTR12_BOUNDED_CAPTURE_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == (
+        "R1-PTR12-BOUNDED-SINGLE-PASS-RAW-SHAPE-CAPTURE-FIX"
+    )
+    assert successor["business_behavior_changed"] is False
+    assert successor["parent_successor"] == {
+        "path": (
+            "tests/fixtures/reliability/r0f/"
+            "r1-ptr12-observer-authorized-protected-source-successor-v1.json"
+        ),
+        "sha256": (
+            "d8f45ea76810ed4f2a1870f4169fa1944d4a66d9f33db367bcbc3c50dcbcf8f9"
+        ),
+        "protected_tree_sha256": R1_PTR12_OBSERVER_PROTECTED_TREE_SHA256,
+    }
+    assert successor["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": 0,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 0,
+        "diagnostic_event_types": 0,
+        "raw_shape_capture_max_touches": 128,
+        "raw_shape_capture_max_details": 128,
+        "raw_shape_capture_max_unknown_details": 32,
+        "raw_shape_capture_max_hash_input_bytes": 512,
+    }
+
+    current_manifest = ptr12_bounded_capture_protected_source_manifest(
+        REPOSITORY,
+    )
+    assert successor["current_protected_sources"] == current_manifest
+    tree_sha256 = successor["implementation_protected_tree_sha256"]
+    assert isinstance(tree_sha256, str)
+    assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
+    assert tree_sha256 == R1_PTR12_BOUNDED_CAPTURE_PROTECTED_TREE_SHA256
+    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+    assert {item["path"] for item in current_manifest} == {
+        *{
+            item["path"]
+            for item in canonical_protected_source_manifest(REPOSITORY)
+        },
+        "src/novel_flywheel/provider_output.py",
+    }
+
+    authorized = successor["authorized_source_deltas"]
+    assert authorized == [{
+        "path": "src/novel_flywheel/provider_output.py",
+        "before_sha256": (
+            "d95d44ec90903ff8a06cb92cc8a491bf482d22e8e32affe94023b13ec52db559"
+        ),
+        "after_sha256": (
+            "6623e77a8c07bebe9207c88d767bdd076ddc964ebdc04d2c07756cf4bea4002a"
+        ),
+    }]
+    current_hashes = {
+        item["path"]: item["sha256"] for item in current_manifest
+    }
+    assert authorized[0]["after_sha256"] == current_hashes[
+        authorized[0]["path"]
+    ]
+
+
+def _tamper_ptr12_bounded_capture_successor(
+    successor: dict[str, Any], case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = "R1PTR12BoundedCaptureSuccessorV999"
+    elif case == "missing_version":
+        successor.pop("version")
+    elif case == "boolean_version":
+        successor["version"] = True
+    elif case == "wrong_parent":
+        successor["parent_source_head"] = "0" * 40
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "wrong_parent_fixture":
+        successor["parent_successor"]["sha256"] = "0" * 64
+    elif case == "wrong_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "missing_provider_output":
+        successor["current_protected_sources"] = [
+            item for item in successor["current_protected_sources"]
+            if item["path"] != "src/novel_flywheel/provider_output.py"
+        ]
+    elif case == "tampered_provider_output":
+        next(
+            item for item in successor["current_protected_sources"]
+            if item["path"] == "src/novel_flywheel/provider_output.py"
+        )["sha256"] = "0" * 64
+    elif case == "wrong_before_hash":
+        successor["authorized_source_deltas"][0]["before_sha256"] = "0" * 64
+    elif case == "wrong_after_hash":
+        successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
     else:  # pragma: no cover - test data is a closed tuple below
         raise ValueError(f"unknown tamper case: {case}")
 
@@ -355,6 +488,8 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     }
     r1_ptr12 = load_baseline(R1_PTR12_OBSERVER_SUCCESSOR)
     _assert_r1_ptr12_successor_exact(r1_ptr12)
+    r1_ptr12_bounded = load_baseline(R1_PTR12_BOUNDED_CAPTURE_SUCCESSOR)
+    _assert_r1_ptr12_bounded_capture_successor_exact(r1_ptr12_bounded)
 
 
 @pytest.mark.parametrize(
@@ -390,6 +525,45 @@ def test_r1_ptr12_successor_accepts_exact_frozen_fixture() -> None:
 def test_r1_ptr12_successor_fixture_is_required(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         load_baseline(tmp_path / R1_PTR12_OBSERVER_SUCCESSOR.name)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "missing_version",
+        "boolean_version",
+        "wrong_parent",
+        "wrong_implementation",
+        "wrong_parent_fixture",
+        "wrong_tree",
+        "missing_provider_output",
+        "tampered_provider_output",
+        "wrong_before_hash",
+        "wrong_after_hash",
+    ),
+)
+def test_r1_ptr12_bounded_capture_successor_rejects_tamper(
+    case: str,
+) -> None:
+    successor = copy.deepcopy(load_baseline(R1_PTR12_BOUNDED_CAPTURE_SUCCESSOR))
+    _tamper_ptr12_bounded_capture_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_r1_ptr12_bounded_capture_successor_exact(successor)
+
+
+def test_r1_ptr12_bounded_capture_successor_accepts_exact_fixture() -> None:
+    _assert_r1_ptr12_bounded_capture_successor_exact(
+        load_baseline(R1_PTR12_BOUNDED_CAPTURE_SUCCESSOR),
+    )
+
+
+def test_r1_ptr12_bounded_capture_successor_fixture_is_required(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(tmp_path / R1_PTR12_BOUNDED_CAPTURE_SUCCESSOR.name)
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(
