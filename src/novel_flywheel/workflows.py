@@ -26597,6 +26597,88 @@ class WorkflowService:
         except (TypeError, ValueError, json.JSONDecodeError):
             return False
 
+    def _stage_diagnostic_context(
+        self,
+        *,
+        project: Project,
+        run_id: str,
+        stage: str,
+        boundary: str | None,
+        role: str,
+        selected_route: str,
+        structured_contract: StructuredArtifactContract | None,
+        outer_retry_ordinal: int | None,
+        provider_ceiling: int | None,
+        fallback_ceiling: int | None,
+    ) -> ModelDiagnosticContextV1 | None:
+        """Build observer-only context without changing business execution."""
+
+        if (
+            boundary is None
+            or outer_retry_ordinal is None
+            or structured_contract is None
+        ):
+            return None
+        try:
+            if not (
+                diagnostic_flag_enabled(STRICT_TOOL_FLAG)
+                or diagnostic_flag_enabled(BUDGET_LINEAGE_FLAG)
+                or diagnostic_flag_enabled(PTR12_OBSERVER_FLAG)
+                or diagnostic_flag_enabled(PLANNING_REPAIR_EVIDENCE_FLAG)
+            ):
+                return None
+            binding = self.db.get_role_binding(role) or {}
+            provider_key = (
+                "fallback_provider_id"
+                if selected_route == "configured_fallback"
+                else "primary_provider_id"
+            )
+            model_key = (
+                "fallback_model_id"
+                if selected_route == "configured_fallback"
+                else "primary_model_id"
+            )
+            provider_id = str(binding.get(provider_key) or "unavailable")
+            model_id = str(binding.get(model_key) or "unavailable")
+            provider = self.db.get_provider(provider_id) or {}
+            protocol = str(provider.get("protocol") or "provider_specific")
+            parameter_name = {
+                "anthropic": "max_tokens",
+                "openai-chat": "max_tokens",
+                "openai-responses": "max_output_tokens",
+            }.get(protocol, "provider_specific")
+            selected_ceiling = (
+                fallback_ceiling
+                if selected_route == "configured_fallback"
+                else provider_ceiling
+            )
+            return ModelDiagnosticContextV1(
+                project_root=project.path,
+                run_id=run_id,
+                stage=stage,
+                boundary=boundary,
+                role=role,
+                route_kind=selected_route,
+                contract_id=structured_contract.name,
+                contract_version=structured_contract.version,
+                outer_retry_ordinal=outer_retry_ordinal,
+                provider_declared_output_limit=selected_ceiling,
+                provider_limit_status=(
+                    "verified" if selected_ceiling is not None else "unknown"
+                ),
+                provider_binding_sha256=diagnostic_domain_sha256(
+                    "r1-pa1-provider-binding-v1", provider_id,
+                ),
+                model_binding_sha256=diagnostic_domain_sha256(
+                    "r1-pa1-model-binding-v1", model_id,
+                ),
+                request_parameter_name=parameter_name,
+            )
+        except Exception:
+            # Diagnostics are observer-only. Ordinary lookup/hash/schema failures
+            # may drop this context, but must never replace Provider execution.
+            return None
+
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "",
                      model_role: str | None = None, allow_tools: bool = True,
@@ -27182,64 +27264,18 @@ class WorkflowService:
             selected_route = (
                 requested_routes[0] if requested_routes else "primary"
             )
-            diagnostic_context = None
-            if (
-                diagnostic_boundary is not None
-                and diagnostic_outer_retry_ordinal is not None
-                and structured_contract is not None
-                and (
-                    diagnostic_flag_enabled(STRICT_TOOL_FLAG)
-                    or diagnostic_flag_enabled(BUDGET_LINEAGE_FLAG)
-                    or diagnostic_flag_enabled(PTR12_OBSERVER_FLAG)
-                    or diagnostic_flag_enabled(
-                        PLANNING_REPAIR_EVIDENCE_FLAG
-                    )
-                )
-            ):
-                binding = self.db.get_role_binding(gateway_role) or {}
-                provider_key = (
-                    "fallback_provider_id"
-                    if selected_route == "configured_fallback" else "primary_provider_id"
-                )
-                model_key = (
-                    "fallback_model_id"
-                    if selected_route == "configured_fallback" else "primary_model_id"
-                )
-                provider_id = str(binding.get(provider_key) or "unavailable")
-                model_id = str(binding.get(model_key) or "unavailable")
-                provider = self.db.get_provider(provider_id) or {}
-                protocol = str(provider.get("protocol") or "provider_specific")
-                parameter_name = {
-                    "anthropic": "max_tokens",
-                    "openai-chat": "max_tokens",
-                    "openai-responses": "max_output_tokens",
-                }.get(protocol, "provider_specific")
-                selected_ceiling = (
-                    fallback_ceiling
-                    if selected_route == "configured_fallback" else provider_ceiling
-                )
-                diagnostic_context = ModelDiagnosticContextV1(
-                    project_root=project.path,
-                    run_id=run_id,
-                    stage=stage,
-                    boundary=diagnostic_boundary,
-                    role=gateway_role,
-                    route_kind=selected_route,
-                    contract_id=structured_contract.name,
-                    contract_version=structured_contract.version,
-                    outer_retry_ordinal=diagnostic_outer_retry_ordinal,
-                    provider_declared_output_limit=selected_ceiling,
-                    provider_limit_status=(
-                        "verified" if selected_ceiling is not None else "unknown"
-                    ),
-                    provider_binding_sha256=diagnostic_domain_sha256(
-                        "r1-pa1-provider-binding-v1", provider_id,
-                    ),
-                    model_binding_sha256=diagnostic_domain_sha256(
-                        "r1-pa1-model-binding-v1", model_id,
-                    ),
-                    request_parameter_name=parameter_name,
-                )
+            diagnostic_context = self._stage_diagnostic_context(
+                project=project,
+                run_id=run_id,
+                stage=stage,
+                boundary=diagnostic_boundary,
+                role=gateway_role,
+                selected_route=selected_route,
+                structured_contract=structured_contract,
+                outer_retry_ordinal=diagnostic_outer_retry_ordinal,
+                provider_ceiling=provider_ceiling,
+                fallback_ceiling=fallback_ceiling,
+            )
             route_toolbox = (
                 StoryToolbox(project, self.memory)
                 if allow_tools and structured_contract is None and callable(

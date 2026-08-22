@@ -1932,3 +1932,19 @@ response exposes a formal acknowledgment. Observer failure remains fail-open,
 and only safe integers and typed unknown status may enter ReliabilityTrace;
 prompts, prose, raw Provider content, tool arguments, credentials, headers, and
 private request identifiers remain excluded.
+
+## PTR12 diagnostic-context fail-open boundary
+
+`WorkflowService._stage` builds `ModelDiagnosticContextV1` only as optional
+observer context. Diagnostic flag inspection, the observer-only role/provider
+lookups, binding hashes, and context validation share one narrow best-effort
+boundary. An ordinary failure drops that context and preserves the exact
+Provider dispatch, request, route, model, output budget, retry/fallback plan,
+business result, and original Provider exception.
+
+The boundary catches `Exception`, never `BaseException`. Cancellation,
+`KeyboardInterrupt`, and `SystemExit` therefore keep their original control-flow
+semantics. No raw exception message is persisted, and a context failure cannot
+write negative capability state or trigger recovery. Roll back this behavior by
+reverting the PTR12 diagnostic-context implementation commit; no schema or data
+migration is involved.
