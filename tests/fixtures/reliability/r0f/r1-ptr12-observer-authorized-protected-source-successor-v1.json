@@ -1,0 +1,57 @@
+{
+  "schema": "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1",
+  "version": 1,
+  "phase": "R1-PTR12-OBSERVER-IMPLEMENTATION",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "parent_source_head": "a264ee200c99c6c0a5d03a7aeb398773b4d3f3f5",
+  "implementation_source_head": "ef2eb22bfad85be5e04855bbf4464318745737ae",
+  "implementation_protected_tree_sha256": "078e4229abd9458b881a4c13a6ded71ad953b9f30297514f5e01a47037f24709",
+  "uncommitted_authorized_task_delta": false,
+  "authorization_scope": "Fail-open hash-only Provider raw-shape, normalization-delta, PTR9 guard-decision, recovery-disposition, output-limit, and Canary ordinal observations",
+  "business_behavior_changed": false,
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "domain_validator": 0,
+    "initial_prompt": 0,
+    "model_call_upper_bound": 0,
+    "output_budget": 0,
+    "retry_fallback_attempt_limits": 0,
+    "same_fingerprint_redispatch": 0,
+    "route_model_identity": 0,
+    "final_artifact_capability_memory": 0,
+    "diagnostic_event_types": 4
+  },
+  "authorized_source_deltas": [
+    {
+      "path": "src/novel_flywheel/contract_runtime.py",
+      "before_sha256": "aab9f4208a9ffdc507ab3a059655533986c445860584185317290e9f425d6eb4",
+      "after_sha256": "fb76b03fdbdd8ad8881e8f1505dd12b0f7d9291b613f97897b8c4dda84499bf5"
+    },
+    {
+      "path": "src/novel_flywheel/generated_artifacts.py",
+      "before_sha256": "e8873a9ddabedf13b190963dba1855b8591319718fa3bcd5249c68f552500aff",
+      "after_sha256": "9bcd7f0bf4488b7e2f5c5d8b539eb5b70666e40b272e609ef08c87ec8f90028c"
+    },
+    {
+      "path": "src/novel_flywheel/models.py",
+      "before_sha256": "209322720d9596f21e6756c4d2b48f56e7f53f3e67f478d0758774bd45b03220",
+      "after_sha256": "9ab2871db20df9444bccf799c0754d8ce1e3013ba66d472f54ce104b3b762856"
+    },
+    {
+      "path": "src/novel_flywheel/workflows.py",
+      "before_sha256": "67eb8ee285e666850d4848b35f3a7c7807f1b742cd6f14cfb1f136c5abd7ce62",
+      "after_sha256": "34788904808fbfeb4da1c49345dd260266507917bfb200c33a868ea1209f28ba"
+    }
+  ],
+  "current_protected_sources": [
+    {"path": "src/novel_flywheel/completion_supervisor.py", "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"},
+    {"path": "src/novel_flywheel/contract_runtime.py", "sha256": "fb76b03fdbdd8ad8881e8f1505dd12b0f7d9291b613f97897b8c4dda84499bf5"},
+    {"path": "src/novel_flywheel/generated_artifacts.py", "sha256": "9bcd7f0bf4488b7e2f5c5d8b539eb5b70666e40b272e609ef08c87ec8f90028c"},
+    {"path": "src/novel_flywheel/long_workflow.py", "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"},
+    {"path": "src/novel_flywheel/models.py", "sha256": "9ab2871db20df9444bccf799c0754d8ce1e3013ba66d472f54ce104b3b762856"},
+    {"path": "src/novel_flywheel/prompts.py", "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"},
+    {"path": "src/novel_flywheel/prose_quality.py", "sha256": "b31d292c12ae76670dabb75d4ade38d720d896097151a15e67738015898ba635"},
+    {"path": "src/novel_flywheel/providers/registry.py", "sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"},
+    {"path": "src/novel_flywheel/workflows.py", "sha256": "34788904808fbfeb4da1c49345dd260266507917bfb200c33a868ea1209f28ba"}
+  ]
+}

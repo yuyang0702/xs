@@ -1,7 +1,14 @@
 from __future__ import annotations
 
+import copy
+import hashlib
+import json
 import os
+import re
 from pathlib import Path
+from typing import Any
+
+import pytest
 
 from novel_flywheel.db import Database
 from r0f_baseline_harness import (
@@ -46,6 +53,121 @@ R1_PTR9_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr9-authorized-protected-source-successor-v1.json"
 )
+R1_PTR12_OBSERVER_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr12-observer-authorized-protected-source-successor-v1.json"
+)
+R1_PTR12_OBSERVER_SCHEMA = (
+    "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
+)
+R1_PTR12_OBSERVER_VERSION = 1
+R1_PTR12_OBSERVER_PARENT_HEAD = (
+    "a264ee200c99c6c0a5d03a7aeb398773b4d3f3f5"
+)
+R1_PTR12_OBSERVER_IMPLEMENTATION_HEAD = (
+    "ef2eb22bfad85be5e04855bbf4464318745737ae"
+)
+R1_PTR12_OBSERVER_PROTECTED_TREE_SHA256 = (
+    "078e4229abd9458b881a4c13a6ded71ad953b9f30297514f5e01a47037f24709"
+)
+
+
+def _protected_tree_sha256(manifest: list[dict[str, Any]]) -> str:
+    payload = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _assert_r1_ptr12_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == R1_PTR12_OBSERVER_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == R1_PTR12_OBSERVER_VERSION
+    assert successor["parent_source_head"] == R1_PTR12_OBSERVER_PARENT_HEAD
+    assert (
+        successor["implementation_source_head"]
+        == R1_PTR12_OBSERVER_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == "R1-PTR12-OBSERVER-IMPLEMENTATION"
+    assert successor["business_behavior_changed"] is False
+    assert successor["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": 0,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 0,
+        "diagnostic_event_types": 4,
+    }
+
+    current_manifest = canonical_protected_source_manifest(REPOSITORY)
+    assert successor["current_protected_sources"] == current_manifest
+    tree_sha256 = successor["implementation_protected_tree_sha256"]
+    assert isinstance(tree_sha256, str)
+    assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
+    assert tree_sha256 == R1_PTR12_OBSERVER_PROTECTED_TREE_SHA256
+    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+
+    ptr12_hashes = {
+        item["path"]: item["sha256"]
+        for item in successor["current_protected_sources"]
+    }
+    assert all(
+        item["after_sha256"] == ptr12_hashes[item["path"]]
+        for item in successor["authorized_source_deltas"]
+    )
+    assert {
+        item["path"] for item in successor["authorized_source_deltas"]
+    } == {
+        "src/novel_flywheel/contract_runtime.py",
+        "src/novel_flywheel/generated_artifacts.py",
+        "src/novel_flywheel/models.py",
+        "src/novel_flywheel/workflows.py",
+    }
+
+
+def _tamper_ptr12_successor(
+    successor: dict[str, Any],
+    case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = (
+            "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV999"
+        )
+    elif case == "missing_schema":
+        successor.pop("schema")
+    elif case == "wrong_version":
+        successor["version"] = 2
+    elif case == "wrong_type_version":
+        successor["version"] = "1"
+    elif case == "boolean_version":
+        successor["version"] = True
+    elif case == "missing_version":
+        successor.pop("version")
+    elif case == "wrong_protected_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "missing_protected_tree":
+        successor.pop("implementation_protected_tree_sha256")
+    elif case == "reordered_manifest_protected_tree":
+        manifest = list(reversed(successor["current_protected_sources"]))
+        successor["implementation_protected_tree_sha256"] = (
+            _protected_tree_sha256(manifest)
+        )
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "tampered_individual_hash":
+        successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
 
 
 def make_database(tmp_path: Path) -> Database:
@@ -217,9 +339,6 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "route_model_identity": 0,
         "final_artifact_capability_memory": 1,
     }
-    assert canonical_protected_source_manifest(REPOSITORY) == (
-        r1_ptr9["current_protected_sources"]
-    )
     ptr9_hashes = {
         item["path"]: item["sha256"]
         for item in r1_ptr9["current_protected_sources"]
@@ -234,6 +353,43 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
         "src/novel_flywheel/contract_runtime.py",
         "src/novel_flywheel/models.py",
     }
+    r1_ptr12 = load_baseline(R1_PTR12_OBSERVER_SUCCESSOR)
+    _assert_r1_ptr12_successor_exact(r1_ptr12)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "missing_schema",
+        "wrong_version",
+        "wrong_type_version",
+        "boolean_version",
+        "missing_version",
+        "wrong_protected_tree",
+        "missing_protected_tree",
+        "reordered_manifest_protected_tree",
+        "wrong_implementation",
+        "tampered_individual_hash",
+    ),
+)
+def test_r1_ptr12_successor_rejects_in_memory_tamper(case: str) -> None:
+    successor = copy.deepcopy(load_baseline(R1_PTR12_OBSERVER_SUCCESSOR))
+    _tamper_ptr12_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_r1_ptr12_successor_exact(successor)
+
+
+def test_r1_ptr12_successor_accepts_exact_frozen_fixture() -> None:
+    _assert_r1_ptr12_successor_exact(
+        load_baseline(R1_PTR12_OBSERVER_SUCCESSOR),
+    )
+
+
+def test_r1_ptr12_successor_fixture_is_required(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(tmp_path / R1_PTR12_OBSERVER_SUCCESSOR.name)
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(
