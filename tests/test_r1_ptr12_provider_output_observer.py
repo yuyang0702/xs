@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Iterator, Mapping
 import json
 
 import pytest
 
+import novel_flywheel.provider_output as provider_output
 from novel_flywheel.domain.models import Message, ModelRequest, ModelResponse
 from novel_flywheel.model_diagnostics import (
     ModelDiagnosticContextV1,
@@ -140,6 +142,286 @@ def test_sequence_and_unknown_bounds(monkeypatch) -> None:
     assert snapshot["sequence_omitted_after_limit"] is True
     assert snapshot["capture_completeness"] == "partial"
     assert "private-kind" not in json.dumps(snapshot)
+
+
+class _PoisonMapping(dict):
+    def get(self, *_args, **_kwargs):
+        raise AssertionError("poison tail was inspected")
+
+
+class _TrapMapping(Mapping):
+    def __init__(self) -> None:
+        self.access_count = 0
+
+    def __getitem__(self, _key):
+        self.access_count += 1
+        raise AssertionError("custom mapping access is forbidden")
+
+    def __iter__(self) -> Iterator[object]:
+        self.access_count += 1
+        raise AssertionError("custom mapping iteration is forbidden")
+
+    def __len__(self) -> int:
+        self.access_count += 1
+        raise AssertionError("custom mapping length is forbidden")
+
+
+class _DestructiveEvents:
+    def __init__(self) -> None:
+        self.consumed = False
+
+    def __iter__(self):
+        self.consumed = True
+        yield {"type": "content_block_start"}
+
+
+class _TrapToken:
+    def __init__(self) -> None:
+        self.stringified = False
+
+    def __str__(self) -> str:
+        self.stringified = True
+        raise AssertionError("custom token __str__ is forbidden")
+
+    def __repr__(self) -> str:
+        self.stringified = True
+        raise AssertionError("custom token __repr__ is forbidden")
+
+    def __bool__(self) -> bool:
+        raise AssertionError("custom token truth testing is forbidden")
+
+    def __eq__(self, _other: object) -> bool:
+        raise AssertionError("custom token equality is forbidden")
+
+    def __hash__(self) -> int:
+        raise AssertionError("custom token hashing is forbidden")
+
+
+def test_high_cardinality_capture_has_structural_work_bounds(
+    monkeypatch,
+) -> None:
+    controlled_calls = 0
+    unknown_hash_inputs: list[int] = []
+    original_controlled = provider_output._controlled_block_type
+    original_sha256 = provider_output.hashlib.sha256
+
+    def counted_controlled(value, *args, **kwargs):
+        nonlocal controlled_calls
+        controlled_calls += 1
+        return original_controlled(value, *args, **kwargs)
+
+    def observed_sha256(data=b""):
+        if (
+            b"unknown-block-type" in data
+            or b"bounded-type-token-fingerprint" in data
+        ):
+            unknown_hash_inputs.append(len(data))
+        return original_sha256(data)
+
+    monkeypatch.setattr(
+        provider_output, "_controlled_block_type", counted_controlled,
+    )
+    monkeypatch.setattr(provider_output.hashlib, "sha256", observed_sha256)
+    body = {
+        "stop_reason": "end_turn",
+        "content": [
+            {"type": f"unseen-private-kind-{index}"}
+            for index in range(10_001)
+        ],
+        "usage": {},
+    }
+
+    snapshot = _capture(monkeypatch, protocol="anthropic", body=body)
+
+    assert snapshot["raw_block_count"] == 10_001
+    assert controlled_calls <= provider_output.MAX_BLOCKS_INSPECTED
+    assert provider_output.MAX_BLOCKS_TOUCHED <= (
+        provider_output.MAX_BLOCKS_INSPECTED + 1
+    )
+    assert len(snapshot["raw_block_type_sequence"]) <= (
+        provider_output.MAX_CONTROLLED_DETAILS
+    )
+    assert len(snapshot["unknown_block_type_hashes"]) <= (
+        provider_output.MAX_UNKNOWN_DETAILS
+    )
+    assert len(unknown_hash_inputs) <= provider_output.MAX_UNKNOWN_DETAILS
+    assert max(unknown_hash_inputs) <= provider_output.MAX_HASH_INPUT_BYTES
+    assert snapshot["sequence_omitted_after_limit"] is True
+    assert snapshot["capture_completeness"] == "partial"
+
+
+@pytest.mark.parametrize("container_type", [list, tuple])
+def test_high_cardinality_nested_containers_share_one_work_budget(
+    monkeypatch, container_type,
+) -> None:
+    nested = container_type(
+        {"type": "output_text", "text": "x"} for _index in range(10_001)
+    )
+    body = {
+        "status": "completed",
+        "output": [{"type": "message", "content": nested}],
+        "usage": {"output_tokens": 1},
+    }
+
+    snapshot = _capture(monkeypatch, protocol="openai-responses", body=body)
+
+    assert snapshot["capture_completeness"] == "partial"
+    assert len(snapshot["raw_block_type_sequence"]) <= (
+        provider_output.MAX_BLOCKS_INSPECTED
+    )
+    assert snapshot["raw_block_count"] == 10_002
+    assert snapshot["sequence_omitted_after_limit"] is True
+
+
+def test_repeated_tool_entries_are_bounded_without_entry_access(monkeypatch) -> None:
+    tools = [{"function": {"arguments": "PRIVATE"}} for _ in range(10_001)]
+    tools.append(_PoisonMapping())
+    body = {
+        "choices": [{"finish_reason": "stop", "message": {
+            "content": None, "tool_calls": tools,
+        }}],
+        "usage": {"completion_tokens": 1},
+    }
+
+    snapshot = _capture(monkeypatch, protocol="openai-chat", body=body)
+
+    assert snapshot["raw_block_count"] == len(tools)
+    assert snapshot["capture_completeness"] == "partial"
+    assert len(snapshot["raw_block_type_sequence"]) <= (
+        provider_output.MAX_BLOCKS_INSPECTED
+    )
+    assert snapshot["raw_tool_call_present"] is True
+
+
+def test_poison_tail_after_capture_bound_is_not_touched(monkeypatch) -> None:
+    content = [
+        {"type": "thinking"}
+        for _index in range(provider_output.MAX_RAW_BLOCK_SEQUENCE)
+    ]
+    content.append(_PoisonMapping(type="tool_use"))
+
+    snapshot = _capture(monkeypatch, protocol="anthropic", body={
+        "stop_reason": "max_tokens",
+        "content": content,
+        "usage": {"output_tokens": 8},
+    })
+
+    assert snapshot is not None
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_tool_call_present"] is None
+    assert snapshot["sequence_omitted_after_limit"] is True
+
+
+def test_huge_unknown_token_uses_bounded_fingerprint_input(monkeypatch) -> None:
+    fingerprint_input_lengths: list[int] = []
+    original_sha256 = provider_output.hashlib.sha256
+
+    def observed_sha256(data=b""):
+        if b"bounded-type-token-fingerprint" in data:
+            fingerprint_input_lengths.append(len(data))
+        return original_sha256(data)
+
+    monkeypatch.setattr(provider_output.hashlib, "sha256", observed_sha256)
+    huge_token = "private-unknown-" + ("x" * 2_000_000)
+
+    snapshot = _capture(monkeypatch, protocol="anthropic", body={
+        "stop_reason": "end_turn",
+        "content": [{"type": huge_token}],
+        "usage": {},
+    })
+
+    assert fingerprint_input_lengths
+    assert max(fingerprint_input_lengths) <= provider_output.MAX_HASH_INPUT_BYTES
+    assert huge_token not in json.dumps(snapshot)
+    assert snapshot["raw_block_type_sequence"] == ("unknown",)
+
+
+def test_tool_in_unobserved_tail_remains_unknown(monkeypatch, tmp_path) -> None:
+    content = [
+        {"type": "thinking"}
+        for _index in range(provider_output.MAX_RAW_BLOCK_SEQUENCE)
+    ] + [{"type": "tool_use"}]
+    snapshot = _capture(monkeypatch, protocol="anthropic", body={
+        "stop_reason": "max_tokens", "content": content,
+        "usage": {"output_tokens": 8},
+    })
+    assert snapshot["capture_completeness"] == "partial"
+    assert snapshot["raw_tool_call_present"] is None
+    assert snapshot["raw_final_text_present"] is None
+
+    raw = bind_ptr12_raw_shape_observation(
+        _context(tmp_path), snapshot=snapshot,
+        provider_id="provider", model_id="model",
+        route_fingerprint="a" * 64, schema_sha256="b" * 64,
+        request_mode="plain",
+    )
+    normalized = _shape("thinking")
+    delta = observe_ptr12_shape_delta(
+        _context(tmp_path), raw_shape=raw, normalized_shape=normalized,
+        normalized_finish_reason="max_tokens",
+    )
+    assert delta.comparison_completeness == "partial"
+    assert {
+        "BLOCK_TYPE_SEQUENCE", "REASONING_COUNT", "TEXT_COUNT",
+        "TOOL_COUNT", "VISIBLE_CHAR_COUNT",
+    }.issubset(delta.unavailable_dimensions)
+
+
+def test_destructive_events_are_not_consumed(monkeypatch) -> None:
+    events = _DestructiveEvents()
+    snapshot = _capture(
+        monkeypatch, protocol="anthropic", body=None, events=events,
+    )
+    assert events.consumed is False
+    assert snapshot["capture_completeness"] == "unavailable"
+
+
+def test_custom_mapping_and_token_traps_are_not_invoked(monkeypatch) -> None:
+    body = _TrapMapping()
+    snapshot = _capture(monkeypatch, protocol="anthropic", body=body)
+    assert body.access_count == 0
+    assert snapshot["capture_completeness"] == "unavailable"
+
+    token = _TrapToken()
+    snapshot = _capture(monkeypatch, protocol="anthropic", body={
+        "stop_reason": token,
+        "content": [{"type": token}],
+        "usage": {},
+    })
+    assert token.stringified is False
+    assert snapshot["raw_block_type_sequence"] == ("unknown",)
+    assert snapshot["finish_reason_raw_class"] == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_bounded_fingerprint_failure_keeps_adapter_result(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+    adapter = AnthropicAdapter("https://offline.invalid/v1", "PRIVATE_SECRET")
+    request = ModelRequest(
+        model="offline",
+        messages=[Message(role="user", content="PRIVATE_PROMPT")],
+        max_output_tokens=8,
+    )
+
+    async def fake_post_stream(*_args, **_kwargs):
+        return [], {
+            "stop_reason": "end_turn",
+            "content": [{"type": "private-unknown-kind"}],
+            "usage": {"output_tokens": 1},
+        }
+
+    def fail_fingerprint(*_args, **_kwargs):
+        raise RuntimeError("synthetic observer failure")
+
+    monkeypatch.setattr(adapter, "post_stream", fake_post_stream)
+    monkeypatch.setattr(
+        provider_output, "_bounded_type_token_fingerprint", fail_fingerprint,
+    )
+    response = await adapter.complete(request)
+    assert response.finish_reason == "end_turn"
+    assert response.output_tokens == 1
 
 
 def test_aggregate_usage_is_not_inferred_as_reasoning_or_final(monkeypatch) -> None:

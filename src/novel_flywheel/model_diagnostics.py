@@ -1050,7 +1050,17 @@ def observe_ptr12_shape_delta(
         if raw_shape is not None and normalized_shape is not None:
             raw_payload = raw_shape.model_dump(mode="python")
             normalized_payload = normalized_shape.model_dump(mode="python")
+            topology_tail_unknown = (
+                raw_shape.capture_completeness == "unavailable"
+                or raw_shape.sequence_omitted_after_limit
+            )
             for dimension, raw_key, normalized_key in _DELTA_DIMENSIONS:
+                if topology_tail_unknown and dimension in {
+                    "BLOCK_TYPE_SEQUENCE", "REASONING_COUNT", "TEXT_COUNT",
+                    "TOOL_COUNT", "VISIBLE_CHAR_COUNT",
+                }:
+                    unavailable.append(dimension)
+                    continue
                 left = raw_payload.get(raw_key)
                 right = normalized_payload.get(normalized_key)
                 if left is None or right is None:
