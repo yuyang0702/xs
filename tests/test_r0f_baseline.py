@@ -79,6 +79,12 @@ R1_PTR12_STREAM_REASONING_SUCCESSOR = (
     / "fixtures" / "reliability" / "r0f"
     / "r1-ptr12-stream-reasoning-usage-authorized-protected-source-successor-v1.json"
 )
+R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "r1-ptr12-diagnostic-context-fail-open-"
+    "authorized-protected-source-successor-v1.json"
+)
 R1_PTR12_OBSERVER_SCHEMA = (
     "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
 )
@@ -143,6 +149,19 @@ R1_PTR12_STREAM_REASONING_IMPLEMENTATION_HEAD = (
 R1_PTR12_STREAM_REASONING_PROTECTED_TREE_SHA256 = (
     "f8355455accfa8291b6e274318fd27c488840080ddf880744f326deade0acfba"
 )
+R1_PTR12_DIAGNOSTIC_CONTEXT_SCHEMA = (
+    "R1PTR12DiagnosticContextFailOpenAuthorizedProtectedSourceSuccessorV1"
+)
+R1_PTR12_DIAGNOSTIC_CONTEXT_VERSION = 1
+R1_PTR12_DIAGNOSTIC_CONTEXT_PARENT_HEAD = (
+    "ca0d7bd34bfc0e0e242a1cd9216d5416b5bfeb70"
+)
+R1_PTR12_DIAGNOSTIC_CONTEXT_IMPLEMENTATION_HEAD = (
+    "f2f7fce1a077413c3c1fbbea9bdf1cb8d0a89bf0"
+)
+R1_PTR12_DIAGNOSTIC_CONTEXT_PROTECTED_TREE_SHA256 = (
+    "c11f763c51eba9fc258b91e0e8b4a16fad0046380ca01fc091bb9641d6258764"
+)
 
 
 def _protected_tree_sha256(manifest: list[dict[str, Any]]) -> str:
@@ -181,13 +200,12 @@ def _assert_r1_ptr12_successor_exact(
         "diagnostic_event_types": 4,
     }
 
-    current_manifest = canonical_protected_source_manifest(REPOSITORY)
-    assert successor["current_protected_sources"] == current_manifest
+    recorded_manifest = successor["current_protected_sources"]
     tree_sha256 = successor["implementation_protected_tree_sha256"]
     assert isinstance(tree_sha256, str)
     assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
     assert tree_sha256 == R1_PTR12_OBSERVER_PROTECTED_TREE_SHA256
-    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+    assert tree_sha256 == _protected_tree_sha256(recorded_manifest)
 
     ptr12_hashes = {
         item["path"]: item["sha256"]
@@ -581,15 +599,12 @@ def _assert_r1_ptr12_stream_reasoning_successor_exact(
         "diagnostic_context_construction_fail_open_status": "OPEN",
     }
 
-    current_manifest = ptr12_bounded_capture_protected_source_manifest(
-        REPOSITORY,
-    )
-    assert successor["current_protected_sources"] == current_manifest
+    recorded_manifest = successor["current_protected_sources"]
     tree_sha256 = successor["implementation_protected_tree_sha256"]
     assert isinstance(tree_sha256, str)
     assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
     assert tree_sha256 == R1_PTR12_STREAM_REASONING_PROTECTED_TREE_SHA256
-    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+    assert tree_sha256 == _protected_tree_sha256(recorded_manifest)
 
     authorized = successor["authorized_source_deltas"]
     assert authorized == [{
@@ -602,7 +617,7 @@ def _assert_r1_ptr12_stream_reasoning_successor_exact(
         ),
     }]
     current_hashes = {
-        item["path"]: item["sha256"] for item in current_manifest
+        item["path"]: item["sha256"] for item in recorded_manifest
     }
     assert authorized[0]["after_sha256"] == current_hashes[
         authorized[0]["path"]
@@ -614,6 +629,102 @@ def _tamper_ptr12_stream_reasoning_successor(
 ) -> None:
     if case == "wrong_schema":
         successor["schema"] = "R1PTR12StreamReasoningUsageSuccessorV999"
+    elif case == "wrong_version":
+        successor["version"] = 2
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "wrong_protected_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "single_file_hash_tamper":
+        successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    elif case == "wrong_before_hash":
+        successor["authorized_source_deltas"][0]["before_sha256"] = "0" * 64
+    elif case == "wrong_after_hash":
+        successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
+    else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
+
+
+def _assert_r1_ptr12_diagnostic_context_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == R1_PTR12_DIAGNOSTIC_CONTEXT_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == R1_PTR12_DIAGNOSTIC_CONTEXT_VERSION
+    assert (
+        successor["parent_source_head"]
+        == R1_PTR12_DIAGNOSTIC_CONTEXT_PARENT_HEAD
+    )
+    assert (
+        successor["implementation_source_head"]
+        == R1_PTR12_DIAGNOSTIC_CONTEXT_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == (
+        "R1-PTR12-DIAGNOSTIC-CONTEXT-CONSTRUCTION-FAIL-OPEN-FIX"
+    )
+    assert successor["business_behavior_changed"] is False
+    assert successor["parent_successor"] == {
+        "path": (
+            "tests/fixtures/reliability/r0f/"
+            "r1-ptr12-stream-reasoning-usage-"
+            "authorized-protected-source-successor-v1.json"
+        ),
+        "sha256": (
+            "6959d184b96a50a7eea1ea5d111c930ce3f28df11402aeb459d7a113afd018a6"
+        ),
+        "protected_tree_sha256": R1_PTR12_STREAM_REASONING_PROTECTED_TREE_SHA256,
+    }
+    assert successor["protected_deltas"] == {
+        "business_artifacts": 0,
+        "domain_validator": 0,
+        "initial_prompt": 0,
+        "model_call_upper_bound": 0,
+        "output_budget": 0,
+        "retry_fallback_attempt_limits": 0,
+        "same_fingerprint_redispatch": 0,
+        "route_model_identity": 0,
+        "final_artifact_capability_memory": 0,
+        "diagnostic_event_types": 0,
+        "observer_context_failure_dispatch_diff": 0,
+        "observer_context_failure_argument_diff_count": 0,
+        "observer_context_failure_retry_count": 0,
+        "observer_context_failure_fallback_count": 0,
+        "diagnostic_context_construction_fail_open_status": "PASS",
+    }
+
+    current_manifest = ptr12_bounded_capture_protected_source_manifest(
+        REPOSITORY,
+    )
+    assert successor["current_protected_sources"] == current_manifest
+    tree_sha256 = successor["implementation_protected_tree_sha256"]
+    assert isinstance(tree_sha256, str)
+    assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
+    assert tree_sha256 == R1_PTR12_DIAGNOSTIC_CONTEXT_PROTECTED_TREE_SHA256
+    assert tree_sha256 == _protected_tree_sha256(current_manifest)
+
+    authorized = successor["authorized_source_deltas"]
+    assert authorized == [{
+        "path": "src/novel_flywheel/workflows.py",
+        "before_sha256": (
+            "34788904808fbfeb4da1c49345dd260266507917bfb200c33a868ea1209f28ba"
+        ),
+        "after_sha256": (
+            "5e9613bd7fa332cd89c0122d4fb16b4efa2d36103a96abbf53630f12ddcfd68f"
+        ),
+    }]
+    current_hashes = {
+        item["path"]: item["sha256"] for item in current_manifest
+    }
+    assert authorized[0]["after_sha256"] == current_hashes[
+        authorized[0]["path"]
+    ]
+
+
+def _tamper_ptr12_diagnostic_context_successor(
+    successor: dict[str, Any], case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = "R1PTR12DiagnosticContextSuccessorV999"
     elif case == "wrong_version":
         successor["version"] = 2
     elif case == "wrong_implementation":
@@ -825,6 +936,12 @@ def test_r0f_baseline_is_bound_to_clean_r0e_head_and_full_suite() -> None:
     _assert_r1_ptr12_stream_reasoning_successor_exact(
         r1_ptr12_stream_reasoning,
     )
+    r1_ptr12_diagnostic_context = load_baseline(
+        R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR,
+    )
+    _assert_r1_ptr12_diagnostic_context_successor_exact(
+        r1_ptr12_diagnostic_context,
+    )
 
 
 @pytest.mark.parametrize(
@@ -1002,6 +1119,43 @@ def test_r1_ptr12_stream_reasoning_successor_fixture_is_required(
 ) -> None:
     with pytest.raises(FileNotFoundError):
         load_baseline(tmp_path / R1_PTR12_STREAM_REASONING_SUCCESSOR.name)
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "wrong_version",
+        "wrong_implementation",
+        "wrong_protected_tree",
+        "single_file_hash_tamper",
+        "wrong_before_hash",
+        "wrong_after_hash",
+    ),
+)
+def test_r1_ptr12_diagnostic_context_successor_rejects_tamper(
+    case: str,
+) -> None:
+    successor = copy.deepcopy(load_baseline(
+        R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR,
+    ))
+    _tamper_ptr12_diagnostic_context_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_r1_ptr12_diagnostic_context_successor_exact(successor)
+
+
+def test_r1_ptr12_diagnostic_context_successor_accepts_exact_fixture() -> None:
+    _assert_r1_ptr12_diagnostic_context_successor_exact(
+        load_baseline(R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR),
+    )
+
+
+def test_r1_ptr12_diagnostic_context_successor_fixture_is_required(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(tmp_path / R1_PTR12_DIAGNOSTIC_CONTEXT_SUCCESSOR.name)
 
 
 def test_r0f_baseline_characterizes_supervised_run_business_projection(
