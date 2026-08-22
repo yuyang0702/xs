@@ -1,0 +1,107 @@
+{
+  "schema": "PlanningSkillProfileOfflineQualityCasesV1",
+  "version": 1,
+  "plot_cases": [
+    {"case_id":"plot-setup-escalation-payoff","profile":"v2","required_rule_ids":["PLOT_CAUSAL_ESCALATION","PLOT_SETUP_PAYOFF_INTENT"],"frozen_authority_level":3},
+    {"case_id":"plot-delayed-payoff","profile":"v2","required_rule_ids":["PLOT_SETUP_PAYOFF_INTENT","PLOT_PACING_INTENT"],"frozen_authority_level":3},
+    {"case_id":"plot-false-lead-authority-consistent","profile":"v2","required_rule_ids":["PLOT_SETUP_PAYOFF_INTENT","PLOT_CAUSAL_ESCALATION"],"frozen_authority_level":3},
+    {"case_id":"plot-causal-prerequisite","profile":"v2","required_rule_ids":["PLOT_CAUSAL_ESCALATION"],"frozen_authority_level":3},
+    {"case_id":"plot-tension-with-frozen-event","profile":"v2","required_rule_ids":["PLOT_CAUSAL_ESCALATION"],"frozen_authority_level":3},
+    {"case_id":"plot-pacing-with-fixed-role","profile":"v2","required_rule_ids":["PLOT_PACING_INTENT"],"frozen_authority_level":3},
+    {"case_id":"plot-multi-event-obligation","profile":"v2","required_rule_ids":["PLOT_SETUP_PAYOFF_INTENT","PLOT_CAUSAL_ESCALATION"],"frozen_authority_level":3},
+    {"case_id":"plot-no-global-restructure","profile":"v2","required_rule_ids":["PLOT_CAUSAL_ESCALATION","PLOT_PACING_INTENT"],"forbidden_rule_ids":["PLOT_STRUCTURE_ADAPTATION"],"frozen_authority_level":3},
+    {"case_id":"plot-structure-adaptation-v1","profile":"v1","required_rule_ids":["PLOT_STRUCTURE_ADAPTATION"],"frozen_authority_level":2}
+  ],
+  "character_cases": [
+    {"case_id":"character-motivation-drives-action","required_rule_ids":["CHARACTER_MOTIVATION"]},
+    {"case_id":"character-conflicting-motivation-same-event","required_rule_ids":["CHARACTER_MOTIVATION","CHARACTER_ARC"]},
+    {"case_id":"character-relationship-tension","required_rule_ids":["CHARACTER_RELATIONSHIP_NUANCE","CHARACTER_MOTIVATION"]},
+    {"case_id":"character-knowledge-boundary-choice","required_rule_ids":["CHARACTER_MOTIVATION"],"authority_level":1},
+    {"case_id":"character-location-state-constraint","required_rule_ids":["CHARACTER_MOTIVATION"],"authority_level":1},
+    {"case_id":"character-voice-distinction","required_rule_ids":["CHARACTER_VOICE"]},
+    {"case_id":"character-emotional-arc-continuity","required_rule_ids":["CHARACTER_ARC","CHARACTER_MOTIVATION"]},
+    {"case_id":"character-authority-fact-protected","required_rule_ids":["CHARACTER_MOTIVATION"],"authority_level":1,"creative_override_expected":false}
+  ],
+  "world_cases": [
+    {"case_id":"world-cost-affects-action","required_rule_ids":["WORLD_COST_AND_LIMIT"],"lane":"DRAMATIZATION","expected_disposition":"allowed"},
+    {"case_id":"world-faction-pressure-choice","required_rule_ids":["WORLD_FACTION_PRESSURE"],"lane":"DRAMATIZATION","expected_disposition":"allowed"},
+    {"case_id":"world-location-constraint","required_rule_ids":["WORLD_SENSORY_SPECIFICITY","WORLD_CURRENT_STATE"],"lane":"DRAMATIZATION","expected_disposition":"allowed"},
+    {"case_id":"world-sensory-no-canon-mutation","required_rule_ids":["WORLD_SENSORY_SPECIFICITY"],"lane":"SENSORY_REALIZATION","expected_disposition":"allowed"},
+    {"case_id":"world-reversible-local-detail","required_rule_ids":["WORLD_SENSORY_SPECIFICITY"],"lane":"NON_CANONICAL_DETAIL","expected_disposition":"allowed"},
+    {"case_id":"world-canonical-proposal-only","required_rule_ids":["WORLD_CURRENT_STATE"],"lane":"CANONICAL_FACT_PROPOSAL","expected_disposition":"proposal_only"},
+    {"case_id":"world-forbidden-free-power","required_rule_ids":["WORLD_COST_AND_LIMIT"],"lane":"FORBIDDEN_AUTHORITY_OVERRIDE","expected_disposition":"reject"},
+    {"case_id":"world-forbidden-location-owner-history","required_rule_ids":["WORLD_CURRENT_STATE","WORLD_ARTIFACT_DETAIL"],"lane":"FORBIDDEN_AUTHORITY_OVERRIDE","expected_disposition":"reject"}
+  ],
+  "narrative_bridge_cases": [
+    {"case_id":"bridge-all-confirmed","sources":{"genre":[{"value":"genre-a","level":2,"confirmed":true}],"premise":[{"value":"premise-a","level":2,"confirmed":true}],"pov":[{"value":"pov-a","level":2,"confirmed":true}],"tone":[{"value":"tone-a","level":2,"confirmed":true}],"theme":[{"value":"theme-a","level":2,"confirmed":true}],"tense":[{"value":"tense-a","level":2,"confirmed":true}]},"present":["genre","premise","pov","tone","theme","tense"]},
+    {"case_id":"bridge-theme-unspecified","sources":{"genre":[{"value":"genre-b","level":2,"confirmed":true}]},"present":["genre"]},
+    {"case_id":"bridge-tense-unspecified","sources":{"pov":[{"value":"pov-c","level":2,"confirmed":true}]},"present":["pov"]},
+    {"case_id":"bridge-unconfirmed-scaffold-default","sources":{"tense":[{"value":"scaffold-default","level":8,"confirmed":false,"scaffold_default":true}]},"present":[]},
+    {"case_id":"bridge-confirmed-wins-over-scaffold","sources":{"genre":[{"value":"scaffold-genre","level":8,"confirmed":false,"scaffold_default":true},{"value":"confirmed-genre","level":2,"confirmed":true}]},"present":["genre"],"expected_value":"confirmed-genre"},
+    {"case_id":"bridge-narrative-contract-pov-exact","sources":{"pov":[{"value":"third-limited","level":2,"confirmed":true}]},"present":["pov"],"expected_value":"third-limited"},
+    {"case_id":"bridge-authority-tone-confirmed","sources":{"tone":[{"value":"restrained","level":2,"confirmed":true}]},"present":["tone"],"expected_value":"restrained"},
+    {"case_id":"bridge-source-missing","sources":{},"present":[]}
+  ],
+  "mandatory_cases": [
+    {"case_id":"synthetic-true-invariant","classification":"TRUE_NARRATIVE_INVARIANT","expected_mandatory":true,"stage":"planning","source_hash_status":"exact"},
+    {"case_id":"generic-preference","classification":"GENERIC_WRITING_PREFERENCE","expected_mandatory":false,"stage":"planning","source_hash_status":"exact"},
+    {"case_id":"unknown-rule","classification":"UNKNOWN","expected_mandatory":false,"stage":"planning","source_hash_status":"exact"},
+    {"case_id":"stage-mismatch","classification":"TRUE_NARRATIVE_INVARIANT","expected_mandatory":false,"stage":"draft","source_hash_status":"exact"},
+    {"case_id":"stale-source-hash","classification":"TRUE_NARRATIVE_INVARIANT","expected_mandatory":false,"stage":"planning","source_hash_status":"stale"}
+  ],
+  "precedence_cases": [
+    {"case_id":"ready-vs-skill","left":1,"right":7,"expected":"left"},
+    {"case_id":"story-state-vs-skill","left":1,"right":7,"expected":"left"},
+    {"case_id":"confirmed-constraint-vs-skill","left":2,"right":7,"expected":"left"},
+    {"case_id":"frozen-event-vs-plot-suggestion","left":3,"right":7,"expected":"left"},
+    {"case_id":"execution-manifest-vs-skill","left":3,"right":7,"expected":"left"},
+    {"case_id":"stage-schema-vs-skill","left":4,"right":7,"expected":"left"},
+    {"case_id":"runtime-rule-vs-skill","left":5,"right":7,"expected":"left"},
+    {"case_id":"mandatory-creative-vs-advisory","left":6,"right":7,"expected":"left"},
+    {"case_id":"advisory-vs-generic","left":7,"right":8,"expected":"left"},
+    {"case_id":"same-level-conflict","left":7,"right":7,"expected":"equal","typed_handling":"NEEDS_FUTURE_RESOLUTION"}
+  ],
+  "conditional_cases": [
+    {"case_id":"actor-only","overrides":{"actor_refs_status":"absent","actor_refs":["actor-1"],"world_refs_status":"absent"},"character":"include","world":"exclude"},
+    {"case_id":"relationship-only","overrides":{"actor_refs_status":"absent","relationship_dependency_refs":["rel-1"],"world_refs_status":"absent"},"character":"include","world":"exclude"},
+    {"case_id":"knowledge-only","overrides":{"actor_refs_status":"absent","knowledge_state_refs":["knowledge-1"],"world_refs_status":"absent"},"character":"include","world":"exclude"},
+    {"case_id":"state-only","overrides":{"actor_refs_status":"absent","character_refs":["state-1"],"world_refs_status":"absent"},"character":"include","world":"exclude"},
+    {"case_id":"dialogue-only","overrides":{"actor_refs_status":"absent","dialogue_required":true,"world_refs_status":"absent"},"character":"include","world":"exclude"},
+    {"case_id":"location-only","overrides":{"actor_refs_status":"absent","world_refs_status":"absent","location_refs":["location-1"]},"character":"exclude","world":"include"},
+    {"case_id":"world-rule-only","overrides":{"actor_refs_status":"absent","world_refs_status":"absent","world_rule_refs":["rule-1"]},"character":"exclude","world":"include"},
+    {"case_id":"faction-only","overrides":{"actor_refs_status":"absent","world_refs_status":"absent","faction_refs":["faction-1"]},"character":"exclude","world":"include"},
+    {"case_id":"system-only","overrides":{"actor_refs_status":"absent","world_refs_status":"absent","system_refs":["system-1"]},"character":"exclude","world":"include"},
+    {"case_id":"object-only","overrides":{"actor_refs_status":"absent","world_refs_status":"absent","object_refs":["object-1"]},"character":"exclude","world":"include"},
+    {"case_id":"no-dependency-exact","overrides":{"actor_refs_status":"absent","world_refs_status":"absent"},"character":"exclude","world":"exclude"},
+    {"case_id":"incomplete-metadata","overrides":{"actor_refs_status":"missing","world_refs_status":"missing"},"character":"fail_safe_include","world":"fail_safe_include"},
+    {"case_id":"stale-authority-revision","overrides":{"actor_refs_status":"stale","world_refs_status":"stale"},"character":"fail_safe_include","world":"fail_safe_include"},
+    {"case_id":"mixed-revision","overrides":{"actor_refs_status":"mixed","world_refs_status":"mixed"},"character":"fail_safe_include","world":"fail_safe_include"},
+    {"case_id":"legacy-schema-missing-fields","overrides":{"actor_refs_status":"unknown","world_refs_status":"unknown"},"character":"fail_safe_include","world":"fail_safe_include"}
+  ],
+  "v1_compatibility_cases": [
+    {"case_id":"v1-simple-plot","required_rule_ids":["PLOT_CAUSAL_ESCALATION","PLOT_PACING_INTENT"],"status":"PRESERVED"},
+    {"case_id":"v1-plot-character","required_rule_ids":["PLOT_CAUSAL_ESCALATION","CHARACTER_MOTIVATION","CHARACTER_VOICE"],"status":"MORE_EXPLICIT"},
+    {"case_id":"v1-plot-world","required_rule_ids":["PLOT_CAUSAL_ESCALATION","WORLD_SENSORY_SPECIFICITY"],"status":"MORE_EXPLICIT"},
+    {"case_id":"v1-plot-character-world","required_rule_ids":["PLOT_CAUSAL_ESCALATION","CHARACTER_ARC","WORLD_COST_AND_LIMIT"],"status":"MORE_EXPLICIT"},
+    {"case_id":"v1-theme-unspecified","required_bridge_unspecified":["theme"],"status":"NOT_COMPARABLE"},
+    {"case_id":"v1-tense-unspecified","required_bridge_unspecified":["tense"],"status":"NOT_COMPARABLE"},
+    {"case_id":"v1-strong-formal-event","required_rule_ids":["PLOT_CAUSAL_ESCALATION"],"authority_level":3,"status":"PRESERVED"},
+    {"case_id":"v1-relationship-dependency","required_rule_ids":["CHARACTER_RELATIONSHIP_NUANCE"],"status":"PRESERVED"},
+    {"case_id":"v1-world-rule-cost","required_rule_ids":["WORLD_COST_AND_LIMIT"],"status":"PRESERVED"},
+    {"case_id":"v1-payoff-obligation","required_rule_ids":["PLOT_SETUP_PAYOFF_INTENT"],"status":"PRESERVED"}
+  ],
+  "creative_intent_cases": [
+    {"case_id":"intent-causal-tension","signals":["causal_intent","escalation"],"required_rule_ids":["PLOT_CAUSAL_ESCALATION"]},
+    {"case_id":"intent-character-motivation","signals":["motivation","relevant_biography"],"required_rule_ids":["CHARACTER_MOTIVATION"]},
+    {"case_id":"intent-relationship-nuance","signals":["relationship_nuance"],"required_rule_ids":["CHARACTER_RELATIONSHIP_NUANCE"]},
+    {"case_id":"intent-character-voice","signals":["voice"],"required_rule_ids":["CHARACTER_VOICE"]},
+    {"case_id":"intent-world-cost","signals":["world_cost_limit"],"required_rule_ids":["WORLD_COST_AND_LIMIT"]},
+    {"case_id":"intent-faction-pressure","signals":["faction_pressure"],"required_rule_ids":["WORLD_FACTION_PRESSURE"]},
+    {"case_id":"intent-sensory-specificity","signals":["sensory_specificity","location_realization"],"required_rule_ids":["WORLD_SENSORY_SPECIFICITY"]},
+    {"case_id":"intent-setup-payoff","signals":["setup_payoff"],"required_rule_ids":["PLOT_SETUP_PAYOFF_INTENT"]},
+    {"case_id":"intent-pacing","signals":["pacing_intent"],"required_rule_ids":["PLOT_PACING_INTENT"]},
+    {"case_id":"intent-pov-tone","signals":["pov","tone"],"required_bridge_present":["pov","tone"]},
+    {"case_id":"intent-theme-ambiguity","signals":["theme_unspecified"],"required_bridge_unspecified":["theme"]},
+    {"case_id":"intent-local-noncanonical-detail","signals":["reversible_noncanonical_detail"],"required_lane":"NON_CANONICAL_DETAIL","expected_disposition":"allowed"}
+  ]
+}
