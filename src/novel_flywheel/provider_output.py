@@ -180,6 +180,7 @@ def capture_provider_raw_shape_v1(
     body: Mapping[str, Any] | None,
     events: Sequence[Mapping[str, Any]],
     requested_output_cap: int | None,
+    effective_output_cap: int | None = None,
 ) -> None:
     """Deposit one bounded, content-free snapshot before adapter normalization."""
 
@@ -200,6 +201,11 @@ def capture_provider_raw_shape_v1(
             requested_output_cap
             if type(requested_output_cap) is int and requested_output_cap >= 1
             else None
+        )
+        safe_effective_output_cap = (
+            effective_output_cap
+            if type(effective_output_cap) is int and effective_output_cap >= 1
+            else safe_requested_output_cap
         )
         capture = _BoundedRawShapeCapture()
         visible_chars: int | None = 0
@@ -523,7 +529,7 @@ def capture_provider_raw_shape_v1(
             "finish_reason_unknown_sha256": finish_hash,
             "output_token_count": output_tokens if isinstance(output_tokens, int) and output_tokens >= 0 else None,
             "requested_output_cap": safe_requested_output_cap,
-            "effective_output_cap": safe_requested_output_cap,
+            "effective_output_cap": safe_effective_output_cap,
             "provider_accepted_cap_status": "UNKNOWN",
             "provider_exposed_reasoning_usage_status": (
                 "KNOWN" if isinstance(reasoning_usage, int) else "NOT_EXPOSED"

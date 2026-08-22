@@ -54,6 +54,7 @@ class AnthropicAdapter(HttpProvider):
         capture_provider_raw_shape_v1(
             protocol="anthropic", body=body, events=events,
             requested_output_cap=request.max_output_tokens,
+            effective_output_cap=payload["max_tokens"],
         )
         if body is None:
             try:

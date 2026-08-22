@@ -648,6 +648,89 @@ async def test_bounded_fingerprint_failure_keeps_adapter_result(
     assert response.output_tokens == 1
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("requested_cap", "expected_effective_cap"),
+    [(None, 8192), (4096, 4096), (8192, 8192)],
+)
+async def test_anthropic_cap_lineage_matches_final_outgoing_request(
+    monkeypatch, requested_cap, expected_effective_cap,
+) -> None:
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+    adapter = AnthropicAdapter("https://offline.invalid/v1", "PRIVATE_SECRET")
+    request = ModelRequest(
+        model="offline",
+        messages=[Message(role="user", content="PRIVATE_PROMPT")],
+        max_output_tokens=requested_cap,
+    )
+    outgoing_payloads = []
+
+    async def fake_post_stream(*_args, **kwargs):
+        outgoing_payloads.append(dict(kwargs["payload"]))
+        return [], {
+            "stop_reason": "end_turn",
+            "content": [{"type": "text", "text": "PRIVATE_RESULT"}],
+            "usage": {"output_tokens": 3},
+        }
+
+    monkeypatch.setattr(adapter, "post_stream", fake_post_stream)
+    token = open_ptr12_raw_shape_capture()
+    try:
+        response = await adapter.complete(request)
+        snapshot = current_ptr12_raw_shape()
+    finally:
+        reset_ptr12_raw_shape_capture(token)
+
+    assert response.text == "PRIVATE_RESULT"
+    assert outgoing_payloads[0]["max_tokens"] == expected_effective_cap
+    assert snapshot["requested_output_cap"] == requested_cap
+    assert snapshot["effective_output_cap"] == expected_effective_cap
+    assert snapshot["provider_accepted_cap_status"] == "UNKNOWN"
+
+
+@pytest.mark.asyncio
+async def test_anthropic_observer_on_off_preserves_exact_request_kwargs(
+    monkeypatch,
+) -> None:
+    request = ModelRequest(
+        model="offline",
+        messages=[Message(role="user", content="PRIVATE_PROMPT")],
+    )
+
+    async def run(*, enabled: bool):
+        if enabled:
+            monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+        else:
+            monkeypatch.delenv(
+                "NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", raising=False,
+            )
+        adapter = AnthropicAdapter(
+            "https://offline.invalid/v1", "PRIVATE_SECRET",
+        )
+        calls = []
+
+        async def fake_post_stream(*args, **kwargs):
+            calls.append((args, kwargs))
+            return [], {
+                "stop_reason": "end_turn",
+                "content": [{"type": "text", "text": "PRIVATE_RESULT"}],
+                "usage": {"input_tokens": 2, "output_tokens": 3},
+            }
+
+        monkeypatch.setattr(adapter, "post_stream", fake_post_stream)
+        token = open_ptr12_raw_shape_capture()
+        try:
+            response = await adapter.complete(request)
+        finally:
+            reset_ptr12_raw_shape_capture(token)
+        return calls, response.model_dump(mode="json")
+
+    observer_off = await run(enabled=False)
+    observer_on = await run(enabled=True)
+    assert observer_on == observer_off
+    assert observer_on[0][0][1]["payload"]["max_tokens"] == 8192
+
+
 def test_aggregate_usage_is_not_inferred_as_reasoning_or_final(monkeypatch) -> None:
     snapshot = _capture(monkeypatch, protocol="anthropic", body={
         "stop_reason": "max_tokens",
