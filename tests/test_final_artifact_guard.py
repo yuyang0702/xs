@@ -20,6 +20,7 @@ from novel_flywheel.models import (
     ModelGateway,
     ReasoningOnlyFinalArtifactUnavailableError,
 )
+from novel_flywheel.model_diagnostics import ModelDiagnosticContextV1
 from novel_flywheel.planning_semantics import (
     PlanningSemanticDraftV2,
     normalize_planning_semantic_v2_payload,
@@ -30,6 +31,7 @@ from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
 from novel_flywheel.providers.registry import ResolvedModel
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
+from novel_flywheel.reliability_trace import read_trace, trace_file_for_project
 
 
 def _shape(
@@ -123,6 +125,15 @@ def _spec(contract: StructuredArtifactContract) -> ExecutableContractSpec:
             if len(str(payload.get("message") or "")) >= 12
             else (_ for _ in ()).throw(ValueError("message incomplete"))
         ),
+    )
+
+
+def _ptr12_context(tmp_path) -> ModelDiagnosticContextV1:
+    return ModelDiagnosticContextV1(
+        project_root=tmp_path, run_id="ptr12-runtime", stage="planning",
+        boundary="planning_semantic_v2", role="planning", route_kind="primary",
+        contract_id="interview_planning", contract_version=1,
+        outer_retry_ordinal=1,
     )
 
 
@@ -438,6 +449,60 @@ async def test_existing_distinct_fallback_recovers_through_domain_boundary(
     assert result.domain_value["message"].startswith("独立合法路由")
     assert primary.calls == 1
     assert fallback.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_ptr12_recovery_disposition_records_existing_alternate_only(
+    monkeypatch, tmp_path,
+) -> None:
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+    trace_file_for_project(tmp_path).unlink(missing_ok=True)
+    _, gateway, primary, fallback = _gateway(
+        tmp_path, _reasoning_only_response(), _valid_text_response(),
+    )
+    result = await execute_contract_runtime(
+        gateway, role="planning", system="system", user="user",
+        execution_spec=_spec(_contract()), max_output_tokens=16000,
+        same_route_attempts=2, fallback_attempts=1,
+        diagnostic_context=_ptr12_context(tmp_path),
+    )
+    decisions = [
+        event.payload for event in read_trace(trace_file_for_project(tmp_path)).events
+        if event.event_type == "diagnostic_ptr9_guard_decision_v1"
+    ]
+    recovery = [item for item in decisions if item["phase"] == "recovery_disposition"]
+    assert result.attempt.route == "configured_fallback"
+    assert primary.calls == fallback.calls == 1
+    assert any(
+        item["recovery_status"] == "ALTERNATE_ROUTE_SELECTED"
+        and item["alternate_route_selected"] is True
+        and item["fail_close_selected"] is False
+        for item in recovery
+    )
+
+
+@pytest.mark.asyncio
+async def test_ptr12_recovery_disposition_records_typed_fail_close(
+    monkeypatch, tmp_path,
+) -> None:
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+    trace_file_for_project(tmp_path).unlink(missing_ok=True)
+    _, gateway, primary, _ = _gateway(tmp_path, _reasoning_only_response())
+    with pytest.raises(FinalArtifactCapabilityExhaustedError):
+        await execute_contract_runtime(
+            gateway, role="planning", system="system", user="user",
+            execution_spec=_spec(_contract()), max_output_tokens=16000,
+            same_route_attempts=2, fallback_attempts=0,
+            diagnostic_context=_ptr12_context(tmp_path),
+        )
+    decisions = [
+        event.payload for event in read_trace(trace_file_for_project(tmp_path)).events
+        if event.event_type == "diagnostic_ptr9_guard_decision_v1"
+        and event.payload["phase"] == "recovery_disposition"
+    ]
+    assert primary.calls == 1
+    assert decisions[-1]["recovery_status"] == "TYPED_FAIL_CLOSE"
+    assert decisions[-1]["fail_close_selected"] is True
 
 
 @pytest.mark.asyncio

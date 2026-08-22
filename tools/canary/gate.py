@@ -370,6 +370,11 @@ class PreflightGatedGateway:
                     billing_receipt_reliable=False,
                 )
 
+        from novel_flywheel.model_diagnostics import (
+            bind_ptr12_external_call_number,
+            reset_ptr12_external_call_number,
+        )
+        ptr12_call_token = bind_ptr12_external_call_number(request.ordinal)
         try:
             result = await getattr(self.delegate, method)(*args, **kwargs)
         except asyncio.CancelledError:
@@ -386,6 +391,8 @@ class PreflightGatedGateway:
                 "raw_content_included": False,
             }
             raise
+        finally:
+            reset_ptr12_external_call_number(ptr12_call_token)
         receipt = getattr(result, "receipt", {}) or {}
         def hashed(field: str) -> str | None:
             value = receipt.get(field)

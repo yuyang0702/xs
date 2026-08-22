@@ -5,6 +5,7 @@ import hashlib
 import pytest
 
 from novel_flywheel.models import ModelResult
+from novel_flywheel.model_diagnostics import current_ptr12_external_call_number
 from tools.canary.budget import AtomicBudgetLedger, BudgetLimits, CanaryBudgetExceeded
 from tools.canary.gate import (
     CanaryBoundaryAbort,
@@ -82,6 +83,26 @@ async def test_every_boundary_revalidates_and_reserves_before_delegate() -> None
     assert observation["status"] == "completed"
     assert len(observation["response_sha256"]) == 64
     assert "text" not in observation
+
+
+@pytest.mark.asyncio
+async def test_ptr12_existing_boundary_ordinal_is_scoped_as_locator_only() -> None:
+    observed = []
+
+    class LocatorDelegate:
+        async def complete(self, *_args, **_kwargs):
+            observed.append(current_ptr12_external_call_number())
+            return ModelResult("{}", {"input_tokens": 1, "output_tokens": 1})
+
+    wrapped, _ = gateway()
+    wrapped.delegate = LocatorDelegate()
+    first = asyncio.create_task(wrapped.complete(
+        "planning", "system", "user", max_output_tokens=1,
+    ))
+    request = await wrapped.run_initial_preflight()
+    await first
+    assert observed == [request.ordinal]
+    assert current_ptr12_external_call_number() is None
 
 
 @pytest.mark.asyncio

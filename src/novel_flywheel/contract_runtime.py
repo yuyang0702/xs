@@ -17,7 +17,10 @@ from novel_flywheel.context_policy import (
     output_limited,
 )
 from novel_flywheel.model_diagnostics import (
-    ModelDiagnosticContextV1, domain_sha256, emit_budget_lineage,
+    ModelDiagnosticContextV1, PTR9GuardDecisionObserverV1,
+    clear_ptr12_guard_decision_capture, current_ptr12_guard_decision,
+    domain_sha256, emit_budget_lineage, emit_ptr12_guard_recovery,
+    emit_ptr12_output_limit_classification,
 )
 from novel_flywheel.models import FinalArtifactCapabilityError
 from novel_flywheel.planning_repair_diagnostics import (
@@ -908,6 +911,23 @@ async def execute_contract_runtime(
     blocked_route_fingerprints: dict[str, str] = {}
     final_artifact_failure_seen = False
     non_final_failure_seen = False
+    ptr12_triggered_context: tuple[
+        ModelDiagnosticContextV1, PTR9GuardDecisionObserverV1
+    ] | None = None
+
+    def emit_ptr12_recovery(
+        *, selected: bool, fail_close: bool, status: str,
+    ) -> None:
+        if ptr12_triggered_context is None:
+            return
+        context, decision = ptr12_triggered_context
+        emit_ptr12_guard_recovery(
+            context, decision,
+            alternate_route_considered=True,
+            alternate_route_selected=selected,
+            fail_close_selected=fail_close,
+            recovery_status=status,
+        )
 
     def lineage_cap_values(target: int | None) -> dict[str, Any]:
         after_provider = target
@@ -1119,6 +1139,7 @@ async def execute_contract_runtime(
             propagated_finding_receipt_sha256=propagated_receipt,
         )
         try:
+            clear_ptr12_guard_decision_capture()
             response = (
                 await attempt_executor(
                     attempt, role, route_system, route_user,
@@ -1142,7 +1163,9 @@ async def execute_contract_runtime(
                 output_limit_seen = output_limit_seen or output_limited(
                     last_receipt,
                 )
+            attempt_ptr12_decision = current_ptr12_guard_decision()
         except Exception as exc:
+            attempt_ptr12_decision = current_ptr12_guard_decision()
             final_artifact_failure = isinstance(
                 exc, FinalArtifactCapabilityError,
             )
@@ -1180,6 +1203,13 @@ async def execute_contract_runtime(
                 )
                 if fingerprint:
                     blocked_route_fingerprints[attempt.route] = fingerprint
+                if (
+                    attempt_context is not None
+                    and attempt_ptr12_decision is not None
+                ):
+                    ptr12_triggered_context = (
+                        attempt_context, attempt_ptr12_decision,
+                    )
             else:
                 non_final_failure_seen = True
             if attempt.route == "configured_fallback":
@@ -1234,6 +1264,12 @@ async def execute_contract_runtime(
                 expected_output_characters=expected_output_characters,
             )
             if output_limited(receipt if isinstance(receipt, dict) else None):
+                emit_ptr12_output_limit_classification(
+                    attempt_context,
+                    output_limit_seen=True,
+                    receipt=receipt if isinstance(receipt, Mapping) else None,
+                    terminal=False,
+                )
                 previous_budget = attempt_output_tokens
                 target_budget = expanded_output_budget(previous_budget)
                 cap_values = lineage_cap_values(target_budget)
@@ -1509,6 +1545,21 @@ async def execute_contract_runtime(
             input_tokens=(receipt or {}).get("input_tokens") if isinstance(receipt, Mapping) else None,
             output_tokens=(receipt or {}).get("output_tokens") if isinstance(receipt, Mapping) else None,
         )
+        emit_ptr12_recovery(
+            selected=ptr12_triggered_context is not None,
+            fail_close=False,
+            status=(
+                "ALTERNATE_ROUTE_SELECTED"
+                if ptr12_triggered_context is not None else "NORMAL_RETURN"
+            ),
+        )
+        emit_ptr12_guard_recovery(
+            attempt_context, attempt_ptr12_decision,
+            alternate_route_considered=False,
+            alternate_route_selected=False,
+            fail_close_selected=False,
+            recovery_status="NORMAL_RETURN",
+        )
         return ContractRuntimeResult(
             payload=conversion.payload,
             domain_value=domain_value,
@@ -1518,7 +1569,17 @@ async def execute_contract_runtime(
         )
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("structured contract runtime had no executable attempt")
+    if ptr12_triggered_context is not None and not (
+        final_artifact_failure_seen and not non_final_failure_seen
+    ):
+        emit_ptr12_recovery(
+            selected=False, fail_close=False,
+            status="RUNTIME_CONTINUED_EXISTING_POLICY",
+        )
     if final_artifact_failure_seen and not non_final_failure_seen:
+        emit_ptr12_recovery(
+            selected=False, fail_close=True, status="TYPED_FAIL_CLOSE",
+        )
         raise FinalArtifactCapabilityExhaustedError(
             receipt=last_receipt,
             blocked_route_fingerprints=blocked_route_fingerprints,
@@ -1527,6 +1588,12 @@ async def execute_contract_runtime(
         isinstance(last_error, ArtifactConversionError)
         or last_business_incomplete_reason is not None
     ):
+        emit_ptr12_output_limit_classification(
+            attempt_context,
+            output_limit_seen=True,
+            receipt=last_receipt,
+            terminal=True,
+        )
         raise ContractOutputLimitExhaustedError(
             "structured output remained incomplete after every permitted route",
             receipt=last_receipt,

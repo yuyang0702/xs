@@ -13,6 +13,7 @@ from novel_flywheel.planning_repair_diagnostics import (
     safe_capture_provider_content_block_snapshot,
 )
 from novel_flywheel.providers.http import HttpProvider
+from novel_flywheel.provider_output import capture_provider_raw_shape_v1
 
 
 class OpenAIChatAdapter(HttpProvider):
@@ -49,6 +50,10 @@ class OpenAIChatAdapter(HttpProvider):
         events, body = await self.post_stream(
             "chat/completions", payload=payload,
             headers={"Authorization": f"Bearer {self.api_key}"},
+        )
+        capture_provider_raw_shape_v1(
+            protocol="openai-chat", body=body, events=events,
+            requested_output_cap=request.max_output_tokens,
         )
         if body is None:
             body = self._aggregate_stream(events)

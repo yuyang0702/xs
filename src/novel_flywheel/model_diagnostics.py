@@ -21,7 +21,10 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 DIAGNOSTIC_CANONICALIZATION_VERSION = "r1-pa1-diagnostic-canonical-json-v1"
 STRICT_TOOL_FLAG = "NOVEL_STRICT_TOOL_SHAPE_TRACE_V1"
 BUDGET_LINEAGE_FLAG = "NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1"
+PTR12_OBSERVER_FLAG = "NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1"
 MAX_OBSERVED_TOOL_CALLS = 32
+MAX_PTR12_BLOCK_SEQUENCE = 128
+MAX_PTR12_UNKNOWN_HASHES = 32
 
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 SnapshotStatus = Literal[
@@ -329,6 +332,161 @@ class ModelDiagnosticContextV1:
         return self.logical_id("inner", self.parent_attempt_ordinal)
 
 
+class ProviderRawShapeObservationV1(BaseModel):
+    """PTR12 content-free provider topology bound to one Runtime attempt."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    schema_name: Literal["ProviderRawShapeObservationV1"] = Field(
+        default="ProviderRawShapeObservationV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    correlation_id: str = Field(min_length=1, max_length=128)
+    external_call_number: int | None = Field(default=None, ge=1)
+    run_sha256: str = Field(pattern=SHA256_PATTERN)
+    stage: str = Field(min_length=1, max_length=64)
+    boundary: str = Field(min_length=1, max_length=128)
+    contract_id: str = Field(min_length=1, max_length=128)
+    contract_version: int = Field(ge=1)
+    schema_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    provider_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    model_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    route_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    route_kind: Literal["primary", "configured_fallback", "other"]
+    request_mode: Literal["plain", "structured", "tool", "unknown"]
+    outer_retry_ordinal: int = Field(ge=1)
+    runtime_instance_ordinal: int = Field(ge=1)
+    inner_attempt_ordinal: int = Field(ge=1)
+    observation_point: Literal[
+        "transport_body_pre_normalization", "stream_event_shape_pre_aggregation",
+    ]
+    provider_protocol: Literal[
+        "anthropic", "openai-chat", "openai-responses", "unknown",
+    ]
+    raw_response_class: Literal["response_body", "stream_event_sequence", "unknown"]
+    unknown_response_class_sha256: str | None = Field(
+        default=None, pattern=SHA256_PATTERN,
+    )
+    raw_block_count: int = Field(ge=0)
+    raw_block_type_sequence: tuple[str, ...]
+    raw_block_type_sequence_sha256: str = Field(pattern=SHA256_PATTERN)
+    raw_block_type_multiset: dict[str, int]
+    sequence_omitted_after_limit: bool
+    reasoning_block_count: int = Field(ge=0)
+    text_or_final_block_count: int = Field(ge=0)
+    tool_block_count: int = Field(ge=0)
+    unknown_block_count: int = Field(ge=0)
+    unknown_block_type_hashes: tuple[str, ...]
+    raw_visible_char_count: int | None = Field(default=None, ge=0)
+    raw_visible_chars_zero: bool | None
+    raw_final_text_present: bool | None
+    raw_tool_call_present: bool | None
+    finish_reason_raw_class: str = Field(min_length=1, max_length=64)
+    finish_reason_unknown_sha256: str | None = Field(
+        default=None, pattern=SHA256_PATTERN,
+    )
+    output_token_count: int | None = Field(default=None, ge=0)
+    requested_output_cap: int | None = Field(default=None, ge=1)
+    effective_output_cap: int | None = Field(default=None, ge=1)
+    provider_accepted_cap_status: Literal["KNOWN", "NOT_EXPOSED", "UNKNOWN", "NOT_APPLICABLE"]
+    provider_exposed_reasoning_usage_status: Literal["KNOWN", "NOT_EXPOSED", "UNKNOWN", "NOT_APPLICABLE"]
+    provider_exposed_reasoning_usage: int | None = Field(default=None, ge=0)
+    provider_exposed_final_usage_status: Literal["KNOWN", "NOT_EXPOSED", "UNKNOWN", "NOT_APPLICABLE"]
+    provider_exposed_final_usage: int | None = Field(default=None, ge=0)
+    transport_complete: bool | None
+    capture_completeness: Literal["exact", "partial", "unavailable"]
+    raw_shape_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    content_omitted: Literal[True] = True
+    reasoning_content_omitted: Literal[True] = True
+    tool_arguments_omitted: Literal[True] = True
+
+
+class RawToNormalizedShapeDeltaV1(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+    schema_name: Literal["RawToNormalizedShapeDeltaV1"] = Field(
+        default="RawToNormalizedShapeDeltaV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    correlation_id: str = Field(min_length=1, max_length=128)
+    raw_shape_fingerprint: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    normalized_shape_fingerprint: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    representation_changed: Literal["YES", "NO", "UNKNOWN"]
+    changed_dimensions: tuple[str, ...]
+    unavailable_dimensions: tuple[str, ...]
+    comparison_completeness: Literal["exact", "partial", "unavailable"]
+    delta_sha256: str = Field(pattern=SHA256_PATTERN)
+
+
+class PTR9GuardDecisionObserverV1(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+    schema_name: Literal["PTR9GuardDecisionObserverV1"] = Field(
+        default="PTR9GuardDecisionObserverV1", alias="schema",
+        serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    phase: Literal["guard_evaluation", "recovery_disposition"]
+    correlation_id: str = Field(min_length=1, max_length=128)
+    decision_receipt_sha256: str = Field(pattern=SHA256_PATTERN)
+    guard_scope_eligible: bool
+    guard_reached: bool
+    shape_available: bool
+    reasoning_block_exists: bool | None
+    finish_reason_max_tokens: bool | None
+    raw_visible_chars_zero: bool | None
+    normalized_visible_chars_zero: bool | None
+    final_text_absent: bool | None
+    tool_call_absent: bool | None
+    unknown_block_absent: bool | None
+    content_all_reasoning: bool | None
+    projection_exact: bool | None
+    transport_complete: bool | None
+    predicate_all_true: bool | None
+    guard_triggered: bool
+    negative_capability_write_attempted: bool
+    negative_capability_written: bool
+    negative_capability_write_status: Literal[
+        "RECORDED", "WRITE_FAILED", "NOT_REQUIRED", "NOT_REACHED",
+    ]
+    alternate_route_considered: bool | None
+    alternate_route_selected: bool | None
+    fail_close_selected: bool | None
+    primary_guard_miss_reason: str | None = Field(default=None, max_length=64)
+    guard_miss_reasons: tuple[str, ...]
+    recovery_status: Literal[
+        "NOT_APPLICABLE", "NORMAL_RETURN", "ALTERNATE_ROUTE_SELECTED",
+        "TYPED_FAIL_CLOSE", "RUNTIME_CONTINUED_EXISTING_POLICY", "UNKNOWN",
+    ]
+    raw_shape_fingerprint: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    normalized_shape_fingerprint: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    representation_delta_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    provider_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    model_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    route_fingerprint: str = Field(pattern=SHA256_PATTERN)
+    contract_identity: str = Field(min_length=1, max_length=128)
+    schema_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+
+
+class ContractOutputLimitClassificationObservationV1(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+    schema_name: Literal[
+        "ContractOutputLimitClassificationObservationV1"
+    ] = Field(
+        default="ContractOutputLimitClassificationObservationV1",
+        alias="schema", serialization_alias="schema",
+    )
+    version: Literal[1] = 1
+    correlation_id: str = Field(min_length=1, max_length=128)
+    output_limit_seen: bool
+    finish_reason_class: str | None = Field(default=None, max_length=64)
+    aggregate_output_usage: int | None = Field(default=None, ge=0)
+    terminal_classification: Literal[
+        "CONTRACT_OUTPUT_LIMIT_EXHAUSTED", "RUNTIME_CONTINUED_EXISTING_POLICY",
+    ]
+    classification_sha256: str = Field(pattern=SHA256_PATTERN)
+
+
 def is_strict_tool_target(context: ModelDiagnosticContextV1 | None) -> bool:
     return bool(context and (
         context.stage == "review"
@@ -372,6 +530,15 @@ _exception_snapshot: contextvars.ContextVar[
 _active_diagnostic_context: contextvars.ContextVar[
     ModelDiagnosticContextV1 | None
 ] = contextvars.ContextVar("r1_pa1_active_diagnostic_context", default=None)
+_ptr12_raw_shape_capture: contextvars.ContextVar[
+    Mapping[str, Any] | None
+] = contextvars.ContextVar("r1_ptr12_raw_shape_capture", default=None)
+_ptr12_external_call_number: contextvars.ContextVar[int | None] = (
+    contextvars.ContextVar("r1_ptr12_external_call_number", default=None)
+)
+_ptr12_guard_decision_capture: contextvars.ContextVar[
+    PTR9GuardDecisionObserverV1 | None
+] = contextvars.ContextVar("r1_ptr12_guard_decision_capture", default=None)
 
 
 def bind_diagnostic_context(
@@ -390,6 +557,64 @@ def active_diagnostic_context() -> ModelDiagnosticContextV1 | None:
     """Expose the immutable diagnostic context to provider-side observers."""
 
     return _active_diagnostic_context.get()
+
+
+def ptr12_observer_enabled() -> bool:
+    return diagnostic_flag_enabled(PTR12_OBSERVER_FLAG)
+
+
+def open_ptr12_raw_shape_capture() -> contextvars.Token[Mapping[str, Any] | None] | None:
+    """Open one execution-local slot; disabled mode allocates no capture state."""
+
+    if not ptr12_observer_enabled():
+        return None
+    return _ptr12_raw_shape_capture.set(None)
+
+
+def reset_ptr12_raw_shape_capture(
+    token: contextvars.Token[Mapping[str, Any] | None] | None,
+) -> None:
+    if token is not None:
+        _ptr12_raw_shape_capture.reset(token)
+
+
+def record_ptr12_raw_shape(snapshot: Mapping[str, Any]) -> None:
+    """Deposit metadata only; adapters ignore all errors and return values."""
+
+    if ptr12_observer_enabled():
+        try:
+            _ptr12_raw_shape_capture.set(dict(snapshot))
+        except Exception:
+            pass
+
+
+def current_ptr12_raw_shape() -> Mapping[str, Any] | None:
+    value = _ptr12_raw_shape_capture.get()
+    return dict(value) if value is not None else None
+
+
+def bind_ptr12_external_call_number(
+    ordinal: int,
+) -> contextvars.Token[int | None]:
+    return _ptr12_external_call_number.set(ordinal)
+
+
+def reset_ptr12_external_call_number(
+    token: contextvars.Token[int | None],
+) -> None:
+    _ptr12_external_call_number.reset(token)
+
+
+def current_ptr12_external_call_number() -> int | None:
+    return _ptr12_external_call_number.get()
+
+
+def clear_ptr12_guard_decision_capture() -> None:
+    _ptr12_guard_decision_capture.set(None)
+
+
+def current_ptr12_guard_decision() -> PTR9GuardDecisionObserverV1 | None:
+    return _ptr12_guard_decision_capture.get()
 
 
 def strict_snapshot_capture_requested() -> bool:
@@ -702,6 +927,391 @@ def _normalized_shapes(
         shape.tool_call_id_sha256 for shape in shapes if shape.tool_call_id_sha256
     )
     return shapes, call_ids
+
+
+def _emit_ptr12_record(
+    context: ModelDiagnosticContextV1,
+    *,
+    event_type: str,
+    source_component: str,
+    source_writer: str,
+    payload: BaseModel,
+) -> bool:
+    if not ptr12_observer_enabled():
+        return False
+    try:
+        from novel_flywheel.reliability_trace import emit_observation
+        return emit_observation(
+            context.project_root,
+            event_type=event_type,
+            source_component=source_component,
+            source_writer=source_writer,
+            observation_status="confirmed",
+            correlation_id=context.inner_attempt_id,
+            stage_id=context.boundary,
+            payload=payload.model_dump(mode="json", by_alias=True),
+        )
+    except Exception:
+        return False
+
+
+def bind_ptr12_raw_shape_observation(
+    context: ModelDiagnosticContextV1 | None,
+    *,
+    snapshot: Mapping[str, Any] | None,
+    provider_id: str,
+    model_id: str,
+    route_fingerprint: str,
+    schema_sha256: str | None,
+    request_mode: str,
+) -> ProviderRawShapeObservationV1 | None:
+    """Bind an adapter snapshot to the canonical attempt and emit event A."""
+
+    if not ptr12_observer_enabled() or context is None or snapshot is None:
+        return None
+    try:
+        payload = {
+            "schema": "ProviderRawShapeObservationV1",
+            "version": 1,
+            "correlation_id": context.inner_attempt_id,
+            "external_call_number": _ptr12_external_call_number.get(),
+            "run_sha256": context.run_sha256,
+            "stage": context.stage,
+            "boundary": context.boundary,
+            "contract_id": context.contract_id,
+            "contract_version": context.contract_version,
+            "schema_sha256": schema_sha256 or None,
+            "provider_fingerprint": domain_sha256(
+                "r1-ptr12-provider-fingerprint-v1", provider_id,
+            ),
+            "model_fingerprint": domain_sha256(
+                "r1-ptr12-model-fingerprint-v1", model_id,
+            ),
+            "route_fingerprint": route_fingerprint,
+            "route_kind": (
+                context.route_kind
+                if context.route_kind in {"primary", "configured_fallback"}
+                else "other"
+            ),
+            "request_mode": (
+                "tool" if request_mode == "strict_tool"
+                else "plain" if request_mode == "plain"
+                else "structured" if request_mode in {
+                    "strict_json_schema", "json_object",
+                }
+                else "unknown"
+            ),
+            "outer_retry_ordinal": context.outer_retry_ordinal,
+            "runtime_instance_ordinal": context.runtime_ordinal,
+            "inner_attempt_ordinal": context.inner_attempt_ordinal,
+            **dict(snapshot),
+        }
+        record = ProviderRawShapeObservationV1.model_validate(payload)
+        _emit_ptr12_record(
+            context,
+            event_type="diagnostic_provider_raw_shape_v1",
+            source_component="models.ModelGateway._complete_resolved",
+            source_writer="ProviderRawShapeObservationV1",
+            payload=record,
+        )
+        return record
+    except Exception:
+        return None
+
+
+_DELTA_DIMENSIONS = (
+    ("BLOCK_TYPE_SEQUENCE", "raw_block_type_sequence", "content_block_type_sequence"),
+    ("REASONING_COUNT", "reasoning_block_count", "reasoning_block_count"),
+    ("TEXT_COUNT", "text_or_final_block_count", "text_block_count"),
+    ("TOOL_COUNT", "tool_block_count", "tool_call_count"),
+    ("VISIBLE_CHAR_COUNT", "raw_visible_char_count", "normalized_visible_text_chars"),
+    ("TRANSPORT_COMPLETENESS", "transport_complete", "transport_complete"),
+)
+
+
+def observe_ptr12_shape_delta(
+    context: ModelDiagnosticContextV1 | None,
+    *,
+    raw_shape: ProviderRawShapeObservationV1 | None,
+    normalized_shape: Any | None,
+    normalized_finish_reason: str | None,
+) -> RawToNormalizedShapeDeltaV1 | None:
+    """Compare two immutable observations without touching ModelResponse."""
+
+    if not ptr12_observer_enabled() or context is None:
+        return None
+    try:
+        changed: list[str] = []
+        unavailable: list[str] = []
+        if raw_shape is None:
+            unavailable.append("RAW_SHAPE_UNAVAILABLE")
+        if normalized_shape is None:
+            unavailable.append("NORMALIZED_SHAPE_UNAVAILABLE")
+        if raw_shape is not None and normalized_shape is not None:
+            raw_payload = raw_shape.model_dump(mode="python")
+            normalized_payload = normalized_shape.model_dump(mode="python")
+            for dimension, raw_key, normalized_key in _DELTA_DIMENSIONS:
+                left = raw_payload.get(raw_key)
+                right = normalized_payload.get(normalized_key)
+                if left is None or right is None:
+                    unavailable.append(dimension)
+                elif tuple(left) != tuple(right) if isinstance(left, (list, tuple)) else left != right:
+                    changed.append(dimension)
+            raw_finish = raw_shape.finish_reason_raw_class
+            normalized_finish = normalized_finish_reason or "missing"
+            finish_equivalent = (
+                raw_finish == normalized_finish
+                or {raw_finish, normalized_finish} <= {"length", "max_tokens", "max_output_tokens"}
+            )
+            if not finish_equivalent:
+                changed.append("FINISH_REASON")
+        state = "YES" if changed else "UNKNOWN" if unavailable else "NO"
+        completeness = (
+            "unavailable" if raw_shape is None or normalized_shape is None
+            else "partial" if unavailable else "exact"
+        )
+        payload = {
+            "schema": "RawToNormalizedShapeDeltaV1",
+            "version": 1,
+            "correlation_id": context.inner_attempt_id,
+            "raw_shape_fingerprint": (
+                raw_shape.raw_shape_fingerprint if raw_shape else None
+            ),
+            "normalized_shape_fingerprint": (
+                normalized_shape.shape_sha256 if normalized_shape else None
+            ),
+            "representation_changed": state,
+            "changed_dimensions": tuple(changed),
+            "unavailable_dimensions": tuple(unavailable),
+            "comparison_completeness": completeness,
+        }
+        record = RawToNormalizedShapeDeltaV1.model_validate(sealed_payload(
+            payload, hash_field="delta_sha256", domain="r1-ptr12-shape-delta-v1",
+        ))
+        _emit_ptr12_record(
+            context,
+            event_type="diagnostic_provider_shape_delta_v1",
+            source_component="models.ModelGateway._complete_resolved",
+            source_writer="RawToNormalizedShapeDeltaV1",
+            payload=record,
+        )
+        return record
+    except Exception:
+        return None
+
+
+_PTR12_GUARD_REASON_ORDER = (
+    ("SCOPE_INELIGIBLE", "guard_scope_eligible"),
+    ("GUARD_NOT_REACHED", "guard_reached"),
+    ("SHAPE_UNAVAILABLE", "shape_available"),
+    ("REASONING_BLOCK_ABSENT", "reasoning_block_exists"),
+    ("FINISH_REASON_NOT_MAX_TOKENS", "finish_reason_max_tokens"),
+    ("RAW_VISIBLE_NONZERO", "raw_visible_chars_zero"),
+    ("NORMALIZED_VISIBLE_NONZERO", "normalized_visible_chars_zero"),
+    ("FINAL_TEXT_PRESENT", "final_text_absent"),
+    ("TOOL_CALL_PRESENT", "tool_call_absent"),
+    ("UNKNOWN_BLOCK_PRESENT", "unknown_block_absent"),
+    ("CONTENT_NOT_ALL_REASONING", "content_all_reasoning"),
+    ("PROJECTION_NOT_EXACT", "projection_exact"),
+    ("TRANSPORT_INCOMPLETE", "transport_complete"),
+)
+
+
+def build_ptr12_guard_decision(
+    context: ModelDiagnosticContextV1 | None,
+    *,
+    shape: Any | None,
+    raw_shape: ProviderRawShapeObservationV1 | None,
+    delta: RawToNormalizedShapeDeltaV1 | None,
+    finish_reason: str | None,
+    scope_eligible: bool,
+    guard_reached: bool = True,
+    guard_triggered: bool,
+    provider_id: str,
+    model_id: str,
+    route_fingerprint: str,
+    contract_identity: str,
+    schema_sha256: str | None,
+    negative_write_status: str = "NOT_REQUIRED",
+    phase: str = "guard_evaluation",
+    alternate_route_considered: bool | None = None,
+    alternate_route_selected: bool | None = None,
+    fail_close_selected: bool | None = None,
+    recovery_status: str = "NOT_APPLICABLE",
+    decision_receipt_sha256: str | None = None,
+) -> PTR9GuardDecisionObserverV1 | None:
+    if not ptr12_observer_enabled() or context is None:
+        return None
+    try:
+        available = shape is not None
+        values: dict[str, bool | None] = {
+            "reasoning_block_exists": shape.reasoning_block_count > 0 if available else None,
+            "finish_reason_max_tokens": (
+                finish_reason in {"length", "max_output_tokens", "max_tokens", "model_length"}
+            ) if finish_reason is not None else None,
+            "raw_visible_chars_zero": (
+                shape.provider_visible_text_chars == 0 if available else None
+            ),
+            "normalized_visible_chars_zero": (
+                shape.normalized_visible_text_chars == 0 if available else None
+            ),
+            "final_text_absent": shape.text_block_count == 0 if available else None,
+            "tool_call_absent": (
+                shape.tool_call_count == 0 and shape.normalized_tool_call_count == 0
+                if available else None
+            ),
+            "unknown_block_absent": shape.unknown_block_count == 0 if available else None,
+            "content_all_reasoning": (
+                shape.content_block_count == shape.reasoning_block_count
+                if available else None
+            ),
+            "projection_exact": shape.adapter_projection_status == "exact" if available else None,
+            "transport_complete": bool(shape.transport_complete) if available else None,
+        }
+        predicate = all(value is True for value in values.values()) if available else None
+        base = {
+            "correlation_id": context.inner_attempt_id,
+            "guard_scope_eligible": scope_eligible,
+            "guard_reached": guard_reached,
+            "shape_available": available,
+            **values,
+            "predicate_all_true": predicate,
+            "guard_triggered": guard_triggered,
+            "raw_shape_fingerprint": raw_shape.raw_shape_fingerprint if raw_shape else None,
+            "normalized_shape_fingerprint": shape.shape_sha256 if available else None,
+            "representation_delta_sha256": delta.delta_sha256 if delta else None,
+            "provider_fingerprint": domain_sha256("r1-ptr12-provider-fingerprint-v1", provider_id),
+            "model_fingerprint": domain_sha256("r1-ptr12-model-fingerprint-v1", model_id),
+            "route_fingerprint": route_fingerprint,
+            "contract_identity": contract_identity or "unbound",
+            "schema_sha256": schema_sha256 or None,
+        }
+        reasons = [
+            reason for reason, key in _PTR12_GUARD_REASON_ORDER
+            if base.get(key) is not True
+        ]
+        if delta is not None and delta.representation_changed == "YES":
+            insertion = sum(
+                reason in reasons for reason in (
+                    "SCOPE_INELIGIBLE", "GUARD_NOT_REACHED", "SHAPE_UNAVAILABLE",
+                )
+            )
+            reasons.insert(insertion, "REPRESENTATION_CHANGED")
+        digest = decision_receipt_sha256 or domain_sha256(
+            "r1-ptr12-guard-decision-v1", base,
+        )
+        status = negative_write_status if guard_triggered else "NOT_REQUIRED"
+        payload = {
+            "schema": "PTR9GuardDecisionObserverV1",
+            "version": 1,
+            "phase": phase,
+            "decision_receipt_sha256": digest,
+            **base,
+            "negative_capability_write_attempted": guard_triggered,
+            "negative_capability_written": status == "RECORDED",
+            "negative_capability_write_status": status,
+            "alternate_route_considered": alternate_route_considered,
+            "alternate_route_selected": alternate_route_selected,
+            "fail_close_selected": fail_close_selected,
+            "primary_guard_miss_reason": reasons[0] if reasons and not guard_triggered else None,
+            "guard_miss_reasons": tuple(reasons if not guard_triggered else ()),
+            "recovery_status": recovery_status,
+        }
+        record = PTR9GuardDecisionObserverV1.model_validate(payload)
+        if phase == "guard_evaluation":
+            _ptr12_guard_decision_capture.set(record)
+        _emit_ptr12_record(
+            context,
+            event_type="diagnostic_ptr9_guard_decision_v1",
+            source_component=(
+                "contract_runtime.execute_contract_runtime"
+                if phase == "recovery_disposition"
+                else "models.ModelGateway._complete_resolved"
+            ),
+            source_writer="PTR9GuardDecisionObserverV1",
+            payload=record,
+        )
+        return record
+    except Exception:
+        return None
+
+
+def emit_ptr12_guard_recovery(
+    context: ModelDiagnosticContextV1 | None,
+    decision: PTR9GuardDecisionObserverV1 | None,
+    *,
+    alternate_route_considered: bool,
+    alternate_route_selected: bool,
+    fail_close_selected: bool,
+    recovery_status: str,
+) -> bool:
+    if not ptr12_observer_enabled() or context is None or decision is None:
+        return False
+    try:
+        payload = decision.model_dump(mode="json", by_alias=True)
+        payload.update({
+            "phase": "recovery_disposition",
+            "alternate_route_considered": alternate_route_considered,
+            "alternate_route_selected": alternate_route_selected,
+            "fail_close_selected": fail_close_selected,
+            "recovery_status": recovery_status,
+        })
+        record = PTR9GuardDecisionObserverV1.model_validate(payload)
+        return _emit_ptr12_record(
+            context,
+            event_type="diagnostic_ptr9_guard_decision_v1",
+            source_component="contract_runtime.execute_contract_runtime",
+            source_writer="PTR9GuardDecisionObserverV1",
+            payload=record,
+        )
+    except Exception:
+        return False
+
+
+def emit_ptr12_output_limit_classification(
+    context: ModelDiagnosticContextV1 | None,
+    *,
+    output_limit_seen: bool,
+    receipt: Mapping[str, Any] | None,
+    terminal: bool,
+) -> bool:
+    if not ptr12_observer_enabled() or context is None:
+        return False
+    try:
+        source = dict(receipt or {})
+        payload = {
+            "schema": "ContractOutputLimitClassificationObservationV1",
+            "version": 1,
+            "correlation_id": context.inner_attempt_id,
+            "output_limit_seen": output_limit_seen,
+            "finish_reason_class": controlled_finish_reason(
+                source.get("finish_reason")
+            )[0],
+            "aggregate_output_usage": (
+                source.get("output_tokens")
+                if isinstance(source.get("output_tokens"), int)
+                and source.get("output_tokens") >= 0 else None
+            ),
+            "terminal_classification": (
+                "CONTRACT_OUTPUT_LIMIT_EXHAUSTED"
+                if terminal else "RUNTIME_CONTINUED_EXISTING_POLICY"
+            ),
+        }
+        record = ContractOutputLimitClassificationObservationV1.model_validate(
+            sealed_payload(
+                payload, hash_field="classification_sha256",
+                domain="r1-ptr12-output-limit-classification-v1",
+            )
+        )
+        return _emit_ptr12_record(
+            context,
+            event_type="diagnostic_contract_output_limit_classification_v1",
+            source_component="contract_runtime.execute_contract_runtime",
+            source_writer="ContractOutputLimitClassificationObservationV1",
+            payload=record,
+        )
+    except Exception:
+        return False
 
 
 def observe_strict_tool_shape(

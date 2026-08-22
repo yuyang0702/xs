@@ -117,6 +117,7 @@ from novel_flywheel.models import (
 )
 from novel_flywheel.model_diagnostics import (
     BUDGET_LINEAGE_FLAG,
+    PTR12_OBSERVER_FLAG,
     STRICT_TOOL_FLAG,
     ModelDiagnosticContextV1,
     diagnostic_flag_enabled,
@@ -27189,6 +27190,7 @@ class WorkflowService:
                 and (
                     diagnostic_flag_enabled(STRICT_TOOL_FLAG)
                     or diagnostic_flag_enabled(BUDGET_LINEAGE_FLAG)
+                    or diagnostic_flag_enabled(PTR12_OBSERVER_FLAG)
                     or diagnostic_flag_enabled(
                         PLANNING_REPAIR_EVIDENCE_FLAG
                     )

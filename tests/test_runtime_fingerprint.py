@@ -126,12 +126,15 @@ def test_r1_pa1_diagnostic_flags_change_config_not_build(
     db = make_database(tmp_path)
     monkeypatch.setenv("NOVEL_STRICT_TOOL_SHAPE_TRACE_V1", "0")
     monkeypatch.setenv("NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1", "0")
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "0")
     disabled = collect_runtime_fingerprint(db, project_id="book")
 
     monkeypatch.setenv("NOVEL_STRICT_TOOL_SHAPE_TRACE_V1", "1")
     strict_enabled = collect_runtime_fingerprint(db, project_id="book")
     monkeypatch.setenv("NOVEL_PA_OUTPUT_BUDGET_LINEAGE_V1", "1")
     both_enabled = collect_runtime_fingerprint(db, project_id="book")
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+    ptr12_enabled = collect_runtime_fingerprint(db, project_id="book")
 
     assert disabled.build["definition_sha256"] == strict_enabled.build["definition_sha256"]
     assert strict_enabled.build["definition_sha256"] == both_enabled.build["definition_sha256"]
@@ -140,6 +143,12 @@ def test_r1_pa1_diagnostic_flags_change_config_not_build(
     )
     assert strict_enabled.execution_config["definition_sha256"] != (
         both_enabled.execution_config["definition_sha256"]
+    )
+    assert both_enabled.build["definition_sha256"] == ptr12_enabled.build[
+        "definition_sha256"
+    ]
+    assert both_enabled.execution_config["definition_sha256"] != (
+        ptr12_enabled.execution_config["definition_sha256"]
     )
     assert disabled.execution["definition_sha256"] != strict_enabled.execution[
         "definition_sha256"

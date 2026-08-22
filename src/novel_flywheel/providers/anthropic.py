@@ -13,6 +13,7 @@ from novel_flywheel.planning_repair_diagnostics import (
     safe_capture_provider_content_block_snapshot,
 )
 from novel_flywheel.providers.http import HttpProvider
+from novel_flywheel.provider_output import capture_provider_raw_shape_v1
 
 
 class AnthropicAdapter(HttpProvider):
@@ -50,6 +51,10 @@ class AnthropicAdapter(HttpProvider):
         events, body = await self.post_stream(path, payload=payload, headers={
             **auth_headers, "anthropic-version": "2023-06-01",
         })
+        capture_provider_raw_shape_v1(
+            protocol="anthropic", body=body, events=events,
+            requested_output_cap=request.max_output_tokens,
+        )
         if body is None:
             try:
                 body = self._aggregate_stream(events)

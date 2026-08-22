@@ -22,8 +22,14 @@ from novel_flywheel.failure_boundary import (
 from novel_flywheel.context_policy import classify_model_failure, normalize_finish_reason
 from novel_flywheel.model_diagnostics import (
     ModelDiagnosticContextV1,
+    bind_ptr12_raw_shape_observation,
     bind_diagnostic_context,
+    build_ptr12_guard_decision,
+    current_ptr12_raw_shape,
     observe_strict_tool_shape,
+    observe_ptr12_shape_delta,
+    open_ptr12_raw_shape_capture,
+    reset_ptr12_raw_shape_capture,
     reset_bound_diagnostic_context,
 )
 from novel_flywheel.planning_repair_diagnostics import (
@@ -640,9 +646,44 @@ class ModelGateway:
             bind_diagnostic_context(diagnostic_context)
             if diagnostic_context is not None else None
         )
+        ptr12_capture_token = open_ptr12_raw_shape_capture()
+        ptr12_snapshot = None
         try:
             response = await resolved.adapter.complete(request)
+            ptr12_snapshot = current_ptr12_raw_shape()
         except Exception as exc:
+            ptr12_snapshot = current_ptr12_raw_shape()
+            raw_observation = bind_ptr12_raw_shape_observation(
+                diagnostic_context,
+                snapshot=ptr12_snapshot,
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                route_fingerprint=route_fingerprint,
+                schema_sha256=schema_sha256 or None,
+                request_mode=execution_mode,
+            )
+            delta = observe_ptr12_shape_delta(
+                diagnostic_context,
+                raw_shape=raw_observation,
+                normalized_shape=None,
+                normalized_finish_reason=None,
+            )
+            build_ptr12_guard_decision(
+                diagnostic_context,
+                shape=None,
+                raw_shape=raw_observation,
+                delta=delta,
+                finish_reason=None,
+                scope_eligible=response_schema is not None,
+                guard_reached=False,
+                guard_triggered=False,
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                route_fingerprint=route_fingerprint,
+                contract_identity=contract_name or "unbound",
+                schema_sha256=schema_sha256 or None,
+                recovery_status="UNKNOWN",
+            )
             observe_provider_content_block_shape(
                 context=diagnostic_context,
                 exc=exc,
@@ -683,13 +724,29 @@ class ModelGateway:
                 )
             raise
         finally:
+            reset_ptr12_raw_shape_capture(ptr12_capture_token)
             if diagnostic_token is not None:
                 reset_bound_diagnostic_context(diagnostic_token)
+        raw_observation = bind_ptr12_raw_shape_observation(
+            diagnostic_context,
+            snapshot=ptr12_snapshot,
+            provider_id=resolved.provider_id,
+            model_id=resolved.model_id,
+            route_fingerprint=route_fingerprint,
+            schema_sha256=schema_sha256 or None,
+            request_mode=execution_mode,
+        )
         output_shape = provider_output_shape_from_response(
             resolved.adapter, response,
         )
         if output_shape is not None and response.output_shape is None:
             response = response.model_copy(update={"output_shape": output_shape})
+        ptr12_delta = observe_ptr12_shape_delta(
+            diagnostic_context,
+            raw_shape=raw_observation,
+            normalized_shape=output_shape,
+            normalized_finish_reason=normalize_finish_reason(response.finish_reason) or None,
+        )
         observe_provider_content_block_shape(
             context=diagnostic_context,
             response=response,
@@ -743,6 +800,7 @@ class ModelGateway:
                 ),
             }
             self._record_output_observation(receipt, response.text)
+            qualification_memory_status = "RECORDED"
             try:
                 self.db.save_structured_route_outcome(
                     provider_id=resolved.provider_id,
@@ -759,9 +817,48 @@ class ModelGateway:
                 guard_receipt["qualification_memory_status"] = "recorded"
             except Exception:
                 guard_receipt["qualification_memory_status"] = "write_failed"
-            raise ReasoningOnlyFinalArtifactUnavailableError(
-                receipt=guard_receipt,
+                qualification_memory_status = "WRITE_FAILED"
+            decision = build_ptr12_guard_decision(
+                diagnostic_context,
+                shape=response.output_shape,
+                raw_shape=raw_observation,
+                delta=ptr12_delta,
+                finish_reason=normalize_finish_reason(response.finish_reason) or None,
+                scope_eligible=True,
+                guard_triggered=True,
+                provider_id=resolved.provider_id,
+                model_id=resolved.model_id,
+                route_fingerprint=route_fingerprint,
+                contract_identity=contract_name or "unbound",
+                schema_sha256=schema_sha256 or None,
+                negative_write_status=qualification_memory_status,
             )
+            failure = ReasoningOnlyFinalArtifactUnavailableError(receipt=guard_receipt)
+            if decision is not None:
+                try:
+                    setattr(
+                        failure, "_r1_ptr12_decision_receipt_sha256",
+                        decision.decision_receipt_sha256,
+                    )
+                except Exception:
+                    pass
+            raise failure
+        decision = build_ptr12_guard_decision(
+            diagnostic_context,
+            shape=response.output_shape,
+            raw_shape=raw_observation,
+            delta=ptr12_delta,
+            finish_reason=normalize_finish_reason(response.finish_reason) or None,
+            scope_eligible=response_schema is not None,
+            guard_reached=response_schema is not None,
+            guard_triggered=False,
+            provider_id=resolved.provider_id,
+            model_id=resolved.model_id,
+            route_fingerprint=route_fingerprint,
+            contract_identity=contract_name or "unbound",
+            schema_sha256=schema_sha256 or None,
+            recovery_status="NORMAL_RETURN",
+        )
         if execution_mode == "strict_tool" and response_schema is not None:
             expected_name = str(response_schema.get("name") or "structured_output")
             observe_strict_tool_shape(

@@ -51,6 +51,10 @@ ReliabilityTraceEventType = Literal[
     "diagnostic_planning_repair_finding_propagation",
     "diagnostic_provider_content_block_shape",
     "diagnostic_planning_repair_output_limit",
+    "diagnostic_provider_raw_shape_v1",
+    "diagnostic_provider_shape_delta_v1",
+    "diagnostic_ptr9_guard_decision_v1",
+    "diagnostic_contract_output_limit_classification_v1",
 ]
 ReliabilitySemanticDomain = Literal[
     "future_normative", "occurred_current", "unknown",
@@ -122,6 +126,18 @@ class ReliabilityTraceEnvelopeV1(BaseModel):
         }),
         "diagnostic_planning_repair_output_limit": frozenset({
             "schema", "receipt_sha256", "contract_output_limit_action",
+        }),
+        "diagnostic_provider_raw_shape_v1": frozenset({
+            "schema", "raw_shape_fingerprint", "correlation_id",
+        }),
+        "diagnostic_provider_shape_delta_v1": frozenset({
+            "schema", "delta_sha256", "correlation_id",
+        }),
+        "diagnostic_ptr9_guard_decision_v1": frozenset({
+            "schema", "decision_receipt_sha256", "correlation_id", "phase",
+        }),
+        "diagnostic_contract_output_limit_classification_v1": frozenset({
+            "schema", "classification_sha256", "correlation_id",
         }),
     }
 
