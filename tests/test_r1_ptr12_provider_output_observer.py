@@ -55,6 +55,37 @@ def _capture(monkeypatch, *, protocol, body=None, events=()):
         reset_ptr12_raw_shape_capture(token)
 
 
+def _capture_with_touch_counts(
+    monkeypatch, *, protocol, body=None, events=(),
+):
+    attempts = 0
+    successful = 0
+    rejected = 0
+    original_touch = provider_output._BoundedRawShapeCapture.touch
+
+    def counted_touch(capture):
+        nonlocal attempts, successful, rejected
+        attempts += 1
+        accepted = original_touch(capture)
+        if accepted:
+            successful += 1
+        else:
+            rejected += 1
+        return accepted
+
+    monkeypatch.setattr(
+        provider_output._BoundedRawShapeCapture, "touch", counted_touch,
+    )
+    snapshot = _capture(
+        monkeypatch, protocol=protocol, body=body, events=events,
+    )
+    return snapshot, {
+        "attempts": attempts,
+        "successful": successful,
+        "rejected": rejected,
+    }
+
+
 @pytest.mark.parametrize(
     ("protocol", "body", "expected"),
     [
@@ -383,6 +414,88 @@ def test_large_nested_container_uses_one_global_touch_budget(
     assert snapshot["capture_completeness"] == "partial"
     assert snapshot["raw_final_text_present"] is None
     assert snapshot["raw_tool_call_present"] is None
+
+
+def test_v3_nested_chat_exhaustion_stops_all_enclosing_loops(monkeypatch) -> None:
+    events = [
+        {
+            "choices": [
+                {"delta": {"tool_calls": [
+                    {"index": index, "function": {"arguments": "PRIVATE"}}
+                    for index in range(127)
+                ]}},
+                {"delta": {}},
+            ],
+        },
+        {"choices": [{"delta": {}}]},
+    ]
+
+    snapshot, counts = _capture_with_touch_counts(
+        monkeypatch, protocol="openai-chat", events=events,
+    )
+
+    assert counts == {"attempts": 129, "successful": 128, "rejected": 1}
+    assert snapshot["sequence_omitted_after_limit"] is True
+    assert snapshot["capture_completeness"] == "partial"
+
+
+@pytest.mark.parametrize(
+    ("nested_count", "expected_counts", "expected_completeness"),
+    [
+        (126, {"attempts": 127, "successful": 127, "rejected": 0}, "exact"),
+        (127, {"attempts": 128, "successful": 128, "rejected": 0}, "exact"),
+        (128, {"attempts": 129, "successful": 128, "rejected": 1}, "partial"),
+    ],
+)
+def test_shared_touch_budget_boundaries_are_exact(
+    monkeypatch, nested_count, expected_counts, expected_completeness,
+) -> None:
+    snapshot, counts = _capture_with_touch_counts(
+        monkeypatch,
+        protocol="openai-responses",
+        body={
+            "status": "completed",
+            "output": [{
+                "type": "message",
+                "content": [
+                    {"type": "thinking"} for _index in range(nested_count)
+                ],
+            }],
+            "usage": {"output_tokens": 1},
+        },
+    )
+
+    assert counts == expected_counts
+    assert snapshot["capture_completeness"] == expected_completeness
+
+
+def test_choice_exhaustion_stops_before_next_event_touch(monkeypatch) -> None:
+    events = [
+        {"choices": [{"delta": {}} for _index in range(128)]},
+        {"choices": [{"delta": {}}]},
+    ]
+
+    snapshot, counts = _capture_with_touch_counts(
+        monkeypatch, protocol="openai-chat", events=events,
+    )
+
+    assert counts == {"attempts": 129, "successful": 128, "rejected": 1}
+    assert snapshot["capture_completeness"] == "partial"
+
+
+def test_large_stream_topology_has_one_rejected_touch(monkeypatch) -> None:
+    events = [
+        {"choices": [{"delta": {}}]} for _index in range(10_001)
+    ]
+
+    snapshot, counts = _capture_with_touch_counts(
+        monkeypatch, protocol="openai-chat", events=events,
+    )
+
+    assert counts["attempts"] <= provider_output.MAX_BLOCKS_TOUCHED + 1
+    assert counts["successful"] == provider_output.MAX_BLOCKS_TOUCHED
+    assert counts["rejected"] == 1
+    assert snapshot["capture_completeness"] == "partial"
 
 
 def test_positive_before_nested_cutoff_stays_true(monkeypatch) -> None:

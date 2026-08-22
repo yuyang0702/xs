@@ -123,6 +123,10 @@ class _BoundedRawShapeCapture:
         self.touched += 1
         return True
 
+    @property
+    def exhausted(self) -> bool:
+        return self.limit_reached
+
     def observe(self, value: object, *, count_raw: bool = True) -> None:
         if count_raw:
             self.raw_count += 1
@@ -324,7 +328,7 @@ def capture_provider_raw_shape_v1(
                     output = ()
                 capture.raw_count = len(output)
                 for output_index in range(len(output)):
-                    if not capture.touch():
+                    if capture.exhausted or not capture.touch():
                         break
                     item = _exact_dict(output[output_index])
                     capture.observe(
@@ -343,7 +347,7 @@ def capture_provider_raw_shape_v1(
                         continue
                     capture.raw_count += len(nested)
                     for part_index in range(len(nested)):
-                        if not capture.touch():
+                        if capture.exhausted or not capture.touch():
                             break
                         part = _exact_dict(nested[part_index])
                         value = part.get("type") if part is not None else None
@@ -356,6 +360,8 @@ def capture_provider_raw_shape_v1(
                             text_length = _safe_text_length(part.get("text"))
                             if text_length is not None and visible_chars is not None:
                                 visible_chars += text_length
+                    if capture.exhausted:
+                        break
                 finish_reason = body.get("status")
                 incomplete = body.get("incomplete_details")
                 incomplete = _exact_dict(incomplete) or {}
@@ -390,7 +396,7 @@ def capture_provider_raw_shape_v1(
             chat_tool_keys: list[tuple[int, int]] = []
             responses_block_keys: list[tuple[str, int, int]] = []
             for event_index in range(len(safe_events)):
-                if not capture.touch():
+                if capture.exhausted or not capture.touch():
                     break
                 event = _exact_dict(safe_events[event_index])
                 if event is None:
@@ -426,7 +432,7 @@ def capture_provider_raw_shape_v1(
                 elif safe_protocol == "openai-chat":
                     choices = _exact_sequence(event.get("choices")) or ()
                     for choice_ordinal in range(len(choices)):
-                        if not capture.touch():
+                        if capture.exhausted or not capture.touch():
                             break
                         choice = _exact_dict(choices[choice_ordinal])
                         if choice is None:
@@ -446,7 +452,7 @@ def capture_provider_raw_shape_v1(
                                 capture.observe("reasoning")
                         calls = _exact_sequence(delta.get("tool_calls")) or ()
                         for call_ordinal in range(len(calls)):
-                            if not capture.touch():
+                            if capture.exhausted or not capture.touch():
                                 break
                             call = _exact_dict(calls[call_ordinal])
                             if call is None:
@@ -461,6 +467,8 @@ def capture_provider_raw_shape_v1(
                             if key not in chat_tool_keys:
                                 chat_tool_keys.append(key)
                                 capture.observe("tool_call")
+                        if capture.exhausted:
+                            break
                     usage = _exact_dict(event.get("usage")) or {}
                     output_tokens = _safe_nonnegative_int(
                         usage.get("completion_tokens"),
@@ -471,6 +479,8 @@ def capture_provider_raw_shape_v1(
                     if status != "NOT_EXPOSED":
                         reasoning_usage_status = status
                         reasoning_usage = value
+                    if capture.exhausted:
+                        break
                 elif safe_protocol == "openai-responses":
                     if kind in {"response.output_item.added", "response.content_part.added"}:
                         item = event.get("item")
