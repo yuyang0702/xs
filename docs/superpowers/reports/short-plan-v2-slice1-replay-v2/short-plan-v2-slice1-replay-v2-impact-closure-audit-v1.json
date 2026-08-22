@@ -1,0 +1,16 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2ImpactClosureAuditV1",
+  "version": 1,
+  "overall_status": "exact",
+  "configured_upper_bound": 2,
+  "observed_closure_sizes": [1,1,2],
+  "closure_size_min": 1,
+  "closure_size_median": 1,
+  "closure_size_max": 2,
+  "closure_bound_hit_count": 1,
+  "slice1_regeneration_escalation_count": 1,
+  "under_approximation_count": 0,
+  "over_broad_closure_count": 0,
+  "unbounded_behavior": "SLICE1_REGENERATION",
+  "whole_planning_regeneration_count": 0
+}

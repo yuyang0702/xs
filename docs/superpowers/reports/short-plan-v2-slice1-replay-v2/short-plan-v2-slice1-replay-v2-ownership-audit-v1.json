@@ -1,0 +1,14 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2OwnershipAuditV1",
+  "version": 1,
+  "overall_status": "exact",
+  "llm_owned_fields": ["/title","/narrative"],
+  "authority_copy_fields": ["/parent_authority_sha256","/formal_event_id","/formal_event_contract_sha256","/predecessor_boundary_sha256"],
+  "local_derivation_field_count": 20,
+  "authority_override_rejected": true,
+  "local_derived_field_injection_rejected": true,
+  "unknown_field_behavior": "SLICE1_FIELD_OWNERSHIP_VIOLATION",
+  "title_narrative_approved_path_only": true,
+  "untargeted_creative_bytes_rewritten": false,
+  "ownership_violation_accepted_count": 0
+}

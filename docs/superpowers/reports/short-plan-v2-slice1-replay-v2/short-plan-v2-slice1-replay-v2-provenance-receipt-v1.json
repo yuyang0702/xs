@@ -1,0 +1,34 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2ProvenanceReceiptV1",
+  "version": 1,
+  "validation_run_id": "short-plan-v2-slice1-replay-v2-20260822t063155z-001",
+  "overall_status": "exact",
+  "baseline_head": "9eee68f4e16a7e0982c8cd87043c9d1be692c817",
+  "fixture_id": "event-realization-shadow-corpus-v1",
+  "fixture_provenance_contract": "CANONICAL_TEXT_LF_V1",
+  "receipt_schema": "EventRealizationShadowReplayReceiptV2",
+  "receipt_version": 2,
+  "windows_raw_observation": {
+    "identity_critical": false,
+    "eol_shape": "CRLF",
+    "bytes": 4486,
+    "sha256": "a1442835a44471b9be5c87c4feb4ec89853a3b4348d7215185de62ced4a4fab4"
+  },
+  "canonical_identity": {
+    "bytes": 4436,
+    "sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6"
+  },
+  "canonical_receipt_identity_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5",
+  "cross_platform_variants": ["LF","CRLF","CR","MIXED"],
+  "cross_platform_identity_exact": true,
+  "final_newline_preserved": true,
+  "trailing_spaces_preserved": true,
+  "unicode_normalization_applied": false,
+  "binary_contract": "RAW_BYTES_V1",
+  "invalid_utf8_behavior": "CANONICAL_TEXT_PROVENANCE_DECODE_ERROR",
+  "pre_dispatch_mismatch_behavior": "typed_fail_closed",
+  "canonical_provenance_exact": true,
+  "cross_platform_receipt_identity": true,
+  "previous_failure_evidence_modified": false,
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0}
+}

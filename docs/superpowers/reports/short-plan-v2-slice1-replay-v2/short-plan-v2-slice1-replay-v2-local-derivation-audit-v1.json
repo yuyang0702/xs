@@ -1,0 +1,14 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2LocalDerivationAuditV1",
+  "version": 1,
+  "overall_status": "exact",
+  "local_derivation_pass_count": 20,
+  "local_derivation_semantic_leak_count": 0,
+  "same_input_same_bytes": true,
+  "clock_dependency_count": 0,
+  "randomness_dependency_count": 0,
+  "provider_or_model_dependency_count": 0,
+  "creative_or_narrative_inference_count": 0,
+  "dependency_declaration_exact": true,
+  "recompute_trigger_exact": true
+}

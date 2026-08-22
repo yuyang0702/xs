@@ -1,0 +1,18 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2LosslessDiagnosticAuditV1",
+  "version": 1,
+  "overall_status": "exact",
+  "fresh_finding_case_count": 7,
+  "lossless_finding_count": 7,
+  "lossy_finding_count": 0,
+  "generic_only_new_finding_count": 0,
+  "stale_finding_count": 0,
+  "retained_fields": [
+    "rule_code","field_path_json_pointer","invariant_id","artifact_id","artifact_revision",
+    "parent_authority_sha256","validator_id","validator_version","validator_policy_sha256",
+    "dependency_hint_ids","repair_eligibility","severity","exactness_status","value_type",
+    "structural_shape","observed_value_sha256"
+  ],
+  "historical_call1_unknown_excluded_from_new_finding_defect_count": true,
+  "raw_story_or_prompt_included": false
+}

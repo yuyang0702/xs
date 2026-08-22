@@ -1,0 +1,14 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2NonConvergenceMitigationV1",
+  "version": 1,
+  "overall_status": "exact",
+  "sealed_primary_mechanism": "LOSSY_CONVERSION_DIAGNOSTICS_PLUS_WHOLE_ARTIFACT_REGENERATION",
+  "lossy_diagnostics_mitigation": "YES",
+  "whole_artifact_regeneration_mitigation": "YES",
+  "primary_non_convergence_mitigation_status": "PARTIALLY_MITIGATED",
+  "classification_reason": "Fresh Slice1 findings are lossless and recovery never regenerates whole Planning, but latest real Call 1 remains boundary-level only and 19 corpus cases lack executable per-case V1 baselines; production comparative convergence is therefore not established.",
+  "new_non_convergence_mechanisms": [],
+  "bounded_terminal_modes": ["SLICE1_NO_PROGRESS","SLICE1_REGENERATION"],
+  "residual_uncertainties": ["CALL1_EXACT_FAILURE_RULE_UNKNOWN","V1_PER_CASE_COMPARISON_NOT_AVAILABLE"],
+  "green_tests_alone_used_as_mitigation_proof": false
+}

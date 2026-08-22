@@ -1,0 +1,17 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2V1V2ComparisonV1",
+  "version": 1,
+  "overall_status": "exact_with_declared_non_comparability",
+  "comparison_policy": "Only classify a case as comparable when the sealed corpus carries both V1 and Slice1 evidence; do not infer a V1 outcome from a Slice1-only control.",
+  "improvement_count": 0,
+  "regression_count": 0,
+  "neutral_count": 1,
+  "not_comparable_count": 19,
+  "comparable_case_ids": ["assembly-comparison-control"],
+  "not_comparable_reason": "The sealed corpus intentionally lacks per-case V1 executable baselines for 19 cases; latest Call 1 is chronology/hash evidence only.",
+  "planning_recovery_convergence_observed": "bounded_repair_converged",
+  "comparative_improvement_claim": "NOT_ESTABLISHED",
+  "semantic_regression_count": 0,
+  "mutation_performed": false,
+  "v1_authority_changed": false
+}

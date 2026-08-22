@@ -1,0 +1,18 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2ConvergenceMetricsV1",
+  "version": 1,
+  "overall_status": "exact",
+  "first_pass_pass_count": 6,
+  "first_pass_total": 7,
+  "repair_required_count": 1,
+  "bounded_repair_converged_count": 1,
+  "slice1_regeneration_count": 1,
+  "convergence_exhausted_count": 0,
+  "no_progress_count": 1,
+  "same_failure_without_state_change_count": 1,
+  "same_failure_dispatch_count": 0,
+  "whole_planning_regeneration_count": 0,
+  "state_change_proof_required": true,
+  "same_finding_same_state_behavior": "SLICE1_NO_PROGRESS",
+  "blind_retry_performed": false
+}

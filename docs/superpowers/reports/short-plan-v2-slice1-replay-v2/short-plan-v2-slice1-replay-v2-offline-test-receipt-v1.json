@@ -1,0 +1,39 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2OfflineTestReceiptV1",
+  "version": 1,
+  "validation_run_id": "short-plan-v2-slice1-replay-v2-20260822t063155z-001",
+  "overall_status": "exact",
+  "canonical_replay_cli": {
+    "status": "pass",
+    "schema": "EventRealizationShadowReplayReceiptV2",
+    "case_count": 20,
+    "canonical_receipt_identity_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5"
+  },
+  "deterministic_double_replay": {"status":"pass","case_matches":20,"mismatches":0},
+  "focused_provenance_replay_slice1": {"status":"pass","passed":41,"elapsed_seconds":1.51},
+  "related_planning_ptr3_v1_story_state": {"status":"pass","passed":160,"elapsed_seconds":28.11},
+  "supplemental_contract_runtime_fingerprint": {"status":"pass","passed":24,"elapsed_seconds":6.27},
+  "supported_offline_suite": {
+    "status": "pass",
+    "passed": 2998,
+    "skipped": 41,
+    "deselected": 6,
+    "xfailed": 6,
+    "warnings": 1,
+    "elapsed_seconds": 2295.42,
+    "warning_identity": "existing Starlette/httpx deprecation warning"
+  },
+  "ignored_historical_file_count": 5,
+  "ignored_historical_files": [
+    "tests/canary/test_provider_capability_probe_materialization.py",
+    "tests/canary/test_provider_capability_probe_contract.py",
+    "tests/canary/test_ptr3_successor_readiness.py",
+    "tests/canary/test_sc_succ1_current_successor.py",
+    "tests/canary/test_short_completion_materialization.py"
+  ],
+  "deselected_exact_node_count": 6,
+  "historical_exclusion_semantics_changed": false,
+  "strict_l3": {"status":"pass","warnings":0,"blockers":0},
+  "privacy": "exact",
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0}
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2QualityPreservationV1",
+  "version": 1,
+  "overall_status": "exact_with_declared_unknown",
+  "creative_field_untargeted_mutation_count": 0,
+  "draft_required_intent_loss_count": 0,
+  "draft_required_intent_unknown_count": 1,
+  "unknown_case_ids": ["latest-call1-unknown"],
+  "unknown_reason": "The sealed Call 1 evidence is boundary-level only and contains no recoverable exact intent oracle.",
+  "title_untargeted_byte_identical": true,
+  "narrative_untargeted_byte_identical": true,
+  "local_derivation_creative_rewrite_count": 0,
+  "deterministic_repair_creative_rewrite_count": 0,
+  "sanitized_fixture_obligation_oracle_exact": true,
+  "aesthetic_or_literary_score_used": false
+}

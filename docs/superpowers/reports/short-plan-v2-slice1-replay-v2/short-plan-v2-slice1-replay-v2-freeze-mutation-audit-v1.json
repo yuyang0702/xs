@@ -1,0 +1,18 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2FreezeMutationAuditV1",
+  "version": 1,
+  "overall_status": "exact",
+  "already_valid_field_mutation_count": 0,
+  "freeze_violation_count": 0,
+  "legitimate_thaw_count": 1,
+  "stale_patch_reject_count": 1,
+  "unrelated_frozen_fields_byte_identical": true,
+  "typed_dependency_proof_required": true,
+  "version_increment_exact": true,
+  "stale_patch_behavior": "SLICE1_STALE_REPAIR",
+  "evidence_tests": [
+    "test_validated_artifact_freezes_without_changing_creative_payload",
+    "test_freeze_rejects_failed_receipt_and_stale_cas_patch",
+    "test_bounded_patch_changes_only_target_and_preserves_unrelated_frozen_artifact"
+  ]
+}

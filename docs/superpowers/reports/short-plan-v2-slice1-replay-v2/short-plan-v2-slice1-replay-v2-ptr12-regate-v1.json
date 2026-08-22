@@ -1,0 +1,18 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2Ptr12RegateV1",
+  "version": 1,
+  "overall_status": "exact",
+  "ptr12_design_status": "sealed",
+  "ptr12_implementation_status": "not_started",
+  "ptr12_observer_gate_before_phase_b": "REQUIRED",
+  "reason": "A model-backed shadow without the sealed hash-only raw-shape and guard-decision observer could not distinguish provider representation loss, guard predicate miss, adapter loss, or semantic failure. PTR11 left that attribution boundary unresolved.",
+  "required_before_dispatch": [
+    "hash-only raw provider shape observation",
+    "guard decision and predicate decomposition",
+    "pre/post representation delta binding",
+    "privacy exact",
+    "fresh single-use model-backed shadow authorization"
+  ],
+  "ptr12_implemented_this_task": false,
+  "provider_call_performed": false
+}

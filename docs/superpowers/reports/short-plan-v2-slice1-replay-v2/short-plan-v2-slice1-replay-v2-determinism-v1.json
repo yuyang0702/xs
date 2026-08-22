@@ -1,0 +1,21 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2DeterminismV1",
+  "version": 1,
+  "overall_status": "exact",
+  "input_identity": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+  "clock_values": [5.0,5.005],
+  "run_a_receipt_sha256": "2bc0e013085e6897704bf9c2b3ce09451a13071c83f985d76b94c6b0534f3a00",
+  "run_b_receipt_sha256": "2bc0e013085e6897704bf9c2b3ce09451a13071c83f985d76b94c6b0534f3a00",
+  "run_a_canonical_receipt_identity_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5",
+  "run_b_canonical_receipt_identity_sha256": "6f841ab5dd86511fe1cb32145847a298eadb9c3c3a719fe0104c9f89e2fd83a5",
+  "replay_case_count": 20,
+  "deterministic_match_count": 20,
+  "deterministic_mismatch_count": 0,
+  "artifact_hashes_match": true,
+  "finding_and_decision_payloads_match": true,
+  "dependency_and_freeze_payloads_match": true,
+  "version_and_final_status_match": true,
+  "metrics_match": true,
+  "full_receipt_bytes_match": true,
+  "external_actions": {"credential":0,"provider_client":0,"network":0,"model":0,"paid":0}
+}

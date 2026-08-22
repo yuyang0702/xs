@@ -1,0 +1,21 @@
+{
+  "schema": "ShortPlanV2Slice1ReplayV2V1ParityV1",
+  "version": 1,
+  "overall_status": "exact",
+  "v1_parity_drift_count": 0,
+  "shadow_enabled_disabled_parity": {
+    "planning_v1_bytes": "exact",
+    "draft_input": "exact",
+    "ready": "exact",
+    "story_state": "exact",
+    "canon": "exact",
+    "prompt_identity": "exact",
+    "route_model_identity": "exact",
+    "retry_fallback_identity": "exact",
+    "replay_boundary_workflow_result": "exact"
+  },
+  "draft_consumes_slice1": false,
+  "shadow_failure_effect_on_v1": "fail_open",
+  "production_contract_registry_changed": false,
+  "runtime_build_fingerprint_child_graph": "exact"
+}

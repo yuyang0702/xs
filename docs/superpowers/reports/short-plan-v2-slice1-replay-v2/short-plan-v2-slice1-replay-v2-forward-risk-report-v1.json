@@ -1,0 +1,54 @@
+{
+  "version": 2,
+  "original_requirement": "Restart a fresh independent Phase A offline replay validation from sealed HEAD 9eee68f without changing Slice1, provenance, V1, production behavior, or old failure evidence.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The task binds one sealed 20-case corpus, one explicit provenance contract, one exact baseline HEAD and a finite Phase A shadow boundary. Phase B, production workflow execution and unseen provider behavior are explicitly excluded and are not used in completion claims.",
+  "operational_definition": "Validate the sealed 20-case sanitized corpus twice under the explicit CANONICAL_TEXT_LF_V1 contract, audit Slice1 invariants and V1 isolation, and emit fresh hash-only evidence only.",
+  "forbidden_narrowing": [
+    "Do not relabel the prior failed replay",
+    "Do not infer the unknown latest Call 1 rule",
+    "Do not treat green tests as production convergence proof",
+    "Do not enter Phase B",
+    "Do not change implementation to obtain a pass"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {"requirement":"canonical provenance exact before dispatch","implementation":"sealed provenance implementation at e893b3a269a1cd1f9aca1c2d29fb650a5e95b044","test_paths":["tests/test_short_plan_v2_slice1_provenance.py"],"evidence":"V2 CLI exact; raw a144 and canonical 6ff08 identities exact"},
+    {"requirement":"deterministic double replay","implementation":"sealed offline replay harness","test_paths":["tests/test_short_plan_v2_slice1_replay.py"],"evidence":"Run A/B receipt SHA 2bc0e0 and 20/20 case matches"},
+    {"requirement":"bounded recovery, freeze, ownership and lossless diagnostics","implementation":"sealed Slice1 shadow implementation","test_paths":["tests/test_planning_v2_slice1.py","tests/test_generated_artifacts.py"],"evidence":"all hard zero invariants exact"},
+    {"requirement":"V1 authority and downstream business behavior unchanged","implementation":"shadow-only boundary","test_paths":["tests/test_story_state.py","tests/test_runtime_fingerprint_bindings.py","tests/test_contract_runtime.py"],"evidence":"V1 parity drift 0 and production/BAML diff 0"}
+  ],
+  "historical_incident_families_checked": [
+    "CROSS_PLATFORM_EOL_PROVENANCE_MISMATCH",
+    "PTR3 planning repair finding propagation",
+    "lossy conversion diagnostics",
+    "whole Planning regeneration",
+    "stale authority and CAS patch",
+    "ambiguous generated artifact topology",
+    "output truncation and empty output",
+    "provider raw-shape and guard-decision attribution gap"
+  ],
+  "projected_failure_mechanisms": [
+    "platform newline conversion","lossy diagnostic projection","over-broad repair scope",
+    "same-state blind retry","stale patch","ownership drift","creative-field mutation",
+    "V1 authority drift","provider observation ambiguity"
+  ],
+  "why_previous_tests_missed": "The previous validation stopped before semantic dispatch because its raw-byte V1 receipt compared a Windows CRLF checkout with a sealed LF hash. It never reached the 20 semantic cases.",
+  "sibling_boundaries": [
+    {"boundary":"Planning V1","disposition":"tested_not_susceptible","evidence":"shadow disabled/enabled parity and protected-byte tests pass"},
+    {"boundary":"Draft, StoryState, Canon and READY","disposition":"tested_not_susceptible","evidence":"Slice1 remains unconsumed shadow and parity drift is zero"},
+    {"boundary":"Prompt, route/model, retry/fallback and budget","disposition":"tested_not_susceptible","evidence":"no production/BAML change and runtime fingerprint tests pass"},
+    {"boundary":"causal chain through formal promotion","disposition":"not_applicable","evidence":"Phase A replay is offline shadow-only and performs no production dispatch or promotion"},
+    {"boundary":"Phase B provider observation","disposition":"not_applicable","evidence":"Phase B is forbidden in this task; PTR12 design is sealed but implementation is absent, so the observer remains a required future pre-dispatch gate"}
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "This task adds evidence only. No parser, model contract, prompt, route, retry, fallback, budget, validator, or production source byte changes.",
+  "production_shaped_tests": ["tests/test_short_plan_v2_slice1_replay.py","tests/test_planning_v2_slice1.py","tests/test_r1_ptr3_planning_repair_finding_propagation.py"],
+  "next_authoritative_boundary_tests": ["tests/test_story_state.py","tests/test_contract_runtime.py","tests/test_runtime_fingerprint_bindings.py"],
+  "remaining_risks": [
+    "Latest real Call 1 fidelity remains boundary-level only",
+    "Nineteen cases lack executable per-case V1 baselines, so comparative improvement is not established",
+    "PTR12 observer must be implemented and validated before any Phase B dispatch",
+    "No Phase B or Full Short evidence is claimed"
+  ]
+}
