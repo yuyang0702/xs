@@ -481,6 +481,101 @@ def _shape(*types: str, finish="max_tokens", visible=0, tools=0):
 
 
 @pytest.mark.parametrize(
+    (
+        "raw_mode", "normalized_shape", "expected_raw_zero",
+        "expected_normalized_zero", "expected_predicate", "expected_delta",
+    ),
+    [
+        ("nonzero", _shape("thinking"), False, True, False, "YES"),
+        ("zero", _shape("thinking"), True, True, True, "NO"),
+        (
+            "nonzero", _shape("thinking", "text", visible=1),
+            False, False, False, "NO",
+        ),
+        ("unavailable", _shape("thinking"), None, True, False, "UNKNOWN"),
+        ("partial", _shape("thinking"), None, True, False, "UNKNOWN"),
+        (
+            "zero", _shape("thinking", "text", visible=1),
+            True, False, False, "YES",
+        ),
+        ("absent", _shape("thinking"), None, True, False, "UNKNOWN"),
+    ],
+)
+def test_guard_decision_keeps_raw_and_normalized_visibility_independent(
+    monkeypatch, tmp_path, raw_mode, normalized_shape, expected_raw_zero,
+    expected_normalized_zero, expected_predicate, expected_delta,
+) -> None:
+    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
+    if raw_mode == "nonzero":
+        snapshot = _capture(monkeypatch, protocol="anthropic", body={
+            "stop_reason": "max_tokens",
+            "content": [
+                {"type": "thinking", "thinking": "PRIVATE_REASONING"},
+                {"type": "text", "text": "x"},
+            ],
+            "usage": {"output_tokens": 8},
+        })
+    elif raw_mode == "zero":
+        snapshot = _capture(monkeypatch, protocol="anthropic", body={
+            "stop_reason": "max_tokens",
+            "content": [{"type": "thinking", "thinking": "PRIVATE_REASONING"}],
+            "usage": {"output_tokens": 8},
+        })
+    elif raw_mode == "unavailable":
+        snapshot = _capture(monkeypatch, protocol="anthropic", body={
+            "stop_reason": "max_tokens", "content": None,
+            "usage": {"output_tokens": 8},
+        })
+    elif raw_mode == "partial":
+        snapshot = _capture(monkeypatch, protocol="anthropic", body={
+            "stop_reason": "max_tokens",
+            "content": [
+                {"type": "thinking"}
+                for _index in range(provider_output.MAX_BLOCKS_TOUCHED + 1)
+            ],
+            "usage": {"output_tokens": 8},
+        })
+    else:
+        snapshot = None
+
+    context = _context(tmp_path)
+    raw = (
+        bind_ptr12_raw_shape_observation(
+            context, snapshot=snapshot, provider_id="provider",
+            model_id="model", route_fingerprint="a" * 64,
+            schema_sha256="b" * 64, request_mode="plain",
+        )
+        if snapshot is not None else None
+    )
+    delta = observe_ptr12_shape_delta(
+        context, raw_shape=raw, normalized_shape=normalized_shape,
+        normalized_finish_reason="max_tokens",
+    )
+    guard_triggered = (
+        normalized_shape.reasoning_block_count > 0
+        and normalized_shape.text_block_count == 0
+        and normalized_shape.provider_visible_text_chars == 0
+        and normalized_shape.normalized_visible_text_chars == 0
+    )
+    decision = build_ptr12_guard_decision(
+        context, shape=normalized_shape, raw_shape=raw, delta=delta,
+        finish_reason="max_tokens", scope_eligible=True,
+        guard_triggered=guard_triggered, provider_id="provider",
+        model_id="model", route_fingerprint="a" * 64,
+        contract_identity="planning_semantic_v2", schema_sha256="b" * 64,
+        negative_write_status=("RECORDED" if guard_triggered else "NOT_REQUIRED"),
+    )
+
+    assert decision.raw_visible_chars_zero is expected_raw_zero
+    assert decision.normalized_visible_chars_zero is expected_normalized_zero
+    assert decision.predicate_all_true is expected_predicate
+    assert delta.representation_changed == expected_delta
+    if raw_mode == "partial":
+        assert raw.capture_completeness == "partial"
+        assert "VISIBLE_CHAR_COUNT" in delta.unavailable_dimensions
+
+
+@pytest.mark.parametrize(
     ("shape", "triggered", "reason"),
     [
         (_shape("thinking"), True, None),
@@ -504,7 +599,8 @@ def test_guard_predicate_reason_matrix(
         negative_write_status="RECORDED" if triggered else "NOT_REQUIRED",
     )
     assert record.guard_triggered is triggered
-    assert record.predicate_all_true is triggered
+    assert record.raw_visible_chars_zero is None
+    assert record.predicate_all_true is False
     if reason is not None:
         assert reason in record.guard_miss_reasons
 

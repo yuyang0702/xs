@@ -1160,7 +1160,7 @@ def build_ptr12_guard_decision(
                 finish_reason in {"length", "max_output_tokens", "max_tokens", "model_length"}
             ) if finish_reason is not None else None,
             "raw_visible_chars_zero": (
-                shape.provider_visible_text_chars == 0 if available else None
+                raw_shape.raw_visible_chars_zero if raw_shape is not None else None
             ),
             "normalized_visible_chars_zero": (
                 shape.normalized_visible_text_chars == 0 if available else None
