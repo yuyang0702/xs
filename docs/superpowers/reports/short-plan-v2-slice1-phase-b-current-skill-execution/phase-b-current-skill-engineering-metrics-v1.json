@@ -1,0 +1,22 @@
+{
+  "cost_cny": 0,
+  "cost_usd": 0,
+  "credential_lookup_count": 0,
+  "effective_route_cap": 4624,
+  "execution_elapsed_seconds": 0,
+  "finish_reason": "NOT_OBSERVED",
+  "input_tokens": 0,
+  "model_call_count": 0,
+  "network_call_count": 0,
+  "output_tokens": 0,
+  "paid_call_count": 0,
+  "preflight_elapsed_seconds": "UNKNOWN_NOT_INSTRUMENTED",
+  "provider_accepted_cap": "NOT_OBSERVED",
+  "provider_client_creation_count": 0,
+  "provider_exposed_final_tokens": "NOT_OBSERVED",
+  "provider_exposed_reasoning_tokens": "NOT_OBSERVED",
+  "real_provider_call_count": 0,
+  "requested_max_output": 4624,
+  "schema": "Slice1PhaseBCurrentSkillEngineeringMetricsV1",
+  "version": 1
+}

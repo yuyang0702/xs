@@ -1,0 +1,14 @@
+{
+  "approval_reuse_allowed": false,
+  "atomic_reservation_attempted": false,
+  "cohort_id": "slice1-phase-b-current-skill-033867472f23-001",
+  "consumption_status": "not_consumed_pre_reservation_no_go",
+  "ledger_created": false,
+  "nonce_binding_id": "slice1-phase-b-current-skill-approval-20260823t032900z-001/nonce",
+  "nonce_sha256": "fd70d3ed3f78011fcff38b204b368469b6573ecebb931eee74e739b491a2c7a9",
+  "reservation_status": "unreserved",
+  "schema": "Slice1PhaseBCurrentSkillNonceConsumptionV1",
+  "second_run_with_same_approval_allowed": false,
+  "usage_status": "unused",
+  "version": 1
+}

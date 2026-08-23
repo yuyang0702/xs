@@ -1,0 +1,12 @@
+{
+  "absolute_path_match_count": 0,
+  "credential_value_match_count": 0,
+  "overall_status": "exact",
+  "prompt_content_match_count": 0,
+  "provider_content_match_count": 0,
+  "reasoning_content_match_count": 0,
+  "scanned_file_count": 9,
+  "schema": "Slice1PhaseBCurrentSkillExecutionPrivacyScanV1",
+  "story_content_match_count": 0,
+  "version": 1
+}

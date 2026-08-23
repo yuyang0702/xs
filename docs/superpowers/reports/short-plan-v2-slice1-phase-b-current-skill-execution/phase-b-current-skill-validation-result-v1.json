@@ -1,0 +1,19 @@
+{
+  "approval_gate": "exact",
+  "baseline_gate": "exact",
+  "budget_binding_gate": "exact",
+  "current_skill_resolution": "exact",
+  "local_slice1_parse_result": "NOT_RUN_PRE_DISPATCH_ABORT",
+  "model_input_assembly_gate": "exact",
+  "nonce_gate": "unused_and_unreserved",
+  "output_isolation_gate": "exact",
+  "packet_manifest_gate": "exact",
+  "ptr12_acceptance_gate": "exact",
+  "route_model_binding_gate": "exact",
+  "runtime_semantics_gate": "blocked_transport_dispatch_bound_not_enforceable",
+  "schema": "Slice1PhaseBCurrentSkillValidationResultV1",
+  "signed_launch_validate_only": "exact",
+  "terminal_classification": "PHASE_B_BASELINE_PRE_DISPATCH_ABORT",
+  "validator_result": "NOT_RUN_PRE_DISPATCH_ABORT",
+  "version": 1
+}

@@ -1,0 +1,22 @@
+{
+  "a_arm": "CURRENT_RUNTIME_SKILL",
+  "artifact_available": false,
+  "dimensions": {
+    "causal_event_fidelity": "UNKNOWN_NO_MODEL_OUTPUT",
+    "character_motivation": "UNKNOWN_NO_MODEL_OUTPUT",
+    "character_voice": "UNKNOWN_NO_MODEL_OUTPUT",
+    "draft_intent_proxy": "UNKNOWN_NO_MODEL_OUTPUT",
+    "pov_tense_tone_genre_consistency": "UNKNOWN_NO_MODEL_OUTPUT",
+    "setup_payoff_or_dependency": "UNKNOWN_NO_MODEL_OUTPUT",
+    "world_specificity_and_sensory_realization": "UNKNOWN_NO_MODEL_OUTPUT"
+  },
+  "first_pass_convergence": "NOT_EVALUATED",
+  "no_progress": "NOT_EVALUATED",
+  "repair_needed_status": "NOT_EVALUATED_NO_MODEL_OUTPUT",
+  "schema": "Slice1PhaseBCurrentSkillQualityBaselineV1",
+  "scalar_literary_score": null,
+  "skill_v2_evaluated": false,
+  "untargeted_creative_mutation_count": 0,
+  "version": 1,
+  "whole_planning_regeneration_count": 0
+}

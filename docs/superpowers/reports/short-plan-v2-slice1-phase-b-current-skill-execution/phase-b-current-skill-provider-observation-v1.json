@@ -1,0 +1,16 @@
+{
+  "adapter_family": "AnthropicAdapter",
+  "negative_capability_decision": "NOT_EVALUATED_NO_PROVIDER_RESPONSE",
+  "normalized_shape": "NOT_OBSERVED",
+  "observation_status": "NOT_DISPATCHED",
+  "primary_route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "provider_family": "anthropic",
+  "provider_response_content_persisted": false,
+  "provider_shape": "NOT_OBSERVED",
+  "ptr12_observer_required": true,
+  "ptr12_observer_was_enabled_for_preflight": true,
+  "ptr9_guard_decision": "NOT_EVALUATED_NO_PROVIDER_RESPONSE",
+  "raw_to_normalized_delta": "NOT_OBSERVED",
+  "schema": "Slice1PhaseBCurrentSkillProviderObservationV1",
+  "version": 1
+}

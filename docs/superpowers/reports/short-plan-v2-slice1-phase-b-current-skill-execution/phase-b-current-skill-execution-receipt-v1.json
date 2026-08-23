@@ -1,0 +1,26 @@
+{
+  "approval_manifest_sha256": "67d9784882ac58ce927ea06f6ddf3bb48e6642421d16d00579dac78f1b8f7b5a",
+  "approval_validity_at_preflight": "active",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "cohort_id": "slice1-phase-b-current-skill-033867472f23-001",
+  "execution_attempted": false,
+  "first_divergence": {
+    "finish_reason": "NOT_OBSERVED",
+    "inner_attempt_id": "NOT_CREATED",
+    "invariant": "REAL_PROVIDER_CALLS_HARD_MAX_ONE_MUST_BE_ENFORCEABLE_BEFORE_NONCE_RESERVATION",
+    "provider_shape": "NOT_OBSERVED",
+    "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+    "stage": "PRE_DISPATCH_RUNTIME_SEMANTICS",
+    "validator_finding": "ANTHROPIC_TRANSPORT_EARLY_ERROR_PATH_CAN_ISSUE_TWO_HTTP_POSTS"
+  },
+  "named_approver": "USER_PROJECT_OWNER",
+  "next_task": "SLICE1_PHASE_B_SINGLE_DISPATCH_TRANSPORT_GUARD_NARROW_FIX",
+  "no_automatic_fix": true,
+  "preflight_completed_at": "2026-08-23T04:40:47Z",
+  "schema": "Slice1PhaseBCurrentSkillExecutionReceiptV1",
+  "signed_approval_domain_sha256": "054ad965e999ae4957c98bcfd0202c28e535223f24f33a518c7caa882cb7ea18",
+  "signed_approval_file_sha256": "11ae7fcd1c432df12b9ab14f75d14bade19e40a8900b9b0c01acd00321b87470",
+  "start_head": "da9faa264ea65d84df1352b2ad2d9c191c4970d5",
+  "terminal_classification": "PHASE_B_BASELINE_PRE_DISPATCH_ABORT",
+  "version": 1
+}
