@@ -24,6 +24,7 @@ from novel_flywheel.db import Database
 from novel_flywheel.planning_v2_slice1 import (
     EventRealizationCandidateV1,
     EventRealizationInputAuthorityV1,
+    normalize_event_realization_input_authority_v1,
     SLICE1_CONTRACT_IDENTITY,
 )
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
@@ -734,7 +735,9 @@ async def execute_authorized_once(
         transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
     )
     gateway = ModelGateway(db, registry)
-    authority = EventRealizationInputAuthorityV1.model_validate(authority_value)
+    authority = EventRealizationInputAuthorityV1.model_validate(
+        normalize_event_realization_input_authority_v1(authority_value),
+    )
     contract = StructuredArtifactContract(
         name="planning_event_realization_shadow_v1", version=1,
         schema=EventRealizationCandidateV1.model_json_schema(),

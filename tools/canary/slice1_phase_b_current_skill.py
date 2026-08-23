@@ -35,6 +35,7 @@ from novel_flywheel.planning_v2_slice1 import (
     SLICE1_VALIDATOR_POLICY_SHA256,
     EventRealizationCandidateV1,
     EventRealizationInputAuthorityV1,
+    normalize_event_realization_input_authority_v1,
 )
 from novel_flywheel.prompts import REQUIRED_SKILLS, STAGE_SYSTEM
 from novel_flywheel.skill_prompts import SkillPromptCompactor
@@ -348,7 +349,9 @@ def load_fixture_binding(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any
         context_projection_sha256=authority_source["context_projection_sha256"],
         required_obligation_ids=tuple(authority_source["required_obligation_ids"]),
     )
-    authority_value = authority.model_dump(mode="json")
+    authority_value = normalize_event_realization_input_authority_v1(
+        authority.model_dump(mode="json"),
+    )
     authority_sha = _domain_sha("slice1-phase-b-authority-input-v1", authority_value)
     withheld_reference = fixture["candidates"][selected[0]["candidate"]]
     workload = _sealed("slice1-phase-b-current-skill-workload-v1", {

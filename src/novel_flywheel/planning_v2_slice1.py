@@ -178,6 +178,38 @@ class EventRealizationInputAuthorityV1(_Slice1Model):
         return self
 
 
+def normalize_event_realization_input_authority_v1(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Restore canonical frozen tuple containers before strict validation."""
+
+    if not isinstance(value, Mapping):
+        raise TypeError("event realization authority must be a mapping")
+
+    def exact_tuple(container: Any, *, field: str) -> tuple[Any, ...]:
+        if isinstance(container, tuple):
+            return container
+        if isinstance(container, list):
+            return tuple(container)
+        raise TypeError(f"{field} must be a list or tuple")
+
+    normalized = dict(value)
+    for field in (
+        "formal_event_ids",
+        "dependency_artifact_ids",
+        "required_obligation_ids",
+    ):
+        normalized[field] = exact_tuple(normalized.get(field), field=field)
+    segments = exact_tuple(
+        normalized.get("segment_event_ids"), field="segment_event_ids",
+    )
+    normalized["segment_event_ids"] = tuple(
+        exact_tuple(segment, field="segment_event_ids[]")
+        for segment in segments
+    )
+    return normalized
+
+
 class EventRealizationProvenanceV1(_Slice1Model):
     producer_kind: ProducerKind
     contract_identity: Literal["planning_event_realization_shadow_v1@1"] = (

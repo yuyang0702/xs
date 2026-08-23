@@ -1973,3 +1973,12 @@ this Runtime build change. A fresh disabled packet and a new single-use final
 approval are required before any Provider call. Reverting the guard source,
 registry injection, tests, and fresh packet restores the prior build; it does
 not reactivate the old approval or consume its never-reserved nonce.
+# Slice1 authority tuple normalization
+
+Phase B rehydrates the four frozen `EventRealizationInputAuthorityV1` ID
+collections through `normalize_event_realization_input_authority_v1` before
+strict Pydantic validation. The boundary accepts only list or tuple containers,
+preserves order, multiplicity, and values exactly, recursively normalizes
+segment groups, and rejects strings, mappings, sets, lazy iterators, and null.
+The Pydantic authority schema and all Planning, Skill, Provider, retry, and
+formal-write semantics remain unchanged.
