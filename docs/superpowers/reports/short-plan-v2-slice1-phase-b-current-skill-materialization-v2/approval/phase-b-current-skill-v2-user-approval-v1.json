@@ -1,0 +1,26 @@
+{
+  "approval_cohort_reuse_allowed": false,
+  "approval_parent_head": "d85da9e4c8c4be604806f55a70f777b18115be98",
+  "approval_reuse_allowed": false,
+  "approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_SINGLE_DISPATCH_BASELINE_ONLY",
+  "approval_template_sha256": "1348d7b4ed27319c0f0a63288168d8e108f36f5b1e7ee9707ec65ec274bb0ba3",
+  "attempt_accounting_sha256": "9c98473ea25a44087b572bec90921febf8481aa947836cf9bced6cd0f611f4d7",
+  "cohort_id": "slice1-phase-b-current-skill-single-dispatch-v2-20260823t045907z-001",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "guard_policy_sha256": "c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d",
+  "materialization_manifest_file_sha256": "fcc77f6138adc32d6a3899a77c23c2372d6b780d6ca2867ee89ee406527090d2",
+  "named_approver": "USER_PROJECT_OWNER",
+  "real_execution_in_approval_task_authorized": false,
+  "schema": "Slice1PhaseBSingleDispatchUserApprovalV1",
+  "transport_guard_sha256": "5daf9010a5b2f4ccfa6a65efabc2f7aeb2c40c4b02aa0380834b770423eb5310",
+  "user_approval_sha256": "dfb443cdcf277df303002542617b9eaa2c53e2c533c3eeba6b5c35d9082befee",
+  "version": 1
+}

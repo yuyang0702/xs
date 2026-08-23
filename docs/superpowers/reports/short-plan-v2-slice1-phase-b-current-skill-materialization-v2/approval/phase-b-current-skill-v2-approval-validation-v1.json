@@ -1,0 +1,157 @@
+{
+  "approval_validation_sha256": "1c242e7b5a8e8e806ff98f74e8a8053213bda77ce050867de73fb8936069a69c",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "launcher_signed_preflight_at_clean_parent_head": "exact",
+  "overall_status": "exact",
+  "packet_validate_only": "exact",
+  "parent_head": "d85da9e4c8c4be604806f55a70f777b18115be98",
+  "same_source_full_suite": "3287 passed, 41 skipped, 6 xfailed, 22 historical-gate failures, 46 historical-gate errors",
+  "schema": "Slice1PhaseBSingleDispatchApprovalValidationV1",
+  "scope_byte_exact": true,
+  "single_dispatch_guard": "PASS",
+  "source_changed_in_approval_task": false,
+  "test_count": 33,
+  "tests": [
+    {
+      "case": "exact_current_head_accepted",
+      "status": "PASS"
+    },
+    {
+      "case": "old_or_wrong_head_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "old_approval_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "old_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_cohort_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_current_skill_profile_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_model_input_assembly_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_route_model_client_binding_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_guard_policy_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_transport_guard_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_attempt_accounting_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "sdk_retries_enabled_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "transport_retries_enabled_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "http_attempt_cap_above_one_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "provider_attempt_cap_above_one_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_budget_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_output_isolation_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_ptr12_binding_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "missing_named_approver_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "missing_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "consumed_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "reserved_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "full_short_authorization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "draft_authorization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "final_review_authorization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "maintenance_authorization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "skill_v2_authorization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "planning_v2_cutover_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "story_state_mutation_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "canon_mutation_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "ready_mutation_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "normal_retrying_transport_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "approval_reuse_rejected",
+      "status": "PASS"
+    }
+  ],
+  "version": 1
+}

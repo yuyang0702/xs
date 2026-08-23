@@ -1,0 +1,64 @@
+{
+  "algorithm": "sha256",
+  "byte_domain": "exact_file_bytes",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "file_count": 8,
+  "files": [
+    {
+      "bytes": 5463,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-approval-binding-v1.json",
+      "sha256": "098b9b576725b75b15938a3261080befa07e61d841330e566b9b46b543b6e82a"
+    },
+    {
+      "bytes": 1839,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-approval-final-report-v1.md",
+      "sha256": "87376b9c11b371aa2e6e44563d896740472d999974788976b3c1010f6438efa1"
+    },
+    {
+      "bytes": 683,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-approval-privacy-scan-v1.json",
+      "sha256": "680a98e8cba0dbf4ecf9154fe248195a68d02d40e6f9615496f31c0a920682de"
+    },
+    {
+      "bytes": 3627,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-approval-validation-v1.json",
+      "sha256": "87c277743d5f3f932d4a979d1d87eed1f57243cd5b9bc378c5ccdccc57b71d01"
+    },
+    {
+      "bytes": 1062,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-nonce-binding-v1.json",
+      "sha256": "59ecd538eafcaf1d1596263cd61f12b7ca0846c77f4640b71ac56460ce01a9a9"
+    },
+    {
+      "bytes": 5582,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-signed-authorization-v1.json",
+      "sha256": "4dfa667d17ae5ebf9acd494c236ae81dd77c6fede6af4f382496ff645440a0f2"
+    },
+    {
+      "bytes": 1333,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/phase-b-current-skill-v2-user-approval-v1.json",
+      "sha256": "75c849d0c31839ff4085fa3002a6f5a6765bbe532979e6074a74b0956b05cf8b"
+    },
+    {
+      "bytes": 194,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v2/approval/README.md",
+      "sha256": "6521cca0b9707a98a868c7a2c11245060bd47b27f358485b5ef9ab772858c8e6"
+    }
+  ],
+  "inclusion_rule": "all direct regular files except sha256-manifest-v1.json",
+  "manifest_definition_sha256": "c778f82a87561570fdd9f193bf9dc05f27e5c33033a7049bcc0dd130a7b4fff1",
+  "overall_status": "exact",
+  "path_basis": "repository-relative-posix",
+  "schema": "Slice1PhaseBSingleDispatchApprovalSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}
