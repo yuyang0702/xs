@@ -1,0 +1,24 @@
+{
+  "attempt_accounting_sha256": "9c98473ea25a44087b572bec90921febf8481aa947836cf9bced6cd0f611f4d7",
+  "credential_capable_imports_after_signed_preflight": true,
+  "guard_verified_before_nonce_reservation": true,
+  "launcher_binding_sha256": "85a04982964d48ee0c997f7d27c86c6a5034f4d9bc0612dea4e0691470c60191",
+  "launcher_source": {
+    "bytes": 37442,
+    "path": "tools/canary/slice1_phase_b_single_dispatch.py",
+    "sha256": "71798af685fdfe66569812174de4184c97a4e0ab9c73ff85ba5062352bbe87fc"
+  },
+  "preflight_order": [
+    "head_and_packet",
+    "signed_approval",
+    "guard_build",
+    "attempt_cap",
+    "nonce_reservation",
+    "credential_lookup",
+    "provider_client_creation",
+    "single_dispatch"
+  ],
+  "schema": "Slice1PhaseBSingleDispatchLauncherBindingV1",
+  "transport_guard_sha256": "5daf9010a5b2f4ccfa6a65efabc2f7aeb2c40c4b02aa0380834b770423eb5310",
+  "version": 1
+}

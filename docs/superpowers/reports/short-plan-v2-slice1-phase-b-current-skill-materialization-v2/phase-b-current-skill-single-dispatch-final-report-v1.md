@@ -1,0 +1,46 @@
+# Slice1 Phase B Single-Dispatch CURRENT-Skill Materialization v2
+
+`SLICE1_PHASE_B_SINGLE_DISPATCH_TRANSPORT_GUARD_FIXED`
+
+`SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_REMATERIALIZED`
+
+`SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_READY_FOR_FRESH_USER_APPROVAL=YES`
+
+- Branch: `r1-ptr3/planning-repair-finding-propagation-20260817`
+- Materialization HEAD: `e86d94d22696b7547c7d7d4767c71b5e1542cd31`
+- Cohort: `slice1-phase-b-current-skill-single-dispatch-v2-20260823t045907z-001`
+- Provider / adapter: `anthropic / AnthropicAdapter`
+- Guard policy SHA-256: `c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d`
+- Transport guard SHA-256: `5daf9010a5b2f4ccfa6a65efabc2f7aeb2c40c4b02aa0380834b770423eb5310`
+- Attempt accounting SHA-256: `9c98473ea25a44087b572bec90921febf8481aa947836cf9bced6cd0f611f4d7`
+- Current Skill profile SHA-256: `4a9fd1d20c248ed3dae1815eb99605b094842d1e953e96d31d6ba7d1a4bf52c6`
+- Model input assembly SHA-256: `50ceb8b6862c0d31252ced8e46f6ca0d87d6ec8ccc86c2a3c2c131d4f532f927`
+- Route binding SHA-256: `c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621`
+- Budget SHA-256: `9a043d617b3309477d9ff6b60aec1cc74c58c81660b60608235ea3ffb4290475`
+- Approval template SHA-256: `1348d7b4ed27319c0f0a63288168d8e108f36f5b1e7ee9707ec65ec274bb0ba3`
+- Previous approval HEAD: `da9faa264ea65d84df1352b2ad2d9c191c4970d5`
+- Previous nonce: `UNUSED_UNRESERVED_NOT_CONSUMED`
+- Previous approval reuse allowed: `NO`
+- Offline focused: `30 passed`
+- Offline related: `236 passed`
+- Full suite: `3287 passed, 41 skipped, 6 xfailed, 22 historical-gate failures, 46 historical-gate errors`
+- Strict L3: `PASS warnings=0 blockers=0`
+- Exact next gate: `SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_FRESH_USER_APPROVAL`
+
+`SINGLE_DISPATCH_TRANSPORT_GUARD=PASS`  
+`MAX_REAL_PROVIDER_REQUEST_ATTEMPTS=1`  
+`MAX_HTTP_POST_ATTEMPTS=1`  
+`SDK_RETRIES_DISABLED_FOR_PHASE_B=YES`  
+`TRANSPORT_REQUEST_RETRIES_DISABLED_FOR_PHASE_B=YES`  
+`NORMAL_PRODUCTION_TRANSPORT_RETRY_POLICY_CHANGED=NO`  
+`OLD_APPROVAL_REUSE_ALLOWED=NO`  
+`OLD_NONCE_CONSUMED=NO`  
+`EXECUTION_AUTHORIZED=NO`  
+`NAMED_APPROVER=null`  
+`SIGNED_APPROVAL=ABSENT`  
+`REAL_PROVIDER_CALLS=0`  
+`NETWORK_CALLS=0`  
+`MODEL_CALLS=0`  
+`PAID_CALLS=0`  
+`SLICE1_PHASE_B=NOT_STARTED`  
+`FULL_SHORT_CANARY=NOT_EXECUTED`

@@ -1,0 +1,21 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "fake_transport_matrix": "30 passed",
+  "full_suite": "3287 passed, 41 skipped, 6 xfailed, 22 historical-gate failures, 46 historical-gate errors",
+  "normal_production_retry_parity": "PASS; default early ConnectError remains two attempts",
+  "overall_status": "exact",
+  "phase_b_preflight_tests": "exact; zero external actions before nonce",
+  "ptr12_regression": "exact; related PTR12 matrix passed",
+  "r0f_regression": "85 passed",
+  "related_tests": "236 passed",
+  "schema": "Slice1PhaseBSingleDispatchOfflineTestReceiptV1",
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "historical_abort_evidence_preserved": true,
+  "old_approval_non_reuse_sha256": "b5f06c7926dc35d7bdd74a50fcc674a9ce13263da3d8cdf9590db3a13f294a0c",
+  "previous_approval_cohort": "slice1-phase-b-current-skill-033867472f23-001",
+  "previous_approval_head": "da9faa264ea65d84df1352b2ad2d9c191c4970d5",
+  "previous_approval_nonce_state": "UNUSED_UNRESERVED_NOT_CONSUMED",
+  "previous_approval_reuse_allowed": false,
+  "previous_nonce_consumed": false,
+  "reason": "runtime_build_semantics_changed_after_approved_packet",
+  "schema": "Slice1PhaseBOldApprovalNonReuseReceiptV1",
+  "version": 1
+}

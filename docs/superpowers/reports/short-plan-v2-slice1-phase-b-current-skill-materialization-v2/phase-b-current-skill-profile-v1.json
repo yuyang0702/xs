@@ -1,0 +1,70 @@
+{
+  "combined_current_runtime_compacted_characters": 8927,
+  "combined_current_runtime_compacted_prompt_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "combined_raw_prompt_characters": 21345,
+  "combined_raw_prompt_sha256": "26da95882e4abf67a334cfaa3b031568ccbb7d37bce2063f124e61b937294379",
+  "compaction_policy": {
+    "class": "SkillPromptCompactor",
+    "hard_marker_priority_is_compaction_not_authority_promotion": true,
+    "mandatory_rule_extraction_active": false,
+    "max_chars": 9000,
+    "source_sha256": "95e94c72eb33a0f1871f1aab4b3da73874b4aa865ae06b9eb04ea356066f1246"
+  },
+  "planning_skill_profile_shadow_v1": "NOT_USED_FOR_MODEL_INPUT",
+  "profile_id": "CURRENT_SKILL_BASELINE_PROFILE_V1",
+  "profile_sha256": "4a9fd1d20c248ed3dae1815eb99605b094842d1e953e96d31d6ba7d1a4bf52c6",
+  "project_vendor_skill_bundle_active": false,
+  "raw_skill_content_persisted": false,
+  "resolution_deterministic": true,
+  "resolution_run_count": 2,
+  "resolved_skills": [
+    {
+      "canonical_skill_md_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "compacted_prompt_contribution_sha256": "NOT_SEPARATELY_DETERMINISTIC",
+      "mandatory_rule_extraction_result": "NOT_SEPARATE_IN_CURRENT_RUNTIME",
+      "raw_skill_md_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "resolution_precedence_rank": 1,
+      "scanner_tree_content_sha256": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "skill_name": "story-init",
+      "source_class": "GLOBAL_CODEX"
+    },
+    {
+      "canonical_skill_md_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "compacted_prompt_contribution_sha256": "NOT_SEPARATELY_DETERMINISTIC",
+      "mandatory_rule_extraction_result": "NOT_SEPARATE_IN_CURRENT_RUNTIME",
+      "raw_skill_md_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "resolution_precedence_rank": 1,
+      "scanner_tree_content_sha256": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "skill_name": "plot-structure",
+      "source_class": "GLOBAL_CODEX"
+    },
+    {
+      "canonical_skill_md_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "compacted_prompt_contribution_sha256": "NOT_SEPARATELY_DETERMINISTIC",
+      "mandatory_rule_extraction_result": "NOT_SEPARATE_IN_CURRENT_RUNTIME",
+      "raw_skill_md_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "resolution_precedence_rank": 1,
+      "scanner_tree_content_sha256": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "skill_name": "character-management",
+      "source_class": "GLOBAL_CODEX"
+    },
+    {
+      "canonical_skill_md_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "compacted_prompt_contribution_sha256": "NOT_SEPARATELY_DETERMINISTIC",
+      "mandatory_rule_extraction_result": "NOT_SEPARATE_IN_CURRENT_RUNTIME",
+      "raw_skill_md_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "resolution_precedence_rank": 1,
+      "scanner_tree_content_sha256": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "skill_name": "worldbuilding",
+      "source_class": "GLOBAL_CODEX"
+    }
+  ],
+  "schema": "CurrentSkillBaselineProfileV1",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "skill_files_modified": false,
+  "skill_profile_v2_sha": "NOT_ACTIVE",
+  "skill_v2_profile_active": false,
+  "slice": "event_realization_unit_shadow_v1",
+  "stage": "planning",
+  "version": 1
+}
