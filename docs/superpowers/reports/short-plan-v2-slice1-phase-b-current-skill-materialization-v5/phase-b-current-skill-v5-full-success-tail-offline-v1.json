@@ -1,0 +1,32 @@
+{
+  "artifact_persisted": "PASS",
+  "audit_hash_deterministic_x2": "PASS",
+  "audit_serialization": "PASS",
+  "authority_copy_local_derivation": "PASS",
+  "candidate_model_validate": "PASS",
+  "engineering_metrics": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "freeze_state": "FROZEN",
+  "full_success_tail_offline_sha256": "128f00587f43481568e75ae62f76cdcf35eac5250c269b32e5a199f50c1a2fd0",
+  "local_terminal": "PASS",
+  "normalized_reasoning_plus_visible_final": "PASS",
+  "overall_status": "exact",
+  "quality_capture": "PASS",
+  "schema": "Slice1PhaseBV5FullSuccessTailOfflineV1",
+  "structured_json_extraction": "PASS",
+  "synthetic_only": true,
+  "validator_status": "PASS",
+  "version": 1,
+  "visible_text_extraction": "PASS",
+  "write_json_reached": "PASS"
+}

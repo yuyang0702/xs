@@ -1,0 +1,31 @@
+{
+  "audit_schema_weakened": false,
+  "audit_serialization_sha256": "ac37cdd64d1660195bce25a91cc76c3b425cde56ada5e5d915a96b1cd3d8aa21",
+  "audit_type": "novel_flywheel.generated_artifacts.ArtifactConversionAudit",
+  "dataclass": false,
+  "exception_swallowed": false,
+  "field_deletion_count": 0,
+  "field_insertion_count": 0,
+  "field_names": [
+    "contract_name",
+    "contract_version",
+    "raw_sha256",
+    "canonical_sha256",
+    "method",
+    "transformations",
+    "quarantined_paths",
+    "candidate_count",
+    "semantic_valid",
+    "failure_code"
+  ],
+  "field_set_sha256": "f9dbae0edfdc88a1810eb681bf0124ede3e682708673c98d74b62006e33e0cb6",
+  "generic_serialization_fallback_added": false,
+  "privacy_surface_increase": false,
+  "pydantic_base_model": true,
+  "schema": "Slice1PhaseBV5AuditSerializationContractV1",
+  "semantic_field_diff_count": 0,
+  "source_serializer": "dataclasses.asdict",
+  "target_output_type": "dict[str, JSON-safe value]",
+  "target_serializer": "conversion.model_dump(mode=\"json\")",
+  "version": 1
+}

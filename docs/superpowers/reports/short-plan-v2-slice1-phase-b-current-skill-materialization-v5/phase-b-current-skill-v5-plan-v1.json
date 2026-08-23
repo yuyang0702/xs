@@ -1,0 +1,25 @@
+{
+  "approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_AUDIT_SAFE_SINGLE_DISPATCH_V5_ONLY",
+  "cohort_id": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "execution_authorized": false,
+  "execution_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "materialization_head": "8212ba01021e16d7bfb9761e3b5c072bfc562835",
+  "materialization_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5",
+  "plan_sha256": "098f503e1dc4bab8e79e98c59dc3bfd93917cb147c2318840ccf554b48896772",
+  "profile_id": "SLICE1_PHASE_B_CURRENT_SKILL_AUDIT_SAFE_PACKET_V5",
+  "schema": "Slice1PhaseBV5PlanV1",
+  "shadow_only": true,
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 1
+}

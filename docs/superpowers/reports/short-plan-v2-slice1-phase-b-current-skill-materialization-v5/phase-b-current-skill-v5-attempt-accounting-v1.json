@@ -1,0 +1,16 @@
+{
+  "attempt_accounting_sha256": "6fec329c79c14758f2e262e306ec7b2d1997f14a7d8c9cab70774d3f922b31e1",
+  "enforcement_boundary": "HttpProvider._before_http_post_attempt before client.post/client.stream",
+  "hard_max_http_post_attempts": 1,
+  "hard_max_model_logical_calls": 1,
+  "hard_max_network_request_attempts": 1,
+  "hard_max_real_provider_request_attempts": 1,
+  "http_post_attempt_definition": "one entry past HttpProvider._before_http_post_attempt",
+  "model_logical_call_definition": "one explicit AnthropicAdapter complete invocation",
+  "network_request_attempt_definition": "the same guarded outbound HTTP POST attempt boundary",
+  "post_hoc_count_only": false,
+  "real_provider_request_attempt_definition": "one pre-authorized call to httpx AsyncClient POST/stream POST",
+  "schema": "Slice1PhaseBAttemptAccountingContractV1",
+  "transport_guard_sha256": "63add173ee1f6622f566e73ab85270c6f949def14678341d7c882b0c1a4fef1c",
+  "version": 1
+}

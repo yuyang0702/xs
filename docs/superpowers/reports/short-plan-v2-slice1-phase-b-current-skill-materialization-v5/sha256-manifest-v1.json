@@ -1,0 +1,125 @@
+{
+  "cohort_id": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5",
+  "file_count": 22,
+  "files": [
+    {
+      "bytes": 171,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/README.md",
+      "sha256": "532f826c442a9fea1f8316f5434ba41ce547f46e4db6e3811102b06c80916d1c"
+    },
+    {
+      "bytes": 1553,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-ab-lock-v1.json",
+      "sha256": "eb8d9fcce5c577f803cc16f1aa11f985e4bebd30acaa9b7f654dc472248df2e7"
+    },
+    {
+      "bytes": 3103,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-approval-template-v1.json",
+      "sha256": "c0460e0c9b0e0116c8f07b3bccd7a838d5841097ba229b57667e14f3898ce500"
+    },
+    {
+      "bytes": 951,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-attempt-accounting-v1.json",
+      "sha256": "43a8578e37cd6e5b841ebbfda36272b952468e7252bb8a69bbfb58ebf80895e9"
+    },
+    {
+      "bytes": 1042,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-audit-serialization-binding-v1.json",
+      "sha256": "68807b451bf2013db1d7c0e7f93b71e520b9115741ae5ef71c0c03aec5060b24"
+    },
+    {
+      "bytes": 2472,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-authority-binding-v1.json",
+      "sha256": "f10e7e89d7a64d9e80af2ba0f93fce939f54d5d154a0980fd40083fc04d6b934"
+    },
+    {
+      "bytes": 980,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-authority-tuple-normalization-v1.json",
+      "sha256": "7eb05adda39d7d7e86e75c4348d90c5e8f76fc3422dbceddae4d97af7951bbd8"
+    },
+    {
+      "bytes": 1203,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-budget-v1.json",
+      "sha256": "2d39bc47d9798b07a00df356c1dc7eff3d90a5275039b997bf70986a25c9364f"
+    },
+    {
+      "bytes": 1245,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-final-report-v1.md",
+      "sha256": "fe2dac8d4246000333b2463e27aefeb3130681f3a57338a3cba8381eabc7281d"
+    },
+    {
+      "bytes": 1058,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-full-success-tail-offline-v1.json",
+      "sha256": "e822272543defaec6e111ed7d805ecb7ca56655b61ca18f737cc0916ad755bbe"
+    },
+    {
+      "bytes": 3473,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-launcher-binding-v1.json",
+      "sha256": "dd7d1d1f4e01ba50853ddf48e2ec189b7d821d5f6e1171fb497267cdd70cf80d"
+    },
+    {
+      "bytes": 1465,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-model-input-binding-v1.json",
+      "sha256": "a42236e1213ce1eb2a26c3e0a573a2add3a3bfe2829c7b271c0619713f77b9e0"
+    },
+    {
+      "bytes": 1097,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-offline-test-receipt-v1.json",
+      "sha256": "b069d6a55973aa87094d839b9273f7b90ce36fe23be5daba705a78b59082d678"
+    },
+    {
+      "bytes": 821,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-old-approval-nonreuse-v1.json",
+      "sha256": "cf1738ca66d803b3d192c9b4b10e947a4aab1955c04d2d8c0ca50a67b76e1cc1"
+    },
+    {
+      "bytes": 1053,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-output-isolation-v1.json",
+      "sha256": "8392223f4d7a66dbc55779752e9a6b415fae61d4c00a2c30d37069b9073d2ee9"
+    },
+    {
+      "bytes": 1107,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-plan-v1.json",
+      "sha256": "f15c8543468645dfc95dd52b4aa7597eb9e6d4354fd67b311f4ef4009a3fadbc"
+    },
+    {
+      "bytes": 583,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-privacy-scan-v1.json",
+      "sha256": "9073afc74eb015ebfd80ebe64a7c25a6eba42bb62872ecbb5c7ef2bf10a59ae9"
+    },
+    {
+      "bytes": 1082,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-quality-capture-v1.json",
+      "sha256": "572cbf1a78bf6ca22aafd7d29a64ce1567be93c8632148cb26d6d86759f4f453"
+    },
+    {
+      "bytes": 2475,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-route-binding-v1.json",
+      "sha256": "d929e24c698210f18b8ee44f40f60b6378181078f134e2255c4072034ff9d931"
+    },
+    {
+      "bytes": 3637,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+      "sha256": "6f5ba808d3888630c5a38950d4c966ed3167b79452183d44311997311c6ef454"
+    },
+    {
+      "bytes": 1923,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-transport-guard-binding-v1.json",
+      "sha256": "121ba27cef4d23aafc89a7e7c8b53888c18203b63d6c5a4d854c513c0aa92cf9"
+    },
+    {
+      "bytes": 1388,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-workload-v1.json",
+      "sha256": "3f4d391d4ccf55d6226851b4751988f93c35ff739c5c52b95efc044b2c515d35"
+    }
+  ],
+  "launcher_artifact_count": 1,
+  "manifest_definition_sha256": "71f5c39241b53328e5dfde01adb928f3a2c6e185c5f2d4df2cd23080b0bd3938",
+  "materialization_head": "8212ba01021e16d7bfb9761e3b5c072bfc562835",
+  "overall_status": "exact",
+  "profile_id": "SLICE1_PHASE_B_CURRENT_SKILL_AUDIT_SAFE_PACKET_V5",
+  "schema": "Slice1PhaseBV5SHA256ManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}

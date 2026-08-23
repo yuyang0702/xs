@@ -1,0 +1,18 @@
+{
+  "old_approval_nonreuse_sha256": "386c0730b616fbf3e8eee45c8e42a3226e288c0c972d4c275aae58e834b7f9cf",
+  "previous_v2_approval_head": "85f5dc94b8aa218fbea3d12c617956eef4b2b505",
+  "previous_v2_approval_reuse_allowed": false,
+  "previous_v2_nonce_reuse_allowed": false,
+  "previous_v2_nonce_state": "SPENT_CONSUMED",
+  "previous_v4_approval_head": "41bef987213aa89ab9ae786805f1695b4c4b2d04",
+  "previous_v4_approval_reuse_allowed": false,
+  "previous_v4_approval_state": "SPENT_NON_REUSABLE",
+  "previous_v4_nonce_reuse_allowed": false,
+  "previous_v4_nonce_state": "SPENT_CONSUMED",
+  "previous_v4_real_request_count": 1,
+  "previous_v4_second_request_allowed": false,
+  "schema": "Slice1PhaseBV5OldApprovalNonReuseV1",
+  "v3_failed_approval_created": false,
+  "v3_failed_approval_nonce_issued": false,
+  "version": 1
+}
