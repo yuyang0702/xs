@@ -1,0 +1,11 @@
+{
+  "attempt_accounting_sha256": "5aed8a78389e033c6df30f3eda90c2292a2a681b4f2f3c419d700152e21dcee2",
+  "guard_policy_sha256": "c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d",
+  "max_http_post_attempts": 1,
+  "max_real_provider_request_attempts": 1,
+  "schema": "Slice1PhaseBV3TransportGuardBindingV1",
+  "sdk_retries_disabled": true,
+  "transport_guard_sha256": "0dc957fb61aeecec8acac3e16bdaca9acbeb14aca4a497f844acdeb34f704c6e",
+  "transport_retries_disabled": true,
+  "version": 1
+}

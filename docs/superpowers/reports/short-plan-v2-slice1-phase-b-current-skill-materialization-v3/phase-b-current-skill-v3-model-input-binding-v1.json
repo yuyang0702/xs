@@ -1,0 +1,22 @@
+{
+  "authority_context_sha256": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+  "contract_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+  "current_skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "current_skill_profile_sha256": "4a9fd1d20c248ed3dae1815eb99605b094842d1e953e96d31d6ba7d1a4bf52c6",
+  "deterministic_instruction_sha256": "553d100079a2c85948b02c10ebdb118365574445d46b51d4c9ccc8d30fd8b635",
+  "estimated_input_tokens": 2625,
+  "model_input_assembly_sha256": "8b94aab84342063b6f172f21a68feb5d21bf132857d8aae1fe6685c0dc720725",
+  "observer_state": "PTR12_REQUIRED_ENABLED",
+  "output_parser": "GeneratedArtifactGateway+EventRealizationCandidateV1",
+  "raw_prompt_persisted": false,
+  "raw_skill_content_persisted": false,
+  "raw_story_persisted": false,
+  "retry_repair_prompt_policy": "NO_MODEL_REPAIR_IN_BASELINE_SMOKE_V1",
+  "route_selection_inputs_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+  "schema": "Slice1PhaseBModelInputAssemblyV1",
+  "system_sha256": "233dff0a6301d47f6f4087222a3b4ca65f1e4c64c4b9bf15bc939b3874e56aba",
+  "system_template_sha256": "4dde7879827b6ecb225f5d4eef094152d91107d70213a24661280ae6901dcc4c",
+  "user_sha256": "fa982f3e661793fb1a563126096cdbe8be434a1d281f464cd9693aec6f44807a",
+  "validator_bundle_sha256": "a41e1918b26cc23414067c162142b78166838a61a7fee04a114d9fbf034d6f83",
+  "version": 1
+}

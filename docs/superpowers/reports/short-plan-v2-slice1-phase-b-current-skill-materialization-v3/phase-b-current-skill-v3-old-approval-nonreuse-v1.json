@@ -1,0 +1,7 @@
+{
+  "previous_approval_head": "85f5dc94b8aa218fbea3d12c617956eef4b2b505",
+  "previous_approval_reuse_allowed": false,
+  "previous_nonce_state": "SPENT_CONSUMED",
+  "schema": "Slice1PhaseBV3OldApprovalNonReuseV1",
+  "version": 1
+}

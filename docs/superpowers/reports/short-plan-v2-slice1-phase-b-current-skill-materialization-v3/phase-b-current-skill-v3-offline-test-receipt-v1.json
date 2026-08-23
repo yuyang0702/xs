@@ -1,0 +1,26 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "combined_regression": "170 passed",
+  "focused": "41 passed",
+  "authority_tuple_normalization": "PASS",
+  "materialize_rehydrate_model_validate": "PASS",
+  "model_input_deterministic_x2": "PASS",
+  "model_validate": "PASS",
+  "old_approval_rejected": "PASS",
+  "old_consumed_nonce_rejected": "PASS",
+  "single_dispatch_transport_guard": "PASS",
+  "skill_resolution_deterministic_x2": "PASS",
+  "overall_status": "exact",
+  "related": "129 passed + R0F 85 passed",
+  "schema": "Slice1PhaseBV3OfflineTestReceiptV1",
+  "semantic_diff_count": 0,
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "version": 1
+}

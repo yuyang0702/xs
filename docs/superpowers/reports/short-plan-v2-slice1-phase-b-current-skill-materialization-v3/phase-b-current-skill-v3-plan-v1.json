@@ -1,0 +1,12 @@
+{
+  "authority_tuple_normalization_sha256": "6775a251e3fece7225e4ddb2a780e18ceccb5a3ccfff785004837a44dbc5805a",
+  "cohort_id": "slice1-phase-b-current-skill-tuple-v3-20260823t121634z-001",
+  "execution_authorized": false,
+  "materialization_head": "49dcfaa8f37093ee71281367d842b4a00e3cfec6",
+  "plan_sha256": "5f23bc9744ae1ceb8eec42e7ae10f86a09207108a6cdd4f09bdd1cade6d96b3b",
+  "schema": "Slice1PhaseBCurrentSkillV3PlanV1",
+  "shadow_only": true,
+  "single_dispatch": true,
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 1
+}

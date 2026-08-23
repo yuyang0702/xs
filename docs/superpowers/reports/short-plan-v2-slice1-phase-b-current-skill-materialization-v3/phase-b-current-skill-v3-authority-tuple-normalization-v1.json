@@ -1,0 +1,38 @@
+{
+  "accepted_source_containers": [
+    "list",
+    "tuple"
+  ],
+  "authority_tuple_normalization_sha256": "6775a251e3fece7225e4ddb2a780e18ceccb5a3ccfff785004837a44dbc5805a",
+  "canonical_container_type": "tuple",
+  "deduplication": false,
+  "deletion_count": 0,
+  "fields": [
+    "formal_event_ids",
+    "segment_event_ids",
+    "dependency_artifact_ids",
+    "required_obligation_ids"
+  ],
+  "identity_preserved": true,
+  "insertion_count": 0,
+  "multiplicity_preserved": true,
+  "order_preserved": true,
+  "owner": "normalize_event_realization_input_authority_v1",
+  "pydantic_model_weakened": false,
+  "rejected_containers": [
+    "str",
+    "bytes",
+    "dict",
+    "set",
+    "frozenset",
+    "generator",
+    "arbitrary_iterable",
+    "null"
+  ],
+  "reorder_count": 0,
+  "schema": "Slice1AuthorityTupleNormalizationV1",
+  "sorting": false,
+  "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+  "value_mutation_count": 0,
+  "version": 1
+}
