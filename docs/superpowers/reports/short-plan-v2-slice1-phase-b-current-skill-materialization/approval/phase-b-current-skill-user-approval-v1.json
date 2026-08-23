@@ -1,0 +1,36 @@
+{
+  "approval_parent_head": "fe018ad17507d7a922f6f2e78c03f1d28cc4342a",
+  "approval_reuse_allowed": false,
+  "authorization_kind": "explicit_single_use_user_approval",
+  "authorization_source_sha256": "65af0e6aa6e073827d2aa730b22172c52edaa7e077262f076225d2893a0e3c0b",
+  "authorized_execution_count": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "cohort_id": "slice1-phase-b-current-skill-033867472f23-001",
+  "current_task_execution_prohibited": true,
+  "explicitly_forbidden": {
+    "canon_mutation": true,
+    "draft": true,
+    "final_review": true,
+    "full_short": true,
+    "maintenance": true,
+    "planning_v2_cutover": true,
+    "ready_mutation": true,
+    "second_run": true,
+    "skill_v2": true,
+    "story_state_mutation": true
+  },
+  "hard_budget": {
+    "hard_max_elapsed_seconds": 900,
+    "hard_max_input_tokens": 32768,
+    "hard_max_model_calls": 1,
+    "hard_max_output_tokens": 4624
+  },
+  "materialization_manifest_sha256": "11baf7f7d8dcc370949a7426fcb4772401776253686f83aca8e9d63765999e52",
+  "named_approver": "USER_PROJECT_OWNER",
+  "next_task": "SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_EXECUTE_ONCE",
+  "raw_authorization_content_persisted": false,
+  "schema": "Slice1PhaseBCurrentSkillUserApprovalV1",
+  "scope": "SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_ONLY",
+  "user_approval_sha256": "5d83d2db3058ed694c7795bba407a47088340af2cf8885abcdf7030258c8c3ba",
+  "version": 1
+}

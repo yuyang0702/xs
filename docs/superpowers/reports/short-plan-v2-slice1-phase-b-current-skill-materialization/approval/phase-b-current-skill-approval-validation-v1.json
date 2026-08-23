@@ -1,0 +1,68 @@
+{
+  "approval_validation_sha256": "ad5c7993d19a0f674c8ed60c93eced1ecfbc9b39d622f24646a3f81ead18231c",
+  "clean_head_signed_launch_gate": {
+    "credential_lookup_allowed_only_after_gate": true,
+    "hard_max_model_calls": 1,
+    "provisional_seal_head": "33e655f7ebd195b17fd33d3cdb9d06a63134ac00",
+    "provider_client_creation_allowed_only_after_gate": true,
+    "status": "exact"
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "full_offline_suite": {
+    "errors": 46,
+    "failed": 22,
+    "non_green_classification": "existing expired_consumed_or_fixed_head_canary_materialization_gates, historical PTR4/PTR3 parent gates, Planning Skill historical oracle, and R0E live-parity fixed hash; no approval-scope core failure",
+    "passed": 3247,
+    "skipped": 41,
+    "xfailed": 6
+  },
+  "overall_status": "exact",
+  "parent_head": "fe018ad17507d7a922f6f2e78c03f1d28cc4342a",
+  "related_offline_matrix": {
+    "errors": 15,
+    "failed": 2,
+    "non_green_classification": "Planning Skill diagnostics reject the evidence-only HEAD successor at their historical fixed-HEAD gate",
+    "passed": 119
+  },
+  "schema": "Slice1PhaseBCurrentSkillApprovalValidationV1",
+  "tests": [
+    {"case": "exact_head_and_complete_signed_approval_accepted", "status": "PASS"},
+    {"case": "wrong_head_rejected", "status": "PASS"},
+    {"case": "wrong_cohort_rejected", "status": "PASS"},
+    {"case": "wrong_current_skill_profile_rejected", "status": "PASS"},
+    {"case": "wrong_model_input_assembly_rejected", "status": "PASS"},
+    {"case": "wrong_route_model_rejected", "status": "PASS"},
+    {"case": "changed_budget_rejected", "status": "PASS"},
+    {"case": "changed_output_isolation_rejected", "status": "PASS"},
+    {"case": "changed_ptr12_binding_rejected", "status": "PASS"},
+    {"case": "missing_named_approver_rejected", "status": "PASS"},
+    {"case": "missing_nonce_rejected", "status": "PASS"},
+    {"case": "reused_nonce_rejected", "status": "PASS"},
+    {"case": "full_short_authorization_rejected", "status": "PASS"},
+    {"case": "draft_authorization_rejected", "status": "PASS"},
+    {"case": "final_review_authorization_rejected", "status": "PASS"},
+    {"case": "maintenance_authorization_rejected", "status": "PASS"},
+    {"case": "skill_v2_authorization_rejected", "status": "PASS"},
+    {"case": "planning_v2_authorization_rejected", "status": "PASS"},
+    {"case": "story_state_authorization_rejected", "status": "PASS"},
+    {"case": "canon_authorization_rejected", "status": "PASS"},
+    {"case": "ready_authorization_rejected", "status": "PASS"},
+    {"case": "second_run_rejected", "status": "PASS"},
+    {"case": "approval_reuse_rejected", "status": "PASS"},
+    {"case": "tampered_self_hash_rejected", "status": "PASS"}
+  ],
+  "test_count": 24,
+  "focused_pytest": {
+    "passed": 21,
+    "test_file": "tests/canary/test_slice1_phase_b_current_skill_materialization.py"
+  },
+  "validation_boundary": "all checks complete before credential lookup; clean sealed HEAD launch-gate replay required after commit",
+  "version": 1
+}

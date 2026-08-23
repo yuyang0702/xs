@@ -1,0 +1,53 @@
+{
+  "algorithm": "sha256",
+  "byte_domain": "exact_file_bytes",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "file_count": 6,
+  "files": [
+    {
+      "bytes": 3527,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval/phase-b-current-skill-approval-binding-v1.json",
+      "sha256": "077bf7d11bef2e30ee67adb4c41b5d3bb4ccb169e07c5b5696f5b794631111dd"
+    },
+    {
+      "bytes": 627,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval/phase-b-current-skill-approval-privacy-scan-v1.json",
+      "sha256": "9d9aeed271640ec2e930083309fc570ce1f817c7f023123f5a4293fa820bf4eb"
+    },
+    {
+      "bytes": 3223,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval/phase-b-current-skill-approval-validation-v1.json",
+      "sha256": "260377c644c869363120a985cd68d6db3c67d2b345c7987cdad034606540d02b"
+    },
+    {
+      "bytes": 3612,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval/phase-b-current-skill-signed-authorization-v1.json",
+      "sha256": "11ae7fcd1c432df12b9ab14f75d14bade19e40a8900b9b0c01acd00321b87470"
+    },
+    {
+      "bytes": 1425,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval/phase-b-current-skill-user-approval-v1.json",
+      "sha256": "5e75cfaca6eab6254260b1036b8c0d1e7f5e3cd0793deee7fc5741c397a73311"
+    },
+    {
+      "bytes": 496,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/approval/README.md",
+      "sha256": "3a313f3c30016f62c71ed99e74fc95636d613956cbe2df8015ab7c5242aa5560"
+    }
+  ],
+  "inclusion_rule": "all direct regular files except sha256-manifest-v1.json",
+  "manifest_definition_sha256": "6612aab8f6b8e607c85d2cef4f6308db9d400abc2ac3efd7765727f60327fae5",
+  "overall_status": "exact",
+  "path_basis": "repository-relative-posix",
+  "schema": "Slice1PhaseBCurrentSkillApprovalSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}
