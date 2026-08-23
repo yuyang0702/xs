@@ -1982,3 +1982,13 @@ preserves order, multiplicity, and values exactly, recursively normalizes
 segment groups, and rejects strings, mappings, sets, lazy iterators, and null.
 The Pydantic authority schema and all Planning, Skill, Provider, retry, and
 formal-write semantics remain unchanged.
+### Versioned Slice1 Phase B launcher binding
+
+The tuple-normalized CURRENT-Skill Phase B experiment uses a packet-exact v4
+launcher profile. Its scope, cohort, materialization root, execution root,
+approval path, and nonce-ledger schema are a closed allowlist defined by
+`tools.canary.slice1_phase_b_v4_single_dispatch`; unknown or mixed packet
+bindings fail before nonce reservation. The historical v2 launcher and sealed
+v2/v3 evidence remain immutable. This profile does not change production
+transport retries, model routing, prompts, planning semantics, StoryState, or
+Canon authority.
