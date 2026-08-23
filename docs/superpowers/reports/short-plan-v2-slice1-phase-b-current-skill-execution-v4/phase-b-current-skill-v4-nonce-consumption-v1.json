@@ -1,0 +1,16 @@
+{
+  "approval_cohort_reuse_allowed": false,
+  "approval_reuse_allowed": false,
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "final_state": "spent_consumed",
+  "initial_state": "unused_unreserved_unconsumed",
+  "nonce_consumption_sha256": "d0d8250e42c4db28e7c7de7731ea8cb78814792fea68994a3afc15873362255b",
+  "nonce_sha256": "c2f6bcf04294bc0897bce33a23b8d595e19ea3fbbcc831912ee5067979c648a3",
+  "reservation_result": "reserved_after_exact_preflight",
+  "resume_with_same_approval": false,
+  "schema": "Slice1PhaseBV4NonceConsumptionV1",
+  "second_run_with_same_approval": false,
+  "single_use_nonce_unconsumed": false,
+  "single_use_nonce_unreserved": false,
+  "version": 1
+}

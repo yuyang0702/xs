@@ -1,0 +1,79 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4",
+  "file_count": 13,
+  "files": [
+    {
+      "bytes": 721,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/README.md",
+      "sha256": "182b1f997aa566c7438fb1279b7f5fb46b8e8aeef96cee4b1dff0ef45a1e7ff8"
+    },
+    {
+      "bytes": 778,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/ledger/single-use-ledger-v1.json",
+      "sha256": "f31cb0cae34440335854569bdaa082d13c7ceb65e39733205ea6a4f2e0ac342c"
+    },
+    {
+      "bytes": 939,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-engineering-metrics-v1.json",
+      "sha256": "7881b40cc4be3d6c91353fdbf7a4830f1cd0e751cdc21eda49b2817a079dd1d3"
+    },
+    {
+      "bytes": 1534,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-execution-receipt-v1.json",
+      "sha256": "37deeb7cb40b02dccaecbdc57a0dada6313404e7a22dfa0c5cf04245e69a6848"
+    },
+    {
+      "bytes": 1844,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-final-report-v1.md",
+      "sha256": "7a4b07176c6059a1110f978af3d92daf3a45d43acde761e1fcb9cf19e1cc61b4"
+    },
+    {
+      "bytes": 728,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-nonce-consumption-v1.json",
+      "sha256": "96bbdc9602f9337cb37a6b09ff7893b88bdea619f3f9b3434756fa7bce5dfc53"
+    },
+    {
+      "bytes": 888,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-output-isolation-v1.json",
+      "sha256": "6ca979134c8b8ef8739a45dba5234120f7431181310fe75e996a75eda77d9c38"
+    },
+    {
+      "bytes": 719,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-privacy-scan-v1.json",
+      "sha256": "0dd1928daa6a33560782b3ddd1311e4a1a067aaeda1a0ab8ef67665cd60a2ca4"
+    },
+    {
+      "bytes": 1000,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-provider-attempt-accounting-v1.json",
+      "sha256": "894c22b0a3217620bdd06ea0695822c9693fa2c02891c80a1ff917447a9c6ecd"
+    },
+    {
+      "bytes": 2179,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-provider-observation-v1.json",
+      "sha256": "543b8f16f56360df42e42753b6f32e71cefe2113dd3a2f644e7d61b2bcdf1ccd"
+    },
+    {
+      "bytes": 1310,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-quality-baseline-v1.json",
+      "sha256": "fe04d6bd8eaa1acc3629b1428f3721206d4f31c1ab0724e5a88b66e8dfef5466"
+    },
+    {
+      "bytes": 1480,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/phase-b-current-skill-v4-validation-result-v1.json",
+      "sha256": "04e3bb41544f67c4a1d21cf345cd3b03cb93612bd0b66d6e0989fd7b6eb2fa55"
+    },
+    {
+      "bytes": 3751,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4/ptr12/reliability-trace-v1.jsonl",
+      "sha256": "51fe26ba2b83ac6ee838dc673fdae68c9dbe9851fb792f2c92188f305c090648"
+    }
+  ],
+  "manifest_definition_sha256": "5227f5476c6c7066197ab3e4ddd8ea0346913a3aa04ddda44921dbc1ed378e54",
+  "overall_status": "exact",
+  "schema": "Slice1PhaseBV4ExecutionSHA256ManifestDefinitionV1",
+  "self_excluded": true,
+  "start_head": "41bef987213aa89ab9ae786805f1695b4c4b2d04",
+  "version": 1
+}

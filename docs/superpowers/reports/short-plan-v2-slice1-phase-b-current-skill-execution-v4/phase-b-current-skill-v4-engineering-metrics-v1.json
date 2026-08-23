@@ -1,0 +1,21 @@
+{
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "cost_cny": "UNKNOWN_LOCAL_PRICE_NOT_TRUSTED",
+  "cost_usd": "UNKNOWN_LOCAL_PRICE_NOT_TRUSTED",
+  "effective_route_cap": 4624,
+  "elapsed_seconds": "16.325928",
+  "engineering_metrics_sha256": "f9f568730b0b43f060578b04da8cb146cd9709a3a3b1b8ac22334bf2b304b51b",
+  "finish_reason": "NOT_MAX_TOKENS_EXACT_VALUE_UNAVAILABLE",
+  "http_post_attempts": 1,
+  "input_tokens": "UNKNOWN_NOT_EXPOSED_IN_PERSISTED_HASH_ONLY_RECEIPT",
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "output_tokens": "UNKNOWN_NOT_EXPOSED_IN_PERSISTED_HASH_ONLY_RECEIPT",
+  "provider_accepted_cap": "UNKNOWN",
+  "provider_exposed_final_tokens": "UNKNOWN",
+  "provider_exposed_reasoning_tokens": "UNKNOWN",
+  "real_provider_request_attempts": 1,
+  "requested_max_output_tokens": 4624,
+  "schema": "Slice1PhaseBV4EngineeringMetricsV1",
+  "version": 1
+}

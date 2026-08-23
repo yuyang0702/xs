@@ -1,0 +1,33 @@
+{
+  "approval_reuse_allowed": false,
+  "approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_TUPLE_NORMALIZED_SINGLE_DISPATCH_V3_ONLY",
+  "approval_validity": "exact_active_at_reservation",
+  "attempts": {
+    "http_post_attempts": 1,
+    "model_logical_calls": 1,
+    "network_request_attempts": 1,
+    "real_provider_request_attempts": 1
+  },
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "execution_completed_at_utc": "2026-08-23T16:12:21.711597Z",
+  "execution_receipt_sha256": "462c28b6735561ec64ba19d262f4b86cc27e82d46da3d238e8c286a14587782a",
+  "execution_started_at_utc": "2026-08-23T16:12:05.385669Z",
+  "full_short_canary": "NOT_EXECUTED",
+  "launcher_error_class": "TypeError",
+  "launcher_error_message_sha256": "b0765aa80a001070478e477edd5f18f37a7d61d14a1fe38eb42783da0d2cde38",
+  "no_automatic_fix": true,
+  "nonce_final_state": "spent_consumed",
+  "nonce_reserved": true,
+  "outer_credential_network_permission_gate": "PASS_EXPLICIT_CURRENT_CHAT_AUTHORIZATION",
+  "pre_dispatch_validation": "exact",
+  "real_provider_probe": "EXECUTED_ONCE",
+  "resume_after_terminal": false,
+  "schema": "Slice1PhaseBV4ExecutionReceiptV1",
+  "second_run_allowed": false,
+  "single_dispatch_transport_guard": "PASS",
+  "skill_v2_profile_active": false,
+  "start_head": "41bef987213aa89ab9ae786805f1695b4c4b2d04",
+  "terminal_classification": "PHASE_B_BASELINE_PROTOCOL_OR_PARSE_FAILURE",
+  "version": 1
+}
