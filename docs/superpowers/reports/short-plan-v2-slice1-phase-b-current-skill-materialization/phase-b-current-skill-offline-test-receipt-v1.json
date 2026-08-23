@@ -1,0 +1,40 @@
+{
+  "approval_execution_authorized": false,
+  "approval_named_approver": null,
+  "baseline_head_binding": "exact",
+  "budget_hard_cap": "bound",
+  "call_graph_finite": true,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "model_input_assembly": "deterministic",
+  "output_isolation": "exact",
+  "ptr12_final_binding": "exact",
+  "pytest_result": {
+    "focused_and_adjacent": "74 passed",
+    "focused_phase_b": "20 passed",
+    "deterministic_full_packet_build": "2 runs, 17 documents each, exact bytes and metadata",
+    "full_canary_matrix": "339 passed, 2 skipped, 19 failed, 31 errors",
+    "full_canary_non_green_attribution": "historical fixed-HEAD, consumed/expired approval, old materialization parent, and sealed successor gates; no Phase B test failed",
+    "materialized_packet_validate_only": "exact",
+    "task_blocking_failure_count": 0
+  },
+  "route_model_binding": "exact",
+  "schema": "Slice1PhaseBCurrentSkillOfflineTestReceiptV1",
+  "skill_resolution_deterministic": true,
+  "skill_resolution_runs": 2,
+  "status": "exact",
+  "strict_l3_result": {
+    "status": "PASS",
+    "warnings": 0,
+    "blockers": 0,
+    "code_and_test_gate": "PASS before implementation commit",
+    "evidence_gate": "PASS after materialization"
+  },
+  "version": 1
+}

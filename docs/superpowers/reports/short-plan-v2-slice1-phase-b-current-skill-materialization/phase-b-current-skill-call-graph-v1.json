@@ -1,0 +1,25 @@
+{
+  "call_graph_sha256": "63d3005e1b120f956bfc99d7ac0cdc9bc9189baa6f7548a776d1ac19b44bcc03",
+  "derivation": "planning_v2_slice1 exposes no Provider or model retry path; the narrow Phase B wrapper adds exactly one initial shadow call and no repair calls",
+  "duplicate_dispatch_allowed": false,
+  "duplicate_prevention": "exclusive single-use nonce reservation plus hard call ordinal <= 1",
+  "expected_model_calls": 1,
+  "hard_max_model_calls": 1,
+  "initial_creative_call_count": 1,
+  "max_model_calls_per_case": 1,
+  "max_repair_calls_per_case": 0,
+  "no_progress_stop_rule": "first_non_pass_is_terminal_for_this_baseline",
+  "offline_recovery_functions_are_model_calls": false,
+  "recovery_escalation_sequence": [
+    "single_primary_creative_dispatch",
+    "deterministic_generated_artifact_conversion",
+    "slice1_validator_bundle",
+    "freeze_exact_pass_or_typed_terminal_failure"
+  ],
+  "schema": "Slice1PhaseBCallGraphV1",
+  "targeted_model_repair_calls": [],
+  "unbounded_retry_allowed": false,
+  "version": 1,
+  "whole_planning_regeneration_allowed": false,
+  "whole_slice_regeneration_model_call_count": 0
+}

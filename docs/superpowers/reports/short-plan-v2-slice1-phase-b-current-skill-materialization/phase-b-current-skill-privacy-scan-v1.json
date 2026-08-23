@@ -1,0 +1,23 @@
+{
+  "absolute_path_match_count": 0,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "materialization_privacy_match_count": 0,
+  "overall_status": "exact",
+  "private_request_id_count": 0,
+  "raw_prompt_field_count": 0,
+  "raw_provider_content_match_count": 0,
+  "raw_skill_content_field_count": 0,
+  "raw_user_production_story_field_count": 0,
+  "scanned_file_count": 16,
+  "schema": "Slice1PhaseBCurrentSkillPrivacyScanV1",
+  "secret_value_match_count": 0,
+  "version": 1,
+  "violating_files": []
+}

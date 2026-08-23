@@ -1,0 +1,43 @@
+{
+  "baseline_head": "033867472f23535ce2abc685934fd2a2b8e63586",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0
+  },
+  "fallback_policy_changed": false,
+  "full_short_canary": "NOT_EXECUTED",
+  "materialization_head": "2c671259d6397104ae1205e6baac8ec9c098ab52",
+  "materialization_only": true,
+  "phase_b_status": "NOT_STARTED",
+  "plan_sha256": "158d8ee6b516b5b08247d06e9d10e6ccc91f47f15f81b48c99b1b513d791caaa",
+  "planning_v1_changed": false,
+  "planning_v1_production_authority": true,
+  "planning_v2_changed": false,
+  "production_source_changed": false,
+  "prompt_changed": false,
+  "ptr12_final_acceptance": {
+    "completed_shards": 3,
+    "evidence_seal_head": "033867472f23535ce2abc685934fd2a2b8e63586",
+    "final_decision_sha256": "6aed7918ffaee8eb373007bbd89f8fa7637c97cf5801b1cf3eee3b56a8e78a27",
+    "manifest_definition_sha256": "323d45d90cf2da7f8753a46c1bb35159cd2f83014fb9f7138300ffd10a1c9466",
+    "manifest_sha256": "78b637fac9227447e604e497f327616e23a5d2b3f03dbc30e790ed30eb1b3101",
+    "phase_b_ready": true,
+    "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+    "split_review_pass": true,
+    "status": "exact"
+  },
+  "retry_policy_changed": false,
+  "route_model_changed": false,
+  "schema": "Slice1PhaseBCurrentSkillPlanV1",
+  "scope": "SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_ONLY",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "skill_profile_changed": false,
+  "skill_v2_profile_active": false,
+  "slice1_phase_b_shadow_only": true,
+  "version": 1
+}
