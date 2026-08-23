@@ -1,0 +1,58 @@
+{
+  "schema": "Slice1PhaseBSingleDispatchAuthorizedProtectedSourceSuccessorV1",
+  "version": 1,
+  "phase": "SLICE1-PHASE-B-SINGLE-DISPATCH-TRANSPORT-GUARD-NARROW-FIX",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "parent_source_head": "f0f81a0d0e0a5eb596a61d9a2184111b3cb26bcc",
+  "implementation_source_head": "61767158488070d2ccd72180c02ef5c25c616c38",
+  "parent_successor": {
+    "path": "tests/fixtures/reliability/r0f/r1-ptr12-shared-capture-exhaustion-propagation-authorized-protected-source-successor-v1.json",
+    "sha256": "90d882629ff4a402ddf1bfddb5586a3579944782cca621c77d50f3aa921a9365",
+    "protected_tree_sha256": "1dffc840bd403032a0b572ed54ebc0d689bfe3db3bd45f24fc7b3b3306ba9689"
+  },
+  "implementation_protected_tree_sha256": "bb703ce0a0958b403f1099d6316d8f509e0fc6563afa076e8ee84ed11ee0598a",
+  "uncommitted_authorized_task_delta": false,
+  "authorization_scope": "Slice1 Phase B experiment-only single-dispatch transport guard",
+  "business_behavior_changed": false,
+  "protected_deltas": {
+    "business_artifacts": 0,
+    "domain_validator": 0,
+    "initial_prompt": 0,
+    "model_call_upper_bound": 0,
+    "output_budget": 0,
+    "normal_production_retry_fallback_attempt_limits": 0,
+    "route_model_identity": 0,
+    "final_artifact_capability_memory": 0,
+    "diagnostic_event_types": 0,
+    "phase_b_single_dispatch_max_model_calls": 1,
+    "phase_b_single_dispatch_max_real_provider_request_attempts": 1,
+    "phase_b_single_dispatch_max_http_post_attempts": 1,
+    "phase_b_single_dispatch_guard_status": "PASS"
+  },
+  "authorized_source_deltas": [
+    {
+      "path": "src/novel_flywheel/providers/registry.py",
+      "before_sha256": "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa",
+      "after_sha256": "93f2c8486df0d43f47ffedf3ce5a200564a85d1999e8ac55ee4705a2fbd6f1c3"
+    }
+  ],
+  "non_protected_runtime_deltas": [
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "before_sha256": "a331d07c40991215857212a0582a5ac79b8484c62b1ea925eb982a1ade9e4186",
+      "after_sha256": "f8ad414ff4a30b1725aa8a2ae2d0dec0300d530460ef5d5622b7ef2a5dfcbc73"
+    }
+  ],
+  "current_protected_sources": [
+    {"path": "src/novel_flywheel/completion_supervisor.py", "sha256": "da833d32f31e80f94c5080f6c5b6751f1bfa25033cce5ebab64d1bc939295d29"},
+    {"path": "src/novel_flywheel/contract_runtime.py", "sha256": "fb76b03fdbdd8ad8881e8f1505dd12b0f7d9291b613f97897b8c4dda84499bf5"},
+    {"path": "src/novel_flywheel/generated_artifacts.py", "sha256": "9bcd7f0bf4488b7e2f5c5d8b539eb5b70666e40b272e609ef08c87ec8f90028c"},
+    {"path": "src/novel_flywheel/long_workflow.py", "sha256": "e1a853b968838d78e6b69322a65162be1a672bb6b9f85f0ab793d0a6932f440a"},
+    {"path": "src/novel_flywheel/models.py", "sha256": "9ab2871db20df9444bccf799c0754d8ce1e3013ba66d472f54ce104b3b762856"},
+    {"path": "src/novel_flywheel/prompts.py", "sha256": "42165ac07a01fe47ad54cb97700a14d74b742f5535f2f9593116ce1d10ea52cc"},
+    {"path": "src/novel_flywheel/prose_quality.py", "sha256": "b31d292c12ae76670dabb75d4ade38d720d896097151a15e67738015898ba635"},
+    {"path": "src/novel_flywheel/provider_output.py", "sha256": "f10b5c240f046405902988b62a95e669b4a465ea4775c8ceabdca80d9725b3ab"},
+    {"path": "src/novel_flywheel/providers/registry.py", "sha256": "93f2c8486df0d43f47ffedf3ce5a200564a85d1999e8ac55ee4705a2fbd6f1c3"},
+    {"path": "src/novel_flywheel/workflows.py", "sha256": "5e9613bd7fa332cd89c0122d4fb16b4efa2d36103a96abbf53630f12ddcfd68f"}
+  ]
+}

@@ -91,6 +91,12 @@ R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR = (
     / "r1-ptr12-shared-capture-exhaustion-propagation-"
     "authorized-protected-source-successor-v1.json"
 )
+SLICE1_PHASE_B_SINGLE_DISPATCH_SUCCESSOR = (
+    Path(__file__).parent
+    / "fixtures" / "reliability" / "r0f"
+    / "slice1-phase-b-single-dispatch-"
+    "authorized-protected-source-successor-v1.json"
+)
 R1_PTR12_OBSERVER_SCHEMA = (
     "R1PTR12ObserverAuthorizedProtectedSourceSuccessorV1"
 )
@@ -181,6 +187,15 @@ R1_PTR12_SHARED_CAPTURE_EXHAUSTION_IMPLEMENTATION_HEAD = (
 )
 R1_PTR12_SHARED_CAPTURE_EXHAUSTION_PROTECTED_TREE_SHA256 = (
     "1dffc840bd403032a0b572ed54ebc0d689bfe3db3bd45f24fc7b3b3306ba9689"
+)
+SLICE1_PHASE_B_SINGLE_DISPATCH_SCHEMA = (
+    "Slice1PhaseBSingleDispatchAuthorizedProtectedSourceSuccessorV1"
+)
+SLICE1_PHASE_B_SINGLE_DISPATCH_IMPLEMENTATION_HEAD = (
+    "61767158488070d2ccd72180c02ef5c25c616c38"
+)
+SLICE1_PHASE_B_SINGLE_DISPATCH_PROTECTED_TREE_SHA256 = (
+    "bb703ce0a0958b403f1099d6316d8f509e0fc6563afa076e8ee84ed11ee0598a"
 )
 
 
@@ -788,10 +803,7 @@ def _assert_r1_ptr12_shared_capture_exhaustion_successor_exact(
         "shared_capture_exhaustion_propagation_status": "PASS",
     }
 
-    current_manifest = ptr12_bounded_capture_protected_source_manifest(
-        REPOSITORY,
-    )
-    assert successor["current_protected_sources"] == current_manifest
+    current_manifest = successor["current_protected_sources"]
     tree_sha256 = successor["implementation_protected_tree_sha256"]
     assert isinstance(tree_sha256, str)
     assert re.fullmatch(r"[0-9a-f]{64}", tree_sha256)
@@ -857,6 +869,97 @@ def _tamper_ptr12_diagnostic_context_successor(
     elif case == "wrong_after_hash":
         successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
     else:  # pragma: no cover - test data is a closed tuple below
+        raise ValueError(f"unknown tamper case: {case}")
+
+
+def _assert_slice1_phase_b_single_dispatch_successor_exact(
+    successor: dict[str, Any],
+) -> None:
+    assert successor["schema"] == SLICE1_PHASE_B_SINGLE_DISPATCH_SCHEMA
+    assert type(successor["version"]) is int
+    assert successor["version"] == 1
+    assert successor["parent_source_head"] == (
+        "f0f81a0d0e0a5eb596a61d9a2184111b3cb26bcc"
+    )
+    assert successor["implementation_source_head"] == (
+        SLICE1_PHASE_B_SINGLE_DISPATCH_IMPLEMENTATION_HEAD
+    )
+    assert successor["phase"] == (
+        "SLICE1-PHASE-B-SINGLE-DISPATCH-TRANSPORT-GUARD-NARROW-FIX"
+    )
+    assert successor["business_behavior_changed"] is False
+    assert successor["parent_successor"] == {
+        "path": (
+            "tests/fixtures/reliability/r0f/"
+            "r1-ptr12-shared-capture-exhaustion-propagation-"
+            "authorized-protected-source-successor-v1.json"
+        ),
+        "sha256": (
+            "90d882629ff4a402ddf1bfddb5586a3579944782cca621c77d50f3aa921a9365"
+        ),
+        "protected_tree_sha256": (
+            R1_PTR12_SHARED_CAPTURE_EXHAUSTION_PROTECTED_TREE_SHA256
+        ),
+    }
+    current_manifest = ptr12_bounded_capture_protected_source_manifest(REPOSITORY)
+    assert successor["current_protected_sources"] == current_manifest
+    assert successor["implementation_protected_tree_sha256"] == (
+        SLICE1_PHASE_B_SINGLE_DISPATCH_PROTECTED_TREE_SHA256
+    )
+    assert _protected_tree_sha256(current_manifest) == (
+        SLICE1_PHASE_B_SINGLE_DISPATCH_PROTECTED_TREE_SHA256
+    )
+    assert successor["authorized_source_deltas"] == [{
+        "path": "src/novel_flywheel/providers/registry.py",
+        "before_sha256": (
+            "19628d851f753f858b90c51611f27db01d266ca6b68ea1e5fd2ab94851cf99fa"
+        ),
+        "after_sha256": (
+            "93f2c8486df0d43f47ffedf3ce5a200564a85d1999e8ac55ee4705a2fbd6f1c3"
+        ),
+    }]
+    assert successor["non_protected_runtime_deltas"] == [{
+        "path": "src/novel_flywheel/providers/http.py",
+        "before_sha256": (
+            "a331d07c40991215857212a0582a5ac79b8484c62b1ea925eb982a1ade9e4186"
+        ),
+        "after_sha256": (
+            "f8ad414ff4a30b1725aa8a2ae2d0dec0300d530460ef5d5622b7ef2a5dfcbc73"
+        ),
+    }]
+    current_hashes = {
+        item["path"]: item["sha256"] for item in current_manifest
+    }
+    assert successor["authorized_source_deltas"][0]["after_sha256"] == (
+        current_hashes["src/novel_flywheel/providers/registry.py"]
+    )
+    assert successor["non_protected_runtime_deltas"][0]["after_sha256"] == (
+        hashlib.sha256(
+            (REPOSITORY / "src/novel_flywheel/providers/http.py").read_bytes(),
+        ).hexdigest()
+    )
+
+
+def _tamper_slice1_phase_b_single_dispatch_successor(
+    successor: dict[str, Any], case: str,
+) -> None:
+    if case == "wrong_schema":
+        successor["schema"] = "Slice1PhaseBSingleDispatchSuccessorV999"
+    elif case == "wrong_version":
+        successor["version"] = 2
+    elif case == "wrong_implementation":
+        successor["implementation_source_head"] = "0" * 40
+    elif case == "wrong_protected_tree":
+        successor["implementation_protected_tree_sha256"] = "0" * 64
+    elif case == "single_file_hash_tamper":
+        successor["current_protected_sources"][0]["sha256"] = "0" * 64
+    elif case == "wrong_before_hash":
+        successor["authorized_source_deltas"][0]["before_sha256"] = "0" * 64
+    elif case == "wrong_after_hash":
+        successor["authorized_source_deltas"][0]["after_sha256"] = "0" * 64
+    elif case == "missing_fixture_field":
+        successor.pop("authorized_source_deltas")
+    else:  # pragma: no cover
         raise ValueError(f"unknown tamper case: {case}")
 
 
@@ -1320,6 +1423,46 @@ def test_r1_ptr12_shared_capture_exhaustion_successor_fixture_is_required(
     with pytest.raises(FileNotFoundError):
         load_baseline(
             tmp_path / R1_PTR12_SHARED_CAPTURE_EXHAUSTION_SUCCESSOR.name,
+        )
+
+
+@pytest.mark.parametrize(
+    "case",
+    (
+        "wrong_schema",
+        "wrong_version",
+        "wrong_implementation",
+        "wrong_protected_tree",
+        "single_file_hash_tamper",
+        "wrong_before_hash",
+        "wrong_after_hash",
+        "missing_fixture_field",
+    ),
+)
+def test_slice1_phase_b_single_dispatch_successor_rejects_tamper(
+    case: str,
+) -> None:
+    successor = copy.deepcopy(load_baseline(
+        SLICE1_PHASE_B_SINGLE_DISPATCH_SUCCESSOR,
+    ))
+    _tamper_slice1_phase_b_single_dispatch_successor(successor, case)
+
+    with pytest.raises((AssertionError, KeyError)):
+        _assert_slice1_phase_b_single_dispatch_successor_exact(successor)
+
+
+def test_slice1_phase_b_single_dispatch_successor_accepts_exact_fixture() -> None:
+    _assert_slice1_phase_b_single_dispatch_successor_exact(
+        load_baseline(SLICE1_PHASE_B_SINGLE_DISPATCH_SUCCESSOR),
+    )
+
+
+def test_slice1_phase_b_single_dispatch_successor_fixture_is_required(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_baseline(
+            tmp_path / SLICE1_PHASE_B_SINGLE_DISPATCH_SUCCESSOR.name,
         )
 
 
