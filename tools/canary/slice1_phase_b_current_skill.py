@@ -1081,6 +1081,30 @@ def validate_materialized_packet(repo_root: Path, packet_root: Path) -> dict[str
     return {"status": "exact", "file_count": len(entries), "approval": approval}
 
 
+def verify_execution_head_successor(repo_root: Path, bound_head: str) -> dict[str, Any]:
+    """Accept only the bound implementation or its evidence-only seal successor."""
+
+    git = verify_git_gate(repo_root, require_clean=True)
+    try:
+        _git(repo_root, "merge-base", "--is-ancestor", bound_head, git["head"])
+    except subprocess.CalledProcessError as exc:
+        raise Slice1PhaseBMaterializationError(
+            "materialization_head_not_ancestor",
+        ) from exc
+    changed = tuple(filter(None, _git(
+        repo_root, "diff", "--name-only", f"{bound_head}..{git['head']}",
+    ).splitlines()))
+    allowed_prefix = REPORT_RELATIVE_ROOT + "/"
+    _require(all(path.startswith(allowed_prefix) for path in changed),
+             "materialization_head_successor_contains_non_evidence_change")
+    return {
+        "branch": git["branch"], "head": git["head"],
+        "bound_implementation_head": bound_head,
+        "evidence_only_successor": git["head"] != bound_head,
+        "successor_changed_paths": list(changed),
+    }
+
+
 def validate_signed_launch(
     *, repo_root: Path, packet_root: Path, signed_approval: Mapping[str, Any],
     run_root: Path, now: datetime | None = None,
@@ -1115,7 +1139,7 @@ def validate_signed_launch(
     _require(start <= current.astimezone(timezone.utc) <= end,
              "execution_window_inactive")
     expected_head = str((template.get("bound_hashes") or {}).get("materialization_head"))
-    verify_git_gate(repo_root, expected_head=expected_head, require_clean=True)
+    verify_execution_head_successor(repo_root, expected_head)
     verify_ptr12_final(repo_root)
     profile, _ = verify_skill_resolution_twice(repo_root)
     _require(profile["profile_sha256"] ==
@@ -1267,11 +1291,31 @@ def _main() -> int:
     parser.add_argument("--route-database", type=Path, required=True)
     parser.add_argument("--output-root", type=Path)
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args()
     repo_root = args.repo_root.resolve()
     output_root = (args.output_root or repo_root / REPORT_RELATIVE_ROOT).resolve()
     if args.validate_only:
         result = validate_materialized_packet(repo_root, output_root)
+    elif args.refresh:
+        validate_materialized_packet(repo_root, output_root)
+        documents, meta = build_packet_documents(
+            repo_root=repo_root, route_database=args.route_database.resolve(),
+        )
+        for name, data in documents.items():
+            (output_root / name).write_bytes(data)
+        manifest_path = output_root / "sha256-manifest-v1.json"
+        manifest = _read_json(manifest_path)
+        manifest["files"] = [{
+            "path": f"{REPORT_RELATIVE_ROOT}/{path.name}",
+            "bytes": path.stat().st_size,
+            "sha256": _sha_file(path),
+        } for path in sorted(output_root.iterdir(), key=lambda item: item.name)
+            if path.is_file() and path.name != manifest_path.name]
+        manifest["file_count"] = len(manifest["files"])
+        manifest["packet_definition_sha256"] = meta["packet_definition_sha256"]
+        _write_json(manifest_path, manifest)
+        result = {**meta, "status": "refreshed"}
     else:
         result = materialize_packet(
             repo_root=repo_root, route_database=args.route_database.resolve(),

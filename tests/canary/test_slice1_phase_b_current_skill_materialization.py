@@ -315,6 +315,40 @@ def test_credential_capable_imports_are_below_complete_gate(repo_root: Path) -> 
     assert gate < provider
 
 
+def test_execution_head_accepts_only_evidence_successor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        phase_b, "verify_git_gate",
+        lambda *_args, **_kwargs: {
+            "branch": phase_b.EXPECTED_BRANCH, "head": "b" * 40,
+            "worktree": "clean",
+        },
+    )
+    monkeypatch.setattr(
+        phase_b, "_git",
+        lambda _root, *args: (
+            "" if args[:2] == ("merge-base", "--is-ancestor")
+            else phase_b.REPORT_RELATIVE_ROOT + "/sha256-manifest-v1.json"
+        ),
+    )
+    result = phase_b.verify_execution_head_successor(tmp_path, "a" * 40)
+    assert result["evidence_only_successor"] is True
+
+    monkeypatch.setattr(
+        phase_b, "_git",
+        lambda _root, *args: (
+            "" if args[:2] == ("merge-base", "--is-ancestor")
+            else "src/novel_flywheel/workflows.py"
+        ),
+    )
+    with pytest.raises(phase_b.Slice1PhaseBMaterializationError) as error:
+        phase_b.verify_execution_head_successor(tmp_path, "a" * 40)
+    assert error.value.reason_code == (
+        "materialization_head_successor_contains_non_evidence_change"
+    )
+
+
 def test_materialization_privacy_scan_rejects_private_absolute_paths() -> None:
     safe = phase_b._privacy_scan({"safe.json": b'{"hash":"' + b"a" * 64 + b'"}'})
     bad = phase_b._privacy_scan({"bad.json": b'{"path":"C:/Users/private/file"}'})
