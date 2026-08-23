@@ -1,0 +1,22 @@
+{
+  "baseline_head": "1c0c272e540798a37746d8cd963e25cccdfdc321",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "business_candidate_and_validators_completed_before_failure": true,
+  "global_ptr12_fail_open_applicable": false,
+  "incident_execution_manifest_definition_sha256": "5227f5476c6c7066197ab3e4ddd8ea0346913a3aa04ddda44921dbc1ed378e54",
+  "incident_execution_manifest_file_sha256": "74b919c9303cb66080444d636e840d878175032ff26fad6af992be86c8e95481",
+  "model_calls_this_investigation": 0,
+  "network_calls_this_investigation": 0,
+  "observer_business_path_sha256": "8b9b8b52a4387dd0943263ce0d3edca11b2979d80e1f2455b7cca5e88e7f7ab4",
+  "paid_calls_this_investigation": 0,
+  "path_subtype": "MANDATORY_EXPERIMENT_ARTIFACT_AUDIT_SERIALIZATION",
+  "production_business_authority_mutated": false,
+  "production_fix_implemented": false,
+  "ptr12_optional_observer_path": false,
+  "real_provider_request_attempts_this_investigation": 0,
+  "schema": "Slice1PhaseBV4ObserverVsBusinessPathV1",
+  "should_exception_be_fail_open": false,
+  "type_error_path": "OBSERVER_EVIDENCE_PATH",
+  "version": 1,
+  "why": "The isolated baseline artifact and its audit hash are required execution evidence; swallowing serialization failure would falsely report PASS without a durable artifact."
+}

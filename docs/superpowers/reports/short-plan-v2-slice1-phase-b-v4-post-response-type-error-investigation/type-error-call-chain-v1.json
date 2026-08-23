@@ -1,0 +1,159 @@
+{
+  "baseline_head": "1c0c272e540798a37746d8cd963e25cccdfdc321",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "call_chain_sha256": "7405ca4238745f8af490fbdcfe1f9fe53f2cb6a0f2709cc82f06f7103f28e74c",
+  "downstream_write_json_reached": false,
+  "first_project_call_function": "execute_authorized_once",
+  "first_project_call_line": 896,
+  "first_throw_expression": "asdict(conversion)",
+  "first_throw_function": "dataclasses.asdict",
+  "first_throw_line": 1328,
+  "incident_execution_manifest_definition_sha256": "5227f5476c6c7066197ab3e4ddd8ea0346913a3aa04ddda44921dbc1ed378e54",
+  "incident_execution_manifest_file_sha256": "74b919c9303cb66080444d636e840d878175032ff26fad6af992be86c8e95481",
+  "model_calls_this_investigation": 0,
+  "network_calls_this_investigation": 0,
+  "paid_calls_this_investigation": 0,
+  "real_provider_request_attempts_this_investigation": 0,
+  "request_mode": "STREAM",
+  "rows": [
+    {
+      "function": "AnthropicAdapter.post_stream",
+      "input_types": [
+        "path:str",
+        "payload:dict",
+        "headers:dict"
+      ],
+      "module": "novel_flywheel.providers.http",
+      "order": 1,
+      "output_type": "tuple[list[dict], dict|None]",
+      "source_line": 156,
+      "status": "PASSED_ONE_PHYSICAL_REQUEST"
+    },
+    {
+      "function": "AnthropicAdapter.complete",
+      "input_types": [
+        "ModelRequest"
+      ],
+      "module": "novel_flywheel.providers.anthropic",
+      "order": 2,
+      "output_type": "ModelResponse",
+      "source_line": 23,
+      "status": "PASSED_REASONING_AND_VISIBLE_TEXT_NORMALIZED"
+    },
+    {
+      "function": "ModelGateway._complete_resolved",
+      "input_types": [
+        "ResolvedModel",
+        "ModelRequest"
+      ],
+      "module": "novel_flywheel.models",
+      "order": 3,
+      "output_type": "ModelResult",
+      "source_line": 517,
+      "status": "PASSED_PTR12_AND_PTR9_GUARD_NORMAL_RETURN"
+    },
+    {
+      "function": "ModelGateway.complete_route",
+      "input_types": [
+        "route_kind:str",
+        "role:str",
+        "system:str",
+        "user:str"
+      ],
+      "module": "novel_flywheel.models",
+      "order": 4,
+      "output_type": "ModelResult",
+      "source_line": 466,
+      "status": "PASSED_VISIBLE_FINAL_RETURNED"
+    },
+    {
+      "function": "convert_event_realization_candidate",
+      "input_types": [
+        "raw:str",
+        "authority:EventRealizationInputAuthorityV1"
+      ],
+      "module": "novel_flywheel.planning_v2_slice1",
+      "order": 5,
+      "output_type": "tuple[EventRealizationCandidateV1, ArtifactConversionAudit]",
+      "source_line": 675,
+      "status": "PASSED"
+    },
+    {
+      "function": "GeneratedArtifactGateway.convert_object",
+      "input_types": [
+        "raw:str",
+        "contract_name:str",
+        "semantic_normalizer:Callable"
+      ],
+      "module": "novel_flywheel.generated_artifacts",
+      "order": 6,
+      "output_type": "ArtifactConversionResult",
+      "source_line": 2210,
+      "status": "PASSED_AUDIT_IS_PYDANTIC_MODEL"
+    },
+    {
+      "function": "EventRealizationCandidateV1.model_validate",
+      "input_types": [
+        "dict[str, object]"
+      ],
+      "module": "pydantic",
+      "order": 7,
+      "output_type": "EventRealizationCandidateV1",
+      "source_line": 692,
+      "status": "PASSED"
+    },
+    {
+      "function": "build_event_realization_artifact",
+      "input_types": [
+        "EventRealizationInputAuthorityV1",
+        "EventRealizationCandidateV1"
+      ],
+      "module": "novel_flywheel.planning_v2_slice1",
+      "order": 8,
+      "output_type": "EventRealizationArtifactV1",
+      "source_line": 400,
+      "status": "PASSED"
+    },
+    {
+      "function": "validate_event_realization_artifact",
+      "input_types": [
+        "EventRealizationArtifactV1",
+        "EventRealizationInputAuthorityV1"
+      ],
+      "module": "novel_flywheel.planning_v2_slice1",
+      "order": 9,
+      "output_type": "Slice1ValidationReceiptV1",
+      "source_line": 721,
+      "status": "PASSED_STATUS_PASS"
+    },
+    {
+      "function": "freeze_validated_artifact",
+      "input_types": [
+        "EventRealizationArtifactV1",
+        "Slice1ValidationReceiptV1"
+      ],
+      "module": "novel_flywheel.planning_v2_slice1",
+      "order": 10,
+      "output_type": "EventRealizationArtifactV1",
+      "source_line": 830,
+      "status": "PASSED_FROZEN"
+    },
+    {
+      "function": "dataclasses.asdict",
+      "input_types": [
+        "ArtifactConversionAudit"
+      ],
+      "module": "dataclasses",
+      "order": 11,
+      "output_type": "dict[str, object] expected",
+      "project_call_function": "execute_authorized_once",
+      "project_call_line": 896,
+      "project_call_module": "tools.canary.slice1_phase_b_v4_single_dispatch",
+      "source_line": 1328,
+      "status": "FIRST_TYPE_ERROR",
+      "throw_expression": "raise TypeError(\"asdict() should be called on dataclass instances\")"
+    }
+  ],
+  "schema": "Slice1PhaseBV4TypeErrorCallChainV1",
+  "version": 1
+}

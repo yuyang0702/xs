@@ -1,0 +1,82 @@
+{
+  "baseline_head": "1c0c272e540798a37746d8cd963e25cccdfdc321",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation",
+  "file_count": 13,
+  "files": [
+    {
+      "bytes": 495,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/README.md",
+      "sha256": "77d2b5bf99c3be4b674816842c3a93aa39c98bfef28d825323c7028c1b6ee935"
+    },
+    {
+      "bytes": 1176,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/authority-regression-check-v1.json",
+      "sha256": "85e74884eeff37f02fca46e0730e514dee172898facc28bbb3730d073545a32f"
+    },
+    {
+      "bytes": 2319,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/final-report-v1.md",
+      "sha256": "bcf50a34961763be880841f2b5d3338e74eee67a13e9d874c629a5a15f09483c"
+    },
+    {
+      "bytes": 1325,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/observer-vs-business-path-v1.json",
+      "sha256": "9882c2960af25544ab9be8e5e3aff52ddbc68661277369f5c8534a9b00578a12"
+    },
+    {
+      "bytes": 1727,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/offline-test-receipt-v1.json",
+      "sha256": "ca229bbfb38fb35801f4c30f958e36ab8d4e81a9f285d6502e7e165c53608baa"
+    },
+    {
+      "bytes": 1124,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/privacy-scan-v1.json",
+      "sha256": "f78728bc9aae6dec539cafe4340dcfbd44ee373caac99cef26778ecbdce0b668"
+    },
+    {
+      "bytes": 1334,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/ptr12-causality-v1.json",
+      "sha256": "f1296b9b81f8d6d4202b8a6648a439e315ac39c0973b48fe66ed34472d4b4b83"
+    },
+    {
+      "bytes": 1816,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/real-vs-fake-topology-comparison-v1.json",
+      "sha256": "544d672e413c5bb1d3c8eb1d0e3fa4a81cc3f880e964d832ace92449f7badde4"
+    },
+    {
+      "bytes": 1375,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/recommended-narrow-fix-v1.md",
+      "sha256": "c4d011a538a13f46c2d211bbd48bc16be1b79da434c02628aab05a31575b5801"
+    },
+    {
+      "bytes": 1960,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/root-cause-classification-v1.json",
+      "sha256": "35216531d48bc204c9904de1be03302dfe6e7e44dbe9a657fe904940466937dd"
+    },
+    {
+      "bytes": 2602,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/synthetic-reproduction-v1.json",
+      "sha256": "c8e780ee91faaabf2979132400df840d93e8d474fae9a0096842a954e7a4edc4"
+    },
+    {
+      "bytes": 2124,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/type-error-boundary-matrix-v1.json",
+      "sha256": "10c37a9e5d708df3568b1e17ebabeffa78d524698ece5a96f1e1235d14bdeb7b"
+    },
+    {
+      "bytes": 5182,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-v4-post-response-type-error-investigation/type-error-call-chain-v1.json",
+      "sha256": "befdf17f4e000cadf10563bc852ca11e5443a0e5749d2292b413c6a2341a3cc0"
+    }
+  ],
+  "investigation_test": {
+    "path": "tests/canary/test_slice1_phase_b_v4_type_error_investigation.py",
+    "sha256": "bfb6b1b5bf8a3f7ac0f5bbf0f71d1dd9db3092919d0b46a4343716c7aada2681"
+  },
+  "manifest_definition_sha256": "627f94e08b6568a43196a3eda169405fc4c9906bf9ca7c4b7f1b472359543342",
+  "overall_status": "exact",
+  "schema": "Slice1PhaseBV4TypeErrorInvestigationSHA256ManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}

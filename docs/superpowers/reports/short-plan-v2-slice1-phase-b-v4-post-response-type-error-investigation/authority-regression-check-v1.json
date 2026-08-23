@@ -1,0 +1,22 @@
+{
+  "authority_change": false,
+  "authority_regression_check_sha256": "6e000f5d5036344d34d231be17c9d768c405d9ff6bbac71f4569f5c994bbc954",
+  "authority_tuple_normalization": "PASS",
+  "baseline_head": "1c0c272e540798a37746d8cd963e25cccdfdc321",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "dependency_artifact_ids_canonical_tuple": true,
+  "event_realization_input_authority_preflight": "PASS",
+  "formal_event_ids_canonical_tuple": true,
+  "incident_execution_manifest_definition_sha256": "5227f5476c6c7066197ab3e4ddd8ea0346913a3aa04ddda44921dbc1ed378e54",
+  "incident_execution_manifest_file_sha256": "74b919c9303cb66080444d636e840d878175032ff26fad6af992be86c8e95481",
+  "model_calls_this_investigation": 0,
+  "network_calls_this_investigation": 0,
+  "paid_calls_this_investigation": 0,
+  "previous_authority_tuple_bug_recurred": false,
+  "real_provider_request_attempts_this_investigation": 0,
+  "required_obligation_ids_canonical_tuple": true,
+  "schema": "Slice1PhaseBV4AuthorityRegressionCheckV1",
+  "segment_event_ids_canonical_tuple": true,
+  "synthetic_replay_used_same_sealed_authority_fixture": true,
+  "version": 1
+}

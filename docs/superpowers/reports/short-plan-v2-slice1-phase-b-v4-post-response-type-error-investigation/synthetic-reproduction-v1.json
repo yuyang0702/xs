@@ -1,0 +1,57 @@
+{
+  "baseline_head": "1c0c272e540798a37746d8cd963e25cccdfdc321",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "content_block_type_sequence": [
+    "thinking",
+    "text"
+  ],
+  "focused_result": "1 passed",
+  "focused_test": "tests/canary/test_slice1_phase_b_v4_type_error_investigation.py",
+  "focused_test_sha256": "bfb6b1b5bf8a3f7ac0f5bbf0f71d1dd9db3092919d0b46a4343716c7aada2681",
+  "freeze_reached": true,
+  "gateway_normalization_completed": true,
+  "incident_execution_manifest_definition_sha256": "5227f5476c6c7066197ab3e4ddd8ea0346913a3aa04ddda44921dbc1ed378e54",
+  "incident_execution_manifest_file_sha256": "74b919c9303cb66080444d636e840d878175032ff26fad6af992be86c8e95481",
+  "local_validator_status": "PASS",
+  "local_validators_reached": true,
+  "message_hash_exact_match": true,
+  "model_calls_this_investigation": 0,
+  "network_calls_this_investigation": 0,
+  "offline_type_error_reproduced": true,
+  "paid_calls_this_investigation": 0,
+  "real_content_replayed": false,
+  "real_exception_message_sha256": "b0765aa80a001070478e477edd5f18f37a7d61d14a1fe38eb42783da0d2cde38",
+  "real_provider_request_attempts_this_investigation": 0,
+  "repro_exception_class": "TypeError",
+  "schema": "Slice1PhaseBV4SyntheticReproductionV1",
+  "slice1_model_construction_completed": true,
+  "slice1_model_construction_started": true,
+  "structured_output_extraction_completed": true,
+  "structured_output_extraction_started": true,
+  "synthetic_exception_message": "asdict() should be called on dataclass instances",
+  "synthetic_exception_message_sha256": "b0765aa80a001070478e477edd5f18f37a7d61d14a1fe38eb42783da0d2cde38",
+  "synthetic_finish_reason": "end_turn",
+  "synthetic_reasoning": "synthetic reasoning",
+  "synthetic_reproduction_sha256": "892bc7b5a144bda59e40ea291370ffb4f758551136ed505314ec5c75234e1f69",
+  "synthetic_topology_replay": true,
+  "synthetic_traceback_top_frames": [
+    {
+      "expression": "asdict(conversion)",
+      "function": "test_v4_valid_reasoning_and_visible_final_reproduces_sealed_type_error",
+      "line": 155,
+      "path": "tests/canary/test_slice1_phase_b_v4_type_error_investigation.py"
+    },
+    {
+      "expression": "raise TypeError",
+      "function": "asdict",
+      "line": 1328,
+      "path": "python-stdlib/dataclasses.py"
+    }
+  ],
+  "synthetic_visible_final_category": "SAFE_JSON_TITLE_AND_NARRATIVE",
+  "tool_call_count": 0,
+  "transport": "DETERMINISTIC_FAKE_NO_NETWORK",
+  "unknown_block_count": 0,
+  "version": 1,
+  "visible_final_reached_local_parser": true
+}
