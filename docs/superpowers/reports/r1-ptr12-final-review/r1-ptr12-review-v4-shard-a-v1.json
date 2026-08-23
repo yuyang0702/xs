@@ -1,0 +1,52 @@
+{
+  "schema": "R1PTR12ReviewV4ShardReceiptV1",
+  "version": 1,
+  "shard": "A",
+  "reviewer": "ptr12_v4_shard_a",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "previous_review_result_reused_as_pass": false,
+  "status": "PASS",
+  "scope": [
+    "provider_output raw-shape capture",
+    "shared capture exhaustion propagation",
+    "nested topology truthfulness",
+    "bounded work and privacy"
+  ],
+  "v3_frozen_case": {
+    "total_touch_calls": 129,
+    "successful_touches": 128,
+    "rejected_touch_calls": 1,
+    "post_exhaustion_redundant_touch_calls": 0
+  },
+  "bounds": {
+    "shared_capture_budget_count": 1,
+    "per_container_independent_budget_count": 0,
+    "max_elements_touched": 128,
+    "max_blocks_inspected": 128,
+    "max_controlled_details": 128,
+    "max_unknown_details": 32,
+    "max_hash_input_bytes": 512,
+    "full_topology_precollection": false,
+    "unbounded_dedup_state": false,
+    "unbounded_unknown_hashing": false,
+    "unbounded_exhaustion_tracking_state": false
+  },
+  "truthfulness": {
+    "tail_truthfulness": "PASS",
+    "nested_unsafe_iterator_consumption_count": 0,
+    "false_absence_count": 0,
+    "false_topology_exact_count": 0
+  },
+  "tests": [
+    {"selection": "provider output observer", "passed": 77},
+    {"selection": "R0F baseline", "passed": 74},
+    {"selection": "focused bounds/topology/privacy", "passed": 17, "deselected": 60},
+    {"selection": "successor exact/tamper", "passed": 9, "deselected": 65}
+  ],
+  "source_sha256": "f10b5c240f046405902988b62a95e669b4a465ea4775c8ceabdca80d9725b3ab",
+  "protected_tree_sha256": "1dffc840bd403032a0b572ed54ebc0d689bfe3db3bd45f24fc7b3b3306ba9689",
+  "privacy_match_count": 0,
+  "hard_findings": [],
+  "confidence": 0.97
+}

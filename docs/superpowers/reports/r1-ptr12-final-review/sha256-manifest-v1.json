@@ -1,0 +1,96 @@
+{
+  "schema": "R1PTR12ReviewV4FinalSHA256ManifestV1",
+  "version": 1,
+  "generated_at_utc": "2026-08-23T02:31:38Z",
+  "overall_status": "exact",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "manifest_definition": {
+    "algorithm": "sha256",
+    "path_basis": "repository-relative-posix",
+    "byte_domain": "exact_file_bytes",
+    "coverage_root": "docs/superpowers/reports/r1-ptr12-final-review",
+    "inclusion_rule": "all regular files directly under coverage_root except sha256-manifest-v1.json",
+    "ordering": "path_ascending",
+    "self_excluded": true,
+    "entry_fields": ["path", "bytes", "sha256"]
+  },
+  "manifest_definition_canonicalization": "utf8-json-compact-keys-lexicographically-sorted-no-trailing-newline",
+  "manifest_definition_sha256": "323d45d90cf2da7f8753a46c1bb35159cd2f83014fb9f7138300ffd10a1c9466",
+  "files": [
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/README.md",
+      "bytes": 654,
+      "sha256": "4e92147ba93714fb0dd45d4c6502e6a95b830813dc80c5e887bb95c4fcf86c69"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-cross-shard-matrix-v1.json",
+      "bytes": 1585,
+      "sha256": "a4d2bd5fd4e78b0a6fc0d1bee68568d489624d3bdba52b404e0637337bb226cb"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-final-decision-v1.json",
+      "bytes": 1372,
+      "sha256": "6aed7918ffaee8eb373007bbd89f8fa7637c97cf5801b1cf3eee3b56a8e78a27"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-isolation-v1.json",
+      "bytes": 845,
+      "sha256": "5c9585be8bb91311937529c9f957625bbcef1d1781b909f9eb89943101f08637"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-offline-test-receipt-v1.json",
+      "bytes": 1577,
+      "sha256": "acb9f0215337b74cafe22b73fb5a804a9adbe10f94a3aab30ae40dcaaacee6ba"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-privacy-scan-v1.json",
+      "bytes": 526,
+      "sha256": "400979a0762ac5512df1f094b8ec1b7814c1480b4cf5989a03c76dcac0f4d386"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-provenance-integrity-v1.json",
+      "bytes": 907,
+      "sha256": "a6c8ca7fa3fcfaa255f267072ff5979bfa6c088945e78850bcc2e5d4416fb475"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-shard-a-v1.json",
+      "bytes": 1793,
+      "sha256": "97d39fe4deb4524cee28e600e874dcf98dc7eefacfc1ec0053496e23a6510558"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-shard-b-v1.json",
+      "bytes": 2109,
+      "sha256": "c70423a6f372bf793146ef00ce5998ae1b2446102dab3c28e2562be6a175fc8c"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-review-v4-shard-c-v1.json",
+      "bytes": 1562,
+      "sha256": "66c05c953132debce5e1e026918a5bc8c8f960efb7663b183c8dd5f002e8d2f8"
+    },
+    {
+      "path": "docs/superpowers/reports/r1-ptr12-final-review/r1-ptr12-team-review-v4-final-report-v1.md",
+      "bytes": 4994,
+      "sha256": "573fbf28bc079e1741fac0e008d912d916ffaae5612d5e6ee9c9646f14e4d3b7"
+    }
+  ],
+  "file_count": 11,
+  "directory_file_count_including_manifest": 12,
+  "completed_shards": 3,
+  "interrupted_or_incomplete_shards": 0,
+  "unrun_shards": 0,
+  "split_review_pass": true,
+  "phase_b_ready": true,
+  "privacy_status": "exact",
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "R1PTR12ReviewV4IsolationV1",
+  "version": 1,
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "maintenance_documentation_verdict": "accurate_no_premature_pass_or_phase_b_claim",
+  "prompt_changed": false,
+  "route_model_changed": false,
+  "retry_policy_changed": false,
+  "fallback_policy_changed": false,
+  "output_budget_policy_changed": false,
+  "planning_v1_changed": false,
+  "planning_v2_changed": false,
+  "skill_profile_changed": false,
+  "storystate_authority_changed": false,
+  "canon_authority_changed": false,
+  "draft_behavior_changed": false,
+  "review_behavior_changed": false,
+  "maintenance_business_behavior_changed": false,
+  "ptr9_guard_predicate_changed": false,
+  "ptr9_business_input_source_changed": false,
+  "negative_capability_policy_changed": false,
+  "slice1_phase_b": "NOT_STARTED"
+}

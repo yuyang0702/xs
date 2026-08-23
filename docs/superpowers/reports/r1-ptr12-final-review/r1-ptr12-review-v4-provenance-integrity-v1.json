@@ -1,0 +1,16 @@
+{
+  "schema": "R1PTR12ReviewV4ProvenanceIntegrityV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "implementation_commit": "df1e433b33434071df92764563bd0befe2aa6997",
+  "implementation_parent": "56dce5deff83d278179a29b2dd01138e92ea9189",
+  "successor_fixture_sha256": "90d882629ff4a402ddf1bfddb5586a3579944782cca621c77d50f3aa921a9365",
+  "protected_tree_sha256": "1dffc840bd403032a0b572ed54ebc0d689bfe3db3bd45f24fc7b3b3306ba9689",
+  "parent_successor_sha256": "4420522de8cd044306969fc1a0db19f9ddc226df3466600496d448d9422fd4b6",
+  "r0f_exact_tamper_parity": {"status": "PASS", "passed": 75},
+  "ptr12_manifest_verification": {"manifest_count": 5, "entry_count": 57, "mismatch_count": 0},
+  "historical_evidence_rewritten": false,
+  "test_policy_weakening": false,
+  "provenance_chain_status": "exact"
+}

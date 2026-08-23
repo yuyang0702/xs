@@ -1,0 +1,35 @@
+{
+  "schema": "R1PTR12ReviewV4FinalDecisionV1",
+  "version": 1,
+  "generated_at_utc": "2026-08-23T02:31:38Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "previous_review_result_reused_as_pass": false,
+  "shards": {"completed": 3, "interrupted_or_incomplete": 0, "unrun": 0, "A": "PASS", "B": "PASS", "C": "PASS"},
+  "known_finding_status": {
+    "total_max_touch_calls_bound": "PASS",
+    "bounded_single_pass_raw_shape_capture": "PASS",
+    "tail_truthfulness_for_uninspected_nested_topology": "PASS",
+    "raw_normalized_guard_decision_input_binding": "PASS",
+    "stream_reasoning_usage_lineage": "PASS",
+    "anthropic_effective_cap_observability": "PASS",
+    "diagnostic_context_construction_fail_open": "PASS",
+    "global_observer_fail_open": "YES"
+  },
+  "observer_on_off_business_diff_count": 0,
+  "raw_content_persisted_count": 0,
+  "split_review_pass": true,
+  "phase_b_ready": true,
+  "final_status": "R1_PTR12_TEAM_SHARDED_INDEPENDENT_REVIEW_PASS",
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "slice1_phase_b": "NOT_STARTED",
+    "full_short_canary": "NOT_EXECUTED"
+  }
+}

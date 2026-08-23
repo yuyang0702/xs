@@ -1,0 +1,46 @@
+{
+  "schema": "R1PTR12ReviewV4ShardReceiptV1",
+  "version": 1,
+  "shard": "B",
+  "reviewer": "ptr12_v4_shard_b",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "previous_review_result_reused_as_pass": false,
+  "status": "PASS",
+  "scope": [
+    "OpenAI Chat and Responses usage lineage",
+    "DeepSeek compatibility",
+    "Anthropic effective-cap lineage",
+    "Provider adapter business and privacy parity"
+  ],
+  "stream_usage_aggregation_semantics": "Last formally exposed non-negative native integer reasoning value wins in event order; aggregate-only events neither infer nor clear reasoning; usage is not summed by the observer.",
+  "usage_cases": {
+    "body_and_stream_aggregate_10_reasoning_4": "PASS",
+    "aggregate_only_reasoning_status": "NOT_EXPOSED",
+    "explicit_reasoning_zero": "KNOWN_ZERO",
+    "missing_usage": "NOT_EXPOSED",
+    "malformed_formal_usage": "UNKNOWN",
+    "multiple_usage_events": "PASS",
+    "deepseek_reasoning_inference_from_aggregate": false
+  },
+  "anthropic_cases": {
+    "omitted": {"requested": null, "effective": 8192, "provider_accepted": "UNKNOWN"},
+    "explicit_4096": {"requested": 4096, "effective": 4096, "provider_accepted": "UNKNOWN"},
+    "explicit_8192": {"requested": 8192, "effective": 8192, "provider_accepted": "UNKNOWN"},
+    "default_max_tokens_changed": false,
+    "request_kwargs_diff_count": 0,
+    "provider_accepted_inferred_from_request": false
+  },
+  "provider_raw_shape_schema_sha256": "02d3107f39ed2c5af41cfa63e3d29ab7d8f8de9b285bdb0cb6134fe50d8cb5e4",
+  "tests": [
+    {"selection": "reasoning and cap focused matrix", "passed": 19, "deselected": 58},
+    {"selection": "provider output observer", "passed": 77},
+    {"selection": "Anthropic and stream successors", "passed": 19, "deselected": 55},
+    {"selection": "R0F baseline", "passed": 74},
+    {"selection": "provider body and stream protocols", "passed": 7, "deselected": 14}
+  ],
+  "observer_cap_metadata_business_authority": false,
+  "privacy_match_count": 0,
+  "hard_findings": [],
+  "confidence": 0.97
+}

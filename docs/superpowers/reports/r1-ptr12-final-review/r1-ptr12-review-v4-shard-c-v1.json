@@ -1,0 +1,48 @@
+{
+  "schema": "R1PTR12ReviewV4ShardReceiptV1",
+  "version": 1,
+  "shard": "C",
+  "reviewer": "ptr12_v4_shard_c",
+  "review_mode": "TEAM_SHARDED_INDEPENDENT_REVIEW",
+  "reviewed_head": "28d0fcc0190e7ada8c68e0f7013cb390d7b55c66",
+  "previous_review_result_reused_as_pass": false,
+  "status": "PASS",
+  "scope": [
+    "global diagnostic-context fail-open",
+    "raw-normalized guard decision binding",
+    "PTR9 and negative capability",
+    "correlation and ReliabilityTrace",
+    "feature flag and ON/OFF parity"
+  ],
+  "business_diffs": {
+    "provider_dispatch_count": 0,
+    "provider_dispatch_arguments": 0,
+    "retry_count": 0,
+    "fallback_count": 0,
+    "business_result": 0,
+    "business_exception": 0,
+    "observer_on_off": 0
+  },
+  "fail_open": {
+    "diagnostic_context_construction": "PASS",
+    "original_provider_exception_preserved": true,
+    "cancellation_behavior_changed": false,
+    "process_control_exception_swallowed": false,
+    "negative_capability_mutation_from_context_failure": false
+  },
+  "guard_and_correlation": {
+    "raw_normalized_binding": "PASS",
+    "ptr9_guard_predicate_changed": false,
+    "ptr9_business_input_source_changed": false,
+    "inner_attempt_id_exact": true,
+    "multi_attempt_dag": "PASS",
+    "fabricated_provider_request_id_count": 0
+  },
+  "tests": [
+    {"selection": "PTR12 context guard diagnostics trace R0F flag", "passed": 198},
+    {"selection": "PTR9 negative capability Contract Runtime DAG trace", "passed": 67}
+  ],
+  "privacy_match_count": 0,
+  "hard_findings": [],
+  "confidence": 0.97
+}
