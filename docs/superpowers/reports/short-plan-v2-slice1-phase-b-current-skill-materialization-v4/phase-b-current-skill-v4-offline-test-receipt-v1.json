@@ -1,0 +1,25 @@
+{
+  "authority_tuple_validation": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "full_suite": "3317 passed, 41 skipped, 6 xfailed, 22 historical-gate failures, 46 historical-gate errors",
+  "launcher_negative_matrix": "60 passed",
+  "model_input_deterministic_x2": "PASS",
+  "overall_status": "exact",
+  "r0f": "85 passed",
+  "related_tests": "285 passed",
+  "schema": "Slice1PhaseBV4OfflineTestReceiptV1",
+  "skill_resolution_deterministic_x2": "PASS",
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "v2_historical_compatibility": "PASS source/evidence unchanged",
+  "version": 1
+}

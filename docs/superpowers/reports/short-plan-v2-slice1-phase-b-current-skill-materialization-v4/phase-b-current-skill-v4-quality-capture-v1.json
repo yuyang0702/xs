@@ -1,0 +1,35 @@
+{
+  "creative_signals": [
+    "causal_event_fidelity",
+    "character_motivation",
+    "character_voice_if_applicable",
+    "world_specificity_and_sensory_realization",
+    "setup_payoff_or_dependency",
+    "pov_tense_tone_genre_consistency",
+    "draft_intent_preservation_proxy_supported_by_slice1"
+  ],
+  "exact_artifact_fields": [
+    "title",
+    "narrative"
+  ],
+  "human_or_model_assisted_ab_review_required": true,
+  "offline_validator_claims_literary_superiority": false,
+  "quality_capture_contract_sha256": "8850ac9dabfd1b7a44a8c5ca457317a0ea27e92f742fb8cafee58e8b0e2e0a0a",
+  "recovery_signals": [
+    "targeted_repair_count",
+    "untargeted_creative_mutation_count",
+    "first_pass_vs_repair_convergence",
+    "no_progress",
+    "duplicate_dispatch",
+    "whole_planning_regeneration_count"
+  ],
+  "rigid_single_literary_score": false,
+  "schema": "Slice1PhaseBQualityCaptureContractV1",
+  "unsupported_dimensions_value": "UNKNOWN",
+  "validation": [
+    "slice1_validator_outcome",
+    "authority_violations",
+    "semantic_validator_findings"
+  ],
+  "version": 1
+}

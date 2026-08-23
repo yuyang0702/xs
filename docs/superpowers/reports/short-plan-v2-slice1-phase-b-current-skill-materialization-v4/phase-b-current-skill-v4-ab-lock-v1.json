@@ -1,0 +1,25 @@
+{
+  "a_arm": "CURRENT_RUNTIME_SKILL",
+  "ab_comparison_lock_sha256": "c9a9231109d5bb5f7b628d776c2b5320544d565a852ccf53c41004f896043130",
+  "confounded_if_any_other_binding_changes": true,
+  "fresh_rebaseline_required_on_non_skill_change": true,
+  "frozen_same_bindings": {
+    "authority_input_sha256": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+    "call_hard_cap": 1,
+    "cohort_workload_sha256": "49938aef04eac29fc283b87faa3367906c99c63a8ad113ef06eea937c70885bd",
+    "evaluation_rubric_sha256": "8850ac9dabfd1b7a44a8c5ca457317a0ea27e92f742fb8cafee58e8b0e2e0a0a",
+    "main_prompt_body_sha256": "4dde7879827b6ecb225f5d4eef094152d91107d70213a24661280ae6901dcc4c",
+    "output_budget_sha256": "9a043d617b3309477d9ff6b60aec1cc74c58c81660b60608235ea3ffb4290475",
+    "output_isolation_sha256": "4e0fafc6c812f05d54af439de7c2ae681323c3576f6272f8de474ec88b92506c",
+    "planning_v2_source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+    "ptr12_observer": "REQUIRED_ENABLED",
+    "retry_repair_policy": "NO_MODEL_REPAIR_IN_BASELINE_SMOKE_V1",
+    "route_model_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+    "slice1_contract_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+    "validator_bundle_sha256": "a41e1918b26cc23414067c162142b78166838a61a7fee04a114d9fbf034d6f83"
+  },
+  "future_b_arm": "SKILL_CONTEXT_V2",
+  "primary_intended_changed_variable": "SKILL_CONTEXT_ARM",
+  "schema": "Slice1PhaseBABComparisonLockV1",
+  "version": 1
+}

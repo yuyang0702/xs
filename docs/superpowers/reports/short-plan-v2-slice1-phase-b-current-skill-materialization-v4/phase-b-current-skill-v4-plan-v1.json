@@ -1,0 +1,25 @@
+{
+  "approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_TUPLE_NORMALIZED_SINGLE_DISPATCH_V3_ONLY",
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "execution_authorized": false,
+  "execution_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v4",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "materialization_head": "25a240aafff82abef4ec8e23401ccfd8bcceffd2",
+  "materialization_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v4",
+  "plan_sha256": "96c2bc79c40cc4fb52dea1962bff8977a4c6b1d84cd9389b319cb532ba2ebd25",
+  "profile_id": "SLICE1_PHASE_B_CURRENT_SKILL_PACKET_V4",
+  "schema": "Slice1PhaseBV4PlanV1",
+  "shadow_only": true,
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 1
+}

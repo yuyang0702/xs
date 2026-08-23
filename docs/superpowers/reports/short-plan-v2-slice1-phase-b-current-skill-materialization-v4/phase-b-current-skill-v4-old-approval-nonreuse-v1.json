@@ -1,0 +1,11 @@
+{
+  "old_approval_nonreuse_sha256": "f685d70c848a869a911fa76284e6930eb8f91bd4a8b8891d6fe53c46d9217274",
+  "previous_v2_approval_head": "85f5dc94b8aa218fbea3d12c617956eef4b2b505",
+  "previous_v2_approval_reuse_allowed": false,
+  "previous_v2_nonce_reuse_allowed": false,
+  "previous_v2_nonce_state": "SPENT_CONSUMED",
+  "schema": "Slice1PhaseBV4OldApprovalNonReuseV1",
+  "v3_failed_approval_created": false,
+  "v3_failed_approval_nonce_issued": false,
+  "version": 1
+}
