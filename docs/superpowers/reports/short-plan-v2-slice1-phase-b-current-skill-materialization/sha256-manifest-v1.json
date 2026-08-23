@@ -25,7 +25,7 @@
     {
       "bytes": 2425,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/phase-b-current-skill-approval-template-v1.json",
-      "sha256": "c5eac27f6cfbb3eb991fd858682576ea3e96d0b0aabc57f75ffa9c520e9c9dcf"
+      "sha256": "2a4a0ce25ea114dc255180281a75b4ef7dec594184d79f65293e7dfde2eb11fd"
     },
     {
       "bytes": 2191,
@@ -43,14 +43,14 @@
       "sha256": "a56b82fd853847d9ebd6d1a9d39a276317cd1697913ff5c4663eda63a0b44044"
     },
     {
-      "bytes": 5848,
+      "bytes": 5954,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/phase-b-current-skill-final-report-v1.md",
-      "sha256": "2bd228c231075f0c03b7e59f80be01054639f6dd7479e7c5dd6a464136727351"
+      "sha256": "0196fb7ecedf8fb97476aaa6ed1912f437645d59c1e2e24b5c510c46ac075378"
     },
     {
       "bytes": 2631,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/phase-b-current-skill-launcher-binding-v1.json",
-      "sha256": "a18c43c1bc493cdf9cd43c312b56709e763a0ac5a609d5767cb7e7fe51f7b8e3"
+      "sha256": "3304b700a6606788cd84954bf96ba109d4fe55d7049c5e65487502f8489e38ed"
     },
     {
       "bytes": 1465,
@@ -58,9 +58,9 @@
       "sha256": "70da9e43525294db422a463b143e2094eda7a51eb7ee0236223017b9cf018e61"
     },
     {
-      "bytes": 1438,
+      "bytes": 1448,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/phase-b-current-skill-offline-test-receipt-v1.json",
-      "sha256": "641f058107e2b6b1e2551b0853c02fc38dd019b4afb3955c4dc0a63f3dbf800d"
+      "sha256": "56134c31506abab99c1b6af0cd86cc1a1db5550bc710162d4023eb92dd244ce3"
     },
     {
       "bytes": 1035,
@@ -70,7 +70,7 @@
     {
       "bytes": 1723,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization/phase-b-current-skill-plan-v1.json",
-      "sha256": "6c51277435c18ea8bc2fa8010bd023140827e7d7091e3ea272d5f9437690c49d"
+      "sha256": "9b7c8f878ba533940f443a8da5b13cf70837be3e9ca69d4db92c930f1f28543f"
     },
     {
       "bytes": 674,

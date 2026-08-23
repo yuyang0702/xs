@@ -16,8 +16,8 @@
   "output_isolation": "exact",
   "ptr12_final_binding": "exact",
   "pytest_result": {
-    "focused_and_adjacent": "74 passed",
-    "focused_phase_b": "20 passed",
+    "focused_and_adjacent": "75 passed",
+    "focused_phase_b": "21 passed",
     "deterministic_full_packet_build": "2 runs, 17 documents each, exact bytes and metadata",
     "full_canary_matrix": "339 passed, 2 skipped, 19 failed, 31 errors",
     "full_canary_non_green_attribution": "historical fixed-HEAD, consumed/expired approval, old materialization parent, and sealed successor gates; no Phase B test failed",
@@ -33,7 +33,7 @@
     "status": "PASS",
     "warnings": 0,
     "blockers": 0,
-    "code_and_test_gate": "PASS before implementation commit",
+    "code_and_test_gate": "PASS before implementation successor commit",
     "evidence_gate": "PASS after materialization"
   },
   "version": 1

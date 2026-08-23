@@ -6,9 +6,10 @@
 
 - Branch: `r1-ptr3/planning-repair-finding-propagation-20260817`
 - Baseline HEAD: `033867472f23535ce2abc685934fd2a2b8e63586`
-- Materialization HEAD: `2c671259d6397104ae1205e6baac8ec9c098ab52`
-- Implementation commit: `2c671259d6397104ae1205e6baac8ec9c098ab52`
-- Evidence seal commit: `the commit containing this self-referential report; exact hash reported after seal`
+- Materialization HEAD: `b77eeb27425d9abef897f94e39c518774d3701c3`
+- Initial implementation commit: `2c671259d6397104ae1205e6baac8ec9c098ab52`
+- Evidence-successor gate implementation commit: `b77eeb27425d9abef897f94e39c518774d3701c3`
+- Final evidence seal commit: `the commit containing this self-referential report; exact hash reported after seal`
 - Final worktree target: `clean`
 - Changed implementation/test files: `tools/canary/slice1_phase_b_current_skill.py`, `tests/canary/test_slice1_phase_b_current_skill_materialization.py`
 - Evidence files: `18` direct files including the self-excluded SHA manifest
@@ -37,8 +38,8 @@
 - Expected / hard elapsed seconds: `240 / 900`
 - Expected / hard cost: `UNKNOWN / UNKNOWN` (no locally trusted current price authority)
 - Budget SHA-256: `5955d151fc9c6642380feda81125365f58631f3d89f6d4b92691c4b26fca7559`
-- Approval template SHA-256: `9f6721d1218e683bf63c02bc0ac924943e89bfcbc2efdac0d864d8aeafe7e3dd`
-- Launcher binding SHA-256: `9b23d039ada00baab324f6dc580a8bc345e65a6fa238ec91d941036087cf3e60`
+- Approval template SHA-256: `50590091c2b8d4ea93b53752afbdeb7ec9b65a6accf1ddd7292feaee9cfe77da`
+- Launcher binding SHA-256: `bbdf5844de6cc4b2d8c9c4c29b11fc44d9eb176be7e27a2689ba31a3056901ad`
 - Output isolation SHA-256: `3aa00463373b4afc00da15ef388930cdd525795d277023be3ba00ab860bf03b5`
 - Quality capture SHA-256: `8850ac9dabfd1b7a44a8c5ca457317a0ea27e92f742fb8cafee58e8b0e2e0a0a`
 - A/B comparison lock SHA-256: `ac7e3cd770c41d62a6dc750786f35593c757580d893636a168b83c09c71c6e04`
@@ -55,7 +56,7 @@
 - Output isolation: experiment artifact only; PTR12 trace remains hash/shape-only
 - Quality capture: exact title/narrative plus validator, authority, causal, character, world, setup/payoff, POV/tense/tone/genre, convergence, no-progress, duplicate and whole-Planning-regeneration signals; unsupported dimensions remain `UNKNOWN`; no rigid literary score
 - A/B lock: only `SKILL_CONTEXT_ARM` may differ; cohort, authority, contract, prompt body, route/model/provider/adapter, budget, call cap, retry, validators, PTR12, isolation and rubric are frozen
-- Offline tests: focused Phase B `20 passed`; focused + Slice1/Skill/PTR12 adjacency `74 passed`; deterministic whole-packet rebuild `2 runs / 17 documents / exact bytes and metadata`; full canary matrix `339 passed, 2 skipped, 19 failed, 31 errors`
+- Offline tests: focused Phase B `21 passed`; focused + Slice1/Skill/PTR12 adjacency `75 passed`; deterministic whole-packet rebuild `2 runs / 17 documents / exact bytes and metadata`; full canary matrix `339 passed, 2 skipped, 19 failed, 31 errors`
 - Full canary non-green attribution: historical fixed-HEAD, consumed/expired approval, old materialization-parent and sealed successor gates; no new Phase B test failed and no historical evidence was rewritten
 - Strict L3: `PASS`, warnings `0`, blockers `0`
 - Privacy: `exact`, materialization matches `0`
