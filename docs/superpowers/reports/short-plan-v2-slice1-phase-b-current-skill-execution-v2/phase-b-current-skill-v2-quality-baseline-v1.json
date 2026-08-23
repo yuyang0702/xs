@@ -1,0 +1,14 @@
+{
+  "authority_violations": "UNKNOWN_PRE_DISPATCH",
+  "creative_dimensions": "NOT_EVALUATED",
+  "isolated_model_artifact_present": false,
+  "isolated_model_artifact_sha256": null,
+  "quality_baseline_sha256": "e06948737bd8147b448845d07869cedaf2ba9a7768c8fd7c03316066a68ca0ff",
+  "repair_needed": true,
+  "scalar_literary_score_created": false,
+  "schema": "Slice1PhaseBCurrentSkillQualityBaselineV1",
+  "skill_v2_evaluated": false,
+  "status": "NOT_CAPTURED_PRE_DISPATCH_ABORT",
+  "validator_outcome": "NOT_REACHED",
+  "version": 1
+}

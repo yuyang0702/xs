@@ -1,0 +1,20 @@
+{
+  "cost_cny": 0,
+  "cost_usd": 0,
+  "effective_route_cap": 4624,
+  "elapsed_seconds": 1.0,
+  "engineering_metrics_sha256": "45ce6e39a0d7ce364c0029d5f192166a2a0356ed1d5d6fceb0176d36d5d61588",
+  "finish_reason": "NOT_OBSERVED",
+  "http_post_attempts": 0,
+  "input_tokens": 0,
+  "model_logical_calls": 0,
+  "network_request_attempts": 0,
+  "output_tokens": 0,
+  "provider_accepted_cap": "UNKNOWN_NOT_DISPATCHED",
+  "provider_exposed_final_tokens": "UNKNOWN_NOT_DISPATCHED",
+  "provider_exposed_reasoning_tokens": "UNKNOWN_NOT_DISPATCHED",
+  "real_provider_request_attempts": 0,
+  "requested_max_output_tokens": 4624,
+  "schema": "Slice1PhaseBSingleDispatchEngineeringMetricsV1",
+  "version": 1
+}

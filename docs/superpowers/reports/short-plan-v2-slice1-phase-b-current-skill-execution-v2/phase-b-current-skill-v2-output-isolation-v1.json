@@ -1,0 +1,16 @@
+{
+  "canon_mutation_count": 0,
+  "draft_entry_count": 0,
+  "final_review_entry_count": 0,
+  "isolated_database_present": true,
+  "isolated_model_artifact_present": false,
+  "maintenance_entry_count": 0,
+  "output_isolation_result_sha256": "2461627e1a114160b7dfcc010601541937a3a7bc8ffef9106c93efb9d729dcc6",
+  "production_authority_promotion_count": 0,
+  "production_database_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "run_root": ".superpowers/canary-runs/slice1-phase-b-current-skill-single-dispatch-v2-20260823t045907z-001",
+  "schema": "Slice1PhaseBSingleDispatchOutputIsolationResultV1",
+  "story_state_mutation_count": 0,
+  "version": 1
+}

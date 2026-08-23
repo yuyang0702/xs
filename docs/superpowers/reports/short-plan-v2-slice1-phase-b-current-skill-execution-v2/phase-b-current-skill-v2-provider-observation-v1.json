@@ -1,0 +1,18 @@
+{
+  "final_tokens": "UNKNOWN_NOT_DISPATCHED",
+  "finish_reason": "NOT_OBSERVED_PRE_DISPATCH",
+  "negative_capability_decision": "NOT_REACHED",
+  "normalized_provider_shape": "NOT_OBSERVED_PRE_DISPATCH",
+  "provider_dispatch_reached": false,
+  "provider_observation_sha256": "361892eca7fca3a096f34dc5f132ac790ac45e731f735af9d3e91c01bdc3e053",
+  "provider_request_attempts": 0,
+  "ptr12_trace_event_count": 0,
+  "ptr12_trace_present": false,
+  "ptr9_guard_decision": "NOT_REACHED",
+  "raw_content_persisted_count": 0,
+  "raw_provider_shape": "NOT_OBSERVED_PRE_DISPATCH",
+  "raw_to_normalized_delta": "NOT_OBSERVED_PRE_DISPATCH",
+  "reasoning_tokens": "UNKNOWN_NOT_DISPATCHED",
+  "schema": "Slice1PhaseBSingleDispatchProviderObservationV1",
+  "version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "actual": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_logical_calls": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "attempt_accounting_sha256": "9c98473ea25a44087b572bec90921febf8481aa947836cf9bced6cd0f611f4d7",
+  "guard_policy_sha256": "c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d",
+  "hard_maxima": {
+    "http_post_attempts": 1,
+    "model_logical_calls": 1,
+    "network_request_attempts": 1,
+    "real_provider_request_attempts": 1
+  },
+  "hard_single_dispatch_violation": false,
+  "provider_attempt_accounting_result_sha256": "9cea60eecf7ff5bce62a429d9a2b32a12096ffa70c23e65c4cc51e7a88b29c7b",
+  "schema": "Slice1PhaseBSingleDispatchProviderAttemptAccountingV1",
+  "second_http_post_occurred": false,
+  "second_provider_request_occurred": false,
+  "transport_guard_sha256": "5daf9010a5b2f4ccfa6a65efabc2f7aeb2c40c4b02aa0380834b770423eb5310",
+  "version": 1
+}

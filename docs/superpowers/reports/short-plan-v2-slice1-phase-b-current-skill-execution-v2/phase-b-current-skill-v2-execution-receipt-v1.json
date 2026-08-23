@@ -1,0 +1,31 @@
+{
+  "approval_domain_sha256": "f47f1de42ee813ce56001d99de5c5f9bd4ac93a3f9e52cbeb55cebf1f143b421",
+  "approval_file_sha256": "4dfa667d17ae5ebf9acd494c236ae81dd77c6fede6af4f382496ff645440a0f2",
+  "approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_SINGLE_DISPATCH_BASELINE_ONLY",
+  "approval_valid_from": "2026-08-23T10:55:27Z",
+  "approval_valid_until": "2026-08-25T10:55:27Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "cohort_id": "slice1-phase-b-current-skill-single-dispatch-v2-20260823t045907z-001",
+  "completed_at": "2026-08-23T11:54:32Z",
+  "execution_function": "tools.canary.slice1_phase_b_single_dispatch.execute_authorized_once",
+  "execution_receipt_sha256": "ddfef8893c9612f20960e1ae37d990e6d3fe4915b9d94593fc3032c9d37df97b",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_logical_calls": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "nonce_reserved_before_credential_phase": true,
+  "raw_execution_outcome_sha256": "2080d3738e3da7770af9d9df5029fb73df47512624bc4645cbd02aaa3041db87",
+  "resume_allowed": false,
+  "schema": "Slice1PhaseBSingleDispatchExecutionReceiptV1",
+  "second_run_allowed": false,
+  "single_use_approval_spent": true,
+  "start_head": "85f5dc94b8aa218fbea3d12c617956eef4b2b505",
+  "started_at": "2026-08-23T11:54:31Z",
+  "terminal_classification": "PHASE_B_BASELINE_PRE_DISPATCH_ABORT",
+  "version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "cohort_id": "slice1-phase-b-current-skill-single-dispatch-v2-20260823t045907z-001",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_logical_calls": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "final_reservation_status": "consumed",
+  "final_usage_status": "spent",
+  "ledger_sha256": "b53329d67710de04dc657bf273fa219eb9917ae2504dd6ee04984e98ed33cdbb",
+  "nonce_binding_id": "phase-b-v2-nonce-20260823t105527z-48946f547be4",
+  "nonce_consumed": true,
+  "nonce_consumption_sha256": "786d14f846405b00359e1c450bf809999f8bedb26d4f31170e33770d49652d41",
+  "nonce_reserved": false,
+  "nonce_sha256": "48946f547be41acfd08e8cd72efd08808c49448f7f75be56a85341e2846bc49a",
+  "reservation_result": "PASS",
+  "resume_allowed": false,
+  "schema": "Slice1PhaseBSingleDispatchNonceConsumptionV1",
+  "second_run_allowed": false,
+  "transition": "unused_unreserved -> reserved -> spent_consumed",
+  "version": 1
+}

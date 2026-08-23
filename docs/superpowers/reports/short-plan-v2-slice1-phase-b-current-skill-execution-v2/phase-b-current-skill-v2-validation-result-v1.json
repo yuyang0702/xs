@@ -1,0 +1,41 @@
+{
+  "error_message_sha256": "fc0c3102a54561934021e634c50a8f38d4bb033e822f583f3627094128829468",
+  "finding_count": 4,
+  "finding_fields_and_types": [
+    {
+      "field": "formal_event_ids",
+      "type": "tuple_type"
+    },
+    {
+      "field": "segment_event_ids",
+      "type": "tuple_type"
+    },
+    {
+      "field": "dependency_artifact_ids",
+      "type": "tuple_type"
+    },
+    {
+      "field": "required_obligation_ids",
+      "type": "tuple_type"
+    }
+  ],
+  "first_divergence": {
+    "finish_reason": "NOT_OBSERVED",
+    "http_attempt_count": 0,
+    "inner_attempt_id": "NOT_CREATED_PRE_DISPATCH",
+    "invariant": "frozen tuple-typed authority fields require canonical tuple values",
+    "provider_shape": "NOT_OBSERVED",
+    "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+    "stage": "EventRealizationInputAuthorityV1.model_validate",
+    "validator_finding_sha256": "48f02e66a2022c0b1f54e211ccd0446290c0ae8fab95ead9cb6730c9c92f9816"
+  },
+  "overall_status": "failed_pre_dispatch",
+  "parse_result": "NOT_REACHED",
+  "raw_exception_persisted": false,
+  "repair_needed": true,
+  "repair_required_but_not_authorized": true,
+  "schema": "Slice1PhaseBSingleDispatchValidationResultV1",
+  "validation_result_sha256": "6052da90a8a9a9f7080c8e1fd73c6c17463fe1b4017778243fd940373f84e64b",
+  "validator_result": "INPUT_AUTHORITY_VALIDATION_FAILED",
+  "version": 1
+}
