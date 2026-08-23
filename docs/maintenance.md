@@ -1948,3 +1948,28 @@ semantics. No raw exception message is persisted, and a context failure cannot
 write negative capability state or trigger recovery. Roll back this behavior by
 reverting the PTR12 diagnostic-context implementation commit; no schema or data
 migration is involved.
+
+## Phase B single-dispatch transport guard
+
+The Current-Skill Slice1 Phase B experiment may explicitly construct its
+Provider registry with `SingleDispatchTransportPolicyV1`. In that non-default
+mode, `HttpProvider` installs an HTTPX transport with request retries set to
+zero, permits exactly one outbound POST attempt, disables the existing early
+connection-error retry, and refuses stream/protocol fallbacks that would send a
+second POST. Attempt accounting occurs immediately before `client.post` or
+`client.stream`, so the one-attempt cap is enforced rather than inferred from a
+logical model-call receipt after dispatch.
+
+Normal registries pass no transport policy. Their existing two-attempt early
+connection-error behavior and stream compatibility fallbacks are unchanged.
+The guarded launcher must prove the policy/source binding and the one-attempt
+cap before reserving a nonce; unknown or changed guard state fails closed. The
+guard changes no route, model, payload, Prompt, output budget, workflow retry,
+Planning contract, Skill profile, PTR9 predicate, PTR12 business input,
+StoryState, Canon, Draft, or formal-write authority.
+
+The previous Phase B signed approval remains historical and non-reusable after
+this Runtime build change. A fresh disabled packet and a new single-use final
+approval are required before any Provider call. Reverting the guard source,
+registry injection, tests, and fresh packet restores the prior build; it does
+not reactivate the old approval or consume its never-reserved nonce.

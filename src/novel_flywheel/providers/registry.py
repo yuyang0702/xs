@@ -10,6 +10,7 @@ from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.base import ProviderAdapter
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
 from novel_flywheel.providers.openai_responses import OpenAIResponsesAdapter
+from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 from novel_flywheel.secrets import SecretStore
 
 
@@ -31,9 +32,16 @@ class ResolvedModel:
 
 
 class ProviderRegistry:
-    def __init__(self, db: Database, secrets: SecretStore) -> None:
+    def __init__(
+        self,
+        db: Database,
+        secrets: SecretStore,
+        *,
+        transport_policy: SingleDispatchTransportPolicyV1 | None = None,
+    ) -> None:
         self.db = db
         self.secrets = secrets
+        self.transport_policy = transport_policy
 
     def add_provider(
         self,
@@ -144,7 +152,8 @@ class ProviderRegistry:
             raise ValueError("missing_api_key")
         adapter = ADAPTERS[provider["protocol"]](provider["base_url"], secret,
                                                   provider["extra_headers"], provider["timeout_seconds"],
-                                                  auth_type=provider["auth_type"])
+                                                  auth_type=provider["auth_type"],
+                                                  transport_policy=self.transport_policy)
         fingerprint = self.route_fingerprint(provider, model)
         capabilities = self._effective_capabilities(
             model.get("capabilities") or {}, fingerprint,
