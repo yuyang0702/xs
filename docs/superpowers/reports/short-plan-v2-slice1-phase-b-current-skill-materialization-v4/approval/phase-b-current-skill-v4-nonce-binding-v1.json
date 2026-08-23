@@ -1,0 +1,28 @@
+{
+  "atomic_reservation_required_before_credential_lookup": true,
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "ledger_materialized": false,
+  "nonce_binding_id": "phase-b-v4-nonce-20260823t154936z-c2f6bcf04294",
+  "nonce_binding_sha256": "9f0c3689ef724b64aa573f24f15c30f5eb50782395c70cb74a13948ea31315b3",
+  "nonce_consumed": false,
+  "nonce_reserved": false,
+  "old_approval_reuse_allowed": false,
+  "old_nonce_consumed": true,
+  "reservation_status": "unreserved",
+  "schema": "Slice1PhaseBV4NonceBindingV1",
+  "signed_approval_sha256": "657b6431429f9e84d5baf1c439c882c25e1f9de88c9121efb22bfca3f22b2712",
+  "single_use_nonce_sha256": "c2f6bcf04294bc0897bce33a23b8d595e19ea3fbbcc831912ee5067979c648a3",
+  "usage_status": "unused",
+  "v3_failed_approval_created": false,
+  "v3_failed_approval_nonce_issued": false,
+  "version": 1
+}

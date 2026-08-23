@@ -1,0 +1,22 @@
+{
+  "approval_privacy_scan_sha256": "758146d31a0a3c52241a67afaa95143bcbca29d47ffba3d1064df21dd233f4e2",
+  "credential_value_count": 0,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "overall_status": "exact",
+  "private_absolute_path_count": 0,
+  "raw_prompt_field_count": 0,
+  "raw_provider_content_count": 0,
+  "raw_story_field_count": 0,
+  "scanned_file_count": 7,
+  "schema": "Slice1PhaseBV4ApprovalPrivacyScanV1",
+  "version": 1,
+  "violating_files": []
+}

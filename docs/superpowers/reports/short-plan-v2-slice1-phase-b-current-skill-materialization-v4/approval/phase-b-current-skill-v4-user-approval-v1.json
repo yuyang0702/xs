@@ -1,0 +1,28 @@
+{
+  "approval_cohort_reuse_allowed": false,
+  "approval_parent_head": "7cc41c4cbb8dd61b1e73d7d34949017ea3e0828f",
+  "approval_reuse_allowed": false,
+  "approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_TUPLE_NORMALIZED_SINGLE_DISPATCH_V3_ONLY",
+  "approval_template_sha256": "76df0f0a6fe077300ab24e464172627c133e2ba598436fcd8548e2aaf434774c",
+  "attempt_accounting_sha256": "f8bcfa5921b80ecf8f2f13faee7ba27b91810944f7bbe79b2371d9d247b86f8e",
+  "authority_tuple_normalization_sha256": "6775a251e3fece7225e4ddb2a780e18ceccb5a3ccfff785004837a44dbc5805a",
+  "cohort_id": "slice1-phase-b-current-skill-launcher-v4-20260823t123857z-001",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "launcher_binding_sha256": "35cb161c8fc08ba2b37d84c0d43801724c925d4b9c0eb624a8d7462cd1c28cd8",
+  "materialization_manifest_file_sha256": "88622d840a13644ba4d33e676a0d6064b7c7af030efa326c787af2718a1e2982",
+  "named_approver": "USER_PROJECT_OWNER",
+  "real_execution_in_approval_task_authorized": false,
+  "request_source_sha256": "88d93fd051b884de943ff32d6180a8b8dbcfa246c1442bf38050c46a5454b44b",
+  "schema": "Slice1PhaseBV4UserApprovalV1",
+  "transport_guard_sha256": "75d967b02ed1f49b4e7bc9e7249e866e4f01512b0e37167c975caefdf09a8952",
+  "user_approval_sha256": "6d090345f8e5a23ae9b24d703e4213e5c3b4e509c51f8057b813670f4e88932d",
+  "version": 1
+}
