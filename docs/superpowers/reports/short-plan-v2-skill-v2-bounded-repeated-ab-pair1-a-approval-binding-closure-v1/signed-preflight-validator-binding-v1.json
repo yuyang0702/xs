@@ -1,0 +1,15 @@
+{
+  "binding_explicit": true,
+  "credential_capable_imports_after_validator": true,
+  "schema": "SkillV2Pair1ASignedPreflightValidatorBindingV1",
+  "signed_preflight_validator_binding_explicit": true,
+  "signed_preflight_validator_binding_sha256": "76735f60a9402aa6cd40c240c88ff1c0bbc4480f630f7e44f92439a9f02de783",
+  "signed_preflight_validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+  "signed_preflight_validator_source_sha256": "a388ba5e3ff3842cb7d2301087f97fba06e507004bd4e54011453037209630d5",
+  "validation_contract": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR1_A_SIGNED_PREFLIGHT_V1",
+  "validator_binding_sha256": "76735f60a9402aa6cd40c240c88ff1c0bbc4480f630f7e44f92439a9f02de783",
+  "validator_function": "validate_signed_launch",
+  "validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+  "validator_source_sha256": "a388ba5e3ff3842cb7d2301087f97fba06e507004bd4e54011453037209630d5",
+  "version": 1
+}

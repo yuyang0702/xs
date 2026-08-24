@@ -1,0 +1,12 @@
+{
+  "additional_missing_bindings": [
+    "SIGNED_PREFLIGHT_VALIDATOR_BINDING",
+    "HEAD_SUCCESSOR_VALIDATOR_BINDING",
+    "CURRENT_CAMPAIGN_STOP_STATE_AUTHORITY"
+  ],
+  "first_failing_invariant": "SEALED_LAUNCHER_SOURCE_SHA256_BINDING_MISSING",
+  "prior_fail_closed_correctly": true,
+  "prior_gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_A_ARM_FRESH_USER_APPROVAL_NO_GO",
+  "schema": "SkillV2Pair1AApprovalBindingFailureV1",
+  "version": 1
+}

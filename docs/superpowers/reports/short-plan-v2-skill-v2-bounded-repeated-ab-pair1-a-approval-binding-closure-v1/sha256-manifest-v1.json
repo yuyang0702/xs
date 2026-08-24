@@ -1,0 +1,92 @@
+{
+  "coverage": "all closure files except manifest itself",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1",
+  "definition_sha256": "f01edda1cf7bf9235a87f57ab3e8cca91a5d06e15d11c60672e84f775b5d10ab",
+  "entry_count": 16,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 189,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/README.md",
+      "sha256": "6d6e8fd6937eddf55c4d19285e1d9357dbd47f771697ff57b4b7359257ce7531"
+    },
+    {
+      "bytes": 698,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/approval-readiness-dry-run-v1.json",
+      "sha256": "17663164946c36e089034f17ef69f52f3486ed140690ab37f35d9f43ebc6dd22"
+    },
+    {
+      "bytes": 6903,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/campaign-stop-state-authority-v1.json",
+      "sha256": "4fe14d646ce82aa1ab78bfd4e00a0a947d6988843f61f45833707443601bcce2"
+    },
+    {
+      "bytes": 442,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/failure-binding-v1.json",
+      "sha256": "6aeb311484e70026fc541e35719d612b1f456e9b63a2378aa05e1f908d589311"
+    },
+    {
+      "bytes": 4776,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/final-report-v1.md",
+      "sha256": "4fb86e9b280d411bb23ebcec29d0591b745f84f93e8e63a139426a6521537e5b"
+    },
+    {
+      "bytes": 1079,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/head-successor-validator-binding-v1.json",
+      "sha256": "52ecc4d7cee5af5f8781064ce1cf4e7621894e0abb66ea020569c3dd6b487921"
+    },
+    {
+      "bytes": 947,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/historical-root-successor-policy-v1.json",
+      "sha256": "f2e0746f38768d42c0c212543a09ebe6725752e7cff83c1617245e849b264524"
+    },
+    {
+      "bytes": 2656,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/launcher-source-binding-v1.json",
+      "sha256": "50f2eb4f1a1990bafe66cc879b95975d5306f4066c186c5c9729668cb89c41ff"
+    },
+    {
+      "bytes": 3615,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/negative-matrix-v1.json",
+      "sha256": "df8bbaada9fb3a6e93f5cf2deeef173d41521f16a1ea7dd46331bf6678cb4616"
+    },
+    {
+      "bytes": 895,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/offline-test-receipt-v1.json",
+      "sha256": "7bab0eb3cf515b8623a2a0a7514f915478d8a8cdc256309ed9f0efe8c801e427"
+    },
+    {
+      "bytes": 693,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/original-packet-binding-v1.json",
+      "sha256": "fdd12939964e26e26bbc923f80be80dfb076198dd6439f921fd9d2ef2f9a2256"
+    },
+    {
+      "bytes": 1340,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/pair1-a-successor-ab-lock-v1.json",
+      "sha256": "2d1623570908195caeefe3ac4aee162c2bf2304efffae6a2461c1df21ef488e1"
+    },
+    {
+      "bytes": 7708,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/pair1-a-successor-packet-v2.json",
+      "sha256": "ae99177daaa0ede48ff7105610da49fa6787ef61427ccfae4314466f85a21a49"
+    },
+    {
+      "bytes": 563,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/privacy-scan-v1.json",
+      "sha256": "e7c0718c7e9d2940bf37dee1d4f310b30d9f89e375057fee15de9f2c0c1e9867"
+    },
+    {
+      "bytes": 946,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/signed-preflight-validator-binding-v1.json",
+      "sha256": "ac49d70c6343e5f0a5c7400c2ce2856dfad85aef158217e9fc7ac1af4d9d1804"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1AApprovalBindingClosureSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

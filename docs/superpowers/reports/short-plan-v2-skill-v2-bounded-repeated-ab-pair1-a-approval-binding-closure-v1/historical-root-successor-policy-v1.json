@@ -1,0 +1,18 @@
+{
+  "accepted_roots": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-approval-binding-closure-v1/approval",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm"
+  ],
+  "arbitrary_report_root_accepted": false,
+  "future_approval_root_accepted": true,
+  "future_execution_root_accepted": true,
+  "historical_root_policy": "CLOSED_WORLD",
+  "historical_root_policy_sha256": "62fc71726eff787fb8a9eba9d224b08342fc370e986f2ae9aebab637879eb4c9",
+  "original_campaign_v1_root_accepted": true,
+  "pair1_a_successor_closure_root_accepted": true,
+  "r0f_successor": "NOT_REQUIRED",
+  "schema": "SkillV2Pair1AHistoricalRootSuccessorPolicyV1",
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "campaign_manifest_coverage": "81/81 exact",
+  "campaign_manifest_definition_sha256": "1391b6e317cb6347e4e139218dc7ae4609cdbf1097b3d7d7bfbac17b9c3f4b89",
+  "campaign_manifest_file_sha256": "3c305c3be384c7dcdde6a1bd45c9382a4bec993ab38172a4f42812b456e9ad61",
+  "file_sha256": "abc189f5a8b4e925c270e14c2eb7ec72898143eb559a54cb4589f04161669ebe",
+  "historical_campaign_v1_mutated": false,
+  "packet_sha256": "306c94312c96234da39a6b7b9f6b151cfa7bad0318df07934746f55734d7b2ba",
+  "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/a-arm/disabled-packet-v1.json",
+  "schema": "SkillV2Pair1AOriginalPacketBindingV1",
+  "version": 1
+}

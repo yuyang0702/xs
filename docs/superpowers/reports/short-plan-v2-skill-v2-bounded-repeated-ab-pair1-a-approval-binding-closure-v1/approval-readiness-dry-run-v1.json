@@ -1,0 +1,23 @@
+{
+  "approval_created": false,
+  "approval_dry_run_result": "READY",
+  "campaign_stop_state_authority_binding": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "head_successor_validator_binding": "PASS",
+  "launcher_source_sha256_binding": "PASS",
+  "nonce_created": false,
+  "pair_1_a_ab_lock": "PASS",
+  "pair_1_a_packet_binding": "PASS",
+  "pair_1_a_sequence": "PASS",
+  "schema": "SkillV2Pair1AApprovalReadinessDryRunV1",
+  "signed_preflight_validator_binding": "PASS",
+  "version": 1
+}

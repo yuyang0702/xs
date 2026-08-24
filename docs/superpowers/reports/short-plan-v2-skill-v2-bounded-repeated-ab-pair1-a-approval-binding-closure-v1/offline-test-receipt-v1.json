@@ -1,0 +1,21 @@
+{
+  "approval_dry_run_result": "READY",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "28 passed in 3.24s",
+  "full_suite": "3442 passed, 41 skipped, 6 xfailed, 26 failed, 46 errors; non-green limited to unrelated historical canary/materialization, planning-skill oracle, prior B-arm execution-root, and R0E live-parity gates",
+  "manifest_reproducible_x2": "PASS",
+  "negative_case_count": 21,
+  "related": "92 passed, 4 deselected; 4 deselected are historical B-arm execution-root absence preconditions",
+  "schema": "SkillV2Pair1AApprovalBindingOfflineTestReceiptV1",
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "successor_packet_sha_reproducible_x2": "PASS",
+  "version": 1
+}
