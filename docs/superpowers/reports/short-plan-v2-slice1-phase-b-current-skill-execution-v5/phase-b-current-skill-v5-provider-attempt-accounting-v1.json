@@ -1,0 +1,18 @@
+{
+  "application_second_dispatch_allowed": false,
+  "hard_max_http_post_attempts": 1,
+  "hard_max_model_calls": 1,
+  "hard_max_network_request_attempts": 1,
+  "hard_max_real_provider_request_attempts": 1,
+  "hard_single_dispatch_violation": false,
+  "http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "provider_attempt_accounting_sha256": "87f84e01da5b77e4485ed45f28626e871692f715b02a5a563df9bfd45c0b9bfd",
+  "real_provider_request_attempts": 1,
+  "route_fallback_attempted": false,
+  "schema": "Slice1PhaseBV5ProviderAttemptAccountingV1",
+  "sdk_retries_disabled": true,
+  "transport_request_retries_disabled": true,
+  "version": 1
+}

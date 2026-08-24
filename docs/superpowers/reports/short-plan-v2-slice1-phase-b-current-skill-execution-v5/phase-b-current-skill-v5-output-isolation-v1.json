@@ -1,0 +1,17 @@
+{
+  "artifact_relative_path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5/artifact/generated-event-realization-v1.json",
+  "canon_mutation_count": 0,
+  "draft_entry_count": 0,
+  "execution_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5",
+  "final_review_entry_count": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "maintenance_entry_count": 0,
+  "output_isolation_sha256": "a6df2f9a68195e852b52c8344f32bec5cd3898f98399d04cd7a20b06b335e12e",
+  "production_authority_promotion_count": 0,
+  "production_database_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "schema": "Slice1PhaseBV5ExecutionOutputIsolationV1",
+  "skill_v2_profile_active": false,
+  "story_state_mutation_count": 0,
+  "version": 1
+}

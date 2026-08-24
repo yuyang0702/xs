@@ -1,0 +1,17 @@
+{
+  "atomic_reservation_completed": true,
+  "final_reservation_status": "consumed",
+  "final_usage_status": "consumed_spent",
+  "initial_reservation_status": "unreserved",
+  "initial_usage_status": "unused",
+  "ledger_file_sha256": "bb56ef6fd8f656866b51bd3c7274b7f009913fa35757743cddbabfa7b2884ac0",
+  "ledger_relative_path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5/ledger/single-use-ledger-v1.json",
+  "nonce_binding_id": "phase-b-v5-nonce-20260824t035630z-78a64ad97a7c",
+  "nonce_consumption_sha256": "50e1f144d18d11b36a45ac777b541b751772e787728bdf3858847bf46e38b06d",
+  "nonce_sha256": "78a64ad97a7cb9084420d1be8730a6156387946e839ef2c3200869661253c77e",
+  "replacement_nonce_issued": false,
+  "replay_allowed": false,
+  "reservation_preceded_credential_lookup": true,
+  "schema": "Slice1PhaseBV5NonceConsumptionV1",
+  "version": 1
+}

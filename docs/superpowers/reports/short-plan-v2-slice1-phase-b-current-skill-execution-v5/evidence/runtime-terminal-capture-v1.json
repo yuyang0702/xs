@@ -1,0 +1,48 @@
+{
+  "fallback_attempted": false,
+  "result": {
+    "artifact_persisted": true,
+    "artifact_sha256": "b3588452679d0d5c39c4b86db63c98dc440868cdb2cd951d1262f426b234cb67",
+    "audit_serialization": "PASS",
+    "audit_serialization_sha256": "ac37cdd64d1660195bce25a91cc76c3b425cde56ada5e5d915a96b1cd3d8aa21",
+    "conversion_audit_sha256": "63ec855144b74ecfbbc520e7b63099fffa0edbf824c80681184f0e4a7339dfb1",
+    "draft_entered": false,
+    "engineering_metrics": {
+      "artifact_count": 1,
+      "audit_field_count": 10,
+      "visible_final_chars": 1957
+    },
+    "freeze_state": "FROZEN",
+    "full_short_canary": "NOT_EXECUTED",
+    "http_post_attempts": 1,
+    "local_terminal": "PASS",
+    "model_call_count": 1,
+    "production_database_mutation_count": 0,
+    "quality_capture": {
+      "candidate_count": 1,
+      "semantic_valid": true
+    },
+    "schema": "Slice1PhaseBV5LocalSuccessReceiptV1",
+    "status": "executed_once",
+    "transport_attempts": {
+      "application_second_dispatch_allowed": false,
+      "guard_active": true,
+      "http_post_attempts": 1,
+      "max_http_post_attempts": 1,
+      "model_logical_calls": 1,
+      "network_request_attempts": 1,
+      "real_provider_request_attempts": 1,
+      "sdk_retries_disabled": true,
+      "transport_request_retries_disabled": true
+    },
+    "validator_status": "PASS",
+    "version": 1,
+    "write_json_reached": true
+  },
+  "resume_attempted": false,
+  "retry_attempted": false,
+  "schema": "Slice1PhaseBV5RuntimeTerminalCaptureV1",
+  "second_dispatch_attempted": false,
+  "terminal": "PASS",
+  "version": 1
+}

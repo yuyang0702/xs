@@ -1,0 +1,22 @@
+{
+  "cost_cny": "UNKNOWN_LOCAL_PRICE_NOT_TRUSTED",
+  "cost_usd": "UNKNOWN_LOCAL_PRICE_NOT_TRUSTED",
+  "credential_lookup_count": "UNKNOWN_NOT_INSTRUMENTED_AFTER_RESERVATION",
+  "effective_route_cap": 4624,
+  "elapsed_seconds": "UNKNOWN_NOT_FORMALLY_EXPOSED",
+  "engineering_metrics_sha256": "48af86a2fffc4c3c77ffb28eacd344a219c7daa2b36c59245e9a1d208f64a42c",
+  "finish_reason": "end_turn",
+  "http_post_attempts": 1,
+  "input_tokens": 0,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "output_tokens": 529,
+  "provider_accepted_cap": "UNKNOWN_NOT_FORMALLY_EXPOSED",
+  "provider_client_creation_count": "UNKNOWN_NOT_INSTRUMENTED_AFTER_RESERVATION",
+  "provider_exposed_final_tokens": "UNKNOWN_NOT_FORMALLY_EXPOSED",
+  "provider_exposed_reasoning_tokens": "UNKNOWN_NOT_FORMALLY_EXPOSED",
+  "real_provider_request_attempts": 1,
+  "requested_max_output": 4624,
+  "schema": "Slice1PhaseBV5EngineeringMetricsV1",
+  "version": 1
+}

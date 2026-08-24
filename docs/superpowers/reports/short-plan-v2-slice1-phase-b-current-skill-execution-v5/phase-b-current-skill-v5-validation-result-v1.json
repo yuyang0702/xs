@@ -1,0 +1,18 @@
+{
+  "artifact_freeze": "FROZEN",
+  "artifact_persistence": "PASS",
+  "audit_serialization": "PASS",
+  "authority_copy": "PASS",
+  "candidate_model_validate": "PASS",
+  "first_divergence": null,
+  "local_derivation": "PASS",
+  "overall_status": "PASS",
+  "repair_needed": false,
+  "schema": "Slice1PhaseBV5ValidationResultV1",
+  "slice1_validator": "PASS",
+  "structured_json_extraction": "PASS",
+  "validation_result_sha256": "e48637356b5c5482fb5e9239def4a656bceb82b7d92d40a813b24116bdc262d5",
+  "version": 1,
+  "visible_final_extraction": "PASS",
+  "write_json_reached": true
+}
