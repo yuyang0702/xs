@@ -1,0 +1,11 @@
+{
+  "combined_disposition": "NO_GO_QUALITY_REGRESSION",
+  "cutover_readiness_sha256": "3847971675a27bf9da03c89f672ec82877b0a8ad0f13781769c0ae60cfba818c",
+  "exact_next_gate": "SKILL_V2_PROFILE_QUALITY_REGRESSION_ROOT_CAUSE",
+  "planning_v2_cutover_authorized": false,
+  "schema": "SkillV2RealABCutoverReadinessV1",
+  "skill_v2_production_activated": false,
+  "skill_v2_production_cutover_authorized": false,
+  "skill_v2_runtime_cutover_candidate_ready": false,
+  "version": 1
+}

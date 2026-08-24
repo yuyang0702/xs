@@ -1,0 +1,115 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "blind_review_used": true,
+  "counts": {
+    "b_critical_dimension_regressions": 4,
+    "b_dimensions_better": 0,
+    "b_dimensions_equivalent": 4,
+    "b_dimensions_insufficient": 2,
+    "b_noncritical_dimension_regressions": 6
+  },
+  "dimensions": [
+    {
+      "critical_dimension": true,
+      "dimension": "EVENT_CAUSAL_FIDELITY",
+      "evidence_reference": "X paragraphs 1-3 and Y paragraphs 1-7 each realize costly choice, resistance, changed local state, and a next causal handoff.",
+      "judgment": "EQUIVALENT"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "CHARACTER_MOTIVATION",
+      "evidence_reference": "Y paragraphs 1 and 3 bind Mara and Vale to distinct personal and siege-level stakes; X paragraph 1 states wants clearly but more abstractly.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "CHARACTER_VOICE",
+      "evidence_reference": "Y paragraphs 3, 6, and 7 differentiate the characters through concise dialogue and action; X relies mainly on narrated explanation.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "RELATIONSHIP_LOGIC",
+      "evidence_reference": "Y turns opposed goals into a credible tactical alliance at the barred door; X reaches cooperation plausibly but with less relational development.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "WORLD_SPECIFICITY",
+      "evidence_reference": "Y uses the signal house, harbor chain, narrows, fishing boats, occupation fleet, and siege as interacting world mechanisms; X uses a more generic gate and faction frame.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "SENSORY_REALIZATION",
+      "evidence_reference": "Y includes cold iron, grease, scratches, bell strokes, lanterns, axes, and winch teeth; X has useful rainwater and seal details but lower sensory density.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "CONFLICT_AND_PACING",
+      "evidence_reference": "Y escalates through changed wards, withheld gear, approaching boots, bell strokes, and forced cooperation; X remains more expository and resolves at a lower dramatic pressure.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "SETUP_PAYOFF_DEPENDENCY",
+      "evidence_reference": "Y pays off the key, inner gear, storm signal, fishing-boat response, and winch; X pays off the softening seal and hidden faction mark but with fewer interlocked dependencies.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "POV_CONSISTENCY",
+      "evidence_reference": "Both views maintain a stable third-person focal character without a material viewpoint break.",
+      "judgment": "EQUIVALENT"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "TENSE_CONSISTENCY",
+      "evidence_reference": "Both views maintain past tense consistently.",
+      "judgment": "EQUIVALENT"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "TONE_GENRE_FIDELITY",
+      "evidence_reference": "The sealed authority exposes no genre or target-tone contract beyond generic event obligations, so relative fidelity cannot be adjudicated safely.",
+      "judgment": "INSUFFICIENT_EVIDENCE"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "SUBTEXT_DRAMATIZATION",
+      "evidence_reference": "Y externalizes competing loyalties through the gear, bell rope, release, and final exchange; X frequently explains the ethical meaning directly.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "DRAFT_INTENT_HANDOFF",
+      "evidence_reference": "Y supplies scene-ready spatial actions, reversals, dialogue, and a terminal image; X supplies a sound outline but more summary-level realization.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "TEMPLATE_FLATTENING_RISK",
+      "evidence_reference": "Y's concrete mechanics and asymmetrical character goals reduce template flattening; X uses explicit external-want/deeper-need and local-state language that reads more schematic.",
+      "judgment": "A_BETTER"
+    },
+    {
+      "critical_dimension": true,
+      "dimension": "AUTHORITY_CORRECTNESS",
+      "evidence_reference": "Both views carry identical authority hashes and event identity, remain shadow-only, and have PASS/FROZEN validation state.",
+      "judgment": "EQUIVALENT"
+    },
+    {
+      "critical_dimension": false,
+      "dimension": "UNTARGETED_CREATIVE_MUTATION",
+      "evidence_reference": "The authority fixture intentionally withholds detailed story facts; neither creative divergence can be classified as an unauthorized mutation from the available contract.",
+      "judgment": "INSUFFICIENT_EVIDENCE"
+    }
+  ],
+  "engineering_gain_can_override_critical_quality_regression": false,
+  "narrative_dimension_comparison_sha256": "04f6e8deb83fd41214cd8d716166f693bb87e117c9bf78858a22eb0143c187ef",
+  "quality_regression_fails_b_arm": true,
+  "schema": "SkillV2RealABNarrativeDimensionComparisonV1",
+  "single_literary_scalar_score_created": false,
+  "version": 1
+}

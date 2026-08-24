@@ -1,0 +1,26 @@
+{
+  "a_arm_reference_sha256": "207eb658ec3fcc50c2abcc3c9767d00e7063e287e910087bd12fc80599080fa4",
+  "arm": "CURRENT_RUNTIME_SKILL",
+  "artifact_relative_path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5/artifact/generated-event-realization-v1.json",
+  "artifact_sha256": "b3588452679d0d5c39c4b86db63c98dc440868cdb2cd951d1262f426b234cb67",
+  "engineering_metrics_sha256": "48af86a2fffc4c3c77ffb28eacd344a219c7daa2b36c59245e9a1d208f64a42c",
+  "execution_manifest": {
+    "coverage": "15/15 exact",
+    "definition_sha256": "034f28b68d2a09ce3b6386c4594e9c63b0d916ee4723efd706a973d3ab26f103",
+    "file_sha256": "81f53bc303735b357382a19c1641cc192223bce9df3b8e81ce23ce07d4852fe1"
+  },
+  "execution_receipt_sha256": "d128ba42aa0e0da6bb4ae85d34c1e02473f5edc1399b992037924945ddafe3b8",
+  "materialization_manifest": {
+    "coverage": "22/22 exact",
+    "definition_sha256": "71f5c39241b53328e5dfde01adb928f3a2c6e185c5f2d4df2cd23080b0bd3938",
+    "file_sha256": "1b64ec1aaff4bb1efa569cf14ec0bc996cf35a673b3853c9925736b814f6660f"
+  },
+  "model_input_sha256": "8b94aab84342063b6f172f21a68feb5d21bf132857d8aae1fe6685c0dc720725",
+  "provider_observation_sha256": "976316058195d84e42b2e2b93567903d7cad4035da2c6a446aaefc8b5cc1435f",
+  "quality_baseline_sha256": "7591bbb790b3d038b9a7a3948654984ebe9c54688c4206813cf19aac6b018968",
+  "schema": "SkillV2RealABAArmReferenceV1",
+  "terminal": "SLICE1_PHASE_B_CURRENT_SKILL_BASELINE_PASS",
+  "valid_sealed_pass": true,
+  "validation_result_sha256": "e48637356b5c5482fb5e9239def4a656bceb82b7d92d40a813b24116bdc262d5",
+  "version": 1
+}

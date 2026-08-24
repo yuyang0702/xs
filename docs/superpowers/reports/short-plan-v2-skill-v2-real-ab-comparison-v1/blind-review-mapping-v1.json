@@ -1,0 +1,23 @@
+{
+  "a_comparison_view_sha256": "15eb95214b37908123cf322e5d8948dae0f93feddc55aacc1a036d66f48f11f8",
+  "a_raw_artifact_unchanged": true,
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "algorithm": "sha256(ab_pair_id + NUL + blind-pairwise-narrative-v1), byte0 parity",
+  "b_comparison_view_sha256": "f6bb598b0cf03014ed34789b3aa8b7aeb515346fc2c85d0634c2b82d33f61ddc",
+  "b_raw_artifact_unchanged": true,
+  "blind_judgment_file_sha256": "a4460327962be75ec926cfcbd82ee66760aed08447113207bfb6e216c92c7c82",
+  "blind_review_mapping_sha256": "637948b80dc3c551a3a6d5269271b732c7dcbea5155edf3db4231beb7890de12",
+  "blind_review_used": true,
+  "blind_x_comparison_view_sha256": "f6bb598b0cf03014ed34789b3aa8b7aeb515346fc2c85d0634c2b82d33f61ddc",
+  "blind_y_comparison_view_sha256": "15eb95214b37908123cf322e5d8948dae0f93feddc55aacc1a036d66f48f11f8",
+  "engineering_metrics_hidden_during_narrative_review": true,
+  "external_evaluator_model_used": false,
+  "mapping": {
+    "X": "B",
+    "Y": "A"
+  },
+  "mapping_revealed_only_after_judgments_frozen": true,
+  "mapping_sealed_separately": true,
+  "schema": "SkillV2RealABBlindReviewMappingV1",
+  "version": 1
+}

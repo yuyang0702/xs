@@ -1,0 +1,26 @@
+{
+  "arm": "SKILL_CONTEXT_V2",
+  "artifact_relative_path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4/artifact/generated-event-realization-v1.json",
+  "artifact_sha256": "559724e4944f51715c634a3653dffdaf19bd946f6127f64cb64f941fb7f6f450",
+  "b_arm_reference_sha256": "9c905fdba54241380fc3e1b17b05e306af77ac23e4428af0d36e0b53d4a83bda",
+  "engineering_metrics_sha256": "9ffbefcc5978a7c14e4fdf6a6322083e6df596b3e640e6e73f23db43deaef75b",
+  "execution_manifest": {
+    "coverage": "16/16 exact",
+    "definition_sha256": "f3ae3ce83c5ceb259584d40fce7ebc67377efeb972179e8acab64d7dace0354b",
+    "file_sha256": "61ee8889734b30f179bd32120910d84fa4f8911d712356e6c21e0e4d7cef35a8"
+  },
+  "execution_receipt_sha256": "7d7be5709ac474d9cbda199967218eb8aec5cbf310edb3a203ecd5f525141502",
+  "materialization_manifest": {
+    "coverage": "31/31 exact",
+    "definition_sha256": "f9b677c77b9f61c3af09d133a29433719fc4f7ce1d5cb3ae8e38b79b2696b33e",
+    "file_sha256": "5a47c0471710bcb76d029e7953ecd8a40c53178e206c71e8066e742dc7407e7c"
+  },
+  "model_input_sha256": "387380e61ac4ed098b00a4b45f3299035c0455a9963a58a56f489e3f3e15dc94",
+  "provider_observation_sha256": "4b0002510897793e2d60250bfeea010047b15da06a7f04e322cafe1c3a0d9496",
+  "quality_baseline_sha256": "183fd75ccb5ce5b4b32c69d91dca45f567084d06cd60da295df37e7fc9de6700",
+  "schema": "SkillV2RealABBArmReferenceV1",
+  "terminal": "SKILL_V2_REAL_AB_B_ARM_PASS",
+  "valid_sealed_pass": true,
+  "validation_result_sha256": "5f94ea73d5d984515fc334b5c32c34c493e8ed8b68810d855ba176e7a3899d16",
+  "version": 1
+}

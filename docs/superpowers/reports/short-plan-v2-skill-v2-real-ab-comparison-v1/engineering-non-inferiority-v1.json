@@ -1,0 +1,22 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "engineering_non_inferior": "YES",
+  "engineering_non_inferiority_sha256": "466899b1b71024b95fb5a90ddc5dd7ec96ee30a6bcd3502a6752e0a9d282df69",
+  "lower_output_tokens_required": false,
+  "required_b_arm_checks": {
+    "artifact_freeze": "FROZEN",
+    "artifact_persistence": "PASS",
+    "audit_serialization": "PASS",
+    "canon_mutation_count": 0,
+    "http_post_attempts_eq_1": true,
+    "model_logical_calls_eq_1": true,
+    "ready_mutation_count": 0,
+    "real_provider_request_attempts_eq_1": true,
+    "repair_needed": false,
+    "second_request_occurred": false,
+    "slice1_validator": "PASS",
+    "story_state_mutation_count": 0
+  },
+  "schema": "SkillV2RealABEngineeringNonInferiorityV1",
+  "version": 1
+}

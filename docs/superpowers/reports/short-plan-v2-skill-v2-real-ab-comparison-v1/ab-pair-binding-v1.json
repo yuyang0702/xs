@@ -1,0 +1,29 @@
+{
+  "a_arm_execution_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5",
+  "a_arm_materialization_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5",
+  "ab_pair_binding_sha256": "0a4063e593ab5f20c52cf9d95e220efcc3394e1b1657a9d54e4c541dc65b53a2",
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "b_arm_execution_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4",
+  "b_arm_materialization_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4",
+  "comparison_lock_sha256": "8185d3e964b9e6a4834c01ed6c83d4c7ca219ccac800cdb3384086331840426c",
+  "lock_dimensions": {
+    "authority_input_equal": true,
+    "engineering_rubric_equal": true,
+    "non_skill_prompt_equal": true,
+    "output_cap_equal": true,
+    "output_isolation_policy_equal": true,
+    "ptr12_equal": true,
+    "quality_rubric_equal": true,
+    "route_model_client_equal": true,
+    "same_authority_input": true,
+    "same_story_slice": true,
+    "task_contract_equal": true,
+    "transport_policy_equal": true,
+    "validator_policy_equal": true
+  },
+  "overall_status": "exact",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "schema": "SkillV2RealABPairBindingV1",
+  "semantic_variable_drift_count": 0,
+  "version": 1
+}

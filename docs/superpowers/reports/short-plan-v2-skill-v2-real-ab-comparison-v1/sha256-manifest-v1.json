@@ -1,0 +1,84 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "baseline_head": "7e1a2b66bddc8ebc68fa09e7c60690f63664f85e",
+  "combined_disposition": "NO_GO_QUALITY_REGRESSION",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1",
+  "file_count": 14,
+  "files": [
+    {
+      "bytes": 1628,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/a-arm-reference-v1.json",
+      "sha256": "6d47372d1ca128297e9cab2e524dccb83c639a38fa04f8846dba9d50fb810657"
+    },
+    {
+      "bytes": 1377,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/ab-pair-binding-v1.json",
+      "sha256": "853fcb578467eeaef2b98438162a6b4b0481cb5ad50bd78dfee4d24e144e9335"
+    },
+    {
+      "bytes": 1603,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/b-arm-reference-v1.json",
+      "sha256": "ae06213f23b5d23397852139d5eb645d2df09ee5b064550f5e66cb3e355e40c5"
+    },
+    {
+      "bytes": 1180,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/blind-review-mapping-v1.json",
+      "sha256": "ac4427a43116c300af4f67ecbbec21a16e95d8849d410fec6d7d7a33e7131567"
+    },
+    {
+      "bytes": 695,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/combined-decision-v1.json",
+      "sha256": "a9f0ee1491356e49029c87fb7aeb54d2761f89f4aebb4c476b6341b6536834ad"
+    },
+    {
+      "bytes": 489,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/cutover-readiness-v1.json",
+      "sha256": "ae0f373d0eeb143a58ccc32a71d17a2d2cd2a58a3381fc5153df951c9fe63b18"
+    },
+    {
+      "bytes": 4018,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/engineering-comparison-v1.json",
+      "sha256": "4c837ff0a6cd8ca761488e81ba472889a4456b2b2b7872234c8f75f51c4230e0"
+    },
+    {
+      "bytes": 793,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/engineering-non-inferiority-v1.json",
+      "sha256": "887d85d6be20a4a4711e13e7644996b2d8079ef60995793f5d2e7c59c099e9e7"
+    },
+    {
+      "bytes": 3370,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/final-report-v1.md",
+      "sha256": "55bda98a2e617f2a3d2c45ee3affa08f8eb51170b78b1cf4f497ecd8f443ace0"
+    },
+    {
+      "bytes": 5483,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/narrative-dimension-comparison-v1.json",
+      "sha256": "40d2876577456dfbccdc4ee0c24a9c9186e2e66fcdc67b7f2ded66ccf97bf2ce"
+    },
+    {
+      "bytes": 749,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/narrative-non-inferiority-v1.json",
+      "sha256": "d0798e9317685c14077cb850c64424f4fd95b7d668a55546468df0dea05ae8c5"
+    },
+    {
+      "bytes": 586,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/one-pair-limitation-v1.json",
+      "sha256": "291beda57c7a29afbdde14e32ee02657d910098352888b11791f2ed87933423c"
+    },
+    {
+      "bytes": 667,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/privacy-scan-v1.json",
+      "sha256": "63e46754e0f92d3b521f69088afac3f4429e1c34482f77fc1f7e715d3ebb56cb"
+    },
+    {
+      "bytes": 186,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/README.md",
+      "sha256": "125232a7f7c0d90e69dcc8640a1f37e4dd5daf3fe8472a702b85fc201182d052"
+    }
+  ],
+  "manifest_definition_sha256": "1b08ee6e491ca8f53547b051964f7105e927627bc611b39ab3e8c45aca7ce4c2",
+  "overall_status": "exact",
+  "schema": "SkillV2RealABComparisonSHA256ManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}

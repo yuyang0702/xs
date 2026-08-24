@@ -1,0 +1,20 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "b_critical_dimension_regressions": 4,
+  "b_dimensions_better": 0,
+  "b_dimensions_equivalent": 4,
+  "b_dimensions_insufficient": 2,
+  "b_noncritical_dimension_regressions": 6,
+  "critical_regression_dimensions": [
+    "CHARACTER_MOTIVATION",
+    "SETUP_PAYOFF_DEPENDENCY",
+    "DRAFT_INTENT_HANDOFF",
+    "TEMPLATE_FLATTENING_RISK"
+  ],
+  "decision_rule": "Any meaningful critical B-arm regression yields NO.",
+  "meaningful_critical_regression_present": true,
+  "narrative_non_inferior": "NO",
+  "narrative_non_inferiority_sha256": "944fe9621b64edd281077d6ebf7dac69b17e90c76598ff6a3a76d8a14e0a8bd3",
+  "schema": "SkillV2RealABNarrativeNonInferiorityV1",
+  "version": 1
+}

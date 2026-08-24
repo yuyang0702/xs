@@ -1,0 +1,17 @@
+{
+  "auth_header_persisted_count": 0,
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1",
+  "credential_persisted_count": 0,
+  "full_generated_prose_duplicated_count": 0,
+  "matches": [],
+  "metadata_file_count_scanned": 13,
+  "overall_status": "PASS",
+  "privacy_match_count": 0,
+  "privacy_scan_sha256": "ca751a5fb853ce2f9b94f556092450f2ca1214dc07951d7f7e1b5c8e6d4a540c",
+  "raw_provider_payload_persisted_count": 0,
+  "reasoning_text_persisted_count": 0,
+  "schema": "SkillV2RealABComparisonPrivacyScanV1",
+  "secret_url_persisted_count": 0,
+  "temporary_blind_views_in_repository": false,
+  "version": 1
+}

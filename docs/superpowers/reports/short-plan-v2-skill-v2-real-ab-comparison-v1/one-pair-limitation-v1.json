@@ -1,0 +1,12 @@
+{
+  "additional_real_ab_pairs_recommendation": "DEFER_UNTIL_QUALITY_REGRESSION_ROOT_CAUSE_AND_NARROW_FIX_ARE_CLOSED",
+  "additional_real_ab_pairs_recommended_now": false,
+  "bounded_repeated_ab_set_required_before_future_cutover": true,
+  "generalized_literary_superiority_claimed": false,
+  "generalized_production_non_inferiority": "NOT_YET_PROVEN",
+  "one_pair_limitation_sha256": "8f8f7056331e866f9724504a7b4a8d8438f4fc28c27b220b41d5f1fd62400758",
+  "pair_count": 1,
+  "pair_level_non_inferiority": "NO",
+  "schema": "SkillV2RealABOnePairLimitationV1",
+  "version": 1
+}
