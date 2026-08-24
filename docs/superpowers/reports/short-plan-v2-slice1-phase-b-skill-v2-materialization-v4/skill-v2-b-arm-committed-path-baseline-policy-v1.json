@@ -1,0 +1,19 @@
+{
+  "active_source_drift_check_unchanged": true,
+  "active_support_paths": [
+    "docs/maintenance.md",
+    "tests/canary/test_skill_v2_b_arm_head_successor.py",
+    "tests/canary/test_skill_v2_b_arm_historical_roots.py",
+    "tests/canary/test_skill_v2_real_ab_b_arm.py",
+    "tools/canary/slice1_phase_b_skill_v2_single_dispatch.py"
+  ],
+  "committed_path_baseline_policy_sha256": "0d39ede37f93609b45fdeb72bf1dd93641108d80b3843ce91eaf941e6caa476b",
+  "historical_path_exclusion_before_verification": false,
+  "historical_path_exclusion_requires_manifest_exact": true,
+  "historical_roots_binding_sha256": "c9a1f1886a29b5d968c172282addd83fabfca9224c4724c5bd139571f97c39f8",
+  "prefix_acceptance": false,
+  "schema": "SkillV2BArmCommittedPathBaselinePolicyV1",
+  "status": "exact",
+  "verified_historical_committed_path_count": 95,
+  "version": 1
+}

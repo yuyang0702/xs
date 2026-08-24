@@ -1,0 +1,23 @@
+{
+  "a_arm_approval_reuse_allowed": false,
+  "a_arm_approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_AUDIT_SAFE_SINGLE_DISPATCH_V5_ONLY",
+  "a_arm_cohort_id": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "a_arm_nonce_reuse_allowed": false,
+  "a_arm_nonce_state": "SPENT_CONSUMED",
+  "a_arm_second_request_allowed": false,
+  "b_arm_nonce_issued": false,
+  "b_arm_requires_fresh_user_approval": true,
+  "old_approval_nonreuse_sha256": "52991d87d5735de95fd866e4109fffb305b0651b253d41e6fd42d977ec5491bd",
+  "schema": "SkillV2BArmOldApprovalNonReuseV1",
+  "v3_approval_id": "skill-v2-b-arm-v3-approval-20260824t104817z-001",
+  "v3_approval_parent_head": "87b9716cdcae3f6d4312f6528863369773d55c25",
+  "v3_approval_reuse_allowed": false,
+  "v3_approval_seal_head": "98cceb5f4398db3cfcea5dde460d2434ce81636a",
+  "v3_execution_authorized": false,
+  "v3_invalidation_path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v3/approval/invalidation/skill-v2-b-arm-v3-approval-invalidation-v1.json",
+  "v3_invalidation_sha256": "699c12cdaee4cfbe8d3d9fb572eb0b1e29897e86e4d7908079d79a9b8718ca66",
+  "v3_nonce_reuse_allowed": false,
+  "v3_nonce_state": "INVALIDATED_UNCONSUMED_UNRESERVED_NOT_EXECUTABLE",
+  "v3_signed_approval_status": "INVALIDATED",
+  "version": 1
+}

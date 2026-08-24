@@ -1,0 +1,21 @@
+{
+  "canon_mutation_allowed": false,
+  "cleanup_policy": "explicit_user-authorized-removal-only",
+  "draft_input_mutation_allowed": false,
+  "experiment_artifact_relative_path": "artifact/generated-event-realization-v1.json",
+  "generated_content_storage": "EXPERIMENT_ARTIFACT_ONLY",
+  "isolated_database_relative_path": "runtime/app.db",
+  "ledger_relative_path": "ledger/single-use-ledger-v1.json",
+  "maintenance_mutation_allowed": false,
+  "namespace": "slice1-phase-b-experiments/slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "output_isolation_sha256": "8836c2793770d6acc975e6dcc6801a67276ad8a4373f428e948babbcd54ee9d0",
+  "production_database_mutation_allowed": false,
+  "ptr12_raw_prose_allowed": false,
+  "ptr12_reasoning_text_allowed": false,
+  "ptr12_trace_relative_path": "trace/ptr12-hash-only-v1.jsonl",
+  "ready_mutation_allowed": false,
+  "retention_policy": "retain_until-current-skill-vs-skill-v2-ab-closure",
+  "schema": "Slice1PhaseBOutputIsolationV1",
+  "story_state_mutation_allowed": false,
+  "version": 1
+}

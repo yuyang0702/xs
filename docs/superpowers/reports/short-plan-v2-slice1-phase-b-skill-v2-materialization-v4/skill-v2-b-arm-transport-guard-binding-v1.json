@@ -1,0 +1,50 @@
+{
+  "application_second_dispatch_allowed": false,
+  "max_http_post_attempts": 1,
+  "max_real_provider_request_attempts": 1,
+  "mechanical_checks": {
+    "attempt_gate_precedes_client_post": true,
+    "attempt_gate_precedes_client_stream": true,
+    "explicit_httpx_transport_retries_zero": true,
+    "guarded_attempt_loop_is_one": true,
+    "registry_injects_explicit_policy": true,
+    "versioned_launcher_constructs_explicit_policy": true
+  },
+  "normal_production_transport_retry_policy_changed": false,
+  "policy": {
+    "application_second_dispatch_allowed": false,
+    "max_http_post_attempts": 1,
+    "mode": "single_dispatch",
+    "schema": "SingleDispatchTransportPolicyV1",
+    "sdk_retries_disabled": true,
+    "transport_request_retries_disabled": true,
+    "version": 1
+  },
+  "policy_definition_sha256": "c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d",
+  "profile_id": "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_PACKET_V4",
+  "route_fallback_after_dispatch_allowed": false,
+  "schema": "SkillV2BArmSingleDispatchTransportGuardV1",
+  "sdk_retries_disabled_for_phase_b": true,
+  "source_bindings": [
+    {
+      "bytes": 9667,
+      "path": "src/novel_flywheel/providers/http.py",
+      "sha256": "f8ad414ff4a30b1725aa8a2ae2d0dec0300d530460ef5d5622b7ef2a5dfcbc73"
+    },
+    {
+      "bytes": 9900,
+      "path": "src/novel_flywheel/providers/registry.py",
+      "sha256": "93f2c8486df0d43f47ffedf3ce5a200564a85d1999e8ac55ee4705a2fbd6f1c3"
+    },
+    {
+      "bytes": 104754,
+      "path": "tools/canary/slice1_phase_b_skill_v2_single_dispatch.py",
+      "sha256": "251065266527cf23651ba496138608d424f0c79e99733e44448827510a51c167"
+    }
+  ],
+  "transport_guard_sha256": "9b40e09f83a130eab8ac410ff705d020b7923748e423c440912ffd7d74fa829d",
+  "transport_request_retries_disabled_for_phase_b": true,
+  "unknown_guard_state_fails_closed": true,
+  "version": 1,
+  "workflow_model_retry_allowed": false
+}

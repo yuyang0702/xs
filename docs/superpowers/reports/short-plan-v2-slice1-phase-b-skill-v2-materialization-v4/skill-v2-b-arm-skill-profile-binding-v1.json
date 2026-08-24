@@ -1,0 +1,166 @@
+{
+  "authority_hash": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+  "authority_override_allowed": false,
+  "bundle_manifest": {
+    "entry_count": 9,
+    "file_sha256": "451a30d3815e1c6e4bdb3e1a1bc1dbec4e4a84061e873f8acca3aee2e2925a3a",
+    "overall_status": "exact",
+    "relative_path": "docs/superpowers/reports/project-skill-portable-bundle/project-skill-final-sha256-manifest-v1.json"
+  },
+  "bundle_status": "exact",
+  "canonical_profile_sha256": "7a6022faa3d0db198a28727d44067cd56d83649536a6b37fee27e91ee170d082",
+  "creative_capability_coverage": [
+    "artifact_realization",
+    "causal_intent",
+    "character_arc",
+    "escalation",
+    "faction_pressure",
+    "location_realization",
+    "motivation",
+    "pacing_intent",
+    "relationship_nuance",
+    "relevant_biography",
+    "sensory_specificity",
+    "setup_payoff",
+    "voice",
+    "world_cost_limit",
+    "world_current_state"
+  ],
+  "decision_inputs": {
+    "actor_ref_count": null,
+    "actor_refs": [],
+    "actor_refs_status": "missing",
+    "authority_hash": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+    "authority_revision": 1,
+    "character_refs": [],
+    "dialogue_required": null,
+    "faction_refs": [],
+    "formal_event_dependency_refs": [],
+    "knowledge_state_refs": [],
+    "location_refs": [],
+    "object_refs": [],
+    "relationship_dependency_refs": [],
+    "schema": "SkillLoadDecisionInputsV1",
+    "slice_dependency_refs": [],
+    "system_refs": [],
+    "world_ref_count": null,
+    "world_refs_status": "missing",
+    "world_rule_refs": []
+  },
+  "decision_result": {
+    "components": [
+      {
+        "component_id": "character-creative",
+        "outcome": "fail_safe_include",
+        "reason_code": "actor_refs_status_missing_fail_safe"
+      },
+      {
+        "component_id": "world-creative",
+        "outcome": "fail_safe_include",
+        "reason_code": "world_refs_status_missing_fail_safe"
+      }
+    ],
+    "decision_id": "skill-load-222d5aa0bb8c80964278604a27539c8f",
+    "fail_safe_used": true,
+    "included_skill_ids": [
+      "plot-structure",
+      "character-management",
+      "worldbuilding"
+    ],
+    "inputs": {
+      "actor_ref_count": null,
+      "actor_refs": [],
+      "actor_refs_status": "missing",
+      "authority_hash": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+      "authority_revision": 1,
+      "character_refs": [],
+      "dialogue_required": null,
+      "faction_refs": [],
+      "formal_event_dependency_refs": [],
+      "knowledge_state_refs": [],
+      "location_refs": [],
+      "object_refs": [],
+      "relationship_dependency_refs": [],
+      "schema": "SkillLoadDecisionInputsV1",
+      "slice_dependency_refs": [],
+      "system_refs": [],
+      "world_ref_count": null,
+      "world_refs_status": "missing",
+      "world_rule_refs": []
+    },
+    "schema": "SkillLoadDecisionV1",
+    "version": 1
+  },
+  "definition_sha256": "787a6fb86f3da54b270e7072f93aa141710a48d4bb954d41a7a758cf803506da",
+  "design_artifact": {
+    "bytes": 30341,
+    "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/runtime-skill-profile-schema-v1.json",
+    "sha256": "a8788372fd23a1ccf970315519ed94fa1c449d34c8420b300241024de4fbb9c8"
+  },
+  "included_rule_ids": [
+    "PLOT_CAUSAL_ESCALATION",
+    "PLOT_SETUP_PAYOFF_INTENT",
+    "PLOT_PACING_INTENT",
+    "CHARACTER_MOTIVATION",
+    "CHARACTER_VOICE",
+    "CHARACTER_ARC",
+    "CHARACTER_RELATIONSHIP_NUANCE",
+    "WORLD_SENSORY_SPECIFICITY",
+    "WORLD_COST_AND_LIMIT",
+    "WORLD_FACTION_PRESSURE",
+    "WORLD_CURRENT_STATE",
+    "WORLD_ARTIFACT_DETAIL"
+  ],
+  "offline_quality_artifact": {
+    "bytes": 2697,
+    "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/final-report-v1.md",
+    "sha256": "95cb58598d5aba45e6b5cfabff72c3607619fabe93d7283858e612e8df88a154"
+  },
+  "offline_quality_manifest": {
+    "entry_count": 18,
+    "file_sha256": "7d442af70f5f1ee050f21238200a0be933ee983e5fdcdf2eaf1447454fe947f1",
+    "overall_status": "exact",
+    "relative_path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/final-sha256-manifest-v1.json"
+  },
+  "offline_quality_status": "VALIDATED",
+  "production_active": false,
+  "production_reachable": false,
+  "profile_artifact": {
+    "bytes": 44111,
+    "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/planning-v2-event-realization-profile-v1.json",
+    "sha256": "0eb3b0f928f2b2a5fe182b632dc80b3a1573e51f1ff2f4c9997a3a8587185f58"
+  },
+  "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+  "profile_version": 1,
+  "prompt_binding_sha256": "6d13dcbdf5e439f0c661246bce6003424071b66c8f34a40ef7fa00611aef7b54",
+  "resolution_deterministic": true,
+  "resolution_run_count": 2,
+  "runtime_owned_responsibility_leak": false,
+  "runtime_profile_source": {
+    "bytes": 50272,
+    "path": "src/novel_flywheel/runtime_skill_profiles.py",
+    "sha256": "103b92403fdfb3ecba59a91bc28fdae146c8d87c975a12ca037e0b19350b9a93"
+  },
+  "schema": "SkillV2BArmProfileBindingV1",
+  "sealed_fixture_profile_sha256": "743a9a94aa609c6cab1dd322ccbd2be4439316fe87abc3ca273cfe3f14526629",
+  "shadow_manifest": {
+    "entry_count": 17,
+    "file_sha256": "45c259e0f80704c09ebc40c92de8f1bd81668c1655c72992c6be0415e8258752",
+    "overall_status": "exact",
+    "relative_path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/final-sha256-manifest-v1.json"
+  },
+  "shadow_only": true,
+  "shadow_report": {
+    "bytes": 2642,
+    "path": "docs/superpowers/reports/planning-skill-profile-shadow-v1/planning-skill-profile-shadow-v1-final-report.md",
+    "sha256": "02a65457ed3af44c56b39c0924f65cd3fa8e2c1b78d090466d1fa652329a3c23"
+  },
+  "skill_v2_profile_binding_sha256": "21decda37379fa12a76a113bab124713400b621edb4812387bf49fb9b8d55f04",
+  "source_bundle_manifest_sha256": "451a30d3815e1c6e4bdb3e1a1bc1dbec4e4a84061e873f8acca3aee2e2925a3a",
+  "source_skill_sha256": {
+    "character-management": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+    "plot-structure": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+    "worldbuilding": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678"
+  },
+  "version": 1
+}

@@ -1,0 +1,29 @@
+{
+  "approval_parent_source_after": "SEALED_SIGNED_APPROVAL_AND_CANONICAL_APPROVAL_BINDING",
+  "approval_parent_source_before": "CURRENT_GIT_HEAD",
+  "current_head_used_as_approval_parent": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "invalidated_approval_rejected": true,
+  "post_seal_focused_head_successor_test_matrix_exact": "PASS",
+  "post_seal_test_parent_binding_sha256": "d9e2fa5e43a3bb017663b1604822817e03bb08c76a3052abf71743c972ab724d",
+  "production_verifier_changed": false,
+  "schema": "SkillV2BArmPostSealTestParentBindingV1",
+  "sealed_v3_approval_seal_head": "98cceb5f4398db3cfcea5dde460d2434ce81636a",
+  "sealed_v3_invalidation_head": "672fa915e7ed4ab5becf08049995d4e20f06e443",
+  "sealed_v3_materialization_parent_head": "87b9716cdcae3f6d4312f6528863369773d55c25",
+  "test_file_sha256": "4ff58a9936cd8f668c45199ad360a8a584fd085d4358d88b7350e5697015343a",
+  "test_fix_commit": "f487f6491cf687f3f85d8fc583f1a7d75eb0e103",
+  "test_path": "tests/canary/test_skill_v2_b_arm_head_successor.py",
+  "valid_evidence_only_successor": "PASS",
+  "version": 1
+}

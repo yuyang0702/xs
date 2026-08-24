@@ -1,0 +1,11 @@
+{
+  "final_decision_sha256": "6aed7918ffaee8eb373007bbd89f8fa7637c97cf5801b1cf3eee3b56a8e78a27",
+  "manifest_definition_sha256": "323d45d90cf2da7f8753a46c1bb35159cd2f83014fb9f7138300ffd10a1c9466",
+  "manifest_sha256": "78b637fac9227447e604e497f327616e23a5d2b3f03dbc30e790ed30eb1b3101",
+  "observer_required_enabled": true,
+  "policy_equal_to_a_arm": true,
+  "ptr12_binding_sha256": "fa020549b398e003c4c3d2f07621d26272688096285a09a7b47b0309665a4424",
+  "raw_content_persisted_count": 0,
+  "schema": "SkillV2BArmPTR12BindingV1",
+  "version": 1
+}

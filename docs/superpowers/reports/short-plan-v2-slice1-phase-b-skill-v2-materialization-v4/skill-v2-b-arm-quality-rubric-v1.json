@@ -1,0 +1,35 @@
+{
+  "a_arm_capture_contract_sha256": "8850ac9dabfd1b7a44a8c5ca457317a0ea27e92f742fb8cafee58e8b0e2e0a0a",
+  "a_arm_quality_baseline_sha256": "7591bbb790b3d038b9a7a3948654984ebe9c54688c4206813cf19aac6b018968",
+  "applies_identically_to_arms": [
+    "CURRENT_RUNTIME_SKILL",
+    "SKILL_CONTEXT_V2"
+  ],
+  "dimensions": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov_consistency",
+    "tense_consistency",
+    "tone_genre_consistency",
+    "subtext_dramatization",
+    "draft_handoff_usefulness",
+    "template_flattening_risk",
+    "authority_correctness",
+    "validator_outcome",
+    "repair_needed_state",
+    "untargeted_creative_mutation"
+  ],
+  "engineering_gain_overrides_meaningful_quality_regression": false,
+  "literary_single_scalar_score": "DISALLOWED",
+  "quality_regression_fails_b_arm": true,
+  "quality_rubric_sha256": "3d65d91e369afdf43dfc0926d3a0605ab6f389ab6ee1da65e4712da981091e10",
+  "schema": "SkillV2BArmQualityRubricV1",
+  "unsupported_dimension_value": "UNKNOWN",
+  "version": 1
+}

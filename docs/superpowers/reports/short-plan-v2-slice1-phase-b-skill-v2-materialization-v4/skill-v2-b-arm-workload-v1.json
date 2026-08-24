@@ -1,0 +1,32 @@
+{
+  "a_arm_cohort_id": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "authority_input_sha256": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+  "case_count": 1,
+  "case_ids": [
+    "valid-canonical"
+  ],
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "existing_project_short_semantics": true,
+  "fixture_canonical_sha256": "6ff08d5e4045bd51ad992f372928e467255a07ab7c13a1ff01b7e5be2227daa6",
+  "fixture_id": "event-realization-shadow-corpus-v1",
+  "fixture_provenance_mode": "CANONICAL_TEXT_LF_V1",
+  "fixture_provenance_sha256": "df502c4e158e1835ed208cbd6501d4e5aa91ca7447a4873b153c5b4818c70981",
+  "fixture_sha256": "a1442835a44471b9be5c87c4feb4ec89853a3b4348d7215185de62ced4a4fab4",
+  "future_skill_v2_arm_must_reuse_exact_workload": true,
+  "live_database_dependency": false,
+  "model_generated_output_authoritative": false,
+  "new_project_initialization": false,
+  "private_user_data": false,
+  "repository_owned_sanitized_fixture": true,
+  "same_authority_input": true,
+  "same_story_slice": true,
+  "same_task_semantics": true,
+  "schema": "SkillV2BArmWorkloadV1",
+  "selected_formal_event_id_sha256": "cc5c6b76ff90955ca7bd714207fcdac924093e4caf8764159893dcd6064711e5",
+  "version": 1,
+  "wall_clock_dependency": false,
+  "withheld_reference_candidate_sha256": "fb4affb4fbdb49b5f906fe9c79552fdd696fd0b84e24ef1ad9d446baf2f75804",
+  "withheld_reference_visible_to_model": false,
+  "workload_sha256": "15864c16c9aaac13ef4647ca6db6892fa0fe54a38afbdfb4fa891ef6049682cf"
+}
