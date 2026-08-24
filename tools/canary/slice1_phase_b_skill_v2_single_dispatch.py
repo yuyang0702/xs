@@ -1035,23 +1035,68 @@ def build_packet_documents(
 
 `SKILL_V2_REAL_AB_B_ARM_READY_FOR_FRESH_USER_APPROVAL=YES`
 
-- Branch: `{git['branch']}`
-- Baseline HEAD: `{BASELINE_HEAD}`
-- Materialization HEAD: `{git['head']}`
-- A-arm: `SEALED_PASS` / `{A_COHORT_ID}`
-- A artifact SHA-256: `{A_ARTIFACT_SHA256}`
-- AB pair: `{AB_PAIR_ID}`
-- B-arm cohort: `{COHORT_ID}`
-- B-arm approval scope: `{APPROVAL_SCOPE}`
-- Primary changed variable: `SKILL_CONTEXT`
-- Skill V2 profile: `{profile['canonical_profile_sha256']}`
-- Rendered Skill V2 context: `{context_doc['skill_v2_context_sha256']}`
-- A model input: `{A_MODEL_INPUT_SHA256}`
-- B model input: `{b_model['model_input_assembly_sha256']}`
-- Comparison lock: `{comparison['comparison_lock_sha256']}`
-- Launcher: `{launcher['launcher_binding_sha256']}`
-- R0F successor: `NOT_REQUIRED`
-- Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL`
+## Required delivery fields
+
+1. Branch: `{git['branch']}`
+2. Baseline HEAD: `{BASELINE_HEAD}`
+3. Implementation/support commit: `{git['head']}`
+4. R0F successor: `NOT_REQUIRED` (`src/**` and protected production source diff `0`)
+5. B-arm materialization seal commit: `REPORTED_AFTER_EVIDENCE_ONLY_SEAL`
+6. Final HEAD: `REPORTED_AFTER_EVIDENCE_ONLY_SEAL`
+7. Final worktree target: `clean`
+8. A-arm baseline verification: `SEALED_PASS`; materialization `{a_ref['materialization_manifest']['entry_count']}/{a_ref['materialization_manifest']['entry_count']}` exact; execution `15/15` exact
+9. A-arm artifact SHA-256: `{A_ARTIFACT_SHA256}`
+10. A-arm quality baseline SHA-256: `{A_QUALITY_SHA256}`
+11. AB_PAIR_ID: `{AB_PAIR_ID}`
+12. B-arm cohort: `{COHORT_ID}`
+13. Exact B-arm approval scope: `{APPROVAL_SCOPE}`
+14. Skill V2 design artifact/hash: `{source_truth['design_artifact']['path']}` / `{source_truth['design_artifact']['sha256']}`
+15. Skill V2 profile artifact/hash: `{source_truth['profile_artifact']['path']}` / `{source_truth['profile_artifact']['sha256']}`; sealed fixture canonical profile `{source_truth['sealed_fixture_profile_sha256']}`
+16. Skill V2 offline-quality artifact/hash: `{source_truth['offline_quality_artifact']['path']}` / `{source_truth['offline_quality_artifact']['sha256']}` / `VALIDATED`
+17. Skill V2 runtime profile source/hash: `{source_truth['runtime_profile_source']['path']}` / `{source_truth['runtime_profile_source']['sha256']}`
+18. Rendered Skill V2 context SHA-256: `{context_doc['skill_v2_context_sha256']}`; characters `{context_doc['skill_v2_context_char_count']}`; token estimate `{context_doc['skill_v2_context_token_estimate']}`
+19. Current Skill A-arm profile SHA-256: `{A_CURRENT_SKILL_PROFILE_SHA256}`
+20. B-arm Skill V2 profile SHA-256: `{profile['canonical_profile_sha256']}` (`{SKILL_PROFILE_ID}@1`)
+21. A-arm model-input SHA-256: `{A_MODEL_INPUT_SHA256}`
+22. B-arm model-input SHA-256: `{b_model['model_input_assembly_sha256']}`
+23. Non-Skill prompt equality: `YES` / `{comparison['non_skill_prompt_body_hash_a']}`
+24. Authority-input equality: `YES` / `{comparison['authority_section_hash_a']}`
+25. Task-contract equality: `YES` / `{comparison['task_contract_hash_a']}`
+26. Route/model/client equality: `YES` / `{route['route_binding_sha256']}`
+27. Output-cap equality: `YES` / `{budget['hard_max_output_tokens_per_call']}` tokens
+28. Transport-policy equality: `YES` / `{guard['policy_definition_sha256']}`
+29. Validator-policy equality: `YES` / `{contract['validator_bundle_sha256']}`
+30. PTR12 equality: `YES` / `{ptr12_doc['ptr12_binding_sha256']}`
+31. Output-isolation policy equality: `YES`; B namespace binding `{output['output_isolation_sha256']}`
+32. Quality-rubric equality: `YES` / `{quality['quality_rubric_sha256']}`; no scalar score
+33. Engineering-rubric equality: `YES` / `{engineering['engineering_rubric_sha256']}`; unknown remains unknown
+34. B-arm launcher source/binding SHA-256: `{launcher['entrypoint_source']['sha256']}` / `{launcher['launcher_binding_sha256']}`
+35. Authority tuple binding: `PASS` / `{normalization['authority_tuple_normalization_sha256']}`
+36. Audit serialization binding: `PASS` / `{a_launcher.audit_serialization_contract()['audit_serialization_sha256']}` / `model_dump(mode="json")`
+37. Transport guard binding: `PASS` / `{guard['transport_guard_sha256']}`
+38. Attempt-accounting binding: `{accounting['attempt_accounting_sha256']}` / hard caps `1/1/1/1`
+39. Budget binding: `{budget['budget_sha256']}` / output cap `{budget['hard_max_output_tokens_per_call']}` / elapsed `{budget['hard_max_elapsed_seconds']}`
+40. Output-isolation SHA-256: `{output['output_isolation_sha256']}`
+41. PTR12 SHA-256: `{ptr12_doc['ptr12_binding_sha256']}`
+42. Quality-rubric SHA-256: `{quality['quality_rubric_sha256']}`
+43. Engineering-rubric SHA-256: `{engineering['engineering_rubric_sha256']}`
+44. A/B comparison-lock SHA-256: `{comparison['comparison_lock_sha256']}`
+45. Offline B-arm tests: focused `{validation.get('focused', 'PENDING')}`; related `{validation.get('related', 'PENDING')}`; full suite `{validation.get('full_suite', 'PENDING')}`; Strict L3 `{validation.get('strict_l3', 'PENDING')}`
+46. Synthetic full success-tail: `{validation.get('success_tail', 'PENDING')}` through parser -> model_validate -> local derivation -> validator -> FROZEN -> audit -> write -> persistence
+47. Manifest definition SHA-256: `SEE_SELF_EXCLUDED_SHA256_MANIFEST_AND_FINAL_SEAL_REPORT`
+48. Manifest file SHA-256: `SEE_FINAL_SEAL_REPORT`
+49. Manifest coverage: `ALL_NON_MANIFEST_FILES_EXACT`; exact count is bound in self-excluded manifest
+50. Privacy: `EXACT`; credential/raw Provider/raw story/private absolute path matches `0`
+51. External counters: credential `0`, Provider client `0`, Provider request `0`, HTTP POST `0`, network `0`, model `0`, paid `0`
+52. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL`
+
+## Closed-world conclusion
+
+The A/B model input uses the same sanitized authority, task contract, non-Skill
+prompt body, route/model/client, output cap, transport, validator, PTR12, audit,
+freeze, quality, engineering, and mutation policies. The only semantic model-input
+variable is the rendered Skill Context. The B profile remains shadow-only and is
+not production active.
 
 `A_ARM_STATUS=SEALED_PASS`  
 `B_ARM_STATUS=MATERIALIZED_NOT_EXECUTED`  
