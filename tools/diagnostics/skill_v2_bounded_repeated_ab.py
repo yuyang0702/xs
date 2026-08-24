@@ -534,6 +534,8 @@ def build_documents(
     approval_rows: list[dict[str, Any]] = []
     nonce_rows: list[dict[str, Any]] = []
 
+    add(".gitattributes", "* text eol=lf")
+
     sampling_policy_sha = _domain_sha(
         "skill-v2-bounded-repeated-ab-sampling-policy-v1",
         {"policy": "NO_EXPLICIT_OVERRIDE_CURRENT_SEALED_POLICY", "changed": False},

@@ -106,6 +106,7 @@ def test_manifest_privacy_context_and_external_action_gates(
     built: tuple[dict[str, bytes], dict[str, object]],
 ) -> None:
     documents, result = built
+    assert documents[f"{bounded_ab.OUTPUT_ROOT}/.gitattributes"] == b"* text eol=lf\n"
     manifest = _load(documents, "sha256-manifest-v1.json")
     privacy = _load(documents, "privacy-scan-v1.json")
     context = _load(documents, "per-pair-skill-context-binding-v1.json")
