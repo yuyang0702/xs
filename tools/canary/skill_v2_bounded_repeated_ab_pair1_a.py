@@ -934,7 +934,7 @@ def build_closure_documents(
 31. Historical-root policy result: `CLOSED_WORLD`; arbitrary report roots rejected
 32. R0F result: `NOT_REQUIRED`
 33. Approval-readiness dry run: `READY`
-34. Negative matrix: `{negative['case_count']}/{negative['case_count']} rejected before external action
+34. Negative matrix: `{negative['case_count']}/{negative['case_count']}` rejected before external action
 35. Focused/related/Strict L3: `{offline['focused']}` / `{offline['related']}` / `{offline['strict_l3']}`
 36. Manifest definition SHA: `{packet_manifest_definition()['packet_manifest_definition_sha256']}`
 37. Manifest file SHA: reported in the final handoff from the sealed manifest bytes
