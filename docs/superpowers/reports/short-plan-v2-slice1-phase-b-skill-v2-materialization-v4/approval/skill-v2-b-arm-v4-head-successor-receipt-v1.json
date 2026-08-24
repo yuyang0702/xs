@@ -1,0 +1,16 @@
+{
+  "approval_parent_head": "679fba9dc8455a233eb0fa76f8c4a6fb38070c6e",
+  "arbitrary_descendant_allowed": false,
+  "canonical_approval_evidence_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/approval",
+  "head_successor_receipt_sha256": "2496d837448f2eec2ce199c1ad1435717b3457ca38a76842e11467bf58d1c87f",
+  "materialization_implementation_head": "cf8788060fd6ae0101ad05424ef157945bce983c",
+  "post_seal_current_head_source": "GIT_RUNTIME_NOT_SELF_EMBEDDED",
+  "post_seal_relation_required": "ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR",
+  "post_seal_signed_preflight_required": true,
+  "pre_seal_current_head": "679fba9dc8455a233eb0fa76f8c4a6fb38070c6e",
+  "pre_seal_relation": "EXACT_APPROVAL_PARENT",
+  "schema": "SkillV2BArmV4HeadSuccessorReceiptV1",
+  "source_mutation_allowed": false,
+  "validation_before_nonce_reservation": true,
+  "version": 1
+}

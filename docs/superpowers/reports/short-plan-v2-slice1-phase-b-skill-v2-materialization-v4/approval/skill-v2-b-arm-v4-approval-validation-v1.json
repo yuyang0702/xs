@@ -1,0 +1,284 @@
+{
+  "ab_comparison_lock": "PASS",
+  "approval_parent_head": "679fba9dc8455a233eb0fa76f8c4a6fb38070c6e",
+  "approval_validation_sha256": "7fd91fa10d198abba05a4d7fa85f161654fcebd9cac96a09a0347478b53aef23",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "head_successor_matrix": "PASS",
+  "historical_approval_nonce_nonreuse": "PASS",
+  "historical_roots_read_only_acceptance": "PASS",
+  "manifest_coverage": "31/31_EXACT",
+  "no_git_diff_after_failed_ancestry": true,
+  "overall_status": "exact",
+  "packet_tamper_rejection_count": 10,
+  "packet_tamper_rejections": [
+    {
+      "file": "skill-v2-b-arm-model-input-binding-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-route-binding-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-transport-guard-binding-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-attempt-accounting-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-budget-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-authority-binding-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-output-isolation-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-ptr12-binding-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-quality-rubric-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    },
+    {
+      "file": "skill-v2-b-arm-engineering-rubric-v1.json",
+      "reason": "packet_file_size_mismatch",
+      "status": "REJECTED_BY_PACKET_MANIFEST"
+    }
+  ],
+  "packet_validate_only": "exact",
+  "post_seal_signed_preflight": "REQUIRED_AFTER_APPROVAL_EVIDENCE_SEAL",
+  "pre_seal_signed_preflight": "exact",
+  "pytest_head_history_ab_matrix": "60 passed",
+  "quality_protection": "PASS",
+  "raw_subprocess_error_leaked": false,
+  "runtime_safety_bindings": "PASS",
+  "schema": "SkillV2BArmV4ApprovalValidationV1",
+  "typed_signed_rejection_count": 39,
+  "typed_signed_rejections": [
+    {
+      "case": "all_zero_parent",
+      "reason": "approval_parent_head_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "nonexistent_parent",
+      "reason": "approval_parent_head_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "malformed_parent",
+      "reason": "approval_parent_head_malformed",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_existing_parent",
+      "reason": "approval_parent_head_not_direct_materialization_seal",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "old_scope",
+      "reason": "approval_scope_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "old_cohort",
+      "reason": "approval_cohort_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "old_pair",
+      "reason": "approval_ab_pair_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "missing_approver",
+      "reason": "named_approver_missing",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "missing_nonce",
+      "reason": "single_use_nonce_missing",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "reserved_nonce",
+      "reason": "nonce_already_reserved",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "consumed_nonce",
+      "reason": "nonce_already_consumed",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "skill_v2_not_authorized",
+      "reason": "skill_v2_arm_not_authorized",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "full_short_authorized",
+      "reason": "full_short_authorized_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "draft_authorized",
+      "reason": "draft_authorized_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "final_review_authorized",
+      "reason": "final_review_authorized_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "maintenance_authorized",
+      "reason": "maintenance_authorized_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "planning_v2_cutover_authorized",
+      "reason": "planning_v2_cutover_authorized_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "story_state_mutation_allowed",
+      "reason": "story_state_mutation_allowed_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "canon_mutation_allowed",
+      "reason": "canon_mutation_allowed_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "ready_mutation_allowed",
+      "reason": "ready_mutation_allowed_forbidden",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_historical_roots_binding_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_committed_path_baseline_policy_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_model_input_assembly_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_comparison_lock_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_authority_input_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_route_binding_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_transport_guard_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_attempt_accounting_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_budget_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_authority_tuple_normalization_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_audit_serialization_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_output_isolation_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_ptr12_binding_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_quality_rubric_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_engineering_rubric_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_launcher_binding_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_skill_v2_profile_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_rendered_context_binding_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    },
+    {
+      "case": "wrong_bound_post_seal_test_parent_binding_sha256",
+      "reason": "approval_bound_hashes_mismatch",
+      "status": "REJECTED_TYPED"
+    }
+  ],
+  "v3_approval_status": "INVALIDATED_NONREUSABLE",
+  "v3_nonce_status": "INVALIDATED_UNCONSUMED_UNRESERVED_NOT_EXECUTABLE",
+  "version": 1
+}

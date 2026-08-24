@@ -1,0 +1,32 @@
+{
+  "approval_id": "skill-v2-b-arm-v4-approval-20260824t123506z-001",
+  "approval_reuse_allowed": false,
+  "approval_scope": "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V4_ONLY",
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "execution_window": {
+    "not_after": "2026-08-26T12:35:06Z",
+    "not_before": "2026-08-24T12:35:06Z",
+    "policy": "fresh_48_hour_single_use_window"
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "ledger_created": false,
+  "nonce_binding_sha256": "c6b47c6fe3115ea27b3afef1a424b56901c701248d15673db033b0d576a933cb",
+  "nonce_consumed": false,
+  "nonce_id": "skill-v2-b-arm-v4-nonce-20260824t123506z-001",
+  "nonce_reserved": false,
+  "nonce_sha256": "823c05ae54caa162dd6f84befacf32fc109297b9888f0977c9d43c868bd2fa1c",
+  "reservation_status": "unreserved",
+  "schema": "SkillV2BArmV4NonceBindingV1",
+  "usage_status": "unused",
+  "version": 1
+}

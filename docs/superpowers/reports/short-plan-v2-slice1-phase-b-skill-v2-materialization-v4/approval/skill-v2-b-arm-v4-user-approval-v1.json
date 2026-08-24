@@ -1,0 +1,18 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "approval_cohort_reuse_allowed": false,
+  "approval_id": "skill-v2-b-arm-v4-approval-20260824t123506z-001",
+  "approval_only": true,
+  "approval_parent_head": "679fba9dc8455a233eb0fa76f8c4a6fb38070c6e",
+  "approval_reuse_allowed": false,
+  "approval_scope": "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V4_ONLY",
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "current_task_execution_allowed": false,
+  "exactly_one_future_execution_approved": true,
+  "fresh_current_chat_external_permission_required_before_execution": true,
+  "named_approver": "USER_PROJECT_OWNER",
+  "request_sha256": "c17e4d68d3fce79f1ceff2f38694501f75d03bf54290d1b9bdce61434f197a5a",
+  "schema": "SkillV2BArmV4UserApprovalV1",
+  "user_approval_sha256": "75f8a887187f081883bc52752f79cfb1fbab6fdb1962c38f097466b7ade17d13",
+  "version": 1
+}
