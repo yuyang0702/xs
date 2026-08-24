@@ -19,11 +19,16 @@ V2_ROOT = (
     "docs/superpowers/reports/"
     "short-plan-v2-slice1-phase-b-skill-v2-materialization-v2"
 )
+V3_ROOT = (
+    "docs/superpowers/reports/"
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v3"
+)
+HISTORICAL_ROOTS = (V1_ROOT, V2_ROOT, V3_ROOT)
 
 
 def _copy_history(tmp_path: Path) -> Path:
     repo = tmp_path / "repo"
-    for relative_root in (V1_ROOT, V2_ROOT):
+    for relative_root in HISTORICAL_ROOTS:
         source = ROOT / relative_root
         target = repo / relative_root
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -34,7 +39,7 @@ def _copy_history(tmp_path: Path) -> Path:
 def _tree_hashes(repo: Path) -> dict[str, str]:
     return {
         path.relative_to(repo).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
-        for relative_root in (V1_ROOT, V2_ROOT)
+        for relative_root in HISTORICAL_ROOTS
         for path in sorted((repo / relative_root).rglob("*"))
         if path.is_file()
     }
@@ -48,15 +53,15 @@ def _expect_historical_drift(repo: Path) -> None:
     )
 
 
-def test_exact_v1_v2_roots_are_verified_read_only(tmp_path: Path) -> None:
+def test_exact_v1_v2_v3_roots_are_verified_read_only(tmp_path: Path) -> None:
     repo = _copy_history(tmp_path)
     before = _tree_hashes(repo)
     result = launcher.verify_historical_materialization_roots(repo)
     after = _tree_hashes(repo)
     assert result["status"] == "exact"
     assert result["allowlist_mode"] == "CLOSED_WORLD"
-    assert result["allowed_historical_root_count"] == 2
-    assert result["historical_roots"] == [V1_ROOT, V2_ROOT]
+    assert result["allowed_historical_root_count"] == 3
+    assert result["historical_roots"] == [V1_ROOT, V2_ROOT, V3_ROOT]
     assert result["roots"][0]["manifest_definition_sha256"] == (
         "d8ae1e531d08c2a704f2383c915ea1af2a4a01e255d26f187db9d7813582d5f2"
     )
@@ -71,10 +76,32 @@ def test_exact_v1_v2_roots_are_verified_read_only(tmp_path: Path) -> None:
         "2e8033f8027252bfecc8d1d59bab893269fb82dd656642080a9f4d378cd63612"
     )
     assert result["roots"][1]["manifest_file_count"] == 27
+    assert result["roots"][2]["manifest_definition_sha256"] == (
+        "7808f997ba3e79347730f5117e3fe034b9b8de30e9a4bf1dbab004da7512b7e7"
+    )
+    assert result["roots"][2]["manifest_file_sha256"] == (
+        "7df317f85da5aee8ee574204380912967046ac3f32088214621d620c1265c395"
+    )
+    assert result["roots"][2]["manifest_file_count"] == 30
+    assert result["roots"][2]["supplemental_manifests"][0]["manifest_file_count"] == 8
+    assert result["roots"][2]["supplemental_files"][0]["sha256"] == (
+        "699c12cdaee4cfbe8d3d9fb572eb0b1e29897e86e4d7908079d79a9b8718ca66"
+    )
     assert before == after
 
 
-@pytest.mark.parametrize("relative_root", [V1_ROOT, V2_ROOT])
+def test_v3_invalidation_evidence_mutation_is_rejected(tmp_path: Path) -> None:
+    repo = _copy_history(tmp_path)
+    invalidation = (
+        repo
+        / V3_ROOT
+        / "approval/invalidation/skill-v2-b-arm-v3-approval-invalidation-v1.json"
+    )
+    invalidation.write_bytes(invalidation.read_bytes() + b"\n")
+    _expect_historical_drift(repo)
+
+
+@pytest.mark.parametrize("relative_root", HISTORICAL_ROOTS)
 def test_missing_historical_root_rejected(
     tmp_path: Path, relative_root: str,
 ) -> None:
@@ -83,7 +110,7 @@ def test_missing_historical_root_rejected(
     _expect_historical_drift(repo)
 
 
-@pytest.mark.parametrize("relative_root", [V1_ROOT, V2_ROOT])
+@pytest.mark.parametrize("relative_root", HISTORICAL_ROOTS)
 def test_mutated_historical_manifest_rejected(
     tmp_path: Path, relative_root: str,
 ) -> None:
@@ -93,7 +120,7 @@ def test_mutated_historical_manifest_rejected(
     _expect_historical_drift(repo)
 
 
-@pytest.mark.parametrize("relative_root", [V1_ROOT, V2_ROOT])
+@pytest.mark.parametrize("relative_root", HISTORICAL_ROOTS)
 def test_mutated_manifested_file_rejected(
     tmp_path: Path, relative_root: str,
 ) -> None:
@@ -106,7 +133,7 @@ def test_mutated_manifested_file_rejected(
     _expect_historical_drift(repo)
 
 
-@pytest.mark.parametrize("relative_root", [V1_ROOT, V2_ROOT])
+@pytest.mark.parametrize("relative_root", HISTORICAL_ROOTS)
 def test_unmanifested_historical_file_rejected(
     tmp_path: Path, relative_root: str,
 ) -> None:
@@ -140,7 +167,7 @@ def test_committed_path_policy_accepts_only_exact_verified_history(
 @pytest.mark.parametrize(
     "unexpected_path",
     [
-        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/README.md",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v5/README.md",
         "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v10/README.md",
         V1_ROOT + "-lookalike/README.md",
         V1_ROOT + "/unexpected.json",

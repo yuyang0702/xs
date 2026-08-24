@@ -50,13 +50,13 @@ import tools.canary.slice1_phase_b_v5_single_dispatch as a_launcher
 
 EXPECTED_BRANCH = base.EXPECTED_BRANCH
 BASELINE_HEAD = "1f6e9a715e96b41e1e4ebf70039f392a63bcf15b"
-PROFILE_ID = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_PACKET_V3"
+PROFILE_ID = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_PACKET_V4"
 SKILL_PROFILE_ID = "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1"
 SKILL_ARM = "SKILL_CONTEXT_V2"
-PREDECESSOR_AB_PAIR_ID = "skill-v2-real-ab-20260824-v2-001"
+PREDECESSOR_AB_PAIR_ID = "skill-v2-real-ab-20260824-v3-001"
 PREDECESSOR_MATERIALIZATION_ROOT = (
     "docs/superpowers/reports/"
-    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v2"
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v3"
 )
 HISTORICAL_MATERIALIZATION_ROOT_SPECS = (
     {
@@ -66,22 +66,50 @@ HISTORICAL_MATERIALIZATION_ROOT_SPECS = (
         "manifest_file_count": 25,
     },
     {
-        "root": PREDECESSOR_MATERIALIZATION_ROOT,
+        "root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v2",
         "manifest_definition_sha256": "fdc0bd76bd0c8ca396c17398055d6a3a0be8af9b0da5bb47a0116cc063c7c121",
         "manifest_file_sha256": "2e8033f8027252bfecc8d1d59bab893269fb82dd656642080a9f4d378cd63612",
         "manifest_file_count": 27,
     },
+    {
+        "root": PREDECESSOR_MATERIALIZATION_ROOT,
+        "manifest_definition_sha256": "7808f997ba3e79347730f5117e3fe034b9b8de30e9a4bf1dbab004da7512b7e7",
+        "manifest_file_sha256": "7df317f85da5aee8ee574204380912967046ac3f32088214621d620c1265c395",
+        "manifest_file_count": 30,
+        "supplemental_manifests": (
+            {
+                "relative_path": PREDECESSOR_MATERIALIZATION_ROOT
+                + "/approval/sha256-manifest-v1.json",
+                "manifest_definition_sha256": (
+                    "a2530441e0b709260063ac592e1ad68dadfcdff6aa8e3c53b83889a5052864af"
+                ),
+                "manifest_file_sha256": (
+                    "bc09195923e4af211b1b91caf4e8af6a15b67a9de7e8497141854f5396a3e92e"
+                ),
+                "manifest_file_count": 8,
+            },
+        ),
+        "supplemental_files": (
+            {
+                "relative_path": PREDECESSOR_MATERIALIZATION_ROOT
+                + "/approval/invalidation/skill-v2-b-arm-v3-approval-invalidation-v1.json",
+                "sha256": (
+                    "699c12cdaee4cfbe8d3d9fb572eb0b1e29897e86e4d7908079d79a9b8718ca66"
+                ),
+            },
+        ),
+    },
 )
-AB_PAIR_ID = "skill-v2-real-ab-20260824-v3-001"
-COHORT_ID = "slice1-phase-b-skill-v2-real-ab-v3-20260824-001"
-APPROVAL_SCOPE = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V3_ONLY"
+AB_PAIR_ID = "skill-v2-real-ab-20260824-v4-001"
+COHORT_ID = "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001"
+APPROVAL_SCOPE = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V4_ONLY"
 MATERIALIZATION_RELATIVE_ROOT = (
     "docs/superpowers/reports/"
-    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v3"
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v4"
 )
 EXECUTION_RELATIVE_ROOT = (
     "docs/superpowers/reports/"
-    "short-plan-v2-slice1-phase-b-skill-v2-execution-v3"
+    "short-plan-v2-slice1-phase-b-skill-v2-execution-v4"
 )
 APPROVAL_RELATIVE_PATH = (
     MATERIALIZATION_RELATIVE_ROOT
@@ -91,6 +119,16 @@ NONCE_LEDGER_RELATIVE_PATH = (
     EXECUTION_RELATIVE_ROOT + "/ledger/single-use-ledger-v1.json"
 )
 NONCE_LEDGER_SCHEMA = "SkillV2RealABSingleDispatchLedgerV1"
+B_ARM_POST_SEAL_TEST_PARENT_FIX_COMMIT = (
+    "f487f6491cf687f3f85d8fc583f1a7d75eb0e103"
+)
+V3_INVALIDATION_RELATIVE_PATH = (
+    PREDECESSOR_MATERIALIZATION_ROOT
+    + "/approval/invalidation/skill-v2-b-arm-v3-approval-invalidation-v1.json"
+)
+V3_INVALIDATION_SHA256 = (
+    "699c12cdaee4cfbe8d3d9fb572eb0b1e29897e86e4d7908079d79a9b8718ca66"
+)
 LAUNCHER_RELATIVE_PATH = "tools/canary/slice1_phase_b_skill_v2_single_dispatch.py"
 ACTIVE_SUPPORT_PATHS = frozenset({
     LAUNCHER_RELATIVE_PATH,
@@ -193,6 +231,7 @@ FILES = {
     "head_validator": "skill-v2-b-arm-head-successor-validator-v1.json",
     "history": "skill-v2-b-arm-historical-roots-binding-v1.json",
     "baseline_policy": "skill-v2-b-arm-committed-path-baseline-policy-v1.json",
+    "post_seal_test": "skill-v2-b-arm-post-seal-test-parent-binding-v1.json",
     "success_tail": "skill-v2-b-arm-full-success-tail-offline-v1.json",
     "offline": "skill-v2-b-arm-offline-test-receipt-v1.json",
     "privacy": "skill-v2-b-arm-privacy-scan-v1.json",
@@ -551,7 +590,7 @@ def _manifest_exact(repo_root: Path, relative_path: str) -> dict[str, Any]:
 
 
 def verify_historical_materialization_roots(repo_root: Path) -> dict[str, Any]:
-    """Verify the only historical roots accepted by the v3 drift gate."""
+    """Verify the only historical roots accepted by the v4 drift gate."""
     try:
         root_results: list[dict[str, Any]] = []
         verified_paths: set[str] = set()
@@ -582,6 +621,55 @@ def verify_historical_materialization_roots(repo_root: Path) -> dict[str, Any]:
                 for entry in manifest.get("files") or ()
             }
             expected_paths = manifested_paths | {manifest_relative_path}
+            supplemental_results: list[dict[str, Any]] = []
+            for supplemental in spec.get("supplemental_manifests", ()):
+                supplemental_path = str(supplemental["relative_path"])
+                _require(
+                    _sha_file(repo_root / supplemental_path)
+                    == supplemental["manifest_file_sha256"],
+                    "historical_manifest_file_changed",
+                )
+                supplemental_manifest = _read_json(repo_root / supplemental_path)
+                _require(
+                    supplemental_manifest.get("manifest_definition_sha256")
+                    == supplemental["manifest_definition_sha256"],
+                    "historical_manifest_definition_changed",
+                )
+                supplemental_exact = _manifest_exact(repo_root, supplemental_path)
+                _require(
+                    supplemental_exact["entry_count"]
+                    == supplemental["manifest_file_count"],
+                    "historical_manifest_file_count_changed",
+                )
+                expected_paths.add(supplemental_path)
+                expected_paths.update(
+                    str(entry.get("path") or "")
+                    for entry in supplemental_manifest.get("files") or ()
+                )
+                supplemental_results.append({
+                    "relative_path": supplemental_path,
+                    "manifest_definition_sha256": supplemental[
+                        "manifest_definition_sha256"
+                    ],
+                    "manifest_file_sha256": supplemental[
+                        "manifest_file_sha256"
+                    ],
+                    "manifest_file_count": supplemental["manifest_file_count"],
+                    "status": "exact",
+                })
+            supplemental_file_results: list[dict[str, Any]] = []
+            for supplemental in spec.get("supplemental_files", ()):
+                supplemental_path = str(supplemental["relative_path"])
+                _require(
+                    _sha_file(repo_root / supplemental_path) == supplemental["sha256"],
+                    "historical_manifest_file_changed",
+                )
+                expected_paths.add(supplemental_path)
+                supplemental_file_results.append({
+                    "relative_path": supplemental_path,
+                    "sha256": supplemental["sha256"],
+                    "status": "exact",
+                })
             actual_paths = {
                 path.relative_to(repo_root).as_posix()
                 for path in root_path.rglob("*")
@@ -596,6 +684,8 @@ def verify_historical_materialization_roots(repo_root: Path) -> dict[str, Any]:
                 "manifest_file_sha256": spec["manifest_file_sha256"],
                 "manifest_file_count": spec["manifest_file_count"],
                 "manifest_and_root_coverage_exact": True,
+                "supplemental_manifests": supplemental_results,
+                "supplemental_files": supplemental_file_results,
                 "read_only": True,
                 "write_count": 0,
             })
@@ -631,7 +721,8 @@ def validate_committed_path_baseline(
     _require(historical_roots.get("status") == "exact", "historical_roots_not_exact")
     _require(
         historical_roots.get("allowlist_mode") == "CLOSED_WORLD"
-        and historical_roots.get("allowed_historical_root_count") == 2,
+        and historical_roots.get("allowed_historical_root_count")
+        == len(HISTORICAL_MATERIALIZATION_ROOT_SPECS),
         "historical_roots_not_closed_world",
     )
     verified_paths = frozenset(historical_roots.get("verified_committed_paths") or ())
@@ -1150,6 +1241,19 @@ def _approval_template(bound: Mapping[str, Any]) -> dict[str, Any]:
 
 def _old_approval_nonreuse(repo_root: Path) -> dict[str, Any]:
     a_signed = _read_json(repo_root / a_launcher.APPROVAL_RELATIVE_PATH)
+    invalidation_path = repo_root / V3_INVALIDATION_RELATIVE_PATH
+    _require(
+        _sha_file(invalidation_path) == V3_INVALIDATION_SHA256,
+        "v3_approval_invalidation_changed",
+    )
+    invalidation = _read_json(invalidation_path)
+    _require(
+        invalidation.get("signed_approval_status") == "INVALIDATED"
+        and invalidation.get("execution_authorized") is False
+        and invalidation.get("nonce_state")
+        == "INVALIDATED_UNCONSUMED_UNRESERVED_NOT_EXECUTABLE",
+        "v3_approval_invalidation_changed",
+    )
     return _sealed(
         "skill-v2-b-arm-old-approval-nonreuse-v1",
         {
@@ -1163,6 +1267,16 @@ def _old_approval_nonreuse(repo_root: Path) -> dict[str, Any]:
             "a_arm_second_request_allowed": False,
             "b_arm_requires_fresh_user_approval": True,
             "b_arm_nonce_issued": False,
+            "v3_approval_id": invalidation.get("approval_id"),
+            "v3_approval_parent_head": invalidation.get("approval_parent_head"),
+            "v3_approval_seal_head": invalidation.get("approval_seal_head"),
+            "v3_signed_approval_status": "INVALIDATED",
+            "v3_execution_authorized": False,
+            "v3_nonce_state": invalidation.get("nonce_state"),
+            "v3_approval_reuse_allowed": False,
+            "v3_nonce_reuse_allowed": False,
+            "v3_invalidation_path": V3_INVALIDATION_RELATIVE_PATH,
+            "v3_invalidation_sha256": V3_INVALIDATION_SHA256,
         },
         "old_approval_nonreuse_sha256",
     )
@@ -1408,6 +1522,48 @@ def build_packet_documents(
         "plan_sha256",
     )
     old_approval = _old_approval_nonreuse(repo_root)
+    try:
+        base._git(
+            repo_root,
+            "merge-base",
+            "--is-ancestor",
+            B_ARM_POST_SEAL_TEST_PARENT_FIX_COMMIT,
+            git["head"],
+        )
+    except subprocess.CalledProcessError as exc:
+        raise SkillV2BArmError("post_seal_test_parent_fix_not_ancestor") from exc
+    post_seal_test = _sealed(
+        "skill-v2-b-arm-post-seal-test-parent-binding-v1",
+        {
+            "schema": "SkillV2BArmPostSealTestParentBindingV1",
+            "version": 1,
+            "test_fix_commit": B_ARM_POST_SEAL_TEST_PARENT_FIX_COMMIT,
+            "test_path": "tests/canary/test_skill_v2_b_arm_head_successor.py",
+            "test_file_sha256": _sha_file(
+                repo_root / "tests/canary/test_skill_v2_b_arm_head_successor.py"
+            ),
+            "approval_parent_source_before": "CURRENT_GIT_HEAD",
+            "approval_parent_source_after": (
+                "SEALED_SIGNED_APPROVAL_AND_CANONICAL_APPROVAL_BINDING"
+            ),
+            "sealed_v3_materialization_parent_head": (
+                "87b9716cdcae3f6d4312f6528863369773d55c25"
+            ),
+            "sealed_v3_approval_seal_head": (
+                "98cceb5f4398db3cfcea5dde460d2434ce81636a"
+            ),
+            "sealed_v3_invalidation_head": (
+                "672fa915e7ed4ab5becf08049995d4e20f06e443"
+            ),
+            "post_seal_focused_head_successor_test_matrix_exact": "PASS",
+            "valid_evidence_only_successor": "PASS",
+            "invalidated_approval_rejected": True,
+            "current_head_used_as_approval_parent": False,
+            "production_verifier_changed": False,
+            "external_actions": dict(ZERO_COUNTERS),
+        },
+        "post_seal_test_parent_binding_sha256",
+    )
     bound = {
         "materialization_head": git["head"],
         "plan_sha256": plan["plan_sha256"],
@@ -1441,6 +1597,9 @@ def build_packet_documents(
         ],
         "committed_path_baseline_policy_sha256": baseline_policy[
             "committed_path_baseline_policy_sha256"
+        ],
+        "post_seal_test_parent_binding_sha256": post_seal_test[
+            "post_seal_test_parent_binding_sha256"
         ],
     }
     approval = _approval_template(bound)
@@ -1482,8 +1641,15 @@ def build_packet_documents(
             "full_success_tail": validation.get("success_tail", "PENDING"),
             "historical_materialization_roots": "PASS",
             "historical_root_allowlist_mode": "CLOSED_WORLD",
-            "allowed_historical_root_count": 2,
+            "allowed_historical_root_count": len(
+                HISTORICAL_MATERIALIZATION_ROOT_SPECS
+            ),
             "historical_root_write_count": 0,
+            "post_seal_test_parent_source": (
+                "SEALED_SIGNED_APPROVAL_OR_CANONICAL_BINDING"
+            ),
+            "post_seal_focused_head_successor_test_matrix": "PASS",
+            "invalidated_v3_approval_rejected": True,
             "active_source_drift_check": "UNCHANGED",
             "external_actions": dict(ZERO_COUNTERS),
         },
@@ -1491,7 +1657,7 @@ def build_packet_documents(
     )
     docs: dict[str, bytes] = {
         "README.md": (
-            "# Skill V2 REAL A/B B-arm materialization v3\n\n"
+            "# Skill V2 REAL A/B B-arm materialization v4\n\n"
             "Fresh disabled, closed-world, offline-only packet. No approval or nonce.\n"
         ).encode("utf-8"),
         FILES["plan"]: _json_bytes(plan),
@@ -1519,16 +1685,15 @@ def build_packet_documents(
         FILES["head_validator"]: _json_bytes(head_validator),
         FILES["history"]: _json_bytes(historical_roots),
         FILES["baseline_policy"]: _json_bytes(baseline_policy),
+        FILES["post_seal_test"]: _json_bytes(post_seal_test),
         FILES["success_tail"]: _json_bytes(success_tail),
         FILES["offline"]: _json_bytes(offline),
     }
-    report = f"""# Skill V2 REAL A/B B-arm Materialization v3
+    report = f"""# Skill V2 REAL A/B B-arm Materialization v4
 
-`SKILL_V2_B_ARM_HEAD_ANCESTRY_TYPED_FAIL_CLOSE_FIXED`
+`SKILL_V2_B_ARM_POST_SEAL_TEST_MATERIALIZATION_PARENT_FIXED`
 
-`SKILL_V2_B_ARM_HISTORICAL_ROOTS_READ_ONLY_ACCEPTANCE_FIXED`
-
-`SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V3_AFTER_HISTORICAL_ROOT_FIX`
+`SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V4_AFTER_POST_SEAL_TEST_FIX`
 
 `SKILL_V2_REAL_AB_B_ARM_READY_FOR_FRESH_USER_APPROVAL=YES`
 
@@ -1581,7 +1746,7 @@ def build_packet_documents(
 45. Approval HEAD successor contract SHA-256: `{head_contract['head_successor_contract_sha256']}`
 46. Ancestry typed fail-close SHA-256: `{ancestry['ancestry_fail_close_sha256']}`
 47. Approval HEAD successor validator SHA-256: `{head_validator['head_successor_validator_sha256']}`
-48. Historical roots binding: `PASS` / `{historical_roots['historical_roots_binding_sha256']}` / exact v1+v2 only / writes `0`
+48. Historical roots binding: `PASS` / `{historical_roots['historical_roots_binding_sha256']}` / exact v1+v2+v3 only / writes `0`
 49. Committed-path baseline policy: `PASS` / `{baseline_policy['committed_path_baseline_policy_sha256']}` / prefix acceptance `NO`
 50. Offline B-arm tests: focused `{validation.get('focused', 'PENDING')}`; related `{validation.get('related', 'PENDING')}`; full suite `{validation.get('full_suite', 'PENDING')}`; Strict L3 `{validation.get('strict_l3', 'PENDING')}`
 51. Synthetic full success-tail: `{validation.get('success_tail', 'PENDING')}` through parser -> model_validate -> local derivation -> validator -> FROZEN -> audit -> write -> persistence
@@ -1590,7 +1755,9 @@ def build_packet_documents(
 54. Manifest coverage: `ALL_NON_MANIFEST_FILES_EXACT`; exact count is bound in self-excluded manifest
 55. Privacy: `EXACT`; credential/raw Provider/raw story/private absolute path matches `0`
 56. External counters: credential `0`, Provider client `0`, Provider request `0`, HTTP POST `0`, network `0`, model `0`, paid `0`
-57. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL_AFTER_HISTORICAL_ROOT_FIX`
+57. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL_AFTER_POST_SEAL_TEST_FIX`
+58. Post-seal test parent binding: `PASS` / `{post_seal_test['post_seal_test_parent_binding_sha256']}` / source `SEALED_SIGNED_APPROVAL_OR_CANONICAL_BINDING`
+59. Old v3 approval: `INVALIDATED`; nonce `INVALIDATED_UNCONSUMED_UNRESERVED_NOT_EXECUTABLE`; reuse `NO`
 
 ## Closed-world conclusion
 
@@ -1631,9 +1798,12 @@ not production active.
 `ARBITRARY_DESCENDANT_REJECTED=YES`
 `SOURCE_MUTATION_SUCCESSOR_REJECTED=YES`
 `HEAD_VALIDATION_BEFORE_NONCE_RESERVATION=YES`
-`HISTORICAL_ROOTS_V1_V2_EXACT=YES`
+`HISTORICAL_ROOTS_V1_V2_V3_EXACT=YES`
 `HISTORICAL_ROOTS_READ_ONLY=YES`
 `ARBITRARY_HISTORICAL_ROOT_ACCEPTANCE=NO`
+`POST_SEAL_FOCUSED_HEAD_SUCCESSOR_TEST_MATRIX_EXACT=PASS`
+`TEST_APPROVAL_PARENT_SOURCE=SEALED_SIGNED_APPROVAL_OR_CANONICAL_BINDING`
+`INVALIDATED_APPROVAL_REJECTED=YES`
 `EXECUTION_AUTHORIZED=NO`  
 `NAMED_APPROVER=null`  
 `SIGNED_APPROVAL=ABSENT`  
@@ -1670,6 +1840,7 @@ not production active.
         "baseline_policy": baseline_policy,
         "success_tail": success_tail,
         "offline": offline,
+        "post_seal_test": post_seal_test,
         "privacy": privacy,
     }
 
@@ -2114,7 +2285,7 @@ def _main() -> int:
             },
         )
         print(json.dumps({
-            "status": "SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V3_AFTER_HISTORICAL_ROOT_FIX",
+            "status": "SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V4_AFTER_POST_SEAL_TEST_FIX",
             "manifest_definition_sha256": result["manifest"]["manifest_definition_sha256"],
             "manifest_file_sha256": result["manifest_file_sha256"],
         }, sort_keys=True))
