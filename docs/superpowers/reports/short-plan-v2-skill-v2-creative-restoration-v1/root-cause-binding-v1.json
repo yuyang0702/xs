@@ -1,0 +1,18 @@
+{
+  "baseline_head": "df91b66989917777b028d1e631ab2d6a7d076f42",
+  "implementation_head": "03258b82c74f1875b86e1569e56d6e90b9a274ed",
+  "manifest": {
+    "entry_count": 17,
+    "file_sha256": "02cb6c62c8b3c3f546f93160970f9b257ed17c056ce0df43f1d8960f88fc47c8",
+    "mismatch_count": 0,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/sha256-manifest-v1.json",
+    "status": "exact"
+  },
+  "overall_status": "exact",
+  "parent_evidence_head": "f96d47a12254bab83295024f163f2dcb5cb3f414",
+  "primary_root_cause_class": "MULTI_FACTOR_WITH_PRIMARY_OVER_COMPRESSION_OF_CREATIVE_GUIDANCE",
+  "profile_causality_confidence": "MEDIUM",
+  "resolver_correction_required": false,
+  "schema": "SkillV2RestorationRootCauseBindingV1",
+  "version": 1
+}

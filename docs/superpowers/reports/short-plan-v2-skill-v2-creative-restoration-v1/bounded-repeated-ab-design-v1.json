@@ -1,0 +1,107 @@
+{
+  "blanket_batch_approval_allowed": false,
+  "each_real_run_requires_bounded_authorization": true,
+  "execution_status": "NOT_EXECUTED",
+  "pair_count": 5,
+  "pairs": [
+    {
+      "a_arm_required": true,
+      "authority_input_source": "FUTURE_SEALED_SANITIZED_FIXTURE_REQUIRED",
+      "b_arm_required": true,
+      "creative_demand_class": "character-heavy",
+      "engineering_rubric_same": true,
+      "execution_status": "NOT_MATERIALIZED_OR_AUTHORIZED",
+      "pair_case_id": "restored-character-heavy-v1",
+      "primary_changed_variable": "SKILL_CONTEXT",
+      "primary_dimensions": [
+        "motivation",
+        "voice",
+        "relationship",
+        "subtext"
+      ],
+      "quality_rubric_same": true,
+      "same_model_route_policy": true,
+      "single_dispatch_per_arm": true
+    },
+    {
+      "a_arm_required": true,
+      "authority_input_source": "FUTURE_SEALED_SANITIZED_FIXTURE_REQUIRED",
+      "b_arm_required": true,
+      "creative_demand_class": "world-heavy",
+      "engineering_rubric_same": true,
+      "execution_status": "NOT_MATERIALIZED_OR_AUTHORIZED",
+      "pair_case_id": "restored-world-heavy-v1",
+      "primary_changed_variable": "SKILL_CONTEXT",
+      "primary_dimensions": [
+        "world specificity",
+        "sensory affordance",
+        "system cost"
+      ],
+      "quality_rubric_same": true,
+      "same_model_route_policy": true,
+      "single_dispatch_per_arm": true
+    },
+    {
+      "a_arm_required": true,
+      "authority_input_source": "FUTURE_SEALED_SANITIZED_FIXTURE_REQUIRED",
+      "b_arm_required": true,
+      "creative_demand_class": "conflict-pacing-heavy",
+      "engineering_rubric_same": true,
+      "execution_status": "NOT_MATERIALIZED_OR_AUTHORIZED",
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "primary_changed_variable": "SKILL_CONTEXT",
+      "primary_dimensions": [
+        "opposed tactics",
+        "escalation",
+        "reversal"
+      ],
+      "quality_rubric_same": true,
+      "same_model_route_policy": true,
+      "single_dispatch_per_arm": true
+    },
+    {
+      "a_arm_required": true,
+      "authority_input_source": "FUTURE_SEALED_SANITIZED_FIXTURE_REQUIRED",
+      "b_arm_required": true,
+      "creative_demand_class": "setup-payoff-heavy",
+      "engineering_rubric_same": true,
+      "execution_status": "NOT_MATERIALIZED_OR_AUTHORIZED",
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "primary_changed_variable": "SKILL_CONTEXT",
+      "primary_dimensions": [
+        "plant",
+        "dependency",
+        "payoff"
+      ],
+      "quality_rubric_same": true,
+      "same_model_route_policy": true,
+      "single_dispatch_per_arm": true
+    },
+    {
+      "a_arm_required": true,
+      "authority_input_source": "FUTURE_SEALED_SANITIZED_FIXTURE_REQUIRED",
+      "b_arm_required": true,
+      "creative_demand_class": "mixed",
+      "engineering_rubric_same": true,
+      "execution_status": "NOT_MATERIALIZED_OR_AUTHORIZED",
+      "pair_case_id": "restored-mixed-v1",
+      "primary_changed_variable": "SKILL_CONTEXT",
+      "primary_dimensions": [
+        "Draft handoff",
+        "template flattening",
+        "authority"
+      ],
+      "quality_rubric_same": true,
+      "same_model_route_policy": true,
+      "single_dispatch_per_arm": true
+    }
+  ],
+  "ready_for_design_approval": true,
+  "schema": "SkillV2RestoredBoundedRepeatedABDesignV1",
+  "source_plan": {
+    "bytes": 1602,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/bounded-repeated-ab-plan-v1.json",
+    "sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7"
+  },
+  "version": 1
+}

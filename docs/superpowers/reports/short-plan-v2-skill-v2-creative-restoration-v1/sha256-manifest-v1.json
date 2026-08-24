@@ -1,0 +1,99 @@
+{
+  "definition_sha256": "c4d024b5e517127d0a70e6940a7d9b3e052b259b6e811fdaf0a2a62458e6dbaf",
+  "entry_count": 18,
+  "files": [
+    {
+      "bytes": 204,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/README.md",
+      "sha256": "7e1c8460b1de212a7f6db36f7021616967a4dce07208820f309acabe6975e47b"
+    },
+    {
+      "bytes": 1150,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/ab-semantic-lock-v1.json",
+      "sha256": "ede65a401bb53be49fefdc4a2cac28aadb30ea8aecc137dd51475e67159a1c52"
+    },
+    {
+      "bytes": 1429,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/anti-overcompression-matrix-v1.json",
+      "sha256": "cee598bbde252394be649760819e95b9d019486f9a1fd2a2d7177f7b8a3c7087"
+    },
+    {
+      "bytes": 3655,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/bounded-repeated-ab-design-v1.json",
+      "sha256": "4ba1a93093b0ac28f2fb952df0cb7049f6cbd4d11efc38cb6b0e5166fa3f6e8d"
+    },
+    {
+      "bytes": 6160,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/creative-capability-presence-v1.json",
+      "sha256": "5ed7e37aad115a7752d76b57052f701673383a15fe2d6050e550544b843f1ded"
+    },
+    {
+      "bytes": 537,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/do-not-restore-regression-v1.json",
+      "sha256": "2cb0451c14469749fb9230d9453a8657ed265a2f7ece38c7d21d2691bf606447"
+    },
+    {
+      "bytes": 1790,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/final-report-v1.md",
+      "sha256": "8a77d1e55f991b0a66f4233ab9fd1589e176a6c3322ee7ecebe95a82852400d5"
+    },
+    {
+      "bytes": 827,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/full-success-tail-v1.json",
+      "sha256": "c4fa845c2bdf2c9f71383483775b97dceb752edc6642b83dd39b49dbb6693549"
+    },
+    {
+      "bytes": 510,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/future-ab-decision-rule-v1.json",
+      "sha256": "2ed92dba7950363ef3ab9a7106c28ada60ebd2135317e18d34f9d193860044bd"
+    },
+    {
+      "bytes": 601,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/narrative-bridge-parity-v1.json",
+      "sha256": "4b5bf57df683ff7e1877c66cb2022fb9905458b5d5bc37161c3a6f733ab21ec9"
+    },
+    {
+      "bytes": 421,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/offline-quality-successor-v1.json",
+      "sha256": "0bcb1bcbaa705f1f56a90831e5103fd350bb030ab53ed00fe241690e9af61e26"
+    },
+    {
+      "bytes": 977,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/old-vs-restored-context-diff-v1.json",
+      "sha256": "b9e7585b24ca691e0c108b34f0e0071872afa4ec6fda3505f1430945233bca86"
+    },
+    {
+      "bytes": 304,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/privacy-scan-v1.json",
+      "sha256": "7e6b072e0ea2f131923419d83f6949257c302fc20f772dfbf08b1d2909fac5f8"
+    },
+    {
+      "bytes": 575,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/resolver-parity-v1.json",
+      "sha256": "fef16ca8c9531005e604800d2901821cba624c90d92cbfe7a1ed643216d17d3c"
+    },
+    {
+      "bytes": 6874,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/restoration-implementation-matrix-v1.json",
+      "sha256": "51a988f98de37e5d4ad08e3a49d7166b0b82595cf124349c42c295b0f9209267"
+    },
+    {
+      "bytes": 447,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/restoration-set-binding-v1.json",
+      "sha256": "c1e859a470c4d1a628237b8150da2a9e99f6cec594cb55455fe20b116c3650f8"
+    },
+    {
+      "bytes": 782,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/root-cause-binding-v1.json",
+      "sha256": "fcbb75e16c44256bf81471316a0f2832bfe7f4cbda721f2a0a9a764d23a3c5aa"
+    },
+    {
+      "bytes": 4188,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/runtime-regression-v1.json",
+      "sha256": "9247e1fa23f3b09aa38903b597c3af63227d82023e16c2e37a4f803d62d57989"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2RestorationSha256ManifestV1",
+  "version": 1
+}

@@ -1,0 +1,23 @@
+{
+  "authority_semantic_diff_count": 0,
+  "engineering_rubric_diff_count": 0,
+  "future_model_input_hash_status": "MUST_CHANGE_ONLY_FROM_SKILL_CONTEXT_AT_EXECUTION_PLAN_GATE",
+  "historical_authority_section_sha256": "017e64fc8e33e84d8ca3b43ba9c9e035d47e58cc06a28c64a853cea95637a8c4",
+  "historical_non_skill_prompt_body_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "historical_task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "non_skill_prompt_semantic_diff_count": 0,
+  "old_skill_context_sha256": "a77ca32533e7e480ab3b0ff53d55dde5bed4ff837b8b68f53b7aba59a8d6fd15",
+  "output_cap_diff_count": 0,
+  "output_isolation_diff_count": 0,
+  "overall_status": "exact",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "ptr12_diff_count": 0,
+  "quality_rubric_diff_count": 0,
+  "restored_skill_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+  "route_model_diff_count": 0,
+  "schema": "SkillV2RestoredABSemanticLockV1",
+  "task_contract_diff_count": 0,
+  "transport_policy_diff_count": 0,
+  "validator_policy_diff_count": 0,
+  "version": 1
+}

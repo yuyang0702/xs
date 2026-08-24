@@ -1,0 +1,12 @@
+{
+  "item_count": 8,
+  "items_sha256": "78f06e1df1f567842253c5cae0736dfbf2bb507eb86f099fb695010be136772e",
+  "schema": "SkillV2RestorationSetBindingV1",
+  "source": {
+    "bytes": 7523,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/minimal-creative-restoration-set-v1.json",
+    "sha256": "b679e8a5038c7055f7866112ef82206f5f9e5fe498d664cb417d3f3019f8fc41"
+  },
+  "status": "exact",
+  "version": 1
+}

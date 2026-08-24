@@ -1,0 +1,15 @@
+{
+  "character_profile_load_expected": true,
+  "decision_equal": true,
+  "expected_decision_id": "skill-load-222d5aa0bb8c80964278604a27539c8f",
+  "old_decision_id": "skill-load-222d5aa0bb8c80964278604a27539c8f",
+  "overall_status": "exact",
+  "plot_profile_load_expected": true,
+  "resolver_load_policy_changed": false,
+  "resolver_predicates_changed": false,
+  "resolver_source_changed": false,
+  "restored_decision_id": "skill-load-222d5aa0bb8c80964278604a27539c8f",
+  "schema": "SkillV2RestorationResolverParityV1",
+  "version": 1,
+  "world_profile_load_expected": true
+}

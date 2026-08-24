@@ -1,0 +1,228 @@
+{
+  "creative_capability_presence_gate": "PASS",
+  "generated_prose_quality_claimed": false,
+  "old_overcompressed_audit": {
+    "check_count": 11,
+    "checks": [
+      {
+        "check_id": "motivation_action",
+        "missing_semantic_phrases": [
+          "competing wants and needs",
+          "choices",
+          "tactics",
+          "concessions"
+        ],
+        "rule_id": "MOTIVE_ACTION",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "voice_distinctiveness",
+        "missing_semantic_phrases": [
+          "word choice",
+          "rhythm",
+          "evasions",
+          "behavior"
+        ],
+        "rule_id": "VOICE_RELATION",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "relationship_consequence",
+        "missing_semantic_phrases": [
+          "relationship pressure",
+          "changes available actions"
+        ],
+        "rule_id": "VOICE_RELATION",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "world_specificity",
+        "missing_semantic_phrases": [
+          "concrete sensory or mechanical affordances",
+          "constrain action"
+        ],
+        "rule_id": "CAUSAL_AFFORDANCE",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "sensory_affordance",
+        "missing_semantic_phrases": [
+          "interacted with",
+          "later payoff"
+        ],
+        "rule_id": "CAUSAL_AFFORDANCE",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "conflict_pacing",
+        "missing_semantic_phrases": [
+          "opposed tactics",
+          "obstacle",
+          "reaction",
+          "reversal"
+        ],
+        "rule_id": "PRESSURE_BEATS",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "setup_payoff_dependency",
+        "missing_semantic_phrases": [
+          "plant a concrete question or affordance",
+          "preserve its dependency",
+          "pay it off through later action"
+        ],
+        "rule_id": "SETUP_PAYOFF",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "subtext_dramatization",
+        "missing_semantic_phrases": [
+          "rather than explanatory summary"
+        ],
+        "rule_id": "PRESSURE_BEATS",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "draft_handoff",
+        "missing_semantic_phrases": [
+          "spatial beats",
+          "action/reaction",
+          "resistance",
+          "terminal image",
+          "avoid synopsis-only"
+        ],
+        "rule_id": "DRAFT_SCENE",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "anti_template",
+        "missing_semantic_phrases": [
+          "capability labels only for reasoning",
+          "never emit labels",
+          "explanatory prose"
+        ],
+        "rule_id": "ANTI_TAXONOMY",
+        "rule_present": false,
+        "status": "fail"
+      },
+      {
+        "check_id": "narrative_frame",
+        "missing_semantic_phrases": [
+          "confirmed values",
+          "premise",
+          "theme",
+          "genre",
+          "pov",
+          "tense",
+          "without guessing"
+        ],
+        "rule_id": "FRAME_BRIDGE",
+        "rule_present": false,
+        "status": "fail"
+      }
+    ],
+    "gate_type": "actionable_creative_decomposition_presence",
+    "generated_prose_quality_claimed": false,
+    "overall_status": "fail",
+    "passed_check_count": 0,
+    "schema": "SkillV2CreativeCapabilityPresenceAuditV1"
+  },
+  "restored_audit": {
+    "check_count": 11,
+    "checks": [
+      {
+        "check_id": "motivation_action",
+        "missing_semantic_phrases": [],
+        "rule_id": "MOTIVE_ACTION",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "voice_distinctiveness",
+        "missing_semantic_phrases": [],
+        "rule_id": "VOICE_RELATION",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "relationship_consequence",
+        "missing_semantic_phrases": [],
+        "rule_id": "VOICE_RELATION",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "world_specificity",
+        "missing_semantic_phrases": [],
+        "rule_id": "CAUSAL_AFFORDANCE",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "sensory_affordance",
+        "missing_semantic_phrases": [],
+        "rule_id": "CAUSAL_AFFORDANCE",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "conflict_pacing",
+        "missing_semantic_phrases": [],
+        "rule_id": "PRESSURE_BEATS",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "setup_payoff_dependency",
+        "missing_semantic_phrases": [],
+        "rule_id": "SETUP_PAYOFF",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "subtext_dramatization",
+        "missing_semantic_phrases": [],
+        "rule_id": "PRESSURE_BEATS",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "draft_handoff",
+        "missing_semantic_phrases": [],
+        "rule_id": "DRAFT_SCENE",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "anti_template",
+        "missing_semantic_phrases": [],
+        "rule_id": "ANTI_TAXONOMY",
+        "rule_present": true,
+        "status": "pass"
+      },
+      {
+        "check_id": "narrative_frame",
+        "missing_semantic_phrases": [],
+        "rule_id": "FRAME_BRIDGE",
+        "rule_present": true,
+        "status": "pass"
+      }
+    ],
+    "gate_type": "actionable_creative_decomposition_presence",
+    "generated_prose_quality_claimed": false,
+    "overall_status": "pass",
+    "passed_check_count": 11,
+    "schema": "SkillV2CreativeCapabilityPresenceAuditV1"
+  },
+  "schema": "SkillV2RestoredCreativeCapabilityPresenceV1",
+  "version": 1
+}

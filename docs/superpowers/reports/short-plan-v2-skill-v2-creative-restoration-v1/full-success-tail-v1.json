@@ -1,0 +1,27 @@
+{
+  "artifact_persisted": "PASS",
+  "audit_serialization": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "local_derivation": "PASS",
+  "model_validate": "PASS",
+  "overall_status": "exact",
+  "parser": "PASS",
+  "schema": "SkillV2RestorationFullSuccessTailV1",
+  "source": {
+    "bytes": 789,
+    "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-full-success-tail-offline-v1.json",
+    "sha256": "40807afacccd0df74052b816f6d67499003e04a5da1b423878193b75dcbfae6f"
+  },
+  "synthetic_only": true,
+  "validator": "PASS",
+  "version": 1,
+  "write_json_reached": "PASS"
+}

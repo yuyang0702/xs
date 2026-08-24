@@ -1,0 +1,15 @@
+{
+  "authority_override_instruction_count": 0,
+  "file_cli_instruction_leak_count": 0,
+  "operational_bookkeeping_leak_count": 0,
+  "overall_status": "exact",
+  "runtime_mechanics_leak_count": 0,
+  "schema": "SkillV2DoNotRestoreRegressionV1",
+  "source_matrix": {
+    "bytes": 3138,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/do-not-restore-matrix-v1.json",
+    "sha256": "c2dd58f316801ba0bc6431403cfd5f3d7b0d788c906863abf8b3a3fdc9a74d56"
+  },
+  "total_leak_count": 0,
+  "version": 1
+}

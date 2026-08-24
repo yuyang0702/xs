@@ -1,0 +1,58 @@
+{
+  "abstract_label_only_profile_rejected": true,
+  "case_count": 6,
+  "cases": [
+    {
+      "actual": "fail",
+      "case_id": "delete_dramatization_decomposition",
+      "expected": "fail",
+      "mutation": "delete",
+      "rule_id": "PRESSURE_BEATS",
+      "status": "exact"
+    },
+    {
+      "actual": "fail",
+      "case_id": "delete_draft_handoff_decomposition",
+      "expected": "fail",
+      "mutation": "delete",
+      "rule_id": "DRAFT_SCENE",
+      "status": "exact"
+    },
+    {
+      "actual": "fail",
+      "case_id": "delete_anti_template_decomposition",
+      "expected": "fail",
+      "mutation": "delete",
+      "rule_id": "ANTI_TAXONOMY",
+      "status": "exact"
+    },
+    {
+      "actual": "fail",
+      "case_id": "motivation_label_only",
+      "expected": "fail",
+      "mutation": "label_only",
+      "rule_id": "MOTIVE_ACTION",
+      "status": "exact"
+    },
+    {
+      "actual": "fail",
+      "case_id": "world_specificity_label_only",
+      "expected": "fail",
+      "mutation": "label_only",
+      "rule_id": "CAUSAL_AFFORDANCE",
+      "status": "exact"
+    },
+    {
+      "actual": "fail",
+      "case_id": "pacing_label_only",
+      "expected": "fail",
+      "mutation": "label_only",
+      "rule_id": "PRESSURE_BEATS",
+      "status": "exact"
+    }
+  ],
+  "creative_decomposition_required": true,
+  "overall_status": "exact",
+  "schema": "SkillV2AntiOvercompressionMatrixV1",
+  "version": 1
+}

@@ -1,0 +1,145 @@
+{
+  "overall_status": "exact",
+  "restoration_items_expected": 8,
+  "restoration_items_implemented": 8,
+  "rows": [
+    {
+      "affected_quality_dimensions": [
+        "CHARACTER_MOTIVATION",
+        "SUBTEXT_DRAMATIZATION",
+        "TEMPLATE_FLATTENING_RISK"
+      ],
+      "exact_restored_semantic": "Render competing wants and needs through choices, tactics, concessions, and costs; do not name the taxonomy in the artifact.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "MOTIVE_ACTION",
+      "source_capability": "motivation_dramatization",
+      "source_skill": "character-management",
+      "status": "exact",
+      "target_profile_section": "character-creative/core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "CHARACTER_VOICE",
+        "RELATIONSHIP_LOGIC",
+        "SUBTEXT_DRAMATIZATION"
+      ],
+      "exact_restored_semantic": "Differentiate actors through word choice, rhythm, evasions, behavior, and relationship pressure that changes available actions.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "VOICE_RELATION",
+      "source_capability": "voice_and_relationship_action",
+      "source_skill": "character-management",
+      "status": "exact",
+      "target_profile_section": "character-creative/core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "WORLD_SPECIFICITY",
+        "SENSORY_REALIZATION",
+        "SETUP_PAYOFF_DEPENDENCY"
+      ],
+      "exact_restored_semantic": "Select a small number of concrete sensory or mechanical affordances that constrain action, can be interacted with, and can carry a later payoff.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "CAUSAL_AFFORDANCE",
+      "source_capability": "causal_scene_affordances",
+      "source_skill": "worldbuilding",
+      "status": "exact",
+      "target_profile_section": "world-creative/core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "CONFLICT_AND_PACING",
+        "DRAFT_INTENT_HANDOFF",
+        "SUBTEXT_DRAMATIZATION"
+      ],
+      "exact_restored_semantic": "Realize escalation as opposed tactics, obstacle, reaction, and reversal rather than explanatory summary.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "PRESSURE_BEATS",
+      "source_capability": "pressure_beat_decomposition",
+      "source_skill": "plot-structure",
+      "status": "exact",
+      "target_profile_section": "plot-creative/core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "SETUP_PAYOFF_DEPENDENCY",
+        "DRAFT_INTENT_HANDOFF"
+      ],
+      "exact_restored_semantic": "Plant a concrete question or affordance, preserve its dependency, and pay it off through later action inside the bounded event.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "SETUP_PAYOFF",
+      "source_capability": "concrete_setup_dependency_payoff",
+      "source_skill": "plot-structure",
+      "status": "exact",
+      "target_profile_section": "plot-creative/core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "TONE_GENRE_FIDELITY",
+        "POV_CONSISTENCY",
+        "TENSE_CONSISTENCY",
+        "DRAFT_INTENT_HANDOFF"
+      ],
+      "exact_restored_semantic": "When confirmed values exist, bridge premise, theme, tone, genre, POV, and tense without guessing or asking questions.",
+      "load_mode": "ALWAYS_WITH_UNSPECIFIED_ALLOWED",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "FRAME_BRIDGE",
+      "source_capability": "confirmed_narrative_frame_bridge",
+      "source_skill": "story-init",
+      "status": "exact",
+      "target_profile_section": "event-realization/narrative-bridge",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "DRAFT_INTENT_HANDOFF",
+        "CONFLICT_AND_PACING",
+        "SENSORY_REALIZATION"
+      ],
+      "exact_restored_semantic": "Produce Draft-usable spatial beats with action/reaction, resistance, reversal, and a terminal image; avoid synopsis-only realization.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "DRAFT_SCENE",
+      "source_capability": "draft_handoff_sceneability",
+      "source_skill": "cross-skill",
+      "status": "exact",
+      "target_profile_section": "event-realization/dramatization-core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    },
+    {
+      "affected_quality_dimensions": [
+        "TEMPLATE_FLATTENING_RISK",
+        "SUBTEXT_DRAMATIZATION"
+      ],
+      "exact_restored_semantic": "Use capability labels only for reasoning; never emit labels such as external want, internal need, or local state change as explanatory prose.",
+      "load_mode": "ALWAYS",
+      "local_validator_can_replace": false,
+      "profile_classification": "true_narrative_invariant",
+      "restoration_id": "ANTI_TAXONOMY",
+      "source_capability": "anti_taxonomy_template_guard",
+      "source_skill": "cross-skill",
+      "status": "exact",
+      "target_profile_section": "event-realization/dramatization-core",
+      "why_model_owned": "It shapes model choices and scene realization; a deterministic local validator cannot generate the missing creative content."
+    }
+  ],
+  "schema": "SkillV2RestorationImplementationMatrixV1",
+  "unplanned_restoration_items": 0,
+  "version": 1
+}

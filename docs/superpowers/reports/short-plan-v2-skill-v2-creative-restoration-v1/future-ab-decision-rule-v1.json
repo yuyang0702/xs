@@ -1,0 +1,13 @@
+{
+  "aggregate_must_preserve_per_pair_evidence": true,
+  "averaging_may_hide_critical_regression": false,
+  "critical_narrative_regression": "NO_GO",
+  "engineering_failure_or_regression": "NO_GO",
+  "generalized_noninferiority_requires_more_than_prior_one_pair": true,
+  "production_cutover_authorized": false,
+  "schema": "SkillV2RestoredFutureABDecisionRuleV1",
+  "single_scalar_literary_score": false,
+  "status": "DESIGN_ONLY",
+  "token_reduction_can_override_quality_regression": false,
+  "version": 1
+}

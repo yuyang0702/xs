@@ -1,0 +1,20 @@
+{
+  "guess_count": 0,
+  "historical_profile_bridge": null,
+  "narrative_bridge_change_limited_to_sealed_restoration_item": true,
+  "overall_status": "exact",
+  "restored_bridge_policy_id": "EXISTING_PROJECT_NARRATIVE_BRIDGE_V1",
+  "restored_field_statuses": {
+    "genre": "unspecified",
+    "pov": "unspecified",
+    "premise": "unspecified",
+    "tense": "unspecified",
+    "theme": "unspecified",
+    "tone": "unspecified"
+  },
+  "schema": "SkillV2RestorationNarrativeBridgeParityV1",
+  "story_init_loaded": false,
+  "unrelated_bridge_redesign": false,
+  "user_question_count": 0,
+  "version": 1
+}

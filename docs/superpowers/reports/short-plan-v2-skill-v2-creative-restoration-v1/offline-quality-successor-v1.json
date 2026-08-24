@@ -1,0 +1,11 @@
+{
+  "actionable_creative_decomposition_required": true,
+  "capability_name_present_is_sufficient": false,
+  "historical_audit_rewritten": false,
+  "offline_capability_audit_false_positive_closed": true,
+  "old_overcompressed_profile_offline_quality": "FAIL_EXPECTED",
+  "real_ab_still_required": true,
+  "restored_profile_offline_quality": "PASS",
+  "schema": "SkillV2RestoredOfflineQualitySuccessorV1",
+  "version": 1
+}

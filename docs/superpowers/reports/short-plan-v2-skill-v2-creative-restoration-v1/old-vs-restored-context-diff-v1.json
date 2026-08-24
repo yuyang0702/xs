@@ -1,0 +1,20 @@
+{
+  "advisory_characters": 1587,
+  "char_delta": 1155,
+  "context_hard_ceiling_chars": 3000,
+  "excluded_rule_ids": [],
+  "mandatory_characters": 1155,
+  "new_definition_sha256": "302d1d28aec4f26e27ca71615dff35a942b3d26039db977cdefea43362fa5be1",
+  "new_profile_sha256": "c4ca606bd76359514e15cd60a2edcecbd9bc530690abb86be7313f2bd38999c5",
+  "new_rendered_context_char_count": 2742,
+  "new_rendered_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+  "old_definition_sha256": "787a6fb86f3da54b270e7072f93aa141710a48d4bb954d41a7a758cf803506da",
+  "old_profile_sha256": "7a6022faa3d0db198a28727d44067cd56d83649536a6b37fee27e91ee170d082",
+  "old_rendered_context_char_count": 1587,
+  "old_rendered_context_sha256": "a77ca32533e7e480ab3b0ff53d55dde5bed4ff837b8b68f53b7aba59a8d6fd15",
+  "overall_status": "exact",
+  "render_deterministic_x2": "PASS",
+  "schema": "SkillV2OldVsRestoredContextDiffV1",
+  "truncation_status": "NONE",
+  "version": 1
+}
