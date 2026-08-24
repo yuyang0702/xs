@@ -1,0 +1,54 @@
+{
+  "configured_route_order": [
+    "primary",
+    "configured_fallback"
+  ],
+  "effective_route_cap": 4624,
+  "fallback_policy_changed": false,
+  "live_capability_probe_executed": false,
+  "local_configuration_match": "exact",
+  "output_cap_policy": "scoped_creative_output_budget_v1",
+  "provider_accepted_cap": "UNKNOWN_UNTIL_EXECUTION",
+  "requested_max_output_tokens": 4624,
+  "role": "planning",
+  "route_binding_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+  "route_configuration_source_class": "LOCAL_READ_ONLY_ROUTE_SNAPSHOT_MATCHING_SEALED_SHORT_EVIDENCE",
+  "route_fingerprint_algorithm": "ProviderRegistry.route_fingerprint@1",
+  "route_model_changed": false,
+  "route_policy_default_ceiling": 65536,
+  "routes": [
+    {
+      "adapter_family": "AnthropicAdapter",
+      "context_window": "UNKNOWN",
+      "declared_route_output_cap": "UNKNOWN",
+      "model_alias_sha256": "419255f2bb4c6801939e868fe2cdbbdc34d51742400939d1842d262a1fec749c",
+      "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+      "provider_alias_sha256": "5ba55d5ba16d07281f3755226d368383d7af5b9c9b75df2976a2febca9a4970a",
+      "provider_descriptor_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+      "provider_family": "anthropic",
+      "reasoning_controls": {
+        "capability_probe_stale_reason": "route_changed"
+      },
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "route_kind": "primary",
+      "transport_type": "https"
+    },
+    {
+      "adapter_family": "AnthropicAdapter",
+      "context_window": "UNKNOWN",
+      "declared_route_output_cap": "UNKNOWN",
+      "model_alias_sha256": "052e4fc0bc88e2a5376eb7461a1ec3686311e42a1f2219ebf9beeac1414e252e",
+      "model_binding_sha256": "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998",
+      "provider_alias_sha256": "6f7ac1823da81d2e52d1a1549ee69c85bbf8bb56d06682849e7c09da2785ce3b",
+      "provider_descriptor_sha256": "98190f8a4627638591d90646f663d859e5cb8b8fa138ef3d250e43317c1705a6",
+      "provider_family": "anthropic",
+      "reasoning_controls": "NONE_DECLARED",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "route_kind": "configured_fallback",
+      "transport_type": "https"
+    }
+  ],
+  "schema": "Slice1PhaseBCurrentRouteBindingV1",
+  "selected_route": "primary",
+  "version": 1
+}

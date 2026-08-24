@@ -1,0 +1,23 @@
+{
+  "authority_section_sha256": "017e64fc8e33e84d8ca3b43ba9c9e035d47e58cc06a28c64a853cea95637a8c4",
+  "contract_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+  "estimated_input_tokens": 790,
+  "model_input_assembly_sha256": "387380e61ac4ed098b00a4b45f3299035c0455a9963a58a56f489e3f3e15dc94",
+  "non_skill_prompt_body_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "observer_state": "PTR12_REQUIRED_ENABLED",
+  "output_parser": "GeneratedArtifactGateway+EventRealizationCandidateV1",
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "retry_repair_prompt_policy": "NO_MODEL_REPAIR_IN_BASELINE_SMOKE_V1",
+  "route_selection_inputs_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+  "schema": "SkillV2BArmModelInputBindingV1",
+  "skill_arm": "SKILL_CONTEXT_V2",
+  "skill_context_sha256": "a77ca32533e7e480ab3b0ff53d55dde5bed4ff837b8b68f53b7aba59a8d6fd15",
+  "skill_v2_profile_sha256": "7a6022faa3d0db198a28727d44067cd56d83649536a6b37fee27e91ee170d082",
+  "system_sha256": "67fef960d0f78d1f4a07ac223560a7e08c24f7776d8434c2d0b7a02fa4826670",
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "user_sha256": "fa982f3e661793fb1a563126096cdbe8be434a1d281f464cd9693aec6f44807a",
+  "validator_bundle_sha256": "a41e1918b26cc23414067c162142b78166838a61a7fee04a114d9fbf034d6f83",
+  "version": 1,
+  "wire_input_sha256": "2aae315ca89f46f253b68e427c8f72528e715130c8aeedfa1ac36cb2b4d0a102"
+}

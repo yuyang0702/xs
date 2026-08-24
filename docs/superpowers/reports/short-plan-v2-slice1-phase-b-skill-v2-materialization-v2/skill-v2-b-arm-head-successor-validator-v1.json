@@ -1,0 +1,11 @@
+{
+  "git_backed_validator_sha256": "ccb71db05cc9dc173e92be14b95ff908bd47cb7690d379ffd9af6802ced9bf9c",
+  "head_successor_validator_sha256": "753fa843acac76b5e4f7ca40f9ca434b1e9ace0e43a1cbe066f452cc5e77a8ae",
+  "owner": "tools.canary.slice1_phase_b_skill_v2_single_dispatch.verify_approval_head_successor",
+  "pure_relation_validator_sha256": "c05124dac1f248eb44933f3f333ac30c30e8f328e092c5276d94754e9fa8df27",
+  "schema": "SkillV2BArmApprovalHeadSuccessorValidatorV1",
+  "validation_before_credential_lookup": true,
+  "validation_before_network": true,
+  "validation_before_nonce_reservation": true,
+  "version": 1
+}

@@ -1,0 +1,28 @@
+{
+  "approval_evidence_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v2/approval",
+  "approval_parent_head_canonical_form": "lowercase_40_hex",
+  "approval_seal_policy": "one_direct_child_changing_only_approval_evidence_root",
+  "arbitrary_descendant_allowed": false,
+  "auto_rebind_approval_parent_head": false,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "generic_descendant_fallback": false,
+  "head_successor_contract_sha256": "0aaa5f70dcb2f2215ae4338b08d0564e020b7f053ad604d626d4e3bef02fa667",
+  "materialization_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v2",
+  "materialization_seal_policy": "implementation_head_plus_exact_manifest_covered_packet_files",
+  "relation": "EXACT_PARENT_OR_ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR",
+  "schema": "SkillV2BArmApprovalHeadSuccessorContractV1",
+  "source_mutation_between_parent_and_current_allowed": false,
+  "unknown_successor_state_fails_closed": true,
+  "validation_order": [
+    "packet_build_validation",
+    "approval_parent_head_validation",
+    "current_head_successor_validation",
+    "scope_cohort_ab_lock_validation",
+    "approval_guard_budget_validation",
+    "nonce_reservation",
+    "credential_lookup",
+    "provider_client_creation",
+    "single_dispatch"
+  ],
+  "version": 1
+}

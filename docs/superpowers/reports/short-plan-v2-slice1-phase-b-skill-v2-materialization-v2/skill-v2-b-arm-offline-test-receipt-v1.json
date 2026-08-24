@@ -1,0 +1,27 @@
+{
+  "ab_lock": "PASS",
+  "context_render_deterministic_x2": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused_tests": "27 passed, 6 skipped in 2.16s before v2 seal; six canonical Git-backed cases pending seal",
+  "full_success_tail": "PASS",
+  "full_suite": "3351 passed, 47 skipped, 6 xfailed, 22 failed, 46 errors in 1993.99s; non-green items are historical sealed Canary/materialization gates, stale Planning Skill diagnostics, and R0E fixed live-parity baseline; no HEAD-successor test failed",
+  "launcher_negative_matrix": "PASS",
+  "offline_test_receipt_sha256": "c2f0a8600fee8b72f94b23a31a7beb7d2e4352caa1dc2e4fadff0b3acfa9287e",
+  "overall_status": "exact",
+  "profile_resolution_deterministic_x2": "PASS",
+  "r0f_successor": "NOT_REQUIRED",
+  "related_tests": "214 passed, 6 skipped in 16.55s before v2 seal",
+  "schema": "SkillV2BArmOfflineTestReceiptV1",
+  "strict_l3": "PASS_WARNINGS_0_BLOCKERS_0",
+  "version": 1
+}
