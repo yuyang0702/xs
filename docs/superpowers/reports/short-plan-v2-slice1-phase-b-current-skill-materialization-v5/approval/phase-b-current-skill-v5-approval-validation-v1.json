@@ -1,0 +1,197 @@
+{
+  "approval_validation_sha256": "872c0051c3a7906a59d9d8abbd62ed5b8aa4b4cbd1c5bb2ae4d7b85d1837e772",
+  "audit_serialization": "PASS",
+  "authority_tuple_normalization": "PASS",
+  "cohort_byte_exact": true,
+  "execution_root_exact": true,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "full_success_tail_offline": "PASS",
+  "launcher_artifact_count": 1,
+  "launcher_signed_preflight_at_clean_parent_head": "exact",
+  "manifest_coverage": "22/22_EXACT",
+  "materialization_root_exact": true,
+  "overall_status": "exact",
+  "packet_validate_only": "exact",
+  "parent_head": "c8842b2693356d6988ff65f50628beed0f2408a2",
+  "schema": "Slice1PhaseBV5ApprovalValidationV1",
+  "scope_byte_exact": true,
+  "single_dispatch_guard": "PASS",
+  "test_count": 41,
+  "tests": [
+    {
+      "case": "exact_signed_approval_accepted",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_head_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "old_alias_scope_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "old_cohort_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_materialization_root_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_execution_root_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "missing_launcher_binding_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_audit_serialization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_authority_input_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_tuple_normalization_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_skill_profile_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_model_input_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_route_binding_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_transport_guard_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "wrong_attempt_accounting_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_budget_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_output_isolation_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_ptr12_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "changed_ab_lock_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "missing_approver_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "missing_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "reserved_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "consumed_nonce_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "model_cap_above_one_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "provider_cap_above_one_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "http_cap_above_one_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "network_cap_above_one_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "sdk_retries_enabled_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "transport_retries_enabled_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "workflow_retry_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "route_fallback_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "second_dispatch_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "full_short_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "draft_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "final_review_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "maintenance_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "skill_v2_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "planning_v2_cutover_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "story_state_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "canon_rejected",
+      "status": "PASS"
+    },
+    {
+      "case": "ready_rejected",
+      "status": "PASS"
+    }
+  ],
+  "version": 1
+}

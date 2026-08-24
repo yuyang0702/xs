@@ -1,0 +1,30 @@
+{
+  "atomic_reservation_required_before_credential_lookup": true,
+  "cohort_id": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "ledger_materialized": false,
+  "nonce_binding_id": "phase-b-v5-nonce-20260824t035630z-78a64ad97a7c",
+  "nonce_binding_sha256": "0c46c885f9eb40370178efae43cf7d6fb7602902969715bfd2da78516c919641",
+  "nonce_consumed": false,
+  "nonce_reserved": false,
+  "old_approval_reuse_allowed": false,
+  "reservation_status": "unreserved",
+  "schema": "Slice1PhaseBV5NonceBindingV1",
+  "signed_approval_sha256": "10fdc7124aaf704da18491bf8018ef63d7b3a1ca64b793ad80e6e49c62a4a2b9",
+  "single_use_nonce_sha256": "78a64ad97a7cb9084420d1be8730a6156387946e839ef2c3200869661253c77e",
+  "usage_status": "unused",
+  "v2_nonce_consumed": true,
+  "v3_nonce_issued": false,
+  "v4_nonce_consumed": true,
+  "version": 1
+}
