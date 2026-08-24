@@ -1992,3 +1992,12 @@ bindings fail before nonce reservation. The historical v2 launcher and sealed
 v2/v3 evidence remain immutable. This profile does not change production
 transport retries, model routing, prompts, planning semantics, StoryState, or
 Canon authority.
+# Skill V2 B-arm approval HEAD ancestry fail-close
+
+The closed-world Skill V2 B-arm launcher rejects a malformed, missing, or
+non-ancestral approval parent before running any Git diff or changed-path
+inspection. Ordinary invalid-parent cases use the stable
+`approval_parent_head_mismatch` authority rejection; unrelated Git execution
+failures use `approval_head_git_infrastructure_failure`. Any launcher change
+invalidates the prior disabled packet and requires a newly materialized packet,
+approval parent, approval-only successor, and single-use nonce.

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import inspect
 import json
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -20,6 +21,42 @@ PACKET_PATHS = (
     launcher.MATERIALIZATION_RELATIVE_ROOT + "/sha256-manifest-v1.json",
 )
 APPROVAL_PATH = launcher.MATERIALIZATION_RELATIVE_ROOT + "/approval/signed.json"
+
+
+def _commit_file(repo: Path, relative_path: str, content: str, message: str) -> str:
+    path = repo / relative_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    launcher.base._git(repo, "add", "--", relative_path)
+    launcher.base._git(repo, "commit", "-m", message)
+    return launcher.base._git(repo, "rev-parse", "HEAD")
+
+
+def _git_backed_lineage(tmp_path: Path) -> dict[str, object]:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    launcher.base._git(repo, "init", "-b", launcher.EXPECTED_BRANCH)
+    launcher.base._git(repo, "config", "user.name", "offline-test")
+    launcher.base._git(repo, "config", "user.email", "offline@example.invalid")
+    root = _commit_file(repo, "root.txt", "root\n", "root")
+    implementation = _commit_file(repo, "implementation.txt", "impl\n", "implementation")
+    packet_path = launcher.MATERIALIZATION_RELATIVE_ROOT + "/packet.json"
+    manifest_path = launcher.MATERIALIZATION_RELATIVE_ROOT + "/sha256-manifest-v1.json"
+    packet = repo / packet_path
+    manifest = repo / manifest_path
+    packet.parent.mkdir(parents=True, exist_ok=True)
+    packet.write_text("{}\n", encoding="utf-8")
+    manifest.write_text("{}\n", encoding="utf-8")
+    launcher.base._git(repo, "add", "--", packet_path, manifest_path)
+    launcher.base._git(repo, "commit", "-m", "materialization")
+    materialization = launcher.base._git(repo, "rev-parse", "HEAD")
+    return {
+        "repo": repo,
+        "root": root,
+        "implementation": implementation,
+        "materialization": materialization,
+        "manifest": {"files": [{"path": packet_path}]},
+    }
 
 
 def _relation(**overrides: object) -> dict[str, object]:
@@ -147,6 +184,173 @@ def test_dirty_worktree_fails_closed_before_relation(
             manifest={"files": []},
         )
     assert caught.value.reason_code == "git_worktree_not_clean"
+
+
+def test_git_backed_dirty_worktree_preserves_existing_policy(tmp_path: Path) -> None:
+    lineage = _git_backed_lineage(tmp_path)
+    repo = lineage["repo"]
+    (repo / "dirty.txt").write_text("dirty\n", encoding="utf-8")  # type: ignore[operator]
+    with pytest.raises(launcher.base.Slice1PhaseBMaterializationError) as caught:
+        launcher.verify_approval_head_successor(
+            repo_root=repo,  # type: ignore[arg-type]
+            approval_parent_head=str(lineage["materialization"]),
+            implementation_head=str(lineage["implementation"]),
+            manifest=lineage["manifest"],  # type: ignore[arg-type]
+        )
+    assert caught.value.reason_code == "worktree_not_clean"
+
+
+def test_git_backed_invalid_parents_are_typed_and_never_diffed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lineage = _git_backed_lineage(tmp_path)
+    original_git = launcher.base._git
+    commands: list[tuple[str, ...]] = []
+
+    def spy_git(repo_root: Path, *args: str) -> str:
+        commands.append(args)
+        return original_git(repo_root, *args)
+
+    monkeypatch.setattr(launcher.base, "_git", spy_git)
+    candidates = ("0" * 40, "f" * 40, str(lineage["root"]))
+    for candidate in candidates:
+        for _ in range(2):
+            commands.clear()
+            with pytest.raises(launcher.SkillV2BArmError) as caught:
+                launcher.verify_approval_head_successor(
+                    repo_root=lineage["repo"],  # type: ignore[arg-type]
+                    approval_parent_head=candidate,
+                    implementation_head=str(lineage["implementation"]),
+                    manifest=lineage["manifest"],  # type: ignore[arg-type]
+                )
+            assert caught.value.reason_code == "approval_parent_head_mismatch"
+            assert sum(command[:1] == ("diff",) for command in commands) == 0
+
+
+def test_git_backed_malformed_parent_rejects_before_diff(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lineage = _git_backed_lineage(tmp_path)
+    original_git = launcher.base._git
+    commands: list[tuple[str, ...]] = []
+
+    def spy_git(repo_root: Path, *args: str) -> str:
+        commands.append(args)
+        return original_git(repo_root, *args)
+
+    monkeypatch.setattr(launcher.base, "_git", spy_git)
+    with pytest.raises(launcher.SkillV2BArmError) as caught:
+        launcher.verify_approval_head_successor(
+            repo_root=lineage["repo"],  # type: ignore[arg-type]
+            approval_parent_head="not-a-commit",
+            implementation_head=str(lineage["implementation"]),
+            manifest=lineage["manifest"],  # type: ignore[arg-type]
+        )
+    assert caught.value.reason_code == "approval_parent_head_malformed"
+    assert sum(command[:1] == ("diff",) for command in commands) == 0
+
+
+def test_git_backed_valid_and_invalid_successor_matrix(tmp_path: Path) -> None:
+    lineage = _git_backed_lineage(tmp_path)
+    repo = lineage["repo"]
+    materialization = str(lineage["materialization"])
+    common = {
+        "repo_root": repo,
+        "approval_parent_head": materialization,
+        "implementation_head": str(lineage["implementation"]),
+        "manifest": lineage["manifest"],
+    }
+    exact = launcher.verify_approval_head_successor(**common)  # type: ignore[arg-type]
+    assert exact["current_head_relation"] == "EXACT_APPROVAL_PARENT"
+
+    approval = _commit_file(repo, APPROVAL_PATH, "{}\n", "approval")  # type: ignore[arg-type]
+    accepted = launcher.verify_approval_head_successor(**common)  # type: ignore[arg-type]
+    assert accepted["current_head"] == approval
+    assert accepted["current_head_relation"] == (
+        "ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR"
+    )
+
+    cases = (
+        ("docs/unrelated.md", "arbitrary", "approval_successor_contains_non_approval_evidence_change"),
+        (
+            "tools/canary/slice1_phase_b_skill_v2_single_dispatch.py",
+            "source",
+            "approval_successor_contains_non_approval_evidence_change",
+        ),
+    )
+    for path, content, reason in cases:
+        launcher.base._git(repo, "reset", "--hard", materialization)  # type: ignore[arg-type]
+        _commit_file(repo, path, content + "\n", content)  # type: ignore[arg-type]
+        with pytest.raises(launcher.SkillV2BArmError) as caught:
+            launcher.verify_approval_head_successor(**common)  # type: ignore[arg-type]
+        assert caught.value.reason_code == reason
+
+    launcher.base._git(repo, "reset", "--hard", materialization)  # type: ignore[arg-type]
+    approval_path = repo / APPROVAL_PATH  # type: ignore[operator]
+    unrelated_path = repo / "docs/unrelated-with-approval.md"  # type: ignore[operator]
+    approval_path.parent.mkdir(parents=True, exist_ok=True)
+    unrelated_path.parent.mkdir(parents=True, exist_ok=True)
+    approval_path.write_text("{}\n", encoding="utf-8")
+    unrelated_path.write_text("unrelated\n", encoding="utf-8")
+    launcher.base._git(repo, "add", "--", APPROVAL_PATH, "docs/unrelated-with-approval.md")  # type: ignore[arg-type]
+    launcher.base._git(repo, "commit", "-m", "mixed approval")  # type: ignore[arg-type]
+    with pytest.raises(launcher.SkillV2BArmError) as caught:
+        launcher.verify_approval_head_successor(**common)  # type: ignore[arg-type]
+    assert caught.value.reason_code == "approval_successor_contains_non_approval_evidence_change"
+
+
+def test_git_infrastructure_failure_is_canonical_not_raw(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lineage = _git_backed_lineage(tmp_path)
+    original_git = launcher.base._git
+    commands: list[tuple[str, ...]] = []
+
+    def fail_merge_base(repo_root: Path, *args: str) -> str:
+        commands.append(args)
+        if args[:1] == ("merge-base",):
+            raise subprocess.CalledProcessError(129, ("git", *args))
+        return original_git(repo_root, *args)
+
+    monkeypatch.setattr(launcher.base, "_git", fail_merge_base)
+    with pytest.raises(launcher.SkillV2BArmError) as caught:
+        launcher.verify_approval_head_successor(
+            repo_root=lineage["repo"],  # type: ignore[arg-type]
+            approval_parent_head=str(lineage["materialization"]),
+            implementation_head=str(lineage["implementation"]),
+            manifest=lineage["manifest"],  # type: ignore[arg-type]
+        )
+    assert caught.value.reason_code == "approval_head_git_infrastructure_failure"
+    assert sum(command[:1] == ("diff",) for command in commands) == 0
+
+
+def test_git_object_database_failure_is_not_misclassified_as_parent_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lineage = _git_backed_lineage(tmp_path)
+    original_git = launcher.base._git
+    commands: list[tuple[str, ...]] = []
+
+    def fail_object_lookup(repo_root: Path, *args: str) -> str:
+        commands.append(args)
+        if args[:1] == ("cat-file",):
+            raise subprocess.CalledProcessError(128, ("git", *args))
+        return original_git(repo_root, *args)
+
+    monkeypatch.setattr(launcher.base, "_git", fail_object_lookup)
+    with pytest.raises(launcher.SkillV2BArmError) as caught:
+        launcher.verify_approval_head_successor(
+            repo_root=lineage["repo"],  # type: ignore[arg-type]
+            approval_parent_head=str(lineage["materialization"]),
+            implementation_head=str(lineage["implementation"]),
+            manifest=lineage["manifest"],  # type: ignore[arg-type]
+        )
+    assert caught.value.reason_code == "approval_head_git_infrastructure_failure"
+    assert sum(command[:1] == ("diff",) for command in commands) == 0
 
 
 def test_head_validation_precedes_scope_nonce_and_credentials() -> None:
