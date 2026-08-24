@@ -78,6 +78,31 @@ def test_pair_lock_and_original_v1_semantics_remain_exact(
     assert lock["primary_changed_variable"] == "SKILL_CONTEXT"
     for field in pair1_a.ORIGINAL_SEMANTIC_FIELDS:
         assert successor[field] == original[field]
+    original_launcher = json.loads(
+        (REPO_ROOT / pair1_a.ORIGINAL_LAUNCHER_PATH).read_text(encoding="utf-8")
+    )
+    assert successor["transport_guard_sha256"] == original_launcher["transport_guard_sha256"]
+    assert successor["attempt_accounting_sha256"] == original_launcher["attempt_accounting_sha256"]
+
+
+def test_final_report_covers_every_required_handoff_item(
+    built: tuple[dict[str, bytes], dict[str, object]],
+) -> None:
+    documents, _ = built
+    report = documents[f"{pair1_a.CLOSURE_ROOT}/final-report-v1.md"].decode("utf-8")
+    assert all(f"{index}. " in report for index in range(1, 42))
+    for label in (
+        "Implementation/materialization-parent commit",
+        "Launcher source path/SHA",
+        "Signed-preflight validator path/source/binding",
+        "HEAD-successor validator path/source/binding",
+        "Stop-state receipt/binding SHA",
+        "Transport guard SHA",
+        "Attempt-accounting SHA",
+        "Manifest definition SHA",
+        "Exact next gate",
+    ):
+        assert label in report
 
 
 @pytest.mark.parametrize(

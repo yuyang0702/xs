@@ -236,6 +236,11 @@ def launcher_source_binding(repo_root: Path) -> dict[str, Any]:
         "launcher_source_manifest": source_manifest,
         "launcher_identity_sha256": original_launcher["launcher_identity_sha256"],
         "launcher_binding_sha256": original_launcher["launcher_binding_sha256"],
+        "transport_guard_sha256": original_launcher["transport_guard_sha256"],
+        "transport_policy_definition_sha256": original_launcher[
+            "transport_policy_definition_sha256"
+        ],
+        "attempt_accounting_sha256": original_launcher["attempt_accounting_sha256"],
         "launcher_source_binding_explicit": True,
         "launcher_source_binding_unambiguous": True,
         "packet_to_launcher_source_binding_sha256": _domain_sha(
@@ -488,6 +493,7 @@ def _successor_packet(
     evaluator = stop_state_evaluator_binding(repo_root)
     history = historical_root_policy()
     budget = budget_binding(original)
+    original_launcher = _read_json(repo_root / ORIGINAL_LAUNCHER_PATH)
     body = {
         "schema": "SkillV2BoundedRepeatedABPair1AApprovalReadySuccessorPacketV2",
         "version": 2,
@@ -511,6 +517,11 @@ def _successor_packet(
         "launcher_source_identity": launcher["launcher_source_identity"],
         "launcher_source_manifest_sha256": launcher["launcher_source_manifest"]["source_manifest_sha256"],
         "launcher_binding_sha256": launcher["launcher_binding_sha256"],
+        "transport_guard_sha256": original_launcher["transport_guard_sha256"],
+        "transport_policy_definition_sha256": original_launcher[
+            "transport_policy_definition_sha256"
+        ],
+        "attempt_accounting_sha256": original_launcher["attempt_accounting_sha256"],
         "launcher_identity_source_binding_sha256": launcher["launcher_identity_source_binding_sha256"],
         "packet_to_launcher_source_binding_sha256": launcher["packet_to_launcher_source_binding_sha256"],
         "signed_preflight_validator_source_sha256": preflight["signed_preflight_validator_source_sha256"],
@@ -581,6 +592,7 @@ def validate_successor_packet(
     head = head_successor_validator_binding(repo_root)
     evaluator = stop_state_evaluator_binding(repo_root)
     original = _original_packet(repo_root)
+    original_launcher = _read_json(repo_root / ORIGINAL_LAUNCHER_PATH)
     expected_lock = _read_json(repo_root / ORIGINAL_PAIR_LOCK_PATH)["pair_lock_sha256"]
 
     _require(bool(packet.get("launcher_source_sha256")), "launcher_source_sha256_missing")
@@ -605,6 +617,15 @@ def validate_successor_packet(
     _require(packet.get("original_packet_sha256") == ORIGINAL_PACKET_SHA256, "original_packet_sha256_mismatch")
     _require(packet.get("skill_context_sha256") == original["skill_context_sha256"], "current_skill_context_sha256_mismatch")
     _require(packet.get("pair_lock_sha256") == expected_lock, "pair_lock_sha256_mismatch")
+    _require(
+        packet.get("transport_guard_sha256") == original_launcher["transport_guard_sha256"],
+        "transport_guard_sha256_mismatch",
+    )
+    _require(
+        packet.get("attempt_accounting_sha256")
+        == original_launcher["attempt_accounting_sha256"],
+        "attempt_accounting_sha256_mismatch",
+    )
     validate_historical_root(historical_root)
     _require(packet.get("signed_approval") == "ABSENT", "signed_approval_must_be_absent")
     _require(packet.get("single_use_nonce") is None, "single_use_nonce_must_be_absent")
@@ -880,24 +901,47 @@ def build_closure_documents(
 
 `SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_A_ARM_APPROVAL_BINDING_SUCCESSOR_CLOSED`
 
-- Branch: `{EXPECTED_BRANCH}`
-- Baseline HEAD: `{BASELINE_HEAD}`
-- Materialization parent HEAD: `{materialization_parent_head}`
-- Original packet SHA-256: `{ORIGINAL_PACKET_SHA256}`
-- Successor packet SHA-256: `{successor['successor_packet_sha256']}`
-- Launcher source: `{LAUNCHER_SOURCE_PATH}` / `{launcher['launcher_source_sha256']}`
-- Launcher binding: `{launcher['launcher_binding_sha256']}`
-- Signed preflight: `{preflight['signed_preflight_validator_source_sha256']}` / `{preflight['signed_preflight_validator_binding_sha256']}`
-- HEAD successor: `{head['head_successor_validator_source_sha256']}` / `{head['head_successor_validator_binding_sha256']}`
-- Stop evaluator: `{stop['campaign_stop_state_evaluator_source_sha256']}`
-- Stop receipt/binding: `{stop['campaign_stop_state_receipt_sha256']}` / `{stop['campaign_stop_state_binding_sha256']}`
-- Stop state: `{stop['campaign_stop_state']}`
-- Pair lock: `{original['pair_lock_sha256']}` / unchanged
-- Budget: `{budget['budget_sha256']}` / output cap `{original['output_cap']}`
-- Historical roots: `CLOSED_WORLD`; R0F `NOT_REQUIRED`
-- Approval dry run: `READY`; negative matrix `{negative['case_count']}/{negative['case_count']} rejected`
-- Privacy: `exact`; external counters all `0`
-- Exact next gate: `SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_A_ARM_FRESH_USER_APPROVAL_V2`
+1. Branch: `{EXPECTED_BRANCH}`
+2. Baseline HEAD: `{BASELINE_HEAD}`
+3. Implementation/materialization-parent commit: `{materialization_parent_head}`
+4. R0F successor: `NOT_REQUIRED` (no protected production source changed)
+5. Evidence seal/final HEAD: recorded by the evidence-only seal commit and final handoff
+6. Worktree at materialization: clean before write; closure root only after write
+7. Original Pair 1 A packet SHA-256: `{ORIGINAL_PACKET_SHA256}`
+8. Successor Pair 1 A packet SHA-256: `{successor['successor_packet_sha256']}`
+9. Successor packet path/root: `{CLOSURE_ROOT}/pair1-a-successor-packet-v2.json`
+10. Launcher source path/SHA: `{LAUNCHER_SOURCE_PATH}` / `{launcher['launcher_source_sha256']}`
+11. Launcher binding SHA: `{launcher['launcher_binding_sha256']}`
+12. Signed-preflight validator path/source/binding: `{preflight['signed_preflight_validator_path']}` / `{preflight['signed_preflight_validator_source_sha256']}` / `{preflight['signed_preflight_validator_binding_sha256']}`
+13. HEAD-successor validator path/source/binding: `{head['head_successor_validator_path']}` / `{head['head_successor_validator_source_sha256']}` / `{head['head_successor_validator_binding_sha256']}`
+14. Stop-state evaluator path/source: `{stop['campaign_stop_state_evaluator_path']}` / `{stop['campaign_stop_state_evaluator_source_sha256']}`
+15. Stop-state receipt/binding SHA: `{stop['campaign_stop_state_receipt_sha256']}` / `{stop['campaign_stop_state_binding_sha256']}`
+16. Stop-state evaluated result: `{stop['campaign_stop_state']}`
+17. Original campaign plan SHA: `{CAMPAIGN_PLAN_SHA256}`
+18. Original decision-rule SHA: `{CAMPAIGN_DECISION_RULE_SHA256}`
+19. Pair 1 A/B lock SHA: `{original['pair_lock_sha256']}`; unchanged `YES`
+20. Current Skill context SHA: `{original['skill_context_sha256']}`
+21. Non-Skill prompt SHA: `{original['non_skill_prompt_sha256']}`
+22. Story-slice SHA: `{original['story_slice_sha256']}`
+23. Authority-input SHA: `{original['authority_input_sha256']}`
+24. Task-contract SHA: `{original['task_contract_sha256']}`
+25. Route/model/client SHA: `{original['route_model_client_sha256']}`
+26. Output-cap/budget SHA: `{original['output_cap']}` / `{budget['budget_sha256']}`
+27. Transport guard SHA: `{successor['transport_guard_sha256']}`
+28. Attempt-accounting SHA: `{successor['attempt_accounting_sha256']}`
+29. Validator/PTR9/PTR12/isolation SHAs: `{original['validator_policy_sha256']}` / `{original['ptr9_policy_sha256']}` / `{original['ptr12_policy_sha256']}` / `{original['output_isolation_policy_sha256']}`
+30. Quality/engineering rubric SHAs: `{original['quality_rubric_sha256']}` / `{original['engineering_rubric_sha256']}`
+31. Historical-root policy result: `CLOSED_WORLD`; arbitrary report roots rejected
+32. R0F result: `NOT_REQUIRED`
+33. Approval-readiness dry run: `READY`
+34. Negative matrix: `{negative['case_count']}/{negative['case_count']} rejected before external action
+35. Focused/related/Strict L3: `{offline['focused']}` / `{offline['related']}` / `{offline['strict_l3']}`
+36. Manifest definition SHA: `{packet_manifest_definition()['packet_manifest_definition_sha256']}`
+37. Manifest file SHA: reported in the final handoff from the sealed manifest bytes
+38. Manifest coverage: all closure files except manifest itself; cross-platform reproducible x2 `PASS`
+39. Privacy: `exact`; match count `0`
+40. External counters: credential/client/request/HTTP/network/model/paid all `0`
+41. Exact next gate: `SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_A_ARM_FRESH_USER_APPROVAL_V2`
 
 `EXECUTION_AUTHORIZED=NO`
 `SIGNED_APPROVAL=ABSENT`
