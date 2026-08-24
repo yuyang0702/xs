@@ -1,0 +1,204 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "evidence": [
+    {
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/character-capability-preservation-v1.json",
+      "sha256": "7b01fccecd81ff0d4945e53f6256c916010a61585eaf8cfcd6f62ab765e3e999"
+    },
+    {
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/world-capability-preservation-v1.json",
+      "sha256": "aff2b58f99bddcd3d52888ca59da351ae29af4973490e6f68722212c0a62077d"
+    },
+    {
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/plot-capability-preservation-v1.json",
+      "sha256": "3093c9b21fc377652f7843c3c12b810c612f151e966854b79d0e66ae02feb333"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/narrative-dimension-comparison-v1.json",
+      "sha256": "40d2876577456dfbccdc4ee0c24a9c9186e2e66fcdc67b7f2ded66ccf97bf2ce"
+    }
+  ],
+  "false_positive_scope": "semantic-strength and scene-realization sufficiency; deterministic presence checks remain exact",
+  "offline_capability_audit_false_positive": true,
+  "reaudit_result": "RULE_ID_COVERAGE_PRESERVED_BUT_CREATIVE_REALIZATION_DEPTH_NOT_PRESERVED",
+  "rows": [
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "strong",
+      "capability": "character_motivation",
+      "finding": "B names wants/needs, but does not require tactical externalization or prohibit taxonomy labels.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "character_internal_conflict",
+      "finding": "B names conflict but does not specify choice, sacrifice, concession, or action-level consequence.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "absent",
+      "actual_b_context_coverage": "strong",
+      "capability": "character_voice",
+      "finding": "B has the stronger explicit rule; regression therefore cannot be attributed to simple omission.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "strong",
+      "capability": "biography_history_relevance",
+      "finding": "Both contexts preserve this capability.",
+      "output_regression_match": "inconclusive",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "character_arc_pressure",
+      "finding": "B preserves states/turning points but not the dramatized mechanism that makes a turn sceneable.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "partial",
+      "capability": "relationship_consequences",
+      "finding": "B names pressure/trust/subtext but does not demand that relationship change available tactics or cost.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "world_concrete_specificity",
+      "finding": "B names concreteness but compresses place/object/faction construction facets.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "world_sensory_texture",
+      "finding": "B requests sensory detail but supplies no density, selection, or causal-interaction criterion.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "strong",
+      "capability": "culture_system_costs",
+      "finding": "B preserves costs/limits/culture explicitly.",
+      "output_regression_match": "inconclusive",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "faction_logic",
+      "finding": "B retains labels but drops resource/territory/ideology detail.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "place_object_specificity",
+      "finding": "B preserves recognizable form/function but reduces affordance and ownership/location scaffolding.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "strong",
+      "capability": "plot_causal_pressure",
+      "finding": "Event/causal fidelity was equivalent.",
+      "output_regression_match": "no",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "plot_escalation",
+      "finding": "B says escalation but omits concrete obstacle/reversal progression guidance.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "absent",
+      "capability": "scene_conflict",
+      "finding": "No B rule directly requires opposed tactics to be dramatized in scene.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "not_claimed"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "setup_payoff_dependency",
+      "finding": "B says preserve intent but does not require concrete planted affordances, dependency edges, or on-page payoff.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "pacing",
+      "finding": "B names pacing but does not operationalize pressure beats or reversals.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "absent",
+      "capability": "dramatize_not_summarize",
+      "finding": "This capability is not represented by a dedicated B rule.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "not_claimed"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "partial",
+      "capability": "subtext",
+      "finding": "Subtext appears only inside relationship nuance, not as an output-wide dramatization requirement.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "preserved"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "absent",
+      "capability": "avoid_generic_explanation",
+      "finding": "B has no anti-expository or anti-taxonomy instruction.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "not_claimed"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "partial",
+      "capability": "concrete_action_reaction",
+      "finding": "Actor action is named, but action/reaction sequencing is not required.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "not_claimed"
+    },
+    {
+      "a_context_coverage": "strong",
+      "actual_b_context_coverage": "partial",
+      "capability": "sceneable_detail",
+      "finding": "B mentions sensory/interactive details but not Draft-ready spatial beat structure.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "not_claimed"
+    },
+    {
+      "a_context_coverage": "partial",
+      "actual_b_context_coverage": "absent",
+      "capability": "draft_handoff_richness",
+      "finding": "No B rule identifies Draft handoff as a creative capability.",
+      "output_regression_match": "yes",
+      "sealed_offline_claim": "not_claimed"
+    }
+  ],
+  "schema": "SkillV2CapabilityPreservationReauditV1",
+  "version": 1
+}

@@ -1,0 +1,60 @@
+{
+  "decision_policy": "no critical-dimension regression pattern attributable to B and no systematic noncritical regression across the bounded set; engineering gain cannot override critical narrative regression",
+  "execution_status": "NOT_EXECUTED",
+  "new_real_call_authorization_required": true,
+  "pair_count": 5,
+  "pair_fixtures": [
+    {
+      "fixture": "character-heavy",
+      "primary_dimensions": [
+        "motivation",
+        "voice",
+        "relationship",
+        "subtext"
+      ]
+    },
+    {
+      "fixture": "world-heavy",
+      "primary_dimensions": [
+        "world specificity",
+        "sensory affordance",
+        "system cost"
+      ]
+    },
+    {
+      "fixture": "conflict-pacing-heavy",
+      "primary_dimensions": [
+        "opposed tactics",
+        "escalation",
+        "reversal"
+      ]
+    },
+    {
+      "fixture": "setup-payoff-heavy",
+      "primary_dimensions": [
+        "plant",
+        "dependency",
+        "payoff"
+      ]
+    },
+    {
+      "fixture": "mixed",
+      "primary_dimensions": [
+        "Draft handoff",
+        "template flattening",
+        "authority"
+      ]
+    }
+  ],
+  "per_pair_policy": "fresh isolated A and B single dispatches; no retry/fallback/resume; blind narrative review before mapping",
+  "prerequisites": [
+    "narrow profile fix",
+    "offline rendered-context capability audit",
+    "exact A/B lock",
+    "synthetic success-tail",
+    "fresh materialization",
+    "fresh single-use approval"
+  ],
+  "schema": "SkillV2BoundedRepeatedABPlanV1",
+  "version": 1
+}

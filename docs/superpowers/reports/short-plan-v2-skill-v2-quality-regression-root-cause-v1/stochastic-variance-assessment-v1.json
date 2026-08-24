@@ -1,0 +1,22 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "evidence_against_high_confidence": [
+    "Only one real pair exists.",
+    "Several regressed dimensions had explicit B guidance, including voice, motivation, sensory specificity, and setup/payoff.",
+    "Exact A context lacks some guidance B contains, so simple omission cannot explain the whole result.",
+    "Narrative evaluation is pairwise and subjective even though it was blind and sealed."
+  ],
+  "evidence_for_profile_causality": [
+    "A/B lock is exact and SKILL_CONTEXT is the only changed semantic variable.",
+    "Ten regressions cluster in richness, dramatization, specificity, dependency, and handoff dimensions while causal/POV/tense/authority dimensions remain equivalent.",
+    "B generated more output tokens, disproving output-shortness as a sufficient explanation.",
+    "B prose directly echoes compressed taxonomy labels, strongly supporting template-flattening attribution."
+  ],
+  "generalized_production_causality_proven": false,
+  "pair_count": 1,
+  "profile_causality_confidence": "MEDIUM",
+  "required_confirmation": "bounded 3-5 pair A/B after offline narrow fix and fresh approval",
+  "schema": "SkillV2StochasticVarianceAssessmentV1",
+  "stochastic_variance_only": "NOT_SUPPORTED_AS_PRIMARY",
+  "version": 1
+}

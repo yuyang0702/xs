@@ -1,0 +1,67 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "component_trace": [
+    {
+      "component": "plot-profile",
+      "load_policy": "ALWAYS_LOAD",
+      "result": "loaded",
+      "rule_count": 3
+    },
+    {
+      "component": "character-profile",
+      "input": "missing",
+      "load_policy": "CONDITIONAL_LOAD_FAIL_SAFE_INCLUDE_ON_MISSING",
+      "predicate": "actor_refs_status == present; missing => fail_safe_include",
+      "result": "fail_safe_include",
+      "rule_count": 4
+    },
+    {
+      "component": "world-profile",
+      "input": "missing",
+      "load_policy": "CONDITIONAL_LOAD_FAIL_SAFE_INCLUDE_ON_MISSING",
+      "predicate": "world_refs_status == present; missing => fail_safe_include",
+      "result": "fail_safe_include",
+      "rule_count": 5
+    },
+    {
+      "component": "story-init",
+      "input": "not_applicable",
+      "load_policy": "DO_NOT_LOAD_FOR_EVENT_REALIZATION_PROFILE",
+      "predicate": "not a source skill in build_event_realization_profile; narrative_bridge=None",
+      "result": "not_loaded",
+      "rule_count": 0
+    }
+  ],
+  "conditional_resolver_false_negative": "NO",
+  "did_character_profile_load": "YES",
+  "did_plot_profile_load": "YES",
+  "did_story_init_load": "NO",
+  "did_world_profile_load": "YES",
+  "evidence": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-skill-profile-binding-v1.json",
+      "sha256": "106a38e5acaa8f35e199906a9b1e029d9036a909870e2e79c33c2864a71307b1"
+    },
+    {
+      "path": "src/novel_flywheel/runtime_skill_profiles.py",
+      "sha256": "103b92403fdfb3ecba59a91bc28fdae146c8d87c975a12ca037e0b19350b9a93"
+    }
+  ],
+  "exact_inputs": {
+    "actor_ref_count": null,
+    "actor_refs_status": "missing",
+    "authority_hash": "5f1bf760e5f9201bc18d2e7b65efba7867e02f756e50f8ed73cce683a82d55e8",
+    "authority_revision": 1,
+    "world_ref_count": null,
+    "world_refs_status": "missing"
+  },
+  "fail_safe_used": true,
+  "included_skill_ids": [
+    "plot-structure",
+    "character-management",
+    "worldbuilding"
+  ],
+  "resolver_causal_to_regression": false,
+  "schema": "SkillV2ConditionalResolverTraceV1",
+  "version": 1
+}

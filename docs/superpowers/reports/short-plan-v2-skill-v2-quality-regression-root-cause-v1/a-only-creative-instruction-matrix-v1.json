@@ -1,0 +1,902 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "critical_regression_instruction_mapping_complete": true,
+  "definition": "A creative/story/literary semantic units that are absent or only partially preserved in the exact B rendered context.",
+  "row_count": 32,
+  "rows": [
+    {
+      "a_compacted_context_line_refs": "9-10",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "tone_genre",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish a story title before planning.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A003"
+    },
+    {
+      "a_compacted_context_line_refs": "11",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "tone_genre",
+        "world_specificity"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish genre and subgenre.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A004"
+    },
+    {
+      "a_compacted_context_line_refs": "12",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "STORY_REASONING",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "motivation",
+        "conflict_pacing",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish a concise premise or synopsis.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A005"
+    },
+    {
+      "a_compacted_context_line_refs": "13",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "sensory_realization"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish setting era or time period.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A006"
+    },
+    {
+      "a_compacted_context_line_refs": "14",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "motivation",
+        "subtext_dramatization",
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish key themes.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A007"
+    },
+    {
+      "a_compacted_context_line_refs": "15",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "pov_consistency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish POV style explicitly.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A008"
+    },
+    {
+      "a_compacted_context_line_refs": "16",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "tense_consistency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Establish narrative tense explicitly.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/basic story information",
+      "source_skill": "story-init",
+      "unit_id": "A009"
+    },
+    {
+      "a_compacted_context_line_refs": "20",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "LITERARY_TECHNIQUE",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "character_voice",
+        "tone_genre",
+        "template_flattening"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Derive voice, tone, and style from genre and themes.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Workflow/story bible",
+      "source_skill": "story-init",
+      "unit_id": "A012"
+    },
+    {
+      "a_compacted_context_line_refs": "48",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "STORY_REASONING",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "conflict_pacing",
+        "setup_payoff_dependency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Choose a story structure based on genre.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Choosing a Story Structure",
+      "source_skill": "plot-structure",
+      "unit_id": "A021"
+    },
+    {
+      "a_compacted_context_line_refs": "49-50",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "STORY_REASONING",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "conflict_pacing",
+        "setup_payoff_dependency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Record structure and populate a beat sheet.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Choosing a Story Structure",
+      "source_skill": "plot-structure",
+      "unit_id": "A022"
+    },
+    {
+      "a_compacted_context_line_refs": "56-60",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "motivation",
+        "relationship_logic",
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Bind an arc to its type, characters, and themes.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating an Arc",
+      "source_skill": "plot-structure",
+      "unit_id": "A025"
+    },
+    {
+      "a_compacted_context_line_refs": "61",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "conflict_pacing",
+        "setup_payoff_dependency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Develop setup, escalations, climax, and resolution as a connected arc.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating an Arc",
+      "source_skill": "plot-structure",
+      "unit_id": "A026"
+    },
+    {
+      "a_compacted_context_line_refs": "67-68",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "PLOT_PACING_INTENT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "conflict_pacing",
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Place each event in causal chronological context.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Managing Plot Points",
+      "source_skill": "plot-structure",
+      "unit_id": "A028"
+    },
+    {
+      "a_compacted_context_line_refs": "69",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Attach foreshadowing to a concrete plot point.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Managing Plot Points",
+      "source_skill": "plot-structure",
+      "unit_id": "A029"
+    },
+    {
+      "a_compacted_context_line_refs": "70",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "setup_payoff_dependency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Track reader promises and mysteries as explicit dependencies.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Managing Plot Points",
+      "source_skill": "plot-structure",
+      "unit_id": "A030"
+    },
+    {
+      "a_compacted_context_line_refs": "77",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_PACING_INTENT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "conflict_pacing"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Detect pacing pressure from clustered events and long gaps.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Timeline Management",
+      "source_skill": "plot-structure",
+      "unit_id": "A032"
+    },
+    {
+      "a_compacted_context_line_refs": "78",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "STORY_REASONING",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "conflict_pacing",
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Detect arcs that have stopped progressing.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Timeline Management",
+      "source_skill": "plot-structure",
+      "unit_id": "A033"
+    },
+    {
+      "a_compacted_context_line_refs": "80-83",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "setup_payoff_dependency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Specify planted hint, intended payoff, placement, and payoff state.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Foreshadowing Tracking",
+      "source_skill": "plot-structure",
+      "unit_id": "A034"
+    },
+    {
+      "a_compacted_context_line_refs": "93-95",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "CHARACTER_MOTIVATION",
+        "CHARACTER_VOICE"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "motivation",
+        "character_voice",
+        "tone_genre"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Ground a character in genre, theme, tone, name, and story role.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Character",
+      "source_skill": "character-management",
+      "unit_id": "A037"
+    },
+    {
+      "a_compacted_context_line_refs": "97",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "sensory_realization",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Define appearance and distinguishing physical features.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Character",
+      "source_skill": "character-management",
+      "unit_id": "A038"
+    },
+    {
+      "a_compacted_context_line_refs": "98",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "absent",
+      "b_rule_ids": [],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "HIGH",
+      "creative_capability_dimensions": [
+        "motivation",
+        "character_voice",
+        "relationship_logic",
+        "template_flattening"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Define personality, traits, and quirks.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Character",
+      "source_skill": "character-management",
+      "unit_id": "A039"
+    },
+    {
+      "a_compacted_context_line_refs": "102",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "CHARACTER_MOTIVATION",
+        "CHARACTER_ARC"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "motivation",
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Place key life events on the character timeline.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Character",
+      "source_skill": "character-management",
+      "unit_id": "A043"
+    },
+    {
+      "a_compacted_context_line_refs": "129",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_CURRENT_STATE"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "sensory_realization",
+        "tone_genre"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Ground location design in genre, era, and tone.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Location",
+      "source_skill": "worldbuilding",
+      "unit_id": "A048"
+    },
+    {
+      "a_compacted_context_line_refs": "131",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Give the location a concrete identity and type.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Location",
+      "source_skill": "worldbuilding",
+      "unit_id": "A049"
+    },
+    {
+      "a_compacted_context_line_refs": "133",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "sensory_realization",
+        "subtext_dramatization"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Develop physical description and atmosphere.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Location",
+      "source_skill": "worldbuilding",
+      "unit_id": "A050"
+    },
+    {
+      "a_compacted_context_line_refs": "135",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_CURRENT_STATE"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "relationship_logic",
+        "template_flattening"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Use culture and customs to differentiate the place and people.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Location",
+      "source_skill": "worldbuilding",
+      "unit_id": "A052"
+    },
+    {
+      "a_compacted_context_line_refs": "136",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "classification": "LITERARY_TECHNIQUE",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "sensory_realization",
+        "conflict_pacing",
+        "setup_payoff_dependency",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Create notable features characters can physically interact with.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a Location",
+      "source_skill": "worldbuilding",
+      "unit_id": "A053"
+    },
+    {
+      "a_compacted_context_line_refs": "143-145",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_COST_AND_LIMIT"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "conflict_pacing",
+        "setup_payoff_dependency"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Shape a story system from genre/themes and type-specific creative questions.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating a System",
+      "source_skill": "worldbuilding",
+      "unit_id": "A056"
+    },
+    {
+      "a_compacted_context_line_refs": "150",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "motivation",
+        "conflict_pacing"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Give a faction a purpose and ideology.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating A Faction",
+      "source_skill": "worldbuilding",
+      "unit_id": "A057"
+    },
+    {
+      "a_compacted_context_line_refs": "151",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "world_specificity",
+        "conflict_pacing"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Specify faction power base, resources, and territory.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating A Faction",
+      "source_skill": "worldbuilding",
+      "unit_id": "A058"
+    },
+    {
+      "a_compacted_context_line_refs": "152",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_FACTION_PRESSURE"
+      ],
+      "classification": "CREATIVE_SEMANTIC",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "relationship_logic",
+        "world_specificity"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Identify important faction members.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating A Faction",
+      "source_skill": "worldbuilding",
+      "unit_id": "A059"
+    },
+    {
+      "a_compacted_context_line_refs": "158",
+      "a_only_residual": true,
+      "actual_b_context_coverage": "partial",
+      "b_rule_ids": [
+        "WORLD_ARTIFACT_DETAIL",
+        "WORLD_CURRENT_STATE"
+      ],
+      "classification": "STORY_REASONING",
+      "confidence": "MEDIUM",
+      "creative_capability_dimensions": [
+        "setup_payoff_dependency",
+        "conflict_pacing",
+        "draft_handoff"
+      ],
+      "evidence": [
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-skill-profile-v1.json",
+        "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+        "src/novel_flywheel/runtime_skill_profiles.py"
+      ],
+      "intentionally_moved_local": false,
+      "likely_output_effect": "changes available creative scaffolding, specificity, or scene reasoning",
+      "normalized_instruction_meaning": "Bind artifact use to current owner and location state.",
+      "present_in_a_context": true,
+      "present_in_b_context": false,
+      "safe_to_move_local": false,
+      "source_heading_section": "Creating An Artifact",
+      "source_skill": "worldbuilding",
+      "unit_id": "A064"
+    }
+  ],
+  "schema": "AOnlyCreativeInstructionMatrixV1",
+  "version": 1
+}

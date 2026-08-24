@@ -1,0 +1,72 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "causal_role": "SECONDARY",
+  "evidence": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-skill-profile-binding-v1.json",
+      "sha256": "106a38e5acaa8f35e199906a9b1e029d9036a909870e2e79c33c2864a71307b1"
+    },
+    {
+      "path": "docs/superpowers/reports/planning-skill-profile-offline-quality-v1/narrative-bridge-validation-v1.json",
+      "sha256": "b848d2698dd1c270b2c19ebacb31d11ff68ad39960b309caa7bb8cb3a2848f5d"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+      "sha256": "d382fd145a32d7ab449827cbf9111d237955fbda4e20d7f0a6879da08401f676"
+    }
+  ],
+  "exact_event_profile_narrative_bridge": null,
+  "finding": "The exact profile replaces rich discovery scaffolds with generic rules and supplies no story-init/narrative bridge. This amplifies compression but does not alone explain voice regression because B had explicit voice guidance.",
+  "narrative_bridge_abstraction_loss": "YES",
+  "narrative_bridge_creative_coverage": [
+    {
+      "coverage": "absent",
+      "dimension": "emotional_stakes",
+      "finding": "No exact bridge value and no rule requires a personally costly stake."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "who_wants_what",
+      "finding": "Motivation taxonomy is present, but exact actors/wants are not bridged."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "relationship_pressure",
+      "finding": "Generic relationship pressure rule is present without relationship facts."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "world_specific_constraints",
+      "finding": "Generic cost/current-state rules are present without exact world facts."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "scene_conflict",
+      "finding": "Causal escalation is present without opposed tactics or scene-conflict requirements."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "expected_escalation",
+      "finding": "Escalation is named but not decomposed into obstacle/reversal beats."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "concrete_sensory_affordances",
+      "finding": "Sensory and interactive detail is named without minimum causal affordances."
+    },
+    {
+      "coverage": "partial",
+      "dimension": "setup_payoff_obligations",
+      "finding": "Intent is named; exact obligations and dependency edges are not bridged."
+    },
+    {
+      "coverage": "absent",
+      "dimension": "draft_useful_dramatic_intent",
+      "finding": "No bridge or rule requires scene-ready Draft handoff."
+    }
+  ],
+  "offline_bridge_validation_scope": "generic bridge construction fixtures, not the exact B event profile where narrative_bridge is None",
+  "schema": "SkillV2NarrativeBridgeAuditV1",
+  "story_init_source_loaded": false,
+  "version": 1
+}

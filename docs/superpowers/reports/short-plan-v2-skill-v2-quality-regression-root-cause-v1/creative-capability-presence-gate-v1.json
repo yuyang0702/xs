@@ -1,0 +1,67 @@
+{
+  "checks": [
+    {
+      "check_id": "motivation_action",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires motivation to appear as choice/tactic/cost, not just labels."
+    },
+    {
+      "check_id": "voice_distinctiveness",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires vocabulary/rhythm/evasion/behavior support."
+    },
+    {
+      "check_id": "relationship_consequence",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires relationship pressure to change action options."
+    },
+    {
+      "check_id": "world_specificity",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires concrete place/object/faction mechanisms."
+    },
+    {
+      "check_id": "sensory_affordance",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires sensory detail that is interactive or causally relevant."
+    },
+    {
+      "check_id": "conflict_pacing",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires obstacle/reaction/reversal pressure beats."
+    },
+    {
+      "check_id": "setup_payoff_dependency",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires concrete plant/dependency/payoff semantics."
+    },
+    {
+      "check_id": "subtext_dramatization",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires dramatization and limits explanatory summary."
+    },
+    {
+      "check_id": "draft_handoff",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context requires sceneable spatial beats and a terminal image."
+    },
+    {
+      "check_id": "anti_template",
+      "matching_policy": "approved rule-id plus normalized semantic phrase set; exact negative fixtures required",
+      "required_semantic_meaning": "Rendered context forbids capability-taxonomy labels from leaking into prose."
+    }
+  ],
+  "gate_type": "deterministic rendered-context semantic-presence gate",
+  "generated_prose_quality_claimed": false,
+  "pass_condition": "all checks present after resolver and truncation; zero whole-rule omission; no operational-responsibility leak",
+  "real_ab_still_required": true,
+  "schema": "SkillV2CreativeCapabilityPresenceGateV1",
+  "single_scalar_literary_score": false,
+  "tamper_tests": [
+    "remove each capability independently => fail",
+    "replace action semantics with category label only => fail",
+    "truncate any mandatory creative core rule => fail",
+    "restore operational Skill block => fail"
+  ],
+  "version": 1
+}

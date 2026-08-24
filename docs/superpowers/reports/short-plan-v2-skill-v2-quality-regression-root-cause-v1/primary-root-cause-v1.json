@@ -1,0 +1,23 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "disproved_primary_hypotheses": [
+    "CONDITIONAL_RESOLVER_FALSE_NEGATIVE",
+    "CONTEXT_PRIORITY_LOSS",
+    "TRUNCATION_OR_BUDGET_CLIPPING",
+    "OUTPUT_TOO_SHORT",
+    "ROUTE_MODEL_PROMPT_AUTHORITY_OR_TASK_DRIFT"
+  ],
+  "exact_next_gate": "SKILL_V2_PROFILE_CREATIVE_SEMANTIC_RESTORATION_NARROW_FIX",
+  "mechanically_supported": true,
+  "primary_mechanism": "The 1587-character B profile preserves category labels but compresses rich source facets and cross-domain discovery scaffolds into twelve abstract rules. It lacks an always-on dramatization/Draft-handoff/anti-template core, allowing taxonomy to substitute for sceneable action.",
+  "primary_root_cause_class": "MULTI_FACTOR_WITH_PRIMARY_OVER_COMPRESSION_OF_CREATIVE_GUIDANCE",
+  "profile_causality_confidence": "MEDIUM",
+  "schema": "SkillV2QualityRegressionPrimaryRootCauseV1",
+  "secondary_causes": [
+    "CREATIVE_INSTRUCTION_DECOMPOSITION_LOSS",
+    "OFFLINE_CAPABILITY_AUDIT_FALSE_POSITIVE_FOR_SEMANTIC_STRENGTH",
+    "NARRATIVE_BRIDGE_ABSTRACTION_LOSS_AND_EXACT_EVENT_PROFILE_BRIDGE_ABSENCE",
+    "SINGLE_SAMPLE_STOCHASTIC_VARIANCE_REMAINS"
+  ],
+  "version": 1
+}

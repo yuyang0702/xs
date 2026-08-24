@@ -1,0 +1,79 @@
+{
+  "do_not_restore_operational_content_defined": true,
+  "rows": [
+    {
+      "a_only_content_class": "initialization activation and routing",
+      "local_owner": "runtime/task router",
+      "reason_not_to_restore": "Does not improve event prose and can conflict with sealed scope.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "folder creation and project scaffolding",
+      "local_owner": "local filesystem workflow",
+      "reason_not_to_restore": "Deterministic mutation responsibility.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "story.md/index/registry writes",
+      "local_owner": "local project-maintenance runtime",
+      "reason_not_to_restore": "Bookkeeping, not creative semantics.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "CLI commands and maintenance passes",
+      "local_owner": "local CLI",
+      "reason_not_to_restore": "Tool execution must not be delegated to model prose.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "YAML/frontmatter/schema mechanics",
+      "local_owner": "local serializer/validator",
+      "reason_not_to_restore": "Deterministic schema responsibility.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "kebab-case and entity identifiers",
+      "local_owner": "local normalizer",
+      "reason_not_to_restore": "Deterministic naming responsibility.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "bidirectional cross-links and backlinks",
+      "local_owner": "local indexer",
+      "reason_not_to_restore": "Graph integrity responsibility.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "death/continuity/question/promise registries",
+      "local_owner": "StoryState/maintenance",
+      "reason_not_to_restore": "Authority and bookkeeping responsibility.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "authority source reads and precedence",
+      "local_owner": "runtime authority resolver",
+      "reason_not_to_restore": "Do not duplicate authority into advisory Skill text.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "existence checks and link validation",
+      "local_owner": "local validator",
+      "reason_not_to_restore": "Deterministic validation responsibility.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "repair protocol mechanics",
+      "local_owner": "runtime recovery policy",
+      "reason_not_to_restore": "Not creative guidance and outside this task.",
+      "restore_to_llm_context": false
+    },
+    {
+      "a_only_content_class": "evidence, audit, and receipt bookkeeping",
+      "local_owner": "runtime evidence layer",
+      "reason_not_to_restore": "Must stay non-model and privacy bounded.",
+      "restore_to_llm_context": false
+    }
+  ],
+  "schema": "SkillV2DoNotRestoreMatrixV1",
+  "version": 1
+}

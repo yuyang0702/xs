@@ -1,0 +1,50 @@
+{
+  "a_creative_instruction_survival": {
+    "characters": 8927,
+    "max_characters": 9000,
+    "sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+    "status": "complete_after_current_compactor"
+  },
+  "a_skill_context_position": "tail of system message after identical planning system template and isolated-shadow notice; user JSON follows separately",
+  "a_skill_context_truncated": "NO",
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "b_creative_instruction_survival": {
+    "characters": 1587,
+    "excluded_rules": 0,
+    "included_rules": 12,
+    "maximum_characters": 3000,
+    "sha256": "a77ca32533e7e480ab3b0ff53d55dde5bed4ff837b8b68f53b7aba59a8d6fd15",
+    "status": "NONE_TRUNCATED"
+  },
+  "b_skill_context_position": "same tail boundary of the system message; exact A skill suffix replaced by B rendered context; user JSON byte-identical",
+  "b_skill_context_truncated": "NO",
+  "context_priority_loss": false,
+  "deprioritized": false,
+  "evidence": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5/phase-b-current-skill-v5-model-input-binding-v1.json",
+      "sha256": "a42236e1213ce1eb2a26c3e0a573a2add3a3bfe2829c7b271c0619713f77b9e0"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-model-input-binding-v1.json",
+      "sha256": "ea2849ffdc508709fa39eaac75af31e13b18fd31194de9e1d66982e175972801"
+    },
+    {
+      "path": "tools/canary/slice1_phase_b_current_skill.py",
+      "sha256": "0b1607c53123aa000781010a8e21ca5f816d7fffd720d874227681ee65755a54"
+    },
+    {
+      "path": "tools/canary/slice1_phase_b_skill_v2_single_dispatch.py",
+      "sha256": "251065266527cf23651ba496138608d424f0c79e99733e44448827510a51c167"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-rendered-context-binding-v1.json",
+      "sha256": "d382fd145a32d7ab449827cbf9111d237955fbda4e20d7f0a6879da08401f676"
+    }
+  ],
+  "merged": false,
+  "overwritten": false,
+  "reordered": false,
+  "schema": "SkillV2ContextPriorityTruncationAuditV1",
+  "version": 1
+}

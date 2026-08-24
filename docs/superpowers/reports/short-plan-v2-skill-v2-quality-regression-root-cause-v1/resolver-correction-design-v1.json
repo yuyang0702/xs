@@ -1,0 +1,10 @@
+{
+  "current_false_negative": null,
+  "expected_new_always_on_context_cost": "1355 characters from the designed restoration set before final wording/budget verification",
+  "llm_based_resolver": false,
+  "mechanical_basis": "Exact B actor/world metadata was missing, and deterministic fail-safe inclusion loaded both character and world components. Plot loaded unconditionally.",
+  "proposed_deterministic_rule": "No resolver predicate change in the next narrow fix. Add the minimal dramatization core as always-on profile content and preserve existing fail-safe resolver behavior.",
+  "resolver_correction_required": "NO",
+  "schema": "SkillV2ResolverCorrectionDesignV1",
+  "version": 1
+}

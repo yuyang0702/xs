@@ -1,0 +1,234 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v4-001",
+  "causality_note": "Attribution is mechanism-supported but not generalized causal proof from one pair.",
+  "critical_regression_instruction_mapping_complete": true,
+  "evidence": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5/artifact/generated-event-realization-v1.json",
+      "sha256": "b3588452679d0d5c39c4b86db63c98dc440868cdb2cd951d1262f426b234cb67"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4/artifact/generated-event-realization-v1.json",
+      "sha256": "559724e4944f51715c634a3653dffdaf19bd946f6127f64cb64f941fb7f6f450"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-real-ab-comparison-v1/narrative-dimension-comparison-v1.json",
+      "sha256": "40d2876577456dfbccdc4ee0c24a9c9186e2e66fcdc67b7f2ded66ccf97bf2ce"
+    }
+  ],
+  "rows": [
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A005",
+        "A007",
+        "A037",
+        "A039"
+      ],
+      "alternative_explanation": "single-sample variation; B rule is explicitly present",
+      "b_skill_instruction_support_rule_ids": [
+        "CHARACTER_MOTIVATION"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "CHARACTER_MOTIVATION",
+      "exact_a_artifact_evidence": "A binds two characters to distinct personal and siege stakes.",
+      "exact_b_artifact_evidence": "B states external-want/deeper-need labels directly and resolves more abstractly.",
+      "likely_causal_mechanism": "compressed taxonomy replaces action-level motivational dramatization",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A012",
+        "A039"
+      ],
+      "alternative_explanation": "B has stronger explicit voice wording than exact A compacted context",
+      "b_skill_instruction_support_rule_ids": [
+        "CHARACTER_VOICE"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "LOW",
+      "dimension": "CHARACTER_VOICE",
+      "exact_a_artifact_evidence": "A differentiates characters through concise dialogue and action.",
+      "exact_b_artifact_evidence": "B relies mainly on narrated explanation.",
+      "likely_causal_mechanism": "rule presence without dialogue/subtext realization depth",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A007",
+        "A025",
+        "A039",
+        "A059"
+      ],
+      "alternative_explanation": "random realization variance",
+      "b_skill_instruction_support_rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "RELATIONSHIP_LOGIC",
+      "exact_a_artifact_evidence": "A turns opposed goals into a tactical alliance at a barred door.",
+      "exact_b_artifact_evidence": "B reaches cooperation with less relational development.",
+      "likely_causal_mechanism": "generic relationship labels lack consequence-changing tactics",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A048",
+        "A049",
+        "A050",
+        "A052",
+        "A053",
+        "A057",
+        "A058",
+        "A061",
+        "A064"
+      ],
+      "alternative_explanation": "B contained all world rules",
+      "b_skill_instruction_support_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY",
+        "WORLD_FACTION_PRESSURE",
+        "WORLD_CURRENT_STATE",
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "WORLD_SPECIFICITY",
+      "exact_a_artifact_evidence": "A combines signal house, harbor chain, narrows, boats, fleet, and siege as mechanisms.",
+      "exact_b_artifact_evidence": "B uses a more generic gate/faction frame.",
+      "likely_causal_mechanism": "source facets compressed to category labels without a specificity/affordance sufficiency rule",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A006",
+        "A038",
+        "A049",
+        "A050",
+        "A053",
+        "A061"
+      ],
+      "alternative_explanation": "B explicitly requests concrete sensory detail",
+      "b_skill_instruction_support_rule_ids": [
+        "WORLD_SENSORY_SPECIFICITY",
+        "WORLD_ARTIFACT_DETAIL"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "SENSORY_REALIZATION",
+      "exact_a_artifact_evidence": "A uses multiple tactile, auditory, visual, and mechanical details.",
+      "exact_b_artifact_evidence": "B has fewer sensory anchors and lower density.",
+      "likely_causal_mechanism": "no minimum causal sensory affordance or action/reaction requirement",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A021",
+        "A022",
+        "A026",
+        "A028",
+        "A032",
+        "A053",
+        "A056",
+        "A058"
+      ],
+      "alternative_explanation": "one-pair variance",
+      "b_skill_instruction_support_rule_ids": [
+        "PLOT_CAUSAL_ESCALATION",
+        "PLOT_PACING_INTENT"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "CONFLICT_AND_PACING",
+      "exact_a_artifact_evidence": "A escalates through changing obstacles, approaching threat, and forced cooperation.",
+      "exact_b_artifact_evidence": "B remains more expository and resolves at lower dramatic pressure.",
+      "likely_causal_mechanism": "abstract pacing/escalation labels omit obstacle-reversal-pressure decomposition",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A025",
+        "A026",
+        "A029",
+        "A030",
+        "A034",
+        "A053",
+        "A064"
+      ],
+      "alternative_explanation": "B rule is present and may still generate adequate payoffs in other samples",
+      "b_skill_instruction_support_rule_ids": [
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "SETUP_PAYOFF_DEPENDENCY",
+      "exact_a_artifact_evidence": "A interlocks key, gear, signal, boats, and winch payoffs.",
+      "exact_b_artifact_evidence": "B pays off fewer, less interlocked dependencies.",
+      "likely_causal_mechanism": "preserve-intent wording is weaker than concrete plant/dependency/payoff guidance",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A007",
+        "A012",
+        "A039",
+        "A053"
+      ],
+      "alternative_explanation": "A exact context also lacks an explicit anti-summary sentence",
+      "b_skill_instruction_support_rule_ids": [
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "SUBTEXT_DRAMATIZATION",
+      "exact_a_artifact_evidence": "A externalizes loyalty conflict through objects, dialogue, and choices.",
+      "exact_b_artifact_evidence": "B explains ethical meaning more directly.",
+      "likely_causal_mechanism": "no global dramatize-not-summarize or anti-expository capability",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A005",
+        "A022",
+        "A026",
+        "A030",
+        "A034",
+        "A038",
+        "A049",
+        "A053",
+        "A061",
+        "A064"
+      ],
+      "alternative_explanation": "task contract itself requested narrative, limiting attribution strength",
+      "b_skill_instruction_support_rule_ids": [],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "MEDIUM",
+      "dimension": "DRAFT_INTENT_HANDOFF",
+      "exact_a_artifact_evidence": "A provides spatial action, reversals, dialogue, and a terminal image.",
+      "exact_b_artifact_evidence": "B is structurally sound but more outline/summary-like.",
+      "likely_causal_mechanism": "Draft-handoff richness was not represented in the B capability set or offline audit",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    },
+    {
+      "a_skill_instruction_support_unit_ids": [
+        "A012",
+        "A039",
+        "A052"
+      ],
+      "alternative_explanation": "model sampling style may contribute but phrase alignment is direct",
+      "b_skill_instruction_support_rule_ids": [
+        "CHARACTER_MOTIVATION",
+        "PLOT_CAUSAL_ESCALATION"
+      ],
+      "bridge_involvement": "secondary; exact B event profile bridge is absent",
+      "confidence": "HIGH",
+      "dimension": "TEMPLATE_FLATTENING_RISK",
+      "exact_a_artifact_evidence": "A uses asymmetric goals and concrete mechanics without naming taxonomy.",
+      "exact_b_artifact_evidence": "B echoes external-want/deeper-need/local-state vocabulary from rules and task prompt.",
+      "likely_causal_mechanism": "compressed rule taxonomy leaked into prose because no anti-label/anti-template instruction existed",
+      "resolver_involvement": "none; all plot/character/world components loaded"
+    }
+  ],
+  "schema": "SkillV2RegressionAttributionMatrixV1",
+  "version": 1
+}

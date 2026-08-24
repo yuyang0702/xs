@@ -1,0 +1,114 @@
+{
+  "baml_src_diff": 0,
+  "entry_count": 17,
+  "external_actions": {
+    "credential": 0,
+    "http_post": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client": 0,
+    "provider_request": 0
+  },
+  "files": [
+    {
+      "bytes": 907,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/README.md",
+      "sha256": "50c35ce190550f64ff6c2ce0538eae245b0d9de993bea8efb7399d9cafa9f4a7"
+    },
+    {
+      "bytes": 40345,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/a-only-creative-instruction-matrix-v1.json",
+      "sha256": "f6b64eb87d03f366a681f1f278cabb775243b3f25b511fa6643b4352f16664ca"
+    },
+    {
+      "bytes": 85099,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/a-vs-b-skill-context-semantic-diff-v1.json",
+      "sha256": "6ecfc73ba157686bab43a2cfd78369381d1790ba34406a417e656c68d236ecd9"
+    },
+    {
+      "bytes": 1602,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/bounded-repeated-ab-plan-v1.json",
+      "sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7"
+    },
+    {
+      "bytes": 8586,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/capability-preservation-reaudit-v1.json",
+      "sha256": "255d50149e120455e117b1818801a74717c6e11a3ef4479ebd289ab1b42b598a"
+    },
+    {
+      "bytes": 2262,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/conditional-resolver-trace-v1.json",
+      "sha256": "7fb766bee1e50c8e77070bbbe877c5014534d53a109015686780a6d1672d7532"
+    },
+    {
+      "bytes": 2254,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/context-priority-truncation-audit-v1.json",
+      "sha256": "54459f2e7961d9638056fd67b50a3bf4181ff25a6e99576dcc22810aaa812c68"
+    },
+    {
+      "bytes": 3523,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/creative-capability-presence-gate-v1.json",
+      "sha256": "ccca2c195ccb32ff77e6a39eb1de84b96113c8cb2aa2246acde8c9538254d79e"
+    },
+    {
+      "bytes": 3138,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/do-not-restore-matrix-v1.json",
+      "sha256": "c2dd58f316801ba0bc6431403cfd5f3d7b0d788c906863abf8b3a3fdc9a74d56"
+    },
+    {
+      "bytes": 5912,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/final-report-v1.md",
+      "sha256": "4188312424994eaacd7b6b21cdb435985a589667d13f347d00dac285f7910ae7"
+    },
+    {
+      "bytes": 7523,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/minimal-creative-restoration-set-v1.json",
+      "sha256": "b679e8a5038c7055f7866112ef82206f5f9e5fe498d664cb417d3f3019f8fc41"
+    },
+    {
+      "bytes": 3084,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/narrative-bridge-audit-v1.json",
+      "sha256": "d4ad3c1c19f453b6e3c7debc0a8c5e3ae6a298c75eed55ed49ce16dcc541042d"
+    },
+    {
+      "bytes": 1209,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/primary-root-cause-v1.json",
+      "sha256": "2dddb8d9105ac34fbb70e07d9dd9badba2a640434a5f59e28288b9cb1ed293c3"
+    },
+    {
+      "bytes": 786,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/privacy-scan-v1.json",
+      "sha256": "5dc71f5f79fa4c49ff63833bff3f3bfeef91d25f54b7dbe9db081055dd8645f2"
+    },
+    {
+      "bytes": 10287,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/regression-attribution-matrix-v1.json",
+      "sha256": "705ec473dd6385333f72bd5a9529d1f491e47df265529a0683f1b224d58d42d1"
+    },
+    {
+      "bytes": 700,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/resolver-correction-design-v1.json",
+      "sha256": "3d6291abe81df4fdd5ea5c71c422834fbbfd7dc2f18a27944abfa4285e2e7da3"
+    },
+    {
+      "bytes": 1322,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/stochastic-variance-assessment-v1.json",
+      "sha256": "8c764fc00c3fa885cab54f20b5613c58f9d2af452b0fb45dadfa3ee72a27222d"
+    }
+  ],
+  "manifest_definition": {
+    "algorithm": "sha256",
+    "baseline_head": "f96d47a12254bab83295024f163f2dcb5cb3f414",
+    "coverage": "all regular files in root except sha256-manifest-v1.json",
+    "manifest_self_excluded": true,
+    "root": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1"
+  },
+  "manifest_definition_sha256": "e7468bdff434b83a68ba99aa882088276ac6794ea07c5cdab923873541c23719",
+  "overall_status": "exact",
+  "privacy_status": "exact",
+  "production_diff": 0,
+  "schema": "SkillV2QualityRegressionRootCauseSha256ManifestV1",
+  "src_diff": 0,
+  "version": 1
+}

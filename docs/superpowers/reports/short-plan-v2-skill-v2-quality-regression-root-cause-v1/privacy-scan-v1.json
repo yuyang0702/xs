@@ -1,0 +1,22 @@
+{
+  "auth_headers_persisted": false,
+  "credentials_persisted": false,
+  "evidence_style": "hashes, relative paths, field references, and short paraphrased excerpts",
+  "full_ab_prose_duplicated": false,
+  "overall_status": "exact",
+  "patterns": [
+    "credential literal",
+    "authorization bearer header",
+    "secret provider URL",
+    "raw provider payload",
+    "provider reasoning text",
+    "full duplicated A/B prose"
+  ],
+  "privacy_match_count": 0,
+  "raw_provider_payloads_persisted": false,
+  "reasoning_text_persisted": false,
+  "scan_scope": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1",
+  "schema": "SkillV2QualityRegressionRootCausePrivacyScanV1",
+  "secret_provider_urls_persisted": false,
+  "version": 1
+}
