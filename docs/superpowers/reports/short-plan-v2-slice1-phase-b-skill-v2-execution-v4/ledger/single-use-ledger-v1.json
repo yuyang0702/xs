@@ -1,0 +1,16 @@
+{
+  "application_second_dispatch_allowed": false,
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "guard_active": true,
+  "http_post_attempts": 1,
+  "max_http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "nonce_sha256": "823c05ae54caa162dd6f84befacf32fc109297b9888f0977c9d43c868bd2fa1c",
+  "real_provider_request_attempts": 1,
+  "schema": "SkillV2RealABSingleDispatchLedgerV1",
+  "sdk_retries_disabled": true,
+  "transport_request_retries_disabled": true,
+  "usage_status": "consumed",
+  "version": 1
+}

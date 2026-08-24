@@ -1,0 +1,17 @@
+{
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4",
+  "credential_secret_hit_count": 0,
+  "credential_secret_hits": [],
+  "generated_prose_outside_isolated_artifact_count": 0,
+  "isolated_generated_artifact_count": 1,
+  "isolated_generated_artifact_scanned_for_structure_only": true,
+  "metadata_file_count_scanned": 14,
+  "overall_status": "PASS",
+  "privacy_scan_sha256": "fc92107f8b8329eb1c44b8b4ae3244002bb4c503b7f11810f137c80e113cb60f",
+  "raw_prompt_persisted_count": 0,
+  "raw_provider_content_persisted_count": 0,
+  "raw_provider_headers_persisted_count": 0,
+  "raw_reasoning_text_persisted_count": 0,
+  "schema": "SkillV2BArmV4PrivacyScanV1",
+  "version": 1
+}

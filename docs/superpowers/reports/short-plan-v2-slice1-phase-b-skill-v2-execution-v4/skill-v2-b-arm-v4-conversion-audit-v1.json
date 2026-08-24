@@ -1,0 +1,13 @@
+{
+  "authority_mutation_count": 0,
+  "candidate_validation_status": "PASS",
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "conversion_audit_payload_persisted": false,
+  "conversion_audit_payload_sha256": "f4210362dc7274e2367495f7c810676f42ae8f7da90c6f1da29aab497a0b87d2",
+  "conversion_audit_receipt_sha256": "06b3e0d7307d627b782329a6c84e6ae15a7e5af20ebad73e9a06bc83ff2ffc6c",
+  "raw_model_text_persisted_in_audit_count": 0,
+  "raw_prompt_persisted_in_audit_count": 0,
+  "schema": "SkillV2BArmV4ConversionAuditReceiptV1",
+  "serialization_status": "PASS",
+  "version": 1
+}

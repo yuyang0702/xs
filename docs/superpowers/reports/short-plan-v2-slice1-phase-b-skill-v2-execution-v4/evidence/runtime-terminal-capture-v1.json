@@ -1,0 +1,43 @@
+{
+  "captured_stderr_char_count": 0,
+  "captured_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "captured_stdout_char_count": 0,
+  "captured_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "elapsed_seconds": 17.36,
+  "exception_class": null,
+  "exception_message_sha256": null,
+  "fallback_attempted": false,
+  "raw_captured_process_output_persisted": false,
+  "result": {
+    "artifact_persisted": true,
+    "artifact_sha256": "559724e4944f51715c634a3653dffdaf19bd946f6127f64cb64f941fb7f6f450",
+    "audit_serialization": "PASS",
+    "conversion_audit_sha256": "f4210362dc7274e2367495f7c810676f42ae8f7da90c6f1da29aab497a0b87d2",
+    "draft_entered": false,
+    "freeze_state": "FROZEN",
+    "full_short_canary": "NOT_EXECUTED",
+    "local_terminal": "PASS",
+    "production_database_mutation_count": 0,
+    "schema": "SkillV2BArmLocalSuccessReceiptV1",
+    "transport_attempts": {
+      "application_second_dispatch_allowed": false,
+      "guard_active": true,
+      "http_post_attempts": 1,
+      "max_http_post_attempts": 1,
+      "model_logical_calls": 1,
+      "network_request_attempts": 1,
+      "real_provider_request_attempts": 1,
+      "sdk_retries_disabled": true,
+      "transport_request_retries_disabled": true
+    },
+    "validator_status": "PASS",
+    "version": 1,
+    "write_json_reached": true
+  },
+  "resume_attempted": false,
+  "retry_attempted": false,
+  "schema": "SkillV2BArmV4RuntimeTerminalCaptureV1",
+  "second_dispatch_attempted": false,
+  "terminal": "PASS",
+  "version": 1
+}

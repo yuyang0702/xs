@@ -1,0 +1,16 @@
+{
+  "artifact_freeze": "FROZEN",
+  "artifact_persistence": "PASS",
+  "audit_serialization": "PASS",
+  "authority_copy_local_derivation": "PASS",
+  "candidate_model_validate": "PASS",
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "model_backed_repair_count": 0,
+  "overall_status": "PASS",
+  "repair_needed": false,
+  "schema": "SkillV2BArmV4ValidationResultV1",
+  "slice1_validator": "PASS",
+  "structured_json_extraction": "PASS",
+  "validation_result_sha256": "5f94ea73d5d984515fc334b5c32c34c493e8ed8b68810d855ba176e7a3899d16",
+  "version": 1
+}

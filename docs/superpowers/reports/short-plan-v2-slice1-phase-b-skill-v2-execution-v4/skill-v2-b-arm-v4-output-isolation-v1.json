@@ -1,0 +1,20 @@
+{
+  "canon_mutation_count": 0,
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v4-20260824t121408z-001",
+  "draft_entry_count": 0,
+  "execution_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4",
+  "final_review_entry_count": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "isolated_artifact_relative_path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4/artifact/generated-event-realization-v1.json",
+  "maintenance_entry_count": 0,
+  "output_isolation_sha256": "8fef1b78061255e0ebb36ee3877e9872f8e749774577c3cad478672df1944b8d",
+  "planning_v2_cutover_performed": false,
+  "production_authority_promotion_count": 0,
+  "production_database_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "runtime_database_copy_in_sealed_evidence": false,
+  "schema": "SkillV2BArmV4OutputIsolationV1",
+  "skill_v2_production_active": false,
+  "story_state_mutation_count": 0,
+  "version": 1
+}
