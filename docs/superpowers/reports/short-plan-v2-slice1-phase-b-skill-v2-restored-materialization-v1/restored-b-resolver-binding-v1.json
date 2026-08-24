@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2RestoredCandidateEvidenceBindingV1",
+  "source": {
+    "bytes": 575,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/resolver-parity-v1.json",
+    "sha256": "fef16ca8c9531005e604800d2901821cba624c90d92cbfe7a1ed643216d17d3c"
+  },
+  "status": "exact",
+  "version": 1
+}

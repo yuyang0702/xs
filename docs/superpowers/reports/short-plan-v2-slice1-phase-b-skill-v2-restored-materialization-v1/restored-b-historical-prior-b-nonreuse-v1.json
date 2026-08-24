@@ -1,0 +1,15 @@
+{
+  "historical_approval_reuse_allowed": false,
+  "historical_cohort_reuse_allowed": false,
+  "historical_materialization_roots": [
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v1",
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v2",
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v3",
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v4"
+  ],
+  "historical_nonce_reuse_allowed": false,
+  "new_cohort_id": "slice1-phase-b-skill-v2-restored-v1-20260824t152505z-001",
+  "schema": "SkillV2RestoredHistoricalPriorBNonreuseV1",
+  "status": "exact",
+  "version": 1
+}

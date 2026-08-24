@@ -1,0 +1,12 @@
+{
+  "current_skill_a_evidence_modified": false,
+  "reuse_for_execution_authorization": false,
+  "schema": "SkillV2RestoredAArmReferenceV1",
+  "source": {
+    "bytes": 1782,
+    "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-a-arm-baseline-reference-v1.json",
+    "sha256": "1bf05ae03cf393c68ada1dfc742b092408fd8282a9266eee0b82bfa8461c6fb9"
+  },
+  "status": "historical_read_only_reference",
+  "version": 1
+}

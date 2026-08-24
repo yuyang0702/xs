@@ -1,0 +1,84 @@
+{
+  "bindings": {
+    "a_arm": {
+      "bytes": 1782,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-a-arm-baseline-reference-v1.json",
+      "sha256": "1bf05ae03cf393c68ada1dfc742b092408fd8282a9266eee0b82bfa8461c6fb9"
+    },
+    "audit_serialization": {
+      "bytes": 789,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-full-success-tail-offline-v1.json",
+      "sha256": "40807afacccd0df74052b816f6d67499003e04a5da1b423878193b75dcbfae6f"
+    },
+    "authority_tuple": {
+      "bytes": 2472,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-authority-binding-v1.json",
+      "sha256": "f10e7e89d7a64d9e80af2ba0f93fce939f54d5d154a0980fd40083fc04d6b934"
+    },
+    "engineering_rubric": {
+      "bytes": 972,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-engineering-rubric-v1.json",
+      "sha256": "a389b9e3fe344b26e304e643202797ed1093adba46512bd14f39d34f7bee7ca7"
+    },
+    "head_successor": {
+      "bytes": 1378,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-head-successor-contract-v1.json",
+      "sha256": "7c5373ee655c09cc62806502a8ba162ed9bd22f67bf927a5c1aa870b15934210"
+    },
+    "historical_roots": {
+      "bytes": 15732,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-historical-roots-binding-v1.json",
+      "sha256": "ba8549fef7244d49a599a91494422393bb8343b609694fd997d3c73367bb7f42"
+    },
+    "output_cap": {
+      "bytes": 1202,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-budget-v1.json",
+      "sha256": "47ebff7558d91657d96a58d5496fc9d494694d3a4fa584efffdfb3cf08a7c4f7"
+    },
+    "output_isolation": {
+      "bytes": 1045,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-output-isolation-v1.json",
+      "sha256": "15f42db7719cf5483768dce1ed4fc7ff0b1ab231cba6a1f803944ea36c9c3f9e"
+    },
+    "ptr12": {
+      "bytes": 544,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-ptr12-binding-v1.json",
+      "sha256": "9f9325f1107a4b934c342962914052d9e56f5f6c331644c98d23ed119b982fc8"
+    },
+    "quality_rubric": {
+      "bytes": 1179,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-quality-rubric-v1.json",
+      "sha256": "f10a15799d685381439ab7b03f3fbb22d971b192e546b28df3d60fd39a110229"
+    },
+    "route_model_client": {
+      "bytes": 2475,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-route-binding-v1.json",
+      "sha256": "d929e24c698210f18b8ee44f40f60b6378181078f134e2255c4072034ff9d931"
+    },
+    "single_dispatch_guard": {
+      "bytes": 1925,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-transport-guard-binding-v1.json",
+      "sha256": "e05905afe7c726febb86c7df1abd88821359a47158203c2828de1df55e176b11"
+    }
+  },
+  "hard_max_output_tokens": 4624,
+  "maximum_runs": 1,
+  "provider_model_bindings": [
+    "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+    "fa876d1792c79f4cfa4209a3384a407b6cd48f5bbdf49a920d74cdfca9bf0998"
+  ],
+  "requested_max_output_tokens": 4624,
+  "route_binding_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+  "route_fallback_after_dispatch_allowed": false,
+  "route_fingerprints": [
+    "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+    "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+  ],
+  "schema": "SkillV2RestoredCandidateRuntimeBindingV1",
+  "sdk_retries_allowed": false,
+  "selected_route": "primary",
+  "single_dispatch_per_arm": true,
+  "status": "exact_historical_policy_binding_for_future_design",
+  "transport_request_retries_allowed": false,
+  "version": 1
+}

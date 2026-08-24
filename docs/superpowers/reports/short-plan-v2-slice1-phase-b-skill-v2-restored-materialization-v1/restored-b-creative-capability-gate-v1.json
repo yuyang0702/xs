@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2RestoredCandidateEvidenceBindingV1",
+  "source": {
+    "bytes": 6160,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/creative-capability-presence-v1.json",
+    "sha256": "5ed7e37aad115a7752d76b57052f701673383a15fe2d6050e550544b843f1ded"
+  },
+  "status": "exact",
+  "version": 1
+}

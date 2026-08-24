@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2RestoredCandidateEvidenceBindingV1",
+  "source": {
+    "bytes": 537,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/do-not-restore-regression-v1.json",
+    "sha256": "2cb0451c14469749fb9230d9453a8657ed265a2f7ece38c7d21d2691bf606447"
+  },
+  "status": "exact",
+  "version": 1
+}

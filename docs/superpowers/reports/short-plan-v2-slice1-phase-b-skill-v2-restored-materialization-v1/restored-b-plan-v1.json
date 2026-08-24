@@ -1,0 +1,11 @@
+{
+  "cohort_id": "slice1-phase-b-skill-v2-restored-v1-20260824t152505z-001",
+  "execution_authorized": false,
+  "implementation_head": "03258b82c74f1875b86e1569e56d6e90b9a274ed",
+  "next_gate": "SKILL_V2_BOUNDED_REPEATED_AB_EXECUTION_PLAN_AND_APPROVAL_DESIGN",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "real_ab_status": "NOT_STARTED",
+  "schema": "SkillV2RestoredBArmCandidatePlanV1",
+  "scope": "SLICE1_PHASE_B_SKILL_V2_RESTORED_B_ARM_CANDIDATE_ONLY",
+  "version": 1
+}

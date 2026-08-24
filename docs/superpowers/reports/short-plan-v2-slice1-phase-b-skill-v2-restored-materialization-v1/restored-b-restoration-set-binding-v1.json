@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2RestoredCandidateEvidenceBindingV1",
+  "source": {
+    "bytes": 447,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/restoration-set-binding-v1.json",
+    "sha256": "c1e859a470c4d1a628237b8150da2a9e99f6cec594cb55455fe20b116c3650f8"
+  },
+  "status": "exact",
+  "version": 1
+}

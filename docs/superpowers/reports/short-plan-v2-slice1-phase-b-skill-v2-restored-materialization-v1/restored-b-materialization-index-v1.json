@@ -1,0 +1,78 @@
+{
+  "candidate_status": "disabled_unused_unreserved",
+  "cohort_id": "slice1-phase-b-skill-v2-restored-v1-20260824t152505z-001",
+  "document_count": 14,
+  "documents": {
+    "README.md": {
+      "bytes": 123,
+      "sha256": "d484a1f41baebf1cadf7fd0cbb0878b9e42d39026c74119d2ac451442d2bf1e5"
+    },
+    "restored-b-a-arm-reference-v1.json": {
+      "bytes": 467,
+      "sha256": "ff78fdd276e61fc0f8dee41c54369f49951ec6cfe2317559c7655d8d0d0aa641"
+    },
+    "restored-b-ab-semantic-lock-v1.json": {
+      "bytes": 328,
+      "sha256": "376d7da171fcab9b4f189c613711f3d783624ca8bc070dbc9a79fd3370274c74"
+    },
+    "restored-b-candidate-v1.json": {
+      "bytes": 3410,
+      "sha256": "bdd1a5b716dae0060fcfdeac424ac04c0fb116012691b5849551018b29b9061c"
+    },
+    "restored-b-creative-capability-gate-v1.json": {
+      "bytes": 340,
+      "sha256": "e5cf5a88bf533616dcc0cf6bf69ef26fc0f1fd92c8816c11c87fdbc141924706"
+    },
+    "restored-b-do-not-restore-v1.json": {
+      "bytes": 336,
+      "sha256": "f575cc12158263e524b01b63e222b06bb7c6bc67468199740c785f63a2d49636"
+    },
+    "restored-b-historical-prior-b-nonreuse-v1.json": {
+      "bytes": 609,
+      "sha256": "c561b2cb44192b898394bb1a898aef91e58e67c131f7d6a314b7e22e11b7f81a"
+    },
+    "restored-b-offline-quality-audit-v1.json": {
+      "bytes": 336,
+      "sha256": "9122fc8ec221b2df9bf768e1e0a0586e52d7c9b73ce13fd884e59ba90fa44b40"
+    },
+    "restored-b-plan-v1.json": {
+      "bytes": 478,
+      "sha256": "2a383ae1cd9e49739b658c250154e3ac5a8e16ae679e26f77367b7fbe6029bbf"
+    },
+    "restored-b-profile-binding-v1.json": {
+      "bytes": 1479,
+      "sha256": "6ca213a47cc064aac1c7c7ff03f50fb008434537b11d4858cd5a7f542f85bab6"
+    },
+    "restored-b-rendered-context-binding-v1.json": {
+      "bytes": 5151,
+      "sha256": "e5e8fa986f269fd420e7f003cbf4d460c8cfcebe29882ca0655293f7cae236ef"
+    },
+    "restored-b-resolver-binding-v1.json": {
+      "bytes": 326,
+      "sha256": "000edf2867bd4699d000609fd8c7ec94aaa174e2e5aa6a8f3753a0644884ba5d"
+    },
+    "restored-b-restoration-set-binding-v1.json": {
+      "bytes": 334,
+      "sha256": "7c597fcaf9aac72d1e18765ac1d86d902a6cbeeacb4fe554e7b1696493cf83a9"
+    },
+    "restored-b-runtime-binding-v1.json": {
+      "bytes": 4208,
+      "sha256": "dee35c401dd2fabef05ae0c16de45ee1c222306e81dfc2f0955f85969b44bd3c"
+    }
+  },
+  "execution_authorized": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "schema": "SkillV2RestoredCandidateMaterializationIndexV1",
+  "scope": "SLICE1_PHASE_B_SKILL_V2_RESTORED_B_ARM_CANDIDATE_ONLY",
+  "signed_approval": "ABSENT",
+  "single_use_nonce": "ABSENT",
+  "version": 1
+}

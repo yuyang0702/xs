@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2RestoredCandidateEvidenceBindingV1",
+  "source": {
+    "bytes": 421,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/offline-quality-successor-v1.json",
+    "sha256": "0bcb1bcbaa705f1f56a90831e5103fd350bb030ab53ed00fe241690e9af61e26"
+  },
+  "status": "exact",
+  "version": 1
+}

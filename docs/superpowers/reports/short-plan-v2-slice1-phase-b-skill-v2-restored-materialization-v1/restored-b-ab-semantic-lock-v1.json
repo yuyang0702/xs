@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2RestoredCandidateEvidenceBindingV1",
+  "source": {
+    "bytes": 1150,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/ab-semantic-lock-v1.json",
+    "sha256": "ede65a401bb53be49fefdc4a2cac28aadb30ea8aecc137dd51475e67159a1c52"
+  },
+  "status": "exact",
+  "version": 1
+}
