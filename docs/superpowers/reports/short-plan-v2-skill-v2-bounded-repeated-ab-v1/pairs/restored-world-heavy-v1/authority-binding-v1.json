@@ -1,0 +1,21 @@
+{
+  "authority_binding_sha256": "e74edd5ccc1479fa5c30f9067d0e20e16858435bc34ddf2a9c071462f03176d0",
+  "authority_input_sha256": "d865d92370f8920bd0f26663fcd618664c8e9c96201bb76aa3d3b3075797c515",
+  "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+  "creative_demand_class": "world-heavy",
+  "fixture": {
+    "bytes": 2899,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/sanitized-fixture-v1.json",
+    "sha256": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20"
+  },
+  "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "pair_case_id": "restored-world-heavy-v1",
+  "private_user_data": false,
+  "repository_owned_sanitized_fixture": true,
+  "same_for_a_and_b": true,
+  "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+  "story_slice_sha256": "ea71faed5318be910978e5e4e5b41ca9192c4c36839e4a17ef0d49f22e6d3925",
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+  "version": 1
+}

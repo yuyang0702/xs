@@ -1,0 +1,34 @@
+{
+  "all_locks_exact": true,
+  "pair_count": 5,
+  "pairs": [
+    {
+      "pair_case_id": "restored-character-heavy-v1",
+      "pair_lock_sha256": "ebca266c2d232e495a0edad0579d01119e332fba7cba9c5b66f019f2677a9414",
+      "status": "exact"
+    },
+    {
+      "pair_case_id": "restored-world-heavy-v1",
+      "pair_lock_sha256": "0555dafb32c716062b4e5c13bfa7211b9ddc470b3ab23c7fb2f18933e32ee171",
+      "status": "exact"
+    },
+    {
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "pair_lock_sha256": "b4dc3ff4c3ebf81ff8420ce7129fc0e294ff49ffa294e44be3f0b72f83a9469b",
+      "status": "exact"
+    },
+    {
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "pair_lock_sha256": "d989abdec40a059f48f9f81874f236b9537451a9bb6fe3dd1d9c667f65125945",
+      "status": "exact"
+    },
+    {
+      "pair_case_id": "restored-mixed-v1",
+      "pair_lock_sha256": "974a450f60ca44f7bfe9f49ab1e32b9d901ac7678fd749cbb4ca81bcb4ac9a4c",
+      "status": "exact"
+    }
+  ],
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "schema": "SkillV2BoundedRepeatedABPerPairLockIndexV1",
+  "version": 1
+}

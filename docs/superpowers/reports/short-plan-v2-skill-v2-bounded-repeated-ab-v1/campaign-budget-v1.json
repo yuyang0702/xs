@@ -1,0 +1,18 @@
+{
+  "a_arm_reuse_equivalence_claimed": false,
+  "automatic_rerun_allowed": false,
+  "budget_inflation": false,
+  "campaign_blanket_execution_allowed": false,
+  "max_a_arm_real_calls": 5,
+  "max_b_arm_real_calls": 5,
+  "max_campaign_http_posts": 10,
+  "max_campaign_real_provider_calls": 10,
+  "pair_case_count": 5,
+  "per_arm_hard_max_http_post_attempts": 1,
+  "per_arm_hard_max_model_calls": 1,
+  "per_arm_hard_max_network_request_attempts": 1,
+  "per_arm_hard_max_real_provider_request_attempts": 1,
+  "per_arm_output_cap": 4624,
+  "schema": "SkillV2BoundedRepeatedABCampaignBudgetV1",
+  "version": 1
+}

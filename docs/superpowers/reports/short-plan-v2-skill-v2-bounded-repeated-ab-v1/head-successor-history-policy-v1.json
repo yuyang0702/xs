@@ -1,0 +1,24 @@
+{
+  "approval_parent_head_binding_required": true,
+  "evidence_only_approval_successor_required": true,
+  "git_diff_after_failed_ancestry": "FORBIDDEN",
+  "growth_rule": "append only an exact sealed pair-arm approval/execution/evaluation root through an evidence-only successor commit",
+  "historical_root_policy": "CLOSED_WORLD",
+  "historical_roots": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1",
+    "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-restored-materialization-v1",
+    "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-materialization-v5",
+    "docs/superpowers/reports/short-plan-v2-slice1-phase-b-current-skill-execution-v5",
+    "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4",
+    "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v4",
+    "docs/superpowers/reports/r1-ptr12-final-review",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1"
+  ],
+  "immediate_predecessor_only_assumption": false,
+  "post_seal_materialization_parent_source_required": true,
+  "schema": "SkillV2BoundedRepeatedABHeadSuccessorHistoryPolicyV1",
+  "status": "PASS",
+  "typed_ancestry_fail_close": true,
+  "version": 1
+}

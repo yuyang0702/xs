@@ -1,0 +1,60 @@
+{
+  "all_b_contexts_within_3000_chars": true,
+  "pair_count": 5,
+  "pairs": [
+    {
+      "a_context_char_count": 8927,
+      "a_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "b_context_char_count": 2742,
+      "b_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "b_context_within_3000_chars": true,
+      "b_restoration_items_present": "8/8",
+      "context_binding_sha256": "0224ea70b9932a46656eaf6f516c7539ccf8022cab2eb0ad301466d1dbe96bca",
+      "pair_case_id": "restored-character-heavy-v1"
+    },
+    {
+      "a_context_char_count": 8927,
+      "a_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "b_context_char_count": 2742,
+      "b_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "b_context_within_3000_chars": true,
+      "b_restoration_items_present": "8/8",
+      "context_binding_sha256": "7c4babed2c9be3862e423870e7592b6d2f7da105833d3018d4d75e4f2d4c477a",
+      "pair_case_id": "restored-world-heavy-v1"
+    },
+    {
+      "a_context_char_count": 8927,
+      "a_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "b_context_char_count": 2742,
+      "b_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "b_context_within_3000_chars": true,
+      "b_restoration_items_present": "8/8",
+      "context_binding_sha256": "00bfc61d14178aa8307dac24ae0a7281f1e8101fa4de194a5ffb2f6fc106167c",
+      "pair_case_id": "restored-conflict-pacing-heavy-v1"
+    },
+    {
+      "a_context_char_count": 8927,
+      "a_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "b_context_char_count": 2742,
+      "b_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "b_context_within_3000_chars": true,
+      "b_restoration_items_present": "8/8",
+      "context_binding_sha256": "677487f9f679bfe7db6982cd8890549bd40b67c0adfecfe053cc24d9d111a173",
+      "pair_case_id": "restored-setup-payoff-heavy-v1"
+    },
+    {
+      "a_context_char_count": 8927,
+      "a_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "b_context_char_count": 2742,
+      "b_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "b_context_within_3000_chars": true,
+      "b_restoration_items_present": "8/8",
+      "context_binding_sha256": "cfed15ff7c4abcab96d88fac34b375d28e84cd32f5d0ecac6660101b2c1df1ab",
+      "pair_case_id": "restored-mixed-v1"
+    }
+  ],
+  "restoration_items_present": "8/8",
+  "restored_profile_sha256": "c4ca606bd76359514e15cd60a2edcecbd9bc530690abb86be7313f2bd38999c5",
+  "schema": "SkillV2BoundedRepeatedABPerPairContextIndexV1",
+  "version": 1
+}

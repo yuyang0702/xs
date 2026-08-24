@@ -1,0 +1,81 @@
+{
+  "all_nonces_absent": true,
+  "arm_count": 10,
+  "arms": [
+    {
+      "arm": "a-arm",
+      "nonce_policy_sha256": "916341c5b9c0cf6d92e8ab9cb25fccaee20ede35f72ab7bb4af418d7f19ffd59",
+      "nonce_present": false,
+      "pair_case_id": "restored-character-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "nonce_policy_sha256": "9b23b5b0dafae2f872823e37a00da0fff49e6fa091498809136d656ca7363607",
+      "nonce_present": false,
+      "pair_case_id": "restored-character-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "nonce_policy_sha256": "c563d6e06a048512e841b27d6b52a473ecad163fbb5b8ebe3a5be63aa2961428",
+      "nonce_present": false,
+      "pair_case_id": "restored-world-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_WORLD_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "nonce_policy_sha256": "dabc9337ea78b9de56ab9046e5318e019e08dfc79533bee8ab4699a2b03cd8ea",
+      "nonce_present": false,
+      "pair_case_id": "restored-world-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_WORLD_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "nonce_policy_sha256": "d28dcdc8919685ea429794b6bdf35b54a2b0c473b37f82aa4a53b679742b99d6",
+      "nonce_present": false,
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CONFLICT_PACING_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "nonce_policy_sha256": "8cbefaf4aef73a39ca80be99c144c2446bf1f4ffa23bba2be5937651580eac6e",
+      "nonce_present": false,
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CONFLICT_PACING_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "nonce_policy_sha256": "cd6aa1ab30bf044ebe7a7c052e582285abe7258833c5f681295d52a883b8d8ed",
+      "nonce_present": false,
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_SETUP_PAYOFF_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "nonce_policy_sha256": "13ab4b9fb4657136f08acaa76c7ddf01ab35c94703460b1cb91a307843b3d1a7",
+      "nonce_present": false,
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_SETUP_PAYOFF_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "nonce_policy_sha256": "17c435ff20fe7116a063f47ad5474d01c7420c5f64f21c4f7dbec0fe4020fb7c",
+      "nonce_present": false,
+      "pair_case_id": "restored-mixed-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_MIXED_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "nonce_policy_sha256": "f9abe4d2de1a5359473a80ed6d44c5134955cb0b06267fde88201b14f9ff2ea6",
+      "nonce_present": false,
+      "pair_case_id": "restored-mixed-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_MIXED_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    }
+  ],
+  "nonce_reservation_during_materialization": false,
+  "nonce_reuse_allowed": false,
+  "one_nonce_per_real_request": true,
+  "schema": "SkillV2BoundedRepeatedABPerArmNoncePolicyIndexV1",
+  "version": 1
+}

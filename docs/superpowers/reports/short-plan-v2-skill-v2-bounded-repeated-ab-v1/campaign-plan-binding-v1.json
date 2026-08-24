@@ -1,0 +1,58 @@
+{
+  "baseline_head": "b639194b12917730107e328f344b69f5d42e619c",
+  "bounded_repeated_ab_real_execution": "NOT_STARTED",
+  "campaign_id": "skill-v2-bounded-repeated-ab-v1-20260824t162103z-001",
+  "creative_demand_classes": [
+    "character-heavy",
+    "world-heavy",
+    "conflict-pacing-heavy",
+    "setup-payoff-heavy",
+    "mixed"
+  ],
+  "creative_demand_coverage": "PASS",
+  "execution_authorized": false,
+  "execution_order": [
+    "PAIR_1 A -> B -> evaluate",
+    "PAIR_2 A -> B -> evaluate",
+    "PAIR_3 A -> B -> evaluate",
+    "PAIR_4 A -> B -> evaluate",
+    "PAIR_5 A -> B -> evaluate"
+  ],
+  "materialization_parent_head": "fd68d44d467e68cf1fc844d0f52c56f58e8e393d",
+  "next_gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_A_ARM_FRESH_USER_APPROVAL",
+  "no_unbounded_case_expansion": true,
+  "pair_case_ids": [
+    "restored-character-heavy-v1",
+    "restored-world-heavy-v1",
+    "restored-conflict-pacing-heavy-v1",
+    "restored-setup-payoff-heavy-v1",
+    "restored-mixed-v1"
+  ],
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "real_execution_mode": "SERIAL",
+  "restoration_manifest": {
+    "bytes": 4454,
+    "entry_count": 18,
+    "overall_status": "exact",
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/sha256-manifest-v1.json",
+    "sha256": "362cdfb53fa3a4c3848978e674e25d2a63c1fef1ec8c26870ebe235db0012bd4"
+  },
+  "restored_design": {
+    "bytes": 3655,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/bounded-repeated-ab-design-v1.json",
+    "sha256": "4ba1a93093b0ac28f2fb952df0cb7049f6cbd4d11efc38cb6b0e5166fa3f6e8d"
+  },
+  "schema": "SkillV2BoundedRepeatedABCampaignPlanBindingV1",
+  "sealed_decision_rule": {
+    "bytes": 510,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/future-ab-decision-rule-v1.json",
+    "sha256": "2ed92dba7950363ef3ab9a7106c28ada60ebd2135317e18d34f9d193860044bd"
+  },
+  "sealed_pair_count": 5,
+  "sealed_plan": {
+    "bytes": 1602,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/bounded-repeated-ab-plan-v1.json",
+    "sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7"
+  },
+  "version": 1
+}

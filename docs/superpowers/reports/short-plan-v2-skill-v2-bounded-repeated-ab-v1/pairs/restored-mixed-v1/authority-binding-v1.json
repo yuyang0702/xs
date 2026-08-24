@@ -1,0 +1,21 @@
+{
+  "authority_binding_sha256": "c333aba6d8930f57e9e35b95164ad9e0fae1028b7a68c2b52998f83d819acbd9",
+  "authority_input_sha256": "bfb9f872ad01caf1cf45037226c3d2984041dc318d017a337ab1f8334bf0e449",
+  "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+  "creative_demand_class": "mixed",
+  "fixture": {
+    "bytes": 3196,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/sanitized-fixture-v1.json",
+    "sha256": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70"
+  },
+  "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "pair_case_id": "restored-mixed-v1",
+  "private_user_data": false,
+  "repository_owned_sanitized_fixture": true,
+  "same_for_a_and_b": true,
+  "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+  "story_slice_sha256": "d0bc073ad489ab37f35c8cad8364911b415fa427cbd41ee1f0c8586f11731ad4",
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+  "version": 1
+}

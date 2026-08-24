@@ -1,0 +1,40 @@
+{
+  "attempt_accounting_sha256": "381d20e6dba5c9e254c0c176fc71db0e0ec003a04afb2b1b943642a2dd985dc8",
+  "engineering_rubric_sha256": "f33e782e51e0bf46a6a6285df7010502e7d9d11ebc45ec8d4757b7b1dc1dacf4",
+  "metrics": [
+    "first_pass_success",
+    "parse_success",
+    "semantic_validation",
+    "repair_needed",
+    "no_progress",
+    "whole_planning_regeneration",
+    "input_tokens",
+    "output_tokens",
+    "reasoning_exposure",
+    "visible_final_presence",
+    "finish_reason",
+    "requested_output_cap",
+    "effective_output_cap",
+    "provider_accepted_cap",
+    "physical_request_count",
+    "latency",
+    "cost_if_trustworthy",
+    "raw_shape",
+    "normalized_shape",
+    "ptr9_result",
+    "negative_capability_result"
+  ],
+  "ptr12_manifest": {
+    "bytes": 3898,
+    "entry_count": 11,
+    "overall_status": "exact",
+    "path": "docs/superpowers/reports/r1-ptr12-final-review/sha256-manifest-v1.json",
+    "sha256": "78b637fac9227447e604e497f327616e23a5d2b3f03dbc30e790ed30eb1b3101"
+  },
+  "same_policy_both_arms": true,
+  "schema": "SkillV2BoundedRepeatedABEngineeringEvaluationPolicyV1",
+  "single_dispatch_violation_result": "PAIR_NO_GO_ENGINEERING_REGRESSION",
+  "transport_guard_sha256": "9b40e09f83a130eab8ac410ff705d020b7923748e423c440912ffd7d74fa829d",
+  "unknown_remains_unknown": true,
+  "version": 1
+}

@@ -1,0 +1,17 @@
+{
+  "cohort_id": "skill-v2-bounded-repeated-ab-conflict-pacing-heavy-b-v1-20260824t162103z-001",
+  "ledger_entry_count": 0,
+  "nonce_executable": false,
+  "nonce_policy_sha256": "8cbefaf4aef73a39ca80be99c144c2446bf1f4ffa23bba2be5937651580eac6e",
+  "nonce_present": false,
+  "nonce_reservation_allowed_during_materialization": false,
+  "nonce_reuse_allowed": false,
+  "one_nonce_per_real_request": true,
+  "pair_case_id": "restored-conflict-pacing-heavy-v1",
+  "pre_nonce_external_permission_abort_preserves_nonce": true,
+  "reserve_only_after_signed_approval_and_current_chat_external_permission": true,
+  "schema": "SkillV2BoundedRepeatedABNoncePolicyV1",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CONFLICT_PACING_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY",
+  "skill_arm": "RESTORED_SKILL_V2",
+  "version": 1
+}

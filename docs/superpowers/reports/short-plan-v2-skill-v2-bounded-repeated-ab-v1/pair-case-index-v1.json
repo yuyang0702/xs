@@ -1,0 +1,98 @@
+{
+  "closed_world": true,
+  "creative_demand_classes": [
+    "character-heavy",
+    "world-heavy",
+    "conflict-pacing-heavy",
+    "setup-payoff-heavy",
+    "mixed"
+  ],
+  "pair_case_count": 5,
+  "pair_case_ids": [
+    "restored-character-heavy-v1",
+    "restored-world-heavy-v1",
+    "restored-conflict-pacing-heavy-v1",
+    "restored-setup-payoff-heavy-v1",
+    "restored-mixed-v1"
+  ],
+  "pairs": [
+    {
+      "a_arm_real_execution_required": true,
+      "authority_input_source": "SEALED_REPOSITORY_OWNED_SANITIZED_FIXTURE",
+      "b_arm_real_execution_required": true,
+      "creative_demand_class": "character-heavy",
+      "execution_status": "NOT_STARTED",
+      "fixture_sha256": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf",
+      "ordinal": 1,
+      "pair_case_id": "restored-character-heavy-v1",
+      "primary_dimensions": [
+        "motivation",
+        "voice",
+        "relationship",
+        "subtext"
+      ]
+    },
+    {
+      "a_arm_real_execution_required": true,
+      "authority_input_source": "SEALED_REPOSITORY_OWNED_SANITIZED_FIXTURE",
+      "b_arm_real_execution_required": true,
+      "creative_demand_class": "world-heavy",
+      "execution_status": "NOT_STARTED",
+      "fixture_sha256": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20",
+      "ordinal": 2,
+      "pair_case_id": "restored-world-heavy-v1",
+      "primary_dimensions": [
+        "world specificity",
+        "sensory affordance",
+        "system cost"
+      ]
+    },
+    {
+      "a_arm_real_execution_required": true,
+      "authority_input_source": "SEALED_REPOSITORY_OWNED_SANITIZED_FIXTURE",
+      "b_arm_real_execution_required": true,
+      "creative_demand_class": "conflict-pacing-heavy",
+      "execution_status": "NOT_STARTED",
+      "fixture_sha256": "a09f1fc23787b8c22e872aca9a862fec8204e832687b553cb1e31b98183a1df8",
+      "ordinal": 3,
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "primary_dimensions": [
+        "opposed tactics",
+        "escalation",
+        "reversal"
+      ]
+    },
+    {
+      "a_arm_real_execution_required": true,
+      "authority_input_source": "SEALED_REPOSITORY_OWNED_SANITIZED_FIXTURE",
+      "b_arm_real_execution_required": true,
+      "creative_demand_class": "setup-payoff-heavy",
+      "execution_status": "NOT_STARTED",
+      "fixture_sha256": "a131846ce5988f763e2656e2b65ace82873ebbfcfd0bd1da00ce6d16cc241f65",
+      "ordinal": 4,
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "primary_dimensions": [
+        "plant",
+        "dependency",
+        "payoff"
+      ]
+    },
+    {
+      "a_arm_real_execution_required": true,
+      "authority_input_source": "SEALED_REPOSITORY_OWNED_SANITIZED_FIXTURE",
+      "b_arm_real_execution_required": true,
+      "creative_demand_class": "mixed",
+      "execution_status": "NOT_STARTED",
+      "fixture_sha256": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70",
+      "ordinal": 5,
+      "pair_case_id": "restored-mixed-v1",
+      "primary_dimensions": [
+        "Draft handoff",
+        "template flattening",
+        "authority"
+      ]
+    }
+  ],
+  "schema": "SkillV2BoundedRepeatedABPairCaseIndexV1",
+  "version": 1
+}

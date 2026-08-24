@@ -1,0 +1,70 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "f44bf142f19ff0f8ebe305adbc1466273bb07dbc24a4dd3b5558fae98a2f274c",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "66c37c7c510d8a5151355cbb69ae8a75170c62f302e7ad9077021887c46e098f",
+    "formal_event_id": "AB-CHARACTER-0001",
+    "formal_event_ids": [
+      "AB-CHARACTER-0001"
+    ],
+    "parent_authority_sha256": "ee0914706c49112d7e5da9972e147782d8c088afde2aeb61ec1d07b8fe8fc0aa",
+    "predecessor_boundary_sha256": "1c1e6d5c2fbe9ae5f79434cee191a4be9cfab961d55145e41a63b895e346c901",
+    "required_obligation_ids": [
+      "motivation:protect-rival-without-confessing-guilt",
+      "voice:restrained-irony-under-fear",
+      "relationship:costly-choice-creates-conditional-trust",
+      "subtext:apology-concealed-as-bargain"
+    ],
+    "segment_event_ids": [
+      [
+        "AB-CHARACTER-0001"
+      ]
+    ]
+  },
+  "authority_input_sha256": "95884073e86a9cf3de1107e3dec9852d76085b22d368fdfce9171e4d6d499389",
+  "creative_demand_class": "character-heavy",
+  "model_generated_output_authoritative": false,
+  "pair_case_id": "restored-character-heavy-v1",
+  "primary_dimensions": [
+    "motivation",
+    "voice",
+    "relationship",
+    "subtext"
+  ],
+  "private_user_data": false,
+  "raw_provider_content": false,
+  "repository_owned_sanitized_fixture": true,
+  "schema": "SkillV2BoundedRepeatedABSanitizedFixtureV1",
+  "story_slice": {
+    "confirmed_outcome_locked": true,
+    "creative_demand_class": "character-heavy",
+    "entry_state": "Mara distrusts Iven after an old betrayal and hides that she still needs his help.",
+    "exit_state": "Iven recognizes the costly protection but misreads Mara's concealed apology as leverage.",
+    "formal_event_id": "AB-CHARACTER-0001",
+    "pair_case_id": "restored-character-heavy-v1",
+    "required_change": "Mara pays a personal cost to protect Iven, shifting distrust into conditional cooperation without resolving the betrayal.",
+    "required_obligation_ids": [
+      "motivation:protect-rival-without-confessing-guilt",
+      "voice:restrained-irony-under-fear",
+      "relationship:costly-choice-creates-conditional-trust",
+      "subtext:apology-concealed-as-bargain"
+    ],
+    "schema": "SkillV2BoundedRepeatedABStorySliceV1",
+    "synthetic": true,
+    "version": 1
+  },
+  "story_slice_sha256": "f44bf142f19ff0f8ebe305adbc1466273bb07dbc24a4dd3b5558fae98a2f274c",
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "version": 1
+}

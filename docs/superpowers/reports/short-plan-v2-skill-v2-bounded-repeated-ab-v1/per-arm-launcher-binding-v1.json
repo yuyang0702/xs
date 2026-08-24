@@ -1,0 +1,111 @@
+{
+  "arm_count": 10,
+  "arms": [
+    {
+      "arm": "a-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-a-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm",
+      "launcher_binding_sha256": "396d943afd0f45337294ad58979314fbf730c3a95b5b7cf23c4b65435f557be5",
+      "launcher_identity_sha256": "33697ba2357c0b82844673e2ee2e9c01fb71a7785dd4614e0179e8539dc7e2d5",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/a-arm",
+      "pair_case_id": "restored-character-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-b-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/b-arm",
+      "launcher_binding_sha256": "08661b228ebb1d31317a9579d1c1d258adb62ec9e526c37474f3e5cc49f70c99",
+      "launcher_identity_sha256": "cf210009fe0ff5044e5d6cc82dbdeb1b97780389f4d6dd9944659732ab850e0c",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/b-arm",
+      "pair_case_id": "restored-character-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-world-heavy-a-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/a-arm",
+      "launcher_binding_sha256": "7f291a7410e25ef2115a19d77b86fd63a631d4a27618dbcae733ff78f2da0f71",
+      "launcher_identity_sha256": "fed00049f9c6dd7e458f3ac863725ee706e34fd5790b03f65f2a02c3163fadb2",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm",
+      "pair_case_id": "restored-world-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_WORLD_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-world-heavy-b-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/b-arm",
+      "launcher_binding_sha256": "63cb436d98d62f8919db1e49bf3416e63266eaf60a7410cf0e0b2311219a67dd",
+      "launcher_identity_sha256": "ba71ceea53e1df10ec78c314368fcf61af5a534ea84351d217fac782e9ea91c4",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm",
+      "pair_case_id": "restored-world-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_WORLD_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-conflict-pacing-heavy-a-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm",
+      "launcher_binding_sha256": "d86159e202d649339d5df895a14ac007765131df90d04b8f9a8d25fb12ba56e4",
+      "launcher_identity_sha256": "4629c592a7d5084949970d5e0f26dcded345e69b451cc54eb66f0c86ab296501",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm",
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CONFLICT_PACING_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-conflict-pacing-heavy-b-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm",
+      "launcher_binding_sha256": "9ebf3aefbcd9a0574761f37b53f68897ddd31e17a52ee7e636bce8277ad42c42",
+      "launcher_identity_sha256": "bb1e05c3bada13f2cd56b28f9b972676ebe5f12a31e2e24f1cf0295988c49730",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm",
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CONFLICT_PACING_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-setup-payoff-heavy-a-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/a-arm",
+      "launcher_binding_sha256": "13f8cde116a11de739d2af614c8f9729239c84020570f29e4e43c8cbca005f81",
+      "launcher_identity_sha256": "3279194bbba9d0eb51dbd23d4c2bf193dd701e0aaf0e1517c7756a1db4fe151e",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm",
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_SETUP_PAYOFF_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-setup-payoff-heavy-b-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/b-arm",
+      "launcher_binding_sha256": "086dd35dcb19517e7cbbc21873cc5061973f36b4eb8f84216c0d76927e5dbb5f",
+      "launcher_identity_sha256": "add78a23aa517771c56fd88bdc7f5cd25400af19441d25cf74be0de003bb047c",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm",
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_SETUP_PAYOFF_HEAVY_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "a-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-mixed-a-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/a-arm",
+      "launcher_binding_sha256": "f0189cb6235d0f6361dffcc5ffc81f116309a74c9a91705404f2fea93cf177f5",
+      "launcher_identity_sha256": "f2db8e8d32ca3118bae64e9d0690c1af7f608aeafb6f45b0cc300357acb93506",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm",
+      "pair_case_id": "restored-mixed-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_MIXED_A_ARM_SINGLE_DISPATCH_V1_ONLY"
+    },
+    {
+      "arm": "b-arm",
+      "cohort_id": "skill-v2-bounded-repeated-ab-mixed-b-v1-20260824t162103z-001",
+      "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/b-arm",
+      "launcher_binding_sha256": "e3fe4146f9ca8de329549a764e9d3e7b6f023d0dcee5f09050d31d8fcaa3734b",
+      "launcher_identity_sha256": "116c8898aa6bca96c90862558537aa66ca50cdf217386dbd557f8c93988bcc2e",
+      "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm",
+      "pair_case_id": "restored-mixed-v1",
+      "scope": "SKILL_V2_BOUNDED_REPEATED_AB_MIXED_B_ARM_SINGLE_DISPATCH_V1_ONLY"
+    }
+  ],
+  "execution_root_binding": "PASS",
+  "packet_cohort_equals_launcher_cohort": true,
+  "packet_scope_equals_launcher_scope": true,
+  "schema": "SkillV2BoundedRepeatedABPerArmLauncherIndexV1",
+  "unique_launcher_binding_count": 10,
+  "version": 1
+}

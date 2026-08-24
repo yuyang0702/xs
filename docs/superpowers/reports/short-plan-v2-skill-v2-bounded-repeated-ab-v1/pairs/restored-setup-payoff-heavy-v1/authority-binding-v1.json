@@ -1,0 +1,21 @@
+{
+  "authority_binding_sha256": "1b70d88c80dc034a85b0486b9bc589298e56fa8974b9d2f98bc1d626f604d666",
+  "authority_input_sha256": "02a4759d6c24756dc9e5b989dd678d0ed6b42afe137c0bc7e63563d446b98d89",
+  "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+  "creative_demand_class": "setup-payoff-heavy",
+  "fixture": {
+    "bytes": 2946,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/sanitized-fixture-v1.json",
+    "sha256": "a131846ce5988f763e2656e2b65ace82873ebbfcfd0bd1da00ce6d16cc241f65"
+  },
+  "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "pair_case_id": "restored-setup-payoff-heavy-v1",
+  "private_user_data": false,
+  "repository_owned_sanitized_fixture": true,
+  "same_for_a_and_b": true,
+  "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+  "story_slice_sha256": "86680b9b22701b8f197c09ca20da8c0ccea1fa4e4269670b716acbadd5ac9613",
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+  "version": 1
+}

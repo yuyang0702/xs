@@ -1,0 +1,15 @@
+{
+  "absolute_machine_path_persisted": false,
+  "credential_persisted": false,
+  "files_scanned": 80,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "private_user_story_persisted": false,
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "raw_skill_content_persisted": false,
+  "schema": "SkillV2BoundedRepeatedABPrivacyScanV1",
+  "synthetic_story_fixture_persisted": true,
+  "version": 1
+}

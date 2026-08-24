@@ -1,0 +1,69 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "ea71faed5318be910978e5e4e5b41ca9192c4c36839e4a17ef0d49f22e6d3925",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "d5760d47842dfe3d42f470658382667f7a58918bae6fb28e8dc1526a1d37367b",
+    "formal_event_id": "AB-WORLD-0001",
+    "formal_event_ids": [
+      "AB-WORLD-0001"
+    ],
+    "parent_authority_sha256": "4cffc2a669ab417060d54611d27378f7d3a9c7a5aad01622ab7f7ddea9816895",
+    "predecessor_boundary_sha256": "b166451b77c38f451b3099a75731e113fcdc5c211711fbb1103630f3b3f4fdb7",
+    "required_obligation_ids": [
+      "world-rule:memories-function-as-night-market-currency",
+      "sensory-affordance:blue-ash-rain-bell-metal-and-ink-smoke",
+      "system-cost:purchase-erases-one-specific-memory",
+      "faction-pressure:archivists-enforce-recorded-debt"
+    ],
+    "segment_event_ids": [
+      [
+        "AB-WORLD-0001"
+      ]
+    ]
+  },
+  "authority_input_sha256": "d865d92370f8920bd0f26663fcd618664c8e9c96201bb76aa3d3b3075797c515",
+  "creative_demand_class": "world-heavy",
+  "model_generated_output_authoritative": false,
+  "pair_case_id": "restored-world-heavy-v1",
+  "primary_dimensions": [
+    "world specificity",
+    "sensory affordance",
+    "system cost"
+  ],
+  "private_user_data": false,
+  "raw_provider_content": false,
+  "repository_owned_sanitized_fixture": true,
+  "schema": "SkillV2BoundedRepeatedABSanitizedFixtureV1",
+  "story_slice": {
+    "confirmed_outcome_locked": true,
+    "creative_demand_class": "world-heavy",
+    "entry_state": "Neri enters a night market where memories are legal currency and her brother's name is collateral.",
+    "exit_state": "The archive opens, Neri loses the sound of her brother's laugh, and the Archivist faction records the debt.",
+    "formal_event_id": "AB-WORLD-0001",
+    "pair_case_id": "restored-world-heavy-v1",
+    "required_change": "Neri buys access to a sealed archive, accepting a precise memory loss while exploiting a physical market rule.",
+    "required_obligation_ids": [
+      "world-rule:memories-function-as-night-market-currency",
+      "sensory-affordance:blue-ash-rain-bell-metal-and-ink-smoke",
+      "system-cost:purchase-erases-one-specific-memory",
+      "faction-pressure:archivists-enforce-recorded-debt"
+    ],
+    "schema": "SkillV2BoundedRepeatedABStorySliceV1",
+    "synthetic": true,
+    "version": 1
+  },
+  "story_slice_sha256": "ea71faed5318be910978e5e4e5b41ca9192c4c36839e4a17ef0d49f22e6d3925",
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "version": 1
+}

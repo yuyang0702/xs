@@ -1,0 +1,69 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "86680b9b22701b8f197c09ca20da8c0ccea1fa4e4269670b716acbadd5ac9613",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "99d9a28ff3cb024ae699283b69d0c21a5fb8f228275ac34dc9b7d5e338730472",
+    "formal_event_id": "AB-PAYOFF-0001",
+    "formal_event_ids": [
+      "AB-PAYOFF-0001"
+    ],
+    "parent_authority_sha256": "59bc4027f82fdcc372b6c50c6bec9f5035a656eeed8fdaa9d4049a9430b74215",
+    "predecessor_boundary_sha256": "185e085cf415c7c74b9d53a3c2598de2861f132c4e157d2a74f6d8c5f51ec0c6",
+    "required_obligation_ids": [
+      "setup:cracked-tuning-fork-was-previously-established",
+      "dependency:bridge-lock-responds-only-to-matching-resonance",
+      "payoff:fork-breaks-while-opening-the-bridge",
+      "new-hook:final-tone-indicates-mentor-crossed-recently"
+    ],
+    "segment_event_ids": [
+      [
+        "AB-PAYOFF-0001"
+      ]
+    ]
+  },
+  "authority_input_sha256": "02a4759d6c24756dc9e5b989dd678d0ed6b42afe137c0bc7e63563d446b98d89",
+  "creative_demand_class": "setup-payoff-heavy",
+  "model_generated_output_authoritative": false,
+  "pair_case_id": "restored-setup-payoff-heavy-v1",
+  "primary_dimensions": [
+    "plant",
+    "dependency",
+    "payoff"
+  ],
+  "private_user_data": false,
+  "raw_provider_content": false,
+  "repository_owned_sanitized_fixture": true,
+  "schema": "SkillV2BoundedRepeatedABSanitizedFixtureV1",
+  "story_slice": {
+    "confirmed_outcome_locked": true,
+    "creative_demand_class": "setup-payoff-heavy",
+    "entry_state": "A cracked tuning fork, planted earlier as a harmless keepsake, is the only object that resonates with the locked bridge.",
+    "exit_state": "The bridge unlocks, the fork breaks, and its final tone reveals that the missing mentor crossed recently.",
+    "formal_event_id": "AB-PAYOFF-0001",
+    "pair_case_id": "restored-setup-payoff-heavy-v1",
+    "required_change": "Tao recognizes the planted property, risks breaking the keepsake, and uses its resonance to expose the bridge's hidden dependency.",
+    "required_obligation_ids": [
+      "setup:cracked-tuning-fork-was-previously-established",
+      "dependency:bridge-lock-responds-only-to-matching-resonance",
+      "payoff:fork-breaks-while-opening-the-bridge",
+      "new-hook:final-tone-indicates-mentor-crossed-recently"
+    ],
+    "schema": "SkillV2BoundedRepeatedABStorySliceV1",
+    "synthetic": true,
+    "version": 1
+  },
+  "story_slice_sha256": "86680b9b22701b8f197c09ca20da8c0ccea1fa4e4269670b716acbadd5ac9613",
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "version": 1
+}

@@ -1,0 +1,23 @@
+{
+  "absence_result": "PRE_NONCE_EXTERNAL_PERMISSION_ABORT",
+  "approval_does_not_imply_outer_permission": true,
+  "check_boundary": "before_nonce_reservation",
+  "current_chat_permission_required_for": [
+    "credential_access",
+    "network",
+    "paid_provider",
+    "data_egress"
+  ],
+  "external_actions_now": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "nonce_untouched_on_absence": true,
+  "schema": "SkillV2BoundedRepeatedABOuterPermissionPolicyV1",
+  "version": 1
+}

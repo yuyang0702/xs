@@ -1,0 +1,19 @@
+{
+  "all_a_b_locks_exact": true,
+  "all_engineering_arms_valid": true,
+  "all_required_pairs_must_complete": true,
+  "critical_pair_regression_can_be_averaged_away": false,
+  "hidden_retry_allowed": false,
+  "pair_decisions": [
+    "PAIR_PASS_NON_INFERIOR",
+    "PAIR_NO_GO_QUALITY_REGRESSION",
+    "PAIR_NO_GO_ENGINEERING_REGRESSION",
+    "PAIR_NO_GO_AB_LOCK_INVALID",
+    "PAIR_INCONCLUSIVE"
+  ],
+  "per_pair_evidence_independently_inspectable": true,
+  "production_cutover_authorized": false,
+  "production_mutation_allowed": false,
+  "schema": "SkillV2BoundedRepeatedABCampaignDecisionRuleV1",
+  "version": 1
+}

@@ -1,0 +1,27 @@
+{
+  "blind_pairwise_review_required": true,
+  "critical_regression_result": "PAIR_NO_GO_QUALITY_REGRESSION",
+  "dimensions": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "engineering_metrics_hidden_during_narrative_review": true,
+  "quality_rubric_sha256": "3d65d91e369afdf43dfc0926d3a0605ab6f389ab6ee1da65e4712da981091e10",
+  "schema": "SkillV2BoundedRepeatedABNarrativeEvaluationPolicyV1",
+  "single_scalar_literary_score_allowed": false,
+  "version": 1
+}

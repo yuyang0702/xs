@@ -1,0 +1,415 @@
+{
+  "coverage": "all materialized files except the manifest itself",
+  "definition_sha256": "1391b6e317cb6347e4e139218dc7ae4609cdbf1097b3d7d7bfbac17b9c3f4b89",
+  "entry_count": 81,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 277,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/README.md",
+      "sha256": "377b1653a39dafacf47a7a4267e275c39d10e1b56009026f3ebca94aae947285"
+    },
+    {
+      "bytes": 605,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/campaign-budget-v1.json",
+      "sha256": "c70a6b84c2768ebde85470d3f40e6265497f807b1190f7309d4102e054e5c991"
+    },
+    {
+      "bytes": 615,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/campaign-decision-rule-v1.json",
+      "sha256": "eac774595734ba98bb0f39563629552bc4c3c2506503a09ee83b90351f176c8f"
+    },
+    {
+      "bytes": 2230,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/campaign-plan-binding-v1.json",
+      "sha256": "c491b479c4e3cf630f6f22c7d1fcede3a28139071049af46c92ffeb889103192"
+    },
+    {
+      "bytes": 557,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/campaign-stop-rules-v1.json",
+      "sha256": "9d365ef57eadee6c1c0957b95db4e86827498fb8b594dfffb26b3b115392ff40"
+    },
+    {
+      "bytes": 1329,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/engineering-evaluation-policy-v1.json",
+      "sha256": "6bc62e72e1eddc2a962abbae608c5f99b5dfc1b4faf80d6bd90c1bc8a6e7926f"
+    },
+    {
+      "bytes": 10701,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/final-report-v1.md",
+      "sha256": "e5ead1a16698cf785ed1002449604f7a907dde8076ca163b5c0aba8b9511a156"
+    },
+    {
+      "bytes": 1362,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/head-successor-history-policy-v1.json",
+      "sha256": "15c048b4245ab73c15e978a322a47acbba77b5f634bf79bf2a296637148ff1ab"
+    },
+    {
+      "bytes": 829,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/narrative-evaluation-policy-v1.json",
+      "sha256": "e034e20349eaedc8590b8b655eabe30ed73ad89a62ed02fb329baca05888eb46"
+    },
+    {
+      "bytes": 1451,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/offline-test-receipt-v1.json",
+      "sha256": "3e4cd06f7ed4f6c6a716d63580b47cecaa5910b2e45a2e5ece00dc526e46ba21"
+    },
+    {
+      "bytes": 656,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/outer-permission-policy-v1.json",
+      "sha256": "c98f75ee89e659bcab9c723d57f121bbb812409e3858d59c65728f208cc679ba"
+    },
+    {
+      "bytes": 3201,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pair-case-index-v1.json",
+      "sha256": "325e465a8a1763a6f33274340bda130f7698382c6a42455f1d8c1bcb92f5a84e"
+    },
+    {
+      "bytes": 1673,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/a-arm/approval-template-v1.json",
+      "sha256": "27da83e263ecfe480a861e942045a0f0353deb36a646938eb83e83a736cc877d"
+    },
+    {
+      "bytes": 4156,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/a-arm/disabled-packet-v1.json",
+      "sha256": "abc189f5a8b4e925c270e14c2eb7ec72898143eb559a54cb4589f04161669ebe"
+    },
+    {
+      "bytes": 1870,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/a-arm/launcher-binding-v1.json",
+      "sha256": "eb49bfce70a91b6a091c0bf7088736f9879b92b264533be53a5e5a63f858c1b6"
+    },
+    {
+      "bytes": 791,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/a-arm/nonce-policy-v1.json",
+      "sha256": "6a17a8f2493058365824deb4c7945f68f2941f89b049a0d3030238c41f06a594"
+    },
+    {
+      "bytes": 1223,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/authority-binding-v1.json",
+      "sha256": "bb20e7665d4ca0ec67a0793618f488d4fbda728b4f4b8ff02f9d48cac7eb6eaf"
+    },
+    {
+      "bytes": 1668,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/b-arm/approval-template-v1.json",
+      "sha256": "2e8d94310bc861e4adf6e4f7f8ec8914ec4c442ab49335ec5459b8f44a51b61e"
+    },
+    {
+      "bytes": 4152,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/b-arm/disabled-packet-v1.json",
+      "sha256": "0a18703f5e413ad7c7903310d675736eab1498a30c50b00094d0ab92e4dbedda"
+    },
+    {
+      "bytes": 1866,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/b-arm/launcher-binding-v1.json",
+      "sha256": "04930364fcadb49cefaab215dcc9d2a9cf536373b3ac915425ccf251d295bece"
+    },
+    {
+      "bytes": 787,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/b-arm/nonce-policy-v1.json",
+      "sha256": "cfc493d687923daad744630e81f8a3b095f42d6af601aa4674d460c49f7d4a63"
+    },
+    {
+      "bytes": 2798,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/pair-ab-lock-v1.json",
+      "sha256": "82daccd610b7ad6ab7d1bdbc3eab20d2583e9ea7e146e0964526bcc4f241bfaa"
+    },
+    {
+      "bytes": 2831,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/sanitized-fixture-v1.json",
+      "sha256": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf"
+    },
+    {
+      "bytes": 1089,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/skill-context-binding-v1.json",
+      "sha256": "8ce33f0c6811a166c12d3c6e7cb05eec451e563dcc5a5644f8cb3849582ea76a"
+    },
+    {
+      "bytes": 1703,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/approval-template-v1.json",
+      "sha256": "0e30c671d5d5f4216908e301c9f96b06d7c16b1fd84348b45371e36079043119"
+    },
+    {
+      "bytes": 4198,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/disabled-packet-v1.json",
+      "sha256": "4075b887c9e8bd8ebeb009bc79bd752ca0c3c57687c1dbcbcc40999639782098"
+    },
+    {
+      "bytes": 1900,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/launcher-binding-v1.json",
+      "sha256": "b6d633fc96efa6264953b136cf1d77a984fd9ce52287926c2e9a2b4481b27df5"
+    },
+    {
+      "bytes": 809,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/nonce-policy-v1.json",
+      "sha256": "c124f86d915999f08cfe33d7b85943140e01fe492bc481aa4e45845e93af2ecf"
+    },
+    {
+      "bytes": 1241,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/authority-binding-v1.json",
+      "sha256": "8e58077aae6bb3a1626803eed9272dbff308e87cb343df1f266e27b620f2e808"
+    },
+    {
+      "bytes": 1698,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/approval-template-v1.json",
+      "sha256": "bf47e2cf6258d3c7f11df8b2cdd60466eb6cdc592fd40d9f4d5bfe22df28d775"
+    },
+    {
+      "bytes": 4194,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/disabled-packet-v1.json",
+      "sha256": "b9a67bd3573335d1ba8e46b7129fae296dc68a0cf8adac3524d724f9e7647720"
+    },
+    {
+      "bytes": 1896,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/launcher-binding-v1.json",
+      "sha256": "bb263a61489b1b23198c5d208d28307cde77dc8349af00bc239435ae0d65a0d8"
+    },
+    {
+      "bytes": 805,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/nonce-policy-v1.json",
+      "sha256": "8fcba42d7a11a4fe9782db56e411c7a5de5ef1750cd2f4d0bfb233de674b4dd2"
+    },
+    {
+      "bytes": 2804,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/pair-ab-lock-v1.json",
+      "sha256": "50d3a9d54db6e696c52a1c5af1b6bbf51087c697c41f418584a57732297ceb51"
+    },
+    {
+      "bytes": 2922,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/sanitized-fixture-v1.json",
+      "sha256": "a09f1fc23787b8c22e872aca9a862fec8204e832687b553cb1e31b98183a1df8"
+    },
+    {
+      "bytes": 1095,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/skill-context-binding-v1.json",
+      "sha256": "609b8a6456a0bf4cce2e2cb40834166bd72a8f5d012561c87ff174d44f434e7e"
+    },
+    {
+      "bytes": 1623,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/approval-template-v1.json",
+      "sha256": "31694f8505a43adc68a314198c8be0f7108b6c5f60153219b2c824788086e0c9"
+    },
+    {
+      "bytes": 4086,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/disabled-packet-v1.json",
+      "sha256": "0adfd08dbfeccffb0e59bd725fc0ddb23c1809693aecc2020e8c80f18c01c6ab"
+    },
+    {
+      "bytes": 1820,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/launcher-binding-v1.json",
+      "sha256": "932f8341ef26022d26d76b6574e710a1e7584dee3aeb8fbd9bf4b28aff4bc74d"
+    },
+    {
+      "bytes": 761,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/nonce-policy-v1.json",
+      "sha256": "6f61bfa20e4bb317df8531542e395de61f4a6f491d2d8ace1d836e417b083d8f"
+    },
+    {
+      "bytes": 1193,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/authority-binding-v1.json",
+      "sha256": "1c8b6aa39aa753c1d267bdd2243d89749bcef0e4ed2abc55d531e3208fbc034a"
+    },
+    {
+      "bytes": 1618,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/approval-template-v1.json",
+      "sha256": "e8346abeac833eeeba319d1387c21e35cfed9a767a5c9966fe34e1fbcb76ddea"
+    },
+    {
+      "bytes": 4082,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/disabled-packet-v1.json",
+      "sha256": "c814257d3c56e2a3a7ca39adad8903a5642428376a42f08f949c3e83249f1dc5"
+    },
+    {
+      "bytes": 1816,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/launcher-binding-v1.json",
+      "sha256": "1eba7e63a988bfbbc12db02bbc6e061ad3a08cf2aedf5cac832d809aa84872e5"
+    },
+    {
+      "bytes": 757,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/nonce-policy-v1.json",
+      "sha256": "5de3482c10b728456d71e295262a9856899488b986516bef3d07bbcd6510e48b"
+    },
+    {
+      "bytes": 2788,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/pair-ab-lock-v1.json",
+      "sha256": "ef8a3bf0b41a5d53a1a568a3b6e95b82fbe187faa07e01908e0dee0d000272d2"
+    },
+    {
+      "bytes": 3196,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/sanitized-fixture-v1.json",
+      "sha256": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70"
+    },
+    {
+      "bytes": 1079,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/skill-context-binding-v1.json",
+      "sha256": "33735b7b90287f197b1f2fa9a77e71bd2046e8b86f35b39dc314d1a3327e3c63"
+    },
+    {
+      "bytes": 1688,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/approval-template-v1.json",
+      "sha256": "02a00d18148af968a029b9d8121535a1a4b92e7f94b8b72d79994030c15ba5b4"
+    },
+    {
+      "bytes": 4177,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/disabled-packet-v1.json",
+      "sha256": "c03577e13b709e297d035a43d8fcd078152b78ae0b269c1468b1ad2892131f6d"
+    },
+    {
+      "bytes": 1885,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/launcher-binding-v1.json",
+      "sha256": "309f30c10d5820c7ed9ac7c66dc80b1d636f497ba3c586594047dc468248e89a"
+    },
+    {
+      "bytes": 800,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/nonce-policy-v1.json",
+      "sha256": "6f744b3c35a16cf35f4b87f473229570068e5a7ac81afeeb3ddd8515f9e73cb6"
+    },
+    {
+      "bytes": 1232,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/authority-binding-v1.json",
+      "sha256": "269bc0294f657154dfaf8878315d04de77d468a2317360d75c968c4d1c4ba140"
+    },
+    {
+      "bytes": 1683,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/approval-template-v1.json",
+      "sha256": "546fcc0d1675411b8006f84d2be59fa8b329011474ed6b658b9a442bb16fc336"
+    },
+    {
+      "bytes": 4173,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/disabled-packet-v1.json",
+      "sha256": "b3061602c4cc45ceb07695dc6a8de50f1c2c160d7cfab6524a06659ca1263423"
+    },
+    {
+      "bytes": 1881,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/launcher-binding-v1.json",
+      "sha256": "7d5939c15a8d319ee78618c4748c06d2ced27b2a4feecefe21547758eef7ee71"
+    },
+    {
+      "bytes": 796,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/nonce-policy-v1.json",
+      "sha256": "26d1ee3da1ca4e23daf22a44df68ce40fba64e9419e5ee5dd1b02548c3a0c21d"
+    },
+    {
+      "bytes": 2801,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/pair-ab-lock-v1.json",
+      "sha256": "19768b3bf4ab625c24d8512d8d0dc2a1f865c6a4bb342197076da778487f541c"
+    },
+    {
+      "bytes": 2946,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/sanitized-fixture-v1.json",
+      "sha256": "a131846ce5988f763e2656e2b65ace82873ebbfcfd0bd1da00ce6d16cc241f65"
+    },
+    {
+      "bytes": 1092,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/skill-context-binding-v1.json",
+      "sha256": "eca15c281d601fbc8bf0d4afdba849034064bd384e54bbb1e1032b8b9486917f"
+    },
+    {
+      "bytes": 1653,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/approval-template-v1.json",
+      "sha256": "587e694b8406196dff32b332a3107500271b3d5b7409b1d30c5cb65945e76330"
+    },
+    {
+      "bytes": 4128,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/disabled-packet-v1.json",
+      "sha256": "94912b22fcd068898246ba9cf532c2bacd0a80f7a2f38c38fae6b59bcf2274fd"
+    },
+    {
+      "bytes": 1850,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/launcher-binding-v1.json",
+      "sha256": "771a1bc8f7ac667839b0b312b96b438029d4d1bce8d2fc479fa93bc2e388f954"
+    },
+    {
+      "bytes": 779,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/nonce-policy-v1.json",
+      "sha256": "d44207e5ec70cac1ad363cec90d19eee6d7db80db04384330016470582983182"
+    },
+    {
+      "bytes": 1211,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/authority-binding-v1.json",
+      "sha256": "a25917888182825954d31df5921097ccb7d8bdad78de83e71804a22e28ddedf5"
+    },
+    {
+      "bytes": 1648,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/approval-template-v1.json",
+      "sha256": "a353142c8cb08632fa75f52725e20c52006471aba810ea75e70f2bed8c533919"
+    },
+    {
+      "bytes": 4124,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/disabled-packet-v1.json",
+      "sha256": "eb0c7651c322126b2f81dd814767e39e5704afb3768c0c2331e1157718ea110d"
+    },
+    {
+      "bytes": 1846,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/launcher-binding-v1.json",
+      "sha256": "0e86e43e30961d5b543cff74af938918cd205420e28971bb4918e6bd73457c49"
+    },
+    {
+      "bytes": 775,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/nonce-policy-v1.json",
+      "sha256": "b6ad52bb5fb5b1110ef75db3ab3b6b1bd45d66253e7b23379e4e3dcfd5793c00"
+    },
+    {
+      "bytes": 2794,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/pair-ab-lock-v1.json",
+      "sha256": "64bf04ee4a3abeca5708ea7a0c4413e63b7dbdc57a76804b74c6fae255ccb998"
+    },
+    {
+      "bytes": 2899,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/sanitized-fixture-v1.json",
+      "sha256": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20"
+    },
+    {
+      "bytes": 1085,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/skill-context-binding-v1.json",
+      "sha256": "76874c34f1a214f5bde0d1f6c4267478c21969471ca6f018815989a51a0ecff2"
+    },
+    {
+      "bytes": 3491,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-arm-approval-design-v1.json",
+      "sha256": "12b18b10f89099fab37ce26f9ca03c17604054a0e285e9aa80980f06eb550cfc"
+    },
+    {
+      "bytes": 7914,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-arm-launcher-binding-v1.json",
+      "sha256": "e5ced92ba62f8f3249f06d91f6f846f65c5d5bd5b7ef5072a9c1751e704c07a3"
+    },
+    {
+      "bytes": 3320,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-arm-nonce-policy-v1.json",
+      "sha256": "882590f401549fedba5186575f9970422f697631528527b7ffa1c9ee26f30bdd"
+    },
+    {
+      "bytes": 9302,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-arm-packet-index-v1.json",
+      "sha256": "9fb864c9209b78ed062f368e6238926bf61e35a9e6b9d7ddb718ba09d53a13f4"
+    },
+    {
+      "bytes": 1102,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-pair-ab-lock-v1.json",
+      "sha256": "c5aa84e327412ea5777e42350d05f82ca5a0859eeff62c4814ed6d6b1a43db0c"
+    },
+    {
+      "bytes": 6675,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-pair-authority-binding-v1.json",
+      "sha256": "73c51e17b00ade3cfe69b746941e9a5d4c48b29063535f6f3bbaf8bd4931f36d"
+    },
+    {
+      "bytes": 2850,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/per-pair-skill-context-binding-v1.json",
+      "sha256": "2a2a1da538d7ebe3b711534993cb4387d1b4fcd6196fb1b5a03698e4f66d72c9"
+    },
+    {
+      "bytes": 448,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/privacy-scan-v1.json",
+      "sha256": "acb939e2cb742bf7e5fb7a7bf20691a00a9b7671a0256f8378c34954703fcc7d"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2BoundedRepeatedABSha256ManifestV1",
+  "version": 1
+}

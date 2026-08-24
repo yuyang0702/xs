@@ -1,0 +1,18 @@
+{
+  "a_b_lock_failure_stops_campaign": true,
+  "automatic_retry_after_stop": false,
+  "critical_quality_regression_stops_campaign": true,
+  "engineering_hard_failure_stops_campaign": true,
+  "engineering_hard_failures": [
+    "retry_or_second_request",
+    "protocol_or_parser_failure",
+    "validator_failure",
+    "artifact_persistence_failure",
+    "authority_drift",
+    "unexpected_mutation",
+    "single_dispatch_violation"
+  ],
+  "schema": "SkillV2BoundedRepeatedABCampaignStopRulesV1",
+  "stop_state_must_bind_next_approval": true,
+  "version": 1
+}

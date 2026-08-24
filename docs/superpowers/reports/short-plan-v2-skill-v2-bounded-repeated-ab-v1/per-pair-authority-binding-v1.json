@@ -1,0 +1,113 @@
+{
+  "all_same_within_pair": true,
+  "pair_count": 5,
+  "pairs": [
+    {
+      "authority_binding_sha256": "78e85c8ea365d6d15494a433df5a64b14d680a2eb2af46a8b05c0abdd95d7291",
+      "authority_input_sha256": "95884073e86a9cf3de1107e3dec9852d76085b22d368fdfce9171e4d6d499389",
+      "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+      "creative_demand_class": "character-heavy",
+      "fixture": {
+        "bytes": 2831,
+        "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/sanitized-fixture-v1.json",
+        "sha256": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf"
+      },
+      "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+      "pair_case_id": "restored-character-heavy-v1",
+      "private_user_data": false,
+      "repository_owned_sanitized_fixture": true,
+      "same_for_a_and_b": true,
+      "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+      "story_slice_sha256": "f44bf142f19ff0f8ebe305adbc1466273bb07dbc24a4dd3b5558fae98a2f274c",
+      "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+      "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+      "version": 1
+    },
+    {
+      "authority_binding_sha256": "e74edd5ccc1479fa5c30f9067d0e20e16858435bc34ddf2a9c071462f03176d0",
+      "authority_input_sha256": "d865d92370f8920bd0f26663fcd618664c8e9c96201bb76aa3d3b3075797c515",
+      "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+      "creative_demand_class": "world-heavy",
+      "fixture": {
+        "bytes": 2899,
+        "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/sanitized-fixture-v1.json",
+        "sha256": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20"
+      },
+      "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+      "pair_case_id": "restored-world-heavy-v1",
+      "private_user_data": false,
+      "repository_owned_sanitized_fixture": true,
+      "same_for_a_and_b": true,
+      "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+      "story_slice_sha256": "ea71faed5318be910978e5e4e5b41ca9192c4c36839e4a17ef0d49f22e6d3925",
+      "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+      "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+      "version": 1
+    },
+    {
+      "authority_binding_sha256": "1772560e2bc1b7c0e75336b7521f388b9b6bf27ec2afcd945830cc96c10a0d14",
+      "authority_input_sha256": "e13415fc269e868286650cde6240037faa20aa0a13982e9a73c628c905b28a77",
+      "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+      "creative_demand_class": "conflict-pacing-heavy",
+      "fixture": {
+        "bytes": 2922,
+        "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/sanitized-fixture-v1.json",
+        "sha256": "a09f1fc23787b8c22e872aca9a862fec8204e832687b553cb1e31b98183a1df8"
+      },
+      "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+      "pair_case_id": "restored-conflict-pacing-heavy-v1",
+      "private_user_data": false,
+      "repository_owned_sanitized_fixture": true,
+      "same_for_a_and_b": true,
+      "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+      "story_slice_sha256": "9af3fc3ad1646eb8dda2a845af4a5b5f579690653deab2112ae21917047f5fdd",
+      "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+      "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+      "version": 1
+    },
+    {
+      "authority_binding_sha256": "1b70d88c80dc034a85b0486b9bc589298e56fa8974b9d2f98bc1d626f604d666",
+      "authority_input_sha256": "02a4759d6c24756dc9e5b989dd678d0ed6b42afe137c0bc7e63563d446b98d89",
+      "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+      "creative_demand_class": "setup-payoff-heavy",
+      "fixture": {
+        "bytes": 2946,
+        "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/sanitized-fixture-v1.json",
+        "sha256": "a131846ce5988f763e2656e2b65ace82873ebbfcfd0bd1da00ce6d16cc241f65"
+      },
+      "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+      "pair_case_id": "restored-setup-payoff-heavy-v1",
+      "private_user_data": false,
+      "repository_owned_sanitized_fixture": true,
+      "same_for_a_and_b": true,
+      "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+      "story_slice_sha256": "86680b9b22701b8f197c09ca20da8c0ccea1fa4e4269670b716acbadd5ac9613",
+      "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+      "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+      "version": 1
+    },
+    {
+      "authority_binding_sha256": "c333aba6d8930f57e9e35b95164ad9e0fae1028b7a68c2b52998f83d819acbd9",
+      "authority_input_sha256": "bfb9f872ad01caf1cf45037226c3d2984041dc318d017a337ab1f8334bf0e449",
+      "authority_tuple_policy_sha256": "bece3030325d2d1b89ad95328fd3ac04382b62135b2a8b4745ab952ea56e7341",
+      "creative_demand_class": "mixed",
+      "fixture": {
+        "bytes": 3196,
+        "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/sanitized-fixture-v1.json",
+        "sha256": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70"
+      },
+      "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+      "pair_case_id": "restored-mixed-v1",
+      "private_user_data": false,
+      "repository_owned_sanitized_fixture": true,
+      "same_for_a_and_b": true,
+      "schema": "SkillV2BoundedRepeatedABPairAuthorityBindingV1",
+      "story_slice_sha256": "d0bc073ad489ab37f35c8cad8364911b415fa427cbd41ee1f0c8586f11731ad4",
+      "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+      "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+      "version": 1
+    }
+  ],
+  "schema": "SkillV2BoundedRepeatedABPerPairAuthorityIndexV1",
+  "version": 1
+}

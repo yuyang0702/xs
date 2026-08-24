@@ -1,0 +1,69 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "9af3fc3ad1646eb8dda2a845af4a5b5f579690653deab2112ae21917047f5fdd",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "975f2ddcc64089a50d887db82abbe1a304edb2e70aedd32900ef9dc28a1f7b97",
+    "formal_event_id": "AB-CONFLICT-0001",
+    "formal_event_ids": [
+      "AB-CONFLICT-0001"
+    ],
+    "parent_authority_sha256": "814d51ae0f020fc8807013c214e736140ce3233ee7ee36a39ec6c1f606b41420",
+    "predecessor_boundary_sha256": "6dbc7c45435e4367577d644f13661b86d30c4960a0c2f06ad1bb4e6135efc93e",
+    "required_obligation_ids": [
+      "conflict:opposed-tactics-remain-causally-legible",
+      "pacing:pressure-escalates-through-three-distinct-beats",
+      "reversal:hostage-action-transfers-gate-control",
+      "cost:success-closes-the-clean-pursuit-route"
+    ],
+    "segment_event_ids": [
+      [
+        "AB-CONFLICT-0001"
+      ]
+    ]
+  },
+  "authority_input_sha256": "e13415fc269e868286650cde6240037faa20aa0a13982e9a73c628c905b28a77",
+  "creative_demand_class": "conflict-pacing-heavy",
+  "model_generated_output_authoritative": false,
+  "pair_case_id": "restored-conflict-pacing-heavy-v1",
+  "primary_dimensions": [
+    "opposed tactics",
+    "escalation",
+    "reversal"
+  ],
+  "private_user_data": false,
+  "raw_provider_content": false,
+  "repository_owned_sanitized_fixture": true,
+  "schema": "SkillV2BoundedRepeatedABSanitizedFixtureV1",
+  "story_slice": {
+    "confirmed_outcome_locked": true,
+    "creative_demand_class": "conflict-pacing-heavy",
+    "entry_state": "Captain Sola must cross a floodgate while Marshal Venn controls both the winch and the hostages.",
+    "exit_state": "The gate opens only halfway, Venn escapes with the map, and Sola gains the hostages but loses the clean pursuit route.",
+    "formal_event_id": "AB-CONFLICT-0001",
+    "pair_case_id": "restored-conflict-pacing-heavy-v1",
+    "required_change": "Sola's misdirection forces Venn to split his defense, then a hostage's intervention reverses who controls the gate.",
+    "required_obligation_ids": [
+      "conflict:opposed-tactics-remain-causally-legible",
+      "pacing:pressure-escalates-through-three-distinct-beats",
+      "reversal:hostage-action-transfers-gate-control",
+      "cost:success-closes-the-clean-pursuit-route"
+    ],
+    "schema": "SkillV2BoundedRepeatedABStorySliceV1",
+    "synthetic": true,
+    "version": 1
+  },
+  "story_slice_sha256": "9af3fc3ad1646eb8dda2a845af4a5b5f579690653deab2112ae21917047f5fdd",
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "version": 1
+}

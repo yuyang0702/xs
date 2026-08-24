@@ -1,0 +1,71 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "d0bc073ad489ab37f35c8cad8364911b415fa427cbd41ee1f0c8586f11731ad4",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "0aeb0c6574aa12e2c8969d08243a535a64fa417ba2495ca41100de7c64e6ef9f",
+    "formal_event_id": "AB-MIXED-0001",
+    "formal_event_ids": [
+      "AB-MIXED-0001"
+    ],
+    "parent_authority_sha256": "44be6db83af7758b375392903474a95faf1be4bd4d339e51c2ee774e48d339d5",
+    "predecessor_boundary_sha256": "588bc4bd215f394051128ce0d86cefb53c43324797baa900e6985b4cd46f8324",
+    "required_obligation_ids": [
+      "motivation:rin-seeks-proof-osei-conceals-personal-cost",
+      "world-rule:eclipse-mechanism-binds-one-living-witness",
+      "conflict:truth-arrives-after-activation-becomes-irreversible",
+      "draft-handoff:next-scene-begins-with-unequal-debt-and-active-mechanism",
+      "anti-template:realize-choice-through-specific-action-not-category-labels"
+    ],
+    "segment_event_ids": [
+      [
+        "AB-MIXED-0001"
+      ]
+    ]
+  },
+  "authority_input_sha256": "bfb9f872ad01caf1cf45037226c3d2984041dc318d017a337ab1f8334bf0e449",
+  "creative_demand_class": "mixed",
+  "model_generated_output_authoritative": false,
+  "pair_case_id": "restored-mixed-v1",
+  "primary_dimensions": [
+    "Draft handoff",
+    "template flattening",
+    "authority"
+  ],
+  "private_user_data": false,
+  "raw_provider_content": false,
+  "repository_owned_sanitized_fixture": true,
+  "schema": "SkillV2BoundedRepeatedABSanitizedFixtureV1",
+  "story_slice": {
+    "confirmed_outcome_locked": true,
+    "creative_demand_class": "mixed",
+    "entry_state": "Rin and Osei enter a wind-carved observatory as allies, but only Osei knows the eclipse mechanism demands a living witness.",
+    "exit_state": "Rin activates the mechanism, Osei becomes the bound witness, and both understand the alliance now carries an unequal debt.",
+    "formal_event_id": "AB-MIXED-0001",
+    "pair_case_id": "restored-mixed-v1",
+    "required_change": "Their competing motives, the observatory's cost rule, and an escalating choice produce a specific handoff for the next scene without changing the confirmed event outcome.",
+    "required_obligation_ids": [
+      "motivation:rin-seeks-proof-osei-conceals-personal-cost",
+      "world-rule:eclipse-mechanism-binds-one-living-witness",
+      "conflict:truth-arrives-after-activation-becomes-irreversible",
+      "draft-handoff:next-scene-begins-with-unequal-debt-and-active-mechanism",
+      "anti-template:realize-choice-through-specific-action-not-category-labels"
+    ],
+    "schema": "SkillV2BoundedRepeatedABStorySliceV1",
+    "synthetic": true,
+    "version": 1
+  },
+  "story_slice_sha256": "d0bc073ad489ab37f35c8cad8364911b415fa427cbd41ee1f0c8586f11731ad4",
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "version": 1
+}
