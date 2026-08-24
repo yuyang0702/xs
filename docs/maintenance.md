@@ -2001,3 +2001,14 @@ inspection. Ordinary invalid-parent cases use the stable
 failures use `approval_head_git_infrastructure_failure`. Any launcher change
 invalidates the prior disabled packet and requires a newly materialized packet,
 approval parent, approval-only successor, and single-use nonce.
+
+## Skill V2 B-arm historical materialization roots
+
+The v3 B-arm materializer treats exactly the sealed v1 and v2 materialization
+roots as read-only historical evidence. Each root is excluded from committed
+baseline drift only after its fixed manifest identity, manifest entry count,
+every manifested byte, and closed-world root coverage are exact. Missing,
+mutated, unmanifested, prefix-lookalike, version-lookalike, or arbitrary extra
+roots fail closed. Active support/source drift remains subject to the existing
+exact-path policy. The verification writes no historical file and does not
+authorize an approval, nonce, credential lookup, Provider client, or dispatch.

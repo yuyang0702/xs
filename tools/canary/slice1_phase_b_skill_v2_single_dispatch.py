@@ -58,6 +58,20 @@ PREDECESSOR_MATERIALIZATION_ROOT = (
     "docs/superpowers/reports/"
     "short-plan-v2-slice1-phase-b-skill-v2-materialization-v2"
 )
+HISTORICAL_MATERIALIZATION_ROOT_SPECS = (
+    {
+        "root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1",
+        "manifest_definition_sha256": "d8ae1e531d08c2a704f2383c915ea1af2a4a01e255d26f187db9d7813582d5f2",
+        "manifest_file_sha256": "b07edf3736fc76981bb0a3147ffed8d4638b22d086c20530317e84ebf790ad82",
+        "manifest_file_count": 25,
+    },
+    {
+        "root": PREDECESSOR_MATERIALIZATION_ROOT,
+        "manifest_definition_sha256": "fdc0bd76bd0c8ca396c17398055d6a3a0be8af9b0da5bb47a0116cc063c7c121",
+        "manifest_file_sha256": "2e8033f8027252bfecc8d1d59bab893269fb82dd656642080a9f4d378cd63612",
+        "manifest_file_count": 27,
+    },
+)
 AB_PAIR_ID = "skill-v2-real-ab-20260824-v3-001"
 COHORT_ID = "slice1-phase-b-skill-v2-real-ab-v3-20260824-001"
 APPROVAL_SCOPE = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V3_ONLY"
@@ -78,6 +92,13 @@ NONCE_LEDGER_RELATIVE_PATH = (
 )
 NONCE_LEDGER_SCHEMA = "SkillV2RealABSingleDispatchLedgerV1"
 LAUNCHER_RELATIVE_PATH = "tools/canary/slice1_phase_b_skill_v2_single_dispatch.py"
+ACTIVE_SUPPORT_PATHS = frozenset({
+    LAUNCHER_RELATIVE_PATH,
+    "docs/maintenance.md",
+    "tests/canary/test_skill_v2_real_ab_b_arm.py",
+    "tests/canary/test_skill_v2_b_arm_head_successor.py",
+    "tests/canary/test_skill_v2_b_arm_historical_roots.py",
+})
 BUNDLE_RELATIVE_ROOT = "vendor/novel-skills/source"
 A_MATERIALIZATION_ROOT = (
     "docs/superpowers/reports/"
@@ -170,6 +191,8 @@ FILES = {
     "head_contract": "skill-v2-b-arm-head-successor-contract-v1.json",
     "ancestry": "skill-v2-b-arm-ancestry-fail-close-v1.json",
     "head_validator": "skill-v2-b-arm-head-successor-validator-v1.json",
+    "history": "skill-v2-b-arm-historical-roots-binding-v1.json",
+    "baseline_policy": "skill-v2-b-arm-committed-path-baseline-policy-v1.json",
     "success_tail": "skill-v2-b-arm-full-success-tail-offline-v1.json",
     "offline": "skill-v2-b-arm-offline-test-receipt-v1.json",
     "privacy": "skill-v2-b-arm-privacy-scan-v1.json",
@@ -527,6 +550,118 @@ def _manifest_exact(repo_root: Path, relative_path: str) -> dict[str, Any]:
     }
 
 
+def verify_historical_materialization_roots(repo_root: Path) -> dict[str, Any]:
+    """Verify the only historical roots accepted by the v3 drift gate."""
+    try:
+        root_results: list[dict[str, Any]] = []
+        verified_paths: set[str] = set()
+        for spec in HISTORICAL_MATERIALIZATION_ROOT_SPECS:
+            root = str(spec["root"])
+            root_path = repo_root / root
+            manifest_relative_path = f"{root}/sha256-manifest-v1.json"
+            manifest_path = repo_root / manifest_relative_path
+            _require(root_path.is_dir(), "historical_root_missing")
+            _require(manifest_path.is_file(), "historical_manifest_missing")
+            _require(
+                _sha_file(manifest_path) == spec["manifest_file_sha256"],
+                "historical_manifest_file_changed",
+            )
+            manifest = _read_json(manifest_path)
+            _require(
+                manifest.get("manifest_definition_sha256")
+                == spec["manifest_definition_sha256"],
+                "historical_manifest_definition_changed",
+            )
+            exact = _manifest_exact(repo_root, manifest_relative_path)
+            _require(
+                exact["entry_count"] == spec["manifest_file_count"],
+                "historical_manifest_file_count_changed",
+            )
+            manifested_paths = {
+                str(entry.get("path") or "")
+                for entry in manifest.get("files") or ()
+            }
+            expected_paths = manifested_paths | {manifest_relative_path}
+            actual_paths = {
+                path.relative_to(repo_root).as_posix()
+                for path in root_path.rglob("*")
+                if path.is_file()
+            }
+            _require(actual_paths == expected_paths, "historical_root_coverage_changed")
+            verified_paths.update(expected_paths)
+            root_results.append({
+                "root": root,
+                "manifest_relative_path": manifest_relative_path,
+                "manifest_definition_sha256": spec["manifest_definition_sha256"],
+                "manifest_file_sha256": spec["manifest_file_sha256"],
+                "manifest_file_count": spec["manifest_file_count"],
+                "manifest_and_root_coverage_exact": True,
+                "read_only": True,
+                "write_count": 0,
+            })
+    except (OSError, ValueError, TypeError, KeyError, SkillV2BArmError):
+        raise SkillV2BArmError(
+            "SKILL_V2_B_ARM_HISTORICAL_ROOTS_NO_GO_HISTORICAL_DRIFT"
+        ) from None
+
+    return _sealed(
+        "skill-v2-b-arm-historical-roots-binding-v1",
+        {
+            "schema": "SkillV2BArmHistoricalRootsBindingV1",
+            "version": 1,
+            "status": "exact",
+            "allowlist_mode": "CLOSED_WORLD",
+            "allowed_historical_root_count": len(root_results),
+            "historical_roots": [item["root"] for item in root_results],
+            "roots": root_results,
+            "verified_committed_paths": sorted(verified_paths),
+            "historical_write_count": 0,
+            "prefix_acceptance": False,
+            "arbitrary_extra_root_acceptance": False,
+        },
+        "historical_roots_binding_sha256",
+    )
+
+
+def validate_committed_path_baseline(
+    *,
+    committed_paths: tuple[str, ...],
+    historical_roots: Mapping[str, Any],
+) -> dict[str, Any]:
+    _require(historical_roots.get("status") == "exact", "historical_roots_not_exact")
+    _require(
+        historical_roots.get("allowlist_mode") == "CLOSED_WORLD"
+        and historical_roots.get("allowed_historical_root_count") == 2,
+        "historical_roots_not_closed_world",
+    )
+    verified_paths = frozenset(historical_roots.get("verified_committed_paths") or ())
+    active_paths = sorted(set(committed_paths) - verified_paths)
+    _require(
+        all(path in ACTIVE_SUPPORT_PATHS for path in active_paths),
+        "SKILL_V2_REAL_AB_B_ARM_MATERIALIZATION_NO_GO_BASELINE_DRIFT",
+    )
+    return _sealed(
+        "skill-v2-b-arm-committed-path-baseline-policy-v1",
+        {
+            "schema": "SkillV2BArmCommittedPathBaselinePolicyV1",
+            "version": 1,
+            "status": "exact",
+            "active_support_paths": active_paths,
+            "verified_historical_committed_path_count": len(
+                set(committed_paths) & verified_paths
+            ),
+            "historical_roots_binding_sha256": historical_roots[
+                "historical_roots_binding_sha256"
+            ],
+            "historical_path_exclusion_requires_manifest_exact": True,
+            "historical_path_exclusion_before_verification": False,
+            "active_source_drift_check_unchanged": True,
+            "prefix_acceptance": False,
+        },
+        "committed_path_baseline_policy_sha256",
+    )
+
+
 def verify_a_arm_baseline(repo_root: Path) -> dict[str, Any]:
     materialization = _manifest_exact(
         repo_root, f"{A_MATERIALIZATION_ROOT}/sha256-manifest-v1.json",
@@ -856,6 +991,8 @@ def launcher_binding(
     profile_sha256: str,
     head_contract_sha256: str,
     head_validator_sha256: str,
+    historical_roots_sha256: str,
+    committed_path_baseline_policy_sha256: str,
 ) -> dict[str, Any]:
     return _sealed(
         "skill-v2-b-arm-launcher-binding-v1",
@@ -879,6 +1016,10 @@ def launcher_binding(
             "audit_serialization_sha256": a_launcher.audit_serialization_contract()["audit_serialization_sha256"],
             "head_successor_contract_sha256": head_contract_sha256,
             "head_successor_validator_sha256": head_validator_sha256,
+            "historical_roots_binding_sha256": historical_roots_sha256,
+            "committed_path_baseline_policy_sha256": (
+                committed_path_baseline_policy_sha256
+            ),
             "preflight_order": [
                 "packet_manifest_validation",
                 "launcher_binding_validation",
@@ -1115,21 +1256,13 @@ def build_packet_documents(
         raise SkillV2BArmError(
             "SKILL_V2_REAL_AB_B_ARM_MATERIALIZATION_NO_GO_BASELINE_DRIFT"
         ) from exc
+    historical_roots = verify_historical_materialization_roots(repo_root)
     support_changes = tuple(filter(None, base._git(
         repo_root, "diff", "--name-only", f"{BASELINE_HEAD}..{git['head']}",
     ).splitlines()))
-    _require(
-        all(
-            path in {
-                LAUNCHER_RELATIVE_PATH,
-                "docs/maintenance.md",
-                "tests/canary/test_skill_v2_real_ab_b_arm.py",
-                "tests/canary/test_skill_v2_b_arm_head_successor.py",
-            }
-            or path.startswith(PREDECESSOR_MATERIALIZATION_ROOT + "/")
-            for path in support_changes
-        ),
-        "SKILL_V2_REAL_AB_B_ARM_MATERIALIZATION_NO_GO_BASELINE_DRIFT",
+    baseline_policy = validate_committed_path_baseline(
+        committed_paths=support_changes,
+        historical_roots=historical_roots,
     )
     a_ref = verify_a_arm_baseline(repo_root)
     source_truth = verify_skill_v2_source_of_truth(repo_root)
@@ -1166,6 +1299,10 @@ def build_packet_documents(
         profile_sha256=profile["canonical_profile_sha256"],
         head_contract_sha256=head_contract["head_successor_contract_sha256"],
         head_validator_sha256=head_validator["head_successor_validator_sha256"],
+        historical_roots_sha256=historical_roots["historical_roots_binding_sha256"],
+        committed_path_baseline_policy_sha256=baseline_policy[
+            "committed_path_baseline_policy_sha256"
+        ],
     )
     workload_body = {key: value for key, value in workload_a.items() if key != "workload_sha256"}
     workload_body.update({
@@ -1299,6 +1436,12 @@ def build_packet_documents(
         "head_successor_contract_sha256": head_contract["head_successor_contract_sha256"],
         "ancestry_fail_close_sha256": ancestry["ancestry_fail_close_sha256"],
         "head_successor_validator_sha256": head_validator["head_successor_validator_sha256"],
+        "historical_roots_binding_sha256": historical_roots[
+            "historical_roots_binding_sha256"
+        ],
+        "committed_path_baseline_policy_sha256": baseline_policy[
+            "committed_path_baseline_policy_sha256"
+        ],
     }
     approval = _approval_template(bound)
     validation = dict(validation_summary)
@@ -1337,6 +1480,11 @@ def build_packet_documents(
             "ab_lock": "PASS",
             "launcher_negative_matrix": validation.get("launcher", "PASS"),
             "full_success_tail": validation.get("success_tail", "PENDING"),
+            "historical_materialization_roots": "PASS",
+            "historical_root_allowlist_mode": "CLOSED_WORLD",
+            "allowed_historical_root_count": 2,
+            "historical_root_write_count": 0,
+            "active_source_drift_check": "UNCHANGED",
             "external_actions": dict(ZERO_COUNTERS),
         },
         "offline_test_receipt_sha256",
@@ -1369,6 +1517,8 @@ def build_packet_documents(
         FILES["head_contract"]: _json_bytes(head_contract),
         FILES["ancestry"]: _json_bytes(ancestry),
         FILES["head_validator"]: _json_bytes(head_validator),
+        FILES["history"]: _json_bytes(historical_roots),
+        FILES["baseline_policy"]: _json_bytes(baseline_policy),
         FILES["success_tail"]: _json_bytes(success_tail),
         FILES["offline"]: _json_bytes(offline),
     }
@@ -1376,7 +1526,9 @@ def build_packet_documents(
 
 `SKILL_V2_B_ARM_HEAD_ANCESTRY_TYPED_FAIL_CLOSE_FIXED`
 
-`SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V3_AFTER_HEAD_VERIFIER_FIX`
+`SKILL_V2_B_ARM_HISTORICAL_ROOTS_READ_ONLY_ACCEPTANCE_FIXED`
+
+`SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V3_AFTER_HISTORICAL_ROOT_FIX`
 
 `SKILL_V2_REAL_AB_B_ARM_READY_FOR_FRESH_USER_APPROVAL=YES`
 
@@ -1429,14 +1581,16 @@ def build_packet_documents(
 45. Approval HEAD successor contract SHA-256: `{head_contract['head_successor_contract_sha256']}`
 46. Ancestry typed fail-close SHA-256: `{ancestry['ancestry_fail_close_sha256']}`
 47. Approval HEAD successor validator SHA-256: `{head_validator['head_successor_validator_sha256']}`
-48. Offline B-arm tests: focused `{validation.get('focused', 'PENDING')}`; related `{validation.get('related', 'PENDING')}`; full suite `{validation.get('full_suite', 'PENDING')}`; Strict L3 `{validation.get('strict_l3', 'PENDING')}`
-49. Synthetic full success-tail: `{validation.get('success_tail', 'PENDING')}` through parser -> model_validate -> local derivation -> validator -> FROZEN -> audit -> write -> persistence
-50. Manifest definition SHA-256: `SEE_SELF_EXCLUDED_SHA256_MANIFEST_AND_FINAL_SEAL_REPORT`
-51. Manifest file SHA-256: `SEE_FINAL_SEAL_REPORT`
-52. Manifest coverage: `ALL_NON_MANIFEST_FILES_EXACT`; exact count is bound in self-excluded manifest
-53. Privacy: `EXACT`; credential/raw Provider/raw story/private absolute path matches `0`
-54. External counters: credential `0`, Provider client `0`, Provider request `0`, HTTP POST `0`, network `0`, model `0`, paid `0`
-55. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL_AFTER_HEAD_VERIFIER_FIX`
+48. Historical roots binding: `PASS` / `{historical_roots['historical_roots_binding_sha256']}` / exact v1+v2 only / writes `0`
+49. Committed-path baseline policy: `PASS` / `{baseline_policy['committed_path_baseline_policy_sha256']}` / prefix acceptance `NO`
+50. Offline B-arm tests: focused `{validation.get('focused', 'PENDING')}`; related `{validation.get('related', 'PENDING')}`; full suite `{validation.get('full_suite', 'PENDING')}`; Strict L3 `{validation.get('strict_l3', 'PENDING')}`
+51. Synthetic full success-tail: `{validation.get('success_tail', 'PENDING')}` through parser -> model_validate -> local derivation -> validator -> FROZEN -> audit -> write -> persistence
+52. Manifest definition SHA-256: `SEE_SELF_EXCLUDED_SHA256_MANIFEST_AND_FINAL_SEAL_REPORT`
+53. Manifest file SHA-256: `SEE_FINAL_SEAL_REPORT`
+54. Manifest coverage: `ALL_NON_MANIFEST_FILES_EXACT`; exact count is bound in self-excluded manifest
+55. Privacy: `EXACT`; credential/raw Provider/raw story/private absolute path matches `0`
+56. External counters: credential `0`, Provider client `0`, Provider request `0`, HTTP POST `0`, network `0`, model `0`, paid `0`
+57. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL_AFTER_HISTORICAL_ROOT_FIX`
 
 ## Closed-world conclusion
 
@@ -1477,6 +1631,9 @@ not production active.
 `ARBITRARY_DESCENDANT_REJECTED=YES`
 `SOURCE_MUTATION_SUCCESSOR_REJECTED=YES`
 `HEAD_VALIDATION_BEFORE_NONCE_RESERVATION=YES`
+`HISTORICAL_ROOTS_V1_V2_EXACT=YES`
+`HISTORICAL_ROOTS_READ_ONLY=YES`
+`ARBITRARY_HISTORICAL_ROOT_ACCEPTANCE=NO`
 `EXECUTION_AUTHORIZED=NO`  
 `NAMED_APPROVER=null`  
 `SIGNED_APPROVAL=ABSENT`  
@@ -1509,6 +1666,8 @@ not production active.
         "engineering": engineering,
         "comparison": comparison,
         "approval": approval,
+        "historical_roots": historical_roots,
+        "baseline_policy": baseline_policy,
         "success_tail": success_tail,
         "offline": offline,
         "privacy": privacy,
@@ -1599,6 +1758,8 @@ def validate_materialized_packet(
     success_tail = _read_json(packet_root / FILES["success_tail"])
     head_contract = _read_json(packet_root / FILES["head_contract"])
     head_validator = _read_json(packet_root / FILES["head_validator"])
+    historical_roots = _read_json(packet_root / FILES["history"])
+    baseline_policy = _read_json(packet_root / FILES["baseline_policy"])
     _require(
         head_contract == approval_head_successor_contract(),
         "head_successor_contract_changed",
@@ -1640,6 +1801,10 @@ def validate_materialized_packet(
         profile_sha256=rebuilt_profile["canonical_profile_sha256"],
         head_contract_sha256=head_contract["head_successor_contract_sha256"],
         head_validator_sha256=head_validator["head_successor_validator_sha256"],
+        historical_roots_sha256=historical_roots["historical_roots_binding_sha256"],
+        committed_path_baseline_policy_sha256=baseline_policy[
+            "committed_path_baseline_policy_sha256"
+        ],
     )
     _require(launcher == expected_launcher, "launcher_binding_mismatch")
     _require(comparison.get("primary_changed_variable") == "SKILL_CONTEXT", "ab_primary_variable_changed")
@@ -1665,6 +1830,8 @@ def validate_materialized_packet(
         "comparison": comparison,
         "head_contract": head_contract,
         "head_validator": head_validator,
+        "historical_roots": historical_roots,
+        "baseline_policy": baseline_policy,
     }
 
 
@@ -1947,7 +2114,7 @@ def _main() -> int:
             },
         )
         print(json.dumps({
-            "status": "SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V3_AFTER_HEAD_VERIFIER_FIX",
+            "status": "SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_V3_AFTER_HISTORICAL_ROOT_FIX",
             "manifest_definition_sha256": result["manifest"]["manifest_definition_sha256"],
             "manifest_file_sha256": result["manifest_file_sha256"],
         }, sort_keys=True))
