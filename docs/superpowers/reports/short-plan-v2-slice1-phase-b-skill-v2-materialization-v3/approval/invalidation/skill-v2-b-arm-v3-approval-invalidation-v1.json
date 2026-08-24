@@ -1,0 +1,28 @@
+{
+  "approval_id": "skill-v2-b-arm-v3-approval-20260824t104817z-001",
+  "approval_parent_head": "87b9716cdcae3f6d4312f6528863369773d55c25",
+  "approval_seal_head": "98cceb5f4398db3cfcea5dde460d2434ce81636a",
+  "execution_authorized": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "first_failing_invariant": "POST_SEAL_FOCUSED_HEAD_SUCCESSOR_TEST_MATRIX_EXACT",
+  "failing_test_count": 3,
+  "failing_test_owner": "tests/canary/test_skill_v2_b_arm_head_successor.py",
+  "invalidation_mechanism": "CURRENT_HEAD_IS_NO_LONGER_ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR_OF_MATERIALIZATION_PARENT",
+  "no_automatic_fix": true,
+  "nonce_id": "skill-v2-b-arm-v3-nonce-20260824t104817z-001",
+  "nonce_state": "INVALIDATED_UNCONSUMED_UNRESERVED_NOT_EXECUTABLE",
+  "reason_code": "SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL_AFTER_HISTORICAL_ROOT_FIX_NO_GO",
+  "schema": "SkillV2BArmV3ApprovalInvalidationV1",
+  "signed_approval_status": "INVALIDATED",
+  "version": 1
+}
