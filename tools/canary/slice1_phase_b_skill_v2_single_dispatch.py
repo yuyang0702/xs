@@ -11,9 +11,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 from datetime import datetime, timezone
+import inspect
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 from typing import Any, Mapping
 
@@ -47,19 +49,24 @@ import tools.canary.slice1_phase_b_v5_single_dispatch as a_launcher
 
 EXPECTED_BRANCH = base.EXPECTED_BRANCH
 BASELINE_HEAD = "1f6e9a715e96b41e1e4ebf70039f392a63bcf15b"
-PROFILE_ID = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_PACKET_V1"
+PROFILE_ID = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_PACKET_V2"
 SKILL_PROFILE_ID = "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1"
 SKILL_ARM = "SKILL_CONTEXT_V2"
-AB_PAIR_ID = "skill-v2-real-ab-20260824-v1-001"
-COHORT_ID = "slice1-phase-b-skill-v2-real-ab-v1-20260824-001"
-APPROVAL_SCOPE = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V1_ONLY"
-MATERIALIZATION_RELATIVE_ROOT = (
+PREDECESSOR_AB_PAIR_ID = "skill-v2-real-ab-20260824-v1-001"
+PREDECESSOR_MATERIALIZATION_ROOT = (
     "docs/superpowers/reports/"
     "short-plan-v2-slice1-phase-b-skill-v2-materialization-v1"
 )
+AB_PAIR_ID = "skill-v2-real-ab-20260824-v2-001"
+COHORT_ID = "slice1-phase-b-skill-v2-real-ab-v2-20260824-001"
+APPROVAL_SCOPE = "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V2_ONLY"
+MATERIALIZATION_RELATIVE_ROOT = (
+    "docs/superpowers/reports/"
+    "short-plan-v2-slice1-phase-b-skill-v2-materialization-v2"
+)
 EXECUTION_RELATIVE_ROOT = (
     "docs/superpowers/reports/"
-    "short-plan-v2-slice1-phase-b-skill-v2-execution-v1"
+    "short-plan-v2-slice1-phase-b-skill-v2-execution-v2"
 )
 APPROVAL_RELATIVE_PATH = (
     MATERIALIZATION_RELATIVE_ROOT
@@ -159,12 +166,16 @@ FILES = {
     "engineering": "skill-v2-b-arm-engineering-rubric-v1.json",
     "comparison": "skill-v2-b-arm-comparison-lock-v1.json",
     "old_approval": "skill-v2-b-arm-old-approval-nonreuse-v1.json",
+    "head_contract": "skill-v2-b-arm-head-successor-contract-v1.json",
+    "head_validator": "skill-v2-b-arm-head-successor-validator-v1.json",
     "success_tail": "skill-v2-b-arm-full-success-tail-offline-v1.json",
     "offline": "skill-v2-b-arm-offline-test-receipt-v1.json",
     "privacy": "skill-v2-b-arm-privacy-scan-v1.json",
     "report": "skill-v2-b-arm-final-report-v1.md",
     "manifest": "sha256-manifest-v1.json",
 }
+
+_CANONICAL_COMMIT_SHA_RE = re.compile(r"[0-9a-f]{40}\Z")
 
 
 class SkillV2BArmError(RuntimeError):
@@ -187,6 +198,229 @@ _sealed = legacy._sealed
 _read_json = legacy._read_json
 _write_json = legacy._write_json
 _source_binding = legacy._source_binding
+
+
+def approval_head_successor_contract() -> dict[str, Any]:
+    payload = {
+        "schema": "SkillV2BArmApprovalHeadSuccessorContractV1",
+        "version": 1,
+        "branch": EXPECTED_BRANCH,
+        "materialization_relative_root": MATERIALIZATION_RELATIVE_ROOT,
+        "approval_evidence_relative_root": MATERIALIZATION_RELATIVE_ROOT + "/approval",
+        "relation": "EXACT_PARENT_OR_ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR",
+        "materialization_seal_policy": (
+            "implementation_head_plus_exact_manifest_covered_packet_files"
+        ),
+        "approval_seal_policy": "one_direct_child_changing_only_approval_evidence_root",
+        "arbitrary_descendant_allowed": False,
+        "source_mutation_between_parent_and_current_allowed": False,
+        "generic_descendant_fallback": False,
+        "auto_rebind_approval_parent_head": False,
+        "unknown_successor_state_fails_closed": True,
+        "approval_parent_head_canonical_form": "lowercase_40_hex",
+        "validation_order": [
+            "packet_build_validation",
+            "approval_parent_head_validation",
+            "current_head_successor_validation",
+            "scope_cohort_ab_lock_validation",
+            "approval_guard_budget_validation",
+            "nonce_reservation",
+            "credential_lookup",
+            "provider_client_creation",
+            "single_dispatch",
+        ],
+    }
+    return _sealed(
+        "skill-v2-b-arm-head-successor-contract-v1",
+        payload,
+        "head_successor_contract_sha256",
+    )
+
+
+def head_successor_validator_binding() -> dict[str, Any]:
+    source = inspect.getsource(validate_approval_head_successor_relation)
+    git_source = inspect.getsource(verify_approval_head_successor)
+    payload = {
+        "schema": "SkillV2BArmApprovalHeadSuccessorValidatorV1",
+        "version": 1,
+        "owner": (
+            "tools.canary.slice1_phase_b_skill_v2_single_dispatch."
+            "verify_approval_head_successor"
+        ),
+        "pure_relation_validator_sha256": _sha_bytes(source.encode("utf-8")),
+        "git_backed_validator_sha256": _sha_bytes(git_source.encode("utf-8")),
+        "validation_before_nonce_reservation": True,
+        "validation_before_credential_lookup": True,
+        "validation_before_network": True,
+    }
+    return _sealed(
+        "skill-v2-b-arm-head-successor-validator-v1",
+        payload,
+        "head_successor_validator_sha256",
+    )
+
+
+def validate_approval_head_successor_relation(
+    *,
+    expected_branch: str,
+    current_branch: str,
+    implementation_head: str,
+    approval_parent_head: str,
+    current_head: str,
+    materialization_parent_is_descendant: bool,
+    materialization_parent_heads: tuple[str, ...],
+    materialization_changed_paths: tuple[str, ...],
+    expected_materialization_paths: tuple[str, ...],
+    current_parent_heads: tuple[str, ...],
+    current_changed_paths: tuple[str, ...],
+) -> dict[str, Any]:
+    """Validate the closed-world materialization -> approval seal lineage."""
+
+    _require(current_branch == expected_branch, "approval_current_branch_mismatch")
+    _require(
+        _CANONICAL_COMMIT_SHA_RE.fullmatch(approval_parent_head) is not None,
+        "approval_parent_head_malformed",
+    )
+    _require(
+        _CANONICAL_COMMIT_SHA_RE.fullmatch(implementation_head) is not None,
+        "materialization_implementation_head_malformed",
+    )
+    _require(
+        _CANONICAL_COMMIT_SHA_RE.fullmatch(current_head) is not None,
+        "approval_current_head_malformed",
+    )
+    _require(
+        materialization_parent_is_descendant,
+        "approval_parent_head_mismatch",
+    )
+    _require(
+        materialization_parent_heads == (implementation_head,),
+        "approval_parent_head_not_direct_materialization_seal",
+    )
+    _require(
+        set(materialization_changed_paths) == set(expected_materialization_paths),
+        "approval_parent_head_mismatch",
+    )
+    _require(
+        len(materialization_changed_paths) == len(set(materialization_changed_paths)),
+        "approval_materialization_path_set_ambiguous",
+    )
+
+    approval_prefix = MATERIALIZATION_RELATIVE_ROOT + "/approval/"
+    if current_head == approval_parent_head:
+        _require(not current_changed_paths, "approval_exact_parent_has_changed_paths")
+        relation = "EXACT_APPROVAL_PARENT"
+    else:
+        _require(
+            current_parent_heads == (approval_parent_head,),
+            "approval_current_head_not_direct_successor",
+        )
+        _require(bool(current_changed_paths), "approval_successor_has_no_evidence")
+        _require(
+            all(path.startswith(approval_prefix) for path in current_changed_paths),
+            "approval_successor_contains_non_approval_evidence_change",
+        )
+        relation = "ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR"
+    return {
+        "status": "exact",
+        "approval_parent_head": approval_parent_head,
+        "current_head": current_head,
+        "current_head_relation": relation,
+        "materialization_changed_paths": list(materialization_changed_paths),
+        "current_changed_paths": list(current_changed_paths),
+    }
+
+
+def verify_approval_head_successor(
+    *,
+    repo_root: Path,
+    approval_parent_head: str,
+    implementation_head: str,
+    manifest: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bind the approval parent and current HEAD before nonce reservation."""
+
+    git = base.verify_git_gate(repo_root, require_clean=True)
+    _require(
+        _CANONICAL_COMMIT_SHA_RE.fullmatch(approval_parent_head) is not None,
+        "approval_parent_head_malformed",
+    )
+    _require(
+        _CANONICAL_COMMIT_SHA_RE.fullmatch(implementation_head) is not None,
+        "materialization_implementation_head_malformed",
+    )
+    expected_paths = tuple(
+        sorted(
+            [str(entry["path"]) for entry in manifest.get("files") or ()]
+            + [MATERIALIZATION_RELATIVE_ROOT + "/" + FILES["manifest"]]
+        )
+    )
+    try:
+        base._git(
+            repo_root,
+            "merge-base",
+            "--is-ancestor",
+            implementation_head,
+            approval_parent_head,
+        )
+        materialization_parent_is_descendant = True
+    except Exception:
+        materialization_parent_is_descendant = False
+    materialization_changed = tuple(
+        filter(
+            None,
+            base._git(
+                repo_root,
+                "diff",
+                "--name-only",
+                f"{implementation_head}..{approval_parent_head}",
+            ).splitlines(),
+        )
+    ) if materialization_parent_is_descendant else ()
+    if materialization_parent_is_descendant:
+        materialization_parent_line = base._git(
+            repo_root,
+            "rev-list",
+            "--parents",
+            "-n",
+            "1",
+            approval_parent_head,
+        ).split()
+        materialization_parent_heads = tuple(materialization_parent_line[1:])
+    else:
+        materialization_parent_heads = ()
+    if git["head"] == approval_parent_head:
+        current_parents: tuple[str, ...] = ()
+        current_changed: tuple[str, ...] = ()
+    else:
+        parent_line = base._git(
+            repo_root, "rev-list", "--parents", "-n", "1", git["head"],
+        ).split()
+        current_parents = tuple(parent_line[1:])
+        current_changed = tuple(
+            filter(
+                None,
+                base._git(
+                    repo_root,
+                    "diff",
+                    "--name-only",
+                    f"{approval_parent_head}..{git['head']}",
+                ).splitlines(),
+            )
+        )
+    return validate_approval_head_successor_relation(
+        expected_branch=EXPECTED_BRANCH,
+        current_branch=git["branch"],
+        implementation_head=implementation_head,
+        approval_parent_head=approval_parent_head,
+        current_head=git["head"],
+        materialization_parent_is_descendant=materialization_parent_is_descendant,
+        materialization_parent_heads=materialization_parent_heads,
+        materialization_changed_paths=materialization_changed,
+        expected_materialization_paths=expected_paths,
+        current_parent_heads=current_parents,
+        current_changed_paths=current_changed,
+    )
 
 
 def _manifest_exact(repo_root: Path, relative_path: str) -> dict[str, Any]:
@@ -461,8 +695,8 @@ def packet_profile() -> dict[str, Any]:
     return _sealed(
         "skill-v2-b-arm-packet-profile-v1",
         {
-            "schema": "SkillV2BArmPacketProfileV1",
-            "version": 1,
+            "schema": "SkillV2BArmPacketProfileV2",
+            "version": 2,
             "profile_id": PROFILE_ID,
             "skill_profile_id": SKILL_PROFILE_ID,
             "skill_arm": SKILL_ARM,
@@ -536,6 +770,8 @@ def launcher_binding(
     guard: Mapping[str, Any],
     accounting: Mapping[str, Any],
     profile_sha256: str,
+    head_contract_sha256: str,
+    head_validator_sha256: str,
 ) -> dict[str, Any]:
     return _sealed(
         "skill-v2-b-arm-launcher-binding-v1",
@@ -557,9 +793,13 @@ def launcher_binding(
             "transport_guard_sha256": guard["transport_guard_sha256"],
             "attempt_accounting_sha256": accounting["attempt_accounting_sha256"],
             "audit_serialization_sha256": a_launcher.audit_serialization_contract()["audit_serialization_sha256"],
+            "head_successor_contract_sha256": head_contract_sha256,
+            "head_successor_validator_sha256": head_validator_sha256,
             "preflight_order": [
                 "packet_manifest_validation",
                 "launcher_binding_validation",
+                "approval_parent_head_validation",
+                "current_head_successor_validation",
                 "scope_cohort_root_profile_validation",
                 "approval_validation",
                 "single_dispatch_guard_validation",
@@ -795,10 +1035,15 @@ def build_packet_documents(
         repo_root, "diff", "--name-only", f"{BASELINE_HEAD}..{git['head']}",
     ).splitlines()))
     _require(
-        set(support_changes) <= {
-            LAUNCHER_RELATIVE_PATH,
-            "tests/canary/test_skill_v2_real_ab_b_arm.py",
-        },
+        all(
+            path in {
+                LAUNCHER_RELATIVE_PATH,
+                "tests/canary/test_skill_v2_real_ab_b_arm.py",
+                "tests/canary/test_skill_v2_b_arm_head_successor.py",
+            }
+            or path.startswith(PREDECESSOR_MATERIALIZATION_ROOT + "/")
+            for path in support_changes
+        ),
         "SKILL_V2_REAL_AB_B_ARM_MATERIALIZATION_NO_GO_BASELINE_DRIFT",
     )
     a_ref = verify_a_arm_baseline(repo_root)
@@ -825,12 +1070,16 @@ def build_packet_documents(
         / "phase-b-current-skill-v3-authority-tuple-normalization-v1.json",
     )
     _require(normalization.get("authority_tuple_normalization_sha256") == "6775a251e3fece7225e4ddb2a780e18ceccb5a3ccfff785004837a44dbc5805a", "authority_tuple_normalization_changed")
+    head_contract = approval_head_successor_contract()
+    head_validator = head_successor_validator_binding()
     launcher = launcher_binding(
         repo_root,
         implementation_head=git["head"],
         guard=guard,
         accounting=accounting,
         profile_sha256=profile["canonical_profile_sha256"],
+        head_contract_sha256=head_contract["head_successor_contract_sha256"],
+        head_validator_sha256=head_validator["head_successor_validator_sha256"],
     )
     workload_body = {key: value for key, value in workload_a.items() if key != "workload_sha256"}
     workload_body.update({
@@ -901,6 +1150,7 @@ def build_packet_documents(
             "schema": "SkillV2BArmABPairBindingV1",
             "version": 1,
             "ab_pair_id": AB_PAIR_ID,
+            "predecessor_ab_pair_id": PREDECESSOR_AB_PAIR_ID,
             "a_arm_cohort": A_COHORT_ID,
             "b_arm_cohort": COHORT_ID,
             "a_arm": "CURRENT_RUNTIME_SKILL",
@@ -921,6 +1171,7 @@ def build_packet_documents(
             "approval_scope": APPROVAL_SCOPE,
             "cohort_id": COHORT_ID,
             "ab_pair_id": AB_PAIR_ID,
+            "predecessor_ab_pair_id": PREDECESSOR_AB_PAIR_ID,
             "materialization_relative_root": MATERIALIZATION_RELATIVE_ROOT,
             "execution_relative_root": EXECUTION_RELATIVE_ROOT,
             "skill_arm": SKILL_ARM,
@@ -959,6 +1210,8 @@ def build_packet_documents(
         "engineering_rubric_sha256": engineering["engineering_rubric_sha256"],
         "comparison_lock_sha256": comparison["comparison_lock_sha256"],
         "old_approval_nonreuse_sha256": old_approval["old_approval_nonreuse_sha256"],
+        "head_successor_contract_sha256": head_contract["head_successor_contract_sha256"],
+        "head_successor_validator_sha256": head_validator["head_successor_validator_sha256"],
     }
     approval = _approval_template(bound)
     validation = dict(validation_summary)
@@ -1003,7 +1256,7 @@ def build_packet_documents(
     )
     docs: dict[str, bytes] = {
         "README.md": (
-            "# Skill V2 REAL A/B B-arm materialization v1\n\n"
+            "# Skill V2 REAL A/B B-arm materialization v2\n\n"
             "Fresh disabled, closed-world, offline-only packet. No approval or nonce.\n"
         ).encode("utf-8"),
         FILES["plan"]: _json_bytes(plan),
@@ -1026,12 +1279,16 @@ def build_packet_documents(
         FILES["engineering"]: _json_bytes(engineering),
         FILES["comparison"]: _json_bytes(comparison),
         FILES["old_approval"]: _json_bytes(old_approval),
+        FILES["head_contract"]: _json_bytes(head_contract),
+        FILES["head_validator"]: _json_bytes(head_validator),
         FILES["success_tail"]: _json_bytes(success_tail),
         FILES["offline"]: _json_bytes(offline),
     }
-    report = f"""# Skill V2 REAL A/B B-arm Materialization v1
+    report = f"""# Skill V2 REAL A/B B-arm Materialization v2
 
-`SKILL_V2_REAL_AB_B_ARM_MATERIALIZED`
+`SKILL_V2_B_ARM_APPROVAL_PARENT_CURRENT_HEAD_SUCCESSOR_FIXED`
+
+`SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_AFTER_HEAD_SUCCESSOR_FIX`
 
 `SKILL_V2_REAL_AB_B_ARM_READY_FOR_FRESH_USER_APPROVAL=YES`
 
@@ -1047,7 +1304,7 @@ def build_packet_documents(
 8. A-arm baseline verification: `SEALED_PASS`; materialization `{a_ref['materialization_manifest']['entry_count']}/{a_ref['materialization_manifest']['entry_count']}` exact; execution `15/15` exact
 9. A-arm artifact SHA-256: `{A_ARTIFACT_SHA256}`
 10. A-arm quality baseline SHA-256: `{A_QUALITY_SHA256}`
-11. AB_PAIR_ID: `{AB_PAIR_ID}`
+11. AB_PAIR_ID: `{AB_PAIR_ID}`; predecessor `{PREDECESSOR_AB_PAIR_ID}`
 12. B-arm cohort: `{COHORT_ID}`
 13. Exact B-arm approval scope: `{APPROVAL_SCOPE}`
 14. Skill V2 design artifact/hash: `{source_truth['design_artifact']['path']}` / `{source_truth['design_artifact']['sha256']}`
@@ -1081,14 +1338,16 @@ def build_packet_documents(
 42. Quality-rubric SHA-256: `{quality['quality_rubric_sha256']}`
 43. Engineering-rubric SHA-256: `{engineering['engineering_rubric_sha256']}`
 44. A/B comparison-lock SHA-256: `{comparison['comparison_lock_sha256']}`
-45. Offline B-arm tests: focused `{validation.get('focused', 'PENDING')}`; related `{validation.get('related', 'PENDING')}`; full suite `{validation.get('full_suite', 'PENDING')}`; Strict L3 `{validation.get('strict_l3', 'PENDING')}`
-46. Synthetic full success-tail: `{validation.get('success_tail', 'PENDING')}` through parser -> model_validate -> local derivation -> validator -> FROZEN -> audit -> write -> persistence
-47. Manifest definition SHA-256: `SEE_SELF_EXCLUDED_SHA256_MANIFEST_AND_FINAL_SEAL_REPORT`
-48. Manifest file SHA-256: `SEE_FINAL_SEAL_REPORT`
-49. Manifest coverage: `ALL_NON_MANIFEST_FILES_EXACT`; exact count is bound in self-excluded manifest
-50. Privacy: `EXACT`; credential/raw Provider/raw story/private absolute path matches `0`
-51. External counters: credential `0`, Provider client `0`, Provider request `0`, HTTP POST `0`, network `0`, model `0`, paid `0`
-52. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL`
+45. Approval HEAD successor contract SHA-256: `{head_contract['head_successor_contract_sha256']}`
+46. Approval HEAD successor validator SHA-256: `{head_validator['head_successor_validator_sha256']}`
+47. Offline B-arm tests: focused `{validation.get('focused', 'PENDING')}`; related `{validation.get('related', 'PENDING')}`; full suite `{validation.get('full_suite', 'PENDING')}`; Strict L3 `{validation.get('strict_l3', 'PENDING')}`
+48. Synthetic full success-tail: `{validation.get('success_tail', 'PENDING')}` through parser -> model_validate -> local derivation -> validator -> FROZEN -> audit -> write -> persistence
+49. Manifest definition SHA-256: `SEE_SELF_EXCLUDED_SHA256_MANIFEST_AND_FINAL_SEAL_REPORT`
+50. Manifest file SHA-256: `SEE_FINAL_SEAL_REPORT`
+51. Manifest coverage: `ALL_NON_MANIFEST_FILES_EXACT`; exact count is bound in self-excluded manifest
+52. Privacy: `EXACT`; credential/raw Provider/raw story/private absolute path matches `0`
+53. External counters: credential `0`, Provider client `0`, Provider request `0`, HTTP POST `0`, network `0`, model `0`, paid `0`
+54. Exact next gate: `SKILL_V2_REAL_AB_B_ARM_FRESH_USER_APPROVAL_AFTER_HEAD_SUCCESSOR_FIX`
 
 ## Closed-world conclusion
 
@@ -1118,6 +1377,13 @@ not production active.
 `AUTHORITY_TUPLE_NORMALIZATION=PASS`  
 `AUDIT_SERIALIZATION=PASS`  
 `FULL_SUCCESS_TAIL_OFFLINE=PASS`  
+`APPROVAL_PARENT_HEAD_VALIDATION=PASS`
+`CURRENT_HEAD_SUCCESSOR_VALIDATION=PASS`
+`WRONG_HEAD_REJECTED=YES`
+`EVIDENCE_ONLY_SUCCESSOR_ACCEPTED=YES`
+`ARBITRARY_DESCENDANT_REJECTED=YES`
+`SOURCE_MUTATION_SUCCESSOR_REJECTED=YES`
+`HEAD_VALIDATION_BEFORE_NONCE_RESERVATION=YES`
 `EXECUTION_AUTHORIZED=NO`  
 `NAMED_APPROVER=null`  
 `SIGNED_APPROVAL=ABSENT`  
@@ -1238,6 +1504,16 @@ def validate_materialized_packet(
     accounting = _read_json(packet_root / FILES["accounting"])
     comparison = _read_json(packet_root / FILES["comparison"])
     success_tail = _read_json(packet_root / FILES["success_tail"])
+    head_contract = _read_json(packet_root / FILES["head_contract"])
+    head_validator = _read_json(packet_root / FILES["head_validator"])
+    _require(
+        head_contract == approval_head_successor_contract(),
+        "head_successor_contract_changed",
+    )
+    _require(
+        head_validator == head_successor_validator_binding(),
+        "head_successor_validator_changed",
+    )
     _require(plan.get("approval_scope") == APPROVAL_SCOPE, "packet_scope_mismatch")
     _require(plan.get("cohort_id") == COHORT_ID, "packet_cohort_mismatch")
     _require(plan.get("materialization_relative_root") == MATERIALIZATION_RELATIVE_ROOT, "packet_materialization_root_mismatch")
@@ -1269,6 +1545,8 @@ def validate_materialized_packet(
         guard=guard,
         accounting=accounting,
         profile_sha256=rebuilt_profile["canonical_profile_sha256"],
+        head_contract_sha256=head_contract["head_successor_contract_sha256"],
+        head_validator_sha256=head_validator["head_successor_validator_sha256"],
     )
     _require(launcher == expected_launcher, "launcher_binding_mismatch")
     _require(comparison.get("primary_changed_variable") == "SKILL_CONTEXT", "ab_primary_variable_changed")
@@ -1292,6 +1570,8 @@ def validate_materialized_packet(
         "guard": guard,
         "accounting": accounting,
         "comparison": comparison,
+        "head_contract": head_contract,
+        "head_validator": head_validator,
     }
 
 
@@ -1310,6 +1590,14 @@ def validate_signed_launch(
     _require(signed_approval.get("schema") == "SkillV2BArmSignedApprovalV1", "signed_approval_schema_mismatch")
     _require(signed_approval.get("execution_authorized") is True, "execution_not_authorized")
     _require(bool(signed_approval.get("named_approver")), "named_approver_missing")
+    approval_parent_head = signed_approval.get("approval_parent_head")
+    _require(isinstance(approval_parent_head, str), "approval_parent_head_missing")
+    head_relation = verify_approval_head_successor(
+        repo_root=repo_root,
+        approval_parent_head=approval_parent_head,
+        implementation_head=str(template["bound_hashes"]["materialization_head"]),
+        manifest=packet["manifest"],
+    )
     _require(signed_approval.get("approval_scope") == APPROVAL_SCOPE, "approval_scope_mismatch")
     _require(signed_approval.get("cohort_id") == COHORT_ID, "approval_cohort_mismatch")
     _require(signed_approval.get("ab_pair_id") == AB_PAIR_ID, "approval_ab_pair_mismatch")
@@ -1339,6 +1627,7 @@ def validate_signed_launch(
         "status": "exact",
         "nonce": nonce,
         "single_dispatch_transport_guard_active": True,
+        "approval_head_successor": head_relation,
         "credential_lookup_allowed_after_this_return": True,
     }
 
@@ -1565,7 +1854,7 @@ def _main() -> int:
             },
         )
         print(json.dumps({
-            "status": "SKILL_V2_REAL_AB_B_ARM_MATERIALIZED",
+            "status": "SKILL_V2_REAL_AB_B_ARM_REMATERIALIZED_AFTER_HEAD_SUCCESSOR_FIX",
             "manifest_definition_sha256": result["manifest"]["manifest_definition_sha256"],
             "manifest_file_sha256": result["manifest_file_sha256"],
         }, sort_keys=True))
