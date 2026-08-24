@@ -19,6 +19,8 @@ Gate: `SKILL_V2_PROFILE_CREATIVE_SEMANTIC_RESTORATION_FIXED`
 - Narrative bridge: limited to sealed confirmed-frame item; unspecified-safe; guesses/questions: `0/0`
 - Non-Skill Prompt/authority/task/route-model/output-cap/transport/validator/PTR12/rubrics diff counts: all `0`
 - Full synthetic success tail: `PASS`
+- Focused post-seal matrix: `261 passed, 4 deselected`
+- Full non-Canary suite: `2968 passed, 39 skipped, 1 deselected, 6 xfailed`; `2 failed + 15 errors` are the old fixed planning-profile evidence drift family; restoration-related failures: `0`
 - External actions: all `0`
 - Production cutover: `NO`; Full Short: `NOT_EXECUTED`
 

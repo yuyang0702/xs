@@ -79,7 +79,7 @@
   "restoration_evidence_manifest": {
     "bytes": 4454,
     "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/sha256-manifest-v1.json",
-    "sha256": "e5321d323cf42939c068f8e2a2d63d662a495092cf3e4b5978a0138a446b654c"
+    "sha256": "362cdfb53fa3a4c3848978e674e25d2a63c1fef1ec8c26870ebe235db0012bd4"
   },
   "schema": "SkillV2RestoredBArmDisabledCandidateV1",
   "scope": "SLICE1_PHASE_B_SKILL_V2_RESTORED_B_ARM_CANDIDATE_ONLY",

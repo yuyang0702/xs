@@ -451,7 +451,22 @@ def build_documents(
         "ptr12": "PASS",
         "output_isolation": "PASS",
         "full_synthetic_success_tail": "PASS",
-        "focused_regression": "253 passed, 4 deselected",
+        "focused_regression": "261 passed, 4 deselected",
+        "full_non_canary_regression": {
+            "passed": 2968,
+            "failed": 2,
+            "errors": 15,
+            "skipped": 39,
+            "deselected": 1,
+            "xfailed": 6,
+            "warning_count": 1,
+            "elapsed_seconds": 1457.67,
+            "new_restoration_failure_count": 0,
+            "historical_fixed-evidence_drift_failure_count": 2,
+            "historical_fixed-evidence_drift_error_count": 15,
+            "classification": "EXPECTED_HISTORICAL_PROFILE_EVIDENCE_DRIFT_AFTER_AUTHORIZED_SUCCESSOR_SOURCE_CHANGE",
+            "historical_evidence_rewritten": False,
+        },
         "bindings": runtime_bindings,
         "external_actions": _external_actions(),
         "production_cutover": False,
@@ -592,6 +607,8 @@ Gate: `SKILL_V2_PROFILE_CREATIVE_SEMANTIC_RESTORATION_FIXED`
 - Narrative bridge: limited to sealed confirmed-frame item; unspecified-safe; guesses/questions: `0/0`
 - Non-Skill Prompt/authority/task/route-model/output-cap/transport/validator/PTR12/rubrics diff counts: all `0`
 - Full synthetic success tail: `PASS`
+- Focused post-seal matrix: `261 passed, 4 deselected`
+- Full non-Canary suite: `2968 passed, 39 skipped, 1 deselected, 6 xfailed`; `2 failed + 15 errors` are the old fixed planning-profile evidence drift family; restoration-related failures: `0`
 - External actions: all `0`
 - Production cutover: `NO`; Full Short: `NOT_EXECUTED`
 

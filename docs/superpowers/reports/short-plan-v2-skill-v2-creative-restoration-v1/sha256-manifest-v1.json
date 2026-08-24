@@ -1,5 +1,5 @@
 {
-  "definition_sha256": "c4d024b5e517127d0a70e6940a7d9b3e052b259b6e811fdaf0a2a62458e6dbaf",
+  "definition_sha256": "3abf7dbb9aff009e62e14f1461d13f945114516f774163cc42b17708f82c0c65",
   "entry_count": 18,
   "files": [
     {
@@ -33,9 +33,9 @@
       "sha256": "2cb0451c14469749fb9230d9453a8657ed265a2f7ece38c7d21d2691bf606447"
     },
     {
-      "bytes": 1790,
+      "bytes": 2037,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/final-report-v1.md",
-      "sha256": "8a77d1e55f991b0a66f4233ab9fd1589e176a6c3322ee7ecebe95a82852400d5"
+      "sha256": "79b194fa39d4bd88b08e1e2c4e9d8adbb1236cf6ad007d27b2200b17e725e0b6"
     },
     {
       "bytes": 827,
@@ -88,9 +88,9 @@
       "sha256": "fcbb75e16c44256bf81471316a0f2832bfe7f4cbda721f2a0a9a764d23a3c5aa"
     },
     {
-      "bytes": 4188,
+      "bytes": 4699,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/runtime-regression-v1.json",
-      "sha256": "9247e1fa23f3b09aa38903b597c3af63227d82023e16c2e37a4f803d62d57989"
+      "sha256": "f952b44e79de7ee29ab324b58427e6e3f6e94a85427b63d40b5342162bb621ea"
     }
   ],
   "overall_status": "exact",

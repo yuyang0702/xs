@@ -72,7 +72,22 @@
     "provider_client_creation_count": 0,
     "real_provider_request_attempts": 0
   },
-  "focused_regression": "253 passed, 4 deselected",
+  "focused_regression": "261 passed, 4 deselected",
+  "full_non_canary_regression": {
+    "classification": "EXPECTED_HISTORICAL_PROFILE_EVIDENCE_DRIFT_AFTER_AUTHORIZED_SUCCESSOR_SOURCE_CHANGE",
+    "deselected": 1,
+    "elapsed_seconds": 1457.67,
+    "errors": 15,
+    "failed": 2,
+    "historical_evidence_rewritten": false,
+    "historical_fixed-evidence_drift_error_count": 15,
+    "historical_fixed-evidence_drift_failure_count": 2,
+    "new_restoration_failure_count": 0,
+    "passed": 2968,
+    "skipped": 39,
+    "warning_count": 1,
+    "xfailed": 6
+  },
   "full_synthetic_success_tail": "PASS",
   "head_successor_typed_fail_close": "PASS",
   "historical_roots_closed_world_read_only": "PASS",

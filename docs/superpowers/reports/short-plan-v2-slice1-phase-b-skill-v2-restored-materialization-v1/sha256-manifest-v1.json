@@ -1,5 +1,5 @@
 {
-  "definition_sha256": "825b8b7d9d0949abdd52431fc3ead2fc828beaa67e6c2af998f3143a607b4306",
+  "definition_sha256": "90f7acbfd726842fbd5dad967a8635cecf62860d4315dffdf426e658b9010b1c",
   "entry_count": 16,
   "files": [
     {
@@ -20,7 +20,7 @@
     {
       "bytes": 3410,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-restored-materialization-v1/restored-b-candidate-v1.json",
-      "sha256": "bdd1a5b716dae0060fcfdeac424ac04c0fb116012691b5849551018b29b9061c"
+      "sha256": "cb976dc6a460794fa39730f7e1c818d92cb37faa460de923751e02edc52125e4"
     },
     {
       "bytes": 340,
@@ -40,7 +40,7 @@
     {
       "bytes": 2820,
       "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-restored-materialization-v1/restored-b-materialization-index-v1.json",
-      "sha256": "8ff7d8ecee30cd4740b45f394d6f4de2a9f3ffe20bfd42d912ccb47671a0c974"
+      "sha256": "37c9d56045aecede5610b581e9be715f6b685243216a470191a265752f3cd7a5"
     },
     {
       "bytes": 336,
