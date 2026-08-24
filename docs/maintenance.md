@@ -2012,3 +2012,25 @@ mutated, unmanifested, prefix-lookalike, version-lookalike, or arbitrary extra
 roots fail closed. Active support/source drift remains subject to the existing
 exact-path policy. The verification writes no historical file and does not
 authorize an approval, nonce, credential lookup, Provider client, or dispatch.
+
+## Skill V2 creative semantic restoration
+
+`build_planning_v2_event_realization_profile_restored` is the offline-only
+successor to the sealed over-compressed B-arm profile. It adds exactly eight
+model-owned creative decomposition rules as a 1,155-character mandatory core
+while retaining the historical 1,587-character advisory context byte-for-byte.
+The combined deterministic render is 2,742 characters, below the unchanged
+3,000-character ceiling and without whole-rule omission.
+
+The conditional resolver remains unchanged. The always-on restoration is a
+profile-content decision, and the profile records an unspecified-safe narrative
+bridge without loading story initialization as an operational workflow. The
+historical builder remains available for byte-exact verification of sealed B-arm
+packets; no production scanner, prompt assembler, route, model, retry/fallback,
+output budget, Planning V1/V2 contract, StoryState, Canon, or formal-write owner
+uses the restored successor until a separately approved cutover.
+
+The actionable capability audit requires rule identity plus decomposed semantic
+phrases; capability labels alone fail. Revert the restoration implementation
+commit to remove the successor profile and its tests. Reversion never revives a
+historical approval or authorizes a Provider call.

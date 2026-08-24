@@ -8,12 +8,15 @@ import pytest
 
 from novel_flywheel.runtime_skill_profiles import (
     EXPECTED_BUNDLE_MANIFEST_SHA256,
+    RESTORED_CREATIVE_RULE_IDS,
     ProfileRuleV1,
     RuntimeSkillProfileV1,
     SkillContextBudgetPolicyV1,
     SkillLoadDecisionInputsV1,
+    audit_creative_capability_presence,
     build_planning_v1_compat_profile,
     build_planning_v2_event_realization_profile,
+    build_planning_v2_event_realization_profile_restored,
     classify_current_mandatory_rules,
     context_budget_policy_v1,
     creative_coverage,
@@ -252,3 +255,87 @@ def test_v2_profile_uses_minimal_plot_and_conditional_creative_subsets():
     }
     assert all(item.skill_id != "story-init" for item in full.included_sections)
     assert "PLOT_STRUCTURE_ADAPTATION" not in full.included_rule_ids
+
+
+def test_restored_v2_context_is_complete_deterministic_and_within_existing_budget():
+    profile = build_planning_v2_event_realization_profile_restored(BUNDLE, _decision_inputs())
+    assert profile.load_decision.included_skill_ids == (  # type: ignore[union-attr]
+        "plot-structure", "character-management", "worldbuilding",
+    )
+    assert profile.source_skill_ids == (
+        "story-init", "plot-structure", "character-management", "worldbuilding",
+    )
+    assert tuple(item.rule_id for item in profile.mandatory_rules) == RESTORED_CREATIVE_RULE_IDS
+    assert len(profile.advisory_rules) == 12
+    first, first_receipt = render_skill_context(
+        profile.advisory_rules, profile.mandatory_rules, profile.context_budget_policy,
+    )
+    second, second_receipt = render_skill_context(
+        profile.advisory_rules, profile.mandatory_rules, profile.context_budget_policy,
+    )
+    old, old_receipt = render_skill_context(
+        profile.advisory_rules, (), profile.context_budget_policy,
+    )
+
+    assert first == second
+    assert first_receipt == second_receipt
+    assert first_receipt.status == "NONE"
+    assert first_receipt.excluded_rule_ids == ()
+    assert first_receipt.total_characters <= 3000
+    assert first_receipt.mandatory_characters <= 1200
+    assert first_receipt.advisory_characters <= 1800
+    assert old_receipt.status == "NONE"
+    assert len(old) == 1587
+    assert old_receipt.rendered_context_sha256 == (
+        "a77ca32533e7e480ab3b0ff53d55dde5bed4ff837b8b68f53b7aba59a8d6fd15"
+    )
+
+
+def test_restored_v2_actionable_creative_capability_gate_rejects_old_profile():
+    profile = build_planning_v2_event_realization_profile_restored(BUNDLE, _decision_inputs())
+    restored, _ = render_skill_context(
+        profile.advisory_rules, profile.mandatory_rules, profile.context_budget_policy,
+    )
+    old, _ = render_skill_context(profile.advisory_rules, (), profile.context_budget_policy)
+
+    restored_audit = audit_creative_capability_presence(restored)
+    old_audit = audit_creative_capability_presence(old)
+    assert restored_audit["overall_status"] == "pass"
+    assert restored_audit["passed_check_count"] == restored_audit["check_count"]
+    assert old_audit["overall_status"] == "fail"
+    assert old_audit["passed_check_count"] < old_audit["check_count"]
+
+
+@pytest.mark.parametrize(
+    ("rule_id", "replacement"),
+    [
+        ("PRESSURE_BEATS", None),
+        ("DRAFT_SCENE", None),
+        ("ANTI_TAXONOMY", None),
+        ("MOTIVE_ACTION", "motivation"),
+        ("CAUSAL_AFFORDANCE", "world specificity"),
+        ("PRESSURE_BEATS", "pacing"),
+    ],
+)
+def test_restored_v2_rejects_deleted_or_label_only_creative_decomposition(
+    rule_id: str, replacement: str | None,
+):
+    profile = build_planning_v2_event_realization_profile_restored(BUNDLE, _decision_inputs())
+    restored, _ = render_skill_context(
+        profile.advisory_rules, profile.mandatory_rules, profile.context_budget_policy,
+    )
+    rule = next(item for item in profile.mandatory_rules if item.rule_id == rule_id)
+    exact = f"[{rule.rule_id}] {rule.text}\n"
+    mutated = restored.replace(
+        exact,
+        "" if replacement is None else f"[{rule.rule_id}] {replacement}\n",
+    )
+    assert mutated != restored
+    assert audit_creative_capability_presence(mutated)["overall_status"] == "fail"
+
+
+def test_restored_v2_narrative_bridge_is_bounded_and_unspecified_safe():
+    profile = build_planning_v2_event_realization_profile_restored(BUNDLE, _decision_inputs())
+    assert profile.narrative_bridge is not None
+    assert profile.narrative_bridge.story_init_loaded is False
+    assert {item.status for item in profile.narrative_bridge.fields} == {"unspecified"}

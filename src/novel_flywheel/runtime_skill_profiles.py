@@ -399,6 +399,10 @@ class _RuleSpec:
     text: str
     section_keys: tuple[str, ...]
     categories: tuple[str, ...]
+    classification: Literal["advisory_creative", "true_narrative_invariant"] = (
+        "advisory_creative"
+    )
+    authority_level: Literal[6, 7] = 7
 
 
 def _json_hash(value: Any) -> str:
@@ -631,6 +635,9 @@ def resolve_conditional_load(inputs: SkillLoadDecisionInputsV1) -> SkillLoadDeci
     })
 
 
+_STORY_SECTION_SPECS = {
+    "story-workflow": _SectionSpec("story-init", "SKILL.md", "Workflow"),
+}
 _PLOT_SECTION_SPECS = {
     "plot-choose": _SectionSpec("plot-structure", "SKILL.md", "Choosing a Story Structure"),
     "plot-timeline": _SectionSpec("plot-structure", "SKILL.md", "Timeline Management"),
@@ -714,19 +721,137 @@ _RULE_SPECS = (
     _RuleSpec("WORLD_ARTIFACT_DETAIL", "worldbuilding", "Treat an artifact as a proposal-only story element with recognizable form, bounded function, relevant history, and current risk.", ("world-create-4", "world-artifact-1", "world-artifact-2", "world-artifact-3", "world-artifact-4"), ("artifact_realization",)),
 )
 
+RESTORED_CREATIVE_RULE_IDS = (
+    "MOTIVE_ACTION",
+    "VOICE_RELATION",
+    "CAUSAL_AFFORDANCE",
+    "PRESSURE_BEATS",
+    "SETUP_PAYOFF",
+    "FRAME_BRIDGE",
+    "DRAFT_SCENE",
+    "ANTI_TAXONOMY",
+)
 
-def _compile_sections(bundle_root: Path, selected_keys: tuple[str, ...]) -> tuple[SourceSectionBindingV1, ...]:
-    all_specs = {**_PLOT_SECTION_SPECS, **_CHAR_SECTION_SPECS, **_WORLD_SECTION_SPECS}
+_RESTORED_CREATIVE_RULE_SPECS = (
+    _RuleSpec(
+        "MOTIVE_ACTION",
+        "character-management",
+        "Render competing wants and needs through choices, tactics, concessions, and costs; do not name the taxonomy in the artifact.",
+        ("char-create", "char-3", "char-4"),
+        ("motivation", "subtext_dramatization", "anti_template"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "VOICE_RELATION",
+        "character-management",
+        "Differentiate actors through word choice, rhythm, evasions, behavior, and relationship pressure that changes available actions.",
+        ("char-create", "char-5", "char-rel-3"),
+        ("voice", "relationship_consequence", "subtext_dramatization"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "CAUSAL_AFFORDANCE",
+        "worldbuilding",
+        "Select a small number of concrete sensory or mechanical affordances that constrain action, can be interacted with, and can carry a later payoff.",
+        ("world-create-1", "world-location-1", "world-location-4"),
+        ("world_specificity", "sensory_realization", "setup_payoff"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "PRESSURE_BEATS",
+        "plot-structure",
+        "Realize escalation as opposed tactics, obstacle, reaction, and reversal rather than explanatory summary.",
+        ("plot-arc-rise", "plot-arc-climax"),
+        ("conflict_pacing", "draft_handoff", "subtext_dramatization"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "SETUP_PAYOFF",
+        "plot-structure",
+        "Plant a concrete question or affordance, preserve its dependency, and pay it off through later action inside the bounded event.",
+        ("plot-promise-setup", "plot-promise-payoff", "plot-question", "plot-question-resolution"),
+        ("setup_payoff", "draft_handoff"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "FRAME_BRIDGE",
+        "story-init",
+        "When confirmed values exist, bridge premise, theme, tone, genre, POV, and tense without guessing or asking questions.",
+        ("story-workflow",),
+        ("tone_genre_fidelity", "pov_consistency", "tense_consistency", "draft_handoff"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "DRAFT_SCENE",
+        "cross-skill",
+        "Produce Draft-usable spatial beats with action/reaction, resistance, reversal, and a terminal image; avoid synopsis-only realization.",
+        ("plot-arc-setup", "plot-arc-rise", "plot-arc-climax", "plot-arc-resolution"),
+        ("draft_handoff", "conflict_pacing", "sensory_realization"),
+        "true_narrative_invariant",
+        6,
+    ),
+    _RuleSpec(
+        "ANTI_TAXONOMY",
+        "cross-skill",
+        "Use capability labels only for reasoning; never emit labels such as external want, internal need, or local state change as explanatory prose.",
+        ("char-create", "plot-arc-resolution"),
+        ("anti_template", "subtext_dramatization"),
+        "true_narrative_invariant",
+        6,
+    ),
+)
+
+
+def _all_section_specs() -> dict[str, _SectionSpec]:
+    return {
+        **_STORY_SECTION_SPECS,
+        **_PLOT_SECTION_SPECS,
+        **_CHAR_SECTION_SPECS,
+        **_WORLD_SECTION_SPECS,
+    }
+
+
+def _compile_sections(
+    bundle_root: Path,
+    selected_keys: tuple[str, ...],
+    rule_specs: tuple[_RuleSpec, ...],
+) -> tuple[SourceSectionBindingV1, ...]:
+    all_specs = _all_section_specs()
     rule_map = {
-        key: tuple(rule.rule_id for rule in _RULE_SPECS if key in rule.section_keys)
+        key: tuple(rule.rule_id for rule in rule_specs if key in rule.section_keys)
         for key in selected_keys
     }
-    return tuple(_extract_section(bundle_root, all_specs[key], rule_map[key]) for key in selected_keys)
+    sections = []
+    for key in selected_keys:
+        spec = all_specs[key]
+        if any(
+            rule.classification == "true_narrative_invariant" and key in rule.section_keys
+            for rule in rule_specs
+        ):
+            spec = _SectionSpec(
+                skill_id=spec.skill_id,
+                relative_path=spec.relative_path,
+                heading=spec.heading,
+                classification=spec.classification,
+                applicability="always",
+                ordinal=spec.ordinal,
+            )
+        sections.append(_extract_section(bundle_root, spec, rule_map[key]))
+    return tuple(sections)
 
 
-def _compile_rules(sections: tuple[SourceSectionBindingV1, ...], skill_ids: tuple[str, ...]) -> tuple[ProfileRuleV1, ...]:
+def _compile_rules(
+    sections: tuple[SourceSectionBindingV1, ...],
+    rule_specs: tuple[_RuleSpec, ...],
+) -> tuple[ProfileRuleV1, ...]:
     by_key: dict[str, str] = {}
-    all_specs = {**_PLOT_SECTION_SPECS, **_CHAR_SECTION_SPECS, **_WORLD_SECTION_SPECS}
+    all_specs = _all_section_specs()
     identity_to_id = {
         (item.skill_id, item.relative_source_path, item.heading, item.heading_ordinal): item.section_id
         for item in sections
@@ -739,10 +864,12 @@ def _compile_rules(sections: tuple[SourceSectionBindingV1, ...], skill_ids: tupl
         ProfileRuleV1(
             rule_id=spec.rule_id, skill_id=spec.skill_id, text=spec.text,
             source_section_ids=tuple(by_key[key] for key in spec.section_keys if key in by_key),
-            classification="advisory_creative", coverage_categories=spec.categories,
+            classification=spec.classification,
+            authority_level=spec.authority_level,
+            coverage_categories=spec.categories,
         )
-        for spec in _RULE_SPECS
-        if spec.skill_id in skill_ids and all(key in by_key for key in spec.section_keys)
+        for spec in rule_specs
+        if all(key in by_key for key in spec.section_keys)
     )
 
 
@@ -782,23 +909,31 @@ def _build_profile(
     phase: Literal["planning_v1", "planning_v2_event_realization"], selected_keys: tuple[str, ...],
     source_skill_ids: tuple[str, ...], conditional: tuple[ConditionalComponentV1, ...],
     bridge: ExistingProjectNarrativeBridgeV1 | None, decision: SkillLoadDecisionV1 | None,
+    rule_specs: tuple[_RuleSpec, ...] = _RULE_SPECS,
 ) -> RuntimeSkillProfileV1:
     verification = verify_source_bundle(bundle_root)
-    sections = _compile_sections(bundle_root, selected_keys)
-    rules = _compile_rules(sections, tuple(skill for skill in source_skill_ids if skill != "story-init"))
+    sections = _compile_sections(bundle_root, selected_keys, rule_specs)
+    rules = _compile_rules(sections, rule_specs)
+    mandatory_rules = tuple(
+        rule for rule in rules if rule.classification == "true_narrative_invariant"
+    )
+    advisory_rules = tuple(rule for rule in rules if rule.classification == "advisory_creative")
+    canonical_rules = (*mandatory_rules, *advisory_rules)
     precedence = precedence_policy_v1()
     budget = context_budget_policy_v1()
     world_policy = world_creative_policy_v1()
     definition_payload = _definition_payload(
         profile_id=profile_id, phase=phase, source_skill_ids=source_skill_ids,
         source_hashes={key: verification["skill_hashes"][key] for key in source_skill_ids},
-        sections=sections, rules=rules, conditional=conditional, bridge=bridge,
+        sections=sections, rules=canonical_rules, conditional=conditional, bridge=bridge,
         decision=decision, precedence=precedence, budget=budget, world_policy=world_policy,
     )
     definition_sha = canonical_sha256("RuntimeSkillProfileDefinitionV1", definition_payload)
-    rendered, receipt = render_skill_context(rules, (), budget, profile_hash=definition_sha)
-    if not receipt.dispatch_allowed:
-        raise ValueError("default profile exceeds mandatory context budget")
+    rendered, receipt = render_skill_context(
+        advisory_rules, mandatory_rules, budget, profile_hash=definition_sha,
+    )
+    if not receipt.dispatch_allowed or receipt.status != "NONE" or receipt.excluded_rule_ids:
+        raise ValueError("default profile exceeds context budget without complete creative coverage")
     prompt_binding = canonical_sha256("RuntimeSkillPromptBindingV1", {
         "definition_sha256": definition_sha,
         "rendered_context_sha256": receipt.rendered_context_sha256,
@@ -814,9 +949,9 @@ def _build_profile(
         "source_skill_ids": source_skill_ids,
         "source_skill_sha256": {key: verification["skill_hashes"][key] for key in source_skill_ids},
         "included_sections": sections,
-        "included_rule_ids": tuple(item.rule_id for item in rules),
-        "mandatory_rules": (),
-        "advisory_rules": rules,
+        "included_rule_ids": tuple(item.rule_id for item in canonical_rules),
+        "mandatory_rules": mandatory_rules,
+        "advisory_rules": advisory_rules,
         "excluded_section_categories": definition_payload["excluded_section_categories"],
         "conditional_components": conditional,
         "decision_inputs": ((decision.inputs,) if decision else ()),
@@ -847,6 +982,7 @@ def build_planning_v1_compat_profile(bundle_root: Path, bridge_values: dict[str,
         bundle_root=bundle_root, profile_id="CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
         phase="planning_v1", selected_keys=keys, source_skill_ids=PLANNING_SKILL_IDS,
         conditional=(), bridge=make_narrative_bridge(bridge_values), decision=None,
+        rule_specs=_RULE_SPECS,
     )
 
 
@@ -854,20 +990,19 @@ def build_planning_v2_event_realization_profile(
     bundle_root: Path, inputs: SkillLoadDecisionInputsV1,
 ) -> RuntimeSkillProfileV1:
     decision = resolve_conditional_load(inputs)
-    v2_rules = tuple(rule for rule in _RULE_SPECS if rule.rule_id != "PLOT_STRUCTURE_ADAPTATION")
+    v2_rules = tuple(
+        rule for rule in _RULE_SPECS
+        if rule.rule_id != "PLOT_STRUCTURE_ADAPTATION"
+        and rule.skill_id in decision.included_skill_ids
+    )
     used = {key for rule in v2_rules for key in rule.section_keys}
-    selected = [key for key in _PLOT_SECTION_SPECS if key in used]
-    included = set(decision.included_skill_ids)
-    if "character-management" in included:
-        selected.extend(key for key in _CHAR_SECTION_SPECS if key in used)
-    if "worldbuilding" in included:
-        selected.extend(key for key in _WORLD_SECTION_SPECS if key in used)
-    sections = _compile_sections(bundle_root, tuple(selected))
+    selected = tuple(key for key in _all_section_specs() if key in used)
+    sections = _compile_sections(bundle_root, selected, v2_rules)
+    rules = _compile_rules(sections, v2_rules)
     section_ids = {
         skill_id: tuple(item.section_id for item in sections if item.skill_id == skill_id)
         for skill_id in ("character-management", "worldbuilding")
     }
-    rules = _compile_rules(sections, tuple(included))
     rule_ids = {
         skill_id: tuple(item.rule_id for item in rules if item.skill_id == skill_id)
         for skill_id in ("character-management", "worldbuilding")
@@ -884,9 +1019,54 @@ def build_planning_v2_event_realization_profile(
     )
     return _build_profile(
         bundle_root=bundle_root, profile_id="PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
-        phase="planning_v2_event_realization", selected_keys=tuple(selected),
+        phase="planning_v2_event_realization", selected_keys=selected,
         source_skill_ids=tuple(decision.included_skill_ids), conditional=conditional,
-        bridge=None, decision=decision,
+        bridge=None, decision=decision, rule_specs=v2_rules,
+    )
+
+
+def build_planning_v2_event_realization_profile_restored(
+    bundle_root: Path, inputs: SkillLoadDecisionInputsV1,
+) -> RuntimeSkillProfileV1:
+    decision = resolve_conditional_load(inputs)
+    included = set(decision.included_skill_ids)
+    conditional_rules = tuple(
+        rule for rule in _RULE_SPECS
+        if rule.rule_id != "PLOT_STRUCTURE_ADAPTATION" and rule.skill_id in included
+    )
+    active_rules = (*_RESTORED_CREATIVE_RULE_SPECS, *conditional_rules)
+    used = {key for rule in active_rules for key in rule.section_keys}
+    selected = tuple(key for key in _all_section_specs() if key in used)
+    sections = _compile_sections(bundle_root, selected, active_rules)
+    compiled_conditional_rules = _compile_rules(sections, conditional_rules)
+    rule_ids = {
+        skill_id: tuple(item.rule_id for item in compiled_conditional_rules if item.skill_id == skill_id)
+        for skill_id in ("character-management", "worldbuilding")
+    }
+    section_ids = {
+        skill_id: tuple(dict.fromkeys(
+            section_id
+            for rule in compiled_conditional_rules if rule.skill_id == skill_id
+            for section_id in rule.source_section_ids
+        ))
+        for skill_id in ("character-management", "worldbuilding")
+    }
+    conditional = tuple(
+        ConditionalComponentV1(
+            component_id=component_id, skill_id=skill_id, trigger_field=trigger,
+            rule_ids=rule_ids[skill_id], section_ids=section_ids[skill_id],
+        )
+        for component_id, skill_id, trigger in (
+            ("character-creative", "character-management", "actor_refs_status"),
+            ("world-creative", "worldbuilding", "world_refs_status"),
+        )
+    )
+    return _build_profile(
+        bundle_root=bundle_root, profile_id="PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+        phase="planning_v2_event_realization", selected_keys=selected,
+        source_skill_ids=PLANNING_SKILL_IDS, conditional=conditional,
+        bridge=make_narrative_bridge({}), decision=decision,
+        rule_specs=active_rules,
     )
 
 
@@ -1002,8 +1182,56 @@ def creative_coverage(profile: RuntimeSkillProfileV1) -> tuple[str, ...]:
     return tuple(sorted({category for rule in profile.advisory_rules for category in rule.coverage_categories}))
 
 
+_CREATIVE_CAPABILITY_CHECKS = (
+    ("motivation_action", "MOTIVE_ACTION", ("competing wants and needs", "choices", "tactics", "concessions", "costs")),
+    ("voice_distinctiveness", "VOICE_RELATION", ("word choice", "rhythm", "evasions", "behavior")),
+    ("relationship_consequence", "VOICE_RELATION", ("relationship pressure", "changes available actions")),
+    ("world_specificity", "CAUSAL_AFFORDANCE", ("concrete sensory or mechanical affordances", "constrain action")),
+    ("sensory_affordance", "CAUSAL_AFFORDANCE", ("interacted with", "later payoff")),
+    ("conflict_pacing", "PRESSURE_BEATS", ("opposed tactics", "obstacle", "reaction", "reversal")),
+    ("setup_payoff_dependency", "SETUP_PAYOFF", ("plant a concrete question or affordance", "preserve its dependency", "pay it off through later action")),
+    ("subtext_dramatization", "PRESSURE_BEATS", ("rather than explanatory summary",)),
+    ("draft_handoff", "DRAFT_SCENE", ("spatial beats", "action/reaction", "resistance", "terminal image", "avoid synopsis-only")),
+    ("anti_template", "ANTI_TAXONOMY", ("capability labels only for reasoning", "never emit labels", "explanatory prose")),
+    ("narrative_frame", "FRAME_BRIDGE", ("confirmed values", "premise", "theme", "tone", "genre", "pov", "tense", "without guessing")),
+)
+
+
+def audit_creative_capability_presence(rendered_context: str) -> dict[str, Any]:
+    """Check actionable restored semantics; capability names alone never pass."""
+
+    normalized = " ".join(rendered_context.casefold().split())
+    checks = []
+    for check_id, rule_id, required_phrases in _CREATIVE_CAPABILITY_CHECKS:
+        rule_present = f"[{rule_id.casefold()}]" in normalized
+        missing = tuple(
+            phrase for phrase in required_phrases if phrase.casefold() not in normalized
+        )
+        checks.append({
+            "check_id": check_id,
+            "rule_id": rule_id,
+            "rule_present": rule_present,
+            "missing_semantic_phrases": missing,
+            "status": "pass" if rule_present and not missing else "fail",
+        })
+    passed = sum(item["status"] == "pass" for item in checks)
+    return {
+        "schema": "SkillV2CreativeCapabilityPresenceAuditV1",
+        "gate_type": "actionable_creative_decomposition_presence",
+        "generated_prose_quality_claimed": False,
+        "check_count": len(checks),
+        "passed_check_count": passed,
+        "checks": checks,
+        "overall_status": "pass" if passed == len(checks) else "fail",
+    }
+
+
 def profile_contains_runtime_owned_responsibility(profile: RuntimeSkillProfileV1) -> bool:
-    return any(rule.owner != "model_creative" or rule.authority_level != 7 for rule in profile.advisory_rules)
+    return any(
+        rule.owner != "model_creative"
+        or rule.authority_level != (6 if rule.classification == "true_narrative_invariant" else 7)
+        for rule in (*profile.mandatory_rules, *profile.advisory_rules)
+    )
 
 
 def model_schema() -> dict[str, Any]:
