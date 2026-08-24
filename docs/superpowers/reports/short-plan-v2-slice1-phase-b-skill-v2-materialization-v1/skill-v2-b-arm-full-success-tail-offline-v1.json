@@ -1,0 +1,26 @@
+{
+  "artifact_persisted": "PASS",
+  "audit_serialization": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "freeze_state": "FROZEN",
+  "full_success_tail_offline_sha256": "28e1acad273bed48c6adcc12afd2e6a8a7919f7f50dad7391d7ed33c97e0489b",
+  "local_derivation": "PASS",
+  "model_validate": "PASS",
+  "overall_status": "exact",
+  "parser": "PASS",
+  "schema": "SkillV2BArmFullSuccessTailOfflineV1",
+  "synthetic_only": true,
+  "validator_status": "PASS",
+  "version": 1,
+  "write_json_reached": "PASS"
+}

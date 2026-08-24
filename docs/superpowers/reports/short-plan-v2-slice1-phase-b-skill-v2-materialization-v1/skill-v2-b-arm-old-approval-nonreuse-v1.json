@@ -1,0 +1,13 @@
+{
+  "a_arm_approval_reuse_allowed": false,
+  "a_arm_approval_scope": "SLICE1_PHASE_B_CURRENT_SKILL_AUDIT_SAFE_SINGLE_DISPATCH_V5_ONLY",
+  "a_arm_cohort_id": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "a_arm_nonce_reuse_allowed": false,
+  "a_arm_nonce_state": "SPENT_CONSUMED",
+  "a_arm_second_request_allowed": false,
+  "b_arm_nonce_issued": false,
+  "b_arm_requires_fresh_user_approval": true,
+  "old_approval_nonreuse_sha256": "ae04a0402c82a8e60cd20d7788221d2b204c19ae51f1cc040d3fbad38cda0953",
+  "schema": "SkillV2BArmOldApprovalNonReuseV1",
+  "version": 1
+}

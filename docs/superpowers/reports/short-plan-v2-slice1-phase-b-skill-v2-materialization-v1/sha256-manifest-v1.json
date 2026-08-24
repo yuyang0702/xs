@@ -1,0 +1,141 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v1-001",
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v1-20260824-001",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1",
+  "file_count": 25,
+  "files": [
+    {
+      "bytes": 119,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/README.md",
+      "sha256": "8703fa083efec669f8af79454cfab1dad2d227a361eba33ffcee448559f2b588"
+    },
+    {
+      "bytes": 1782,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-a-arm-baseline-reference-v1.json",
+      "sha256": "1bf05ae03cf393c68ada1dfc742b092408fd8282a9266eee0b82bfa8461c6fb9"
+    },
+    {
+      "bytes": 568,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-ab-pair-binding-v1.json",
+      "sha256": "511ec0f61a973f689883157be934bdc7d26c94fad1fd2d624d9491acd3446448"
+    },
+    {
+      "bytes": 3645,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-approval-template-v1.json",
+      "sha256": "81174aa4225fe83c5b862238bf6cbf3392b613ce12ab573688a0642048f8fc4d"
+    },
+    {
+      "bytes": 951,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-attempt-accounting-v1.json",
+      "sha256": "1288ab119cddd2f2a150680b25b531d409ea3b78fd129c89e71d133ab8a197f3"
+    },
+    {
+      "bytes": 2472,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-authority-binding-v1.json",
+      "sha256": "f10e7e89d7a64d9e80af2ba0f93fce939f54d5d154a0980fd40083fc04d6b934"
+    },
+    {
+      "bytes": 1202,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-budget-v1.json",
+      "sha256": "47ebff7558d91657d96a58d5496fc9d494694d3a4fa584efffdfb3cf08a7c4f7"
+    },
+    {
+      "bytes": 3003,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-comparison-lock-v1.json",
+      "sha256": "0d45eb4ee9140fc23ef5340788d36cc18c91d45ad474df3132d598423c0d8314"
+    },
+    {
+      "bytes": 972,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-engineering-rubric-v1.json",
+      "sha256": "a389b9e3fe344b26e304e643202797ed1093adba46512bd14f39d34f7bee7ca7"
+    },
+    {
+      "bytes": 7331,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-final-report-v1.md",
+      "sha256": "0a9471c1066fd8b789b1710f50fde355d40141d9fd078fdec567469b7c39802f"
+    },
+    {
+      "bytes": 789,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-full-success-tail-offline-v1.json",
+      "sha256": "40807afacccd0df74052b816f6d67499003e04a5da1b423878193b75dcbfae6f"
+    },
+    {
+      "bytes": 3633,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-launcher-binding-v1.json",
+      "sha256": "2ca087b8c28af14a0193b3cbfd90540c8463adf312876f2cb6cccc55e2eddf13"
+    },
+    {
+      "bytes": 1529,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-model-input-binding-v1.json",
+      "sha256": "ea2849ffdc508709fa39eaac75af31e13b18fd31194de9e1d66982e175972801"
+    },
+    {
+      "bytes": 1115,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-offline-test-receipt-v1.json",
+      "sha256": "97cc0086463c512873ecc6a6c74cb97403a3ea612ec3db1d1b43e34f32383354"
+    },
+    {
+      "bytes": 588,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-old-approval-nonreuse-v1.json",
+      "sha256": "be8cbea65c36199779cdd5041b02225c3db58ef25f1f584b044a2ef6ed09f057"
+    },
+    {
+      "bytes": 1037,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-output-isolation-v1.json",
+      "sha256": "e909e9ec1256b6fef882b8a8b5b38c95a614cfced1eb66f2a82a1c9f79227bab"
+    },
+    {
+      "bytes": 1185,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-plan-v1.json",
+      "sha256": "27454fdac504cf54c2225a14a2b60683a7d256188e7ad1a48bd9d79bc6a1216a"
+    },
+    {
+      "bytes": 583,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-privacy-scan-v1.json",
+      "sha256": "1a4f27eaa585454a4fb57f86105fad442626d16ddec7ad12a0ad35386182aae0"
+    },
+    {
+      "bytes": 544,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-ptr12-binding-v1.json",
+      "sha256": "9f9325f1107a4b934c342962914052d9e56f5f6c331644c98d23ed119b982fc8"
+    },
+    {
+      "bytes": 1179,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-quality-rubric-v1.json",
+      "sha256": "f10a15799d685381439ab7b03f3fbb22d971b192e546b28df3d60fd39a110229"
+    },
+    {
+      "bytes": 3847,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-rendered-context-binding-v1.json",
+      "sha256": "d382fd145a32d7ab449827cbf9111d237955fbda4e20d7f0a6879da08401f676"
+    },
+    {
+      "bytes": 2475,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-route-binding-v1.json",
+      "sha256": "d929e24c698210f18b8ee44f40f60b6378181078f134e2255c4072034ff9d931"
+    },
+    {
+      "bytes": 6234,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-skill-profile-binding-v1.json",
+      "sha256": "106a38e5acaa8f35e199906a9b1e029d9036a909870e2e79c33c2864a71307b1"
+    },
+    {
+      "bytes": 1924,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-transport-guard-binding-v1.json",
+      "sha256": "f937e18a0792d13ff0c3700ca5d50be791d475d7b1dbcb5cad50e309b8af595d"
+    },
+    {
+      "bytes": 1590,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v1/skill-v2-b-arm-workload-v1.json",
+      "sha256": "78db6916a72887c2fc50baf59aa3be9a611ef3af1d9ed7989c30cd8fffd4207d"
+    }
+  ],
+  "launcher_artifact_count": 1,
+  "manifest_definition_sha256": "d8ae1e531d08c2a704f2383c915ea1af2a4a01e255d26f187db9d7813582d5f2",
+  "materialization_head": "8748498ddfa1c3ec56959e0970b72b9128e9082e",
+  "overall_status": "exact",
+  "profile_id": "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_PACKET_V1",
+  "schema": "SkillV2BArmSHA256ManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}
