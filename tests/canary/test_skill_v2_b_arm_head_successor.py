@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+import hashlib
 import inspect
 import json
+import os
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 
@@ -21,6 +23,21 @@ PACKET_PATHS = (
     launcher.MATERIALIZATION_RELATIVE_ROOT + "/sha256-manifest-v1.json",
 )
 APPROVAL_PATH = launcher.MATERIALIZATION_RELATIVE_ROOT + "/approval/signed.json"
+V3_MATERIALIZATION_ROOT = (
+    ROOT
+    / "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v3"
+)
+V3_APPROVAL_SEAL_HEAD = "98cceb5f4398db3cfcea5dde460d2434ce81636a"
+V3_INVALIDATION_HEAD = "672fa915e7ed4ab5becf08049995d4e20f06e443"
+V3_SIGNED_APPROVAL = (
+    V3_MATERIALIZATION_ROOT
+    / "approval/skill-v2-b-arm-signed-authorization-v1.json"
+)
+V3_APPROVAL_BINDING = (
+    V3_MATERIALIZATION_ROOT
+    / "approval/skill-v2-b-arm-v3-approval-binding-v1.json"
+)
+V3_APPROVAL_MANIFEST = V3_MATERIALIZATION_ROOT / "approval/sha256-manifest-v1.json"
 
 
 def _commit_file(repo: Path, relative_path: str, content: str, message: str) -> str:
@@ -367,60 +384,199 @@ def test_head_validation_precedes_scope_nonce_and_credentials() -> None:
     )
 
 
-def _synthetic_signed_approval(*, approval_parent_head: str) -> dict[str, object]:
-    packet_root = ROOT / launcher.MATERIALIZATION_RELATIVE_ROOT
-    template = json.loads(
-        (packet_root / launcher.FILES["approval"]).read_text(encoding="utf-8")
-    )
-    now = datetime.now(timezone.utc)
-    return {
-        "schema": "SkillV2BArmSignedApprovalV1",
-        "execution_authorized": True,
-        "named_approver": "USER_PROJECT_OWNER",
-        "approval_scope": launcher.APPROVAL_SCOPE,
-        "cohort_id": launcher.COHORT_ID,
-        "ab_pair_id": launcher.AB_PAIR_ID,
-        "approval_parent_head": approval_parent_head,
-        "bound_hashes": template["bound_hashes"],
-        "skill_v2_authorized": True,
-        "full_short_authorized": False,
-        "draft_authorized": False,
-        "final_review_authorized": False,
-        "maintenance_authorized": False,
-        "planning_v2_cutover_authorized": False,
-        "story_state_mutation_allowed": False,
-        "canon_mutation_allowed": False,
-        "ready_mutation_allowed": False,
-        "nonce_reserved": False,
-        "nonce_consumed": False,
-        "single_use_nonce": "offline-synthetic-not-issued",
-        "execution_window": {
-            "not_before": (now - timedelta(minutes=1)).isoformat(),
-            "not_after": (now + timedelta(minutes=1)).isoformat(),
-        },
+def _sealed_v3_approval_parent_head() -> str:
+    manifest = json.loads(V3_APPROVAL_MANIFEST.read_text(encoding="utf-8"))
+    entries = {
+        str(entry["path"]): str(entry["sha256"])
+        for entry in manifest["files"]
     }
+    for path in (V3_SIGNED_APPROVAL, V3_APPROVAL_BINDING):
+        relative = path.relative_to(ROOT).as_posix()
+        assert entries[relative] == hashlib.sha256(path.read_bytes()).hexdigest()
+    signed = json.loads(V3_SIGNED_APPROVAL.read_text(encoding="utf-8"))
+    binding = json.loads(V3_APPROVAL_BINDING.read_text(encoding="utf-8"))
+    signed_parent = signed.get("approval_parent_head")
+    binding_parent = binding.get("approval_parent_head")
+    assert isinstance(signed_parent, str)
+    assert launcher._CANONICAL_COMMIT_SHA_RE.fullmatch(signed_parent)
+    assert binding_parent == signed_parent
+    return signed_parent
+
+
+def _historical_v3_preflight(
+    tmp_path: Path,
+    *,
+    checkout_head: str,
+    mutation: dict[str, object] | None = None,
+) -> dict[str, object]:
+    checkout = tmp_path / "historical-v3"
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "core.longpaths=true",
+            "-c",
+            "core.autocrlf=false",
+            "clone",
+            "--quiet",
+            "--shared",
+            "--no-checkout",
+            str(ROOT),
+            str(checkout),
+        ],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(checkout), "config", "core.longpaths", "true"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(checkout), "config", "core.autocrlf", "false"],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(checkout),
+            "checkout",
+            "--quiet",
+            "--detach",
+            checkout_head,
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(checkout),
+            "update-ref",
+            f"refs/heads/{launcher.EXPECTED_BRANCH}",
+            checkout_head,
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(checkout),
+            "symbolic-ref",
+            "HEAD",
+            f"refs/heads/{launcher.EXPECTED_BRANCH}",
+        ],
+        check=True,
+    )
+    parent = _sealed_v3_approval_parent_head()
+    script = r'''
+from datetime import datetime, timedelta, timezone
+import json
+from pathlib import Path
+import sys
+
+import tools.canary.slice1_phase_b_skill_v2_single_dispatch as launcher
+
+repo_root = Path(sys.argv[1]).resolve()
+route_database = Path(sys.argv[2]).resolve()
+approval_parent = sys.argv[3]
+mutation = json.loads(sys.argv[4])
+packet_root = repo_root / launcher.MATERIALIZATION_RELATIVE_ROOT
+template = json.loads((packet_root / launcher.FILES["approval"]).read_text(encoding="utf-8"))
+manifest = json.loads((packet_root / launcher.FILES["manifest"]).read_text(encoding="utf-8"))
+launcher.validate_materialized_packet = lambda *_args, **_kwargs: {
+    "approval": template,
+    "manifest": manifest,
+}
+now = datetime.now(timezone.utc)
+signed = {
+    "schema": "SkillV2BArmSignedApprovalV1",
+    "execution_authorized": True,
+    "named_approver": "USER_PROJECT_OWNER",
+    "approval_scope": launcher.APPROVAL_SCOPE,
+    "cohort_id": launcher.COHORT_ID,
+    "ab_pair_id": launcher.AB_PAIR_ID,
+    "approval_parent_head": approval_parent,
+    "bound_hashes": template["bound_hashes"],
+    "skill_v2_authorized": True,
+    "full_short_authorized": False,
+    "draft_authorized": False,
+    "final_review_authorized": False,
+    "maintenance_authorized": False,
+    "planning_v2_cutover_authorized": False,
+    "story_state_mutation_allowed": False,
+    "canon_mutation_allowed": False,
+    "ready_mutation_allowed": False,
+    "nonce_reserved": False,
+    "nonce_consumed": False,
+    "single_use_nonce": "offline-synthetic-not-issued",
+    "execution_window": {
+        "not_before": (now - timedelta(minutes=1)).isoformat(),
+        "not_after": (now + timedelta(minutes=1)).isoformat(),
+    },
+}
+signed.update(mutation)
+try:
+    result = launcher.validate_signed_launch(
+        repo_root=repo_root,
+        packet_root=packet_root,
+        route_database=route_database,
+        signed_approval=signed,
+        run_root=repo_root / launcher.EXECUTION_RELATIVE_ROOT,
+    )
+except launcher.SkillV2BArmError as exc:
+    print(json.dumps({"status": "rejected", "reason_code": exc.reason_code}))
+else:
+    print(json.dumps({
+        "status": result["status"],
+        "current_head_relation": result["approval_head_successor"]["current_head_relation"],
+    }))
+'''
+    environment = dict(os.environ)
+    environment["NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1"] = "1"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(checkout),
+            str(ROUTE_DATABASE),
+            parent,
+            json.dumps(mutation or {}, sort_keys=True),
+        ],
+        cwd=checkout,
+        env=environment,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return json.loads(completed.stdout)
 
 
 def test_canonical_packet_exact_parent_preflight_if_present(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
-    packet_root = ROOT / launcher.MATERIALIZATION_RELATIVE_ROOT
-    if not packet_root.exists():
-        pytest.skip("fresh v2 materialization is sealed after implementation commit")
-    current_head = launcher.base._git(ROOT, "rev-parse", "HEAD")
-    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
-    signed = _synthetic_signed_approval(approval_parent_head=current_head)
-    result = launcher.validate_signed_launch(
-        repo_root=ROOT,
-        packet_root=packet_root,
-        route_database=ROUTE_DATABASE,
-        signed_approval=signed,
-        run_root=ROOT / launcher.EXECUTION_RELATIVE_ROOT,
+    result = _historical_v3_preflight(
+        tmp_path,
+        checkout_head=V3_APPROVAL_SEAL_HEAD,
     )
     assert result["status"] == "exact"
-    assert result["approval_head_successor"]["current_head_relation"] == (
-        "EXACT_APPROVAL_PARENT"
+    assert result["current_head_relation"] == (
+        "ONE_DIRECT_APPROVAL_EVIDENCE_ONLY_SUCCESSOR"
     )
+
+
+def test_invalidated_v3_approval_is_not_an_executable_successor(
+    tmp_path: Path,
+) -> None:
+    result = _historical_v3_preflight(
+        tmp_path,
+        checkout_head=V3_INVALIDATION_HEAD,
+    )
+    assert result == {
+        "status": "rejected",
+        "reason_code": "approval_current_head_not_direct_successor",
+    }
 
 
 @pytest.mark.parametrize(
@@ -433,24 +589,14 @@ def test_canonical_packet_exact_parent_preflight_if_present(
     ],
 )
 def test_canonical_packet_signed_preflight_rejections_if_present(
-    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
     mutation: dict[str, object],
     reason: str,
 ) -> None:
-    packet_root = ROOT / launcher.MATERIALIZATION_RELATIVE_ROOT
-    if not packet_root.exists():
-        pytest.skip("fresh v2 materialization is sealed after implementation commit")
-    current_head = launcher.base._git(ROOT, "rev-parse", "HEAD")
-    monkeypatch.setenv("NOVEL_PTR12_RAW_SHAPE_GUARD_OBSERVER_V1", "1")
-    signed = _synthetic_signed_approval(approval_parent_head=current_head)
-    signed.update(mutation)
-    with pytest.raises(launcher.SkillV2BArmError) as caught:
-        launcher.validate_signed_launch(
-            repo_root=ROOT,
-            packet_root=packet_root,
-            route_database=ROUTE_DATABASE,
-            signed_approval=signed,
-            run_root=ROOT / launcher.EXECUTION_RELATIVE_ROOT,
-        )
-    assert caught.value.reason_code == reason
+    result = _historical_v3_preflight(
+        tmp_path,
+        checkout_head=V3_APPROVAL_SEAL_HEAD,
+        mutation=mutation,
+    )
+    assert result == {"status": "rejected", "reason_code": reason}
     assert not (ROOT / launcher.EXECUTION_RELATIVE_ROOT).exists()
