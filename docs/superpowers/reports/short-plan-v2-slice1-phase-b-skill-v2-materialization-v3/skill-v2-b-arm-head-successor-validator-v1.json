@@ -1,0 +1,12 @@
+{
+  "ancestry_fail_close_sha256": "0f036421608e882f5ef02c8c5fb2553ca80defea179cd6044db1c6554263fd3c",
+  "git_backed_validator_sha256": "9f4167dcaf40f1848eb061ac42fd9b095ceeab1ebb4b32b58ff5cb374437077d",
+  "head_successor_validator_sha256": "c76a9eb16275e463fa5940ca71d2806e2bc81ee0d82c56a8d7099448c37e06f0",
+  "owner": "tools.canary.slice1_phase_b_skill_v2_single_dispatch.verify_approval_head_successor",
+  "pure_relation_validator_sha256": "c05124dac1f248eb44933f3f333ac30c30e8f328e092c5276d94754e9fa8df27",
+  "schema": "SkillV2BArmApprovalHeadSuccessorValidatorV1",
+  "validation_before_credential_lookup": true,
+  "validation_before_network": true,
+  "validation_before_nonce_reservation": true,
+  "version": 1
+}

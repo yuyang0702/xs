@@ -1,0 +1,29 @@
+{
+  "ab_pair_id": "skill-v2-real-ab-20260824-v3-001",
+  "approval_scope": "SLICE1_PHASE_B_SKILL_V2_REAL_AB_B_ARM_SINGLE_DISPATCH_V3_ONLY",
+  "cohort_id": "slice1-phase-b-skill-v2-real-ab-v3-20260824-001",
+  "execution_authorized": false,
+  "execution_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-execution-v3",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_call_count": 0,
+    "network_call_count": 0,
+    "network_request_attempts": 0,
+    "paid_call_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_call_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "materialization_head": "41c1de78686ea553d71c9a444caf8a0fc4a8a290",
+  "materialization_relative_root": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v3",
+  "named_approver": null,
+  "new_single_use_nonce": "NOT_ISSUED_OR_NOT_EXECUTABLE",
+  "plan_sha256": "82fb0b3f09d09c9965af3b85f9c2b9ea09c85811b8102dca8c6bc3c5319e4860",
+  "predecessor_ab_pair_id": "skill-v2-real-ab-20260824-v2-001",
+  "schema": "SkillV2BArmPlanV1",
+  "signed_approval": "ABSENT",
+  "skill_arm": "SKILL_CONTEXT_V2",
+  "skill_v2_production_active": false,
+  "version": 1
+}

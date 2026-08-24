@@ -1,0 +1,15 @@
+{
+  "a_arm": "CURRENT_RUNTIME_SKILL",
+  "a_arm_cohort": "slice1-phase-b-current-skill-audit-safe-v5-20260823t164030z-001",
+  "ab_pair_binding_sha256": "f0d9054d4788cf2d27288519c9ddf74f0b13f96389602b751db4095f016ed694",
+  "ab_pair_id": "skill-v2-real-ab-20260824-v3-001",
+  "b_arm": "SKILL_CONTEXT_V2",
+  "b_arm_cohort": "slice1-phase-b-skill-v2-real-ab-v3-20260824-001",
+  "predecessor_ab_pair_id": "skill-v2-real-ab-20260824-v2-001",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "same_authority_input": true,
+  "same_story_slice": true,
+  "same_task_semantics": true,
+  "schema": "SkillV2BArmABPairBindingV1",
+  "version": 1
+}

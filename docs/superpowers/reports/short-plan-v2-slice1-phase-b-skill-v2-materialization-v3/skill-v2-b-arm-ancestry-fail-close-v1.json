@@ -1,0 +1,17 @@
+{
+  "ancestry_fail_close_sha256": "0f036421608e882f5ef02c8c5fb2553ca80defea179cd6044db1c6554263fd3c",
+  "ancestry_failure_terminates_immediately": true,
+  "git_diff_after_ancestry_failure": false,
+  "git_infrastructure_error": "approval_head_git_infrastructure_failure",
+  "helper_source_sha256": "6d2cdfeef3501be3e16b2d984d3c8bf942fde0825f5439fc3aa29aeb81269e5f",
+  "invalid_parent_mapping": {
+    "hex_valid_nonexistent_commit": "approval_parent_head_mismatch",
+    "malformed_sha": "approval_parent_head_malformed",
+    "valid_commit_invalid_ancestry": "approval_parent_head_mismatch"
+  },
+  "owner": "tools.canary.slice1_phase_b_skill_v2_single_dispatch._verify_approval_parent_ancestry",
+  "raw_subprocess_error_leaked": false,
+  "schema": "SkillV2BArmApprovalHeadAncestryFailCloseV1",
+  "validation_before_nonce_reservation": true,
+  "version": 1
+}
