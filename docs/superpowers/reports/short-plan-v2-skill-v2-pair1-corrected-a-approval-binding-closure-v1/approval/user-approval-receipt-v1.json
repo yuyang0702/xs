@@ -1,0 +1,19 @@
+{
+  "approval_id": "skill-v2-pair1-corrected-a-v3-approval-20260825t081308z-7090a963",
+  "approval_only": true,
+  "approval_scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_A_ARM_SINGLE_DISPATCH_ONLY",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "named_approver": "USER_PROJECT_OWNER",
+  "packet_sha256": "d7c31f05ecefdbd971df16966840f72ff4bc568c79f6633228ec4e43a5811aa7",
+  "real_execution_occurred": false,
+  "schema": "SkillV2Pair1CorrectedAUserApprovalReceiptV1",
+  "version": 1
+}

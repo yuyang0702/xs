@@ -1,0 +1,67 @@
+{
+  "approval_parent_head": "b2d105e944cf99925835961941eaf04fdf3a1a18",
+  "discovered_state_set_sha256": "7faf935d5662c0657f632fb12a5a6f44a6acb37d7b8dc78a67b0b41b28618242",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "packet_sha256": "d7c31f05ecefdbd971df16966840f72ff4bc568c79f6633228ec4e43a5811aa7",
+  "phase_a_pre_approval_readiness": "PASS",
+  "phase_a_receipt_sha256": "3cf6376b2b64f6bacf4f92db534a957b04cbfdf21c00cf85b733168e744fec7f",
+  "receipt_type": "PRE_APPROVAL_READINESS_STOP_STATE",
+  "schema": "SkillV2Pair1CorrectedAPhaseAPreApprovalReadinessV1",
+  "state": {
+    "a_b_lock_failure_active": false,
+    "canonical_locations": {
+      "corrected_pair1_a_execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v2/pairs/restored-character-heavy-v2/a-arm",
+      "corrected_pair1_a_result_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v2/pairs/restored-character-heavy-v2/a-arm",
+      "corrected_pair1_b_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/approval",
+      "corrected_pair1_b_result_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v2/pairs/restored-character-heavy-v2/b-arm",
+      "current_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-approval-binding-closure-v1/approval",
+      "pair2_or_later_approval_roots": [
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/approval"
+      ],
+      "pair2_or_later_result_roots": [
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/b-arm"
+      ]
+    },
+    "corrected_pair1_a_approval_count": 0,
+    "corrected_pair1_a_approval_exists": false,
+    "corrected_pair1_a_approval_id_matches": false,
+    "corrected_pair1_a_approval_identity_hashes": [],
+    "corrected_pair1_a_canonical_identity_present": false,
+    "corrected_pair1_a_execution_exists": false,
+    "corrected_pair1_a_is_next_arm": true,
+    "corrected_pair1_a_result_exists": false,
+    "corrected_pair1_b_approval_exists": false,
+    "corrected_pair1_b_result_exists": false,
+    "critical_quality_regression_active": false,
+    "discovered_state_set_sha256": "7faf935d5662c0657f632fb12a5a6f44a6acb37d7b8dc78a67b0b41b28618242",
+    "engineering_hard_failure_active": false,
+    "pair2_or_later_approval_exists": false,
+    "pair2_or_later_result_exists": false,
+    "pair2_to_5_fixture_compatibility_defect_known": true
+  },
+  "two_phase_contract_id": "SKILL_V2_PAIR1_CORRECTED_A_TWO_PHASE_STOP_STATE_V3",
+  "valid_for_signed_preflight": false,
+  "version": 1
+}

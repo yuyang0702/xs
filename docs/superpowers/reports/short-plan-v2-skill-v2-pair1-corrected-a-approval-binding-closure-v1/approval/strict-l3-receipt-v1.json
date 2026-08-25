@@ -1,0 +1,14 @@
+{
+  "automatic_level": "L1",
+  "baseline_used": true,
+  "blockers": 0,
+  "changed_core_paths": [],
+  "changed_source_paths": [],
+  "declared_level": "L3",
+  "evidence_only_approval_boundary": true,
+  "overall_status": "PASS",
+  "recommended_level": "L3",
+  "schema": "SkillV2Pair1CorrectedAApprovalV3StrictL3ReceiptV1",
+  "version": 1,
+  "warnings": 0
+}

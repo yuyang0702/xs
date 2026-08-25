@@ -1,0 +1,8 @@
+{
+  "corrected_pair1_b_arm_authorized": false,
+  "corrected_pair1_b_result_exists": false,
+  "pair2_or_later_authorized": false,
+  "pair2_to_5_execution_allowed": false,
+  "pair2_to_5_fixture_compatibility_defect_known": true,
+  "pair2_to_5_remain_blocked": true
+}

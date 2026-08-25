@@ -1,0 +1,5 @@
+{
+  "outer_current_chat_permission_required": true,
+  "outer_permission_check_before_nonce_reservation": true,
+  "pre_nonce_external_permission_abort_required_if_missing": true
+}

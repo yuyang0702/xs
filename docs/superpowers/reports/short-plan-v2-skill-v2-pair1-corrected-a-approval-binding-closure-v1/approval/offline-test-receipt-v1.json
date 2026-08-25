@@ -1,0 +1,24 @@
+{
+  "baseline_existing_failure_count": 2,
+  "baseline_existing_failure_proof": "the failing historical fresh-stop-state approval root is already tracked at packet-seal HEAD 0a7cfb2620150ee88bdb1e327c876cc8e62ccab5",
+  "baseline_existing_failures": [
+    "test_phase_a_and_phase_b_transition_is_semantically_allowed",
+    "test_fresh_evidence_is_deterministic_complete_and_private"
+  ],
+  "corrected_v3_closure_tests": "5 passed",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "fixture_narrow_fix_tests": "15 passed",
+  "negative_matrix": "57/57 rejected before external action",
+  "overall_status": "exact_with_2_preexisting_historical_test_failures",
+  "project_scope_check": "PASS",
+  "schema": "SkillV2Pair1CorrectedAApprovalV3OfflineTestReceiptV1",
+  "version": 1
+}

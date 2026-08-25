@@ -1,0 +1,23 @@
+{
+  "credentials_persisted": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "files_scanned": 18,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "raw_story_persisted": false,
+  "raw_tool_arguments_persisted": false,
+  "schema": "SkillV2Pair1CorrectedAApprovalV3PrivacyScanV1",
+  "single_use_nonce_persisted_only_in_signed_approval": true,
+  "version": 1
+}

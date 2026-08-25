@@ -1,0 +1,16 @@
+{
+  "historical_counters": {
+    "http_post_attempts": 1,
+    "model_calls": 1,
+    "network_calls": 1,
+    "paid_calls": 1,
+    "real_provider_requests": 1
+  },
+  "historical_evidence_rewritten": false,
+  "old_a_output_reuse_allowed": false,
+  "old_approval_reuse_allowed": false,
+  "old_nonce_consumed": true,
+  "old_nonce_reuse_allowed": false,
+  "old_packet_reuse_allowed": false,
+  "old_pair1_a_sample_valid_for_ab_comparison": false
+}

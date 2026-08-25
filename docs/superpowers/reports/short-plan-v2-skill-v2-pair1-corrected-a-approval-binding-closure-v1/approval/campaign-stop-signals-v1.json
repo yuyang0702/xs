@@ -1,0 +1,11 @@
+{
+  "a_b_lock_failure_active": false,
+  "critical_quality_regression_active": false,
+  "engineering_hard_failure_active": false,
+  "pair2_to_5_approval_allowed": false,
+  "pair2_to_5_execution_allowed": false,
+  "pair2_to_5_fixture_compatibility_defect_known": true,
+  "schema": "SkillV2Pair1CorrectedAStopSignalsV1",
+  "stop_signals_sha256": "b9e601913b60e9cf8b67734601f6d309b0d9ccbbdcfd8d04c2d3ac67657db64a",
+  "version": 1
+}

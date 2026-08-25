@@ -1,0 +1,18 @@
+{
+  "approval_cohort_reuse_allowed": false,
+  "approval_evidence_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-approval-binding-closure-v1/approval",
+  "approval_id": "skill-v2-pair1-corrected-a-v3-approval-20260825t081308z-7090a963",
+  "approval_identity_sha256": "d86d219b3e648769ac42288e7e461a4d15685632d26995274eb1f582ad834477",
+  "approval_parent_head": "b2d105e944cf99925835961941eaf04fdf3a1a18",
+  "approval_reuse_allowed": false,
+  "arm_role": "A_ARM",
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-a-disabled-001",
+  "named_approver": "USER_PROJECT_OWNER",
+  "one_approval_per_real_request": true,
+  "packet_sha256": "d7c31f05ecefdbd971df16966840f72ff4bc568c79f6633228ec4e43a5811aa7",
+  "pair_case_id": "restored-character-heavy-v2",
+  "schema": "SkillV2Pair1CorrectedAUnsignedApprovalIdentityV1",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_A_ARM_SINGLE_DISPATCH_ONLY",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 1
+}
