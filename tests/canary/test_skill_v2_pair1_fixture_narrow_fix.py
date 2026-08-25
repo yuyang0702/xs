@@ -200,6 +200,35 @@ def test_documents_manifest_privacy_and_external_actions_are_exact(
     assert result["execution_authorized"] is False
 
 
+def test_forward_risk_is_closed_world_and_model_boundary_is_unchanged(
+    built: tuple[dict[str, bytes], dict[str, object]],
+) -> None:
+    documents, _ = built
+    report = _json(documents, "forward-risk-report-v2.json")
+    assert report["version"] == 2
+    assert report["scope_classification"] == "closed_world"
+    assert report["resolution_status"] == "case_fixed"
+    assert report["model_output_boundary_changed"] is False
+    assert len(report["constraint_traceability"]) == 4
+    assert len(report["sibling_boundaries"]) == 5
+    pair_2_to_5 = next(
+        item for item in report["sibling_boundaries"]
+        if item["boundary"] == "Pair 2-5 campaign fixtures"
+    )
+    assert pair_2_to_5["disposition"] == "not_applicable"
+
+
+def test_clean_room_review_is_truthful_and_passed(
+    built: tuple[dict[str, bytes], dict[str, object]],
+) -> None:
+    documents, _ = built
+    review = _json(documents, "clean-room-review-v1.json")
+    assert review["mode"] == "single_agent_clean_room"
+    assert review["independence_claimed"] is False
+    assert review["hard_issue_count"] == 0
+    assert review["status"] == "passed"
+
+
 def test_historical_evidence_files_remain_byte_exact() -> None:
     result = fixture_fix.verify_historical_evidence_unchanged_v1(REPO)
     assert result["historical_sealed_reference_mutation_count"] == 0
